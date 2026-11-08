@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>RONNIE SIMULATOR</title>
+  <meta name="description" content="RONNIE SIMULATOR — a WebXR comedy eating game for Meta Quest 3.">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1020; font-family: "Arial Black", Impact, Arial, sans-serif; color: #fff; }
+    #app canvas { display: block; touch-action: none; }
+    #ui {
+      position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+      width: min(560px, calc(100% - 32px)); box-sizing: border-box;
+      background: rgba(10, 14, 30, 0.86); border: 3px solid #39ff14; border-radius: 18px;
+      padding: 16px 18px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    }
+    h1 { margin: 0 0 4px; font-size: 30px; letter-spacing: 1px; color: #ffd400; text-shadow: 3px 3px 0 #111; }
+    .tag { margin: 0 0 12px; font: 600 13px Arial, sans-serif; color: #9ca3af; }
+    #enter-vr {
+      font: 900 22px "Arial Black", Arial, sans-serif; padding: 14px 34px; border-radius: 14px; border: 0;
+      background: #39ff14; color: #111; cursor: pointer; box-shadow: 0 5px 0 #1d8a0a;
+    }
+    #enter-vr:disabled { background: #4b5563; color: #d1d5db; box-shadow: none; cursor: default; }
+    #sound { margin-left: 8px; font: 700 14px Arial, sans-serif; padding: 10px 14px; border-radius: 12px; border: 2px solid #9ca3af; background: transparent; color: #fff; cursor: pointer; }
+    #status { margin: 10px 0 0; font: 600 13px Arial, sans-serif; color: #e5e7eb; }
+    details { margin-top: 8px; text-align: left; font: 500 13px/1.45 Arial, sans-serif; color: #d1d5db; }
+    summary { cursor: pointer; color: #ffd400; font-weight: 700; }
+    body.in-vr #ui { opacity: 0.25; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="ui">
+    <h1>RONNIE SIMULATOR</h1>
+    <p class="tag">Phase 1 · Ronnie's Bedroom · Meta Quest 3</p>
+    <button id="enter-vr" disabled>CHECKING VR…</button>
+    <button id="sound">🔊 Test sound</button>
+    <p id="status">Loading…</p>
+    <details>
+      <summary>How to play</summary>
+      <b>Grab:</b> grip or trigger (or pinch with hand tracking).<br>
+      <b>Eat:</b> bring food to your mouth. Each touch = one bite.<br>
+      <b>Drink MONSTOR:</b> bring the can to your mouth and tip it back past 60° → MANGO LOCO MODE (x3 Chonk for 10s).<br>
+      <b>Throw:</b> let go mid-swing. Hit Tommy for a reaction.<br>
+      <b>Broccoli!</b> When Tommy winds up, swat it away with a fast hand swing — or catch it and throw it back.<br>
+      <b>Move:</b> left stick. <b>Turn:</b> right stick (30° snap).<br>
+      <b>Chonk Meter:</b> look at your left wrist.<br>
+      <b>No headset?</b> Drag to look around, tap food to eat, tap broccoli to swat.
+    </details>
+  </div>
+  <script>
+    // Show load errors on the page (handy without dev tools on the headset).
+    window.addEventListener('error', (e) => { const s = document.getElementById('status'); if (s) s.textContent = 'Error: ' + e.message; });
+    window.addEventListener('unhandledrejection', (e) => { const s = document.getElementById('status'); if (s) s.textContent = 'Error: ' + (e.reason && e.reason.message || e.reason); });
+  </script>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
