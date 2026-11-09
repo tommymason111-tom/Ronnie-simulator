@@ -199,6 +199,8 @@ export class Ragdoll {
     const ds = new Float32Array(this.defs.length);
     const parentIdx = this.defs.map(d => d.parent ? this.defs.findIndex(e => e.name === d.parent) : -1);
     const adjacent = (i, j) => parentIdx[i] === j || parentIdx[j] === i;
+    const headIdx = this.defs.findIndex(d => d.name === 'head'), chestIdx = this.defs.findIndex(d => d.name === 'chest');
+    const kH = this.height / 1.68, neckY = this.defs[headIdx].a.y;
     for (let i = 0; i < n; i++) {
       _v.fromBufferAttribute(pos, i);
       let best = 0;
@@ -214,6 +216,15 @@ export class Ragdoll {
         if (k === best || !adjacent(k, best)) continue;
         const w = Math.exp(-(ds[k] - ds[best]) / sigma);
         if (w > 0.02) slots.push([k, w]);
+      }
+      // the head is rigid: everything above the jaw follows the head bone 100%
+      // (so the face moves exactly with the eyes, which are attached to that bone);
+      // only a short band across the neck blends between chest and head
+      if (best === headIdx || best === chestIdx) {
+        const y = _v.y, lo = neckY - 0.045 * kH, hi = neckY + 0.025 * kH;
+        if (best === headIdx && y >= hi) slots = [[headIdx, 1]];
+        else if (y > lo && y < hi && Math.abs(_v.x) < 0.12 * kH) { const t = (y - lo) / (hi - lo); slots = [[headIdx, t], [chestIdx, 1 - t]]; }
+        else if (best === chestIdx) slots = slots.filter(sl => sl[0] !== headIdx);
       }
       slots.sort((a, b) => b[1] - a[1]); slots = slots.slice(0, 4);
       for (const s of slots) total += s[1];
