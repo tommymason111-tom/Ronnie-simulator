@@ -4,20 +4,24 @@
 import * as CANNON from 'cannon-es';
 import { ROOM } from './config.js';
 
-export const GROUP = { STATIC: 1, RAGDOLL: 2, HAND: 4 };
+// Collision groups. Each character gets its own bit (so different characters
+// collide with each other, but a character's own limbs don't jam together).
+export const GROUP = { STATIC: 1, RAGDOLL: 2, HAND: 4, CHARS: 0x7ff0 };
+let nextChar = 0;
+export function characterGroup() { const g = 1 << (4 + (nextChar++ % 11)); return { group: g, mask: GROUP.STATIC | GROUP.HAND | (GROUP.CHARS & ~g) }; }
 
 export function createPhysics(room) {
   const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.81, 0) });
   world.broadphase = new CANNON.SAPBroadphase(world);
   world.allowSleep = false;
-  world.solver.iterations = 12;
-  world.defaultContactMaterial.friction = 0.5;
+  world.solver.iterations = 16;
+  world.defaultContactMaterial.friction = 0.6;
   world.defaultContactMaterial.restitution = 0.05;
   world.defaultContactMaterial.contactEquationStiffness = 1e7;
   world.defaultContactMaterial.contactEquationRelaxation = 4;
 
   const addStatic = (shape, x, y, z, quat = null) => {
-    const b = new CANNON.Body({ mass: 0, type: CANNON.Body.STATIC, collisionFilterGroup: GROUP.STATIC, collisionFilterMask: GROUP.RAGDOLL });
+    const b = new CANNON.Body({ mass: 0, type: CANNON.Body.STATIC, collisionFilterGroup: GROUP.STATIC, collisionFilterMask: GROUP.RAGDOLL | GROUP.CHARS });
     b.addShape(shape);
     b.position.set(x, y, z);
     if (quat) b.quaternion.copy(quat);

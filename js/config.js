@@ -19,6 +19,11 @@ export const FOODS = {
   doughnut: { label: 'Doughnut',    chonk: 10, bites: 2, radius: 0.055, mass: 0.2 },
   can:      { label: 'MONSTOR Mango Loco', chonk: 20, bites: 1, radius: 0.04, mass: 0.5, drink: true },
   broccoli: { label: 'Broccoli',    chonk: -15, bites: 1, radius: 0.05, mass: 0.2, veg: true },
+  carrot:   { label: 'Carrot',      chonk: -8,  bites: 1, radius: 0.045, mass: 0.15, veg: true },
+  celery:   { label: 'Celery',      chonk: -10, bites: 1, radius: 0.05, mass: 0.1, veg: true },
+  sprout:   { label: 'Brussels sprout', chonk: -5, bites: 1, radius: 0.03, mass: 0.05, veg: true },
+  pint:     { label: 'BLACK LIFFEY STOUT', chonk: 20, bites: 1, radius: 0.045, mass: 0.6, drink: true, stout: true },
+  shake:    { label: 'Protein shake', chonk: 25, bites: 1, radius: 0.04, mass: 0.5, drink: true, shake: true },
 };
 
 export const TUNING = {

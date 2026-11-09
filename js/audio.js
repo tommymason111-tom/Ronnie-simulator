@@ -159,6 +159,12 @@ const SOUNDS = {
       tone(d, t + dt, 'square', f * 2, f * 2, 0.08, 0.05, 0.01);
     });
   },
+  sadviolin(d, t) {   // Chloe's guilt bonus: a sad little falling melody
+    [[659, 0], [622, 0.3], [587, 0.6], [523, 0.9]].forEach(([f, dt]) => {
+      const o = tone(d, t + dt, 'sawtooth', f, f * 0.98, 0.35, 0.12, 0.05);
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 6; const lg = ctx.createGain(); lg.gain.value = 6; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t + dt); lfo.stop(t + dt + 0.45);
+    });
+  },
   thud(d, t) { tone(d, t, 'sine', 90, 40, 0.12, 0.5); noise(d, t, 0.06, 'lowpass', 500, 1, 0.3); },
   clink(d, t) { tone(d, t, 'triangle', 1800 + Math.random() * 400, 1700, 0.15, 0.2, 0.001); },
 };
@@ -169,12 +175,12 @@ export function sfx(name, pos = null, vol = 1) {
 }
 
 // Tommy "speaks" in a smooth little babble while his speech bubble is up.
-export function babble(pos, syllables = 8) {
+export function babble(pos, syllables = 8, pitch = 1) {
   if (!ctx || ctx.state !== 'running') return;
   const d = out(pos, 0.25);
   let t = ctx.currentTime + 0.02;
   for (let i = 0; i < syllables; i++) {
-    const f = 140 + Math.random() * 60;
+    const f = (140 + Math.random() * 60) * pitch;
     const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(f, t);
     o.frequency.linearRampToValueAtTime(f * (0.85 + Math.random() * 0.3), t + 0.09);
     const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 900;

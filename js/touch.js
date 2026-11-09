@@ -10,7 +10,7 @@ export function setupTouch(cb) {
     <div id="stick"><div id="knob"></div></div>
     <button id="btn-eat" class="tbtn">EAT</button>
     <button id="btn-throw" class="tbtn">THROW</button>
-    <div id="hint">Drag to look · tap food to grab · tap Tommy to slap</div>`;
+    <div id="hint">Drag to look · tap food to grab · tap anyone to slap · game modes board is behind you</div>`;
   document.body.appendChild(root);
   const stick = root.querySelector('#stick'), knob = root.querySelector('#knob');
   const eat = root.querySelector('#btn-eat'), thr = root.querySelector('#btn-throw'), hint = root.querySelector('#hint');

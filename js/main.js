@@ -12,6 +12,7 @@ import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMus
 import { FONT } from './textures.js';
 import { createPhysics } from './physics.js';
 import { setupTouch } from './touch.js';
+import { Director, MODES } from './modes.js';
 
 // ---------------- renderer / scene ----------------
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -38,7 +39,8 @@ const physics = createPhysics(room);
 const tommy = new Tommy(scene, room, physics);
 tommy.load();
 player.setPhysics(physics);
-player.tommy = tommy;
+const cast = [tommy];          // Tommy + whichever squad members the mode brings
+player.cast = cast;
 player.room = room;
 const crumbs = new Crumbs(scene);
 const words = new Words(scene);
@@ -47,7 +49,7 @@ const tint = new Tint(camera);
 // ---------------- game state ----------------
 const G = {
   chonk: 0, stage: 0, eaten: 0, swats: 0,
-  locoT: 0, gagT: 0, lastBite: -1, lastEatLine: -10, lastLand: 0,
+  locoT: 0, stoutT: 0, gagT: 0, lastBite: -1, lastEatLine: -10, lastLand: 0,
   scaleFrom: 1, scaleTo: 1, scaleT: 1,
   wristDirty: true, wristT: 0, fps: 72, fpsFrames: 0, fpsT: 0,
 };
@@ -67,15 +69,22 @@ items.onLand = (it, speed) => {
 items.onSpawn = () => sfx('pop', null, 0.15);
 player.onGrab = (it) => {
   sfx('pop', it.pos, 0.3);
-  if (it.thrownByTommy) { words.show('CAUGHT!', it.pos.clone().add(new THREE.Vector3(0, 0.15, 0)), '#7cff6a', 0.22); it.thrownByTommy = false; }
+  if (it.incoming) {
+    words.show('CAUGHT!', it.pos.clone().add(new THREE.Vector3(0, 0.15, 0)), '#7cff6a', 0.22);
+    if (it.foodPass) { director.onCaught(); it.thrower && setTimeout(() => it.thrower.say('caught', 4), 400); }
+    it.incoming = false;
+  }
 };
 player.onRelease = (it, h, sp) => { if (sp > 2.5) sfx('whoosh', it.pos, Math.min(1, sp / 6)); };
 
-tommy.onThrow = (start, vel) => {
-  const b = items.spawn('broccoli', start, vel);
-  b.thrownByTommy = true;
+// anyone throwing anything at Ronnie
+function onThrow(start, vel, type, who, spec) {
+  const b = items.spawn(type, start, vel);
+  b.incoming = true; b.thrower = who; b.foodPass = !!(spec && spec.food); b.temp = !b.foodPass || true;
   b.spin.set(6, 3, 2);
-};
+  return b;
+}
+tommy.onThrow = onThrow;
 
 const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish' };
 const SNACK_WORD = { burger: ['CHOMP!', 'MUNCH!', 'NOM!'], pizza: ['CRUNCH!', 'MUNCH!'], doughnut: ['SQUISH!', 'NOM NOM!'] };
@@ -84,6 +93,7 @@ const CRUMB_COLORS = {
   pizza: [0xf2b233, 0xc9852f, 0xb3261e, 0xffe08a],
   doughnut: [0xff6fae, 0xd9a05b, 0x3fc1ff, 0xfff04a, 0xffffff],
   broccoli: [0x2e7d32, 0x9ccc65, 0x1b5e20],
+  carrot: [0xff7a1a, 0x3fa34d], celery: [0x9ccc65, 0x6aaa3a], sprout: [0x7cb342, 0x9ccc65],
   can: [0xff9a1f, 0xffe94d],
 };
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion();
@@ -105,27 +115,48 @@ function bite(it, hand) {
   const w = SNACK_WORD[it.type];
   words.show(w[Math.floor(Math.random() * w.length)], _b.copy(player.head).addScaledVector(player.fwd, 0.7 * player.scale).add({ x: 0, y: 0.05, z: 0 }), '#ffd400', 0.12 * player.scale);
   hand && hand.pulse(0.9, 70);
-  addChonk((it.def.chonk / it.def.bites) * (G.locoT > 0 ? TUNING.locoMultiplier : 1));
+  const amount = (it.def.chonk / it.def.bites) * chonkMul();
+  addChonk(amount);
+  director.onAte(it, amount);
   if (it.bitesLeft <= 0) {
     setTimeout(() => sfx('gulp', null, 1), 220);
     items.remove(it);
-    items.queueRespawn(it.type);
+    if (!it.foodPass) items.queueRespawn(it.type);
     G.eaten++;
+    director.onFinished(it);
     if (time - G.lastEatLine > 7 && Math.random() < 0.6) { G.lastEatLine = time; setTimeout(() => tommy.say('eat'), 700); }
   } else {
     it.obj.scale.setScalar(0.55 + 0.45 * it.eatFraction);
   }
 }
 
+function chonkMul() { return (G.locoT > 0 ? TUNING.locoMultiplier : 1) * (G.stoutT > 0 ? 2 : 1); }
+
+// Harry's pass lands in Ronnie's mouth: the whole thing goes down in one, +50%
+function eatWhole(it) {
+  const amount = it.def.chonk * 1.5 * chonkMul();
+  addChonk(amount); director.onAte(it, amount); director.onCaught();
+  const fx = _a.copy(player.mouth).addScaledVector(player.fwd, 0.12 * player.scale);
+  sfx('chomp', fx, 1); setTimeout(() => sfx('gulp', null, 1), 200);
+  crumbs.burst(fx, CRUMB_COLORS[it.type] || CRUMB_COLORS.burger, 30, 1.7, player.fwd);
+  words.show('IN THE MOUTH! x1.5', _b.copy(player.head).addScaledVector(player.fwd, 0.75 * player.scale).add({ x: 0, y: 0.08, z: 0 }), '#ffd400', 0.13 * player.scale, 1.3);
+  player.hands.forEach(h => h.pulse(0.8, 90));
+  items.remove(it);
+  G.eaten++;
+  if (it.thrower) setTimeout(() => it.thrower.say('caught', 4), 500);
+}
+
 function gag(veg) {
+  const thrower = veg.thrower;
+  director.onVegEaten();
   items.remove(veg);
   G.gagT = TUNING.gagTime;
-  addChonk(FOODS.broccoli.chonk);
+  addChonk(veg.def.chonk || FOODS.broccoli.chonk);
   sfx('bleurgh', null, 1);
-  crumbs.burst(_a.copy(player.mouth).addScaledVector(player.fwd, 0.1), CRUMB_COLORS.broccoli, 30, 1.8, player.fwd);
+  crumbs.burst(_a.copy(player.mouth).addScaledVector(player.fwd, 0.1), CRUMB_COLORS[veg.type] || CRUMB_COLORS.broccoli, 30, 1.8, player.fwd);
   words.show('BLEURGH!', _b.copy(player.head).addScaledVector(player.fwd, 0.8 * player.scale), '#7cff6a', 0.15 * player.scale, 1.4);
   player.hands.forEach(h => h.pulse(1, 200));
-  setTimeout(() => tommy.say('vegEaten'), 600);
+  setTimeout(() => (thrower && thrower !== tommy && thrower.banks.vegEaten ? thrower : tommy).say('vegEaten'), 600);
 }
 
 function drinkUpdate(it, hand, dt) {
@@ -139,20 +170,37 @@ function drinkUpdate(it, hand, dt) {
   const before = it.chug;
   it.chug += dt;
   if (Math.floor(before / 0.3) !== Math.floor(it.chug / 0.3)) { sfx('slurp', null, 0.9); hand && hand.pulse(0.4, 40); }
-  if (it.chug >= TUNING.chugTime) finishCan(it);
+  if (it.chug >= TUNING.chugTime) finishDrink(it);
 }
 
-function finishCan(it) {
+function finishDrink(it) {
   it.empty = true;
   sfx('gulp', null, 1);
-  setTimeout(() => sfx('trumpet', null, 1), 250);
-  addChonk(it.def.chonk);
-  startLoco();
-  words.show('MANGO LOCO!', _b.copy(player.head).addScaledVector(player.fwd, 0.9 * player.scale), '#ff9a1f', 0.15 * player.scale, 1.6);
+  const say = (who, bank) => who && setTimeout(() => who.say(bank, 4), 900);
+  const at = _b.copy(player.head).addScaledVector(player.fwd, 0.9 * player.scale);
+  let amount = it.def.chonk;
+  if (it.def.stout) {          // Aidan's pint: STOUT MODE — cosy amber slow-mo, x2 Chonk
+    const settled = it.placedAt && performance.now() - it.placedAt > 10000;
+    if (settled) { amount += 15; words.show('PATIENCE BONUS', at.clone().add({ x: 0, y: 0.15, z: 0 }), '#f3e6c8', 0.12 * player.scale, 1.6); }
+    G.stoutT = 10; G.wristDirty = true;
+    words.show('STOUT MODE!', at, '#f3e6c8', 0.15 * player.scale, 1.6);
+    say(it.placedBy, settled ? 'drank' : 'snap');
+  } else if (it.def.shake) {   // Lewis's protein: makes you grow FASTER
+    amount *= 1.5;
+    words.show('BULKING!', at, '#e53935', 0.15 * player.scale, 1.6);
+    say(it.placedBy || cast.find(c => c.id === 'lewis'), 'shake');
+  } else {
+    setTimeout(() => sfx('trumpet', null, 1), 250);
+    startLoco();
+    words.show('MANGO LOCO!', at, '#ff9a1f', 0.15 * player.scale, 1.6);
+    items.queueRespawn('can', 8);
+    setTimeout(() => tommy.say('drink'), 900);
+  }
+  addChonk(amount);
+  director.onAte(it, amount); director.onFinished(it);
   G.eaten++;
-  items.queueRespawn('can', 8);
-  setTimeout(() => tommy.say('drink'), 900);
 }
+function finishCan(it) { finishDrink(it); }
 
 function startLoco() {
   G.locoT = TUNING.locoDuration;
@@ -204,8 +252,12 @@ function vegAndHits(dt) {
   for (let i = items.items.length - 1; i >= 0; i--) {
     const it = items.items[i];
     if (it.dead || it.heldBy || it.resting) continue;
-    // Tommy's broccoli coming at you
-    if (it.thrownByTommy) {
+    // food passes (Harry): straight into the mouth if you let them
+    if (it.incoming && it.foodPass) {
+      if (segDist(player.mouth, it.prev, it.pos) < 0.15 * player.scale + it.radius) { eatWhole(it); continue; }
+    }
+    // veg coming at you
+    else if (it.incoming) {
       let handled = false;
       for (const h of player.hands) {
         if (!h.tracked) continue;
@@ -217,7 +269,7 @@ function vegAndHits(dt) {
           it.spin.set(20, 14, 9);
           sfx('thwack', it.pos, 1);
           words.show('THWACK!', it.pos.clone().add({ x: 0, y: 0.15, z: 0 }), '#7cff6a', 0.22 * player.scale);
-          G.swats++; G.wristDirty = true;
+          G.swats++; G.wristDirty = true; director.onSwat();
           setTimeout(() => tommy.say('vegSwat'), 450);
         } else {                                  // BLOCK
           it.vel.multiplyScalar(-0.3);
@@ -225,20 +277,21 @@ function vegAndHits(dt) {
           words.show('BLOCKED!', it.pos.clone().add({ x: 0, y: 0.12, z: 0 }), '#ffffff', 0.16 * player.scale);
         }
         h.pulse(1, 90);
-        it.thrownByTommy = false; it.thrownByPlayer = true; it.swatted = true;
+        it.incoming = false; it.thrownByPlayer = true; it.swatted = true;
         handled = true; break;
       }
       if (!handled && segDist(player.head, it.prev, it.pos) < 0.17 * player.scale + it.radius) { gag(it); continue; }
     }
-    // anything Ronnie throws at Tommy hits his ragdoll: light hits wobble him, hard ones knock him out
+    // anything Ronnie throws at someone hits their ragdoll: light hits shove, hard ones knock them out
     if (it.thrownByPlayer && it.vel.lengthSq() > 1.5 * 1.5) {
       _b.addVectors(it.prev, it.pos).multiplyScalar(0.5);
-      const part = tommy.partAt(it.pos, it.radius) || tommy.partAt(_b, it.radius);
+      let part = null, who = null;
+      for (const c of cast) { part = c.partAt(it.pos, it.radius) || c.partAt(_b, it.radius); if (part) { who = c; break; } }
       if (part) {
-        const veg = it.type === 'broccoli';
+        const veg = !!it.def.veg;
         const mass = it.def.mass * (it.empty ? 0.3 : 1);
         _a.copy(it.vel).multiplyScalar(mass * 6);        // cartoon physics: food hits 6x harder than real life
-        const res = tommy.hitBy(part, it.pos, _a, veg);
+        const res = who.hitBy(part, it.pos, _a, veg);
         sfx('splat', it.pos, res === 'ko' ? 1 : 0.6);
         if (res === 'ko') words.show(veg ? 'RETURN TO SENDER!' : ['SPLAT!', 'WALLOP!', 'POW!'][Math.floor(Math.random() * 3)], it.pos.clone().add({ x: 0, y: 0.3, z: 0 }), veg ? '#7cff6a' : '#ff5a36', 0.25, 1.3);
         else words.show('SPLAT!', it.pos.clone().add({ x: 0, y: 0.2, z: 0 }), '#ff9a36', 0.16, 0.9);
@@ -253,9 +306,10 @@ function vegAndHits(dt) {
 function slaps() {
   for (const h of player.hands) {
     if (!h.tracked || h.held || h.heldPart || h.speed < 1.6) continue;
-    const part = tommy.partAt(h.palm, 0.05 * player.scale);
+    let part = null, who = null;
+    for (const c of cast) { part = c.partAt(h.palm, 0.05 * player.scale); if (part) { who = c; break; } }
     if (!part) continue;
-    const res = tommy.slap(part, h.palm, h.vel);
+    const res = who.slap(part, h.palm, h.vel);
     if (!res) continue;
     h.pulse(1, 80);
     sfx(res === 'ko' ? 'splat' : 'thwack', h.palm, 1);
@@ -280,6 +334,7 @@ const touch = setupTouch({
     ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
     const ray = raycaster.ray, reach = 3 * player.scale;
+    if (director.tapBoard(ray) || director.tapBubble(ray)) return;
     // nearest thing along the tap: food or a bit of Tommy
     let best = null, bd = Infinity;
     for (const it of items.items) {
@@ -287,25 +342,25 @@ const touch = setupTouch({
       const along = _a.subVectors(it.pos, ray.origin).dot(ray.direction);
       if (along > 0 && along < bd && ray.distanceSqToPoint(it.pos) < (it.radius + 0.07) ** 2) { bd = along; best = it; }
     }
-    let part = null;
-    for (const p of tommy.rag.list) {
+    let part = null, who = null;
+    for (const c of cast) for (const p of c.rag.list) {
       const b = p.body.position; _b.set(b.x, b.y, b.z);
       const along = _a.subVectors(_b, ray.origin).dot(ray.direction);
-      if (along > 0 && along < bd && ray.distanceSqToPoint(_b) < (p.radius + 0.04) ** 2) { bd = along; part = p; best = null; }
+      if (along > 0 && along < bd && ray.distanceSqToPoint(_b) < (p.radius + 0.04) ** 2) { bd = along; part = p; who = c; best = null; }
     }
-    if (part) {                         // tap Tommy = slap him
-      if (bd > reach) { touch.hint('Get closer to slap Tommy!'); return; }
+    if (part) {                         // tap someone = slap them
+      if (bd > reach && who.state !== 'clinging') { touch.hint(`Get closer to slap ${who.name}!`); return; }
       const pos = part.body.position; _b.set(pos.x, pos.y, pos.z);
-      const res = tommy.slap(part, _b, _a.copy(ray.direction).multiplyScalar(4.2));
+      const res = who.slap(part, _b, _a.copy(ray.direction).multiplyScalar(4.2));
       if (res) { sfx(res === 'ko' ? 'splat' : 'thwack', _b, 1); words.show(res === 'ko' ? 'WALLOP!' : 'SLAP!', _b.clone().add({ x: 0, y: 0.3, z: 0 }), '#ff5a36', 0.22, 1); }
       return;
     }
     if (!best) return;
-    if (best.thrownByTommy) {           // tap incoming broccoli = swat
+    if (best.incoming) {           // tap incoming broccoli = swat
       best.vel.copy(ray.direction).multiplyScalar(5); best.vel.y += 2; best.vel.x += (Math.random() - 0.5) * 4;
-      best.thrownByTommy = false; best.thrownByPlayer = true;
+      best.incoming = false; best.thrownByPlayer = true;
       sfx('thwack', best.pos, 1); words.show('THWACK!', best.pos.clone(), '#7cff6a', 0.22);
-      G.swats++; G.wristDirty = true; setTimeout(() => tommy.say('vegSwat'), 450);
+      G.swats++; G.wristDirty = true; director.onSwat(); setTimeout(() => tommy.say('vegSwat'), 450);
       return;
     }
     if (bd > reach) { touch.hint('Too far — walk closer with the joystick'); return; }
@@ -322,7 +377,9 @@ function startFlat() {
   player.enterFlat();
   document.body.classList.add('flat');
   touch.show(true);
+  director.start(chosenMode());
 }
+function chosenMode() { const el = document.querySelector('input[name="mode"]:checked'); return el ? el.value : 'classic'; }
 document.getElementById('play-flat').addEventListener('click', startFlat);
 
 // ---------------- Enter VR ----------------
@@ -345,6 +402,7 @@ async function setupVR() {
       if (player.flatMode) { player.flatDrop(); player.flatMode = false; if (player.flatGrip) player.flatGrip.visible = false; touch.show(false); document.body.classList.remove('flat'); }
       vrBtn.textContent = 'EXIT VR';
       document.body.classList.add('in-vr');
+      director.start(chosenMode());
     } catch (err) { status.textContent = 'Could not start VR: ' + err.message; session = null; }
   });
 }
@@ -362,6 +420,51 @@ function fitCamera() {
 }
 fitCamera();
 window.addEventListener('resize', fitCamera);
+
+// ---------------- modes ----------------
+function resetRonnie() {
+  G.chonk = 0; G.stage = 0; G.eaten = 0; G.swats = 0; G.locoT = 0; G.stoutT = 0; G.gagT = 0;
+  G.scaleFrom = player.scale; G.scaleTo = 1; G.scaleT = player.scale === 1 ? 1 : 0;
+  player.setBelly(STAGES[0].belly); setPitchScale(1); stopLocoMusic(); room.hemi.color.set(0xc9d6ff);
+  for (const it of items.items.slice()) if (it.temp || it.incoming || it.empty || it.def.veg || it.def.stout || it.def.shake) items.remove(it);
+  tommy.state = 'idle'; tommy.rag.strength = 1; tommy.attackTimer = 12;
+  G.wristDirty = true;
+}
+const director = new Director({
+  scene, room, physics, player, items, words, G, tommy, cast, onThrow, addChonk, resetRonnie,
+  showBanner: (a, b) => showBanner(a, b),
+  stageName: () => STAGES[G.stage].name,
+  // points that pop bubbles / press board buttons: palms, fingertips and held food
+  popPoints: (fingers) => {
+    const pts = [];
+    if (!renderer.xr.isPresenting) return pts;
+    for (const h of player.hands) {
+      if (!h.tracked) continue;
+      pts.push(h.palm);
+      if (h.held) pts.push(h.held.pos);
+      if (fingers && h.isHand && h.hand.joints['index-finger-tip']) pts.push(h.hand.joints['index-finger-tip'].getWorldPosition(new THREE.Vector3()));
+      if (fingers && !h.isHand) pts.push(h.pos.clone().addScaledVector(new THREE.Vector3(0, 0, -1).applyQuaternion(h.quat), 0.08));
+    }
+    return pts;
+  },
+});
+// what characters need to know about Ronnie each frame
+const ctx = {
+  head: player.head, fwd: player.fwd, mouth: player.mouth, player,
+  handPos: () => {
+    if (player.flatMode) return player.flatAnchorPos();
+    const h = player.hands.filter(h => h.tracked).sort((a, b) => b.palm.y - a.palm.y)[0];
+    return h ? h.palm.clone() : player.head.clone().addScaledVector(player.fwd, 0.4);
+  },
+  // Dylan grabs onto whichever hand is closest
+  attachPoint: (who) => {
+    const tip = who.rag.tip('lArmR', new THREE.Vector3());
+    if (player.flatMode) return tip.distanceTo(player.flatAnchorPos()) < 0.5 ? { body: player.flatBody, speed: 0 } : null;
+    let best = null, bd = 0.45;
+    for (const h of player.hands) if (h.tracked && h.body && h.palm.distanceTo(tip) < bd) { bd = h.palm.distanceTo(tip); best = h; }
+    return best ? { body: best.body, get speed() { return best.speed; } } : null;
+  },
+};
 
 // ---------------- main loop ----------------
 function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * (2 * Math.PI / 3)) + 1; }
@@ -393,7 +496,8 @@ renderer.setAnimationLoop(() => {
   vegAndHits(dt);
   if (xr) slaps();
   physics.step(dt);
-  tommy.update(dt, player.head, player.fwd, player.mouth);
+  for (const c of cast) c.update(dt, ctx);
+  director.update(dt, ctx);
   if (player.flatMode) updateTouchUI();
 
   // timers & tint
@@ -401,8 +505,10 @@ renderer.setAnimationLoop(() => {
     G.locoT -= dt; if (Math.floor((G.locoT + dt) * 10) !== Math.floor(G.locoT * 10)) G.wristDirty = true;
     if (G.locoT <= 0) { G.locoT = 0; stopLocoMusic(); room.hemi.color.set(0xc9d6ff); G.wristDirty = true; }
   }
+  if (G.stoutT > 0) { G.stoutT -= dt; if (Math.floor((G.stoutT + dt) * 10) !== Math.floor(G.stoutT * 10)) G.wristDirty = true; }
   if (G.gagT > 0) G.gagT -= dt;
   if (G.gagT > 0) tint.set(0x2bd62b, 0.35 * Math.min(1, G.gagT));
+  else if (G.stoutT > 0) tint.set(0x8a5a1a, 0.18);
   else if (G.locoT > 0) tint.set(0xff8a00, 0.13 + Math.sin(time * 8) * 0.03);
   else tint.set(0xff8a00, 0);
   tint.update(dt);
@@ -425,13 +531,15 @@ renderer.setAnimationLoop(() => {
   G.fpsFrames++; G.fpsT += dt;
   if (G.fpsT >= 1) { G.fps = Math.round(G.fpsFrames / G.fpsT); G.fpsFrames = 0; G.fpsT = 0; G.wristDirty = true; }
   G.wristT -= dt;
+  if (director.running && director.mode !== 'classic' && Math.floor(director.timeLeft) !== G.lastHudSec) { G.lastHudSec = Math.floor(director.timeLeft); G.wristDirty = true; }
   if (G.wristDirty && G.wristT <= 0) {
     G.wristDirty = false; G.wristT = 0.1;
     const max = G.stage === STAGES.length - 1;
     const cur = STAGES[G.stage].chonk, next = max ? cur : STAGES[G.stage + 1].chonk;
     player.drawWrist({
       stage: G.stage, stages: STAGES.length, name: STAGES[G.stage].name, chonk: G.chonk, next, max,
-      fill: max ? 1 : (G.chonk - cur) / (next - cur), loco: G.locoT, eaten: G.eaten, swats: G.swats, fps: G.fps,
+      fill: max ? 1 : (G.chonk - cur) / (next - cur), loco: G.locoT, stout: G.stoutT, eaten: G.eaten, swats: G.swats, fps: G.fps,
+      modeLine: director.hud(),
     });
   }
 
@@ -442,4 +550,4 @@ renderer.setAnimationLoop(() => {
 });
 
 // Debug handle for testing in a desktop browser console.
-window.RS = { G, player, items, tommy, addChonk, scene, renderer, physics, startFlat };
+window.RS = { G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat };

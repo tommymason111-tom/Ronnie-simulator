@@ -28,6 +28,11 @@
     body.in-vr #ui { opacity: 0.25; }
     #play-flat { margin-top: 10px; font: 900 16px "Arial Black", Arial, sans-serif; padding: 12px 22px; border-radius: 14px; border: 0; background: #ffd400; color: #111; cursor: pointer; box-shadow: 0 4px 0 #a88a00; }
     body.flat #ui { display: none; }
+    #modes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 4px 0 12px; }
+    #modes label { font: 700 12px Arial, sans-serif; padding: 7px 10px; border-radius: 999px; border: 2px solid #4b5563; cursor: pointer; color: #e5e7eb; }
+    #modes input { display: none; }
+    #modes input:checked + span { color: #111; }
+    #modes label:has(input:checked) { background: #ffd400; border-color: #ffd400; color: #111; }
     /* on-screen controls (phone / tablet / desktop) */
     #touch { display: none; position: fixed; inset: 0; pointer-events: none; user-select: none; -webkit-user-select: none; }
     #touch.on { display: block; }
@@ -55,7 +60,16 @@
   <div id="app"></div>
   <div id="ui">
     <h1>RONNIE SIMULATOR</h1>
-    <p class="tag">Phase 1 · Ronnie's Bedroom · Meta Quest 3</p>
+    <p class="tag">Ronnie's Bedroom · Meta Quest 3 · phone · tablet</p>
+    <div id="modes">
+      <label><input type="radio" name="mode" value="classic" checked><span>Classic</span></label>
+      <label><input type="radio" name="mode" value="intervention"><span>Squad Intervention</span></label>
+      <label><input type="radio" name="mode" value="veggie"><span>Veggie War</span></label>
+      <label><input type="radio" name="mode" value="bubble"><span>Bubble Roast</span></label>
+      <label><input type="radio" name="mode" value="catch"><span>Catch &amp; Chonk</span></label>
+      <label><input type="radio" name="mode" value="chonkoff"><span>Chonk-Off</span></label>
+      <label><input type="radio" name="mode" value="chonkoff2"><span>Chonk-Off 2P</span></label>
+    </div>
     <button id="enter-vr" disabled>CHECKING VR…</button>
     <button id="sound">🔊 Test sound</button><br>
     <button id="play-flat">📱 PLAY ON THIS SCREEN</button>
@@ -69,7 +83,9 @@
       <b>Broccoli!</b> When Tommy winds up, swat it away with a fast hand swing — or catch it and throw it back.<br>
       <b>Move:</b> left stick. <b>Turn:</b> right stick (30° snap).<br>
       <b>Chonk Meter:</b> look at your left wrist.<br>
-      <b>Grab Tommy:</b> grip or pinch on any part of him and fling him about. Slap him with a fast swing.<br>
+      <b>Grab anyone:</b> grip or pinch on any part of Tommy or the squad and fling them about. Slap with a fast swing.<br>
+      <b>Game modes:</b> pick one above, or press a button on the GAME MODES board on the wall behind you in the bedroom.<br>
+      <b>The squad:</b> Chloe names your food (guilt bonus), Tasha blows roast bubbles (pop them), Lewis swaps in protein shakes, Harry "throws food away" (catch it in your mouth), Aidan brings a pint (Stout Mode), Noah tackles, Oliver films you, Dylan ambushes from the bin (shake him off).<br>
       <b>No headset (phone / tablet / computer)?</b> Press PLAY ON THIS SCREEN. Left joystick (or WASD) to walk, drag to look, tap food to pick it up, EAT / THROW buttons (or E / Space), tap broccoli to swat it, tap Tommy to slap him.
     </details>
   </div>

@@ -109,11 +109,26 @@ export class Player {
     h.ctrlHand = ch;
   }
 
+  // Noah's tackle: everything in your hands goes flying
+  dropAll() {
+    for (const h of this.hands) { if (h.heldPart) this.releaseTommy(h); if (h.held) { const it = h.held; this.release(h, true); it.vel.set((Math.random() - 0.5) * 2, 1.5, (Math.random() - 0.5) * 2); } }
+    if (this.flatHolder?.held) { const it = this.flatHolder.held; this.flatDrop(); it.vel.set((Math.random() - 0.5) * 2, 1.5, 1); }
+  }
+
+  // where the on-screen hand is (phone mode) — Dylan clings to it
+  flatAnchorPos() {
+    if (!this.flatGrip) return this.head.clone();
+    return this.flatGrip.getWorldPosition(new THREE.Vector3());
+  }
+
   // Kinematic spheres that follow your palms, so you can physically shove Tommy.
   setPhysics(physics) {
     this.physics = physics;
+    this.flatBody = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, collisionFilterGroup: 0, collisionFilterMask: 0 });
+    this.flatBody.addShape(new CANNON.Sphere(0.03));
+    physics.world.addBody(this.flatBody);
     for (const h of this.hands) {
-      h.body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, collisionFilterGroup: GROUP.HAND, collisionFilterMask: GROUP.RAGDOLL });
+      h.body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, collisionFilterGroup: GROUP.HAND, collisionFilterMask: GROUP.RAGDOLL | GROUP.CHARS });
       h.body.addShape(new CANNON.Sphere(0.05));
       h.body.position.set(0, -10, 0);
       physics.world.addBody(h.body);
@@ -206,9 +221,11 @@ export class Player {
 
   // Grab whichever bit of Tommy is in your hand and hang on with a springy joint.
   grabTommy(h) {
-    if (!this.tommy || !this.physics || !h.body) return;
-    const part = this.tommy.partAt(h.pos, 0.07 * this.scale);
+    if (!this.cast || !this.physics || !h.body) return;
+    let part = null, who = null;
+    for (const c of this.cast) { part = c.partAt(h.pos, 0.07 * this.scale); if (part) { who = c; break; } }
     if (!part) return;
+    h.heldWho = who;
     const b = part.body;
     _q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w).invert();
     _v.set(h.pos.x - b.position.x, h.pos.y - b.position.y, h.pos.z - b.position.z).applyQuaternion(_q);
@@ -218,7 +235,7 @@ export class Player {
     part.grabbed = true;
     h.heldPart = part;
     h.pulse(0.8, 60);
-    this.tommy.grabbed(part);
+    who.grabbed(part);
   }
 
   releaseTommy(h) {
@@ -229,7 +246,8 @@ export class Player {
     b.velocity.x += h.vel.x * 0.5; b.velocity.y += h.vel.y * 0.5; b.velocity.z += h.vel.z * 0.5;
     if (!this.hands.some(o => o !== h && o.heldPart === h.heldPart)) h.heldPart.grabbed = false;
     h.heldPart = null;
-    this.tommy.released();
+    h.heldWho && h.heldWho.released();
+    h.heldWho = null;
   }
 
   release(h, silent = false) {
@@ -340,6 +358,7 @@ export class Player {
       this.rig.position.z += (-cy * -mz - sy * mx) * sp;
     }
     this.clampHead();
+    if (this.flatBody) { const p = this.flatAnchorPos(); this.flatBody.position.set(p.x, p.y, p.z); }
     // the eat swing: grip moves from its rest spot to just under the nose and back
     const g = this.flatGrip, f = this.flatHolder;
     let k = 0;
@@ -436,6 +455,13 @@ export class Player {
     if (state.loco > 0) {
       g.fillStyle = '#ff9a1f'; g.font = `900 36px ${FONT}`;
       g.fillText(`MANGO LOCO MODE x3 · ${state.loco.toFixed(1)}s`, 30, 262);
+    } else if (state.stout > 0) {
+      g.fillStyle = '#f3e6c8'; g.font = `900 36px ${FONT}`;
+      g.fillText(`STOUT MODE x2 · ${state.stout.toFixed(1)}s`, 30, 262);
+    } else if (state.modeLine) {
+      g.fillStyle = '#ffd400'; g.font = `900 26px ${FONT}`;
+      let size = 26; while (g.measureText(state.modeLine).width > w - 60 && size > 14) { size -= 2; g.font = `900 ${size}px ${FONT}`; }
+      g.fillText(state.modeLine, 30, 262);
     } else {
       g.fillStyle = '#6b7280'; g.font = `900 28px ${FONT}`;
       g.fillText(`Eaten: ${state.eaten}  Swats: ${state.swats}`, 30, 262);

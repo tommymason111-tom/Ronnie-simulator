@@ -62,6 +62,32 @@ function broccoliGeo() {
   return merge(p);
 }
 
+function carrotGeo() {
+  const g = new THREE.ConeGeometry(0.018, 0.14, 10); g.rotateX(Math.PI / 2);
+  return merge([part(g, 0xff7a1a), part(new THREE.ConeGeometry(0.012, 0.04, 6), 0x3fa34d, [0, 0, -0.085], [-Math.PI / 2, 0, 0]), part(new THREE.ConeGeometry(0.008, 0.035, 5), 0x2e8b3d, [0.006, 0.004, -0.08], [-Math.PI / 2, 0, 0.5])]);
+}
+function celeryGeo() {
+  const p = [part(cyl(0.012, 0.014, 0.2, 8), 0x9ccc65, [0, 0, 0], [Math.PI / 2, 0, 0])];
+  for (let i = 0; i < 4; i++) p.push(part(new THREE.IcosahedronGeometry(0.014, 0), 0x6aaa3a, [(i - 1.5) * 0.008, 0.008, -0.1]));
+  return merge(p);
+}
+function sproutGeo() {
+  return merge([part(new THREE.IcosahedronGeometry(0.028, 1), 0x7cb342), part(new THREE.IcosahedronGeometry(0.02, 1), 0x9ccc65, [0.01, 0.012, 0.01]), part(cyl(0.006, 0.008, 0.012, 6), 0xc5e1a5, [0, -0.028, 0])]);
+}
+// a pint of (parody) BLACK LIFFEY STOUT with a creamy head
+function pintGeo() {
+  return merge([
+    part(cyl(0.042, 0.034, 0.12, 18), 0x140c08, [0, -0.01, 0]),
+    part(cyl(0.043, 0.042, 0.022, 18), 0xf3e6c8, [0, 0.061, 0]),
+    part(cyl(0.035, 0.035, 0.006, 18), 0xd8d8d8, [0, -0.073, 0]),
+    part(box(0.05, 0.03, 0.002), 0xd4af37, [0, 0.0, 0.039]),
+  ]);
+}
+// protein shake: white tub-bottle with a red lid
+function shakeGeo() {
+  return merge([part(cyl(0.035, 0.035, 0.13, 16), 0xf2f2f2), part(cyl(0.037, 0.037, 0.03, 16), 0xd32f2f, [0, 0.075, 0]), part(box(0.05, 0.05, 0.002), 0x1565c0, [0, 0, 0.035])]);
+}
+
 let canGeoCache = null;
 function canMeshes() {
   if (!canGeoCache) {
@@ -84,7 +110,7 @@ function canMeshes() {
 const geoCache = {};
 function meshFor(type) {
   if (type === 'can') return canMeshes();
-  if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo }[type]();
+  if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo }[type]();
   return new THREE.Mesh(geoCache[type], vcLambert);
 }
 
@@ -112,7 +138,10 @@ export class Item {
     this.opened = false;
     this.chug = 0;
     this.thrownByPlayer = false;
-    this.thrownByTommy = false;
+    this.incoming = false;      // thrown at Ronnie by a character
+    this.foodPass = false;      // ...and it's food (Harry's passes), not veg
+    this.thrower = null;
+    this.temp = false;
     this.swatted = false;
     this.restTime = 0;
     this.age = 0;
@@ -193,7 +222,7 @@ export class ItemManager {
       if (it.heldBy) { it.resting = false; it.restTime = 0; continue; }
       if (it.resting) {
         it.restTime += dt;
-        if ((it.type === 'broccoli' || it.empty) && it.restTime > 6) this.remove(it);
+        if ((it.def.veg || it.empty || it.temp) && it.restTime > 6) this.remove(it);
         continue;
       }
       // integrate
@@ -237,7 +266,7 @@ export class ItemManager {
 // Lay things down nicely when they come to rest.
 function settle(it) {
   const r = it.obj.rotation;
-  if (it.type === 'can') { r.x = it.empty ? Math.PI / 2 : 0; r.z = 0; }
+  if (it.def.drink) { r.x = it.empty ? Math.PI / 2 : 0; r.z = 0; }
   else { r.x = 0; r.z = 0; }
 }
 

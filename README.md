@@ -13,19 +13,49 @@ The design doc is `Ronnie simulator prompt.md`. It was written for Unity; this r
 - **Grab, throw and eat.** Grab with the grip or trigger (or pinch with your hands). Bring food to your mouth to take a bite: you get a CHOMP sound, a crumb burst, a comic word and a controller buzz. You can throw anything.
 - **Foods:** burger (3 bites), pizza slice (2), doughnut (2), and a **MONSTOR Mango Loco** can. Bring the can to your mouth and tip it back past 60°: PSSHT, glug glug, then **MANGO LOCO MODE**. For 10 seconds everything is worth ×3 Chonk, the world goes warm orange and a mariachi tune plays.
 - **Chonk Meter on your left wrist.** Ronnie grows through 6 stages (Little Ronnie → Snacky → Chunky → Big → Very Big → **Ronnie XL**). Each stage-up plays a BWOOMP, makes you physically bigger (the room shrinks around you), grows your belly (look down) and gets a stage line from Tommy. The wrist also shows the FPS.
-- **Tommy** uses his real 3D model (`assets/tommy.glb`) as a Gang Beasts-style **active ragdoll**. He greets you, roasts you, reacts to what you eat and drink, wanders around, and has his personal spotlight. The physics side:
-  - **Wobbly on purpose.** He is always a physics ragdoll made of 11 bodies joined at the neck, spine, shoulders, elbows, hips and knees. "Muscles" pull each limb toward a pose (standing, waddling, gesturing while he talks, winding up a throw) but never perfectly, so he wobbles and overshoots.
-  - **Puppet strings.** An invisible lift holds his hips up and keeps his chest over them, the same trick Gang Beasts uses to keep characters standing.
-  - **Light hits** just shove him about (food has mass, so a doughnut hits softer than a full can).
-  - **Big hits** (hard throws, fast slaps, food to the head) make him go fully limp. He flops to the floor seeing stars, then his muscles come back and haul him up: *"I'm just trying to help!"*
-  - **Grab any part of him** (grip or pinch) and drag, dangle or fling him. He flails and complains *"Ronnie, put me down… I am older than you!"* Throw him hard enough and you get *"WORTH IIIIIIT!"*
-  - **Slap him** with a fast hand swing, or just shove him: your hands are physical.
+- **Tommy** uses his real 3D model (`assets/tommy.glb`) with eyes matched to his photo. He greets you, roasts you, reacts to what you eat and drink, wanders around, and has his personal spotlight.
+- **Ragdoll physics (everyone).** Characters are physics ragdolls: 11 bodies joined at the neck, spine, shoulders, elbows, hips and knees.
+  - **Standing:** firm muscles hold them in their animated pose, so they don't wobble.
+  - **Knocked out:** hard throws, fast slaps or head hits make them a normal limp ragdoll. Elbows and knees are hinges that only bend the right way, every joint has twist limits, and joint friction makes them drop like a heavy body, not jelly. Then they get back up.
+  - **Grab anyone** (grip or pinch) and drag, dangle or fling them. Slap or shove with your hands.
+
 - **Veggie attack:** every ~20s Tommy winds up and lobs a broccoli at your face. You have three options:
   - **Swat it** with a fast hand swing (THWACK).
   - **Block it** with your hand or with food.
   - **Catch it** and throw it back ("RETURN TO SENDER!").
   If it gets in your mouth you lose 15 Chonk, the screen goes green, and Tommy says "We had him. We HAD him!"
 - **All sounds are synthesised in code,** so there are no audio files to download.
+
+## The squad (design doc Part 5)
+
+Each squad member is a stylised character built in code at their doc height and build, in their outfit and colours, on the same ragdoll as Tommy. Each has their own lines and a signature **intervention**:
+
+| Who | Intervention | What happens |
+|---|---|---|
+| **Chloe** | Name the Food | Throws salad at you, then names your next snack. Eating it gives a guilt bonus (x1.5) and a sad violin. |
+| **Tasha** | Bubble Roast | Blows bubbles with roast words in them. Pop them with your hands or food, or the roast lands. |
+| **Lewis** | Protein Swap | Puts protein shakes on your snack station, then flexes. Drinking one: "bro… you're bulking". |
+| **Harry H** | Catch & Chonk | "Throws the food away" — straight at your mouth. Let it hit your mouth to swallow it whole (+50%). |
+| **Aidan** | Just the One | Sets down a pint of BLACK LIFFEY stout. Drinking it gives STOUT MODE (x2 Chonk, cosy amber), plus a bonus if you let it settle for 10s. |
+| **Noah** | The Tackle | Charges at you. While you're small, everything you're holding goes flying. Once you're big, he bounces off. |
+| **Oliver** | Shame Cam | Films you live, and his follower count rockets every time you eat. |
+| **Dylan** | The Ambush | Hides in the bin, leaps out and clings to your hand. Shake him off (or tap him on a phone). |
+
+To use real models for the squad later, make Tripo models like Tommy's and they can go through the same pipeline.
+
+## Game modes
+
+Pick a mode on the start screen, or press a button on the **GAME MODES board** on the bedroom wall behind you (touch it with your hand in VR, tap it on a phone). Each mode ends with a receipt.
+
+| Mode | How it plays |
+|---|---|
+| **Classic** | Eat, grow, dodge Tommy's broccoli. |
+| **Squad Intervention** (4 min) | Tommy plus 4 random squad members. An Intervention Meter fills as you eat. When it's full, the next person tries their move. Receipt: "INTERVENTIONS SUCCESSFUL: 0". |
+| **Veggie War** (2½ min) | The squad attacks with veg in waves: one at a time, then two at once, then everyone. Each has their own veg (Noah carrots, Harry sprouts, Dylan celery…). |
+| **Bubble Roast** | Tasha blows 30 roast bubbles. Pop them before they reach you. |
+| **Catch & Chonk** | Harry throws 20 foods. Catch them in your mouth. |
+| **Chonk-Off** (60s) | Eat as much as you can. Your best score is saved on the device. |
+| **Chonk-Off 2P** | Player 1 plays, passes the headset or phone, then Player 2 presses Chonk-Off 2P. Winner on the receipt. |
 
 ## Controls (in VR)
 
@@ -80,8 +110,11 @@ js/player.js      XR rig, hands, grab/throw (food and Tommy), movement, wrist me
 js/hands.js       hand models around the controllers, with finger curl from trigger/grip
 js/touch.js       on-screen joystick, buttons, drag-to-look, tap; keyboard for desktop
 js/physics.js     cannon-es world: room walls, furniture, fixed 90Hz steps
-js/ragdoll.js     Gang Beasts-style active ragdoll + automatic skinning of Tommy's model
-js/tommy.js       Tommy's brain: talking, wandering, broccoli throw, knockouts, being grabbed
+js/ragdoll.js     ragdoll bodies, hinge/cone joints with limits, muscles, auto-skinning of Tommy's model
+js/character.js   shared character behaviour: speech, walking, poses, throwing, hits, knockouts, grabbing
+js/tommy.js       Tommy: his model, eyes, spotlight, broccoli attacks
+js/squad.js       the squad: looks (built from shapes), lines and interventions
+js/modes.js       game modes, intervention meter, roast bubbles, mode board, receipts
 js/dialogue.js    Tommy's line banks (from §3 of the design doc)
 js/room.js        the bedroom, furniture, joke signs, lighting
 js/foods.js       food meshes + the small physics engine
@@ -93,7 +126,8 @@ js/textures.js    canvas-drawn posters, labels, the Mango Loco can
 ## Performance (target: steady 72fps on Quest 3)
 
 - All plain-coloured furniture is merged into one mesh, and the floor cans are a single instanced mesh. Tommy was cut from about 2 million triangles to 32k (most of them on his face) and is skinned on the GPU. A frame is about 55 draw calls and 50k triangles per eye.
-- Physics runs at a fixed 90 steps a second. It's only Tommy's 11 bodies, 2 hand spheres and the static room, and food uses its own tiny solver.
+- Physics runs at a fixed 90 steps a second: up to 5 characters × 11 bodies, 2 hand spheres and the static room. Food uses its own tiny solver.
+- Each squad member is one draw call of about 6–8k triangles. A full Squad Intervention frame is about 80k triangles.
 - There are no real-time shadows. The sun stripes and Tommy's shadow are cheap fake decals.
 - Lighting is cheap Lambert shading with 3 lights (sky, sun, Tommy's spotlight).
 - Text and textures are drawn once at load. The wrist and speech bubbles only redraw when something changes.
