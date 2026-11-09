@@ -72,7 +72,7 @@ The design doc is `Ronnie simulator prompt.md`. It was written for Unity; this r
 
 ```
 index.html        page, Enter VR / Play on this screen, import map (three.js r170, cannon-es 0.20 from jsDelivr)
-assets/tommy.glb  Tommy's model, simplified from the 2M-triangle original to 17.7k triangles
+assets/tommy.glb  Tommy's model: 32k triangles (22k on the head) re-baked from the 2M-triangle original, with a new colour texture and normal map
 assets/hands/     hand models (WebXR Input Profiles "generic hand", MIT licence)
 js/main.js        game loop: eating, drinking, Chonk, stages, LOCO mode, broccoli, hits, slaps, touch wiring
 js/config.js      all the tuning numbers (stages, food Chonk, timings)
@@ -92,7 +92,7 @@ js/textures.js    canvas-drawn posters, labels, the Mango Loco can
 
 ## Performance (target: steady 72fps on Quest 3)
 
-- All plain-coloured furniture is merged into one mesh, and the floor cans are a single instanced mesh. Tommy was cut from about 2 million triangles to 17.7k and is skinned on the GPU. A frame is about 50 draw calls and 36k triangles per eye.
+- All plain-coloured furniture is merged into one mesh, and the floor cans are a single instanced mesh. Tommy was cut from about 2 million triangles to 32k (most of them on his face) and is skinned on the GPU. A frame is about 55 draw calls and 50k triangles per eye.
 - Physics runs at a fixed 90 steps a second. It's only Tommy's 11 bodies, 2 hand spheres and the static room, and food uses its own tiny solver.
 - There are no real-time shadows. The sun stripes and Tommy's shadow are cheap fake decals.
 - Lighting is cheap Lambert shading with 3 lights (sky, sun, Tommy's spotlight).
@@ -105,6 +105,7 @@ js/textures.js    canvas-drawn posters, labels, the Mango Loco can
 - **Not yet tested on a real Quest 3.** It was tested in Meta's WebXR emulator (IWER) with emulated Quest 3 controllers and hands, and as a flat page on emulated iPad and desktop. Check the FPS number on your wrist the first time you play.
 - three.js and cannon-es load from the jsDelivr CDN, so the device needs internet. The hand and Tommy models are in the repo.
 - Tommy "speaks" with text bubbles and a little babble sound, not a real voice yet.
+- Tommy's eyes in the original model are painted on, so the game adds glossy irises that follow you and blink.
 - Tommy's model is a scan with no real skeleton. The game builds one when it loads, so the shoulders bunch up a little when his arms hang down.
 - Food doesn't bump into other food.
 - The mirror isn't reflective, because real mirrors double the rendering cost.

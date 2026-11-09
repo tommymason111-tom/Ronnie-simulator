@@ -79,9 +79,63 @@ export class Tommy {
   }
 
   async load() {
-    try { await this.rag.loadModel(MODEL_URL); }
+    try { await this.rag.loadModel(MODEL_URL); this.addEyes(); }
     catch (e) { console.warn('Tommy model failed to load, using blocks', e); this.buildFallback(); }
     this.ready = true;
+  }
+
+  // Glossy irises on his painted-on eyes: they follow Ronnie around the room,
+  // catch the light, blink, and roll round when he's knocked out. Each iris is a
+  // shallow cap on an invisible eyeball, so turning the eyeball slides the iris.
+  addEyes() {
+    const headBone = this.rag.bones[this.rag.list.findIndex(p => p.name === 'head')];
+    const R = 0.012, CAP = 0.44;
+    const geo = new THREE.SphereGeometry(R, 32, 10, 0, Math.PI * 2, 0, CAP);
+    geo.rotateX(Math.PI / 2);                  // cap faces +Z
+    const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3), c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const a = Math.acos(THREE.MathUtils.clamp(pos.getZ(i) / R, -1, 1));
+      c.set(a < 0.19 ? 0x080504 : a < 0.27 ? 0x2c1a0e : a < 0.44 ? 0x5e3f24 : 0x24160c);   // pupil, inner iris, iris, rim
+      cols.set([c.r, c.g, c.b], i * 3);
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    const mat = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 120, specular: 0x888888 });
+    const lidGeo = new THREE.SphereGeometry(0.019, 20, 8, 0, Math.PI * 2, 0, 0.9);
+    lidGeo.rotateX(Math.PI / 2);
+    const lidMat = new THREE.MeshLambertMaterial({ color: 0xbf8b70 });
+    this.eyes = [-1, 1].map(side => {
+      const pivot = new THREE.Group();
+      pivot.position.set(side * 0.032, 0.0065, 0.0962 - R);   // eyeball centre (head-bone space); iris apex ~1.5mm proud of the face
+      const iris = new THREE.Mesh(geo, mat);
+      const lid = new THREE.Mesh(lidGeo, lidMat); lid.scale.set(1, 0.55, 0.6); lid.position.z = 0.001; lid.visible = false;
+      pivot.add(iris, lid);
+      headBone.add(pivot);
+      return { pivot, ball: iris, lid };
+    });
+    this.blinkT = 2 + Math.random() * 3;
+  }
+
+  updateEyes(dt, target) {
+    if (!this.eyes) return;
+    this.blinkT -= dt;
+    const blinking = this.blinkT < 0;
+    if (this.blinkT < -0.12) this.blinkT = 2.5 + Math.random() * 3.5;
+    const ko = this.state === 'ko';
+    for (const e of this.eyes) {
+      e.lid.visible = blinking && !ko;
+      if (ko) {              // dizzy: eyes roll round and round
+        const a = this.t * 9 + (e === this.eyes[0] ? 0 : Math.PI);
+        e.ball.rotation.set(Math.sin(a) * 0.3, Math.cos(a) * 0.3, 0);
+        continue;
+      }
+      // look at Ronnie (in head-bone space), within what eyes can do
+      e.pivot.updateWorldMatrix(true, false);
+      _v.copy(target);
+      e.pivot.worldToLocal(_v);
+      const yaw = THREE.MathUtils.clamp(Math.atan2(_v.x, _v.z), -0.35, 0.35);
+      const pitch = THREE.MathUtils.clamp(Math.atan2(-_v.y, Math.hypot(_v.x, _v.z)), -0.2, 0.2);
+      e.ball.rotation.set(pitch, yaw, 0, 'YXZ');
+    }
   }
 
   // simple block body if the model can't load (keeps the game playable)
@@ -302,6 +356,7 @@ export class Tommy {
     if (!this.down) r.pose.head.setFromAxisAngle(_v.set(0, 1, 0), rel);
 
     r.sync();
+    this.updateEyes(dt, playerHead);
     if (this.fallback) this.fallback.forEach((m, i) => { const b = r.list[i].body; m.position.copy(b.position); m.quaternion.copy(b.quaternion); });
 
     // effects follow the body

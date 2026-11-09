@@ -105,8 +105,10 @@ export class Ragdoll {
     const geo = src.geometry.clone();
     geo.applyMatrix4(src.matrixWorld);
     const old = src.material;
-    const mat = new THREE.MeshLambertMaterial({ map: old.map || null, normalMap: old.normalMap || null, color: 0xffffff });
+    // a little self-lighting from his own texture softens the low-poly facets under harsh lights
+    const mat = new THREE.MeshLambertMaterial({ map: old.map || null, normalMap: old.normalMap || null, color: 0xe6e6e6, emissive: 0x3a3a3a, emissiveMap: old.map || null });
     if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
+    mat.map && (mat.map.anisotropy = 4);
 
     // ---- automatic skinning: weight each vertex by closeness to each bone segment ----
     const pos = geo.attributes.position, n = pos.count;
