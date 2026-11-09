@@ -108,6 +108,8 @@ export class Ragdoll {
     // a little self-lighting from his own texture softens the low-poly facets under harsh lights
     const mat = new THREE.MeshLambertMaterial({ map: old.map || null, normalMap: old.normalMap || null, color: 0xe6e6e6, emissive: 0x3a3a3a, emissiveMap: old.map || null });
     if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
+    // the eye openings are cut out with a smooth mask (stored in the model's occlusion slot)
+    if (old.aoMap) { mat.alphaMap = old.aoMap; mat.alphaTest = 0.5; mat.side = THREE.DoubleSide; }   // double-sided: steep views into a socket never see through his head
     mat.map && (mat.map.anisotropy = 4);
 
     // ---- automatic skinning: weight each vertex by closeness to each bone segment ----

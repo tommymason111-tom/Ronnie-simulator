@@ -92,13 +92,15 @@ export class Tommy {
   // blinks, and goes droopy-eyed and dizzy when knocked out.
   addEyes() {
     const headBone = this.rag.bones[this.rag.list.findIndex(p => p.name === 'head')];
-    const EYE_R = 0.0115, LID_R = 0.0122;
+    const EYE_R = 0.0118, LID_R = 0.0127;
     const ballMat = new THREE.MeshPhongMaterial({ map: eyeTexture(), shininess: 70, specular: 0x555555 });
     const ballGeo = new THREE.SphereGeometry(EYE_R, 40, 24);
     // skin colour matched to the baked texture around his eyes (and the body material's lighting)
-    const skin = new THREE.Color().setRGB(188 / 255, 129 / 255, 115 / 255, THREE.SRGBColorSpace).multiplyScalar(0.78);
+    const skin = new THREE.Color().setRGB(188 / 255, 129 / 255, 115 / 255, THREE.SRGBColorSpace);
     const lidMat = new THREE.MeshLambertMaterial({ color: skin.clone().multiply(new THREE.Color(0xe6e6e6)), emissive: skin.clone().multiply(new THREE.Color(0x3a3a3a)) });
     const lashMat = new THREE.MeshLambertMaterial({ color: 0x23170f });
+    const socketGeo = new THREE.SphereGeometry(1, 24, 16);
+    const socketMat = new THREE.MeshLambertMaterial({ color: skin.clone().multiplyScalar(0.45), side: THREE.BackSide });
     const rimMat = new THREE.MeshLambertMaterial({ color: 0x9c6457 });
     const glintMat = new THREE.MeshBasicMaterial({ color: 0xffffff, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8 });
     // A lid is a spherical cap around a tilted pole; tilting the pole backwards makes
@@ -118,13 +120,15 @@ export class Tommy {
     };
     this.eyes = [-1, 1].map(side => {
       const eye = new THREE.Group();
-      eye.position.set(side * 0.032, 0.0075, 0.082);   // head-bone space: front of the lids flush with the skin
+      eye.position.set(side * 0.032, 0.0075, 0.0832);  // head-bone space: lids flush with the skin, eyeball just behind
       eye.rotation.y = side * 0.08;                    // follow the curve of the face a little
       const ball = new THREE.Mesh(ballGeo, ballMat);
       const upper = lid(true), lower = lid(false);
+      const socket = new THREE.Mesh(socketGeo, socketMat);   // inside of the socket, so you never see through the head at an angle
+      socket.scale.set(0.021, 0.014, 0.03); socket.position.z = -0.0195;   // wide, deep egg behind the skin: catches every sightline through the opening
       const glint = new THREE.Mesh(new THREE.CircleGeometry(0.0007, 10), glintMat);
       glint.position.set(0.0022, 0.0019, EYE_R + 0.0001);
-      eye.add(ball, upper, lower, glint);
+      eye.add(socket, ball, upper, lower, glint);
       headBone.add(eye);
       return { eye, ball, upper, lower, glint, side };
     });
@@ -484,15 +488,15 @@ function eyeTexture() {
     const a = Math.acos(Math.max(-1, Math.min(1, z))), ang = Math.atan2(y, x);
     let r, gg, b;
     if (a < 0.16) { r = 12; gg = 14; b = 16; }                                    // pupil
-    else if (a < 0.47) {                                                           // iris: blue-grey
+    else if (a < 0.47) {                                                           // iris: blue-grey with a hint of green (from Tommy's photo)
       const t = (a - 0.16) / 0.31;
       const fib = 0.85 + 0.15 * Math.sin(ang * 38 + Math.sin(ang * 7) * 3) * Math.sin(ang * 23);
-      r = mix(78, 104, t) * fib; gg = mix(98, 132, t) * fib; b = mix(104, 140, t) * fib;
+      r = mix(80, 106, t) * fib; gg = mix(100, 130, t) * fib; b = mix(100, 132, t) * fib;
       if (t < 0.18) { r *= 0.8; gg *= 0.85; b *= 0.85; }                            // darker collarette
       if (t > 0.85) { const k = 1 - (t - 0.85) / 0.15 * 0.55; r *= k; gg *= k; b *= k; }   // limbal ring
     } else {                                                                        // white, a little pinker toward the corners
       const t = Math.min(1, (a - 0.47) / 1.1);
-      r = mix(238, 228, t); gg = mix(232, 205, t); b = mix(226, 198, t);
+      r = mix(226, 214, t); gg = mix(220, 196, t); b = mix(214, 188, t);
     }
     const o = (py * W + px) * 4; d[o] = r; d[o + 1] = gg; d[o + 2] = b; d[o + 3] = 255;
   }
