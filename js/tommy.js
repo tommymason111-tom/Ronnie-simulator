@@ -92,11 +92,11 @@ export class Tommy {
   // blinks, and goes droopy-eyed and dizzy when knocked out.
   addEyes() {
     const headBone = this.rag.bones[this.rag.list.findIndex(p => p.name === 'head')];
-    const EYE_R = 0.0118, LID_R = 0.0127;
+    const EYE_R = 0.0118, LID_R = 0.0133;
     const ballMat = new THREE.MeshPhongMaterial({ map: eyeTexture(), shininess: 70, specular: 0x555555 });
     const ballGeo = new THREE.SphereGeometry(EYE_R, 40, 24);
     // skin colour matched to the baked texture around his eyes (and the body material's lighting)
-    const skin = new THREE.Color().setRGB(188 / 255, 129 / 255, 115 / 255, THREE.SRGBColorSpace);
+    const skin = new THREE.Color().setRGB(188 / 255, 129 / 255, 115 / 255, THREE.SRGBColorSpace).multiplyScalar(0.92);
     const lidMat = new THREE.MeshLambertMaterial({ color: skin.clone().multiply(new THREE.Color(0xe6e6e6)), emissive: skin.clone().multiply(new THREE.Color(0x3a3a3a)) });
     const lashMat = new THREE.MeshLambertMaterial({ color: 0x23170f });
     const socketGeo = new THREE.SphereGeometry(1, 24, 16);
@@ -120,7 +120,9 @@ export class Tommy {
     };
     this.eyes = [-1, 1].map(side => {
       const eye = new THREE.Group();
-      eye.position.set(side * 0.032, 0.0075, 0.0832);  // head-bone space: lids flush with the skin, eyeball just behind
+      // spacing and size matched to Tommy's photo: about one eye-width between the inner corners
+      eye.position.set(side * 0.0268, 0.0075, 0.0808);  // head-bone space: lids flush with the skin, eyeball just behind
+      eye.scale.setScalar(1.1);
       eye.rotation.y = side * 0.08;                    // follow the curve of the face a little
       const ball = new THREE.Mesh(ballGeo, ballMat);
       const upper = lid(true), lower = lid(false);
