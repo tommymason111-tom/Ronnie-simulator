@@ -53,6 +53,12 @@ export const BANKS = {
     'I\'m not angry. I\'m just disappointed. And slightly sticky.',
     'Okay, that one was fair. But you\'re still huge.',
   ] },
+  slap: { pri: 4, lines: [
+    'Was that a slap or did a sofa fall on me?',
+    'I\'m on YOUR side, mate! I\'m the only one who\'s honest with you!',
+    'I came here out of LOVE, Ronnie!',
+    'Fine, fine! I\'ll stop helping! ... You\'re still massive, by the way.',
+  ] },
   vegHit: { pri: 4, lines: [
     'Return to sender? RUDE. That broccoli loved you.',
     'Ow! Hit by my own broccoli! The irony is delicious. Unlike the broccoli, apparently.',

@@ -11,12 +11,12 @@ const HW = ROOM.w / 2, HD = ROOM.d / 2, H = ROOM.h;
 
 export function buildRoom(scene) {
   const colliders = [];   // axis-aligned boxes food can land on: {min, max}
-  const blockers = [];    // footprints Tommy must walk around
+  const blockers = [];    // solid furniture footprints (Tommy walks around them, his ragdoll collides with them)
   const parts = [];       // merged into one vertex-coloured mesh
   const addBox = (w, h, d, x, y, z, color, { collide = false, block = false, rot } = {}) => {
     parts.push(part(box(w, h, d), color, [x, y, z], rot || [0, 0, 0]));
     if (collide) colliders.push({ min: new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2), max: new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2) });
-    if (block) blockers.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2 });
+    if (block) blockers.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, y1: y + h / 2 });
   };
 
   // ---------------- shell ----------------
@@ -150,7 +150,7 @@ export function buildRoom(scene) {
 
   // ---------------- bin, overflowing ----------------
   parts.push(part(cyl(0.17, 0.14, 0.45, 14), 0x7d8a8f, [-0.05, 0.225, -2.0]));
-  blockers.push({ x0: -0.25, x1: 0.15, z0: -2.25, z1: -1.8 });
+  blockers.push({ x0: -0.25, x1: 0.15, z0: -2.25, z1: -1.8, y1: 0.45 });
   label(scene, 'THIS BIN IS FULL. SO IS RONNIE.', 0.28, 0.14, [-0.05, 0.25, -1.82], [0, 0, 0], { bg: '#ffffff', fg: '#111', border: '#111', size: 40 });
 
   // ---------------- main door (left wall) — Tommy leans in here ----------------

@@ -1,15 +1,21 @@
-// The player IS Ronnie: XR rig, controllers + hand tracking, grab/throw,
-// hand velocity (for swats), smooth locomotion + snap turn, the wrist Chonk
-// Meter and Ronnie's ever-growing belly.
+// The player IS Ronnie: XR rig, hands (never controllers — you see hands whose
+// fingers curl as you press the trigger/grip, or your real tracked fingers),
+// grab/throw, hand velocity (for swats and slaps), physics hand bodies that can
+// shove Tommy's ragdoll, grabbing Tommy himself, smooth locomotion + snap turn,
+// the wrist Chonk Meter, Ronnie's ever-growing belly, and a first-person hand
+// for playing on a phone / tablet.
 import * as THREE from 'three';
-import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+import * as CANNON from 'cannon-es';
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 import { TUNING, ROOM } from './config.js';
 import { FONT, roundRect } from './textures.js';
+import { ControllerHand, skinTrackedHand } from './hands.js';
+import { GROUP } from './physics.js';
 
 const HIST = 6;
 const _m = new THREE.Matrix4(), _s = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _qi = new THREE.Quaternion();
 const UP = new THREE.Vector3(0, 1, 0);
+const FLAT_REST = 1.45;   // on-screen hand: fist upright (controller-handle axis pointing up)
 
 class Hand {
   constructor(i) {
@@ -19,6 +25,10 @@ class Hand {
     this.isHand = false;
     this.sel = false; this.sq = false;
     this.held = null;
+    this.heldPart = null;                    // a Tommy body part we're holding
+    this.joint = null;                       // physics constraint for that
+    this.ctrlHand = null;                    // hand model shown around the controller
+    this.body = null;                        // kinematic physics sphere
     this.pos = new THREE.Vector3();          // grab point (world)
     this.quat = new THREE.Quaternion();
     this.palm = new THREE.Vector3();         // swat point (world)
@@ -54,20 +64,25 @@ export class Player {
     this.onGrab = null; this.onRelease = null;
     this.snapReady = true;
     this.items = null;     // ItemManager, set by game
+    this.tommy = null;     // set by game (for grabbing his ragdoll)
+    this.physics = null;
 
-    const cmf = new XRControllerModelFactory();
     const hmf = new XRHandModelFactory();
+    hmf.setPath('./assets/hands/');
+    this.ctrlHands = {};
     this.hands.forEach((h, i) => {
       const ctrl = renderer.xr.getController(i);
       const grip = renderer.xr.getControllerGrip(i);
       const hand = renderer.xr.getHand(i);
       h.ctrl = ctrl; h.grip = grip; h.hand = hand;
-      grip.add(cmf.createControllerModel(grip));
-      hand.add(hmf.createHandModel(hand, 'mesh'));
+      const tracked = hmf.createHandModel(hand, 'mesh');
+      hand.add(tracked);
+      skinTrackedHand(tracked);
       this.rig.add(ctrl, grip, hand);
       ctrl.addEventListener('connected', (e) => {
         h.source = e.data; h.isHand = !!e.data.hand; h.handedness = e.data.handedness || h.handedness;
         h.sel = h.sq = false;
+        if (!h.isHand) this.attachControllerHand(h);
       });
       ctrl.addEventListener('disconnected', () => { this.release(h, true); h.source = null; h.tracked = false; });
       const down = (k) => () => { const was = h.grabbing; h[k] = true; if (!was) this.grab(h); };
@@ -84,6 +99,27 @@ export class Player {
 
   handByHandedness(side) { return this.hands.find(h => h.source && h.handedness === side) || null; }
 
+  // A hand model wrapped around the (invisible) controller.
+  attachControllerHand(h) {
+    const side = h.handedness === 'left' ? 'left' : 'right';
+    let ch = this.ctrlHands[side];
+    if (!ch) { ch = this.ctrlHands[side] = new ControllerHand(side); ch.load().catch(e => console.warn('hand model', e)); }
+    if (h.ctrlHand && h.ctrlHand !== ch) h.ctrlHand.root.visible = false;
+    h.grip.add(ch.root);
+    h.ctrlHand = ch;
+  }
+
+  // Kinematic spheres that follow your palms, so you can physically shove Tommy.
+  setPhysics(physics) {
+    this.physics = physics;
+    for (const h of this.hands) {
+      h.body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, collisionFilterGroup: GROUP.HAND, collisionFilterMask: GROUP.RAGDOLL });
+      h.body.addShape(new CANNON.Sphere(0.05));
+      h.body.position.set(0, -10, 0);
+      physics.world.addBody(h.body);
+    }
+  }
+
   // ---------------- per-frame ----------------
   update(dt, t) {
     const xr = this.renderer.xr.isPresenting;
@@ -98,6 +134,9 @@ export class Player {
     if (xr) {
       for (const h of this.hands) this.updateHand(h, dt, t);
       this.locomotion(dt);
+    } else {
+      for (const h of this.hands) { if (h.body) h.body.position.set(0, -10, 0); if (h.ctrlHand) h.ctrlHand.root.visible = false; }
+      this.updateFlat(dt, t);
     }
     this.updateWristParent(xr);
     this.updateBelly(dt, t);
@@ -105,7 +144,8 @@ export class Player {
 
   updateHand(h, dt, t) {
     h.tracked = false;
-    if (!h.source) return;
+    if (h.ctrlHand) h.ctrlHand.root.visible = !!h.source && !h.isHand && h.grip.visible;
+    if (!h.source) { if (h.body) h.body.position.set(0, -10, 0); return; }
     if (h.isHand) {
       const j = h.hand.joints;
       const it = j['index-finger-tip'], th = j['thumb-tip'], wr = j['wrist'], mc = j['middle-finger-metacarpal'];
@@ -120,13 +160,24 @@ export class Player {
       h.palm.copy(h.pos);
       h.tracked = true;
     }
-    if (!h.tracked) return;
+    if (!h.tracked) { if (h.body) h.body.position.set(0, -10, 0); return; }
 
     // velocity from a short position history (works for hands and controllers)
     const slot = h.hist[h.hi]; slot.p.copy(h.palm); slot.t = t; h.hi = (h.hi + 1) % HIST;
     const oldest = h.hist[h.hi];
     const span = t - oldest.t;
     if (span > 0.005 && span < 0.5) { h.vel.subVectors(h.palm, oldest.p).multiplyScalar(1 / span); h.speed = h.vel.length(); }
+
+    // fingers follow the trigger / grip
+    if (h.ctrlHand && !h.isHand) h.ctrlHand.fromGamepad(h.source.gamepad, !!(h.held || h.heldPart));
+
+    // physics hand follows the palm (with its velocity, so it imparts momentum)
+    if (h.body) {
+      h.body.position.set(h.palm.x, h.palm.y, h.palm.z);
+      h.body.velocity.set(h.vel.x, h.vel.y, h.vel.z);
+      h.body.collisionResponse = !h.heldPart;
+      h.body.shapes[0].radius = 0.05 * this.scale; h.body.updateBoundingRadius();
+    }
 
     // held item follows the hand
     if (h.held) {
@@ -138,10 +189,10 @@ export class Player {
   }
 
   grab(h) {
-    if (!h.tracked || h.held || !this.items) return;
+    if (!h.tracked || h.held || h.heldPart || !this.items) return;
     const r = TUNING.grabRadius * Math.max(1, this.scale);
     const it = this.items.nearest(h.pos, r);
-    if (!it) return;
+    if (!it) { this.grabTommy(h); return; }
     if (it.heldBy && it.heldBy !== h) { it.heldBy.held = null; }
     it.heldBy = h; h.held = it; it.resting = false;
     it.vel.set(0, 0, 0);
@@ -153,7 +204,36 @@ export class Player {
     this.onGrab && this.onGrab(it, h);
   }
 
+  // Grab whichever bit of Tommy is in your hand and hang on with a springy joint.
+  grabTommy(h) {
+    if (!this.tommy || !this.physics || !h.body) return;
+    const part = this.tommy.partAt(h.pos, 0.07 * this.scale);
+    if (!part) return;
+    const b = part.body;
+    _q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w).invert();
+    _v.set(h.pos.x - b.position.x, h.pos.y - b.position.y, h.pos.z - b.position.z).applyQuaternion(_q);
+    h.body.position.set(h.pos.x, h.pos.y, h.pos.z);
+    h.joint = new CANNON.PointToPointConstraint(h.body, new CANNON.Vec3(h.pos.x - h.palm.x, h.pos.y - h.palm.y, h.pos.z - h.palm.z), b, new CANNON.Vec3(_v.x, _v.y, _v.z), 4000);
+    this.physics.world.addConstraint(h.joint);
+    part.grabbed = true;
+    h.heldPart = part;
+    h.pulse(0.8, 60);
+    this.tommy.grabbed(part);
+  }
+
+  releaseTommy(h) {
+    if (!h.heldPart) return;
+    this.physics.world.removeConstraint(h.joint);
+    h.joint = null;
+    const b = h.heldPart.body;
+    b.velocity.x += h.vel.x * 0.5; b.velocity.y += h.vel.y * 0.5; b.velocity.z += h.vel.z * 0.5;
+    if (!this.hands.some(o => o !== h && o.heldPart === h.heldPart)) h.heldPart.grabbed = false;
+    h.heldPart = null;
+    this.tommy.released();
+  }
+
   release(h, silent = false) {
+    if (h.heldPart) { this.releaseTommy(h); return; }
     const it = h.held;
     if (!it) return;
     h.held = null;
@@ -188,15 +268,109 @@ export class Player {
       this.snapReady = false;
       this.rotateAroundHead(-Math.sign(turn) * THREE.MathUtils.degToRad(TUNING.snapTurnDeg));
     } else if (Math.abs(turn) < 0.3) this.snapReady = true;
-    // keep Ronnie's head inside the room
+    this.clampHead();
+  }
+
+  // Keep Ronnie's head inside the room and out of the furniture.
+  clampHead() {
     this.rig.updateMatrixWorld(true);
     this.camera.getWorldPosition(_v);
     const m = 0.2, hw = ROOM.w / 2 - m, hd = ROOM.d / 2 - m;
-    const cx = THREE.MathUtils.clamp(_v.x, -hw, hw), cz = THREE.MathUtils.clamp(_v.z, -hd, hd);
+    let cx = THREE.MathUtils.clamp(_v.x, -hw, hw), cz = THREE.MathUtils.clamp(_v.z, -hd, hd);
+    const r = 0.22;
+    for (const b of this.room?.blockers || []) {
+      const nx = THREE.MathUtils.clamp(cx, b.x0, b.x1), nz = THREE.MathUtils.clamp(cz, b.z0, b.z1);
+      const dx = cx - nx, dz = cz - nz, d = Math.hypot(dx, dz);
+      if (d < r && this.flatMode) { if (d < 1e-4) { cz = b.z1 + r; } else { cx = nx + dx / d * r; cz = nz + dz / d * r; } }
+    }
     this.rig.position.x += cx - _v.x; this.rig.position.z += cz - _v.z;
   }
 
+  // ---------------- phone / tablet / desktop (no headset) ----------------
+  enterFlat() {
+    this.flatMode = true;
+    if (this.flatHolder) return;
+    this.flatYaw = 0; this.flatPitch = -0.22;
+    this.flatMove = { x: 0, z: 0 };
+    // an invisible "controller" held in front-right of the camera, with a hand around it
+    this.flatGrip = new THREE.Group();
+    this.flatGrip.position.set(0.18, -0.21, -0.4);
+    this.flatGrip.rotation.set(FLAT_REST, 0.3, 0);
+    this.itemTwist = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);  // item "up" = through the fist
+    this.camera.add(this.flatGrip);
+    this.flatHandModel = new ControllerHand('right');
+    this.flatHandModel.load().then(() => { this.flatHandModel.root.visible = true; }).catch(() => {});
+    this.flatGrip.add(this.flatHandModel.root);
+    this.flatHolder = { isFlat: true, held: null, pulse() {}, vel: new THREE.Vector3(), speed: 0 };
+    this.flatEatT = -1;
+  }
+
+  flatGrab(it) {
+    const f = this.flatHolder;
+    if (f.held) this.flatDrop();
+    if (it.heldBy && it.heldBy !== f) it.heldBy.held = null;
+    it.heldBy = f; f.held = it; it.resting = false; it.vel.set(0, 0, 0);
+    this.onGrab && this.onGrab(it, f);
+  }
+
+  flatThrow(power = 7) {
+    const f = this.flatHolder, it = f?.held;
+    if (!it) return;
+    f.held = null; it.heldBy = null;
+    it.vel.copy(this.fwd).multiplyScalar(power); it.vel.y += 1.6;
+    it.spin.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(30);
+    it.thrownByPlayer = true;
+    this.onRelease && this.onRelease(it, f, power);
+  }
+
+  flatDrop() { const f = this.flatHolder; if (f?.held) { f.held.heldBy = null; f.held = null; } }
+
+  // EAT button: swing the held food up to the mouth (the normal bite / chug code does the rest)
+  flatEat() { if (this.flatHolder?.held && this.flatEatT < 0) this.flatEatT = 0; }
+
+  updateFlat(dt, t) {
+    if (!this.flatMode) return;
+    this.camera.position.set(0, 1.6, 0);
+    this.camera.rotation.set(this.flatPitch, this.flatYaw, 0, 'YXZ');
+    const mx = this.flatMove.x, mz = this.flatMove.z;
+    if (Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05) {
+      const sp = TUNING.moveSpeed * dt * 0.9;
+      const sy = Math.sin(this.flatYaw), cy = Math.cos(this.flatYaw);
+      this.rig.position.x += (-sy * -mz + cy * mx) * sp;
+      this.rig.position.z += (-cy * -mz - sy * mx) * sp;
+    }
+    this.clampHead();
+    // the eat swing: grip moves from its rest spot to just under the nose and back
+    const g = this.flatGrip, f = this.flatHolder;
+    let k = 0;
+    if (this.flatEatT >= 0) {
+      this.flatEatT += dt;
+      const drink = f.held && f.held.def.drink;
+      const dur = drink ? 1.9 : 0.6;
+      k = this.flatEatT < 0.25 ? this.flatEatT / 0.25 : this.flatEatT > dur - 0.25 ? Math.max(0, (dur - this.flatEatT) / 0.25) : 1;
+      if (this.flatEatT >= dur || !f.held) { this.flatEatT = -1; k = 0; }
+      g.position.set(0.18 - 0.18 * k, -0.21 + 0.13 * k, -0.4 + 0.26 * k);
+      g.rotation.set(FLAT_REST + (drink ? 1.3 : 0.2) * k, 0.3 * (1 - k), 0);
+    } else { g.position.set(0.18, -0.21 + Math.sin(t * 2) * 0.004, -0.4); g.rotation.set(FLAT_REST, 0.3, 0); }
+    if (this.flatHandModel.ready) { const c = f.held ? 0.85 : 0.35; for (const n in this.flatHandModel.curl) this.flatHandModel.curl[n] += (c - this.flatHandModel.curl[n]) * 0.3; this.flatHandModel.update(); }
+    if (f.held) {
+      if (f.held.dead) { f.held = null; return; }
+      this.camera.updateMatrixWorld(true);
+      g.updateMatrixWorld(true);
+      const o = f.held.obj;
+      g.matrixWorld.decompose(o.position, o.quaternion, _s);
+      o.quaternion.multiply(this.itemTwist);
+    }
+  }
+
+  // After the rig jumps (snap turn, growth, teleport) hands would look like they
+  // moved at warp speed — forget their recent history so nothing gets flung or slapped.
+  resetHandHistory() {
+    for (const h of this.hands) { for (const e of h.hist) e.t = -10; h.vel.set(0, 0, 0); h.speed = 0; }
+  }
+
   rotateAroundHead(angle) {
+    this.resetHandHistory();
     this.rig.updateMatrixWorld(true);
     this.camera.getWorldPosition(_v);
     this.rig.rotation.y += angle;
@@ -207,6 +381,7 @@ export class Player {
 
   // Scale Ronnie while keeping his head where it is horizontally.
   setScale(s) {
+    this.resetHandHistory();
     this.rig.updateMatrixWorld(true);
     this.camera.getWorldPosition(_v);
     this.scale = s;
@@ -279,13 +454,19 @@ export class Player {
       if (left && left.isHand) { parent = left.hand.joints['wrist'] || null; mode = 'joint'; }
       else if (left) { parent = left.grip; mode = 'grip'; }
     }
+    if (mode === 'flat' && parent) {   // pin to the top-left corner of the screen, whatever its shape
+      const d = 0.3, hh = d * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)), hw = hh * this.camera.aspect;
+      const sc = Math.min(1.15, hw * 0.9 / 0.1);
+      this.wrist.position.set(-hw + 0.05 * sc + 0.008, hh - 0.031 * sc - 0.03, -d);
+      this.wrist.scale.setScalar(sc);
+    }
     if (parent === this.wristParent) return;
     this.wristParent = parent;
     if (!parent) { this.wrist.removeFromParent(); return; }
     parent.add(this.wrist);
     this.wrist.scale.setScalar(1);
     if (mode === 'flat') {          // flat-screen preview: bottom-left of the view
-      this.wrist.position.set(-0.12, 0.075, -0.3); this.wrist.rotation.set(0, 0, 0); this.wrist.scale.setScalar(0.8);
+      this.wrist.rotation.set(0, 0, 0);
     } else if (mode === 'joint') {  // hand tracking: on the back of the wrist (+Y = back of hand)
       this.wrist.position.set(0, 0.03, 0.03); this.wrist.rotation.set(-Math.PI / 2 + 0.35, 0, 0);
     } else {                        // controller: on top of the wrist, tilted toward your eyes

@@ -1,4 +1,5 @@
-// RONNIE SIMULATOR — Phase 1 (WebXR / three.js, runs in the Meta Quest 3 browser).
+// RONNIE SIMULATOR — Phase 1 (WebXR / three.js, runs in the Meta Quest 3 browser,
+// and on phones / tablets / computers with on-screen controls).
 import * as THREE from 'three';
 import { STAGES, FOODS, TUNING } from './config.js';
 import { buildRoom } from './room.js';
@@ -8,11 +9,13 @@ import { Player } from './player.js';
 import { Tommy } from './tommy.js';
 import { STAGE_LINES } from './dialogue.js';
 import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic } from './audio.js';
-import { canvasTex, FONT } from './textures.js';
+import { FONT } from './textures.js';
+import { createPhysics } from './physics.js';
+import { setupTouch } from './touch.js';
 
 // ---------------- renderer / scene ----------------
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -31,7 +34,12 @@ const room = buildRoom(scene);
 const player = new Player(renderer, scene, camera);
 const items = new ItemManager(scene, room);
 player.items = items;
-const tommy = new Tommy(scene, room);
+const physics = createPhysics(room);
+const tommy = new Tommy(scene, room, physics);
+tommy.load();
+player.setPhysics(physics);
+player.tommy = tommy;
+player.room = room;
 const crumbs = new Crumbs(scene);
 const words = new Words(scene);
 const tint = new Tint(camera);
@@ -222,57 +230,108 @@ function vegAndHits(dt) {
       }
       if (!handled && segDist(player.head, it.prev, it.pos) < 0.17 * player.scale + it.radius) { gag(it); continue; }
     }
-    // anything Ronnie throws at Tommy knocks him over
-    if (it.thrownByPlayer && it.vel.lengthSq() > 1.5 * 1.5 && tommy.hitTest(it.pos, it.radius)) {
-      const veg = it.type === 'broccoli';
-      _a.copy(it.vel).setY(0).normalize();
-      tommy.knockDown(_a, veg);
-      sfx('splat', it.pos, 1);
-      words.show(veg ? 'RETURN TO SENDER!' : ['SPLAT!', 'WALLOP!', 'POW!'][Math.floor(Math.random() * 3)], it.pos.clone().add({ x: 0, y: 0.3, z: 0 }), veg ? '#7cff6a' : '#ff5a36', 0.25, 1.3);
-      it.vel.multiplyScalar(-0.25);
-      it.thrownByPlayer = false;
+    // anything Ronnie throws at Tommy hits his ragdoll: light hits wobble him, hard ones knock him out
+    if (it.thrownByPlayer && it.vel.lengthSq() > 1.5 * 1.5) {
+      _b.addVectors(it.prev, it.pos).multiplyScalar(0.5);
+      const part = tommy.partAt(it.pos, it.radius) || tommy.partAt(_b, it.radius);
+      if (part) {
+        const veg = it.type === 'broccoli';
+        const mass = it.def.mass * (it.empty ? 0.3 : 1);
+        _a.copy(it.vel).multiplyScalar(mass * 6);        // cartoon physics: food hits 6x harder than real life
+        const res = tommy.hitBy(part, it.pos, _a, veg);
+        sfx('splat', it.pos, res === 'ko' ? 1 : 0.6);
+        if (res === 'ko') words.show(veg ? 'RETURN TO SENDER!' : ['SPLAT!', 'WALLOP!', 'POW!'][Math.floor(Math.random() * 3)], it.pos.clone().add({ x: 0, y: 0.3, z: 0 }), veg ? '#7cff6a' : '#ff5a36', 0.25, 1.3);
+        else words.show('SPLAT!', it.pos.clone().add({ x: 0, y: 0.2, z: 0 }), '#ff9a36', 0.16, 0.9);
+        it.vel.multiplyScalar(-0.25);
+        it.thrownByPlayer = false;
+      }
     }
   }
 }
 
-// ---------------- flat-screen (iPad / desktop) preview controls ----------------
-let yaw = 0, pitch = -0.45, dragging = false, moved = 0, lastX = 0, lastY = 0;
-const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
-renderer.domElement.addEventListener('pointerdown', (e) => { initAudio(); dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY; });
-window.addEventListener('pointermove', (e) => {
-  if (!dragging) return;
-  const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
-  moved += Math.abs(dx) + Math.abs(dy);
-  yaw -= dx * 0.005; pitch = THREE.MathUtils.clamp(pitch - dy * 0.005, -1.3, 1.3);
-});
-window.addEventListener('pointerup', (e) => {
-  if (!dragging) return; dragging = false;
-  if (moved > 10 || renderer.xr.isPresenting) return;
-  ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
-  raycaster.setFromCamera(ndc, camera);
-  let best = null, bd = Infinity;
-  for (const it of items.items) {
-    const d = raycaster.ray.distanceSqToPoint(it.pos);
-    const along = _a.subVectors(it.pos, raycaster.ray.origin).dot(raycaster.ray.direction);
-    if (along > 0 && d < (it.radius + 0.06) ** 2 && along < bd) { bd = along; best = it; }
+// ---------------- slaps (VR hands swinging into Tommy) ----------------
+function slaps() {
+  for (const h of player.hands) {
+    if (!h.tracked || h.held || h.heldPart || h.speed < 1.6) continue;
+    const part = tommy.partAt(h.palm, 0.05 * player.scale);
+    if (!part) continue;
+    const res = tommy.slap(part, h.palm, h.vel);
+    if (!res) continue;
+    h.pulse(1, 80);
+    sfx(res === 'ko' ? 'splat' : 'thwack', h.palm, 1);
+    words.show(res === 'ko' ? 'WALLOP!' : 'SLAP!', h.palm.clone().add({ x: 0, y: 0.25, z: 0 }), '#ff5a36', 0.2, 1);
   }
-  if (!best) return;
-  if (best.thrownByTommy) {     // tap to swat
-    best.vel.copy(raycaster.ray.direction).multiplyScalar(5); best.vel.y += 2;
-    best.thrownByTommy = false; best.thrownByPlayer = true;
-    sfx('thwack', best.pos, 1); words.show('THWACK!', best.pos.clone(), '#7cff6a', 0.22);
-    G.swats++; G.wristDirty = true; setTimeout(() => tommy.say('vegSwat'), 450);
-  } else if (best.type === 'can') { if (!best.empty) { sfx('psst', null, 1); finishCan(best); } }
-  else { G.lastBite = -1; bite(best, null); }
+}
+
+// ---------------- phone / tablet / computer controls ----------------
+const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const touch = setupTouch({
+  canvas: renderer.domElement,
+  onUserGesture: () => initAudio(),
+  onMove: (x, z) => { if (player.flatMode) { player.flatMove.x = x; player.flatMove.z = z; } },
+  onLook: (dx, dy) => {
+    if (!player.flatMode) return;
+    player.flatYaw -= dx; player.flatPitch = THREE.MathUtils.clamp(player.flatPitch - dy, -1.35, 1.35);
+  },
+  onEat: () => { if (player.flatHolder?.held) player.flatEat(); },
+  onThrow: () => player.flatThrow(),
+  onTap: (x, y) => {
+    if (!player.flatMode) return;
+    ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera);
+    const ray = raycaster.ray, reach = 3 * player.scale;
+    // nearest thing along the tap: food or a bit of Tommy
+    let best = null, bd = Infinity;
+    for (const it of items.items) {
+      if (it.heldBy) continue;
+      const along = _a.subVectors(it.pos, ray.origin).dot(ray.direction);
+      if (along > 0 && along < bd && ray.distanceSqToPoint(it.pos) < (it.radius + 0.07) ** 2) { bd = along; best = it; }
+    }
+    let part = null;
+    for (const p of tommy.rag.list) {
+      const b = p.body.position; _b.set(b.x, b.y, b.z);
+      const along = _a.subVectors(_b, ray.origin).dot(ray.direction);
+      if (along > 0 && along < bd && ray.distanceSqToPoint(_b) < (p.radius + 0.04) ** 2) { bd = along; part = p; best = null; }
+    }
+    if (part) {                         // tap Tommy = slap him
+      if (bd > reach) { touch.hint('Get closer to slap Tommy!'); return; }
+      const pos = part.body.position; _b.set(pos.x, pos.y, pos.z);
+      const res = tommy.slap(part, _b, _a.copy(ray.direction).multiplyScalar(4.2));
+      if (res) { sfx(res === 'ko' ? 'splat' : 'thwack', _b, 1); words.show(res === 'ko' ? 'WALLOP!' : 'SLAP!', _b.clone().add({ x: 0, y: 0.3, z: 0 }), '#ff5a36', 0.22, 1); }
+      return;
+    }
+    if (!best) return;
+    if (best.thrownByTommy) {           // tap incoming broccoli = swat
+      best.vel.copy(ray.direction).multiplyScalar(5); best.vel.y += 2; best.vel.x += (Math.random() - 0.5) * 4;
+      best.thrownByTommy = false; best.thrownByPlayer = true;
+      sfx('thwack', best.pos, 1); words.show('THWACK!', best.pos.clone(), '#7cff6a', 0.22);
+      G.swats++; G.wristDirty = true; setTimeout(() => tommy.say('vegSwat'), 450);
+      return;
+    }
+    if (bd > reach) { touch.hint('Too far — walk closer with the joystick'); return; }
+    player.flatGrab(best);
+  },
 });
+function updateTouchUI() {
+  const held = player.flatHolder?.held;
+  touch.setEatLabel(held && held.def.drink ? 'DRINK' : 'EAT', !!held && !held.empty);
+  touch.setThrowEnabled(!!held);
+}
+function startFlat() {
+  initAudio();
+  player.enterFlat();
+  document.body.classList.add('flat');
+  touch.show(true);
+}
+document.getElementById('play-flat').addEventListener('click', startFlat);
 
 // ---------------- Enter VR ----------------
 const vrBtn = document.getElementById('enter-vr');
 const status = document.getElementById('status');
 async function setupVR() {
-  if (!('xr' in navigator)) { vrBtn.textContent = 'NO VR HERE'; status.textContent = 'WebXR not available here — open this page in the Meta Quest browser. You can still look around: drag to look, tap food to eat.'; return; }
+  if (!('xr' in navigator)) { vrBtn.textContent = 'NO VR HERE'; status.textContent = 'No VR here — press PLAY ON THIS SCREEN to play with touch controls (or open this page in the Meta Quest browser for VR).'; return; }
   const ok = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
-  if (!ok) { vrBtn.textContent = 'NO VR HERE'; status.textContent = 'VR not supported on this device — this is the flat preview. Drag to look, tap food to eat, tap broccoli to swat.'; return; }
+  if (!ok) { vrBtn.textContent = 'NO VR HERE'; status.textContent = 'No VR on this device — press PLAY ON THIS SCREEN to play with touch controls.'; return; }
   vrBtn.disabled = false; vrBtn.textContent = 'ENTER VR';
   status.textContent = 'Ready! Put the headset on and press ENTER VR.';
   let session = null;
@@ -283,6 +342,7 @@ async function setupVR() {
       session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] });
       session.addEventListener('end', () => { session = null; vrBtn.textContent = 'ENTER VR'; document.body.classList.remove('in-vr'); camera.position.set(0, 1.6, 0); });
       await renderer.xr.setSession(session);
+      if (player.flatMode) { player.flatDrop(); player.flatMode = false; if (player.flatGrip) player.flatGrip.visible = false; touch.show(false); document.body.classList.remove('flat'); }
       vrBtn.textContent = 'EXIT VR';
       document.body.classList.add('in-vr');
     } catch (err) { status.textContent = 'Could not start VR: ' + err.message; session = null; }
@@ -291,10 +351,17 @@ async function setupVR() {
 setupVR();
 document.getElementById('sound').addEventListener('click', () => { initAudio(); sfx('chomp'); });
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+// Keep at least ~75° of horizontal view, so portrait phones aren't looking through a letterbox.
+function fitCamera() {
+  const aspect = window.innerWidth / window.innerHeight;
+  camera.aspect = aspect;
+  const hHalf = Math.tan(THREE.MathUtils.degToRad(37.5));
+  camera.fov = THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(2 * Math.atan(hHalf / aspect)), 60, 100);
+  camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-});
+}
+fitCamera();
+window.addEventListener('resize', fitCamera);
 
 // ---------------- main loop ----------------
 function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * (2 * Math.PI / 3)) + 1; }
@@ -304,7 +371,7 @@ renderer.setAnimationLoop(() => {
   time += dt;
   const xr = renderer.xr.isPresenting;
 
-  if (!xr) { camera.position.set(0, 1.6, 0); camera.rotation.set(pitch, yaw, 0, 'YXZ'); }
+  if (!xr && !player.flatMode) { camera.position.set(0, 1.6, 0); camera.rotation.set(-0.3, time * 0.05, 0, 'YXZ'); }   // slow look-around behind the menu
 
   // growth tween (0.6s elastic "boing")
   if (G.scaleT < 1) {
@@ -314,8 +381,8 @@ renderer.setAnimationLoop(() => {
 
   player.update(dt, time);
 
-  // eating & drinking held food
-  for (const h of player.hands) {
+  // eating & drinking held food (VR hands, or the on-screen hand)
+  for (const h of player.flatMode ? [player.flatHolder] : player.hands) {
     const it = h.held;
     if (!it || it.dead) continue;
     if (it.def.drink) { drinkUpdate(it, h, dt); continue; }
@@ -324,7 +391,10 @@ renderer.setAnimationLoop(() => {
 
   items.update(dt);
   vegAndHits(dt);
+  if (xr) slaps();
+  physics.step(dt);
   tommy.update(dt, player.head, player.fwd, player.mouth);
+  if (player.flatMode) updateTouchUI();
 
   // timers & tint
   if (G.locoT > 0) {
@@ -372,4 +442,4 @@ renderer.setAnimationLoop(() => {
 });
 
 // Debug handle for testing in a desktop browser console.
-window.RS = { G, player, items, tommy, addChonk, scene, renderer };
+window.RS = { G, player, items, tommy, addChonk, scene, renderer, physics, startFlat };
