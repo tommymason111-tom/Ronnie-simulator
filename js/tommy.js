@@ -84,33 +84,36 @@ export class Tommy {
     this.ready = true;
   }
 
-  // Glossy irises on his painted-on eyes: they follow Ronnie around the room,
-  // catch the light, blink, and roll round when he's knocked out. Each iris is a
-  // shallow cap on an invisible eyeball, so turning the eyeball slides the iris.
+  // Eyes: the scan's painted-on eyes were too wide, so the texture paints skin
+  // over them and these almond-shaped eyes sit in their place — whites with a
+  // dark outline, brown iris, pupil and a glint. The iris slides to follow
+  // Ronnie, he blinks, and his eyes roll when he's knocked out.
   addEyes() {
     const headBone = this.rag.bones[this.rag.list.findIndex(p => p.name === 'head')];
-    const R = 0.012, CAP = 0.44;
-    const geo = new THREE.SphereGeometry(R, 32, 10, 0, Math.PI * 2, 0, CAP);
-    geo.rotateX(Math.PI / 2);                  // cap faces +Z
-    const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3), c = new THREE.Color();
-    for (let i = 0; i < pos.count; i++) {
-      const a = Math.acos(THREE.MathUtils.clamp(pos.getZ(i) / R, -1, 1));
-      c.set(a < 0.19 ? 0x080504 : a < 0.27 ? 0x2c1a0e : a < 0.44 ? 0x5e3f24 : 0x24160c);   // pupil, inner iris, iris, rim
-      cols.set([c.r, c.g, c.b], i * 3);
-    }
-    geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-    const mat = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 120, specular: 0x888888 });
-    const lidGeo = new THREE.SphereGeometry(0.019, 20, 8, 0, Math.PI * 2, 0, 0.9);
-    lidGeo.rotateX(Math.PI / 2);
-    const lidMat = new THREE.MeshLambertMaterial({ color: 0xbf8b70 });
+    const sph = new THREE.SphereGeometry(0.0125, 28, 16);
+    const white = new THREE.MeshPhongMaterial({ color: 0xf3eee8, shininess: 60, specular: 0x444444 });
+    const line = new THREE.MeshLambertMaterial({ color: 0x2a1810 });
+    const lidMat = new THREE.MeshLambertMaterial({ color: 0xbc8670 });
+    const irisMat = new THREE.MeshPhongMaterial({ color: 0x5a3b22, shininess: 80, specular: 0x555555 });
+    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x050302 });
+    const glintMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    for (const m of [irisMat, pupilMat, glintMat]) { m.polygonOffset = true; m.polygonOffsetFactor = -4; m.polygonOffsetUnits = -8; }
+    const irisGeo = new THREE.CircleGeometry(0.0046, 24), pupilGeo = new THREE.CircleGeometry(0.0021, 18), glintGeo = new THREE.CircleGeometry(0.0009, 10);
     this.eyes = [-1, 1].map(side => {
-      const pivot = new THREE.Group();
-      pivot.position.set(side * 0.032, 0.0065, 0.0962 - R);   // eyeball centre (head-bone space); iris apex ~1.5mm proud of the face
-      const iris = new THREE.Mesh(geo, mat);
-      const lid = new THREE.Mesh(lidGeo, lidMat); lid.scale.set(1, 0.55, 0.6); lid.position.z = 0.001; lid.visible = false;
-      pivot.add(iris, lid);
-      headBone.add(pivot);
-      return { pivot, ball: iris, lid };
+      const eye = new THREE.Group();
+      eye.position.set(side * 0.032, 0.0075, 0.0935);   // head-bone space; the white sits a few mm proud of the skin
+      eye.rotation.y = side * 0.25;                      // follow the curve of the face
+      const outline = new THREE.Mesh(sph, line); outline.scale.set(1.2, 0.66, 0.4); outline.position.z = -0.0008;
+      const ball = new THREE.Mesh(sph, white); ball.scale.set(1.1, 0.54, 0.42);
+      const iris = new THREE.Group(); iris.position.z = 0.0058;
+      const irisDisc = new THREE.Mesh(irisGeo, irisMat);
+      const pupil = new THREE.Mesh(pupilGeo, pupilMat); pupil.position.z = 0.0003; pupil.renderOrder = 1;
+      const glint = new THREE.Mesh(glintGeo, glintMat); glint.position.set(0.0015, 0.0016, 0.0006); glint.renderOrder = 2;
+      iris.add(irisDisc, pupil, glint);
+      const lid = new THREE.Mesh(sph, lidMat); lid.scale.set(1.24, 0.7, 0.48); lid.position.z = 0.0008; lid.visible = false;
+      eye.add(outline, ball, iris, lid);
+      headBone.add(eye);
+      return { eye, iris, lid, side };
     });
     this.blinkT = 2 + Math.random() * 3;
   }
@@ -123,18 +126,18 @@ export class Tommy {
     const ko = this.state === 'ko';
     for (const e of this.eyes) {
       e.lid.visible = blinking && !ko;
-      if (ko) {              // dizzy: eyes roll round and round
-        const a = this.t * 9 + (e === this.eyes[0] ? 0 : Math.PI);
-        e.ball.rotation.set(Math.sin(a) * 0.3, Math.cos(a) * 0.3, 0);
-        continue;
+      let ox, oy;
+      if (ko) { const a = this.t * 9 + (e.side < 0 ? 0 : Math.PI); ox = Math.cos(a); oy = Math.sin(a) * 0.7; }   // dizzy
+      else {
+        e.eye.updateWorldMatrix(true, false);
+        _v.copy(target); e.eye.worldToLocal(_v);
+        ox = THREE.MathUtils.clamp(Math.atan2(_v.x, _v.z) / 0.6, -1, 1);
+        oy = THREE.MathUtils.clamp(Math.atan2(_v.y, Math.hypot(_v.x, _v.z)) / 0.5, -1, 1);
       }
-      // look at Ronnie (in head-bone space), within what eyes can do
-      e.pivot.updateWorldMatrix(true, false);
-      _v.copy(target);
-      e.pivot.worldToLocal(_v);
-      const yaw = THREE.MathUtils.clamp(Math.atan2(_v.x, _v.z), -0.35, 0.35);
-      const pitch = THREE.MathUtils.clamp(Math.atan2(-_v.y, Math.hypot(_v.x, _v.z)), -0.2, 0.2);
-      e.ball.rotation.set(pitch, yaw, 0, 'YXZ');
+      // slide the iris across the white (stays inside the almond)
+      e.iris.position.x = ox * 0.0055;
+      e.iris.position.y = oy * 0.0018;
+      e.iris.position.z = 0.0058 - Math.abs(ox) * 0.001;
     }
   }
 

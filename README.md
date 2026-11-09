@@ -105,7 +105,7 @@ js/textures.js    canvas-drawn posters, labels, the Mango Loco can
 - **Not yet tested on a real Quest 3.** It was tested in Meta's WebXR emulator (IWER) with emulated Quest 3 controllers and hands, and as a flat page on emulated iPad and desktop. Check the FPS number on your wrist the first time you play.
 - three.js and cannon-es load from the jsDelivr CDN, so the device needs internet. The hand and Tommy models are in the repo.
 - Tommy "speaks" with text bubbles and a little babble sound, not a real voice yet.
-- Tommy's eyes in the original model are painted on, so the game adds glossy irises that follow you and blink.
+- Tommy's eyes in the original model were painted on and too wide, so the texture paints skin over them and the game adds real eyes (whites, iris, pupil) that follow you and blink.
 - Tommy's model is a scan with no real skeleton. The game builds one when it loads, so the shoulders bunch up a little when his arms hang down.
 - Food doesn't bump into other food.
 - The mirror isn't reflective, because real mirrors double the rendering cost.
