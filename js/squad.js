@@ -24,6 +24,7 @@ const SKIN = { light: 0xf1c3a5, fair: 0xf3cdb4, warm: 0xe5b08e, tan: 0xd9a07a };
 export const SQUAD = {
   chloe: {
     name: 'Chloe', color: '#B57BFF', voicePitch: 1.35,
+    model: './assets/squad/chloe.glb', modelBody: { h: 1.70, bind: { sh: [0.20, 1.38, 0], el: [0.44, 1.37, -0.03], ha: [0.85, 1.37, -0.04], hipX: 0.10, hipY: 0.86, kneeY: 0.47, neckY: 1.45, topY: 1.70, headZ: 0, chestW: 0.15, chestD: 0.10, pelvisW: 0.16, arm: 0.04, leg: 0.075 } },
     body: { h: 1.70, sw: 0.9, girth: 0.88, limb: 0.85 },
     look: { skin: SKIN.fair, hair: { style: 'long', color: 0x0d0b0b }, top: 0xb57bff, sleeves: 'long', hood: true, bottom: 0x15151a, legs: 'trousers', shoes: 0xf5f5f5, lips: 0xc0636b },
     title: 'NAME THE FOOD', fail: 'named every snack. Ronnie ate every snack.',
@@ -58,6 +59,7 @@ export const SQUAD = {
   },
   lewis: {
     name: 'Lewis', color: '#E8303A', voicePitch: 0.85,
+    model: './assets/squad/lewis.glb', modelBody: { h: 1.91, bind: { zOff: -0.15, sh: [0.24, 1.50, -0.15], el: [0.42, 1.31, -0.15], ha: [0.29, 1.27, 0.35], hipX: 0.12, hipY: 0.97, kneeY: 0.53, neckY: 1.60, topY: 1.91, headZ: -0.12, chestW: 0.22, chestD: 0.13, pelvisW: 0.17, arm: 0.06, leg: 0.085 } },
     body: { h: 1.91, sw: 1.4, girth: 1.1, limb: 1.35 },
     look: { skin: SKIN.warm, hair: { style: 'mullet', color: 0x5a3a22 }, beard: { style: 'patchy', color: 0x4a3020 }, top: 0xd32f2f, top2: 0x1565c0, pattern: 'vstripes', sleeves: 'none', bottom: 0x111111, legs: 'shorts', shoes: 0x222222, prop: 'jug' },
     title: 'PROTEIN SWAP', fail: 'swapped the MONSTOR for protein. Ronnie bulked. Not like that.',
@@ -75,6 +77,7 @@ export const SQUAD = {
   },
   harry: {
     name: 'Harry H', color: '#7A1F3D', voicePitch: 1.15,
+    model: './assets/squad/harry.glb', modelBody: { h: 1.83, bind: { sh: [0.20, 1.44, 0], el: [0.26, 1.19, 0], ha: [0.27, 0.76, 0.05], hipX: 0.11, hipY: 0.92, kneeY: 0.50, neckY: 1.53, topY: 1.82, headZ: 0.05, chestW: 0.17, chestD: 0.13, pelvisW: 0.15, arm: 0.05, leg: 0.07 } },
     body: { h: 1.83, sw: 0.95, girth: 0.82, limb: 0.78 },
     look: { skin: SKIN.light, hair: { style: 'shortcurls', color: 0x1a1210 }, beard: { style: 'stubble', color: 0x1a1210 }, top: 0x1d2b5a, top2: 0xffffff, pattern: 'jersey', sleeves: 'short', bottom: 0x2b3a55, legs: 'trousers', shoes: 0xf5f5f5, cap: 0x7a1f3d, scarf: true, prop: 'phone' },
     title: 'CATCH & CHONK', fail: 'threw the food away. Ronnie caught it in his mouth. Every time.',
@@ -92,6 +95,7 @@ export const SQUAD = {
   },
   aidan: {
     name: 'Aidan', color: '#2E7D32', voicePitch: 0.8,
+    model: './assets/squad/aidan.glb', modelBody: { h: 1.78, bind: { sh: [0.21, 1.44, 0], el: [0.28, 1.17, 0], ha: [0.28, 0.69, 0.08], hipX: 0.10, hipY: 0.89, kneeY: 0.49, neckY: 1.50, topY: 1.78, headZ: 0.04, chestW: 0.19, chestD: 0.13, pelvisW: 0.16, arm: 0.06, leg: 0.08 } },
     body: { h: 1.78, sw: 1.0, girth: 1.0, limb: 1.0 },
     look: { skin: SKIN.fair, hair: { style: 'tucked', color: 0x111111 }, beard: { style: 'full', color: 0x111111 }, top: 0x7a1f3d, top2: 0x7ec8e3, pattern: 'sleeves2', sleeves: 'long', bottom: 0x2a3b5c, legs: 'trousers', shoes: 0x4a3020, prop: 'pint' },
     title: 'JUST THE ONE', fail: 'suggested a quiet one. Lost his pint.',
@@ -110,6 +114,7 @@ export const SQUAD = {
   },
   noah: {
     name: 'Noah', color: '#C62828', voicePitch: 0.75,
+    model: './assets/squad/noah.glb', modelBody: { h: 1.73, girth: 1.5, bind: { zOff: -0.03, sh: [0.25, 1.42, -0.03], el: [0.34, 1.17, -0.03], ha: [0.37, 0.80, 0], hipX: 0.13, hipY: 0.86, kneeY: 0.47, neckY: 1.48, topY: 1.72, headZ: -0.01, chestW: 0.25, chestD: 0.18, pelvisW: 0.20, arm: 0.07, leg: 0.10 } },
     body: { h: 1.73, sw: 1.35, girth: 1.7, limb: 1.25 },
     koMul: 1.8,
     look: { skin: SKIN.warm, hair: { style: 'short', color: 0x5a3a22 }, beard: { style: 'stubble', color: 0x5a3a22 }, top: 0xc62828, top2: 0xffffff, pattern: 'hoops', sleeves: 'short', bottom: 0x1b1b1b, legs: 'shorts', shoes: 0x111111 },
@@ -129,6 +134,7 @@ export const SQUAD = {
   },
   oliver: {
     name: 'Oliver', color: '#00B8D4', voicePitch: 1.1,
+    model: './assets/squad/oliver.glb', modelBody: { h: 1.75, girth: 1.15, bind: { sh: [0.21, 1.43, 0], el: [0.30, 1.17, 0], ha: [0.30, 0.70, 0.05], hipX: 0.11, hipY: 0.88, kneeY: 0.48, neckY: 1.50, topY: 1.75, headZ: 0.04, chestW: 0.20, chestD: 0.13, pelvisW: 0.17, arm: 0.06, leg: 0.08 } },
     body: { h: 1.75, sw: 1.0, girth: 1.0, limb: 0.95 },
     look: { skin: SKIN.light, hair: { style: 'curtains', color: 0x6b4423 }, beard: { style: 'full', color: 0x5a3a22 }, glasses: true, top: 0xffd600, top2: 0x0d47a1, pattern: 'polo', sleeves: 'short', bottom: 0x111111, legs: 'trousers', shoes: 0x111111, prop: 'phone' },
     title: 'SHAME CAM', fail: 'filmed Ronnie to shame him. It went viral.',
@@ -145,6 +151,7 @@ export const SQUAD = {
   },
   dylan: {
     name: 'Dylan', color: '#FF6D00', voicePitch: 1.25,
+    model: './assets/squad/dylan.glb', modelBody: { h: 1.65, bind: { sh: [0.17, 1.35, 0], el: [0.26, 1.08, 0], ha: [0.32, 0.72, 0.04], hipX: 0.10, hipY: 0.83, kneeY: 0.46, neckY: 1.40, topY: 1.66, headZ: 0.01, chestW: 0.16, chestD: 0.11, pelvisW: 0.15, arm: 0.045, leg: 0.07 } },
     body: { h: 1.65, sw: 0.9, girth: 0.82, limb: 0.82 },
     look: { skin: SKIN.light, hair: { style: 'short', color: 0x111111 }, beard: { style: 'goatee', color: 0x1a1210 }, top: 0x5b5a3a, top2: 0x7a1f3d, pattern: 'parka', sleeves: 'long', bottom: 0x2a3b5c, legs: 'trousers', shoes: 0xf5f5f5, shades: true },
     title: 'THE AMBUSH', fail: 'ambushed Ronnie from a bin. Was found in a bin.',
@@ -236,7 +243,7 @@ function buildBody(rag, look) {
   for (const s of ['L', 'R']) {
     const ua = D('uArm' + s), la = D('lArm' + s);
     const sleeveCol = look.sleeves === 'none' ? skin : look.pattern === 'sleeves2' ? look.top2 : look.top;
-    const ur = ua.half[1] * 0.95, lr = la.half[1] * 0.95;
+    const ur = ua.t * 0.95 / 1.04, lr = la.t * 0.95 / 0.95;
     { const { len, m } = between(ua.a, ua.b); add(new THREE.CylinderGeometry(ur, ur * 0.95, len, 10), skin, 'uArm' + s, m); }
     if (look.sleeves !== 'none') {
       const end = ua.a.clone().lerp(ua.b, look.sleeves === 'long' ? 1 : 0.55);
@@ -252,7 +259,7 @@ function buildBody(rag, look) {
   // ---- legs ----
   for (const s of ['L', 'R']) {
     const ul = D('uLeg' + s), ll = D('lLeg' + s);
-    const ur = ul.half[0] * 1.1, lr = ll.half[0] * 1.15;
+    const ur = ul.t * 1.1, lr = ll.t * 1.15;
     const upperCol = look.legs === 'bare' ? skin : look.bottom;
     const lowerCol = look.legs === 'trousers' ? look.bottom : skin;
     { const { len, m } = between(ul.a.clone().add(_v.set(0, 0.04 * k, 0)), ul.b); add(new THREE.CylinderGeometry(ur, ur * 0.85, len, 10), upperCol, 'uLeg' + s, m); }
@@ -376,12 +383,17 @@ function makeProp(type, k) {
 export class SquadMember extends Character {
   constructor(scene, room, physics, id, spawn, game) {
     const def = SQUAD[id];
-    super(scene, room, physics, { id, name: def.name, color: def.color, body: def.body, banks: def.banks, spawn, voicePitch: def.voicePitch, koMul: def.koMul || 1, chatterEvery: 20 + Math.random() * 10, enterDelay: Math.random() * 1.5 });
+    super(scene, room, physics, { id, name: def.name, color: def.color, body: def.model ? def.modelBody : def.body, banks: def.banks, spawn, voicePitch: def.voicePitch, koMul: def.koMul || 1, chatterEvery: 20 + Math.random() * 10, enterDelay: Math.random() * 1.5 });
     this.def = def;
     this.game = game;
     this.title = def.title;
     this.failLine = def.fail;
-    this.rag.setMesh(buildBody(this.rag, def.look), new THREE.MeshLambertMaterial({ vertexColors: true }));
+    if (def.model) {          // their real 3D model, skinned onto the ragdoll at load time
+      this.rag.loadModel(def.model).catch((e) => {
+        console.warn(def.name + ' model failed, using stylised body', e);
+        this.rag.setMesh(buildBody(this.rag, def.look), new THREE.MeshLambertMaterial({ vertexColors: true }));
+      });
+    } else this.rag.setMesh(buildBody(this.rag, def.look), new THREE.MeshLambertMaterial({ vertexColors: true }));
     if (def.look.prop) { this.prop = makeProp(def.look.prop, this.rag.height / 1.68); scene.add(this.prop); }
     this.ready = true;
   }

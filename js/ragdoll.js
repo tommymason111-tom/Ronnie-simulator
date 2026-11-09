@@ -14,24 +14,53 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { characterGroup } from './physics.js';
+import { characterGroup, GROUP } from './physics.js';
+const legSide = (d) => d.name.includes('Leg') ? (d.name.endsWith('L') ? 1 : -1) : 0;
 
 // Bind pose (T-pose), measured from Tommy's model: metres, faces +Z, his left is +X.
 // Other characters scale it by height (h), shoulder width (sw) and girth.
 //  a→b: bone segment   r: thickness for skinning   half: box size
 //  joint: 'cone' (ball joint with swing limit) or 'hinge' (elbow/knee)
 //  twist: max twist (rad)   hinge: [axis, min, max]
-export function partDefs({ h = 1.68, sw = 1, girth = 1, limb = 1 } = {}) {
-  const k = h / 1.68, gx = girth, sh = sw;
+// A skeleton measured from a model in any pose (arms down, T-pose, arms forward).
+// All values in metres on the model; left side given, right side mirrored.
+//  sh/el/ha: shoulder, elbow, fingertip   hipX/hipY/kneeY: legs   neckY/topY/headZ: head
+//  chestW/chestD/pelvisW: half sizes   arm/leg: limb thickness (half)   zOff: body depth offset
+function boundDefs(b) {
+  const z = b.zOff || 0, mir = (p, s) => [s * p[0], p[1], p[2]];
+  const gx = b.girth || 1, h = b.h;
+  const hipY = b.hipY, kneeY = b.kneeY ?? hipY * 0.55, ankY = 0.04 * h / 1.68;
   const arm = (side, s) => [
-    { name: 'uArm' + side, parent: 'chest', a: [s(0.21 * sh), 1.35, 0], b: [s(0.21 * sh + 0.29), 1.35, 0], r: 0.065 * limb, half: [0.14, 0.05 * limb, 0.055 * limb], mass: 2.2 * limb, joint: 'cone', cone: 2.4, twist: 1.0 },
-    { name: 'lArm' + side, parent: 'uArm' + side, a: [s(0.21 * sh + 0.29), 1.35, 0], b: [s(0.21 * sh + 0.63), 1.33, 0], r: 0.05 * limb, half: [0.17, 0.045 * limb, 0.045 * limb], mass: 1.6 * limb,
-      joint: 'hinge', hinge: [[0, 1, 0], side === 'L' ? -2.5 : 0.0, side === 'L' ? 0.0 : 2.5] },
+    { name: 'uArm' + side, parent: 'chest', a: mir(b.sh, s), b: mir(b.el, s), r: b.arm * 1.25, t: b.arm, mass: 2.2 * gx, joint: 'cone', cone: 2.4, twist: 1.0 },
+    { name: 'lArm' + side, parent: 'uArm' + side, a: mir(b.el, s), b: mir(b.ha, s), r: b.arm, t: b.arm * 0.85, mass: 1.6 * gx, joint: 'hinge', bend: 'fwd', lim: [0, 2.5] },
   ];
   const leg = (side, s) => [
-    { name: 'uLeg' + side, parent: 'pelvis', a: [s(0.10 * gx), 0.84, 0], b: [s(0.10 * gx), 0.47, 0], r: 0.085 * limb * Math.sqrt(gx), half: [0.075 * limb * Math.sqrt(gx), 0.185, 0.08 * limb * Math.sqrt(gx)], mass: 6 * gx, joint: 'cone', cone: 1.4, twist: 0.6 },
-    { name: 'lLeg' + side, parent: 'uLeg' + side, a: [s(0.10 * gx), 0.47, 0], b: [s(0.10 * gx), 0.04, 0.03], r: 0.065 * limb, half: [0.06 * limb, 0.215, 0.085], mass: 4 * Math.sqrt(gx),
-      joint: 'hinge', hinge: [[1, 0, 0], -0.05, 2.4] },
+    { name: 'uLeg' + side, parent: 'pelvis', a: [s * b.hipX, hipY, z], b: [s * b.hipX, kneeY, z], r: b.leg * 1.1, t: b.leg, mass: 6 * gx, joint: 'cone', cone: 1.05, twist: 0.5 },
+    { name: 'lLeg' + side, parent: 'uLeg' + side, a: [s * b.hipX, kneeY, z], b: [s * b.hipX, ankY, z + 0.03], r: b.leg * 0.85, t: b.leg * 0.8, mass: 4 * Math.sqrt(gx), joint: 'hinge', bend: 'back', lim: [-0.05, 2.4] },
+  ];
+  const pelB = hipY + 0.14 * h / 1.68;
+  const defs = [
+    { name: 'pelvis', a: [0, hipY - 0.04 * h / 1.68, z], b: [0, pelB, z], r: b.pelvisW * 1.05, half: [b.pelvisW, (pelB - hipY + 0.04 * h / 1.68) / 2, b.chestD * 0.95], mass: 10 * gx },
+    { name: 'chest', parent: 'pelvis', a: [0, pelB, z], b: [0, b.neckY - 0.02, z], r: b.chestW * 1.15, half: [b.chestW, (b.neckY - 0.02 - pelB) / 2, b.chestD], mass: 14 * gx, joint: 'cone', cone: 0.45, twist: 0.4 },
+    { name: 'head', parent: 'chest', a: [0, b.neckY, b.headZ ?? z], b: [0, b.topY, b.headZ ?? z], r: 0.11 * h / 1.68, sphere: 0.12 * h / 1.68, mass: 4.5, joint: 'cone', cone: 0.6, twist: 0.7 },
+    ...arm('L', 1), ...arm('R', -1), ...leg('L', 1), ...leg('R', -1),
+  ];
+  const k = h / 1.68;
+  for (const d of defs) d.mass *= k * k * k;
+  return defs;
+}
+
+export function partDefs(opts = {}) {
+  if (opts.bind) return boundDefs({ h: opts.h, girth: opts.girth, ...opts.bind });
+  const { h = 1.68, sw = 1, girth = 1, limb = 1 } = opts;
+  const k = h / 1.68, gx = girth, sh = sw;
+  const arm = (side, s) => [
+    { name: 'uArm' + side, parent: 'chest', a: [s(0.21 * sh), 1.35, 0], b: [s(0.21 * sh + 0.29), 1.35, 0], r: 0.065 * limb, t: 0.052 * limb, mass: 2.2 * limb, joint: 'cone', cone: 2.4, twist: 1.0 },
+    { name: 'lArm' + side, parent: 'uArm' + side, a: [s(0.21 * sh + 0.29), 1.35, 0], b: [s(0.21 * sh + 0.63), 1.33, 0], r: 0.05 * limb, t: 0.045 * limb, mass: 1.6 * limb, joint: 'hinge', bend: 'fwd', lim: [0, 2.5] },
+  ];
+  const leg = (side, s) => [
+    { name: 'uLeg' + side, parent: 'pelvis', a: [s(0.10 * gx), 0.84, 0], b: [s(0.10 * gx), 0.47, 0], r: 0.085 * limb * Math.sqrt(gx), t: 0.078 * limb * Math.sqrt(gx), mass: 6 * gx, joint: 'cone', cone: 1.4, twist: 0.6 },
+    { name: 'lLeg' + side, parent: 'uLeg' + side, a: [s(0.10 * gx), 0.47, 0], b: [s(0.10 * gx), 0.04, 0.03], r: 0.065 * limb, t: 0.065 * limb, mass: 4 * Math.sqrt(gx), joint: 'hinge', bend: 'back', lim: [-0.05, 2.4] },
   ];
   const defs = [
     { name: 'pelvis', a: [0, 0.80, 0], b: [0, 0.98, 0], r: 0.17 * gx, half: [0.16 * gx, 0.1, 0.11 * gx], mass: 10 * gx },
@@ -42,7 +71,7 @@ export function partDefs({ h = 1.68, sw = 1, girth = 1, limb = 1 } = {}) {
   // scale everything by height (keeps Tommy exactly as measured when h = 1.68)
   for (const d of defs) {
     d.a = d.a.map(v => v * k); d.b = d.b.map(v => v * k);
-    d.r *= k; if (d.half) d.half = d.half.map(v => v * k); if (d.sphere) d.sphere *= k;
+    d.r *= k; if (d.t) d.t *= k; if (d.half) d.half = d.half.map(v => v * k); if (d.sphere) d.sphere *= k;
     d.mass *= k * k * k;
   }
   return defs;
@@ -78,6 +107,10 @@ export class Ragdoll {
       d.dir = d.b.clone().sub(d.a).normalize();
       this.pose[d.name] = new THREE.Quaternion();
     }
+    const cy = (n) => this.defs.find(d => d.name === n).center;
+    this.standHeight = cy('pelvis').y + 0.01;
+    this.chestUp = cy('chest').y - cy('pelvis').y;
+    this.headUp = cy('head').y - cy('chest').y;
     this.buildBodies();
     this._ctrl = () => this.control();
     this.world.addEventListener('preStep', this._ctrl);
@@ -88,11 +121,19 @@ export class Ragdoll {
     for (const d of this.defs) {
       const body = new CANNON.Body({
         mass: d.mass,
-        collisionFilterGroup: cg.group,
-        collisionFilterMask: cg.mask,
+        // a character's own parts pass through each other, except the two legs, which
+        // collide so they can't cross through each other when the body falls
+        collisionFilterGroup: cg.group | (legSide(d) === 1 ? GROUP.LLEG : legSide(d) === -1 ? GROUP.RLEG : 0),
+        collisionFilterMask: cg.mask | (legSide(d) === 1 ? GROUP.RLEG : legSide(d) === -1 ? GROUP.LLEG : 0),
         linearDamping: 0.08, angularDamping: 0.45,
       });
-      body.addShape(d.sphere ? new CANNON.Sphere(d.sphere) : new CANNON.Box(new CANNON.Vec3(...d.half)));
+      if (d.sphere) body.addShape(new CANNON.Sphere(d.sphere));
+      else if (d.t) {          // limb: a box along the bone, whatever direction it points in the bind pose
+        const len = d.a.distanceTo(d.b);
+        d.half = [d.t, len / 2, d.t];
+        _q.setFromUnitVectors(Y_AXIS, d.dir);
+        body.addShape(new CANNON.Box(new CANNON.Vec3(d.t, len / 2, d.t)), new CANNON.Vec3(0, 0, 0), new CANNON.Quaternion(_q.x, _q.y, _q.z, _q.w));
+      } else body.addShape(new CANNON.Box(new CANNON.Vec3(...d.half)));
       body.position.set(d.center.x, d.center.y, d.center.z);
       body.part = d.name;
       body.ragdoll = this;
@@ -107,8 +148,14 @@ export class Ragdoll {
       const pivotB = new CANNON.Vec3(d.a.x - d.center.x, d.a.y - d.center.y, d.a.z - d.center.z);
       let c, axis;
       if (d.joint === 'hinge') {
-        // elbows and knees: a hinge, plus angle limits enforced in limits()
-        axis = new THREE.Vector3(...d.hinge[0]);
+        // elbows and knees: a hinge, plus angle limits enforced in limits().
+        // The axis is sideways to the bone, so a positive angle bends the elbow
+        // forward and the knee backward, whatever pose the model was made in.
+        axis = new THREE.Vector3().crossVectors(d.dir, _v.set(0, 0, 1));
+        if (axis.lengthSq() < 1e-4) axis.set(d.dir.y > 0 ? -1 : 1, 0, 0);
+        axis.normalize();
+        if (d.bend === 'back') axis.negate();
+        d.hinge = [axis.toArray(), d.lim[0], d.lim[1]];
         const ca = new CANNON.Vec3(axis.x, axis.y, axis.z);
         c = new CANNON.HingeConstraint(A, B, { pivotA, pivotB, axisA: ca, axisB: ca.clone(), collideConnected: false });
       } else {
@@ -201,12 +248,27 @@ export class Ragdoll {
     const adjacent = (i, j) => parentIdx[i] === j || parentIdx[j] === i;
     const headIdx = this.defs.findIndex(d => d.name === 'head'), chestIdx = this.defs.findIndex(d => d.name === 'chest');
     const kH = this.height / 1.68, neckY = this.defs[headIdx].a.y;
+    const sideOf = this.defs.map(d => d.name.includes('Leg') ? (d.name.endsWith('L') ? 1 : -1) : 0);
+    const pelvisIdx = this.defs.findIndex(d => d.name === 'pelvis'), hipJointY = this.defs.find(d => d.name === 'uLegL').a.y;
+    const nrm = geo.attributes.normal, _n = new THREE.Vector3(), _c = new THREE.Vector3();
     for (let i = 0; i < n; i++) {
       _v.fromBufferAttribute(pos, i);
+      if (nrm) _n.fromBufferAttribute(nrm, i);
       let best = 0;
       for (let k = 0; k < this.defs.length; k++) {
         const d = this.defs[k];
         ds[k] = segDist(_v, d.a, d.b) - d.r;
+        // skin belongs to a bone only if it faces away from it: stops the side of
+        // the torso being glued to an arm hanging against it (and vice versa)
+        if (nrm && d.name !== 'head') {
+          closestOnSeg(_v, d.a, d.b, _c); _c.subVectors(_v, _c);
+          const l = _c.length();
+          if (l > 0.01 && _n.dot(_c) / l < -0.3) ds[k] += 0.25;
+        }
+        // the pelvis only owns skin above the tops of the thighs (shorts follow the legs)
+        if (k === pelvisIdx && _v.y < hipJointY - 0.03 * kH && Math.abs(_v.x) > 0.03 * kH) ds[k] += 0.3;
+        // legs never own skin from the other side of the body (legs pressed together)
+        if (sideOf[k] && sideOf[k] * _v.x < -0.005) ds[k] += 1;
         if (ds[k] < ds[best]) best = k;
       }
       // blend smoothly with the bones joined to the nearest one
@@ -214,7 +276,11 @@ export class Ragdoll {
       let total = 0, slots = [[best, 1]];
       for (let k = 0; k < this.defs.length; k++) {
         if (k === best || !adjacent(k, best)) continue;
-        const w = Math.exp(-(ds[k] - ds[best]) / sigma);
+        let w = Math.exp(-(ds[k] - ds[best]) / sigma);
+        // only blend near the joint the two bones share (arms hanging against the
+        // torso must not be glued to the chest along their whole length)
+        const joint = parentIdx[k] === best ? this.defs[k].a : this.defs[best].a;
+        w *= Math.max(0, 1 - _v.distanceTo(joint) / (0.09 * kH));
         if (w > 0.02) slots.push([k, w]);
       }
       // the head is rigid: everything above the jaw follows the head bone 100%
@@ -229,6 +295,59 @@ export class Ragdoll {
       slots.sort((a, b) => b[1] - a[1]); slots = slots.slice(0, 4);
       for (const s of slots) total += s[1];
       slots.forEach((s, j) => { skinIndex[i * 4 + j] = s[0]; skinWeight[i * 4 + j] = s[1] / total; });
+    }
+    // Scans made with arms down have the arms fused to the torso/hips where they
+    // touched. Cut triangles that bridge body parts which aren't joined (e.g.
+    // forearm↔hip), and joined parts away from their joint (upper arm↔side of
+    // chest), so nothing stretches when the limbs move.
+    if (geo.index) {
+      const idx = geo.index.array, keep = [];
+      // first, tidy the labels: skin that's mostly surrounded by arm (e.g. the palm
+      // where it pressed against the thigh) becomes arm too, so it moves with the hand
+      {
+        const nb = Array.from({ length: n }, () => []);
+        for (let f = 0; f < idx.length; f += 3) for (let e = 0; e < 3; e++) { const p = idx[f + e], q = idx[f + (e + 1) % 3]; nb[p].push(q); nb[q].push(p); }
+        const arm = this.defs.map(d => d.name.startsWith('lArm') || d.name.startsWith('uArm'));
+        for (let it = 0; it < 4; it++) {
+          const changes = [];
+          for (let i = 0; i < n; i++) {
+            const me = skinIndex[i * 4];
+            if (arm[me] || this.defs[me].name === 'head') continue;
+            const cnt = {};
+            for (const q of nb[i]) { const b = skinIndex[q * 4]; cnt[b] = (cnt[b] || 0) + 1; }
+            let bestB = me, bestC = cnt[me] || 0;
+            for (const b in cnt) if (arm[b] && cnt[b] > bestC) { bestB = +b; bestC = cnt[b]; }
+            if (bestB !== me) changes.push([i, bestB]);
+          }
+          for (const [i, b] of changes) { skinIndex[i * 4] = b; skinWeight[i * 4] = 1; for (let j = 1; j < 4; j++) { skinIndex[i * 4 + j] = 0; skinWeight[i * 4 + j] = 0; } }
+          if (!changes.length) break;
+        }
+      }
+      const near = (a, b, cx, cy, cz) => {
+        const j = parentIdx[b] === a ? this.defs[b].a : this.defs[a].a;
+        return Math.hypot(cx - j.x, cy - j.y, cz - j.z) < 0.11 * kH;
+      };
+      const isArm = this.defs.map(d => d.name.includes('Arm'));
+      const core = this.defs.map(d => d.name === 'pelvis' || d.name === 'chest' || d.name.startsWith('uLeg'));
+      const hipTop = this.defs.find(d => d.name === 'pelvis').a.y + 0.02 * kH;
+      let cut = 0;
+      for (let f = 0; f < idx.length; f += 3) {
+        const a = skinIndex[idx[f] * 4], b = skinIndex[idx[f + 1] * 4], c = skinIndex[idx[f + 2] * 4];
+        let ok = true;
+        if (a !== b || b !== c) {
+          const cx = (pos.getX(idx[f]) + pos.getX(idx[f + 1]) + pos.getX(idx[f + 2])) / 3;
+          const cy = (pos.getY(idx[f]) + pos.getY(idx[f + 1]) + pos.getY(idx[f + 2])) / 3;
+          const cz = (pos.getZ(idx[f]) + pos.getZ(idx[f + 1]) + pos.getZ(idx[f + 2])) / 3;
+          for (const [p, q] of [[a, b], [b, c], [a, c]]) {
+            if (p === q) continue;
+            if (core[p] && core[q] && (adjacent(p, q) || (cy > hipTop && (p === chestIdx || q === chestIdx)))) continue;   // shirt hems over the hips stay joined
+            if (!adjacent(p, q) || ((isArm[p] || isArm[q]) && !near(p, q, cx, cy, cz))) { ok = false; break; }
+          }
+        }
+        if (ok) keep.push(idx[f], idx[f + 1], idx[f + 2]); else cut++;
+      }
+      if (cut) geo.setIndex(keep);
+      this.cutTriangles = cut;
     }
     geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndex, 4));
     geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeight, 4));
@@ -307,12 +426,12 @@ export class Ragdoll {
       pel.velocity.y += (vy - pel.velocity.y) * 0.35 * sup;
       pel.velocity.x += (this.moveVel.x - pel.velocity.x) * 0.25 * sup;
       pel.velocity.z += (this.moveVel.z - pel.velocity.z) * 0.25 * sup;
-      const up = 0.3 * this.height / 1.68;
+      const up = this.chestUp;
       const cx = pel.position.x, cy = pel.position.y + up, cz = pel.position.z;
       ch.velocity.x += ((cx - ch.position.x) * 10 + pel.velocity.x - ch.velocity.x) * 0.25 * sup;
       ch.velocity.y += ((cy - ch.position.y) * 10 + pel.velocity.y - ch.velocity.y) * 0.25 * sup;
       ch.velocity.z += ((cz - ch.position.z) * 10 + pel.velocity.z - ch.velocity.z) * 0.25 * sup;
-      hd.velocity.y += ((ch.position.y + 0.36 * this.height / 1.68 - hd.position.y) * 8 - hd.velocity.y) * 0.15 * sup;
+      hd.velocity.y += ((ch.position.y + this.headUp - hd.position.y) * 8 - hd.velocity.y) * 0.15 * sup;
     }
   }
 
@@ -358,6 +477,13 @@ export class Ragdoll {
 
   // Push the whole body (e.g. a big launch)
   shove(vx, vy, vz) { for (const p of this.list) { p.body.velocity.x += vx; p.body.velocity.y += vy; p.body.velocity.z += vz; } }
+}
+
+function closestOnSeg(p, a, b, out) {
+  out.subVectors(b, a);
+  const l2 = out.lengthSq();
+  const t = l2 > 0 ? Math.max(0, Math.min(1, _v2.subVectors(p, a).dot(out) / l2)) : 0;
+  return out.multiplyScalar(t).add(a);
 }
 
 function segDist(p, a, b) {

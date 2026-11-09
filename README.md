@@ -28,7 +28,7 @@ The design doc is `Ronnie simulator prompt.md`. It was written for Unity; this r
 
 ## The squad (design doc Part 5)
 
-Each squad member is a stylised character built in code at their doc height and build, in their outfit and colours, on the same ragdoll as Tommy. Each has their own lines and a signature **intervention**:
+Chloe, Lewis, Harry, Aidan, Noah, Oliver and Dylan use their own 3D models (`assets/squad/*.glb`). Each was cut from about 1–2 million triangles to 24k (extra detail kept on the face), with its texture and surface detail re-baked from the original, and is rigged at load time onto the same ragdoll as Tommy at their real height. Tasha doesn't have a model yet, so she's built from shapes. Each person has their own lines and a signature **intervention**:
 
 | Who | Intervention | What happens |
 |---|---|---|
@@ -41,7 +41,7 @@ Each squad member is a stylised character built in code at their doc height and 
 | **Oliver** | Shame Cam | Films you live, and his follower count rockets every time you eat. |
 | **Dylan** | The Ambush | Hides in the bin, leaps out and clings to your hand. Shake him off (or tap him on a phone). |
 
-To use real models for the squad later, make Tripo models like Tommy's and they can go through the same pipeline.
+To add Tasha's model later, send a GLB like the others and it goes through the same process.
 
 ## Game modes
 
@@ -103,6 +103,7 @@ Pick a mode on the start screen, or press a button on the **GAME MODES board** o
 ```
 index.html        page, Enter VR / Play on this screen, import map (three.js r170, cannon-es 0.20 from jsDelivr)
 assets/tommy.glb  Tommy's model: 32k triangles (22k on the head) re-baked from the 2M-triangle original, with a new colour texture and normal map
+assets/squad/     the squad's models (Chloe, Lewis, Harry, Aidan, Noah, Oliver, Dylan), 24k triangles each
 assets/hands/     hand models (WebXR Input Profiles "generic hand", MIT licence)
 js/main.js        game loop: eating, drinking, Chonk, stages, LOCO mode, broccoli, hits, slaps, touch wiring
 js/config.js      all the tuning numbers (stages, food Chonk, timings)
@@ -127,7 +128,8 @@ js/textures.js    canvas-drawn posters, labels, the Mango Loco can
 
 - All plain-coloured furniture is merged into one mesh, and the floor cans are a single instanced mesh. Tommy was cut from about 2 million triangles to 32k (most of them on his face) and is skinned on the GPU. A frame is about 55 draw calls and 50k triangles per eye.
 - Physics runs at a fixed 90 steps a second: up to 5 characters × 11 bodies, 2 hand spheres and the static room. Food uses its own tiny solver.
-- Each squad member is one draw call of about 6–8k triangles. A full Squad Intervention frame is about 80k triangles.
+- Each squad member is one draw call of 24k triangles (Tasha about 8k). A full Squad Intervention frame (Tommy + 4) is about 150k triangles, well within Quest 3's budget.
+- The squad models are about 1.6 MB each and only download when a mode needs that person.
 - There are no real-time shadows. The sun stripes and Tommy's shadow are cheap fake decals.
 - Lighting is cheap Lambert shading with 3 lights (sky, sun, Tommy's spotlight).
 - Text and textures are drawn once at load. The wrist and speech bubbles only redraw when something changes.
@@ -140,6 +142,7 @@ js/textures.js    canvas-drawn posters, labels, the Mango Loco can
 - three.js and cannon-es load from the jsDelivr CDN, so the device needs internet. The hand and Tommy models are in the repo.
 - Tommy "speaks" with text bubbles and a little babble sound, not a real voice yet.
 - Tommy's eyes in the original model were painted on and too wide, so the face has small openings where real eyeballs sit behind skin-coloured eyelids (modelled on photos of Tommy: blue-grey irises, heavy upper lids). They follow you and blink.
+- The squad scans were made with arms down, so the scan fused arms to the body where they touched. The game cuts those joins, which leaves small gaps under the arms that you can only see when an arm is raised high.
 - Tommy's model is a scan with no real skeleton. The game builds one when it loads, so the shoulders bunch up a little when his arms hang down.
 - Food doesn't bump into other food.
 - The mirror isn't reflective, because real mirrors double the rendering cost.

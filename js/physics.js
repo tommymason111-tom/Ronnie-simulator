@@ -6,7 +6,7 @@ import { ROOM } from './config.js';
 
 // Collision groups. Each character gets its own bit (so different characters
 // collide with each other, but a character's own limbs don't jam together).
-export const GROUP = { STATIC: 1, RAGDOLL: 2, HAND: 4, CHARS: 0x7ff0 };
+export const GROUP = { STATIC: 1, RAGDOLL: 2, HAND: 4, CHARS: 0x7ff0, LLEG: 1 << 15, RLEG: 1 << 16 };
 let nextChar = 0;
 export function characterGroup() { const g = 1 << (4 + (nextChar++ % 11)); return { group: g, mask: GROUP.STATIC | GROUP.HAND | (GROUP.CHARS & ~g) }; }
 
