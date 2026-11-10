@@ -1,4 +1,4 @@
-// THE SQUAD (design doc Part 5): Chloe, Tasha, Lewis, Harry H, Aidan, Noah,
+// THE SQUAD (design doc Part 5): Chloe, Lewis, Harry H, Aidan, Noah,
 // Oliver and Dylan. Everyone is trying to stop Ronnie. Nobody can.
 //
 // Each member is a physics ragdoll (same rig as Tommy) with a stylised body
@@ -39,22 +39,6 @@ export const SQUAD = {
       grabbed: ['Ronnie, put me DOWN! I\'m your GIRLFRIEND, not a snack!'],
       launched: ['RONNIIIIIIE!'],
       vegThrow: ['Salad ambush! It\'s for your own good, babe!'],
-    },
-  },
-  tasha: {
-    name: 'Tasha', color: '#FF8FC7', voicePitch: 1.5,
-    body: { h: 1.60, sw: 0.85, girth: 0.85, limb: 0.8 },
-    look: { skin: SKIN.light, hair: { style: 'bigcurls', color: 0x7a4e2d }, top: 0xff8fc7, sleeves: 'short', skirt: 0xff8fc7, bottom: 0xff8fc7, legs: 'bare', shoes: 0x3a2a24, lips: 0xd0607a, flower: true },
-    title: 'BUBBLE ROAST', fail: 'blew roast bubbles. Ronnie ate the bubbles.',
-    banks: {
-      greet: ['Once upon a time there was a boy called Ronnie. And then he ate the time.', 'Hello, Ronnie! I brought my bubble wand. And my roasts.'],
-      chatter: ['Ronnie, you\'re so big, the fairies have started renting rooms in your chins.', 'Look, a butterfly landed on you! It thinks you\'re a planet.', 'I made a wish on a star for you, Ronnie. Then you ate the star.', 'Every time you sit down, a little elf somewhere screams.', 'Your chins are like Russian dolls. There\'s always another one inside.', 'Ronnie, the moon called. It wants its shape back.', 'You\'re so round, when you lie down, birds land on you thinking you\'re a hill.', 'Your head looks like a little pea on top of a beanbag.'],
-      intervene: ['Bubble time! Each one has a little roast inside. Like a kinder egg of shame.', 'Pop them, Ronnie! Or don\'t. They\'ve all got your name on.'],
-      hit: ['Ow! I\'m a delicate flower, Ronnie!', 'You can\'t hit a fairy, it\'s bad luck. For YOU.', 'My curls! My beautiful curls!'],
-      slap: ['I\'m just helping Tommy help! It\'s a team effort!'],
-      grabbed: ['Put me down, you big beautiful moon!'],
-      launched: ['Wheeeeeee! ...ow.'],
-      roast: ['CHONK!', 'UNIT!', 'BIG BOI!', 'MOON!', 'CHINS!', 'WIDE LOAD!', 'ORBIT!', 'XXXXL!'],
     },
   },
   lewis: {
@@ -426,9 +410,6 @@ export class SquadMember extends Character {
       case 'chloe':   // arms crossed: disappointed
         r.aim('uArmL', 0.2, -1, 0.35); r.aim('lArmL', -1, 0.15, 0.3); r.aim('uArmR', -0.2, -1, 0.35); r.aim('lArmR', 1, 0.2, 0.3);
         break;
-      case 'tasha':   // little dreamy sway
-        r.pose.chest.setFromAxisAngle(_v.set(0, 0, 1), Math.sin(t * 1.5) * 0.08);
-        break;
       case 'dylan':   // can't keep still
         r.pose.chest.setFromAxisAngle(_v.set(0, 1, 0), Math.sin(t * 6) * 0.15);
         break;
@@ -461,7 +442,6 @@ export class SquadMember extends Character {
     this.actStart && this.actStart();
     ({
       chloe: () => { this.salads = 3; },
-      tasha: () => { this.bubbles = 8; },
       lewis: () => { this.goToStation(); },
       harry: () => { this.passes = 3; },
       aidan: () => { this.goToStation(); this.pintGiven = false; },
@@ -492,16 +472,6 @@ export class SquadMember extends Character {
         this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 5);
         if (this.stateT > 1.2 && this.salads > 0) { this.salads--; this.stateT = 0.2; this.throwNow(ctx, { item: this.salads % 2 ? 'sprout' : 'broccoli', speed: 3.2, spread: 0.1 }); }
         if (this.salads <= 0 && this.stateT > 1.2) { g.nameNextFood(this); this.say('name', 4); done(); }
-        break;
-      case 'tasha':     // bubble roast: blows roast-word bubbles at Ronnie
-        r.aim('uArmR', -0.2, 0.0, 1); r.aim('lArmR', 0, 0.5, 1);
-        this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 4);
-        if (this.stateT > 0.45 && this.bubbles > 0) {
-          this.bubbles--; this.stateT = 0;
-          const words = this.banks.roast;
-          g.spawnBubble(this.rag.tip('lArmR', new THREE.Vector3()).add(_v.set(0, 0.1, 0)), words[Math.floor(Math.random() * words.length)], this);
-        }
-        if (this.bubbles <= 0 && this.stateT > 1) done();
         break;
       case 'lewis':     // walks to the snack station and swaps the cans for protein shakes
       case 'aidan': {   // ...or puts a pint down to settle

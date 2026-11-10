@@ -4,7 +4,6 @@
 //                        a squad member tries their move. Every one fails.
 //                        Ends with the receipt: "INTERVENTIONS SUCCESSFUL: 0"
 //   VEGGIE WAR         — the squad attacks in waves of veg; swat, block, eat
-//   BUBBLE ROAST       — Tasha blows 30 roast bubbles; pop them before they hit you
 //   CATCH & CHONK      — Harry "throws the food away" — catch it in your mouth
 //   CHONK-OFF          — 60 seconds, eat as much as you can (1 player or 2 player pass-and-play)
 // Modes are picked on the start screen or on the MODE BOARD on the bedroom wall
@@ -18,13 +17,12 @@ export const MODES = {
   classic:      { name: 'CLASSIC', desc: 'Eat, grow, dodge Tommy\'s broccoli.', time: 0 },
   intervention: { name: 'SQUAD INTERVENTION', desc: 'Everyone tries to stop you. Nobody can.', time: 240 },
   veggie:       { name: 'VEGGIE WAR', desc: 'The squad attacks with veg. Survive 2½ minutes.', time: 150 },
-  bubble:       { name: 'BUBBLE ROAST', desc: 'Pop Tasha\'s roast bubbles.', time: 70 },
   catch:        { name: 'CATCH & CHONK', desc: 'Catch Harry\'s throws in your mouth.', time: 70 },
   chonkoff:     { name: 'CHONK-OFF', desc: '60 seconds. Eat everything.', time: 60 },
   chonkoff2:    { name: 'CHONK-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
 };
-const BOARD_ORDER = ['classic', 'intervention', 'veggie', 'bubble', 'catch', 'chonkoff', 'chonkoff2'];
-const VEG_OF = { tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', tasha: 'sprout' };
+const BOARD_ORDER = ['classic', 'intervention', 'veggie', 'catch', 'chonkoff', 'chonkoff2'];
+const VEG_OF = { tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', };
 const _v = new THREE.Vector3();
 
 export class Director {
@@ -63,7 +61,6 @@ export class Director {
     let squad = [];
     if (id === 'intervention') squad = shuffle(Object.keys(SQUAD)).slice(0, 4);
     else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver']).slice(0, 3);
-    else if (id === 'bubble') squad = ['tasha'];
     else if (id === 'catch') squad = ['harry'];
     else if (id === 'classic') squad = [];
     else squad = [];
@@ -81,7 +78,6 @@ export class Director {
     tommy.say({
       intervention: 'Right, Ron. The whole squad\'s here. It\'s an intervention. I\'m just trying to help.',
       veggie: 'VEGGIE WAR. Everyone, positions. Aim for the mouth.',
-      bubble: 'Tasha\'s brought her bubble wand. Brace yourself, Ron.',
       catch: 'Harry\'s going to throw the food AWAY from you. In theory.',
       chonkoff: 'Sixty seconds, Ron. Show me what you\'ve got. Actually, don\'t.',
       chonkoff2: this.player2 && this.player2.stage === 2 ? 'Player two! Beat that. Please don\'t.' : 'Chonk-Off! Player one, sixty seconds. Go.',
@@ -115,9 +111,6 @@ export class Director {
       lines.push(['VEG SWATTED', st.swats]);
       lines.push(['VEG EATEN (VEG-O-METER)', st.veg]);
       lines.push([st.veg === 0 ? 'CLEAN SHEET! NOT ONE VEG.' : st.veg < 3 ? 'Barely touched a vegetable.' : 'Tommy: "We had him."', '']);
-    } else if (this.mode === 'bubble') {
-      lines.push(['BUBBLES POPPED', `${st.popped} / ${this.spawned}`]);
-      lines.push(['ROASTS TAKEN', st.roasted]);
     } else if (this.mode === 'catch') {
       lines.push(['CATCHES', `${st.caught} / ${st.thrown}`]);
       lines.push(['Harry: "Terrible decision."', '']);
@@ -140,7 +133,6 @@ export class Director {
     g.tommy.say({
       intervention: 'Another intervention, another failure. I\'ll tell your mum you were good. I\'ll lie.',
       veggie: 'Well done, Ron. You ate the level. The WHOLE level.',
-      bubble: 'Tasha\'s run out of bubbles. And you\'re still massive.',
       catch: 'Harry\'s retiring. From throwing. And dating, hopefully.',
       chonkoff: 'Time! ...the scales have left the building.',
       chonkoff2: 'Time! ...both of you are a disgrace. I\'m very proud.',
@@ -197,20 +189,6 @@ export class Director {
           if (elapsed > 44 && elapsed < 46.7 && !this.waveTwo) { this.waveTwo = true; g.showBanner('WAVE 2', 'TWO AT ONCE'); }
           if (elapsed > 99 && elapsed < 101.7 && !this.waveThree) { this.waveThree = true; g.showBanner('FINAL WAVE', 'EVERYONE!'); }
         }
-        break;
-      }
-      case 'bubble': {
-        const tasha = this.cast.find(c => c.id === 'tasha');
-        this.waveT -= dt;
-        if (tasha && this.waveT <= 0 && this.spawned < 30 && !tasha.down) {
-          this.waveT = this.spawned < 10 ? 2.2 : this.spawned < 20 ? 1.6 : 1.1;
-          tasha.rag.aim('uArmR', -0.2, 0.0, 1);
-          const words = SQUAD.tasha.banks.roast;
-          this.spawnBubble(tasha.rag.tip('lArmR', new THREE.Vector3()).add(_v.set(0, 0.12, 0)), words[Math.floor(Math.random() * words.length)], tasha);
-          this.spawned++;
-          if (this.spawned % 6 === 0) tasha.say('chatter', 2);
-        }
-        if (this.spawned >= 30 && this.bubbles.length === 0 && this.timeLeft > 3) this.timeLeft = 3;
         break;
       }
       case 'catch': {
@@ -273,7 +251,7 @@ export class Director {
     else this.g.words.show('SHAKEN OFF!', dylan.pos.clone().add({ x: 0, y: 1, z: 0 }), '#FF6D00', 0.18);
   }
 
-  // ------------------------------------------------------------------ roast bubbles (Tasha)
+  // ------------------------------------------------------------------ roast bubbles (unused for now)
   spawnBubble(pos, word, who) {
     const grp = new THREE.Group();
     const ball = new THREE.Mesh(BUBBLE_GEO, BUBBLE_MAT);
@@ -434,7 +412,6 @@ export class Director {
     let extra = '';
     if (this.mode === 'intervention') extra = `Meter ${Math.round(this.meter * 100)}%`;
     else if (this.mode === 'veggie') extra = `Swats ${this.stats.swats} · Veg ${this.stats.veg}`;
-    else if (this.mode === 'bubble') extra = `Popped ${this.stats.popped}/${this.spawned}`;
     else if (this.mode === 'catch') extra = `Caught ${this.stats.caught}/${this.stats.thrown}`;
     else extra = `Chonk ${Math.round(this.stats.chonk)}`;
     return `${name} ${mm}:${ss} · ${extra}`;
