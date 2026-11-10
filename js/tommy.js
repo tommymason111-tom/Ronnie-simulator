@@ -101,20 +101,13 @@ export class Tommy extends Character {
     if (this.blinkT < -0.16) this.blinkT = 2.5 + Math.random() * 3.5;
     const blink = this.blinkT < 0 ? Math.sin(Math.min(1, -this.blinkT / 0.16) * Math.PI) : 0;   // 0..1..0
     const ko = this.state === 'ko' || (this.state === 'recover' && this.stateT < 0.5);
+    // the eyes are fixed in his head (no separate eye movement): they only blink,
+    // and the lids droop when he's knocked out
     for (const e of this.eyes) {
-      let yaw, pitch;
-      if (ko) { const a = this.t * 8 + (e.side < 0 ? 0 : Math.PI); yaw = Math.cos(a) * 0.35; pitch = Math.sin(a) * 0.2; }   // dizzy
-      else {
-        e.eye.updateWorldMatrix(true, false);
-        _v.copy(target); e.eye.worldToLocal(_v);
-        yaw = THREE.MathUtils.clamp(Math.atan2(_v.x, _v.z), -0.4, 0.4);
-        pitch = THREE.MathUtils.clamp(Math.atan2(_v.y, Math.hypot(_v.x, _v.z)), -0.25, 0.25);
-      }
-      e.ball.rotation.set(-pitch, yaw, 0, 'YXZ');
-      // upper lid follows the gaze a little (like real eyes), droops when dazed, sweeps down to blink
-      e.upper.rotation.x = -pitch * 0.5 + (ko ? 0.3 : 0) + blink * 0.62;
-      e.lower.rotation.x = -pitch * 0.25 - blink * 0.08;
-      e.glint.visible = blink < 0.4 && !ko;
+      e.ball.rotation.set(0, 0, 0);
+      e.upper.rotation.x = (ko ? 0.35 : 0) + blink * 0.62;
+      e.lower.rotation.x = -blink * 0.08;
+      e.glint.visible = blink < 0.4;
     }
   }
 

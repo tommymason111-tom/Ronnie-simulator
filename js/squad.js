@@ -1,4 +1,4 @@
-// THE SQUAD (design doc Part 5): Chloe, Lewis, Harry H, Aidan, Noah,
+// THE SQUAD (design doc Part 5, plus Connor and Ethan): Chloe, Lewis, Harry H, Aidan, Noah,
 // Oliver and Dylan. Everyone is trying to stop Ronnie. Nobody can.
 //
 // Each member is a physics ragdoll (same rig as Tommy) with a stylised body
@@ -85,7 +85,7 @@ export const SQUAD = {
     title: 'JUST THE ONE', fail: 'suggested a quiet one. Lost his pint.',
     banks: {
       greet: ['Ronnie. Lad. Sit down. Let\'s have a quiet one and talk about this.'],
-      chatter: ['I\'ve seen a lot of things in my life, Ronnie. I\'ve never seen a man eat a bar stool.', 'The beard\'s got crisps in it, hasn\'t it. You\'re looking at the beard. Don\'t look at the beard.', 'Come on you Irons. Come on, Ronnie, slow down.', 'You\'re the only man I know who orders a pint and a pie and then eats the pub.', 'My nan was from Cork. She\'d have fed you. She\'d have regretted it.'],
+      chatter: ['I\'ve seen a lot of things in my life, Ronnie. I\'ve never seen a man eat a bar stool.', 'The beard\'s got crisps in it, hasn\'t it. You\'re looking at the beard. Don\'t look at the beard.', 'Come on you Irons. Come on, Ronnie, slow down.', 'You\'re the only man I know who orders a pint and a pie and then eats the pub.', 'My nan was from Cork. She\'d have fed you. She\'d have regretted it.', 'My little brother Connor supports Liverpool. We don\'t talk about it at Christmas.', 'Connor says he\'s the better-looking brother. Connor says a lot of things.'],
       intervene: ['Just the one, Ronnie. Here. Let it settle first. Patience.', 'Right. Intervention time. Let\'s be grown-ups about this.'],
       settle: ['You have to let it settle, Ronnie. Patience.', 'Let it settle...', 'Nearly...'],
       drank: ['That\'s a lovely pint. That WAS a lovely pint.', 'You have to let it settle, Ronnie. ...and he\'s drunk it. Mine. That was mine.', 'Ah, now you\'re getting it.'],
@@ -150,6 +150,43 @@ export const SQUAD = {
       grabbed: ['Put me DOWN! I\'ll bite! I WILL BITE!'],
       launched: ['WONDERWAAAA— I mean, AAAAARGH—'],
       vegThrow: ['CELERY GRENADE!'],
+    },
+  },
+  connor: {
+    name: 'Connor', color: '#C8102E', voicePitch: 0.82,
+    model: './assets/squad/connor.glb', modelBody: { h: 1.80, girth: 1.25, bind: { sh: [0.22, 1.40, 0], el: [0.52, 1.39, 0], ha: [0.88, 1.38, 0], hipX: 0.12, hipY: 0.90, kneeY: 0.50, neckY: 1.50, topY: 1.80, headZ: 0.03, chestW: 0.23, chestD: 0.15, pelvisW: 0.19, arm: 0.055, leg: 0.085 } },
+    body: { h: 1.80, sw: 1.1, girth: 1.2, limb: 1.05 },
+    look: { skin: SKIN.fair, hair: { style: 'short', color: 0x3a2618 }, beard: { style: 'short', color: 0x3a2618 }, glasses: true, top: 0x14182a, sleeves: 'short', bottom: 0x8a8f98, legs: 'trousers', shoes: 0xf5f5f5, prop: 'pint' },
+    title: 'THE ROUND', fail: 'bought a round to slow Ronnie down. Ronnie drank the round.',
+    banks: {
+      greet: ['Ronnie! Get in here, lad. Aidan\'s brother, at your service. The better-looking one.', 'Alright Ron. Pint? Course you will.'],
+      chatter: ['Liverpool are the greatest club on Earth, Ronnie. You\'re the greatest club sandwich.', 'Our mammy says Aidan was the quiet one. I was the one who could finish a pint. You\'re the one who finishes the pub.', 'You\'ll never walk alone, Ronnie. Mostly because you can\'t fit through doors on your own.', 'A proper pint of stout is a meal in a glass, Ron. That\'s not a challenge.', 'Me and Aidan have been arguing about who\'s the older brother for thirty years. He is. He just looks it.', 'Anfield on a European night, Ronnie. The noise. Nearly as loud as your stomach.'],
+      intervene: ['Right, Ronnie, my round! Two of the black stuff. Sip it slow, like a gentleman.', 'Lads, I\'ll handle this. Nothing slows a man down like a proper Irish stout.'],
+      settle: ['Let it settle now. Patience, Ronnie. Patience.', 'One for you, one for me. Not one for Aidan.'],
+      drank: ['He drank MY one as well. Aidan, your mate is a menace.', 'Ah, that was a lovely pint. Lovely. For you.', 'You\'ve drunk it faster than Salah runs, Ron.'],
+      snap: ['You didn\'t even let it SETTLE! There are rules, Ronnie! Our grandad would weep!'],
+      hit: ['Ah, come here! I\'m just trying to help, ya big eejit!', 'Not the glasses, Ronnie! Not the glasses!'],
+      slap: ['That\'s a red card, Ronnie. Straight red.'],
+      grabbed: ['Put me down! I\'m Irish, we don\'t fly, we drink!'],
+      launched: ['YOU\'LL NEVER WALK ALOOOOONE—'],
+      vegThrow: ['Have a sprout, Ron! It\'s like a tiny cabbage. You love cabbage. You love everything.'],
+    },
+  },
+  ethan: {
+    name: 'Ethan', color: '#FEBE10', voicePitch: 1.0,
+    model: './assets/squad/ethan.glb', modelBody: { h: 1.78, girth: 1.2, bind: { sh: [0.20, 1.40, 0], el: [0.50, 1.40, 0], ha: [0.88, 1.39, 0], hipX: 0.12, hipY: 0.88, kneeY: 0.48, neckY: 1.45, topY: 1.78, headZ: 0.03, chestW: 0.20, chestD: 0.14, pelvisW: 0.18, arm: 0.055, leg: 0.09 } },
+    body: { h: 1.78, sw: 1.05, girth: 1.15, limb: 1.1 },
+    look: { skin: SKIN.warm, hair: { style: 'short', color: 0x1a1210 }, top: 0x111111, sleeves: 'short', bottom: 0xd8d8d8, legs: 'shorts', shoes: 0xf5f5f5, shades: true },
+    title: 'GALÁCTICO FREE KICK', fail: 'curled three free kicks at Ronnie. Ronnie ate the wall.',
+    banks: {
+      greet: ['¡Hola, Ronnie! Yes, I\'m from Essex. Yes, I support Real Madrid. Yes, it\'s a big nose. Next question.', 'Ronnie! I smelt you coming. I smelt the kebab before you, actually.'],
+      chatter: ['Hala Madrid, Ronnie. Fifteen Champions Leagues. You\'ve had fifteen breakfasts.', 'Everyone jokes about my nose. Fine. At least you can see my nose. Nobody\'s seen your neck since 2019.', 'My nose can smell a pasty from three postcodes away, Ron. Right now it\'s smelling YOU.', 'People say "why Real Madrid, you\'re from England?" Because I like winning, Ronnie. You should try it. Against a sandwich.', 'I don\'t need a snorkel on holiday. I\'ve got a nose. You don\'t need a lilo. You\'ve got a belly.', 'The Bernabéu holds eighty-odd thousand, Ron. Or about forty of you.'],
+      intervene: ['Galáctico free kick! Stand still, Ronnie, you\'re the wall!', 'Set piece, Ron! Curling one in. It\'s broccoli. It\'s for your health.'],
+      hit: ['Not the nose! Anything but the nose! There\'s a LOT of it to hurt!', 'Ow! I\'m just trying to help, Ronnie!'],
+      slap: ['You\'ve just slapped a Real Madrid fan. That\'s a diplomatic incident.'],
+      grabbed: ['Put me down! My nose is the heaviest part, I\'ll tip over!'],
+      launched: ['HALA MADRIIIIID—'],
+      vegThrow: ['Free kick! Top bins!', 'Curled it! Like Roberto Carlos!'],
     },
   },
 };
@@ -394,12 +431,12 @@ export class SquadMember extends Character {
     const r = this.rag;
     switch (this.id) {
       case 'lewis':   // double-bicep flex every so often
-        if (Math.sin(t * 0.5) > 0.6) { r.aim('uArmL', 1, 0.15, 0); r.aim('lArmL', 0.1, 1, 0.1); r.aim('uArmR', -1, 0.15, 0); r.aim('lArmR', -0.1, 1, 0.1); }
-        else { r.aim('uArmL', 0.45, -1, 0); r.aim('uArmR', -0.45, -1, 0); }   // lats spread
+        if ((t % 16) > 14) { r.aim('uArmL', 1, 0.15, 0); r.aim('lArmL', 0.1, 1, 0.1); r.aim('uArmR', -1, 0.15, 0); r.aim('lArmR', -0.1, 1, 0.1); }   // a quick double-bicep flex now and then
         break;
       case 'oliver':  // always filming
         r.aim('uArmR', -0.3, -0.4, 1); r.aim('lArmR', -0.1, 0.35, 1);
         break;
+      case 'connor':
       case 'aidan':   // pint at the ready
         r.aim('uArmR', -0.15, -1, 0.3); r.aim('lArmR', -0.05, 0.1, 1);
         break;
@@ -422,7 +459,7 @@ export class SquadMember extends Character {
   afterUpdate(dt, ctx) {
     if (this.prop) {
       const hand = this.rag.tip(this.id === 'lewis' ? 'lArmL' : 'lArmR', _v);
-      this.prop.visible = this.state !== 'act' || this.id !== 'aidan' || !this.pintGiven;
+      this.prop.visible = this.state !== 'act' || (this.id !== 'aidan' && this.id !== 'connor') || !this.pintGiven;
       this.prop.position.copy(hand);
       if (this.def.look.prop === 'phone') {      // screen faces Ronnie
         this.prop.lookAt(ctx.head); this.prop.rotateY(Math.PI);
@@ -448,6 +485,8 @@ export class SquadMember extends Character {
       noah: () => {},
       oliver: () => { this.filming = 20; this.followers = 1000; },
       dylan: () => { this.hideInBin(); },
+      connor: () => { this.goToStation(); this.pintGiven = false; },
+      ethan: () => { this.passes = 3; },
     })[this.id]();
     return true;
   }
@@ -474,17 +513,19 @@ export class SquadMember extends Character {
         if (this.salads <= 0 && this.stateT > 1.2) { g.nameNextFood(this); this.say('name', 4); done(); }
         break;
       case 'lewis':     // walks to the snack station and swaps the cans for protein shakes
+      case 'connor':    // ...or buys a round of stout
       case 'aidan': {   // ...or puts a pint down to settle
         _v2.set(this.stationX - this.pos.x, 0, this.stationZ - this.pos.z);
         const d = _v2.length();
         if (this.phase === 0) {
-          if (d > 0.2 && this.stateT < 6) { this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 6); r.moveVel.copy(_v2.normalize()).multiplyScalar(0.8); this.walkPose(this.t); }
+          if (d > 0.2 && this.stateT < 6) { this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 6); r.moveVel.copy(_v2.normalize()).multiplyScalar(0.8); this.walkPose(dt, 0.8); }
           else { this.phase = 1; this.stateT = 0; }
         } else if (this.phase === 1) {
           this.turnTo(Math.atan2(this.room.spawns[0].x - this.pos.x, this.room.spawns[0].z - this.pos.z), dt, 6);
           r.aim('uArmR', -0.2, -0.3, 1); r.aim('lArmR', 0, -0.4, 1);
           if (this.stateT > 0.7) {
             if (this.id === 'lewis') { g.placeOnStation('shake', this); g.placeOnStation('shake', this); this.say('Shakes on the table, bro. Gains only.', 4); }
+            else if (this.id === 'connor') { this.pintGiven = true; g.placeOnStation('pint', this); g.placeOnStation('pint', this); this.say('settle', 4); }
             else { this.pintGiven = true; g.placeOnStation('pint', this); this.say('settle', 4); }
             this.phase = 2; this.stateT = 0;
           }
@@ -494,6 +535,11 @@ export class SquadMember extends Character {
         }
         break;
       }
+      case 'ethan':     // Galáctico free kicks: curling veg at Ronnie's face
+        this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 5);
+        if (this.stateT > 1.4 && this.passes > 0) { this.passes--; this.stateT = 0.2; this.throwNow(ctx, { item: ['broccoli', 'sprout', 'carrot'][this.passes % 3], speed: 4.2, spread: 0.12 }); }
+        if (this.passes <= 0 && this.stateT > 1.4) done();
+        break;
       case 'harry':     // "throws it away" — straight at Ronnie's mouth
         this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 5);
         if (this.stateT > 1.6 && this.passes > 0) { this.passes--; this.stateT = 0.3; this.throwNow(ctx, { item: ['doughnut', 'burger', 'pizza'][this.passes % 3], speed: 3.2, food: true }); }
@@ -505,7 +551,7 @@ export class SquadMember extends Character {
         this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 8);
         if (this.stateT < 0.8) { r.aim('uArmL', 0.3, -0.3, 1); r.aim('uArmR', -0.3, -0.3, 1); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), 0.5); break; }   // crouch, bind...
         r.moveVel.copy(_v2.normalize()).multiplyScalar(3.0);
-        this.walkPose(this.t, 2.2);
+        this.walkPose(dt, 3.0);
         r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), 0.45);
         if (d < 0.55) {
           g.tackled(this);
@@ -523,7 +569,6 @@ export class SquadMember extends Character {
         break;
       case 'dylan':     // hidden in the bin... then LEAPS
         if (this.phase === 0) {
-          r.strength = 1; r.support = 1;
           r.aim('uLegL', 0, 0.2, 1); r.aim('uLegR', 0, 0.2, 1);
           if (this.stateT > 2.5) {
             this.phase = 1; this.stateT = 0;
@@ -531,11 +576,10 @@ export class SquadMember extends Character {
             this.say('RONNIEEEEEEE!', 5);
             const target = ctx.handPos ? ctx.handPos() : ctx.head;
             const vel = ballistic(this.pos.clone(), target, 4, this.room.bounds.y1);
-            this.rag.strength = 0.2;
+            this.rag.setMode('ragdoll', 0.2);
             for (const p of this.rag.list) { p.body.velocity.set(vel.x, vel.y, vel.z); }
           }
         } else {
-          this.rag.strength = 0.2; this.rag.support = 0;
           this.flailPose(this.t);
           const near = ctx.attachPoint && ctx.attachPoint(this);
           if (near) { this.cling(near); }
@@ -585,7 +629,6 @@ export class SquadMember extends Character {
   hideInBin() {
     const b = this.room.blockers.find(b => b.y1 && b.y1 < 0.5 && b.x1 - b.x0 < 0.5) || { x0: -0.25, x1: 0.15, z0: -2.25, z1: -1.8 };
     const x = (b.x0 + b.x1) / 2, z = Math.max(b.z0, b.z1) + 0.25;
-    this.rag.strength = 1;
     this.rag.placeAt(x, z, 0);
   }
 
@@ -610,7 +653,7 @@ export class SquadMember extends Character {
     if (this.clingJoint) { this.physics.world.removeConstraint(this.clingJoint); this.clingJoint = null; }
     this.game.clinging(this, false);
     if (flung) { this.rag.shove(0, 2, 0); this.knockOut('shaken'); this.onEvent && this.onEvent('acted', this); }
-    else { this.state = 'ko'; this.stateT = 1.5; this.rag.strength = 0; this.onEvent && this.onEvent('acted', this); }
+    else { this.state = 'ko'; this.stateT = 1.5; this.rag.setMode('ragdoll', 0); this.onEvent && this.onEvent('acted', this); }
   }
 }
 

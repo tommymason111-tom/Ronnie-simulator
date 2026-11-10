@@ -69,6 +69,20 @@ export class Character {
     this.onEvent = null;        // (name, data) => void
     this.active = true;         // false = standing aside (doesn't wander or attack)
     this.setIdlePose(0);
+    // keep animated characters inside the room and out of the furniture
+    this.rag.constrain = (root) => {
+      const b = this.room.bounds, m = 0.3;
+      root.x = THREE.MathUtils.clamp(root.x, b.x0 + m, b.x1 - m);
+      root.z = THREE.MathUtils.clamp(root.z, b.z0 + m, b.z1 - m);
+      for (const k of this.room.blockers) {
+        const p = 0.22;
+        if (root.x > k.x0 - p && root.x < k.x1 + p && root.z > k.z0 - p && root.z < k.z1 + p) {
+          const dl = root.x - (k.x0 - p), dr = (k.x1 + p) - root.x, dn = root.z - (k.z0 - p), df = (k.z1 + p) - root.z;
+          const mn = Math.min(dl, dr, dn, df);
+          if (mn === dl) root.x = k.x0 - p; else if (mn === dr) root.x = k.x1 + p; else if (mn === dn) root.z = k.z0 - p; else root.z = k.z1 + p;
+        }
+      }
+    };
     const sp = cfg.spawn || [room.tommySpots[0].x, room.tommySpots[0].y, 0];
     this.rag.placeAt(sp[0], sp[1], sp[2] || 0);
   }
@@ -127,11 +141,11 @@ export class Character {
   partAt(pos, r) { return this.rag.nearestPart(pos, r); }
 
   hitBy(part, point, impulse, isVeg = false) {
-    this.rag.hit(part, point, impulse);
     const mag = impulse.length();
-    if (this.state === 'grabbed') return 'wobble';
+    if (this.rag.mode === 'ragdoll') { this.rag.hit(part, point, impulse); return 'wobble'; }
     const ko = KO_IMPULSE * this.koMul;
-    if (mag >= ko || part.name === 'head' && mag >= ko * 0.6) { this.knockOut(isVeg ? 'vegHit' : 'hit'); return 'ko'; }
+    if (mag >= ko || part.name === 'head' && mag >= ko * 0.6) { this.knockOut(isVeg ? 'vegHit' : 'hit'); this.rag.hit(part, point, impulse); return 'ko'; }
+    this.flinch(impulse, part.name === 'head' ? 1 : 0.6);
     if (!this.down && this.speakT <= 0.5 && Math.random() < 0.5) this.say(isVeg && this.banks.vegHit ? 'vegHit' : 'hit');
     return 'wobble';
   }
@@ -141,9 +155,10 @@ export class Character {
     this.slapCool = 0.35;
     const speed = handVel.length();
     _v2.copy(handVel).multiplyScalar(2.2); _v2.y += speed * 0.4;
-    this.rag.hit(part, point, _v2);
-    if (this.state === 'clinging') { this.letGo(true); return 'ko'; }
-    if (speed > 3.2 * this.koMul && !this.down) { this.knockOut('slap'); return 'ko'; }
+    if (this.state === 'clinging') { this.rag.hit(part, point, _v2); this.letGo(true); return 'ko'; }
+    if (this.rag.mode === 'ragdoll') { this.rag.hit(part, point, _v2); return 'slap'; }
+    if (speed > 3.2 * this.koMul && !this.down) { this.knockOut('slap'); this.rag.hit(part, point, _v2); return 'ko'; }
+    this.flinch(_v2, part.name === 'head' ? 1 : 0.7);
     if (!this.down && speed > 1.5 && this.speakT <= 0.5) this.say(this.banks.slap ? 'slap' : 'hit', 4);
     return 'slap';
   }
@@ -154,7 +169,7 @@ export class Character {
     this.dropHeld();
     this.cancelAction && this.cancelAction();
     this.state = 'ko'; this.stateT = 0;
-    this.rag.strength = 0;
+    this.rag.setMode('ragdoll', 0);
     this.rag.moveVel.set(0, 0, 0);
     this.pendingLine = line;
     this.bubble.visible = false; this.speakT = 0;
@@ -169,6 +184,7 @@ export class Character {
       this.dropHeld();
       this.cancelAction && this.cancelAction();
       this.state = 'grabbed'; this.stateT = 0;
+      this.rag.setMode('ragdoll', 0.25);
       this.rag.moveVel.set(0, 0, 0);
       this.say('grabbed', 5);
     }
@@ -178,7 +194,7 @@ export class Character {
     if (this.grabbedBy > 0 || this.state !== 'grabbed') return;
     const sp = this.rag.speed();
     this.state = 'ko'; this.stateT = sp > 3 ? 0 : 1.2;
-    this.rag.strength = 0;
+    this.rag.setMode('ragdoll', 0);
     this.pendingLine = 'hit';
     if (sp > 5) this.say(this.banks.launched ? 'launched' : 'WORTH IIIIIIT!', 6);
     this.hits++;
@@ -187,14 +203,36 @@ export class Character {
 
   dropHeld() { if (this.heldItem) this.heldItem.visible = false; }
 
+  // A light hit: an animated recoil away from the hit (no ragdoll)
+  flinch(dir, amount = 0.7) {
+    _v.copy(dir); _v.y = 0;
+    if (_v.lengthSq() < 1e-6) _v.set(0, 0, -1);
+    _v.normalize().applyAxisAngle(_v2.set(0, 1, 0), -this.rag.yaw);     // into their own frame
+    this.flinchDir = { x: _v.x, z: _v.z, amount, t: 0 };
+  }
+  applyFlinch(dt) {
+    const f = this.flinchDir;
+    if (!f) return;
+    f.t += dt;
+    const k = f.t < 0.12 ? f.t / 0.12 : Math.max(0, 1 - (f.t - 0.12) / 0.45);
+    if (k <= 0 && f.t > 0.2) { this.flinchDir = null; return; }
+    const a = 0.35 * f.amount * k;
+    // lean away from the hit: rotate about the axis perpendicular to it
+    _q.setFromAxisAngle(_v.set(f.z, 0, -f.x).normalize(), a);
+    this.rag.pose.chest.premultiply(_q);
+    this.rag.pose.head.premultiply(_q).premultiply(_q);
+    this.rag.root.x += f.x * 0.25 * dt * k * 6; this.rag.root.z += f.z * 0.25 * dt * k * 6;   // step back a touch
+  }
+
   // ---------------- poses (target directions in their own frame, +Z = forward) ----------------
   setIdlePose(t) {
-    const r = this.rag, sway = Math.sin(t * 1.3) * 0.05;
-    r.aim('uArmL', 0.12, -1, 0.02 + sway); r.aim('lArmL', 0.08, -1, 0.18);
-    r.aim('uArmR', -0.12, -1, 0.02 - sway); r.aim('lArmR', -0.08, -1, 0.18);
-    r.aim('uLegL', 0.02, -1, 0); r.aim('lLegL', 0.0, -1, 0.02);
-    r.aim('uLegR', -0.02, -1, 0); r.aim('lLegR', 0.0, -1, 0.02);
-    r.pose.pelvis.identity(); r.pose.chest.identity();
+    const r = this.rag, breathe = Math.sin(t * 1.6) * 0.012, sway = Math.sin(t * 0.7) * 0.02;
+    r.aim('uArmL', 0.1, -1, 0.0 + sway); r.aim('lArmL', 0.05, -1, 0.14);
+    r.aim('uArmR', -0.1, -1, 0.0 - sway); r.aim('lArmR', -0.05, -1, 0.14);
+    r.aim('uLegL', 0.015, -1, 0); r.aim('lLegL', 0.0, -1, 0.02);
+    r.aim('uLegR', -0.015, -1, 0); r.aim('lLegR', 0.0, -1, 0.02);
+    r.pose.pelvis.identity(); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), breathe);
+    r.bob = 0;
   }
   // each character can override this for their own idle (flexing, filming, holding a pint...)
   personalityPose(t) {}
@@ -202,13 +240,19 @@ export class Character {
     const g = Math.sin(t * 5);
     this.rag.aim('uArmL', 0.55, -0.55, 0.45); this.rag.aim('lArmL', 0.2, 0.15 + g * 0.25, 1);
   }
-  walkPose(t, speed = 1) {
-    const r = this.rag, s = Math.sin(t * 8 * speed);
-    r.aim('uLegL', 0.02, -1, 0.5 * s); r.aim('lLegL', 0, -1, 0.5 * s - 0.25 * Math.max(0, -s));
-    r.aim('uLegR', -0.02, -1, -0.5 * s); r.aim('lLegR', 0, -1, -0.5 * s - 0.25 * Math.max(0, s));
-    r.aim('uArmL', 0.15, -1, -0.45 * s); r.aim('lArmL', 0.1, -1, 0.1 - 0.3 * s);
-    r.aim('uArmR', -0.15, -1, 0.45 * s); r.aim('lArmR', -0.1, -1, 0.1 + 0.3 * s);
-    r.pose.chest.setFromAxisAngle(_v.set(0, 1, 0), s * 0.12);
+  // phase advances with distance walked, so feet don't slide
+  walkPose(dt, speed = 0.9) {
+    const r = this.rag, legLen = r.height * 0.5, A = 0.38;
+    this.walkPhase = (this.walkPhase || 0) + dt * speed * Math.PI / (2 * legLen * Math.sin(A));
+    const ph = this.walkPhase, s = Math.sin(ph), c = Math.cos(ph);
+    const kneeL = Math.max(0, -c) * 0.55, kneeR = Math.max(0, c) * 0.55;   // swing leg bends its knee
+    r.aim('uLegL', 0.015, -1, Math.tan(A * s)); r.aim('lLegL', 0, -1, Math.tan(A * s) - kneeL);
+    r.aim('uLegR', -0.015, -1, -Math.tan(A * s)); r.aim('lLegR', 0, -1, -Math.tan(A * s) - kneeR);
+    r.aim('uArmL', 0.1, -1, -0.35 * s); r.aim('lArmL', 0.05, -1, 0.2 - 0.25 * s);
+    r.aim('uArmR', -0.1, -1, 0.35 * s); r.aim('lArmR', -0.05, -1, 0.2 + 0.25 * s);
+    r.pose.chest.setFromAxisAngle(_v.set(0, 1, 0), s * 0.08);
+    r.pose.pelvis.setFromAxisAngle(_v.set(0, 1, 0), -s * 0.06);
+    r.bob = -Math.abs(s) * 0.025 * r.height / 1.68 + 0.01;
   }
   flailPose(t) {
     const r = this.rag;
@@ -242,7 +286,6 @@ export class Character {
     const toPlayerYaw = Math.atan2(_v.x, _v.z);
     this.distToPlayer = _v.length();
     r.moveVel.set(0, 0, 0);
-    r.support = 1;
 
     switch (this.state) {
       case 'enter':
@@ -270,7 +313,7 @@ export class Character {
         this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 6);
         const sp = this.walkSpeed || 0.9;
         r.moveVel.copy(_v2.normalize()).multiplyScalar(Math.min(sp, d * 2.5));
-        this.walkPose(this.t, sp / 0.9);
+        this.walkPose(dt, r.moveVel.length());
         break;
       }
       case 'windup':
@@ -290,35 +333,38 @@ export class Character {
         this.actUpdate && this.actUpdate(dt, ctx);
         break;
       case 'clinging':               // hanging off Ronnie (Dylan)
-        r.strength = 0.25; r.support = 0;
+        r.setMode('ragdoll', 0.25);
         this.flailPose(this.t);
         this.clingUpdate && this.clingUpdate(dt, ctx);
         break;
-      case 'ko':
-        r.strength = 0;
-        if (this.stateT > (this.cfg.koTime || 2.2)) { this.state = 'recover'; this.stateT = 0; this.setIdlePose(this.t); this.yawFromBody(); }
+      case 'ko':                     // a proper limp ragdoll
+        if (this.stateT > (this.cfg.koTime || 2.2)) { this.state = 'recover'; this.stateT = 0; this.setIdlePose(this.t); r.pose.head.identity(); r.getUp(0.9); }
         break;
-      case 'recover': {
+      case 'recover':                // blend from where they landed back to standing
         this.setIdlePose(this.t);
-        r.strength = Math.min(1, this.stateT / 0.8);
-        if (this.stateT > 0.9 && r.upright() > 0.9) {
-          this.state = 'idle'; this.stateT = 0; r.strength = 1;
+        if (r.mode === 'anim') {
+          this.state = 'idle'; this.stateT = 0;
           if (this.pendingLine) { this.say(this.pendingLine, 4); this.pendingLine = null; }
           this.onEvent && this.onEvent('up', this);
         }
-        if (this.stateT > 4) { r.strength = 1; this.state = 'idle'; }
         break;
-      }
       case 'grabbed':
-        r.strength = 0.35; r.support = 0;
         this.flailPose(this.t);
         break;
     }
 
-    // head looks at the player (within reason)
-    const rel = THREE.MathUtils.clamp(wrapAngle(toPlayerYaw - r.yaw), -0.9, 0.9);
-    if (!this.down) r.pose.head.setFromAxisAngle(_v.set(0, 1, 0), rel);
-
+    // head turns smoothly to look at the player (within reason)
+    if (!this.down) {
+      const rel = THREE.MathUtils.clamp(wrapAngle(toPlayerYaw - r.yaw), -0.8, 0.8);
+      this.headYaw = (this.headYaw || 0) + (rel - (this.headYaw || 0)) * Math.min(1, dt * 5);
+      r.pose.head.setFromAxisAngle(_v.set(0, 1, 0), this.headYaw);
+      this.applyFlinch(dt);
+    }
+    // animated characters walk by moving their feet (root); ragdolls are left to physics
+    if (r.mode !== 'ragdoll') {
+      r.root.x += r.moveVel.x * dt; r.root.z += r.moveVel.z * dt;
+      r.animate(dt);
+    }
     r.sync();
     this.afterUpdate && this.afterUpdate(dt, ctx);
 

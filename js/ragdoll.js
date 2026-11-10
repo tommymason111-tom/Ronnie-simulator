@@ -1,13 +1,15 @@
 // Character ragdoll: 11 rigid bodies (pelvis, chest, head, upper/lower arms,
 // upper/lower legs) with realistic joints.
 //
-// Standing / walking: strong "muscles" hold the body firmly in its animated
-// pose (no wobble) and a balance controller keeps it upright, so the character
-// looks animated but is still a real physics body you can shove.
-// Knocked out: muscles switch off and it is a normal limp ragdoll — elbows and
+// Standing / walking ('anim' mode): the bodies are kinematic and follow an
+// animated pose exactly (forward kinematics), so characters look and move like
+// normal people — no wobble, no flop.
+// Knocked out / grabbed ('ragdoll' mode): the bodies go dynamic and it is a
+// normal limp ragdoll — elbows and
 // knees are hinges that only bend the right way, every joint has swing and
 // twist limits, and joint friction + damping make it drop like a heavy body
-// instead of rippling like jelly. Then the muscles come back and it gets up.
+// instead of rippling like jelly. Getting up ('blend' mode) smoothly blends from
+// wherever the body landed back into the animated pose.
 //
 // The visual model can be Tommy's scanned mesh (auto-skinned to one bone per
 // body) or a procedural character built from shapes (see squad.js).
@@ -90,8 +92,13 @@ export class Ragdoll {
     this.height = bodyOpts.h || 1.68;
     this.parts = {};
     this.list = [];
-    this.strength = 1;          // 0 = limp, 1 = full muscle
-    this.support = 1;           // 0..1 how much the invisible lift holds him up
+    this.mode = 'anim';         // 'anim' | 'ragdoll' | 'blend'
+    this.strength = 0;          // ragdoll mode only: 0 = limp, >0 = weak flailing muscles (when held)
+    this.root = new THREE.Vector3();      // feet position (anim mode)
+    this.bob = 0;               // extra hip height (walk bob)
+    this.constrain = null;      // (root) => keeps the root out of walls / furniture
+    this._fk = this.defs.map(() => ({ p: new THREE.Vector3(), q: new THREE.Quaternion() }));
+    this._from = this.defs.map(() => ({ p: new THREE.Vector3(), q: new THREE.Quaternion() }));
     this.yaw = 0;
     this.moveVel = new THREE.Vector3();   // desired walking velocity (world)
     this.standHeight = 0.9 * this.height / 1.68;
@@ -137,6 +144,7 @@ export class Ragdoll {
       body.position.set(d.center.x, d.center.y, d.center.z);
       body.part = d.name;
       body.ragdoll = this;
+      body.type = CANNON.Body.KINEMATIC;
       this.world.addBody(body);
       const p = { def: d, body, name: d.name, radius: d.sphere || Math.max(...d.half) };
       this.parts[d.name] = p; this.list.push(p);
@@ -181,7 +189,7 @@ export class Ragdoll {
 
   // Joint limits (hinge range, twist) + joint friction. Runs every substep, muscles or not.
   limits() {
-    const limp = this.strength < 0.5;
+    const limp = true;
     for (const j of this.joints) {
       const qa = j.A.quaternion, qb = j.B.quaternion;
       _q.set(qa.x, qa.y, qa.z, qa.w).invert();
@@ -363,27 +371,84 @@ export class Ragdoll {
     this.sync();
   }
 
-  // Put every body into the target pose at a given position/yaw (used for spawning).
-  placeAt(x, z, yaw) {
-    this.yaw = yaw; this.yawQ.setFromAxisAngle(Y_AXIS, yaw);
-    const base = new THREE.Vector3(x, 0.02, z);
-    const worldQ = {}, worldP = {};
-    for (const d of this.defs) {     // parents always come first in defs
-      const q = new THREE.Quaternion().copy(this.yawQ).multiply(this.pose[d.name]);
-      worldQ[d.name] = q;
-      let joint;
-      if (!d.parent) joint = d.a.clone().applyQuaternion(this.yawQ).add(base);
+  // Forward kinematics: world transform of every part for the current pose,
+  // root (feet) position and yaw.
+  computeFK(out) {
+    this.yawQ.setFromAxisAngle(Y_AXIS, this.yaw);
+    const base = _v2.set(this.root.x, 0.02 + this.bob, this.root.z);
+    this.defs.forEach((d, i) => {     // parents always come first in defs
+      const o = out[i];
+      o.q.copy(this.yawQ).multiply(this.pose[d.name]);
+      if (!d.parent) _v.copy(d.a).applyQuaternion(this.yawQ).add(base);
       else {
-        const pd = this.parts[d.parent].def;
-        joint = d.a.clone().sub(pd.center).applyQuaternion(worldQ[d.parent]).add(worldP[d.parent]);
+        const pi = this.defs.indexOf(this.parts[d.parent].def), pd = this.defs[pi];
+        _v.copy(d.a).sub(pd.center).applyQuaternion(out[pi].q).add(out[pi].p);
       }
-      worldP[d.name] = d.center.clone().sub(d.a).applyQuaternion(q).add(joint);
-      const b = this.parts[d.name].body;
-      b.position.set(worldP[d.name].x, worldP[d.name].y, worldP[d.name].z);
-      b.quaternion.set(q.x, q.y, q.z, q.w);
-      b.velocity.setZero(); b.angularVelocity.setZero();
+      o.p.copy(d.center).sub(d.a).applyQuaternion(o.q).add(_v);
+    });
+    return out;
+  }
+
+  // Spawn / teleport: stand at (x, z) facing yaw, animated.
+  placeAt(x, z, yaw) {
+    this.yaw = yaw; this.root.set(x, 0, z);
+    this.setMode('anim');
+    this.animate(0);
+    for (const p of this.list) { p.body.velocity.setZero(); p.body.angularVelocity.setZero(); }
+  }
+
+  // Switch between animated (kinematic) and ragdoll (dynamic) bodies.
+  setMode(mode, strength = 0) {
+    this.strength = mode === 'ragdoll' ? strength : 0;
+    if (mode === this.mode) return;
+    const dyn = mode === 'ragdoll';
+    for (const p of this.list) {
+      const b = p.body;
+      b.type = dyn ? CANNON.Body.DYNAMIC : CANNON.Body.KINEMATIC;
+      if (!dyn) { b.velocity.setZero(); b.angularVelocity.setZero(); }
+      b.updateSolveMassProperties(); b.wakeUp();
     }
-    this.sync();
+    if (mode === 'blend') {
+      this.list.forEach((p, i) => { const b = p.body; this._from[i].p.set(b.position.x, b.position.y, b.position.z); this._from[i].q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w); });
+      this.blendT = 0;
+    }
+    this.mode = mode;
+  }
+
+  // Start getting up: stand where the hips landed, facing where the body faces.
+  getUp(duration = 0.9) {
+    const pel = this.parts.pelvis.body;
+    this.root.set(pel.position.x, 0, pel.position.z);
+    if (this.constrain) this.constrain(this.root);
+    const q = pel.quaternion; _q.set(q.x, q.y, q.z, q.w);
+    _v.set(0, 0, 1).applyQuaternion(_q);
+    if (Math.hypot(_v.x, _v.z) > 0.2) this.yaw = Math.atan2(_v.x, _v.z);
+    else { _v.set(0, 1, 0).applyQuaternion(_q); this.yaw = Math.atan2(-_v.x, -_v.z); }   // lying flat: face away from where the head points
+    this.blendDur = duration;
+    this.setMode('blend');
+  }
+
+  // Drive the bodies from the animation (anim / blend modes). Call once per frame.
+  animate(dt) {
+    if (this.mode === 'ragdoll') return;
+    if (this.constrain) this.constrain(this.root);
+    const fk = this.computeFK(this._fk);
+    let k = 1;
+    if (this.mode === 'blend') {
+      this.blendT += dt;
+      const t = Math.min(1, this.blendT / this.blendDur);
+      k = t * t * (3 - 2 * t);
+    }
+    this.list.forEach((p, i) => {
+      const b = p.body;
+      let P = fk[i].p, Q = fk[i].q;
+      if (k < 1) { P = _v.copy(this._from[i].p).lerp(fk[i].p, k); Q = _q.copy(this._from[i].q).slerp(fk[i].q, k); }
+      if (dt > 0) b.velocity.set((P.x - b.position.x) / dt, (P.y - b.position.y) / dt, (P.z - b.position.z) / dt);
+      b.position.set(P.x, P.y, P.z);
+      b.quaternion.set(Q.x, Q.y, Q.z, Q.w);
+      b.angularVelocity.setZero();
+    });
+    if (this.mode === 'blend' && k >= 1) this.setMode('anim');
   }
 
   // Helper: target local rotation that points a limb (bind direction) along dir.
@@ -393,45 +458,26 @@ export class Ragdoll {
     this.pose[name].setFromUnitVectors(d.dir, _v);
   }
 
-  // ---- muscles + balance, applied every physics substep ----
+  // ---- ragdoll mode: joint limits every substep, plus weak flailing muscles when held ----
   control() {
-    const s = this.strength;
+    if (this.mode !== 'ragdoll') return;
     this.yawQ.setFromAxisAngle(Y_AXIS, this.yaw);
     this.limits();
+    const s = this.strength;
     if (s <= 0.001) return;
     for (const p of this.list) {
       const b = p.body;
       if (p.grabbed) continue;
-      // orientation error -> angular velocity steering (stable PD in velocity space)
       _q.copy(this.yawQ).multiply(this.pose[p.name]);
       _q2.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w).invert();
       _q.multiply(_q2);
       if (_q.w < 0) { _q.x = -_q.x; _q.y = -_q.y; _q.z = -_q.z; _q.w = -_q.w; }
       const sinHalf = Math.sqrt(_q.x * _q.x + _q.y * _q.y + _q.z * _q.z);
       const ang = 2 * Math.atan2(sinHalf, _q.w);
-      const gain = 18, k = (p.name === 'chest' || p.name === 'pelvis' ? 0.6 : p.name === 'head' ? 0.5 : 0.45) * s;   // firm muscles: animated, not wobbly
       let tx = 0, ty = 0, tz = 0;
-      if (sinHalf > 1e-5) { const f = ang * gain / sinHalf; tx = _q.x * f; ty = _q.y * f; tz = _q.z * f; }
-      const w = b.angularVelocity;
+      if (sinHalf > 1e-5) { const f = ang * 12 / sinHalf; tx = _q.x * f; ty = _q.y * f; tz = _q.z * f; }
+      const w = b.angularVelocity, k = 0.3 * s;
       w.x += (tx - w.x) * k; w.y += (ty - w.y) * k; w.z += (tz - w.z) * k;
-    }
-    // invisible lift + walking for the hips, chest kept stacked over them
-    const sup = s * this.support;
-    if (sup > 0.001) {
-      // cancel gravity on the upper body (the "puppet strings"); legs stay a bit heavy
-      const g = 9.81 * this.physics.STEP * sup;
-      for (const p of this.list) { if (!p.grabbed) p.body.velocity.y += g * (p.name.startsWith('lLeg') ? 0.3 : p.name.startsWith('uLeg') ? 0.8 : 1); }
-      const pel = this.parts.pelvis.body, ch = this.parts.chest.body, hd = this.parts.head.body;
-      const vy = (this.standHeight - pel.position.y) * 9;
-      pel.velocity.y += (vy - pel.velocity.y) * 0.35 * sup;
-      pel.velocity.x += (this.moveVel.x - pel.velocity.x) * 0.25 * sup;
-      pel.velocity.z += (this.moveVel.z - pel.velocity.z) * 0.25 * sup;
-      const up = this.chestUp;
-      const cx = pel.position.x, cy = pel.position.y + up, cz = pel.position.z;
-      ch.velocity.x += ((cx - ch.position.x) * 10 + pel.velocity.x - ch.velocity.x) * 0.25 * sup;
-      ch.velocity.y += ((cy - ch.position.y) * 10 + pel.velocity.y - ch.velocity.y) * 0.25 * sup;
-      ch.velocity.z += ((cz - ch.position.z) * 10 + pel.velocity.z - ch.velocity.z) * 0.25 * sup;
-      hd.velocity.y += ((ch.position.y + this.headUp - hd.position.y) * 8 - hd.velocity.y) * 0.15 * sup;
     }
   }
 
@@ -469,6 +515,7 @@ export class Ragdoll {
   }
 
   hit(part, point, impulse) {
+    if (this.mode !== 'ragdoll') return;
     const b = part.body;
     _cv.set(impulse.x, impulse.y, impulse.z);
     _cv2.set(point.x - b.position.x, point.y - b.position.y, point.z - b.position.z);

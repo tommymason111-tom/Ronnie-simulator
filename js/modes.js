@@ -22,7 +22,7 @@ export const MODES = {
   chonkoff2:    { name: 'CHONK-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
 };
 const BOARD_ORDER = ['classic', 'intervention', 'veggie', 'catch', 'chonkoff', 'chonkoff2'];
-const VEG_OF = { tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', };
+const VEG_OF = { connor: 'sprout', ethan: 'broccoli', tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', };
 const _v = new THREE.Vector3();
 
 export class Director {
@@ -60,7 +60,7 @@ export class Director {
     tommy.active = true;
     let squad = [];
     if (id === 'intervention') squad = shuffle(Object.keys(SQUAD)).slice(0, 4);
-    else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver']).slice(0, 3);
+    else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan']).slice(0, 3);
     else if (id === 'catch') squad = ['harry'];
     else if (id === 'classic') squad = [];
     else squad = [];

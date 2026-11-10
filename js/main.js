@@ -427,7 +427,7 @@ function resetRonnie() {
   G.scaleFrom = player.scale; G.scaleTo = 1; G.scaleT = player.scale === 1 ? 1 : 0;
   player.setBelly(STAGES[0].belly); setPitchScale(1); stopLocoMusic(); room.hemi.color.set(0xc9d6ff);
   for (const it of items.items.slice()) if (it.temp || it.incoming || it.empty || it.def.veg || it.def.stout || it.def.shake) items.remove(it);
-  tommy.state = 'idle'; tommy.rag.strength = 1; tommy.attackTimer = 12;
+  tommy.state = 'idle'; if (tommy.rag.mode !== 'anim') tommy.rag.placeAt(tommy.pos.x, tommy.pos.z, tommy.rag.yaw); tommy.attackTimer = 12;
   G.wristDirty = true;
 }
 const director = new Director({
