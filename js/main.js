@@ -8,7 +8,7 @@ import { Crumbs, Words, Tint } from './fx.js';
 import { Player } from './player.js';
 import { Tommy } from './tommy.js';
 import { STAGE_LINES } from './dialogue.js';
-import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic } from './audio.js';
+import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience } from './audio.js';
 import { FONT } from './textures.js';
 import { createPhysics } from './physics.js';
 import { setupTouch } from './touch.js';
@@ -60,6 +60,7 @@ const words = new Words(scene);
 const tint = new Tint(camera);
 
 // ---------------- game state ----------------
+setAmbience(SEL.place, () => player.head);   // starts as soon as sound is allowed (first tap)
 const G = {
   chonk: 0, stage: 0, eaten: 0, swats: 0,
   locoT: 0, stoutT: 0, gagT: 0, lastBite: -1, lastEatLine: -10, lastLand: 0,
@@ -213,11 +214,26 @@ function gag(veg) {
   setTimeout(() => (thrower && thrower !== tommy && thrower.banks.vegEaten ? thrower : tommy).say('vegEaten'), 600);
 }
 
+// How close the nearest bit of an item is to Ronnie's mouth (not its centre: a
+// pizza held by the crust has its middle a long way from the tip you bite).
+const _bc = new THREE.Vector3();
+function mouthGap(it) {
+  if (it.bsR === undefined) {
+    let m = null; it.obj.traverse(o => { if (!m && o.isMesh && o.geometry) m = o; });
+    const g = m && m.geometry; if (g && !g.boundingSphere) g.computeBoundingSphere();
+    it.bsC = g ? g.boundingSphere.center.clone() : new THREE.Vector3(); it.bsR = g ? g.boundingSphere.radius : it.radius;
+    if (it.type === 'can') { it.bsC.set(0, 0, 0); it.bsR = 0.08; }
+  }
+  it.obj.updateMatrixWorld(true);
+  _bc.copy(it.bsC).applyMatrix4(it.obj.matrixWorld);
+  return Math.max(0, _bc.distanceTo(player.mouth) - it.bsR * 0.8 * it.obj.scale.x);
+}
+
 function drinkUpdate(it, hand, dt) {
   if (it.empty) return;
   _a.set(0, 1, 0).applyQuaternion(it.obj.quaternion);
   const tilt = THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(_a.y, -1, 1)));
-  const near = it.pos.distanceTo(player.mouth) < (TUNING.mouthRadius + 0.06) * player.scale;
+  const near = mouthGap(it) < (TUNING.mouthRadius + 0.03) * player.scale;
   if (!near) return;
   if (!it.opened) { it.opened = true; sfx('psst', it.pos, 1); hand && hand.pulse(0.6, 120); }
   if (tilt < TUNING.chugTiltDeg) return;
@@ -545,7 +561,7 @@ renderer.setAnimationLoop(() => {
     const it = h.held;
     if (!it || it.dead) continue;
     if (it.def.drink) { drinkUpdate(it, h, dt); continue; }
-    if (it.pos.distanceTo(player.mouth) < TUNING.mouthRadius * player.scale + it.radius * 0.5) bite(it, h);
+    if (mouthGap(it) < TUNING.mouthRadius * player.scale) bite(it, h);
   }
 
   items.update(dt);

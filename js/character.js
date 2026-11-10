@@ -290,14 +290,14 @@ export class Character {
     switch (this.state) {
       case 'enter':
         this.setIdlePose(this.t); this.personalityPose(this.t);
-        this.turnTo(toPlayerYaw, dt, 2);
+        this.turnTo(this.faceYaw ?? toPlayerYaw, dt, 2);
         if (this.stateT > 1.0 + (this.cfg.enterDelay || 0)) { this.say('greet'); this.state = 'idle'; this.stateT = 0; }
         break;
       case 'idle':
         this.setIdlePose(this.t);
         this.personalityPose(this.t);
         if (this.speakT > 0 && !this.cfg.noTalkPose) this.talkPose(this.t);
-        this.turnTo(toPlayerYaw, dt, 3);
+        this.turnTo(this.faceYaw ?? toPlayerYaw, dt, 3);
         if (!this.active) break;
         this.nextMove -= dt;
         this.idleTick && this.idleTick(dt, ctx);

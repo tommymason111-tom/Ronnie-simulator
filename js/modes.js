@@ -10,7 +10,7 @@
 // (press a button with your hand, or tap it on a phone).
 import * as THREE from 'three';
 import { SquadMember, SQUAD } from './squad.js';
-import { DATE_TABLE } from './levels/restaurant.js';
+import { DATE_TABLE, DINER_TABLES } from './levels/restaurant.js';
 import { canvasTex, fitText, roundRect, FONT } from './textures.js';
 import { sfx } from './audio.js';
 import { pickVeg, pickJunk } from './config.js';
@@ -48,6 +48,24 @@ const STUNS = {
   dylan:  { top: 'DYLAN IS CLINGING TO YOUR HAND!', big: 'SHAKE HIM OFF!', sfx: 'boing' },
   alfie:  { top: 'ALFIE NUTMEGS YOU!', big: 'SPUN ROUND!', sfx: 'boing' },
 };
+const TABLE_TALK = [
+  'Don\'t look now, but Ronnie\'s on a DATE.',
+  'Is that Chloe with him? Fair play. Brave girl.',
+  'Ten quid says he eats off our table before the mains.',
+  'He\'s looking at the dessert trolley again. He\'s looking at it like it\'s the love of his life.',
+  'Should we say hello? No. No, let him have this.',
+  'What\'s everyone having? I\'m having whatever Ronnie doesn\'t get to first.',
+  'Did you see the bill last time he came here? They had to staple two receipts together.',
+  'He\'s smiling at Chloe. He\'s smiling at the bread. He\'s smiling at the bread more.',
+  'Shh! Chloe\'s looking over!',
+  'I give it four minutes before he\'s on our side of the room.',
+  'Pass the bread. Quick. Before you-know-who sees it.',
+  'This place is lovely. Shame about who they let in. Joking, Ron! JOKING.',
+  'Who\'s paying tonight? Not Ronnie. Ronnie\'s paying in instalments.',
+  'Look at him trying to use the small fork. Bless him.',
+  'Starters are tiny here. Ronnie\'s had nine.',
+  'If Chloe goes to the toilet, he\'s going for the trolley. Guaranteed.',
+];
 const DATING = [
   'So there was this girl from Basildon. Three dates. Turned out she was my cousin\'s ex. And my other cousin\'s ex.',
   'Matched with someone, she said "you look different in person". I said "so do you". We never spoke again.',
@@ -100,7 +118,7 @@ export class Director {
     const big = !!g.room.big, everyone = Object.keys(SQUAD);
     if (id === 'intervention') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 4);
     else if (id === 'everyone') squad = shuffle(everyone);
-    else if (id === 'date') squad = ['chloe'];
+    else if (id === 'date') squad = ['chloe', ...shuffle(everyone.filter(s => s !== 'chloe')).slice(0, 6 + Math.floor(Math.random() * 4))];   // the mates are out for dinner too
     else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan', 'ian', 'alfie']).slice(0, big ? 6 : 3);
     else if (id === 'catch') squad = ['harry'];
     else if (id === 'classic') squad = [];
@@ -365,8 +383,55 @@ export class Director {
     chloe.active = false; chloe.seated = true;
     chloe.rag.placeAt(DATE_TABLE.x, DATE_TABLE.z - 0.75, 0);
     setTimeout(() => chloe.say('Isn\'t this nice, babe? Just us. And no snacking. Promise?', 5), 1500);
+    this.seatDiners();
+  }
+  // Everyone else is out for dinner as well: random groups of 2-4 at random tables,
+  // sat down, chatting to each other (mostly about Ronnie being on a date).
+  seatDiners() {
+    const diners = shuffle(this.cast.filter(c => c.id !== 'chloe' && c !== this.g.tommy));
+    const tables = shuffle(DINER_TABLES.map((t, i) => i));
+    this.dinerGroups = [];
+    let ti = 0;
+    while (diners.length && ti < tables.length) {
+      const n = Math.min(diners.length, diners.length <= 4 ? diners.length : 2 + Math.floor(Math.random() * 2));
+      const [tx, tz] = DINER_TABLES[tables[ti++]];
+      const seats = shuffle([0, 1, 2, 3]).slice(0, n), group = [];
+      for (const si of seats) {
+        const c = diners.shift(), a = si / 4 * Math.PI * 2 + 0.4, yaw = a + Math.PI;
+        c.seat = { x: tx + Math.sin(a) * 0.85, z: tz + Math.cos(a) * 0.85, yaw };
+        c.active = false; c.seated = true; c.faceYaw = yaw; c.lookOverride = 0; c.state = 'idle'; c.quietT = 0;
+        c.rag.placeAt(c.seat.x, c.seat.z, yaw);
+        group.push(c);
+      }
+      this.dinerGroups.push(group);
+    }
+    this.chatT = 2;
+  }
+  updateDiners(dt) {
+    if (!this.dinerGroups) return;
+    for (const grp of this.dinerGroups) for (const c of grp) {
+      if (c.lookT > 0 && (c.lookT -= dt) <= 0) c.lookOverride = 0;
+      // knocked off their chair? back in it once they're up
+      if (c.state === 'idle' && c.rag.mode === 'anim' && Math.hypot(c.pos.x - c.seat.x, c.pos.z - c.seat.z) > 0.25) { c.seated = true; c.faceYaw = c.seat.yaw; c.rag.placeAt(c.seat.x, c.seat.z, c.seat.yaw); }
+    }
+    if ((this.chatT -= dt) > 0) return;
+    this.chatT = 2.5 + Math.random() * 3;
+    const grp = this.dinerGroups[Math.floor(Math.random() * this.dinerGroups.length)].filter(c => !c.down && c.speakT <= 0);
+    if (grp.length < 2) return;
+    const who = grp[Math.floor(Math.random() * grp.length)];
+    const own = who.def.banks.chatter || [];
+    const line = Math.random() < 0.55 ? TABLE_TALK[Math.floor(Math.random() * TABLE_TALK.length)] : own[Math.floor(Math.random() * own.length)];
+    if (!line) return;
+    who.say(line.replace(/Ronnie, |, Ronnie|, Ron\b/g, ''), 1);
+    // the others at the table turn their heads to the one talking
+    for (const o of grp) if (o !== who) {
+      const to = Math.atan2(who.pos.x - o.pos.x, who.pos.z - o.pos.z);
+      let rel = to - o.rag.yaw; rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+      o.lookOverride = Math.max(-0.8, Math.min(0.8, rel)); o.lookT = 4;
+    }
   }
   updateDate(dt, ctx) {
+    this.updateDiners(dt);
     const d = this.date, c = d.chloe, g = this.g;
     if (!c || c.down) return;
     d.t -= dt; d.grace -= dt; d.cool -= dt;

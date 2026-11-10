@@ -22,6 +22,20 @@ export function initAudio() {
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   if (ctx.state === 'suspended') ctx.resume();
+  unlockIOS();
+  startAmbience();
+}
+// iPhone/iPad: Web Audio is muted by the silent switch unless an <audio> element
+// is playing, so play a tiny silent loop alongside it.
+function unlockIOS() {
+  try {
+    const n = 800, b = new Uint8Array(44 + n); const v = new DataView(b.buffer);
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) b[o + i] = s.charCodeAt(i); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true); b.fill(128, 44);
+    let bin = ''; for (const x of b) bin += String.fromCharCode(x);
+    const a = new Audio('data:audio/wav;base64,' + btoa(bin)); a.loop = true; a.volume = 0.01; a.setAttribute('playsinline', ''); a.play().catch(() => {});
+  } catch (e) {}
 }
 
 export function setPitchScale(s) { pitchScale = s; }
@@ -199,6 +213,7 @@ const MELODY = [ // [semitones from D4, beats]
 export function startLocoMusic(seconds) {
   if (!ctx || ctx.state !== 'running') return;
   stopLocoMusic();
+  duckAmbience(true);
   musicGain.gain.cancelScheduledValues(ctx.currentTime);
   musicGain.gain.setValueAtTime(0.5, ctx.currentTime);
   const beat = 0.18;
@@ -224,7 +239,132 @@ export function stopLocoMusic() {
   if (musicTimer) clearTimeout(musicTimer);
   musicTimer = null;
   if (ctx && musicGain) {
+    duckAmbience(false);
     musicGain.gain.cancelScheduledValues(ctx.currentTime);
     musicGain.gain.setTargetAtTime(0, ctx.currentTime, 0.2);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Background sound for each place, all synthesised (no files):
+//   shop       — bland, cheerful supermarket muzak (electric piano, bass, hats)
+//                plus the odd "ding-dong" tannoy announcement
+//   restaurant — slow fine-dining piano waltz with soft strings, cutlery clinks
+//   pub        — quiet: a low murmur of voices, glasses clinking, the odd laugh
+// ---------------------------------------------------------------------------
+let ambKind = null, ambGain = null, ambTimer = null, ambNext = 0, ambBar = 0, ambListener = null, ambStarted = false, nextEvent = {};
+export function setAmbience(kind, listenerFn) { ambKind = kind; ambListener = listenerFn; startAmbience(); }
+function startAmbience() {
+  if (!ctx || ambStarted || !ambKind || !['shop', 'restaurant', 'pub'].includes(ambKind)) return;
+  ambStarted = true;
+  ambGain = ctx.createGain(); ambGain.gain.value = 0; ambGain.connect(master);
+  ambGain.gain.setTargetAtTime(1, ctx.currentTime + 0.2, 1.5);    // fade in
+  ambNext = ctx.currentTime + 0.3; ambBar = 0; nextEvent = { a: ctx.currentTime + 3, b: ctx.currentTime + 6, c: ctx.currentTime + 25 };
+  if (ambKind === 'pub') pubMurmur();
+  const tick = () => {
+    if (ctx.state === 'running') { while (ambNext < ctx.currentTime + 1.2) ambNext = BAR[ambKind](ambNext); events(); }
+    else ambNext = ctx.currentTime + 0.3;
+    ambTimer = setTimeout(tick, 300);
+  };
+  tick();
+}
+// quieter while the LOCO MODE tune plays
+function duckAmbience(on) { if (ambGain) ambGain.gain.setTargetAtTime(on ? 0.2 : 1, ctx.currentTime, 0.3); }
+
+const hz = (semi, base = 261.63) => base * Math.pow(2, semi / 12);
+function note(dest, t, type, f, dur, peak, attack = 0.01) { tone(dest, t, type, f, f, dur, peak, attack); }
+function randAround(r0, r1) {
+  const h = ambListener ? ambListener() : { x: 0, y: 1.6, z: 0 }, a = Math.random() * Math.PI * 2, r = r0 + Math.random() * (r1 - r0);
+  return { x: h.x + Math.cos(a) * r, y: 1.2 + Math.random() * 0.5, z: h.z + Math.sin(a) * r };
+}
+
+// one bar of music each call; returns when the next bar starts
+const SHOP_CHORDS = [[0, 4, 7, 11], [-3, 0, 4, 7], [-7, -3, 0, 4], [-5, -1, 2, 7]];   // Cmaj7 Am7 Fmaj7 G
+const PENTA = [0, 2, 4, 7, 9, 12, 14, 16];
+let melIdx = 3;
+const WALTZ = [[5, 9, 12], [2, 5, 9], [-2, 2, 5], [0, 4, 7, 10]];                     // F Dm Bb C7
+const BAR = {
+  shop(t) {
+    const beat = 0.54, ch = SHOP_CHORDS[ambBar++ % 4], d = ambGain;
+    for (const s of ch) { note(d, t, 'sine', hz(s), 1.0, 0.03, 0.02); note(d, t, 'triangle', hz(s + 12), 0.6, 0.008, 0.02); }
+    for (const s of ch.slice(1)) note(d, t + beat * 1.5, 'sine', hz(s), 0.7, 0.022, 0.02);
+    note(d, t, 'triangle', hz(ch[0] - 24), 0.45, 0.11); note(d, t + beat * 2, 'triangle', hz(ch[0] - 17), 0.45, 0.09);
+    for (let i = 0; i < 4; i++) noise(d, t + beat * (i + 0.5), 0.03, 'highpass', 7000, 0.7, 0.018, 0.002);
+    for (let i = 0; i < 8; i++) if (Math.random() < 0.45) {
+      melIdx = Math.max(0, Math.min(PENTA.length - 1, melIdx + Math.floor(Math.random() * 3) - 1));
+      note(d, t + i * beat / 2, 'sine', hz(PENTA[melIdx] + 12), 0.28, 0.035, 0.01);
+    }
+    return t + beat * 4;
+  },
+  restaurant(t) {
+    const beat = 0.68, ch = WALTZ[ambBar++ % 4], d = ambGain;
+    note(d, t, 'triangle', hz(ch[0] - 12), 1.3, 0.07, 0.005);                        // bass note on 1
+    for (const b of [1, 2]) for (const s of ch) note(d, t + beat * b, 'triangle', hz(s), 0.6, 0.02, 0.005);
+    for (const s of ch.slice(0, 3)) { const o = tone(d, t, 'sawtooth', hz(s), hz(s), beat * 3, 0.006, 0.5); }   // soft strings
+    const top = ch[(ambBar * 2) % ch.length] + 12;                                    // a slow tune over the top
+    note(d, t, 'sine', hz(top + 12), beat * 2, 0.03, 0.03);
+    if (Math.random() < 0.6) note(d, t + beat * 2, 'sine', hz(ch[(ambBar + 1) % ch.length] + 24), beat, 0.025, 0.03);
+    return t + beat * 3;
+  },
+  pub(t) { return t + 1; },
+};
+
+// little background events: tannoy chimes, cutlery, clinking glasses, laughter, chatter
+function events() {
+  const now = ctx.currentTime;
+  if (ambKind === 'shop' && now > nextEvent.c) {
+    nextEvent.c = now + 50 + Math.random() * 40;
+    note(ambGain, now + 0.05, 'sine', 784, 0.6, 0.12); note(ambGain, now + 0.45, 'sine', 622, 0.9, 0.12);      // ding-dong
+    setTimeout(() => announce(SHOP_ANNOUNCEMENTS[Math.floor(Math.random() * SHOP_ANNOUNCEMENTS.length)]), 1300);
+  }
+  if ((ambKind === 'restaurant' || ambKind === 'pub') && now > nextEvent.a) {
+    nextEvent.a = now + (ambKind === 'pub' ? 2.5 : 3.5) + Math.random() * 4;
+    const p = randAround(3, 7), d = out(p, ambKind === 'pub' ? 0.22 : 0.14);
+    tone(d, now + 0.02, 'triangle', 1700 + Math.random() * 600, 1650, 0.15, 0.25, 0.001);
+    if (Math.random() < 0.5) tone(d, now + 0.12, 'triangle', 1900 + Math.random() * 500, 1850, 0.12, 0.18, 0.001);
+  }
+  if (ambKind === 'pub' && now > nextEvent.b) {
+    nextEvent.b = now + 0.9 + Math.random() * 1.8;
+    if (Math.random() < 0.12) {        // someone laughs over by the bar
+      const d = out(randAround(4, 8), 0.12);
+      for (let i = 0; i < 4; i++) tone(d, now + i * 0.14, 'sine', 320 - i * 18, 280 - i * 18, 0.08, 0.5, 0.01);
+    } else babbleAt(randAround(3.5, 8), 0.07, 0.8 + Math.random() * 0.5);
+  }
+  if (ambKind === 'restaurant' && now > nextEvent.b) { nextEvent.b = now + 2 + Math.random() * 3; babbleAt(randAround(4, 8), 0.035, 0.9 + Math.random() * 0.4); }
+}
+function babbleAt(pos, vol, pitch) {
+  const d = out(pos, vol); let t = ctx.currentTime + 0.02;
+  for (let i = 0, n = 4 + Math.floor(Math.random() * 6); i < n; i++) {
+    const f = (130 + Math.random() * 70) * pitch;
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(f, t); o.frequency.linearRampToValueAtTime(f * (0.85 + Math.random() * 0.3), t + 0.09);
+    const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 700;
+    const g = ctx.createGain(); env(g, t, 0.015, 0.6, 0.08);
+    o.connect(flt); flt.connect(g); g.connect(d); o.start(t); o.stop(t + 0.15);
+    t += 0.09 + Math.random() * 0.07;
+  }
+}
+// a constant low hum of a busy pub, gently rising and falling
+function pubMurmur() {
+  for (const [freq, vol, rate] of [[320, 0.05, 0.13], [800, 0.02, 0.21]]) {
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true; src.playbackRate.value = 0.6;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 0.9;
+    const g = ctx.createGain(); g.gain.value = vol;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = rate; const lg = ctx.createGain(); lg.gain.value = vol * 0.5; lfo.connect(lg); lg.connect(g.gain);
+    src.connect(f); f.connect(g); g.connect(ambGain); src.start(); lfo.start();
+  }
+}
+const SHOP_ANNOUNCEMENTS = [
+  'Customer announcement. Would Ronnie please return the bakery to the bakery.',
+  'Cleanup on aisle one. It was Ronnie. It is always Ronnie.',
+  'Would the owner of a large trolley full of MONSTOR please move it. It is blocking the fire exit. And aisle four.',
+  'Today only, all crisps half price. Ronnie, please put down the crisps.',
+  'Colleague announcement. Oliver to the tills please. Oliver, stop filming the customers.',
+  'Unexpected item in the bagging area. The item is Ronnie.',
+];
+function announce(text) {
+  try {
+    if (!window.speechSynthesis) return;
+    const u = new SpeechSynthesisUtterance(text); u.rate = 1.0; u.pitch = 1.05; u.volume = 0.55;
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
 }

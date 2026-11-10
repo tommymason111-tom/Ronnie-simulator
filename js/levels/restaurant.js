@@ -12,7 +12,9 @@
 import * as THREE from 'three';
 import { Kit, woodTex, carpetTex, canvasTex, FONT } from './kit.js';
 
-export const DATE_TABLE = { x: 0, z: 0.6 };      // Ronnie sits at z + 0.8, Chloe at z - 0.75
+export const DATE_TABLE = { x: 0, z: 0.6 };
+// the other diners' round tables; 4 chairs each at angle i/4*2PI + 0.4 (radius 0.85)
+export const DINER_TABLES = [[-3.5, -4.3], [3.5, -4.3], [-8.5, 1.6], [-4.0, 1.0], [4.0, 1.0], [-8.5, 4.2], [-3.0, 4.4], [3.0, 4.4], [-1.5, -1.0]];      // Ronnie sits at z + 0.8, Chloe at z - 0.75
 
 const H = 3.4;
 
@@ -127,7 +129,7 @@ export function buildRestaurant(scene) {
   k.chair(DATE_TABLE.x, DATE_TABLE.z + 0.78, 0, CHAIR, VELVET);
   k.cyl(0.03, 0.04, 0.12, DATE_TABLE.x - 0.2, 0.84, DATE_TABLE.z, 0xbfe3f0, 8); k.cyl(0.035, 0.035, 0.04, DATE_TABLE.x - 0.2, 0.93, DATE_TABLE.z, 0xc8102e, 8);
   // the other diners' tables, in little groups between the planters
-  const tables = [[-3.5, -4.3], [3.5, -4.3], [-8.5, 1.6], [-4.0, 1.0], [4.0, 1.0], [-8.5, 4.2], [-3.0, 4.4], [3.0, 4.4], [-1.5, -1.0]];
+  const tables = DINER_TABLES;
   for (const [x, z] of tables) {
     k.table(x, z, 1.1, 1.1, { round: true, cloth: CLOTH, chairs: 0, spots: 1 });
     for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.4; k.chair(x + Math.sin(a) * 0.85, z + Math.cos(a) * 0.85, a, CHAIR); }

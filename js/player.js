@@ -467,7 +467,7 @@ export class Player {
       k = this.flatEatT < 0.25 ? this.flatEatT / 0.25 : this.flatEatT > dur - 0.25 ? Math.max(0, (dur - this.flatEatT) / 0.25) : 1;
       if (this.flatEatT >= dur || !f.held) { this.flatEatT = -1; k = 0; }
       g.position.set(0.18 - 0.18 * k, -0.21 + 0.13 * k, -0.4 + 0.26 * k);
-      g.rotation.set(FLAT_REST + (drink ? 1.3 : 0.2) * k, 0.3 * (1 - k), 0);
+      g.rotation.set(FLAT_REST + (drink ? 1.7 : 0.2) * k, 0.3 * (1 - k), 0);
     } else { g.position.set(0.18, -0.21 + Math.sin(t * 2) * 0.004, -0.4); g.rotation.set(FLAT_REST, 0.3, 0); }
     if (this.flatHandModel.ready) { const c = f.held ? holdTransform(f.held.type, 'right').curl : 0.35; for (const n in this.flatHandModel.curl) this.flatHandModel.curl[n] += (c - this.flatHandModel.curl[n]) * 0.3; this.flatHandModel.update(); }
     if (f.held) {
