@@ -8,7 +8,7 @@
 // Everything is attached to the camera, so it works in the headset and on a phone.
 import * as THREE from 'three';
 import { FONT, roundRect } from './textures.js';
-import { drawTurkey, drawPepsi, drawSiu } from './cutscenes.js';
+import { drawTurkey, OVERLAYS } from './cutscenes.js';
 
 const _v = new THREE.Vector3();
 
@@ -144,8 +144,7 @@ export class AttackFX {
     c.back.material.opacity = Math.max(0, fade); c.screen.material.opacity = Math.max(0, fade);
     const g = c.cv.getContext('2d');
     if (c.kind === 'turkey') drawTurkey(g, c.t);
-    else if (c.kind === 'pepsi') drawPepsi(g, c.t, c.dur);
-    else if (c.kind === 'siu') drawSiu(g, c.t, c.dur);
+    else if (OVERLAYS[c.kind]) OVERLAYS[c.kind](g, c.t, c.dur);
     c.tex.needsUpdate = true;
     if (c.t >= c.dur) this.endCutscene();
   }

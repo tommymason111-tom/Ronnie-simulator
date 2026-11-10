@@ -377,18 +377,18 @@ export class Director {
     const away = { x: P.head.x - who.pos.x, z: P.head.z - who.pos.z };
     const P3 = (x, y, z) => new THREE.Vector3(x, y, z);
     switch (key) {
-      case 'trip': P.dropAll(); P.knockDown(away, 5); break;
-      case 'tackle': P.dropAll(); P.knockDown(away, 2); break;
+      case 'trip': P.dropAll(); P.knockDown(away, 5); fx.cutscene('trip', 2.6); break;
+      case 'tackle': P.dropAll(); P.knockDown(away, 2); fx.cutscene('tackle', 1.9); break;
       case 'beer': {          // a pint appears at your lips and gets tipped down your throat
         P.dropAll();
         const pint = new Item('pint').obj; pint.scale.setScalar(1.0);
         fx.camProp(pint, 1.8, [0, -0.12, -0.3], (t, o) => { o.rotation.x = Math.min(1.9, t * 2.2); o.position.y = -0.1 + Math.min(0.06, t * 0.08); });
-        setTimeout(() => { sfx('gulp', null, 1); P.effect('dizzy', 7); tint(0x8a5a1a, 7, 0.22); g.words.show('HIC!', P.head.clone().addScaledVector(P.fwd, 0.6).add(P3(0.15, 0.1, 0)), '#ffd400', 0.09, 1.2); }, 1700);
+        setTimeout(() => { sfx('gulp', null, 1); P.effect('dizzy', 7); tint(0x8a5a1a, 7, 0.12); fx.cutscene('beer', 6.5); g.words.show('HIC!', P.head.clone().addScaledVector(P.fwd, 0.6).add(P3(0.15, 0.1, 0)), '#ffd400', 0.09, 1.2); }, 1700);
         break;
       }
       case 'dating': {        // Harry's phone shoved in your face, swiping through his matches
         P.effect('frozen', 5.5); this.storyTime(who);
-        fx.camProp(datingPhone(), 5.5, [0.02, -0.04, -0.3], (t, o, b) => { o.position.y = b.y + Math.min(0, (t - 0.3) * 0.3) * 0 - Math.max(0, 0.3 - t) * 0.5; o.userData.redraw(t); });
+        fx.cutscene('dating', 5.5);
         break;
       }
       case 'pepsi': {         // shake, shake, FSSSHHH: a fizz spray right in the face
@@ -399,33 +399,33 @@ export class Director {
         }, 300);
         break;
       }
-      case 'jig': P.effect('jig', 6.5); who.jig = 6.5; playTune('jig', 6.5); shout('Come on Ronnie, give us a jig!', { rate: 1.1, pitch: 1.1, volume: 0.5 }); break;
+      case 'jig': P.effect('jig', 6.5); who.jig = 6.5; playTune('jig', 6.5); fx.cutscene('jig', 6.5); shout('Come on Ronnie, give us a jig!', { rate: 1.1, pitch: 1.1, volume: 0.5 }); break;
       case 'siu': {           // Lewis does the Ronaldo celebration and you do it with him
         P.dropAll();
         setTimeout(() => { P.effect('siu', 3.2); }, 250);
         setTimeout(() => { fx.cutscene('siu', 2.6); shout('Siuuuuuuu!', { rate: 0.55, pitch: 1.3, volume: 0.9 }); }, 900);
         break;
       }
-      case 'rod': P.effect('tether', 5, { r: 0.45 }); who.reeling = 5; sfx('whoosh', null, 0.8); break;
+      case 'rod': P.effect('tether', 5, { r: 0.45 }); who.reeling = 5; sfx('whoosh', null, 0.8); fx.cutscene('rod', 5); break;
       case 'bbq': break;      // Ian sets up the barbecue and throws the food himself (squad.js)
       case 'diet': {          // a sad salad held up in front of you
-        P.effect('noEat', 6); tint(0x6aaa3a, 6, 0.18);
-        fx.camProp(saladBowl(), 2.5, [0, -0.12, -0.32], (t, o) => { o.rotation.x = 0.5; o.position.y = -0.12 + Math.sin(t * 6) * 0.01; });
+        P.effect('noEat', 6); tint(0x6aaa3a, 6, 0.1);
+        fx.cutscene('diet', 4.5);
         break;
       }
       case 'flash': {         // FLASH: blinding white, and a shutter noise
         sfx('shutter', null, 1);
         const at = who.rag.grip('lArmR', P3(0, 0, 0)); fx.flash(at);
-        setTimeout(() => { tint(0xffffff, 2.5, 0.92); P.effect('slow', 3); }, 120);
+        fx.cutscene('flash', 3.2); setTimeout(() => { P.effect('slow', 3); }, 120);
         break;
       }
-      case 'oasis': P.effect('frozen', 6.5); who.strumming = 6.5; playTune('oasis', 6.5); break;
+      case 'oasis': P.effect('frozen', 6.5); who.strumming = 6.5; playTune('oasis', 6.5); fx.cutscene('oasis', 6.5); break;
       case 'nutmeg': {        // the ball rolls through your legs; you spin round to look
         sfx('whistle', null, 0.8);
         const ball = football(), from = who.rag.grip('lArmR', P3(0, 0, 0)), end = P3(P.head.x + away.x * 0.6, 0.11, P.head.z + away.z * 0.6);
         from.y = 0.11; ball.position.copy(from);
         fx.worldProp(ball, 1.2, (t, o) => { const u = Math.min(1, t / 0.9); o.position.lerpVectors(from, end, u); o.rotation.x += 0.4; });
-        setTimeout(() => { P.effect('spin', 1.4, { turns: 3, speed: 16 }); P.effect('dizzy', 6, { amp: 2.8 }); fx.dizzyStars(6); tint(0xffd400, 6, 0.12); g.words.show('WHOA-OA-OA!', P.head.clone().addScaledVector(P.fwd, 0.7), '#ffd400', 0.1, 1.5); }, 450);
+        setTimeout(() => { P.effect('spin', 1.4, { turns: 3, speed: 16 }); P.effect('dizzy', 6, { amp: 2.8 }); fx.dizzyStars(6); tint(0xffd400, 6, 0.08); fx.cutscene('nutmeg', 3.5); g.words.show('WHOA-OA-OA!', P.head.clone().addScaledVector(P.fwd, 0.7), '#ffd400', 0.1, 1.5); }, 450);
         break;
       }
       case 'turkey': P.effect('frozen', 8.5); P.dropAll(); sfx('jet', null, 1); fx.cutscene('turkey', 8.2); break;

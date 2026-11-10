@@ -391,3 +391,191 @@ export function drawSiu(g, t, dur) {
   g.restore();
   g.save(); g.globalAlpha = a; text(g, 'LEWIS IS RONALDO. YOU ARE RONALDO. EVERYONE IS RONALDO.', W / 2, H - 22, 26, '#fff', { lw: 6, maxW: W - 60 }); g.restore();
 }
+
+// ------------------------------------------------------------------ overlays for the rest of the squad
+// Each is drawn over the game view (transparent where it should be), t = seconds in, dur = length.
+const fadeIO = (t, dur, a = 0.25, b = 0.4) => Math.max(0, Math.min(1, t / a, (dur - t) / b));
+function vignette(g, color, strength) {
+  const gr = g.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, W * 0.62);
+  gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, color.replace('ALPHA', strength)); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+}
+function bigWord(g, s, x, y, size, fill, stroke, rot = 0, scale = 1) { g.save(); g.translate(x, y); g.rotate(rot); g.scale(scale, scale); text(g, s, 0, 0, size, fill, { lw: Math.max(8, size / 7), stroke, maxW: W - 80 }); g.restore(); }
+
+// Aidan: one more beer. Double vision, swaying amber haze, rising bubbles, HIC!
+export function drawBeer(g, t, dur) {
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur, 0.4, 0.8);
+  g.save(); g.globalAlpha = a;
+  vignette(g, 'rgba(120,70,10,ALPHA)', 0.75);
+  // ghost "double vision" rings drifting apart and together
+  const off = Math.sin(t * 2.2) * 26;
+  for (const s of [-1, 1]) { g.strokeStyle = 'rgba(255,220,140,0.25)'; g.lineWidth = 30; g.beginPath(); g.ellipse(W / 2 + s * off, H / 2, W * 0.42, H * 0.46, 0, 0, 7); g.stroke(); }
+  for (let i = 0; i < 40; i++) { const bx = rnd(i) * W, by = H - ((t * (60 + rnd(i + 2) * 80) + rnd(i + 5) * H) % H), r = 3 + rnd(i + 7) * 8; g.fillStyle = 'rgba(255,230,160,0.35)'; g.beginPath(); g.arc(bx + Math.sin(t * 3 + i) * 10, by, r, 0, 7); g.fill(); }
+  const hic = Math.floor(t / 1.1);
+  for (let i = 0; i <= hic; i++) { const k = t - i * 1.1; if (k > 1) continue; bigWord(g, 'HIC!', 200 + (i * 331) % 620, 180 + (i * 97) % 200, 60, '#ffd400', '#5a3a10', -0.2 + (i % 3) * 0.2, 0.8 + k * 0.5); }
+  text(g, 'ONE MORE. JUST THE ONE. (IT\'S NEVER JUST THE ONE)', W / 2, H - 26, 28, '#fff', { lw: 6, maxW: W - 60 });
+  g.restore();
+}
+// Harry: his dating app takes over your whole screen, swiping through the disasters
+export function drawDating(g, t, dur) {
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur);
+  g.save(); g.globalAlpha = a;
+  g.fillStyle = 'rgba(40,0,20,0.55)'; g.fillRect(0, 0, W, H);
+  // the phone
+  const px = W / 2 - 150, py = 30 + (1 - ease(t / 0.35)) * 400;
+  g.fillStyle = '#111'; rr(g, px, py, 300, 520, 36); g.fill();
+  g.fillStyle = grad(g, py, py + 520, [[0, '#ff5f8a'], [1, '#ff3b6b']]); rr(g, px + 12, py + 14, 276, 492, 28); g.fill();
+  text(g, 'MATCHR', W / 2, py + 52, 30, '#fff');
+  const names = ['STACEY, 27', 'JADE, 25', 'KELLY, 29', 'AMBER, 26', 'CHANTELLE, 28'], bios = ['"No time-wasters"', '"6ft only (Harry: 5\'11 and a half)"', '"Must love dogs"', '"Here for a good time"', '"If you know Harry, swipe left"'];
+  const i = Math.floor(t / 1.05) % names.length, k = (t % 1.05) / 1.05, sw = k > 0.7 ? (k - 0.7) / 0.3 : 0;
+  g.save(); g.translate(W / 2 - sw * 320, py + 250); g.rotate(-sw * 0.5);
+  g.fillStyle = '#fff'; rr(g, -120, -170, 240, 330, 20); g.fill();
+  g.fillStyle = ['#e8b48a', '#f2c9a0', '#c98a5a', '#ffd9b8', '#e0a070'][i]; g.beginPath(); g.arc(0, -70, 62, 0, 7); g.fill();
+  g.fillStyle = ['#5a3a22', '#e8c070', '#1a1210', '#a0522d', '#3a2416'][i]; g.beginPath(); g.arc(0, -90, 64, Math.PI, 0); g.fill();
+  g.fillStyle = '#111'; g.beginPath(); g.arc(-22, -70, 6, 0, 7); g.arc(22, -70, 6, 0, 7); g.fill();
+  g.strokeStyle = '#c0392b'; g.lineWidth = 4; g.beginPath(); g.arc(0, -50, 18, 0.3, Math.PI - 0.3); g.stroke();
+  text(g, names[i], 0, 40, 26, '#111'); text(g, bios[i], 0, 72, 16, '#555', { weight: 700, maxW: 220 });
+  if (sw > 0) { g.save(); g.rotate(0.3); g.strokeStyle = '#c0392b'; g.lineWidth = 6; rr(g, -90, 90, 180, 50, 8); g.stroke(); text(g, 'NOPE', 0, 128, 34, '#c0392b'); g.restore(); }
+  g.restore();
+  // a chat bubble from Harry
+  const chats = ['hey', 'hey', 'u there?', 'hellooo', 'ok then'];
+  g.fillStyle = '#fff'; rr(g, px + 30, py + 430, 200, 46, 18); g.fill(); text(g, `Harry: "${chats[i]}"`, px + 130, py + 461, 18, '#333', { weight: 700 });
+  // broken hearts floating up the sides
+  for (let n = 0; n < 10; n++) { const hx = n % 2 ? 80 + rnd(n) * 180 : W - 260 + rnd(n) * 180, hy = H - ((t * 90 + n * 70) % (H + 60)); text(g, n % 3 ? '💔' : '❤', hx, hy, 38, '#ff6b8b'); }
+  text(g, 'HARRY\'S DATING HISTORY: 47 MATCHES · 0 REPLIES', W / 2, H - 20, 26, '#fff', { lw: 6, maxW: W - 60 });
+  g.restore();
+}
+// Chloe: the diet plan clipboard slides in, junk food gets crossed off, lettuce rains down
+export function drawDiet(g, t, dur) {
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur);
+  g.save(); g.globalAlpha = a;
+  vignette(g, 'rgba(40,120,40,ALPHA)', 0.6);
+  for (let i = 0; i < 26; i++) { const lx = rnd(i) * W, ly = ((t * (120 + rnd(i + 1) * 120) + rnd(i + 2) * H) % (H + 80)) - 40; g.save(); g.translate(lx, ly); g.rotate(t * 2 + i); g.fillStyle = i % 4 ? '#6abf3a' : '#e53935'; g.beginPath(); g.ellipse(0, 0, 18, 9, 0, 0, 7); g.fill(); g.restore(); }
+  const cx = W - 300 + (1 - ease(t / 0.4)) * 400;
+  g.save(); g.translate(cx, 70); g.rotate(0.06);
+  g.fillStyle = '#8a5a2a'; rr(g, 0, 0, 260, 380, 14); g.fill(); g.fillStyle = '#fffdf2'; rr(g, 14, 30, 232, 336, 6); g.fill();
+  g.fillStyle = '#9aa0a8'; rr(g, 90, -12, 80, 34, 8); g.fill();
+  text(g, "RONNIE'S NEW DIET", 130, 70, 22, '#c2185b'); text(g, 'by Chloe x', 130, 94, 16, '#555', { weight: 700 });
+  const foods = ['Burgers', 'Pizza', 'Doughnuts', 'Kebabs', 'MONSTOR', 'Salad ✓'];
+  foods.forEach((f, i) => { const y = 140 + i * 40; text(g, f, 40, y, 24, i === 5 ? '#2e7d32' : '#111', { align: 'left', weight: 700 }); if (i < 5 && t > 0.4 + i * 0.25) { g.strokeStyle = '#c62828'; g.lineWidth = 5; g.beginPath(); g.moveTo(34, y - 8); g.lineTo(40 + g.measureText(f).width + 8, y - 8); g.stroke(); } });
+  g.restore();
+  bigWord(g, 'NO EATING!', 300, H / 2, 72, '#7cff6a', '#1b4a1b', -0.08, 1 + Math.sin(t * 6) * 0.03);
+  g.restore();
+}
+// Oliver: you're in his viewfinder, LIVE, the views shoot up, then the FLASH
+export function drawFlash(g, t, dur) {
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur, 0.15, 0.5);
+  g.save(); g.globalAlpha = a;
+  // viewfinder corners and grid
+  g.strokeStyle = '#fff'; g.lineWidth = 6;
+  for (const [x, y, sx, sy] of [[40, 40, 1, 1], [W - 40, 40, -1, 1], [40, H - 40, 1, -1], [W - 40, H - 40, -1, -1]]) { g.beginPath(); g.moveTo(x, y + sy * 60); g.lineTo(x, y); g.lineTo(x + sx * 60, y); g.stroke(); }
+  g.strokeStyle = 'rgba(255,255,255,0.3)'; g.lineWidth = 2; for (const k of [1, 2]) { g.beginPath(); g.moveTo(W * k / 3, 40); g.lineTo(W * k / 3, H - 40); g.moveTo(40, H * k / 3); g.lineTo(W - 40, H * k / 3); g.stroke(); }
+  g.fillStyle = Math.floor(t * 3) % 2 ? '#ff1744' : '#7a0010'; g.beginPath(); g.arc(80, 82, 12, 0, 7); g.fill(); text(g, 'LIVE', 100, 92, 28, '#fff', { align: 'left' });
+  const views = Math.floor(Math.pow(10, 2 + Math.min(1, t / (dur * 0.8)) * 4.5));
+  text(g, `👁 ${views.toLocaleString()}`, W - 80, 92, 28, '#fff', { align: 'right', lw: 5 });
+  for (let i = 0; i < 16; i++) { const hx = W - 120 + Math.sin(t * 3 + i) * 30, hy = H - 60 - ((t * 160 + i * 40) % 380); text(g, ['❤', '😂', '🔥', '😱'][i % 4], hx, hy, 34, '#ff4f7b'); }
+  text(g, '"guys he\'s eating AGAIN"  "LMAO"  "is that a whole cake"  "RONNIE 4 PM"', W / 2, H - 60, 22, '#fff', { weight: 700, lw: 5, maxW: W - 120 });
+  // the flash itself
+  const f = t > 0.5 && t < 1.2 ? 1 - (t - 0.5) / 0.7 : 0;
+  if (f > 0) { g.fillStyle = `rgba(255,255,255,${f})`; g.fillRect(0, 0, W, H); }
+  if (t > 1.0) bigWord(g, 'GONE VIRAL!', W / 2, H / 2, 96, '#fff', '#ff1744', -0.05, 1 + Math.max(0, 1.4 - t) * 0.6);
+  g.restore();
+}
+// Dylan: a gig in your face. Stage lights, notes, and karaoke lyrics with a bouncing ball
+export function drawOasis(g, t, dur) {
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur);
+  g.save(); g.globalAlpha = a;
+  g.fillStyle = 'rgba(10,0,30,0.45)'; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 5; i++) {     // sweeping stage lights
+    const x = 100 + i * 200, ang = Math.sin(t * 1.5 + i) * 0.4;
+    g.save(); g.translate(x, 0); g.rotate(ang); g.globalCompositeOperation = 'lighter';
+    const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, ['rgba(255,80,80,0.5)', 'rgba(80,160,255,0.5)', 'rgba(255,220,80,0.5)', 'rgba(160,80,255,0.5)', 'rgba(80,255,160,0.5)'][i]); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.beginPath(); g.moveTo(-10, 0); g.lineTo(10, 0); g.lineTo(120, H); g.lineTo(-120, H); g.fill(); g.restore();
+  }
+  for (let i = 0; i < 14; i++) { const nx = (rnd(i) * W + t * 40 * (i % 2 ? 1 : -1)) % W, ny = H - ((t * 110 + i * 60) % H); text(g, i % 2 ? '♪' : '♫', nx, ny, 40 + (i % 3) * 10, ['#ffd400', '#7cff6a', '#ff6bd5'][i % 3], { lw: 5 }); }
+  text(g, 'DYLAN — LIVE AT THE OYSTERFLEET', W / 2, 60, 34, '#fff', { lw: 7, maxW: W - 80 });
+  const LY = ['Today is gonna be the day', 'that you put down the pie', 'and all the roads we have to walk', 'are leading to the chippy', 'don\'t look back in anger, Ron', 'look back at the buffet'];
+  const li = Math.floor(t / (dur / LY.length)) % LY.length, k = (t % (dur / LY.length)) / (dur / LY.length);
+  g.fillStyle = 'rgba(0,0,0,0.6)'; rr(g, 80, H - 120, W - 160, 86, 20); g.fill();
+  g.font = `900 34px ${FONT}`; const lw = g.measureText(LY[li]).width, lx = W / 2 - lw / 2;
+  text(g, LY[li], W / 2, H - 64, 34, '#fff', { maxW: W - 200 });
+  g.save(); g.beginPath(); g.rect(lx, H - 110, lw * k, 70); g.clip(); text(g, LY[li], W / 2, H - 64, 34, '#ffd400', { maxW: W - 200 }); g.restore();
+  g.fillStyle = '#ff4f7b'; g.beginPath(); g.arc(lx + lw * k, H - 108 - Math.abs(Math.sin(k * Math.PI * 6)) * 24, 10, 0, 7); g.fill();
+  text(g, 'YOU CAN\'T LEAVE UNTIL THE B-SIDES ARE DONE', W / 2, H - 14, 20, '#ccc', { weight: 700 });
+  g.restore();
+}
+// Ian: hooked! Water ripples, the line, and a "catch of the day" weigh-in
+export function drawRod(g, t, dur) {
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur);
+  g.save(); g.globalAlpha = a;
+  vignette(g, 'rgba(10,60,90,ALPHA)', 0.7);
+  g.fillStyle = 'rgba(30,120,160,0.45)'; g.fillRect(0, H - 120, W, 120);
+  for (let i = 0; i < 6; i++) { const r = ((t * 120 + i * 60) % 360); g.strokeStyle = `rgba(255,255,255,${0.5 * (1 - r / 360)})`; g.lineWidth = 4; g.beginPath(); g.ellipse(W / 2, H - 60, r, r * 0.18, 0, 0, 7); g.stroke(); }
+  g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.moveTo(W / 2 + Math.sin(t * 8) * 20, 0); g.quadraticCurveTo(W / 2 + 60, H * 0.4, W / 2, H * 0.62); g.stroke();
+  g.save(); g.translate(W / 2, H * 0.62); g.rotate(Math.sin(t * 10) * 0.2); g.strokeStyle = '#ccc'; g.lineWidth = 6; g.beginPath(); g.arc(0, 18, 18, -Math.PI, Math.PI * 0.6); g.stroke(); g.restore();
+  // the weigh-in card
+  const cx = 60 + (1 - ease((t - 0.3) / 0.4)) * -420;
+  g.save(); g.translate(cx, 90); g.rotate(-0.05);
+  g.fillStyle = '#f5f0dc'; rr(g, 0, 0, 340, 230, 16); g.fill(); g.strokeStyle = '#5a3a1a'; g.lineWidth = 6; rr(g, 0, 0, 340, 230, 16); g.stroke();
+  text(g, 'CATCH OF THE DAY', 170, 44, 28, '#1e5a7a'); text(g, 'SPECIES: RONNIE', 24, 92, 22, '#111', { align: 'left', weight: 700 });
+  text(g, `WEIGHT: ${Math.round(lerp(40, 140, ease(t / 2)))} KG`, 24, 128, 22, '#111', { align: 'left', weight: 700 }); text(g, 'LOCATION: CANVEY LAKE', 24, 164, 22, '#111', { align: 'left', weight: 700 }); text(g, '(the lake is a disgrace)', 24, 196, 18, '#777', { align: 'left', weight: 700 });
+  g.restore();
+  bigWord(g, 'HOOKED!', W - 260, 160, 84, '#ffd400', '#0d3a5a', 0.1, 1 + Math.sin(t * 8) * 0.04);
+  g.restore();
+}
+// Noah: the tackle. Impact burst, grass rushing up, rugby scoreboard
+export function drawTackle(g, t, dur) {
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur, 0.05, 0.5);
+  g.save(); g.globalAlpha = a;
+  if (t < 0.25) { g.fillStyle = `rgba(255,255,255,${1 - t / 0.25})`; g.fillRect(0, 0, W, H); }
+  g.save(); g.translate(W / 2, H / 2); const s = 0.6 + ease(t / 0.3) * 0.6; g.scale(s, s); g.rotate(t * 0.4);
+  g.fillStyle = '#ffd400'; g.beginPath(); for (let i = 0; i < 28; i++) { const ang = i / 28 * Math.PI * 2, r = i % 2 ? 140 : 260; g.lineTo(Math.cos(ang) * r, Math.sin(ang) * r); } g.closePath(); g.fill();
+  g.fillStyle = '#e53935'; g.beginPath(); for (let i = 0; i < 28; i++) { const ang = i / 28 * Math.PI * 2 + 0.1, r = i % 2 ? 100 : 190; g.lineTo(Math.cos(ang) * r, Math.sin(ang) * r); } g.closePath(); g.fill();
+  g.restore();
+  bigWord(g, 'THWACK!', W / 2, H / 2 + 26, 110, '#fff', '#7a0e0e', -0.1, 1);
+  g.fillStyle = 'rgba(0,0,0,0.7)'; rr(g, W / 2 - 230, 26, 460, 70, 12); g.fill();
+  text(g, 'NOAH 7 — 0 RONNIE', W / 2, 74, 40, '#fff');
+  text(g, 'TRY! (Ronnie is the ball)', W / 2, H - 24, 28, '#ffd400', { lw: 6 });
+  g.restore();
+}
+// Tommy: tripped. The world tips, stars spin, Tommy's grinning face pops up
+export function drawTrip(g, t, dur) {
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur, 0.1, 0.6);
+  g.save(); g.globalAlpha = a;
+  vignette(g, 'rgba(0,0,0,ALPHA)', 0.6);
+  for (let i = 0; i < 8; i++) { const ang = t * 3 + i / 8 * Math.PI * 2; sparkle(g, W / 2 + Math.cos(ang) * 260, 200 + Math.sin(ang) * 70, 22, ang); }
+  bigWord(g, 'TIMBERRRR!', W / 2, 140, 90, '#ffd400', '#5a2a0a', -0.15 + Math.sin(t * 4) * 0.05, 1);
+  // Tommy popping up from the corner, laughing
+  const py = H - ease(t / 0.4) * 200;
+  g.save(); g.translate(W - 170, py + 120);
+  g.fillStyle = '#e8b896'; g.beginPath(); g.ellipse(0, 0, 90, 110, 0, 0, 7); g.fill();
+  g.fillStyle = '#3a2416'; g.beginPath(); g.ellipse(0, -70, 94, 56, 0, Math.PI, 0); g.fill();
+  g.lineWidth = 6; g.strokeStyle = '#111'; g.beginPath(); g.arc(-32, -6, 12, Math.PI + 0.3, -0.3); g.arc(32, -6, 12, Math.PI + 0.3, -0.3); g.stroke();
+  g.fillStyle = '#5a1a1a'; g.beginPath(); g.ellipse(0, 46, 40, 20 + Math.abs(Math.sin(t * 14)) * 10, 0, 0, 7); g.fill(); g.fillStyle = '#fff'; g.fillRect(-30, 30, 60, 10);
+  g.restore();
+  if (t > 0.4) bubble(g, W - 520, H - 250, 'HAHAHA! Have a lie down, Ron!', { tail: 'right', w: 360 });
+  text(g, 'DOWN FOR 5 SECONDS', 240, H - 30, 34, '#fff', { lw: 7 });
+  g.restore();
+}
+// Connor: the jig. Shamrocks rain, green-white-orange bands, RIVERDANCE lights
+export function drawJig(g, t, dur) {
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur);
+  g.save(); g.globalAlpha = a * 0.9;
+  g.fillStyle = '#169b62'; g.fillRect(0, 0, 70, H); g.fillStyle = '#ffffff'; g.fillRect(70, 0, 20, H); g.fillStyle = '#ff883e'; g.fillRect(W - 70, 0, 70, H); g.fillStyle = '#ffffff'; g.fillRect(W - 90, 0, 20, H);
+  for (let i = 0; i < 24; i++) { const sx = rnd(i) * W, sy = ((t * (140 + rnd(i + 3) * 80) + rnd(i + 1) * H) % (H + 60)) - 30; text(g, '☘', sx, sy, 34 + (i % 3) * 12, '#2ecc40', { lw: 4, stroke: '#0a4a1a' }); }
+  bigWord(g, 'JIG, RONNIE, JIG!', W / 2, 110 + Math.abs(Math.sin(t * 11)) * -20, 80, '#ffd400', '#0a4a1a', Math.sin(t * 5.5) * 0.06, 1);
+  text(g, '♪ THE IRISH WASHERWOMAN ♪  (Connor insists you know the steps)', W / 2, H - 24, 26, '#fff', { lw: 6, maxW: W - 200 });
+  g.restore();
+}
+// Alfie: nutmegged. A spinning spiral and the ball rolling away
+export function drawNutmeg(g, t, dur) {
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur, 0.1, 1.2);
+  g.save(); g.globalAlpha = a * 0.55;
+  g.translate(W / 2, H / 2); g.rotate(t * 6);
+  for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? 'rgba(3,70,148,0.6)' : 'rgba(255,255,255,0.4)'; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, W, i / 12 * Math.PI * 2, (i + 1) / 12 * Math.PI * 2); g.closePath(); g.fill(); }
+  g.restore();
+  g.save(); g.globalAlpha = a;
+  bigWord(g, 'NUTMEGGED!', W / 2, H / 2, 100, '#ffd400', '#034694', Math.sin(t * 9) * 0.15, 1 + Math.sin(t * 7) * 0.05);
+  text(g, '"Olé!" — Alfie (Sunday League legend, 1 tattoo short of a back piece)', W / 2, H - 26, 24, '#fff', { lw: 6, maxW: W - 80 });
+  g.restore();
+}
+export const OVERLAYS = { beer: drawBeer, dating: drawDating, diet: drawDiet, flash: drawFlash, oasis: drawOasis, rod: drawRod, tackle: drawTackle, trip: drawTrip, jig: drawJig, nutmeg: drawNutmeg, pepsi: drawPepsi, siu: drawSiu };

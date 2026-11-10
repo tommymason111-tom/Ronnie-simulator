@@ -15,7 +15,9 @@ const FIST = [
   [0.70, -0.0086, -0.0096, 0.0210],
   [0.85, -0.0031, -0.0086, 0.0162],
 ];
-const ZC = 0.038;   // middle of the fist along the handle
+const ZC = 0.038;
+// the top of the closed fist (thumb and index finger), where flat food sits
+const REST_AT = [-0.012, -0.03, -0.022];   // middle of the fist along the handle
 
 // per item: axis = item direction that runs through the fist (the fingers wrap
 // round it), up = item direction that points up the forearm (+Y), at = the
@@ -31,20 +33,23 @@ const SPEC = {
   icecream: { axis: nY, up: Z, at: [0, -0.045, 0], r: 0.018 },
   broccoli: { axis: nY, up: Z, at: [0, -0.04, 0], r: 0.016 },
   // long things: gripped round the middle (or the handle end)
-  hotdog:   { axis: X, up: Y, at: [0, 0, 0], r: 0.028 },
-  sausageroll: { axis: X, up: Y, at: [0, 0, 0], r: 0.026 },
   choc:     { axis: X, up: Y, at: [0.035, 0, 0], r: 0.018 },
   carrot:   { axis: nZ, up: Y, at: [0, 0, -0.03], r: 0.014 },
   celery:   { axis: Z, up: Y, at: [0, 0, 0.05], r: 0.014 },
   cucumber: { axis: nZ, up: Y, at: [0, 0, 0.03], r: 0.02 },
   chicken:  { axis: nZ, up: Y, at: [0, 0, -0.055], r: 0.014 },      // by the bone
   // flat things: pinched through their thickness
-  burger:   { axis: X, up: Z, at: [0, 0.005, 0], r: 0.042 },
-  pizza:    { axis: X, up: Z, at: [0, 0.002, 0.07], r: 0.016 },   // by the crust, point forward
-  doughnut: { axis: X, up: Z, at: [0, 0, 0.04], r: 0.022 },     // round the ring
-  cookie:   { axis: X, up: Z, at: [0, 0, 0.03], r: 0.012 },
-  crisps:   { axis: X, up: Y, at: [0, 0.05, 0], r: 0.016 },     // by the top of the bag
-  taco:     { axis: Z, up: Y, at: [0, -0.01, 0], r: 0.032 },
+  // flat food is held the right way up, sitting on the thumb and fingers, the
+  // way you'd actually hold it to eat: rest = the item's bottom point that sits
+  // on top of the fist, fwd = the item direction that points away from you
+  burger:   { rest: [0, -0.045, 0], fwd: nZ },                  // buns level, bottom bun on the hand
+  pizza:    { rest: [0, -0.008, 0.055], fwd: nZ, tilt: 0.25 },  // crust in the fingers, point out in front, a little droop
+  doughnut: { rest: [0, -0.02, 0.035], fwd: nZ },               // flat, held at its edge
+  cookie:   { rest: [0, -0.008, 0.03], fwd: nZ },
+  taco:     { rest: [0, -0.03, 0], fwd: X },                    // filling up, along the hand
+  hotdog:   { rest: [0, -0.03, 0], fwd: X },                    // bun level, pointing out in front
+  sausageroll: { rest: [0, -0.025, 0], fwd: X },
+  crisps:   { axis: nY, up: Z, at: [0, -0.045, 0], r: 0.016 },  // bag upright, bottom in the fist
   // round things: in the palm
   apple: { r: 0.036 }, pear: { axis: nY, up: Z, at: [0, -0.012, 0], r: 0.034 }, orange: { r: 0.036 }, tomato: { r: 0.03 },
   pepper: { r: 0.034 }, sprout: { r: 0.028 }, cauliflower: { r: 0.04 },
@@ -57,6 +62,17 @@ export function holdTransform(type, side = 'right') {
   const key = type + side;
   if (cache[key]) return cache[key];
   const s = SPEC[type] || { r: 0.03 };
+  if (s.rest) {
+    // grip "up" is -Z (thumb side), "forward" is -Y (the way the knuckles face)
+    const up = new THREE.Vector3(0, 1, 0), fwd = new THREE.Vector3().fromArray(s.fwd), sd = new THREE.Vector3().crossVectors(fwd, up);
+    _m1.makeBasis(sd, up, fwd);                                   // item frame
+    _m2.makeBasis(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, -1, 0));   // (fwd x up, up, fwd) in grip space
+    const q = new THREE.Quaternion().setFromRotationMatrix(_m2).multiply(new THREE.Quaternion().setFromRotationMatrix(_m1).invert());
+    if (s.tilt) q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), s.tilt));   // tip droops down a bit
+    const p = new THREE.Vector3(...REST_AT).sub(new THREE.Vector3().fromArray(s.rest).applyQuaternion(q));
+    if (side === 'left') { p.x = -p.x; q.set(q.x, -q.y, -q.z, q.w); }
+    return (cache[key] = { p, q, curl: 0.85 });
+  }
   // how tight the fist closes: hole the size of the item
   let i = 0;
   while (i < FIST.length - 2 && FIST[i + 1][3] > s.r) i++;
