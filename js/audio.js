@@ -180,6 +180,11 @@ const SOUNDS = {
     });
   },
   thud(d, t) { tone(d, t, 'sine', 90, 40, 0.12, 0.5); noise(d, t, 0.06, 'lowpass', 500, 1, 0.3); },
+  shutter(d, t) { noise(d, t, 0.03, 'highpass', 3000, 1, 0.5, 0.001); noise(d, t + 0.06, 0.04, 'bandpass', 2000, 2, 0.4, 0.001); },
+  sizzle(d, t) { noise(d, t, 1.6, 'highpass', 4000, 0.5, 0.25, 0.1); },
+  fizz(d, t) { noise(d, t, 1.2, 'bandpass', 5000, 0.8, 0.5, 0.02); tone(d, t, 'sine', 200, 900, 0.3, 0.2); },
+  whistle(d, t) { tone(d, t, 'sine', 2600, 2700, 0.12, 0.3); tone(d, t + 0.18, 'sine', 2600, 2400, 0.35, 0.3); },
+  jet(d, t) { noise(d, t, 2.5, 'lowpass', 600, 1, 0.5, 0.6); tone(d, t, 'sawtooth', 110, 220, 2.2, 0.06, 0.5); },
   clink(d, t) { tone(d, t, 'triangle', 1800 + Math.random() * 400, 1700, 0.15, 0.2, 0.001); },
 };
 
@@ -367,4 +372,36 @@ function announce(text) {
     const u = new SpeechSynthesisUtterance(text); u.rate = 1.0; u.pitch = 1.05; u.volume = 0.55;
     window.speechSynthesis.speak(u);
   } catch (e) {}
+}
+
+// ---- short tunes for attacks: Connor's Irish jig, Dylan's guitar ----
+let tuneTimer = null;
+export function playTune(kind, seconds) {
+  if (!ctx || ctx.state !== 'running') return;
+  if (tuneTimer) clearTimeout(tuneTimer);
+  const d = ctx.createGain(); d.gain.value = 0.9; d.connect(master);
+  const end = ctx.currentTime + seconds; let t = ctx.currentTime + 0.05, i = 0;
+  const D = 293.66, hzS = (s) => D * Math.pow(2, s / 12);
+  // jig: a fiddle in 6/8 over a bodhran; guitar: strummed G-D-Em-C, down-down-up-up-down
+  const JIG = [0, 4, 7, 9, 7, 4, 2, 4, 5, 7, 5, 2, 0, 4, 7, 12, 11, 9, 7, 9, 7, 4, 2, 0];
+  const CH = [[-5, 2, 7, 11, 14, 19], [-10, -3, 2, 6, 9, 14], [-8, -3, 2, 7, 11, 14], [-9, -2, 2, 7, 10, 14]];
+  const sched = () => {
+    while (t < ctx.currentTime + 0.8 && t < end) {
+      if (kind === 'jig') {
+        const s = JIG[i % JIG.length], f = hzS(s + 12);
+        const o = tone(d, t, 'sawtooth', f, f, 0.13, 0.06, 0.01);
+        const lfo = ctx.createOscillator(); lfo.frequency.value = 6; const lg = ctx.createGain(); lg.gain.value = 4; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + 0.2);
+        if (i % 3 === 0) { tone(d, t, 'sine', 90, 50, 0.12, 0.35); }
+        t += 0.14; i++;
+      } else {
+        const ch = CH[Math.floor(i / 5) % 4], pat = [0, 0.5, 1.25, 1.75, 2.5][i % 5], up = i % 5 === 2 || i % 5 === 3;
+        const bar = Math.floor(i / 5) * 3.0 + ctx.currentTime * 0, tt = t;
+        (up ? ch.slice().reverse() : ch).forEach((sm, k) => tone(d, tt + k * 0.012, 'triangle', hzS(sm), hzS(sm), 0.5, up ? 0.025 : 0.04, 0.003));
+        const step = [0.5, 0.75, 0.5, 0.75, 0.5][i % 5] * 0.6;
+        t += step; i++;
+      }
+    }
+    if (t < end) tuneTimer = setTimeout(sched, 250); else tuneTimer = null;
+  };
+  sched();
 }

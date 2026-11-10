@@ -37,7 +37,7 @@ The game opens on a start screen (Ronnie chomping a burger while food rains down
 | **Liddle-Price** | 30 × 22 m | Six aisles, the infamous middle aisle, bakery, a wall of glowing MONSTOR fridges, checkouts and self-checkouts. |
 | **La Grande Portion** | 24 × 18 m | Candlelit restaurant for Date Night: 12 diners' tables, dessert trolley, buffet counter, chandeliers. |
 
-Modes: Classic, **The Whole Squad** (all 12 people at once, big places only), Squad Intervention (everyone in big places), Veggie War, **Date Night** (restaurant), Catch & Eat, Eat-Off, Eat-Off 2P. In a level, ☰ MENU (or "Change place or mode") goes back to the start screen.
+Modes: Classic, **The Whole Squad** (all 13 people at once, big places only), Squad Intervention (everyone in big places), Veggie War, **Date Night** (restaurant), Catch & Eat, Eat-Off, Eat-Off 2P. In a level, ☰ MENU (or "Change place or mode") goes back to the start screen.
 
 **Date Night:** Chloe sits opposite you. When she's looking, sit still. When she looks away (phone, waiter, a weird moment), grab food from other tables and the dessert trolley. A "ding" warns you just before she looks back. Get caught 3 times and she orders you a salad. Halfway through she does a victory dance, which gives you 6 seconds to eat anything.
 
@@ -45,9 +45,12 @@ Characters find their way round the big levels with a navigation grid, and don't
 
 ## The squad (design doc Part 5)
 
-Chloe, Lewis, Harry, Aidan, Noah, Oliver, Dylan, Connor, Ethan, Ian and Alfie use their own 3D models (`assets/squad/*.glb`). Each was cut from about 1–2 million triangles to 24k (extra detail kept on the face), with its texture and surface detail re-baked from the original, and is rigged at load time onto the same ragdoll as Tommy at their real height. Each person has their own lines and a signature **intervention**. When it starts they walk up to you and hit you with their signature move, shown on screen ("AIDAN FORCES YOU TO HAVE ONE MORE BEER!"):
+Chloe, Lewis, Harry, Aidan, Noah, Oliver, Dylan, Connor, Ethan, Ian, Alfie and Ben use their own 3D models (`assets/squad/*.glb`). Each was cut from about 1–2 million triangles to 24k (extra detail kept on the face), with its texture and surface detail re-baked from the original, and is rigged at load time onto the same ragdoll as Tommy at their real height. Each person has their own lines and a signature **intervention**. When it starts they walk up to you and hit you with their signature move, shown on screen ("AIDAN FORCES YOU TO HAVE ONE MORE BEER!"):
 
-- Tommy trips you up (5s on the floor) · Noah tackles you · Aidan: one more beer (dizzy) · Harry: his dating history (frozen) · Ethan: Pepsi Max attack (fizzed, can't eat) · Connor: Irish jig (forced to dance) · Lewis throws you across the room · Ian hooks you on his fishing rod (can't get away for 5s) · Chloe puts you on a diet (can't eat) · Oliver's camera flash (blinded) · Dylan clings to your hand (slowed) · Alfie nutmegs you (spun round, dizzy)
+Each attack slams an animated card in front of your face ("AIDAN ATTACKS! AIDAN FORCES YOU TO HAVE ONE MORE BEER!") and has its own animation and props:
+
+- Tommy trips you up (5s on the floor) · Noah tackles you · Aidan tips a pint down your throat (dizzy) · Harry shoves his dating app in your face and tells you his dating history (stuck) · Ethan's Pepsi Max spray (fizzed, can't eat) · Connor's Irish jig with a fiddle tune (you bounce along) · Lewis lifts you and throws you across the room · Ian either fires up a barbecue and throws burgers, hot dogs and chicken at you, or hooks you on his fishing rod (he takes turns) · Chloe holds up a salad (diet: can't eat) · Oliver's camera flash · Dylan gets his guitar out and plays you Oasis songs (you're stuck listening) · Alfie nutmegs you (spun round) · Ben takes you to Turkey for a new hairline (7-second cut scene)
+- Nobody repeats an attack until everyone else has had a go (Ian has two, so he gets two turns).
 
 
 | Who | Intervention | What happens |
@@ -62,6 +65,7 @@ Chloe, Lewis, Harry, Aidan, Noah, Oliver, Dylan, Connor, Ethan, Ian and Alfie us
 | **Ethan** | Galáctico Free Kick | Real Madrid fan from England with a big nose (everyone jokes about it). Curls veg free kicks at your face. |
 | **Ian** | The Healthy Barbecue | Lewis's dad ("Lewy!"). Fishing rod in hand, moans about Canvey Lake, lobs grilled veg off the barbecue. |
 | **Alfie** | The Volley | Chelsea like Ron, tattoos (gave up on the back piece), Sunday league, pint in hand. Volleys fruit at your head. |
+| **Ben** | The Trip to Turkey | Chef, Chelsea, worked the Oysterfleet with Ronnie (and Lewis). Got his hairline done in Turkey, and takes Ronnie to get his done too. |
 | **Dylan** | The Ambush | Hides in the bin, leaps out and clings to your hand. Shake him off (or tap him on a phone). |
 
 

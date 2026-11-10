@@ -15,6 +15,9 @@ import { sfx } from './audio.js';
 import { canvasTex, FONT } from './textures.js';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4();
+// how long each signature move lasts (seconds)
+const SIGN_T = { beer: 1.9, dating: 5.5, pepsi: 1.6, jig: 5.5, yeet: 1.6, rod: 5.0, bbq: 1.8, diet: 1.8, flash: 1.3, oasis: 6.5, nutmeg: 1.3, turkey: 7.3 };
+const OASIS_LINES = ['♪ Today is gonna be the day... that you put down the pie ♪', '♪ And all the roads we have to walk... lead to the chippy ♪', '♪ Don\'t look back in anger, Ronnie... look back at the buffet ♪', '♪ You\'re gonna be the one that eats me... ♪', '♪ Some might say... you\'ve had enough ♪', '♪ Cast no shadow... you cast a BIG shadow, Ron ♪', 'Right, B-side next. No, don\'t move. DON\'T MOVE.'];
 const UP = new THREE.Vector3(0, 1, 0);
 
 // ---------------------------------------------------------------------------
@@ -50,7 +53,7 @@ export const SQUAD = {
     title: 'PROTEIN SWAP', fail: 'swapped the MONSTOR for protein. Ronnie bulked. Not like that.',
     banks: {
       greet: ['BRO. Bro. Put the pastry down, bro.', 'Ronnie! Leg day, bro! Not leg OF LAMB day!'],
-      chatter: ['Leg day, Ron? Every day\'s leg day for you, bro. Carrying all that.', 'Creatine, protein, chicken and rice. You? Creatine, protein, chicken, rice, chips, cheese, a doughnut.', 'I could deadlift you, bro. I\'d need a forklift, but I could.', 'Bro, I\'ve got a spare gym pass. It\'s got your name on it. In my handwriting. Use it.', 'My dad thinks protein shakes are \'for wrong\'uns\'. He\'s had six of mine.', 'Pump\'s insane today, Ronnie. Look at this vein. Don\'t look at your plate, look at the vein.', 'Palace on the telly later? I\'ll bring the chicken. YOU bring the self-control.', 'My dad\'s here somewhere. If anyone shouts LEWY, that\'s him. Ignore him. Please.', 'Look at these arms, Ron. These could be YOUR arms. Not like that though.', 'I benched 140 this morning. You benched a family-size lasagne.', 'My beard? It\'s growing, bro. It\'s a slow grower. Like your self-control.', 'Palace are going up, bro. Like your cholesterol.', 'Ronnie, you\'re not bulking. You\'re just bulk.', 'Tommy, mate, your abs are cute. Mine are just... bigger. Under here. Somewhere.'],
+      chatter: ['Shift at the Oysterfleet later, Ron. I\'ll change the barrels, you stay AWAY from the crisp clip.', 'The Gaffer says if either of us eats another bar snack we\'re both sacked. So it\'s on you, bro.', 'Best thing about working the Oysterfleet with you, Ron? I get my cardio chasing you out of the kitchen.', 'Leg day, Ron? Every day\'s leg day for you, bro. Carrying all that.', 'Creatine, protein, chicken and rice. You? Creatine, protein, chicken, rice, chips, cheese, a doughnut.', 'I could deadlift you, bro. I\'d need a forklift, but I could.', 'Bro, I\'ve got a spare gym pass. It\'s got your name on it. In my handwriting. Use it.', 'My dad thinks protein shakes are \'for wrong\'uns\'. He\'s had six of mine.', 'Pump\'s insane today, Ronnie. Look at this vein. Don\'t look at your plate, look at the vein.', 'Palace on the telly later? I\'ll bring the chicken. YOU bring the self-control.', 'My dad\'s here somewhere. If anyone shouts LEWY, that\'s him. Ignore him. Please.', 'Look at these arms, Ron. These could be YOUR arms. Not like that though.', 'I benched 140 this morning. You benched a family-size lasagne.', 'My beard? It\'s growing, bro. It\'s a slow grower. Like your self-control.', 'Palace are going up, bro. Like your cholesterol.', 'Ronnie, you\'re not bulking. You\'re just bulk.', 'Tommy, mate, your abs are cute. Mine are just... bigger. Under here. Somewhere.'],
       intervene: ['Protein swap, bro! Proper fuel! No more MONSTOR!', 'Shakes on the table, bro. Gains only.'],
       shake: ['Bro, my protein shakes are for GAINS, not for... oh. Oh, you\'ve gained.', 'Bro... you\'re bulking. Not like that, bro.'],
       hit: ['Is that it, bro?', 'Didn\'t even hurt. I\'m just trying to help, bro.'],
@@ -244,6 +247,33 @@ export const SQUAD = {
       grabbed: ['Ronnie! I\'ve got football Sunday! Put me DOWN!', 'Careful! Mind the tattoos!'],
       launched: ['CAREFREEEEE, WHEREVER YOU MAY BEEEE—'],
       vegThrow: ['VOLLEY!', 'Off the laces!', 'Get your head on it, Ron!'],
+    },
+  },
+  ben: {
+    name: 'Ben', color: '#2f6fd6', voicePitch: 0.95,
+    model: './assets/squad/ben.glb', modelBody: { h: 1.80, girth: 1.2, bind: { sh: [0.20, 1.40, 0], el: [0.50, 1.38, 0], ha: [0.90, 1.37, 0], hipX: 0.11, hipY: 0.88, kneeY: 0.48, neckY: 1.53, topY: 1.80, headZ: 0.05, chestW: 0.20, chestD: 0.14, pelvisW: 0.17, arm: 0.055, leg: 0.08 } },
+    body: { h: 1.80, sw: 1.05, girth: 1.2, limb: 1.05 },
+    look: { skin: SKIN.light, hair: { style: 'short', color: 0x4a2a16 }, top: 0xa8957a, sleeves: 'long', bottom: 0x4a6a9a, legs: 'trousers', shoes: 0xf5f5f5 },
+    title: 'THE TRIP TO TURKEY', fail: 'took Ronnie to Turkey for a new hairline. Ronnie came back with a new hairline and four kebabs.',
+    banks: {
+      greet: ['Ronnie! Kitchen\'s closed, mate. To YOU. Kitchen\'s closed to you.', 'Alright Ron! Notice anything? The hairline, Ron. Look at the HAIRLINE.'],
+      chatter: [
+        'I\'m a chef, Ronnie. I cook food for PEOPLE. Plural. Not person. Not you.',
+        'Remember when we worked the Oysterfleet together? I\'d plate up, you\'d "taste test". Whole plate. Every time.',
+        'Got my hairline done in Turkey, Ron. Best money I ever spent. You should go. Actually, let me take you.',
+        'Chelsea, Ronnie! Blue is the colour! Same as my face when I saw what you did to the walk-in fridge.',
+        'Mise en place, Ron. Everything in its place. Your place is not the dessert section.',
+        'Yes it\'s real. Yes it\'s all mine now. It\'s called a hairline, Ronnie. Look it up.',
+        'I can do a Michelin-star dish in twelve minutes. You can eat one in four seconds.',
+        'Lewis still owes me a shift at the Oysterfleet. He says he was "bulking". He was eating the bar snacks.',
+        'Back in the kitchen, the ticket would say "TABLE 6: RONNIE" and we\'d all just sigh.',
+      ],
+      intervene: ['Right Ron, passports. We\'re going to Turkey.', 'Pack a bag, Ronnie. Istanbul. You\'re getting the full hairline.'],
+      hit: ['Not the hair! Do you know what that COST?', 'Mind the grafts, Ronnie! MIND THE GRAFTS!'],
+      slap: ['Yes chef! ...No, that\'s not how you say it, Ron.'],
+      grabbed: ['Careful with the head! There are four thousand follicles up there!'],
+      launched: ['MY HAIRLIIIIINE—'],
+      vegThrow: ['Fresh from the kitchen, Ron!', 'Chef\'s special: a carrot!'],
     },
   },
 };
@@ -559,6 +589,14 @@ export class SquadMember extends Character {
   }
 
   afterUpdate(dt, ctx) {
+    // props that follow the hands during an attack
+    if (this.handProp) { this.rag.grip('lArmR', this.handProp.position); this.handProp.rotation.set(0, this.rag.yaw, 0); if (this.attack === 'diet') this.handProp.position.y += 0.06; }
+    if (this.guitar) {
+      this.rag.pos('chest', this.guitar.position); const yaw = this.rag.yaw;
+      this.guitar.position.add(_v.set(Math.sin(yaw) * 0.2 - Math.cos(yaw) * 0.12, -0.18, Math.cos(yaw) * 0.2 + Math.sin(yaw) * 0.12));
+      this.guitar.rotation.order = 'YXZ'; this.guitar.rotation.set(0, yaw, 0.45);   // face forward, neck to his left, tilted up
+    }
+    if (this.state !== 'act' && this.attackProps && this.attackProps.length) this.endAttackProps();
     if (this.prop) {
       const arm = this.id === 'lewis' ? 'lArmL' : 'lArmR';
       const hand = this.rag.grip(arm, _v);
@@ -593,31 +631,119 @@ export class SquadMember extends Character {
   // ---------------------------------------------------------------------------
   // Interventions — each one fails, by design.
   // ---------------------------------------------------------------------------
-  intervene() {
+  intervene(key = null) {
     if (this.down || this.state === 'act') return false;
     this.state = 'act'; this.stateT = 0; this.phase = 0;
-    this.say('intervene', 4);
+    this.attack = key || { ian: 'bbq', dylan: 'oasis', ben: 'turkey' }[this.id] || null;
+    this.say(this.attack === 'rod' ? 'Hold still, Ronnie, I\'ve caught bigger than you up the lake! Well. No I haven\'t.' : this.attack === 'oasis' ? 'Right, Ronnie. Sit down. Wonderwall. Then the B-sides. ALL the B-sides.' : 'intervene', 4);
     this.actStart && this.actStart();
-    // first walk up to Ronnie and do their signature move on him (Noah charges and
-    // Dylan leaps instead; Ian only needs to get within casting range)
-    this.approach = { noah: 0, dylan: 0, ian: 2.4, oliver: 1.8, harry: 1.2 }[this.id] ?? 0.9;
-    ({
+    // first walk up to Ronnie and do their signature move on him (Noah charges;
+    // Ian only needs to get within casting range, or barbecue-throwing range)
+    this.approach = { tackle: 0, rod: 2.4, bbq: 2.2, flash: 1.8, dating: 1.0, oasis: 1.4, turkey: 1.0 }[this.attack] ?? (this.id === 'noah' ? 0 : 0.9);
+    if (this.attack === 'bbq') { this.passes = 4; }
+    else if (['rod', 'oasis', 'turkey'].includes(this.attack)) { /* the attack is the whole move */ }
+    else ({
       chloe: () => { this.salads = 3; },
       lewis: () => { this.goToStation(); },
       harry: () => { this.passes = 3; },
       aidan: () => { this.goToStation(); this.pintGiven = false; },
       noah: () => {},
       oliver: () => { this.filming = 20; this.followers = 1000; },
-      dylan: () => { this.hideInBin(); },
+      dylan: () => {},
+      ben: () => {},
       connor: () => { this.goToStation(); this.pintGiven = false; },
       ethan: () => { this.passes = 3; },
-      ian: () => { this.passes = 4; },
+      ian: () => {},
       alfie: () => { this.passes = 4; },
     })[this.id]();
     return true;
   }
 
+  // ---------------- attack props & poses ----------------
+  startAttackProps() {
+    this.endAttackProps();
+    const fx = this.game && this.game.g && this.game.g.fx; this.attackFx = fx;
+    const add = (o) => { this.scene.add(o); (this.attackProps = this.attackProps || []).push(o); return o; };
+    const P = this.pos;
+    if (this.attack === 'bbq') {                       // a kettle barbecue between Ian and Ronnie, food sizzling on it
+      const yaw = this.rag.yaw, bx = P.x + Math.sin(yaw) * 0.75, bz = P.z + Math.cos(yaw) * 0.75;
+      const bbq = add(new THREE.Group()); bbq.position.set(bx, 0, bz);
+      const black = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+      const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), black); bowl.position.y = 0.72; bbq.add(bowl);
+      for (let i = 0; i < 3; i++) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.72, 5), black); const a = i / 3 * Math.PI * 2; l.position.set(Math.cos(a) * 0.2, 0.36, Math.sin(a) * 0.2); l.rotation.set(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25); bbq.add(l); }
+      const coals = new THREE.Mesh(new THREE.CircleGeometry(0.27, 16), new THREE.MeshBasicMaterial({ color: 0xff5a10 })); coals.rotation.x = -Math.PI / 2; coals.position.y = 0.66; bbq.add(coals);
+      const grill = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.008, 4, 20), new THREE.MeshLambertMaterial({ color: 0x9aa0a8 })); grill.rotation.x = Math.PI / 2; grill.position.y = 0.72; bbq.add(grill);
+      for (let i = -3; i <= 3; i++) { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.006, 0.006), grill.material); bar.position.set(0, 0.72, i * 0.07); bbq.add(bar); }
+      this.bbqFood = ['burger', 'hotdog', 'chicken', 'sausageroll'].map((t, i) => { const o = new Item(t).obj; o.scale.setScalar(1); o.position.set((i % 2 ? 0.1 : -0.1), 0.76, (i < 2 ? -0.09 : 0.09)); bbq.add(o); return o; });
+      this.bbq = bbq;
+      sfx('sizzle', { x: bx, y: 0.8, z: bz }, 1);
+    } else if (this.attack === 'pepsi') {              // a big bottle of Pepsi Max in Ethan's hand
+      const b = add(new THREE.Group());
+      b.add(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.24, 12), new THREE.MeshLambertMaterial({ color: 0x1a0d06 })));
+      const lab = new THREE.Mesh(new THREE.CylinderGeometry(0.047, 0.047, 0.08, 12), new THREE.MeshLambertMaterial({ color: 0x0b3fa8 })); b.add(lab);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.05, 8), new THREE.MeshLambertMaterial({ color: 0x111111 })); cap.position.y = 0.14; b.add(cap);
+      this.handProp = b;
+    } else if (this.attack === 'oasis') {              // Dylan's acoustic guitar
+      const gtr = add(new THREE.Group());
+      const wood = new THREE.MeshLambertMaterial({ color: 0xc8843a });
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.09, 18), wood); body.rotation.x = Math.PI / 2; gtr.add(body);
+      const body2 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.09, 18), wood); body2.rotation.x = Math.PI / 2; body2.position.x = 0.2; gtr.add(body2);
+      const hole = new THREE.Mesh(new THREE.CircleGeometry(0.05, 14), new THREE.MeshBasicMaterial({ color: 0x111111 })); hole.position.set(0.12, 0, 0.047); gtr.add(hole);
+      const neck = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.03), new THREE.MeshLambertMaterial({ color: 0x5a3a1a })); neck.position.x = 0.55; gtr.add(neck);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.07, 0.03), new THREE.MeshLambertMaterial({ color: 0x2a1a0a })); head.position.x = 0.85; gtr.add(head);
+      this.guitar = gtr;
+    } else if (this.attack === 'diet') {               // Chloe holds up a salad
+      const bowl = add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 7, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide })));
+      for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.03, 0), new THREE.MeshLambertMaterial({ color: [0x4caf3c, 0x7cb342, 0xe53935][i % 3] })); m.position.set(Math.cos(i * 2.4) * 0.05, -0.01, Math.sin(i * 2.4) * 0.05); bowl.add(m); }
+      this.handProp = bowl;
+    } else if (this.attack === 'yeet' || this.attack === 'turkey' || this.attack === 'jig') {
+      // nothing to hold: it's all in the moves
+    }
+  }
+  endAttackProps() {
+    if (this.attackProps) this.attackProps.forEach(o => this.scene.remove(o));
+    this.attackProps = []; this.handProp = null; this.guitar = null; this.bbq = null; this.bbqFood = null; this.strumming = 0; this.jig = 0;
+  }
+  // the body language of each attack (t = seconds into it)
+  signPose(t, ctx) {
+    const r = this.rag, s = Math.sin, fx = this.attackFx;
+    switch (this.attack) {
+      case 'beer': r.aim('uArmR', -0.15, 0.15, 1); r.aim('lArmR', -0.05, 0.2, 1); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), 0.15); break;      // here, have it
+      case 'dating': r.aim('uArmR', -0.15, 0.35, 1); r.aim('lArmR', -0.05, 0.45, 1); r.aim('uArmL', 0.3, -0.6, 0.5); r.aim('lArmL', 0.2, 0.2 + s(t * 6) * 0.3, 1); break;   // phone in your face, waving the other hand
+      case 'pepsi': r.aim('uArmR', -0.3, 0.1 + (t < 0.6 ? s(t * 40) * 0.5 : 0.3), 1); r.aim('lArmR', -0.1, t < 0.6 ? 0.8 : 0.3, 1); break;                // shake shake... spray
+      case 'jig':                                                                                          // proper Irish dancing: arms dead straight, legs flying
+        r.aim('uArmL', 0.08, -1, 0); r.aim('lArmL', 0.05, -1, 0); r.aim('uArmR', -0.08, -1, 0); r.aim('lArmR', -0.05, -1, 0);
+        r.aim('uLegL', 0.02, -1, Math.max(0, s(t * 11)) * 1.1); r.aim('lLegL', 0, -1, Math.max(0, s(t * 11)) * 0.4 - Math.max(0, -s(t * 11)) * 0.9);
+        r.aim('uLegR', -0.02, -1, Math.max(0, -s(t * 11)) * 1.1); r.aim('lLegR', 0, -1, Math.max(0, -s(t * 11)) * 0.4 - Math.max(0, s(t * 11)) * 0.9);
+        r.bob = Math.abs(s(t * 11)) * 0.06;
+        if (fx && Math.random() < 0.08) fx.notes(this.headPos(_v).add({ x: 0, y: 0.25, z: 0 }), 1);
+        break;
+      case 'yeet':                                                                                         // squat, grab, LIFT, throw
+        if (t < 0.7) { r.aim('uArmL', 0.3, -0.2, 1); r.aim('uArmR', -0.3, -0.2, 1); r.aim('lArmL', 0.1, -0.1, 1); r.aim('lArmR', -0.1, -0.1, 1); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), 0.35); r.bob = -0.08; }
+        else { r.aim('uArmL', 0.25, 1, 0.3); r.aim('uArmR', -0.25, 1, 0.3); r.aim('lArmL', 0.1, 1, 0.5); r.aim('lArmR', -0.1, 1, 0.5); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), -0.15); }
+        break;
+      case 'rod': r.aim('uArmR', -0.2, t < 0.4 ? 1 : 0.35, t < 0.4 ? -0.3 : 0.9); r.aim('lArmR', -0.1, t < 0.4 ? 1 : 0.6, 0.7); if (t > 0.4) r.pose.chest.setFromAxisAngle(_v.set(0, 1, 0), s(t * 5) * 0.12); break;   // cast... and reel
+      case 'bbq':                                                                                          // flipping burgers
+        r.aim('uArmR', -0.2, -0.3, 1); r.aim('lArmR', -0.05, -0.2 + s(t * 7) * 0.35, 1); r.aim('uArmL', 0.25, -0.5, 0.6); r.aim('lArmL', 0.1, 0.1, 1);
+        if (fx && this.bbq && Math.random() < 0.25) fx.particle(fx.dotTex, this.bbq.position.clone().add({ x: (Math.random() - 0.5) * 0.3, y: 0.8, z: (Math.random() - 0.5) * 0.3 }), new THREE.Vector3((Math.random() - 0.5) * 0.1, 0.5, (Math.random() - 0.5) * 0.1), 1.6, 0.14, 0x9a9a9a, 0.1, true);
+        break;
+      case 'diet': r.aim('uArmL', 0.15, 0.25, 1); r.aim('uArmR', -0.15, 0.25, 1); r.aim('lArmL', -0.1, 0.3, 1); r.aim('lArmR', 0.1, 0.3, 1); break;      // holding the salad out
+      case 'flash': r.aim('uArmR', -0.1, 0.35, 1); r.aim('lArmR', 0, 0.4, 1); r.aim('uArmL', 0.1, 0.3, 1); r.aim('lArmL', 0, 0.4, 1); break;            // phone up, both hands
+      case 'oasis':                                                                                        // strumming, head nodding, notes flying
+        r.aim('uArmL', 0.5, -0.3, 0.8); r.aim('lArmL', 0.2, 0.2, 1);
+        r.aim('uArmR', -0.15, -0.6, 0.6); r.aim('lArmR', 0.4, -0.3 + s(t * 14) * 0.35, 0.7);
+        r.pose.head.setFromAxisAngle(_v.set(1, 0, 0), s(t * 7) * 0.15);
+        if (fx && Math.random() < 0.12) fx.notes(this.headPos(_v).add({ x: 0, y: 0.2, z: 0 }), 1);
+        if (this.speakT <= 0 && Math.random() < 0.02) this.say(OASIS_LINES[Math.floor(Math.random() * OASIS_LINES.length)], 3);
+        break;
+      case 'nutmeg': if (t < 0.5) { r.aim('uLegR', -0.05, -0.6, -0.7); } else { r.aim('uLegR', -0.05, -0.6, 0.9); r.aim('lLegR', 0, -0.7, 0.8); } r.aim('uArmL', 0.8, 0.1, 0); r.aim('uArmR', -0.8, 0.1, 0); break;
+      case 'turkey': r.aim('uArmR', -0.2, 0.6, 0.8); r.aim('lArmR', -0.1, 0.9, 0.3); r.aim('uArmL', 0.25, -0.8, 0.4); r.aim('lArmL', 0.2, -0.2, 1); break;   // pointing at his hairline
+      default: break;
+    }
+  }
+
   cancelAction() {
+    this.endAttackProps();
     if (this.clingJoint) this.letGo(false);
     this.filming = 0;
     if (this.followerSprite) this.followerSprite.visible = false;
@@ -637,18 +763,30 @@ export class SquadMember extends Character {
       const d = _v2.length();
       this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 7);
       if (d > this.approach && this.stateT < 7) { r.moveVel.copy(_v2.normalize()).multiplyScalar(1.4); this.walkPose(dt, 1.4); return; }
-      this.approach = 0; this.stateT = 0; this.signT = 1.6;
-      g.stun && g.stun(this);
-      if (this.id === 'harry') this.stateT = -5;          // tells his stories before passing food
+      this.approach = 0; this.stateT = 0;
+      this.signT = SIGN_T[this.attack] ?? 1.6; this.signDur = this.signT;
+      this.startAttackProps();
+      g.stun && g.stun(this, this.attack);
     }
-    if (this.signT > 0) {                                  // a moment for the signature move
+    if (this.signT > 0) {                                  // the signature move itself
       this.signT -= dt;
       this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 7);
-      if (this.id === 'lewis' || this.id === 'tommy') { r.aim('uArmL', 0.4, 0.5, 0.8); r.aim('uArmR', -0.4, 0.5, 0.8); r.aim('lArmL', 0.2, 0.8, 0.6); r.aim('lArmR', -0.2, 0.8, 0.6); }
-      else if (this.id === 'aidan' || this.id === 'ethan') { r.aim('uArmR', -0.2, 0.1, 1); r.aim('lArmR', -0.1, 0.1, 1); }
-      else if (this.id === 'alfie') { r.aim('uLegR', -0.1, -0.6, 0.8); r.aim('lLegR', 0, -0.7, 0.7); }
-      else if (this.id === 'ian') { r.aim('uArmR', -0.2, 0.4, 0.9); r.aim('lArmR', -0.1, 0.7, 0.7); }
-      else if (this.id === 'oliver') { r.aim('uArmR', -0.1, 0.2, 1); r.aim('lArmR', 0, 0.3, 1); }
+      this.signPose(this.signDur - this.signT, ctx);
+      return;
+    }
+    // attacks that are the whole move
+    if (this.attack === 'rod' || this.attack === 'oasis' || this.attack === 'turkey') { this.endAttackProps(); done(); return; }
+    if (this.attack === 'bbq') {                          // throws the barbecue food at Ronnie, then packs up
+      this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 5);
+      this.signPose(this.t, ctx);
+      if (this.stateT > 1.3 && this.passes > 0) {
+        this.passes--; this.stateT = 0.2;
+        const it = ['burger', 'hotdog', 'chicken', 'sausageroll'][this.passes % 4];
+        if (this.bbqFood && this.bbqFood[this.passes]) this.bbqFood[this.passes].visible = false;
+        this.throwNow(ctx, { item: it, speed: 3.3, food: true, line: this.passes === 3 ? null : null });
+        this.say(['Get that down you, Ronnie!', 'Proper burger, that! Not like the council\'s!', 'Lewy! Watch this!', 'Last one! Catch it with your gob!'][this.passes], 3);
+      }
+      if (this.passes <= 0 && this.stateT > 1.3) { this.endAttackProps(); done(); }
       return;
     }
     switch (this.id) {

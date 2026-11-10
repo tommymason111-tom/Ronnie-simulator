@@ -12,7 +12,8 @@ import * as THREE from 'three';
 import { SquadMember, SQUAD } from './squad.js';
 import { DATE_TABLE, DINER_TABLES } from './levels/restaurant.js';
 import { canvasTex, fitText, roundRect, FONT } from './textures.js';
-import { sfx } from './audio.js';
+import { sfx, playTune } from './audio.js';
+import { Item } from './foods.js';
 import { pickVeg, pickJunk } from './config.js';
 
 export const MODES = {
@@ -34,20 +35,61 @@ export function modesFor(place) {
     return true;
   });
 }
-const STUNS = {
-  tommy:  { top: 'TOMMY TRIPS YOU UP!', big: 'DOWN FOR 5 SECONDS' },
-  noah:   { top: 'TACKLED BY NOAH!', big: 'FLOORED!' },
-  aidan:  { top: 'AIDAN FORCES YOU TO HAVE ONE MORE BEER!', big: 'DIZZY!', sfx: 'gulp' },
-  harry:  { top: 'HARRY DISTRACTS YOU WITH HIS DATING HISTORY', big: 'DISTRACTED!', sfx: 'ting' },
-  ethan:  { top: 'ETHAN HITS YOU WITH A PEPSI MAX ATTACK!', big: 'FIZZED! NO EATING!', sfx: 'psst' },
-  connor: { top: 'CONNOR GIVES YOU AN IRISH JIG ATTACK!', big: 'JIG!', sfx: 'boing' },
-  lewis:  { top: 'LEWIS THROWS YOU ACROSS THE ROOM!', big: 'YEET!', sfx: 'boing' },
-  ian:    { top: 'IAN CATCHES YOU ON HIS FISHING ROD!', big: 'HOOKED FOR 5 SECONDS' },
-  chloe:  { top: 'CHLOE PUTS YOU ON A DIET!', big: 'NO EATING!', sfx: 'ting' },
-  oliver: { top: 'OLIVER BLINDS YOU WITH HIS CAMERA FLASH!', big: 'GONE VIRAL!', sfx: 'ting' },
-  dylan:  { top: 'DYLAN IS CLINGING TO YOUR HAND!', big: 'SHAKE HIM OFF!', sfx: 'boing' },
-  alfie:  { top: 'ALFIE NUTMEGS YOU!', big: 'SPUN ROUND!', sfx: 'boing' },
+const ATTACKS = {
+  tommy:  [{ key: 'trip', icon: '🦶', title: 'TOMMY TRIPS YOU UP!', sub: 'DOWN FOR 5 SECONDS' }],
+  noah:   [{ key: 'tackle', icon: '🏉', title: 'TACKLED BY NOAH!', sub: 'FLOORED!' }],
+  aidan:  [{ key: 'beer', icon: '🍺', title: 'AIDAN FORCES YOU TO HAVE ONE MORE BEER!', sub: 'DIZZY!', sfx: 'clink' }],
+  harry:  [{ key: 'dating', icon: '💘', title: 'HARRY DISTRACTS YOU WITH HIS DATING HISTORY', sub: 'STUCK LISTENING!', sfx: 'ting' }],
+  ethan:  [{ key: 'pepsi', icon: '🥤', title: 'ETHAN HITS YOU WITH A PEPSI MAX ATTACK!', sub: 'FIZZED! NO EATING!', sfx: 'psst' }],
+  connor: [{ key: 'jig', icon: '☘️', title: 'CONNOR GIVES YOU AN IRISH JIG ATTACK!', sub: 'DANCE, RONNIE!', sfx: 'boing' }],
+  lewis:  [{ key: 'yeet', icon: '💪', title: 'LEWIS THROWS YOU ACROSS THE ROOM!', sub: 'YEET!', sfx: 'boing' }],
+  ian:    [{ key: 'bbq', icon: '🍖', title: 'IAN FIRES UP THE BARBECUE!', sub: 'INCOMING BURGERS!', sfx: 'sizzle' },
+           { key: 'rod', icon: '🎣', title: 'IAN CATCHES YOU ON HIS FISHING ROD!', sub: 'HOOKED FOR 5 SECONDS' }],
+  chloe:  [{ key: 'diet', icon: '🥗', title: 'CHLOE PUTS YOU ON A DIET!', sub: 'NO EATING!', sfx: 'ting' }],
+  oliver: [{ key: 'flash', icon: '📸', title: 'OLIVER BLINDS YOU WITH HIS CAMERA FLASH!', sub: 'GONE VIRAL!' }],
+  dylan:  [{ key: 'oasis', icon: '🎸', title: 'DYLAN PLAYS YOU OASIS SONGS', sub: 'STUCK LISTENING!', sfx: 'ting' }],
+  alfie:  [{ key: 'nutmeg', icon: '⚽', title: 'ALFIE NUTMEGS YOU!', sub: 'SPUN ROUND!' }],
+  ben:    [{ key: 'turkey', icon: '✈️', title: 'BEN TAKES YOU TO TURKEY!', sub: 'TO GET YOUR HAIRLINE DONE' }],
 };
+const LEGACY_KEY = { tommy: 'trip', noah: 'tackle' };
+// props held in front of Ronnie's face
+function datingPhone() {
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 480;
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const grp = new THREE.Group();
+  grp.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.19, 0.01), new THREE.MeshBasicMaterial({ color: 0x111111 })));
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.17), new THREE.MeshBasicMaterial({ map: tex })); scr.position.z = 0.006; grp.add(scr);
+  const names = ['STACEY, 27', 'JADE, 25', 'KELLY, 29', 'AMBER, 26', 'CHANTELLE, 28'], bios = ['"No time-wasters"', '"6ft only"', '"Must love dogs"', '"Here for a good time"', '"Swipe left if you know Harry"'];
+  let last = -1;
+  grp.userData.redraw = (t) => {
+    const i = Math.floor(t / 1.1) % names.length, k = (t % 1.1) / 1.1; if (i === last && k < 0.75) return; last = i;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#ff4f7b'; g.fillRect(0, 0, 256, 480);
+    g.fillStyle = '#fff'; g.font = 'bold 26px Arial'; g.textAlign = 'center'; g.fillText('MATCHR', 128, 40);
+    const x = k > 0.75 ? (k - 0.75) * 4 * -300 : 0;
+    g.fillStyle = '#fff'; g.fillRect(24 + x, 60, 208, 300);
+    g.fillStyle = ['#e8b48a', '#f2c9a0', '#c98a5a', '#ffd9b8', '#e0a070'][i]; g.beginPath(); g.arc(128 + x, 170, 60, 0, 7); g.fill();
+    g.fillStyle = '#5a3a22'; g.beginPath(); g.arc(128 + x, 150, 62, Math.PI, 0); g.fill();
+    g.fillStyle = '#111'; g.font = 'bold 24px Arial'; g.fillText(names[i], 128 + x, 280); g.font = 'italic 17px Arial'; g.fillText(bios[i], 128 + x, 310);
+    g.fillStyle = '#fff'; g.font = 'bold 40px Arial'; g.fillText('✗', 70, 430); g.fillText('♥', 186, 430);
+    g.font = 'bold 18px Arial'; g.fillText(k > 0.75 ? 'UNMATCHED' : 'IT\'S A MATCH?', 128, 470);
+    tex.needsUpdate = true;
+  };
+  grp.userData.redraw(0);
+  return grp;
+}
+function saladBowl() {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide })));
+  for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.025, 0), new THREE.MeshLambertMaterial({ color: [0x4caf3c, 0x7cb342, 0xe53935, 0x2e7d32][i % 4] })); m.position.set(Math.cos(i * 2.4) * 0.05 * (i % 3) / 2, -0.01, Math.sin(i * 2.4) * 0.05 * (i % 3) / 2); g.add(m); }
+  return g;
+}
+function football() {
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64; const x = cv.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, 128, 64); x.fillStyle = '#111'; for (let i = 0; i < 8; i++) { x.beginPath(); x.arc((i * 37) % 128, (i * 23) % 64, 7, 0, 7); x.fill(); }
+  const t = new THREE.CanvasTexture(cv);
+  return new THREE.Mesh(new THREE.SphereGeometry(0.11, 14, 10), new THREE.MeshLambertMaterial({ map: t }));
+}
 const TABLE_TALK = [
   'Don\'t look now, but Ronnie\'s on a DATE.',
   'Is that Chloe with him? Fair play. Brave girl.',
@@ -78,7 +120,7 @@ const DATING = [
   'My longest relationship was eleven days. Twelve if you count the day she was telling everyone.',
   'Speed dating in Southend. Every single one of them asked if I knew you. Every single one.',
 ];
-const VEG_OF = { connor: 'sprout', ethan: 'broccoli', ian: 'pepper', alfie: 'apple', tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', };
+const VEG_OF = { connor: 'sprout', ethan: 'broccoli', ian: 'pepper', alfie: 'apple', ben: 'carrot', tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', };
 const _v = new THREE.Vector3();
 
 export class Director {
@@ -90,6 +132,7 @@ export class Director {
     this.running = false;
     this.bubbles = [];
     this.log = [];
+    this.used = new Map();
     this.buildBoard();
     this.buildReceipt();
   }
@@ -100,7 +143,7 @@ export class Director {
   start(id) {
     const g = this.g, m = MODES[id];
     if (!m) return;
-    this.mode = id; this.running = true;
+    this.mode = id; this.running = true; this.used.clear();
     this.timeLeft = m.time;
     this.stats = { chonk: 0, veg: 0, swats: 0, popped: 0, roasted: 0, caught: 0, thrown: 0, attempts: 0, fails: [] };
     this.meter = 0; this.nextIntervener = 0; this.waveT = 2.5; this.spawned = 0;
@@ -119,7 +162,7 @@ export class Director {
     if (id === 'intervention') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 4);
     else if (id === 'everyone') squad = shuffle(everyone);
     else if (id === 'date') squad = ['chloe', ...shuffle(everyone.filter(s => s !== 'chloe')).slice(0, 6 + Math.floor(Math.random() * 4))];   // the mates are out for dinner too
-    else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan', 'ian', 'alfie']).slice(0, big ? 6 : 3);
+    else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan', 'ian', 'alfie', 'ben']).slice(0, big ? 6 : 3);
     else if (id === 'catch') squad = ['harry'];
     else if (id === 'classic') squad = [];
     else squad = [];
@@ -234,21 +277,21 @@ export class Director {
         this.nextChaos -= dt;
         if (this.nextChaos <= 0) {
           this.nextChaos = 16 + Math.random() * 12;
-          const c = shuffle(this.cast.slice(1).filter(c => idle(c) && c.distToPlayer < 9))[0];
-          if (c && c.intervene()) { g.showBanner('INTERVENTION', `${c.name.toUpperCase()} — ${c.title}`); sfx('trumpet', null, 0.6); }
+          const pick = this.pickAttacker(this.cast.slice(1).filter(c => idle(c) && c.distToPlayer < 9));
+          if (pick && pick.c.intervene(pick.attack.key)) { this.markUsed(pick.c, pick.attack.key); sfx('trumpet', null, 0.6); }
         }
         break;
       }
       case 'intervention': {
         // the meter fills as Ronnie eats; when full, the next squad member has a go
         if (this.meter >= 1 && !this.current) {
-          const c = this.cast.slice(1)[this.nextIntervener % (this.cast.length - 1)];
-          if (c && idle(c) && c.intervene()) {
+          const pick = this.pickAttacker(this.cast.slice(1).filter(idle)), c = pick && pick.c;
+          if (c && c.intervene(pick.attack.key)) {
+            this.markUsed(c, pick.attack.key);
             this.nextIntervener++;
             this.meter = 0; this.current = c; this.currentT = 0;
             this.stats.attempts++;
             this.stats.fails.push(`${c.name}: ${c.failLine}`);
-            g.showBanner('INTERVENTION', `${c.name.toUpperCase()} — ${c.title}`);
             sfx('trumpet', null, 0.6);
           }
         }
@@ -320,36 +363,88 @@ export class Director {
   }
   // Each person's signature move on Ronnie: a banner saying exactly what happened,
   // and a short stun (dizzy, frozen, thrown, hooked...).
-  stun(who, kind = who.id) {
-    const g = this.g, P = g.player, G = g.G;
-    const S = STUNS[kind]; if (!S) return;
-    if (P.knock || P.throwAnim) return;
-    g.showBanner(S.top, S.big);
-    sfx(S.sfx || 'thud', null, 1);
+  // Each person's signature attack on Ronnie: an animated card saying exactly what
+  // happened, props and effects, and a short stun (dizzy, frozen, thrown, hooked...).
+  stun(who, key) {
+    const g = this.g, P = g.player, G = g.G, fx = g.fx;
+    key = LEGACY_KEY[key] || key || (ATTACKS[who.id] || [])[0]?.key;
+    const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
+    if (P.knock || P.throwAnim || (fx && fx.inCutscene)) return;
+    if (fx) fx.showCard({ name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, color: (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
+    else g.showBanner(A.title, A.sub);
+    sfx(A.sfx || 'thud', null, 1);
     const tint = (color, t, op = 0.3) => { G.fxTint = color; G.fxTintT = t; G.fxTintOp = op; };
     const away = { x: P.head.x - who.pos.x, z: P.head.z - who.pos.z };
-    switch (kind) {
-      case 'tommy': P.dropAll(); P.knockDown(away, 5); break;
-      case 'noah': P.dropAll(); P.knockDown(away, 2); break;
-      case 'aidan': P.effect('dizzy', 7); tint(0x8a5a1a, 7, 0.22); break;
-      case 'harry': P.effect('frozen', 5); this.storyTime(who); break;
-      case 'ethan': P.effect('noEat', 5); P.effect('slow', 5); tint(0x0b3fa8, 5, 0.32); break;
-      case 'connor': P.effect('jig', 5); who.dancing = true; setTimeout(() => { who.dancing = false; }, 5000); break;
-      case 'lewis': {
+    const P3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    switch (key) {
+      case 'trip': P.dropAll(); P.knockDown(away, 5); break;
+      case 'tackle': P.dropAll(); P.knockDown(away, 2); break;
+      case 'beer': {          // a pint appears at your lips and gets tipped down your throat
+        P.dropAll();
+        const pint = new Item('pint').obj; pint.scale.setScalar(1.0);
+        fx.camProp(pint, 1.8, [0, -0.12, -0.3], (t, o) => { o.rotation.x = Math.min(1.9, t * 2.2); o.position.y = -0.1 + Math.min(0.06, t * 0.08); });
+        setTimeout(() => { sfx('gulp', null, 1); P.effect('dizzy', 7); tint(0x8a5a1a, 7, 0.22); g.words.show('HIC!', P.head.clone().addScaledVector(P.fwd, 0.6).add(P3(0.15, 0.1, 0)), '#ffd400', 0.09, 1.2); }, 1700);
+        break;
+      }
+      case 'dating': {        // Harry's phone shoved in your face, swiping through his matches
+        P.effect('frozen', 5.5); this.storyTime(who);
+        fx.camProp(datingPhone(), 5.5, [0.02, -0.04, -0.3], (t, o, b) => { o.position.y = b.y + Math.min(0, (t - 0.3) * 0.3) * 0 - Math.max(0, 0.3 - t) * 0.5; o.userData.redraw(t); });
+        break;
+      }
+      case 'pepsi': {         // shake, shake, FSSSHHH: a fizz spray right in the face
+        P.effect('noEat', 5); P.effect('slow', 5);
+        setTimeout(() => { tint(0x0b3fa8, 5, 0.32); sfx('fizz', null, 1); for (let i = 0; i < 10; i++) setTimeout(() => fx.spray(who.rag.grip('lArmR', P3(0, 0, 0)), P.head, i % 2 ? 0x2a1608 : 0x9ad4ff, 8), i * 90); }, 300);
+        break;
+      }
+      case 'jig': P.effect('jig', 5.5); who.jig = 5.5; playTune('jig', 5.5); break;
+      case 'yeet': {
         P.dropAll();
         const n = g.room.nav, len = Math.hypot(away.x, away.z) || 1;
         let to = { x: P.head.x + away.x / len * 3.5, z: P.head.z + away.z / len * 3.5 };
         if (n) { const kk = n.nearestFree(to.x, to.z); if (kk >= 0) { const c = n.center(kk); to = { x: c.x, z: c.y }; } }
         const b = g.room.bounds; to.x = Math.min(b.x1 - 0.4, Math.max(b.x0 + 0.4, to.x)); to.z = Math.min(b.z1 - 0.4, Math.max(b.z0 + 0.4, to.z));
-        P.throwTo(to, 1.3); P.onLanded = () => sfx('thud', null, 1);
+        setTimeout(() => { sfx('whoosh', null, 1); P.throwTo(to, 1.4); P.onLanded = () => sfx('thud', null, 1); }, 700);
         break;
       }
-      case 'ian': P.effect('tether', 5, { r: 0.45 }); who.reeling = 5; break;
-      case 'chloe': P.effect('noEat', 6); tint(0x6aaa3a, 6, 0.18); break;
-      case 'oliver': tint(0xffffff, 2.5, 0.9); P.effect('slow', 3); break;
-      case 'dylan': P.effect('slow', 8); break;
-      case 'alfie': P.effect('spin', 1); P.effect('dizzy', 3); break;
+      case 'rod': P.effect('tether', 5, { r: 0.45 }); who.reeling = 5; sfx('whoosh', null, 0.8); break;
+      case 'bbq': break;      // Ian sets up the barbecue and throws the food himself (squad.js)
+      case 'diet': {          // a sad salad held up in front of you
+        P.effect('noEat', 6); tint(0x6aaa3a, 6, 0.18);
+        fx.camProp(saladBowl(), 2.5, [0, -0.12, -0.32], (t, o) => { o.rotation.x = 0.5; o.position.y = -0.12 + Math.sin(t * 6) * 0.01; });
+        break;
+      }
+      case 'flash': {         // FLASH: blinding white, and a shutter noise
+        sfx('shutter', null, 1);
+        const at = who.rag.grip('lArmR', P3(0, 0, 0)); fx.flash(at);
+        setTimeout(() => { tint(0xffffff, 2.5, 0.92); P.effect('slow', 3); }, 120);
+        break;
+      }
+      case 'oasis': P.effect('frozen', 6.5); who.strumming = 6.5; playTune('oasis', 6.5); break;
+      case 'nutmeg': {        // the ball rolls through your legs; you spin round to look
+        sfx('whistle', null, 0.8);
+        const ball = football(), from = who.rag.grip('lArmR', P3(0, 0, 0)), end = P3(P.head.x + away.x * 0.6, 0.11, P.head.z + away.z * 0.6);
+        from.y = 0.11; ball.position.copy(from);
+        fx.worldProp(ball, 1.2, (t, o) => { const u = Math.min(1, t / 0.9); o.position.lerpVectors(from, end, u); o.rotation.x += 0.4; });
+        setTimeout(() => { P.effect('spin', 1); P.effect('dizzy', 3); }, 450);
+        break;
+      }
+      case 'turkey': P.effect('frozen', 7.3); P.dropAll(); sfx('jet', null, 1); fx.cutscene('turkey', 7); break;
     }
+  }
+  // which attack does this person do next? (not one they've done, until everyone's had a go)
+  nextAttack(c) {
+    const list = ATTACKS[c.id] || [];
+    const used = this.used.get(c.id) || new Set();
+    return list.find(a => !used.has(a.key)) || null;
+  }
+  markUsed(c, key) { if (!this.used.has(c.id)) this.used.set(c.id, new Set()); this.used.get(c.id).add(key); }
+  // pick someone who still has an attack left; once nobody has, everyone's available again
+  pickAttacker(pool) {
+    let ready = pool.filter(c => this.nextAttack(c));
+    if (!ready.length && pool.length) { this.used.clear(); ready = pool.filter(c => this.nextAttack(c)); }
+    if (!ready.length) return null;
+    const c = ready[Math.floor(Math.random() * ready.length)];
+    return { c, attack: this.nextAttack(c) };
   }
   // Harry's dating history, one disaster at a time, while Ronnie stands there
   storyTime(harry) {
@@ -361,13 +456,11 @@ export class Director {
     const g = this.g;
     const big = g.G.stage >= 2;
     // Ronnie goes down every time (even Big Ronnie: Noah's a prop forward)
-    this.stun(noah, 'noah');
+    this.stun(noah, 'tackle');
     if (big) { g.words.show('BOING!', noah.pos.clone().add({ x: 0, y: 1.2, z: 0 }), '#ffd400', 0.25); sfx('boing', noah.pos, 1); }
     setTimeout(() => noah.say('tackled', 4), 600);
   }
   clinging(dylan, on) {
-    if (on) this.stun(dylan, 'dylan');
-    else this.g.player.fx.slow = 0;
     if (on) { this.g.words.show('SHAKE HIM OFF!', this.g.player.head.clone().addScaledVector(this.g.player.fwd, 0.8), '#FF6D00', 0.16, 2); }
     else this.g.words.show('SHAKEN OFF!', dylan.pos.clone().add({ x: 0, y: 1, z: 0 }), '#FF6D00', 0.18);
   }

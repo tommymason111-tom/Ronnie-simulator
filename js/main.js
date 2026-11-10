@@ -8,6 +8,7 @@ import { Crumbs, Words, Tint } from './fx.js';
 import { Player } from './player.js';
 import { Tommy } from './tommy.js';
 import { STAGE_LINES } from './dialogue.js';
+import { AttackFX } from './attackfx.js';
 import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience } from './audio.js';
 import { FONT } from './textures.js';
 import { createPhysics } from './physics.js';
@@ -57,6 +58,7 @@ player.cast = cast;
 player.room = room;
 const crumbs = new Crumbs(scene);
 const words = new Words(scene);
+const attackFx = new AttackFX(scene, camera, player);
 const tint = new Tint(camera);
 
 // ---------------- game state ----------------
@@ -494,7 +496,7 @@ window.addEventListener('resize', fitCamera);
 
 // ---------------- modes ----------------
 function resetRonnie() {
-  player.clearEffects(); G.fxTintT = 0;
+  player.clearEffects(); G.fxTintT = 0; attackFx.removeAll();
   G.chonk = 0; G.stage = 0; G.eaten = 0; G.swats = 0; G.locoT = 0; G.stoutT = 0; G.gagT = 0;
   G.scaleFrom = player.scale; G.scaleTo = 1; G.scaleT = player.scale === 1 ? 1 : 0;
   player.setBelly(STAGES[0].belly); setPitchScale(1); stopLocoMusic(); room.hemi.color.set(0xc9d6ff);
@@ -503,7 +505,7 @@ function resetRonnie() {
   G.wristDirty = true;
 }
 const director = new Director({
-  scene, room, physics, player, items, words, G, tommy, cast, onThrow, addChonk, resetRonnie,
+  scene, room, physics, player, items, words, G, tommy, cast, onThrow, addChonk, resetRonnie, fx: attackFx, crumbs,
   showBanner: (a, b) => showBanner(a, b),
   stageName: () => STAGES[G.stage].name,
   // points that pop bubbles / press board buttons: palms, fingertips and held food
@@ -581,6 +583,7 @@ renderer.setAnimationLoop(() => {
     }
   }
   director.update(dt, ctx);
+  attackFx.update(dt);
   if (player.flatMode) updateTouchUI();
 
   // timers & tint
