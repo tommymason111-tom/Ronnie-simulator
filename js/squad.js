@@ -394,7 +394,15 @@ function makeProp(type, k) {
     live.position.set(0.025, 0.065, 0.007);
     mesh.add(body, screen, live);
   } else if (type === 'jug') {
-    mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.28, 14), new THREE.MeshPhongMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.6, shininess: 80 }));
+    // a big water jug with a handle (the hand holds the handle, at the group's origin)
+    mesh = new THREE.Group();
+    const jug = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.28, 14), new THREE.MeshPhongMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.6, shininess: 80 }));
+    jug.position.set(-0.115, -0.04, 0);
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.012, 6, 14, Math.PI), new THREE.MeshLambertMaterial({ color: 0x1e88e5 }));
+    handle.rotation.z = -Math.PI / 2; handle.position.set(-0.035, -0.04, 0);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 12), new THREE.MeshLambertMaterial({ color: 0x1e88e5 }));
+    lid.position.set(-0.115, 0.12, 0);
+    mesh.add(jug, handle, lid);
   }
   return mesh;
 }
@@ -480,13 +488,20 @@ export class SquadMember extends Character {
 
   afterUpdate(dt, ctx) {
     if (this.prop) {
-      const hand = this.rag.tip(this.id === 'lewis' ? 'lArmL' : 'lArmR', _v);
+      const arm = this.id === 'lewis' ? 'lArmL' : 'lArmR';
+      const hand = this.rag.grip(arm, _v);
       this.prop.visible = this.state !== 'act' || (this.id !== 'aidan' && this.id !== 'connor') || !this.pintGiven;
       this.prop.position.copy(hand);
-      if (this.def.look.prop === 'phone') {      // screen faces Ronnie
+      if (this.def.look.prop === 'phone') {      // screen faces Ronnie, bottom half of the phone in the palm
         this.prop.lookAt(ctx.head); this.prop.rotateY(Math.PI);
-        if (this.id === 'oliver') this.prop.position.y += 0.05;
-      } else this.prop.quaternion.identity();     // pint / jug stay upright
+        this.prop.position.add(_v2.set(0, 0.03, 0).applyQuaternion(this.prop.quaternion));
+      } else if (this.def.look.prop === 'jug') { // held by the handle, the jug hanging on the outside
+        const pel = this.rag.parts.pelvis.body.position;
+        this.prop.rotation.set(0, Math.atan2(hand.x - pel.x, hand.z - pel.z) + Math.PI / 2, 0);
+      } else {                                   // pint: upright, fingers round the glass
+        this.prop.quaternion.identity();
+        this.prop.position.y += 0.015;
+      }
     }
     this.actAfter && this.actAfter(dt, ctx);
   }

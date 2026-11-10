@@ -11,6 +11,7 @@ import { TUNING, ROOM } from './config.js';
 import { FONT, roundRect } from './textures.js';
 import { ControllerHand, skinTrackedHand } from './hands.js';
 import { GROUP } from './physics.js';
+import { holdTransform } from './hold.js';
 
 const HIST = 6;
 const _m = new THREE.Matrix4(), _s = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _qi = new THREE.Quaternion();
@@ -217,7 +218,7 @@ export class Player {
     if (span > 0.005 && span < 0.5) { h.vel.subVectors(h.palm, oldest.p).multiplyScalar(1 / span); h.speed = h.vel.length(); }
 
     // fingers follow the trigger / grip
-    if (h.ctrlHand && !h.isHand) h.ctrlHand.fromGamepad(h.source.gamepad, !!(h.held || h.heldPart));
+    if (h.ctrlHand && !h.isHand) h.ctrlHand.fromGamepad(h.source.gamepad, h.held && !h.isHand ? holdTransform(h.held.type, h.handedness).curl : h.heldPart ? 0.85 : 0);
 
     // physics hand follows the palm (with its velocity, so it imparts momentum)
     if (h.body) {
@@ -231,8 +232,14 @@ export class Player {
     if (h.held) {
       if (h.held.dead) { h.held = null; return; }
       const o = h.held.obj;
-      o.position.copy(h.offPos).applyQuaternion(h.quat).add(h.pos);
-      o.quaternion.copy(h.quat).multiply(h.offQuat);
+      if (h.isHand) {     // real tracked fingers do the holding: keep it where it was pinched
+        o.position.copy(h.offPos).applyQuaternion(h.quat).add(h.pos);
+        o.quaternion.copy(h.quat).multiply(h.offQuat);
+      } else {            // controller: it sits in the fist, fingers closed round it
+        const ht = holdTransform(h.held.type, h.handedness === 'left' ? 'left' : 'right');
+        o.position.copy(ht.p).applyQuaternion(h.quat).add(h.pos);
+        o.quaternion.copy(h.quat).multiply(ht.q);
+      }
     }
   }
 
@@ -405,14 +412,16 @@ export class Player {
       g.position.set(0.18 - 0.18 * k, -0.21 + 0.13 * k, -0.4 + 0.26 * k);
       g.rotation.set(FLAT_REST + (drink ? 1.3 : 0.2) * k, 0.3 * (1 - k), 0);
     } else { g.position.set(0.18, -0.21 + Math.sin(t * 2) * 0.004, -0.4); g.rotation.set(FLAT_REST, 0.3, 0); }
-    if (this.flatHandModel.ready) { const c = f.held ? 0.85 : 0.35; for (const n in this.flatHandModel.curl) this.flatHandModel.curl[n] += (c - this.flatHandModel.curl[n]) * 0.3; this.flatHandModel.update(); }
+    if (this.flatHandModel.ready) { const c = f.held ? holdTransform(f.held.type, 'right').curl : 0.35; for (const n in this.flatHandModel.curl) this.flatHandModel.curl[n] += (c - this.flatHandModel.curl[n]) * 0.3; this.flatHandModel.update(); }
     if (f.held) {
       if (f.held.dead) { f.held = null; return; }
       this.camera.updateMatrixWorld(true);
       g.updateMatrixWorld(true);
       const o = f.held.obj;
-      g.matrixWorld.decompose(o.position, o.quaternion, _s);
-      o.quaternion.multiply(this.itemTwist);
+      g.matrixWorld.decompose(_v, _q, _s);
+      const ht = holdTransform(f.held.type, 'right');
+      o.position.copy(ht.p).applyQuaternion(_q).add(_v);
+      o.quaternion.copy(_q).multiply(ht.q);
     }
   }
 

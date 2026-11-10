@@ -101,10 +101,11 @@ export class ControllerHand {
     const trig = val(0), grip = val(1);
     const k = 0.35;   // smoothing
     const tgt = {
-      index: Math.max(holding ? 0.75 : 0, 0.12 + 0.88 * trig),
-      middle: Math.max(holding ? 0.85 : 0, 0.3 + 0.7 * grip),
-      ring: Math.max(holding ? 0.85 : 0, 0.32 + 0.68 * grip),
-      pinky: Math.max(holding ? 0.85 : 0, 0.34 + 0.66 * grip),
+      // holding: fingers close exactly round the item (holding = that curl), no further
+      index: holding ? holding : 0.12 + 0.88 * trig,
+      middle: holding ? holding : 0.3 + 0.7 * grip,
+      ring: holding ? holding : 0.32 + 0.68 * grip,
+      pinky: holding ? holding : 0.34 + 0.66 * grip,
       thumb: (touch(3) || touch(4) || touch(5) || holding) ? 0.75 : 0.25,
     };
     for (const f in tgt) this.curl[f] += (tgt[f] - this.curl[f]) * k;

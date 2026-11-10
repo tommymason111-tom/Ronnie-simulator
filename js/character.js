@@ -373,7 +373,7 @@ export class Character {
     const head = this.headPos(_v);
     this.bubble.position.set(head.x, Math.max(head.y, 0.7) + 0.55, head.z);
     this.updateStars(this.state === 'ko' || (this.state === 'recover' && this.stateT < 0.6), head);
-    if (this.heldItem && this.heldItem.visible) r.tip('lArmR', this.heldItem.position);
+    if (this.heldItem && this.heldItem.visible) r.grip('lArmR', this.heldItem.position);
   }
 
   turnTo(yaw, dt, speed) { this.rag.yaw += wrapAngle(yaw - this.rag.yaw) * Math.min(1, dt * speed); }

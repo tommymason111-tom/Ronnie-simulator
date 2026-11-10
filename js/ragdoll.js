@@ -373,6 +373,7 @@ export class Ragdoll {
       this.cutTriangles = cut;
     }
     this.solidifyPieces(geo, skinIndex, skinWeight);
+    this.measureHands(geo, skinIndex, skinWeight);
     geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndex, 4));
     geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeight, 4));
 
@@ -393,6 +394,37 @@ export class Ragdoll {
   // the body. Each separate piece is found (vertices welded by position), the
   // main body is left alone, every other piece follows a single bone rigidly
   // (whichever bone most of it already followed), and tiny specks are removed.
+  // Where each hand really is on the scan: the middle of the hand's own skin
+  // (wrist to fingertips), so held things sit in the palm, not off the fingertips.
+  measureHands(geo, skinIndex, skinWeight) {
+    const pos = geo.attributes.position, kH = this.height / 1.68, v = new THREE.Vector3(), dir = new THREE.Vector3();
+    this.handC = {};
+    for (const name of ['lArmL', 'lArmR']) {
+      const k = this.defs.findIndex(d => d.name === name), d = this.defs[k];
+      dir.subVectors(d.b, d.a).normalize();
+      const len = 0.15 * kH, sum = new THREE.Vector3(); let n = 0;
+      for (let i = 0; i < pos.count; i++) {
+        if (skinIndex[i * 4] !== k || skinWeight[i * 4] < 0.5) continue;
+        v.fromBufferAttribute(pos, i);
+        const along = v.clone().sub(d.b).dot(dir);       // 0 at the fingertips, negative toward the elbow
+        if (along < -len || along > 0.03 * kH || v.distanceTo(d.b) > len * 1.3) continue;
+        sum.add(v); n++;
+      }
+      if (n > 20) this.handC[name] = sum.multiplyScalar(1 / n);
+    }
+  }
+  // world position of the middle of a hand (falls back to just short of the fingertips)
+  grip(name, out) {
+    const p = this.parts[name], d = p.def, b = p.body;
+    if (this.handC && this.handC[name]) out.copy(this.handC[name]);
+    else out.copy(d.b).lerp(d.a, 0.07 * (this.height / 1.68) / d.a.distanceTo(d.b));
+    out.sub(d.center);
+    _q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
+    return out.applyQuaternion(_q).add(_v2.set(b.position.x, b.position.y, b.position.z));
+  }
+  // the forearm's orientation (bind pose = identity)
+  partQuat(name, out) { const q = this.parts[name].body.quaternion; return out.set(q.x, q.y, q.z, q.w); }
+
   solidifyPieces(geo, skinIndex, skinWeight) {
     if (!geo.index) return;
     const pos = geo.attributes.position, n = pos.count, idx = geo.index.array;
