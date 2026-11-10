@@ -171,6 +171,13 @@ export function buildRoom(scene) {
   label(scene, 'MISSING: RONNIE\'S NECK\nREWARD', 0.5, 0.6, [0.9, 1.55, HD - 0.005], [0, Math.PI, 0], { title: 'MISSING', bg: '#fffdf2', fg: '#111', border: '#111', size: 60 });
   label(scene, 'scarf', 1.6, 0.22, [-HW + 0.005, 2.15, -0.5], [0, Math.PI / 2, 0], { tex: scarfTex(), w: 1024, h: 128 });
   label(scene, 'SMOKE ALARM\nALSO DETECTS KEBABS', 0.2, 0.2, [0.6, H - 0.005, 0.2], [Math.PI / 2, 0, 0], { bg: '#ffffff', fg: '#c0392b', border: '#ddd', size: 34 });
+  // more jokes
+  label(scene, 'HOUSE RULES\n1. No food after 10pm (ignored)\n2. No food before 10pm (ignored)\n3. Rule 1 and 2 are a joke (Ronnie)', 0.42, 0.38, [1.7, 1.6, HD - 0.005], [0, Math.PI, 0], { bg: '#fff8e7', fg: '#111', border: '#1f4fbf', size: 34 });
+  label(scene, "RONNIE'S 5 A DAY:\n5 MONSTORS", 0.3, 0.22, [-1.6, 1.75, HD - 0.005], [0, Math.PI, 0], { bg: '#111', fg: '#39ff14', border: '#39ff14', size: 44 });
+  label(scene, 'CERTIFICATE OF ACHIEVEMENT\nRonnie completed a walk\n(to the fridge and back)', 0.4, 0.28, [-HW + 0.005, 1.55, 1.85], [0, Math.PI / 2, 0], { bg: '#fffdf2', fg: '#111', border: '#d4af37', size: 34 });
+  label(scene, 'DREAM: A PIE AT STAMFORD BRIDGE\n(achieved 40 times)', 0.4, 0.2, [-HW + 0.005, 1.85, -1.75], [0, Math.PI / 2, 0], { bg: '#034694', fg: '#fff', border: '#fff', size: 34 });
+  label(scene, 'GYM MEMBERSHIP\nVisits: 0\nVending machine visits: 212', 0.3, 0.24, [HW - 0.005, 1.6, 1.9], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#c0392b', border: '#c0392b', size: 34 });
+  label(scene, 'OYSTERFLEET STAFF BADGE: RONNIE\nPosition: Barman\nSpecialist subject: the crisp clip', 0.26, 0.16, [1.35, 1.6, HD - 0.005], [0, Math.PI, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 30 });
   // pizza-shaped rug
   const rug = new THREE.Mesh(new THREE.CircleGeometry(0.9, 40), new THREE.MeshLambertMaterial({ map: pizzaRugTex(), transparent: false }));
   rug.rotation.x = -Math.PI / 2; rug.position.set(0.35, 0.003, 0.75); scene.add(rug);

@@ -301,6 +301,23 @@ export function buildPub(scene) {
     ['OYSTERFLEET PIE-EATING CHAMPION — RONNIE (UNDEFEATED, UNCHALLENGED, UNWELL)', 1.2, 0.6, [-12.79, 1.55, 4.3], [0, Math.PI / 2, 0], { bg: '#d4af37', fg: '#111', border: '#7a5a10', size: 48 }],
     ['LAST ORDERS — Ronnie: last orders means for the CUSTOMERS', 0.8, 0.4, [-1.0, 1.9, 10.86], [0, Math.PI, 0], { bg: '#fff06a', fg: '#111', border: null, size: 40 }],
   ];
+  // ...and plenty more
+  signs.push(
+    ['EMPLOYEE OF THE YEAR: RONNIE (HE ATE THE OTHER CANDIDATES\' LUNCHES)', 1.2, 0.6, [-13.36, 1.6, 2.6], [0, Math.PI / 2, 0], { bg: '#fffdf2', fg: '#111', border: '#d4af37', size: 40 }],
+    ['BARRED: RONNIE (FROM THE KITCHEN) (FROM THE CELLAR) (FROM THE CRISP CLIP)', 1.3, 0.6, [-6.9, 1.6, -5.0], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c62828', border: '#c62828', size: 38 }],
+    ['PUB QUIZ TEAM NAMES: "RONNIE\'S CHINS", "QUIZ IN MY POCKET", "RONNIE ATE THE ANSWERS"', 1.3, 0.7, [-13.36, 1.5, 8.6], [0, Math.PI / 2, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 36 }],
+    ['HAPPY HOUR 5–7PM. RONNIE\'S HAPPY HOUR: 11AM–CLOSING', 1.2, 0.4, [12.99, 0.75, -5.6], [0, -Math.PI / 2, 0], { bg: '#ffd400', fg: '#111', border: null, size: 40 }],
+    ['FAMILY SIZE BAG OF CRISPS: SERVES 6 / SERVES RONNIE ONCE', 1.0, 0.4, [12.99, 2.1, -9.2], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: '#c0392b', size: 36 }],
+    ['THIS TABLE IS RESERVED FOR RONNIE\'S PLATE OVERFLOW', 0.8, 0.25, [-11.5, 0.93, 9.06], [-Math.PI / 2, 0, 0], { bg: '#fffdf2', fg: '#7a1f2a', border: null, size: 36 }],
+    ['CHELSEA ON THE BIG SCREEN SUNDAY. RONNIE ON THE BIG SCREEN EVERY DAY (CCTV).', 1.4, 0.4, [-12.75, 3.0 - 0.25, 2.8], [0, Math.PI / 2, 0], { bg: '#034694', fg: '#fff', border: '#fff', size: 36 }],
+    ['CARVERY SUNDAYS — RONNIE SIZE PORTION: THE WHOLE CARVERY', 1.3, 0.45, [-4.0, 1.9, 10.86], [0, Math.PI, 0], { bg: '#5a2a14', fg: '#ffd400', border: '#ffd400', size: 40 }],
+    ['IN CASE OF EMERGENCY: BREAK GLASS. IN CASE OF RONNIE: HIDE THE PIES.', 0.8, 0.4, [6.07, 1.7, 5.8], [0, Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: '#fff', size: 34 }],
+    ['DOG WATER BOWL — NOT FOR RONNIE. WE CHECKED. TWICE.', 0.7, 0.2, [5.6, 0.12, -1.6], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: '#1f4fbf', size: 34 }],
+    ['LAST PERSON TO TRY RONNIE\'S PIE CHALLENGE: RONNIE. HE WON. HE ALSO LOST.', 1.2, 0.45, [9.8, 1.5, 3.09], [0, Math.PI, 0], { bg: '#fffdf2', fg: '#111', border: '#c0392b', size: 36 }],
+    ['FRUIT MACHINE PAYOUT: CHIPS. RONNIE HAS WON 900 TIMES. THE MACHINE IS EMPTY.', 1.0, 0.45, [12.93, 1.9, 8.8], [0, -Math.PI / 2, 0], { bg: '#1a1a3a', fg: '#ffd400', border: '#ffd400', size: 34 }],
+    ['TOILET ATTENDANT: NONE. RONNIE, PLEASE STOP OFFERING.', 0.9, 0.3, [-3.16, 2.2, -9.6], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: '#1f4fbf', size: 34 }],
+    ['CHEF\'S SPECIAL: WHATEVER RONNIE DROPPED ON THE WAY OUT', 1.2, 0.4, [-12.57, 2.45, -7.0], [0, Math.PI / 2, 0], { bg: '#222', fg: '#fff', border: '#ffd400', size: 38 }],
+  );
   for (const [t, w, h, pos, rot, o] of signs) k.label(t, w, h, pos, rot, o);
 
   const room = k.finish({
