@@ -256,6 +256,8 @@ export class Ragdoll {
     const adjacent = (i, j) => parentIdx[i] === j || parentIdx[j] === i;
     const headIdx = this.defs.findIndex(d => d.name === 'head'), chestIdx = this.defs.findIndex(d => d.name === 'chest');
     const kH = this.height / 1.68, neckY = this.defs[headIdx].a.y;
+    const shoulderX = Math.abs(this.defs.find(d => d.name === 'uArmL').a.x);
+    const armSh = this.defs.map(d => d.name.startsWith('uArm') || d.name.startsWith('lArm') ? this.defs.find(e => e.name === 'uArm' + d.name.slice(-1)).a : null);
     const sideOf = this.defs.map(d => d.name.includes('Leg') ? (d.name.endsWith('L') ? 1 : -1) : 0);
     const pelvisIdx = this.defs.findIndex(d => d.name === 'pelvis'), hipJointY = this.defs.find(d => d.name === 'uLegL').a.y;
     const nrm = geo.attributes.normal, _n = new THREE.Vector3(), _c = new THREE.Vector3();
@@ -268,13 +270,19 @@ export class Ragdoll {
         ds[k] = segDist(_v, d.a, d.b) - d.r;
         // skin belongs to a bone only if it faces away from it: stops the side of
         // the torso being glued to an arm hanging against it (and vice versa)
-        if (nrm && d.name !== 'head') {
+        // (only where arms meet the torso — elsewhere inside-facing folds would be mis-assigned)
+        const nearSide = Math.abs(_v.x) < shoulderX + 0.06 * kH && _v.y > hipJointY - 0.1 * kH;
+        if (nrm && nearSide && (d.name === 'chest' || d.name === 'pelvis' || d.name.includes('Arm'))) {
           closestOnSeg(_v, d.a, d.b, _c); _c.subVectors(_v, _c);
           const l = _c.length();
           if (l > 0.01 && _n.dot(_c) / l < -0.3) ds[k] += 0.25;
         }
         // the pelvis only owns skin above the tops of the thighs (shorts follow the legs)
         if (k === pelvisIdx && _v.y < hipJointY - 0.03 * kH && Math.abs(_v.x) > 0.03 * kH) ds[k] += 0.3;
+        // arms don't own collars / hoods: nothing inboard of the shoulder joint, at or above it
+        if (armSh[k] && _v.y > armSh[k].y - 0.08 * kH && Math.abs(_v.x) < Math.abs(armSh[k].x) - 0.035 * kH) ds[k] += 1;
+        // thighs never own the torso (belly, shirt hem) above the hips
+        if (sideOf[k] && this.defs[k].name.startsWith('uLeg') && _v.y > hipJointY + 0.05 * kH) ds[k] += 1;
         // legs never own skin from the other side of the body (legs pressed together)
         if (sideOf[k] && sideOf[k] * _v.x < -0.005) ds[k] += 1;
         if (ds[k] < ds[best]) best = k;
@@ -316,11 +324,14 @@ export class Ragdoll {
         const nb = Array.from({ length: n }, () => []);
         for (let f = 0; f < idx.length; f += 3) for (let e = 0; e < 3; e++) { const p = idx[f + e], q = idx[f + (e + 1) % 3]; nb[p].push(q); nb[q].push(p); }
         const arm = this.defs.map(d => d.name.startsWith('lArm') || d.name.startsWith('uArm'));
+        const handTips = this.defs.filter(d => d.name.startsWith('lArm')).map(d => d.b);
         for (let it = 0; it < 4; it++) {
           const changes = [];
           for (let i = 0; i < n; i++) {
             const me = skinIndex[i * 4];
             if (arm[me] || this.defs[me].name === 'head') continue;
+            _v.fromBufferAttribute(pos, i);
+            if (!handTips.some(t => _v.distanceTo(t) < 0.11 * kH)) continue;   // only the palm area
             const cnt = {};
             for (const q of nb[i]) { const b = skinIndex[q * 4]; cnt[b] = (cnt[b] || 0) + 1; }
             let bestB = me, bestC = cnt[me] || 0;
@@ -348,7 +359,7 @@ export class Ragdoll {
           const cz = (pos.getZ(idx[f]) + pos.getZ(idx[f + 1]) + pos.getZ(idx[f + 2])) / 3;
           for (const [p, q] of [[a, b], [b, c], [a, c]]) {
             if (p === q) continue;
-            if (core[p] && core[q] && (adjacent(p, q) || (cy > hipTop && (p === chestIdx || q === chestIdx)))) continue;   // shirt hems over the hips stay joined
+            if (core[p] && core[q] && !(sideOf[p] && sideOf[q] && sideOf[p] !== sideOf[q])) continue;   // shirt hems over the hips stay joined (but the two legs come apart)
             if (!adjacent(p, q) || ((isArm[p] || isArm[q]) && !near(p, q, cx, cy, cz))) { ok = false; break; }
           }
         }
@@ -357,6 +368,7 @@ export class Ragdoll {
       if (cut) geo.setIndex(keep);
       this.cutTriangles = cut;
     }
+    this.solidifyPieces(geo, skinIndex, skinWeight);
     geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndex, 4));
     geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeight, 4));
 
@@ -369,6 +381,64 @@ export class Ragdoll {
     this.mesh.bind(new THREE.Skeleton(this.bones), this.mesh.matrixWorld);
     this.ready = true;
     this.sync();
+  }
+
+  // Keep every loose piece of the scan in one piece. Scans contain small
+  // separate fragments (and splitting arms from the body leaves slivers); if a
+  // fragment's vertices follow different bones it tears apart and drifts around
+  // the body. Each separate piece is found (vertices welded by position), the
+  // main body is left alone, every other piece follows a single bone rigidly
+  // (whichever bone most of it already followed), and tiny specks are removed.
+  solidifyPieces(geo, skinIndex, skinWeight) {
+    if (!geo.index) return;
+    const pos = geo.attributes.position, n = pos.count, idx = geo.index.array;
+    const parent = new Int32Array(n); for (let i = 0; i < n; i++) parent[i] = i;
+    const find = (a) => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+    const unite = (a, b) => { a = find(a); b = find(b); if (a !== b) parent[a] = b; };
+    const seen = new Map();
+    for (let i = 0; i < n; i++) {
+      const key = `${Math.round(pos.getX(i) * 2000)},${Math.round(pos.getY(i) * 2000)},${Math.round(pos.getZ(i) * 2000)}`;
+      const j = seen.get(key); if (j === undefined) seen.set(key, i); else unite(i, j);
+    }
+    for (let f = 0; f < idx.length; f += 3) { unite(idx[f], idx[f + 1]); unite(idx[f], idx[f + 2]); }
+    const tris = new Map();                       // piece root -> triangle count
+    for (let f = 0; f < idx.length; f += 3) { const r = find(idx[f]); tris.set(r, (tris.get(r) || 0) + 1); }
+    let main = -1, best = 0;
+    for (const [r, c] of tris) if (c > best) { best = c; main = r; }
+    // small pieces (buttons, strings, flaps, fragments) move rigidly with the bone
+    // nearest their middle; big separate parts (leggings, a sleeve) keep normal skinning
+    const box = new Map();
+    for (let i = 0; i < n; i++) {
+      const r = find(i); if (r === main) continue;
+      let b = box.get(r); if (!b) box.set(r, b = [1e9, 1e9, 1e9, -1e9, -1e9, -1e9]);
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.min(b[2], z); b[3] = Math.max(b[3], x); b[4] = Math.max(b[4], y); b[5] = Math.max(b[5], z);
+    }
+    const kH = this.height / 1.68, boneOf = new Map(), c = new THREE.Vector3();
+    for (const [r, b] of box) {
+      if (Math.hypot(b[3] - b[0], b[4] - b[1], b[5] - b[2]) > 0.22 * kH) continue;
+      c.set((b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2);
+      let best = 0, bd = 1e9;
+      this.defs.forEach((d, k) => { const dd = segDist(c, d.a, d.b) - d.r; if (dd < bd) { bd = dd; best = k; } });
+      boneOf.set(r, best);
+    }
+    for (let i = 0; i < n; i++) {
+      const b = boneOf.get(find(i)); if (b === undefined) continue;
+      skinIndex[i * 4] = b; skinWeight[i * 4] = 1;
+      for (let j = 1; j < 4; j++) { skinIndex[i * 4 + j] = 0; skinWeight[i * 4 + j] = 0; }
+    }
+    // drop specks (a handful of triangles) — scan noise that would only ever float
+    const minTris = Math.max(12, best * 0.0015);
+    const keep = [];
+    let dropped = 0, pieces = 0;
+    for (let f = 0; f < idx.length; f += 3) {
+      const r = find(idx[f]);
+      if (r !== main && tris.get(r) < minTris) { dropped++; continue; }
+      keep.push(idx[f], idx[f + 1], idx[f + 2]);
+    }
+    for (const [r, c] of tris) if (r !== main && c >= minTris) pieces++;
+    if (dropped) geo.setIndex(keep);
+    this.pieceInfo = { pieces, dropped };
   }
 
   // Forward kinematics: world transform of every part for the current pose,
