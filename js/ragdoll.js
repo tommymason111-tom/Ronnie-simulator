@@ -302,9 +302,13 @@ export class Ragdoll {
       // the head is rigid: everything above the jaw follows the head bone 100%
       // (so the face moves exactly with the eyes, which are attached to that bone);
       // only a short band across the neck blends between chest and head
-      if (best === headIdx || best === chestIdx) {
+      // (decided by position, not by nearest bone: the chest's thick capsule used to
+      // claim the chin and mouth, splitting the face in two when the head turned)
+      const headA = this.defs[headIdx].a, rh = Math.hypot(_v.x - headA.x, _v.z - headA.z);
+      const inHead = rh < 0.14 * kH && !this.defs[best].name.includes('Arm');
+      if (best === headIdx || best === chestIdx || inHead) {
         const y = _v.y, lo = neckY - 0.045 * kH, hi = neckY + 0.025 * kH;
-        if (best === headIdx && y >= hi) slots = [[headIdx, 1]];
+        if ((best === headIdx || inHead) && y >= hi) slots = [[headIdx, 1]];
         else if (y > lo && y < hi && Math.abs(_v.x) < 0.12 * kH) { const t = (y - lo) / (hi - lo); slots = [[headIdx, t], [chestIdx, 1 - t]]; }
         else if (best === chestIdx) slots = slots.filter(sl => sl[0] !== headIdx);
       }
