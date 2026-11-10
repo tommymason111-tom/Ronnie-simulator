@@ -172,6 +172,16 @@ function cauliflowerGeo() {
   return merge(p);
 }
 
+// the thing in the toilet. Do NOT eat.
+function poopGeo() {
+  const B = [0x5a3418, 0x6b3f1d, 0x4e2c12];
+  const p = [];
+  [[0.045, 0.016, 0], [0.034, 0.014, 0.022], [0.022, 0.012, 0.04]].forEach(([r, t, y], i) => p.push(part(new THREE.TorusGeometry(r, t, 8, 16), B[i], [0, y - 0.02, 0], [Math.PI / 2, 0, i * 0.7])));
+  p.push(part(new THREE.SphereGeometry(0.03, 10, 6), B[0], [0, -0.02, 0], [0, 0, 0], [1.4, 0.5, 1.4]));
+  p.push(part(new THREE.ConeGeometry(0.014, 0.035, 8), B[1], [0.004, 0.06, 0], [0, 0, -0.3]));
+  return merge(p);
+}
+
 let canGeoCache = null;
 function canMeshes() {
   if (!canGeoCache) {
@@ -194,7 +204,7 @@ function canMeshes() {
 const geoCache = {};
 function meshFor(type) {
   if (type === 'can') return canMeshes();
-  if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo,
+  if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo, poop: poopGeo,
     hotdog: hotdogGeo, fries: friesGeo, kebab: kebabGeo, chicken: chickenGeo, taco: tacoGeo, crisps: crispsGeo, choc: chocGeo, cookie: cookieGeo, icecream: icecreamGeo, sausageroll: sausageRollGeo,
     apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo }[type]();
   return new THREE.Mesh(geoCache[type], vcLambert);

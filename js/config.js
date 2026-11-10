@@ -40,6 +40,7 @@ export const FOODS = {
   cucumber: { label: 'Cucumber',    chonk: -8, bites: 1, radius: 0.05, mass: 0.2, veg: true },
   pepper:   { label: 'Pepper',      chonk: -6, bites: 1, radius: 0.04, mass: 0.12, veg: true },
   cauliflower: { label: 'Cauliflower', chonk: -12, bites: 1, radius: 0.045, mass: 0.2, veg: true },
+  poop:     { label: 'Poop', chonk: 0, bites: 1, radius: 0.045, mass: 0.2, poop: true },
   pint:     { label: 'BLACK LIFFEY STOUT', chonk: 20, bites: 1, radius: 0.045, mass: 0.6, drink: true, stout: true },
   shake:    { label: 'Protein shake', chonk: 25, bites: 1, radius: 0.04, mass: 0.5, drink: true, shake: true },
 };

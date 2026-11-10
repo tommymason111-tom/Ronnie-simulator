@@ -255,6 +255,10 @@ export function buildPub(scene) {
     k.label('mirror', z1 - z0 - 0.1, 0.9, [xWall + dir * 0.03, 1.55, (z0 + z1) / 2], [0, dir > 0 ? Math.PI / 2 : -Math.PI / 2, 0], { tex: mirrorTex(), glow: true });
   };
   const dryer = (x, z, ry) => { k.box(0.28, 0.32, 0.18, x, 1.25, z, 0xeceff1, { rot: [0, ry, 0] }); };
+  // ...and someone didn't flush (first cubicle in the Gents). Don't eat it, Ronnie.
+  const poopAt = new THREE.Vector3(-6.42, 0.4, -10.92 + 0.47);
+  k.colliders.push({ min: new THREE.Vector3(poopAt.x - 0.12, 0, poopAt.z - 0.14), max: new THREE.Vector3(poopAt.x + 0.12, 0.31, poopAt.z + 0.14) });
+  k.label("SOMEONE DIDN'T FLUSH", 0.5, 0.15, [-6.42, 1.4, -10.9], [0, 0, 0], { bg: '#fff', fg: '#5a3418', border: '#5a3418', size: 40 });
   // Gents (x -7..-3)
   clad(-6.9, -10.9, -3.1, -10.88, WTILE, 2.0, 0.5); clad(-6.92, -10.9, -6.9, -6.6, WTILE, 2.0, 0.5); clad(-3.1, -10.9, -3.08, -6.6, WTILE, 2.0, 0.5); clad(-6.9, -6.6, -3.1, -6.58, WTILE, 2.0, 0.5);
   cubicles(-6.92, 2, 1.0, -10.92, -9.4, false);
@@ -299,7 +303,7 @@ export function buildPub(scene) {
   ];
   for (const [t, w, h, pos, rot, o] of signs) k.label(t, w, h, pos, rot, o);
 
-  return k.finish({
+  const room = k.finish({
     name: 'The Oysterfleet',
     sky: 0xfff3e0, ground: 0x8a6a5a, hemiI: 2.6, sun: 0xfff0d8, sunI: 1.3, sunPos: [-6, 10, 5],
     start: { x: 4.2, z: 2.0, yaw: Math.PI * 0.75 },
@@ -307,6 +311,8 @@ export function buildPub(scene) {
     startFood: ['can', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza', 'doughnut', 'burger', 'pizza', 'can', 'doughnut', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza'],
     spotCount: 36,
   });
+  room.extraItems = [{ type: 'poop', pos: poopAt }];
+  return room;
 }
 
 // soft cones of light above and below a pillar wall light

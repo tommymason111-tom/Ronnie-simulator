@@ -50,7 +50,7 @@ export const SQUAD = {
     title: 'PROTEIN SWAP', fail: 'swapped the MONSTOR for protein. Ronnie bulked. Not like that.',
     banks: {
       greet: ['BRO. Bro. Put the pastry down, bro.', 'Ronnie! Leg day, bro! Not leg OF LAMB day!'],
-      chatter: ['Look at these arms, Ron. These could be YOUR arms. Not like that though.', 'I benched 140 this morning. You benched a family-size lasagne.', 'My beard? It\'s growing, bro. It\'s a slow grower. Like your self-control.', 'Palace are going up, bro. Like your cholesterol.', 'Ronnie, you\'re not bulking. You\'re just bulk.', 'Tommy, mate, your abs are cute. Mine are just... bigger. Under here. Somewhere.'],
+      chatter: ['My dad\'s here somewhere. If anyone shouts LEWY, that\'s him. Ignore him. Please.', 'Look at these arms, Ron. These could be YOUR arms. Not like that though.', 'I benched 140 this morning. You benched a family-size lasagne.', 'My beard? It\'s growing, bro. It\'s a slow grower. Like your self-control.', 'Palace are going up, bro. Like your cholesterol.', 'Ronnie, you\'re not bulking. You\'re just bulk.', 'Tommy, mate, your abs are cute. Mine are just... bigger. Under here. Somewhere.'],
       intervene: ['Protein swap, bro! Proper fuel! No more MONSTOR!', 'Shakes on the table, bro. Gains only.'],
       shake: ['Bro, my protein shakes are for GAINS, not for... oh. Oh, you\'ve gained.', 'Bro... you\'re bulking. Not like that, bro.'],
       hit: ['Is that it, bro?', 'Didn\'t even hurt. I\'m just trying to help, bro.'],
@@ -65,7 +65,7 @@ export const SQUAD = {
     model: './assets/squad/harry.glb', modelBody: { h: 1.83, bind: { sh: [0.20, 1.44, 0], el: [0.26, 1.19, 0], ha: [0.27, 0.76, 0.05], hipX: 0.11, hipY: 0.92, kneeY: 0.50, neckY: 1.53, topY: 1.82, headZ: 0.05, chestW: 0.17, chestD: 0.13, pelvisW: 0.15, arm: 0.05, leg: 0.07 } },
     body: { h: 1.83, sw: 0.95, girth: 0.82, limb: 0.78 },
     look: { skin: SKIN.light, hair: { style: 'shortcurls', color: 0x1a1210 }, beard: { style: 'stubble', color: 0x1a1210 }, top: 0x1d2b5a, top2: 0xffffff, pattern: 'jersey', sleeves: 'short', bottom: 0x2b3a55, legs: 'trousers', shoes: 0xf5f5f5, cap: 0x7a1f3d, scarf: true, prop: 'phone' },
-    title: 'CATCH & CHONK', fail: 'threw the food away. Ronnie caught it in his mouth. Every time.',
+    title: 'CATCH & EAT', fail: 'threw the food away. Ronnie caught it in his mouth. Every time.',
     banks: {
       greet: ['Ronnie, my guy, I\'ve matched with SIX girls this week. Six! None of them have replied, but SIX.'],
       chatter: ['She said she likes tall guys. I\'m tall! She said she likes guys with abs... I\'m tall!', 'Her bio said "no time-wasters". So I\'ve wasted no time messaging her forty times.', 'West Ham till I die, Ron. Which, with your cooking, could be soon.', 'Ronnie, if you were on a dating app, your profile pic would need to be a panorama.', 'Ronnie, you\'d make an amazing offensive lineman. You\'re already offensive. And a line. A wide line.'],
@@ -188,6 +188,60 @@ export const SQUAD = {
       grabbed: ['Put me down! My nose is the heaviest part, I\'ll tip over!'],
       launched: ['HALA MADRIIIIID—'],
       vegThrow: ['Free kick! Top bins!', 'Curled it! Like Roberto Carlos!'],
+    },
+  },
+  ian: {
+    name: 'Ian', color: '#6B8E23', voicePitch: 0.72,
+    model: './assets/squad/ian.glb', modelBody: { h: 1.78, girth: 1.3, bind: { sh: [0.22, 1.42, 0], el: [0.50, 1.41, 0], ha: [0.88, 1.42, 0], hipX: 0.11, hipY: 0.86, kneeY: 0.48, neckY: 1.47, topY: 1.78, headZ: 0.08, chestW: 0.21, chestD: 0.15, pelvisW: 0.18, arm: 0.06, leg: 0.09 } },
+    body: { h: 1.78, sw: 1.1, girth: 1.3, limb: 1.0 },
+    look: { skin: SKIN.fair, hair: { style: 'short', color: 0xbdbdbd }, beard: { style: 'full', color: 0xd0d0d0 }, top: 0x3a3020, sleeves: 'long', bottom: 0x4a5a2a, legs: 'trousers', shoes: 0x555555, cap: 0x8a9a7a, prop: 'rod' },
+    title: 'THE HEALTHY BARBECUE', fail: 'fired up a "healthy" barbecue of grilled veg. Ronnie ate the burgers off the side.',
+    banks: {
+      greet: ['Alright Ronnie boy! Lewy said you\'d be here. Lewy says a lot of things.', 'Ronnie! Come round ours Sunday, I\'m doing the barbecue. Not for you. Well. A bit for you.'],
+      chatter: [
+        'Lewy! LEWY! Tell your mate to put the sausage down. That\'s for the barbecue.',
+        'Canvey Lake, Ronnie. Disgrace. Nobody looks after it. Shopping trolleys. A bike. I pulled out a whole sofa once. Nice sofa, actually.',
+        'Went fishing up the lake Saturday. Caught nothing. The fish have all moved out, can\'t blame \'em.',
+        'Proper fisherman\'s breakfast, Ron: tea, a roll-up and silence. You\'d eat the bait.',
+        'I know all you lot. Harry, Noah, Ollie, Dylan, the Irish lads. And you, Ronnie. Mostly I know your appetite.',
+        'Back in my day we didn\'t have protein shakes, Lewy. We had a pint and a fry-up and we were FINE.',
+        'Everyone\'s too soft these days, Ronnie. Can\'t say anything. I\'m going to say it anyway. You\'re massive, son.',
+        'My barbecue\'s legendary. Ask anyone. Ask Ronnie, he ate half of it raw while it was still on the coals.',
+        'The council wants to "rewild" the lake. Rewild it? Ronnie, it\'s already wild. There\'s a pike in there the size of you.',
+        'Lewy, stop flexing at the mirror and get the charcoal. LEWY!',
+      ],
+      intervene: ['Right! Healthy barbecue! Grilled peppers, corn on the cob, the lot! Catch, Ronnie!', 'Fire\'s lit! Have some veg, boy! It\'s been on the grill, it counts as meat!'],
+      hit: ['Oi! I\'m Lewy\'s dad! Show some respect!', 'You\'ve got a worse arm than the Canvey Lake council!'],
+      slap: ['That\'s assault, that is. I\'m telling Lewy.'],
+      grabbed: ['PUT ME DOWN! I\'ve got a bad back! I\'ve had a bad back since 1987!'],
+      launched: ['LEEEEWYYYYY—'],
+      vegThrow: ['Off the grill! Lovely bit of char on that!', 'Healthy burger! It\'s a pepper!'],
+    },
+  },
+  alfie: {
+    name: 'Alfie', color: '#034694', voicePitch: 1.05,
+    model: './assets/squad/alfie.glb', modelBody: { h: 1.80, girth: 1.1, bind: { sh: [0.20, 1.45, 0], el: [0.50, 1.44, 0], ha: [0.90, 1.43, 0], hipX: 0.11, hipY: 0.92, kneeY: 0.50, neckY: 1.52, topY: 1.80, headZ: 0.01, chestW: 0.19, chestD: 0.13, pelvisW: 0.16, arm: 0.05, leg: 0.08 } },
+    body: { h: 1.80, sw: 1.05, girth: 1.1, limb: 1.05 },
+    look: { skin: SKIN.light, hair: { style: 'short', color: 0x3a2618 }, beard: { style: 'short', color: 0x3a2618 }, top: 0xa0101e, sleeves: 'short', bottom: 0x111111, legs: 'shorts', shoes: 0xf5f5f5, prop: 'pint' },
+    title: 'THE VOLLEY', fail: 'volleyed four vegetables at Ronnie. Ronnie headed them all into his mouth.',
+    banks: {
+      greet: ['RONNIE! Blues brothers! Come on Chelsea!', 'Ron! Pint? Pint. Course. Then the football. Then another pint.'],
+      chatter: [
+        'Me and you, Ron. Chelsea till we die. Which for you could be any minute, the rate you\'re going.',
+        'Got a new tattoo, Ronnie. Want to see it? It\'s a lion. Like the badge. Like you at a buffet.',
+        'I started a back piece once. Massive dragon. Got two hours in and tapped out. It\'s just a tail now. A dragon\'s tail. On its own.',
+        'Played Sunday league yesterday. Scored one, missed four, had three pints at half-time. Perfect day.',
+        'Stamford Bridge holds forty thousand, Ron. You\'d fit in about thirty thousand of the seats.',
+        'Who needs a back tattoo when you\'ve got a back that size, Ronnie? It\'s a whole canvas!',
+        'Proper Chelsea fan, me. I\'ve suffered. Not as much as the chairs you sit on, mind.',
+        'One more pint and I\'ll show you my Cole Palmer celebration. It\'s mainly shivering.',
+      ],
+      intervene: ['Right, Ron! Volley practice! Get your head on these!', 'Watch this! Top bins! Well. Top Ronnie.'],
+      hit: ['Not the tattoos! They\'re still healing! Well, the one is!', 'Oof! You\'ve got a better touch than our left back.'],
+      slap: ['Yellow card, Ronnie. Do it again and it\'s a red. Then a pint.'],
+      grabbed: ['Ronnie! I\'ve got football Sunday! Put me DOWN!', 'Careful! Mind the tattoos!'],
+      launched: ['CAREFREEEEE, WHEREVER YOU MAY BEEEE—'],
+      vegThrow: ['VOLLEY!', 'Off the laces!', 'Get your head on it, Ron!'],
     },
   },
 };
@@ -393,6 +447,20 @@ function makeProp(type, k) {
     const live = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff1744 }));
     live.position.set(0.025, 0.065, 0.007);
     mesh.add(body, screen, live);
+  } else if (type === 'rod') {
+    // Ian's fishing rod: handle at the origin (in the hand), rod pointing along +Z
+    mesh = new THREE.Group();
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.011, 1.6, 6), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
+    rod.rotation.x = Math.PI / 2; rod.position.z = 0.7;
+    const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.28, 8), new THREE.MeshLambertMaterial({ color: 0xb08850 }));
+    cork.rotation.x = Math.PI / 2; cork.position.z = 0.0;
+    const reel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.03, 10), new THREE.MeshLambertMaterial({ color: 0x9aa0a8 }));
+    reel.rotation.z = Math.PI / 2; reel.position.set(0, -0.04, 0.12);
+    const line = new THREE.Mesh(new THREE.CylinderGeometry(0.0012, 0.0012, 1.2, 3), new THREE.MeshBasicMaterial({ color: 0xdddddd }));
+    line.position.set(0, -0.6, 1.5);
+    const float = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 4), new THREE.MeshBasicMaterial({ color: 0xff3d00 }));
+    float.position.set(0, -1.2, 1.5);
+    mesh.add(rod, cork, reel, line, float);
   } else if (type === 'jug') {
     // a big water jug with a handle (the hand holds the handle, at the group's origin)
     mesh = new THREE.Group();
@@ -467,6 +535,8 @@ export class SquadMember extends Character {
         r.aim('uArmR', -0.3, -0.4, 1); r.aim('lArmR', -0.1, 0.35, 1);
         break;
       case 'connor':
+      case 'alfie':
+      case 'ian':     // pint (or fishing rod) at the ready
       case 'aidan':   // pint at the ready
         r.aim('uArmR', -0.15, -1, 0.3); r.aim('lArmR', -0.05, 0.1, 1);
         break;
@@ -495,6 +565,8 @@ export class SquadMember extends Character {
       if (this.def.look.prop === 'phone') {      // screen faces Ronnie, bottom half of the phone in the palm
         this.prop.lookAt(ctx.head); this.prop.rotateY(Math.PI);
         this.prop.position.add(_v2.set(0, 0.03, 0).applyQuaternion(this.prop.quaternion));
+      } else if (this.def.look.prop === 'rod') {  // rod held out in front, tip up
+        this.prop.rotation.set(-0.5, this.rag.yaw, 0, 'YXZ');
       } else if (this.def.look.prop === 'jug') { // held by the handle, the jug hanging on the outside
         const pel = this.rag.parts.pelvis.body.position;
         this.prop.rotation.set(0, Math.atan2(hand.x - pel.x, hand.z - pel.z) + Math.PI / 2, 0);
@@ -524,6 +596,8 @@ export class SquadMember extends Character {
       dylan: () => { this.hideInBin(); },
       connor: () => { this.goToStation(); this.pintGiven = false; },
       ethan: () => { this.passes = 3; },
+      ian: () => { this.passes = 4; },
+      alfie: () => { this.passes = 4; },
     })[this.id]();
     return true;
   }
@@ -572,6 +646,16 @@ export class SquadMember extends Character {
         }
         break;
       }
+      case 'ian':       // the "healthy" barbecue: grilled veg lobbed at Ronnie
+        this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 5);
+        if (this.stateT > 1.5 && this.passes > 0) { this.passes--; this.stateT = 0.2; this.throwNow(ctx, { item: ['pepper', 'tomato', 'cauliflower', 'broccoli'][this.passes % 4], speed: 3.4, spread: 0.1 }); }
+        if (this.passes <= 0 && this.stateT > 1.5) done();
+        break;
+      case 'alfie':     // volleys: fast and flat
+        this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 6);
+        if (this.stateT > 1.1 && this.passes > 0) { this.passes--; this.stateT = 0.2; this.throwNow(ctx, { item: pickVeg('apple'), speed: 4.6, spread: 0.14 }); }
+        if (this.passes <= 0 && this.stateT > 1.1) done();
+        break;
       case 'ethan':     // Galáctico free kicks: curling veg at Ronnie's face
         this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 5);
         if (this.stateT > 1.4 && this.passes > 0) { this.passes--; this.stateT = 0.2; this.throwNow(ctx, { item: pickVeg(), speed: 4.2, spread: 0.12 }); }

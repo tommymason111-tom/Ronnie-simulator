@@ -19,9 +19,9 @@ export const MODES = {
   classic:      { name: 'CLASSIC', desc: 'Eat, grow, dodge Tommy\'s broccoli.', time: 0 },
   intervention: { name: 'SQUAD INTERVENTION', desc: 'Everyone tries to stop you. Nobody can.', time: 240 },
   veggie:       { name: 'VEGGIE WAR', desc: 'The squad attacks with veg. Survive 2½ minutes.', time: 150 },
-  catch:        { name: 'CATCH & CHONK', desc: 'Catch Harry\'s throws in your mouth.', time: 70 },
-  chonkoff:     { name: 'CHONK-OFF', desc: '60 seconds. Eat everything.', time: 60 },
-  chonkoff2:    { name: 'CHONK-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
+  catch:        { name: 'CATCH & EAT', desc: 'Catch Harry\'s throws in your mouth.', time: 70 },
+  chonkoff:     { name: 'EAT-OFF', desc: '60 seconds. Eat everything.', time: 60 },
+  chonkoff2:    { name: 'EAT-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
   everyone:     { name: 'THE WHOLE SQUAD', desc: 'Everyone\'s here. Eat while they try to stop you.', time: 0, big: true },
   date:         { name: 'DATE NIGHT', desc: 'Eat when Chloe looks away. 3 catches and it\'s salad.', time: 180, place: 'restaurant' },
 };
@@ -34,7 +34,7 @@ export function modesFor(place) {
     return true;
   });
 }
-const VEG_OF = { connor: 'sprout', ethan: 'broccoli', tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', };
+const VEG_OF = { connor: 'sprout', ethan: 'broccoli', ian: 'pepper', alfie: 'apple', tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', };
 const _v = new THREE.Vector3();
 
 export class Director {
@@ -75,7 +75,7 @@ export class Director {
     if (id === 'intervention') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 4);
     else if (id === 'everyone') squad = shuffle(everyone);
     else if (id === 'date') squad = ['chloe'];
-    else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan']).slice(0, big ? 6 : 3);
+    else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan', 'ian', 'alfie']).slice(0, big ? 6 : 3);
     else if (id === 'catch') squad = ['harry'];
     else if (id === 'classic') squad = [];
     else squad = [];
@@ -103,7 +103,7 @@ export class Director {
       veggie: 'VEGGIE WAR. Everyone, positions. Aim for the mouth.',
       catch: 'Harry\'s going to throw the food AWAY from you. In theory.',
       chonkoff: 'Sixty seconds, Ron. Show me what you\'ve got. Actually, don\'t.',
-      chonkoff2: this.player2 && this.player2.stage === 2 ? 'Player two! Beat that. Please don\'t.' : 'Chonk-Off! Player one, sixty seconds. Go.',
+      chonkoff2: this.player2 && this.player2.stage === 2 ? 'Player two! Beat that. Please don\'t.' : 'Eat-Off! Player one, sixty seconds. Go.',
       classic: 'Back to normal then. Normal for you.',
     }[id], 5);
     sfx('fanfare', null, 1);
@@ -123,7 +123,7 @@ export class Director {
     const g = this.g, st = this.stats, m = MODES[this.mode];
     const lines = [];
     lines.push(['MODE', m.name]);
-    lines.push(['CHONK EATEN', Math.round(st.chonk)]);
+    lines.push(['EAT SCORE', Math.round(st.chonk)]);
     lines.push(['FINAL SIZE', g.stageName()]);
     if (this.mode === 'intervention') {
       lines.push(['INTERVENTIONS ATTEMPTED', st.attempts]);
@@ -147,7 +147,7 @@ export class Director {
       if (score > best) { safeSet('rs_best_chonkoff', score); lines.push(['NEW RECORD!', score]); }
       else lines.push(['BEST EVER', best]);
       if (this.mode === 'chonkoff2') {
-        if (this.player2.stage === 1) { this.player2.p1 = score; lines.push(['PLAYER 1', score]); lines.push(['Pass to PLAYER 2, then press', '']); lines.push(['CHONK-OFF 2P on the mode board', '']); }
+        if (this.player2.stage === 1) { this.player2.p1 = score; lines.push(['PLAYER 1', score]); lines.push(['Pass to PLAYER 2, then press', '']); lines.push(['EAT-OFF 2P on the mode board', '']); }
         else {
           const p1 = this.player2.p1, p2 = score;
           lines.push(['PLAYER 1', p1]); lines.push(['PLAYER 2', p2]);
@@ -508,8 +508,8 @@ export class Director {
     else if (this.mode === 'veggie') extra = `Swats ${this.stats.swats} · Veg ${this.stats.veg}`;
     else if (this.mode === 'catch') extra = `Caught ${this.stats.caught}/${this.stats.thrown}`;
     else if (this.mode === 'date') extra = `Busted ${this.date.catches}/3 · ${this.date.look ? 'SHE\'S LOOKING!' : 'EAT NOW!'}`;
-    else if (this.mode === 'everyone') return `THE WHOLE SQUAD · Chonk ${Math.round(this.stats.chonk)}`;
-    else extra = `Chonk ${Math.round(this.stats.chonk)}`;
+    else if (this.mode === 'everyone') return `THE WHOLE SQUAD · Eat ${Math.round(this.stats.chonk)}`;
+    else extra = `Eat ${Math.round(this.stats.chonk)}`;
     return `${name} ${mm}:${ss} · ${extra}`;
   }
 }

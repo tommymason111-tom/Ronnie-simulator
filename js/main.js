@@ -71,6 +71,9 @@ let time = 0;
 
 // starting food: one of each on the snack station, more around the room
 if (room.startFood) room.startFood.forEach(t => items.spawn(t, items.freeSpawn()));
+// special things placed by the level (the poop in the Oysterfleet toilet)
+const placeExtras = () => (room.extraItems || []).forEach(e => { if (items.items.some(i => i.type === e.type && !i.dead)) return; const it = items.spawn(e.type, e.pos); it.spawnScale = 1; it.obj.scale.setScalar(1); });
+placeExtras();
 // big places: loads more food, every kind, and it keeps topping up
 if (room.big) {
   for (let i = 0; i < 26; i++) items.spawn(JUNK_TYPES[i % JUNK_TYPES.length], items.freeSpawn());
@@ -138,6 +141,7 @@ function bite(it, hand) {
   G.lastBite = time;
   const fx = _a.copy(player.mouth).addScaledVector(player.fwd, 0.12 * player.scale);
   if (it.def.veg) { gag(it); return; }
+  if (it.def.poop) { poopOver(it); return; }
   it.bitesLeft--;
   sfx(SNACK_SFX[it.type], fx, 1);
   crumbs.burst(fx, CRUMB_COLORS[it.type], 26, 1.5, player.fwd);
@@ -173,6 +177,22 @@ function eatWhole(it) {
   items.remove(it);
   G.eaten++;
   if (it.thrower) setTimeout(() => it.thrower.say('caught', 4), 500);
+}
+
+// Ronnie tried to eat the poop. Red screen, GAME OVER, start again.
+function poopOver(it) {
+  if (G.poopT > 0) return;
+  items.remove(it);
+  G.poopT = 4.5;
+  sfx('bleurgh', null, 1);
+  player.hands.forEach(h => h.pulse(1, 400));
+  showBanner("NOOO, DON'T EAT THAT!", 'GAME OVER');
+  setTimeout(() => tommy.say('RONNIE! THAT WAS FROM THE TOILET! Game over. GAME OVER.', 5), 700);
+  setTimeout(() => {
+    director.end();
+    resetRonnie();
+    setTimeout(placeExtras, 6000);
+  }, 3500);
 }
 
 function gag(veg) {
@@ -548,7 +568,8 @@ renderer.setAnimationLoop(() => {
   }
   if (G.stoutT > 0) { G.stoutT -= dt; if (Math.floor((G.stoutT + dt) * 10) !== Math.floor(G.stoutT * 10)) G.wristDirty = true; }
   if (G.gagT > 0) G.gagT -= dt;
-  if (G.gagT > 0) tint.set(0x2bd62b, 0.35 * Math.min(1, G.gagT));
+  if (G.poopT > 0) { G.poopT -= dt; tint.set(0xff0000, 0.5 * Math.min(1, G.poopT)); }
+  else if (G.gagT > 0) tint.set(0x2bd62b, 0.35 * Math.min(1, G.gagT));
   else if (G.stoutT > 0) tint.set(0x8a5a1a, 0.18);
   else if (G.locoT > 0) tint.set(0xff8a00, 0.13 + Math.sin(time * 8) * 0.03);
   else tint.set(0xff8a00, 0);

@@ -473,7 +473,7 @@ export class Player {
     g.lineWidth = 8; g.strokeStyle = state.loco > 0 ? '#ff9a1f' : '#39ff14'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();
     g.textAlign = 'left'; g.textBaseline = 'middle';
     g.fillStyle = '#9ca3af'; g.font = `900 30px ${FONT}`;
-    g.fillText(`CHONK METER · STAGE ${state.stage + 1}/${state.stages}`, 30, 44);
+    g.fillText(`EAT METER · STAGE ${state.stage + 1}/${state.stages}`, 30, 44);
     g.fillStyle = '#ffffff'; g.font = `900 46px ${FONT}`;
     g.fillText(state.name.toUpperCase(), 30, 98);
     // belly-shaped bar that bulges as it fills
