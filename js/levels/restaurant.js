@@ -10,7 +10,7 @@
 //   the open kitchen pass (heat lamps, plates waiting to go out) and the
 //     dessert trolley, which Chloe must not see you near.
 import * as THREE from 'three';
-import { Kit, woodTex, carpetTex, canvasTex, FONT } from './kit.js';
+import { Kit, woodTex, carpetTex, canvasTex, FONT, streetViewTex } from './kit.js';
 
 export const DATE_TABLE = { x: 0, z: 0.6 };
 // the other diners' round tables; 4 chairs each at angle i/4*2PI + 0.4 (radius 0.85)
@@ -173,11 +173,24 @@ export function buildRestaurant(scene) {
   ];
   for (const [t, w, h, pos, rot, o] of jokes) sign(t, w, h, pos, rot, o);
 
+  // ================================================================ windows, panelling, candlelight
+  for (const [i, x] of [-9, -6].entries()) k.window(x, 2.05, 8.86, 1.2, 1.0, Math.PI, streetViewTex(i + 6), { frame: 0xd4af37, bars: 1, curtains: 0x7a1020 });
+  // dark wood wainscot with a gold rail round the dining room walls
+  for (const [x0, z0, x1, z1] of [[-11.9, -0.1, -11.86, 5.5], [11.86, -5.6, 11.9, 4.9]]) { k.box(Math.max(0.04, x1 - x0), 1.0, Math.max(0.04, z1 - z0), (x0 + x1) / 2, 0.5, (z0 + z1) / 2, 0x2a1208); k.box(Math.max(0.05, x1 - x0) + 0.01, 0.04, Math.max(0.05, z1 - z0), (x0 + x1) / 2, 1.02, (z0 + z1) / 2, GOLD); }
+  // coffered ceiling: gold-edged beams
+  for (let x = -6; x <= 6; x += 3) k.box(0.14, 0.14, 11, x, H - 0.07, -0.2, 0x3a1a10);
+  for (let z = -5; z <= 5; z += 2.5) k.box(12, 0.14, 0.14, 0, H - 0.07, z, 0x3a1a10);
+  // candlelight: a warm pool on every table, chandelier light on the carpet, two real warm lights
+  for (const [x, z] of [[DATE_TABLE.x, DATE_TABLE.z], ...DINER_TABLES]) k.pool(x, 0.77, z, 1.2, 0xffb060);
+  for (let x = -10.5; x < 6; x += 3.0) k.pool(x + 1.5, 0.77, 7.15, 1.0, 0xffb060);
+  for (const [x, z] of [[-3.5, -3.5], [3.5, -3.5], [0, 0.6], [-6.5, 2.6], [6.5, 2.6], [-3, 4.0], [3, 4.0]]) k.pool(x, 0, z, 3.4, 0xffd090);
+  k.pool(-9.1, 0.77, -3.2, 3.0, 0xffe0a0); k.pool(11.1, 1.11, -2, 4, 0xffb050);
+  k.light(0, 2.4, 0.6, 0xffc070, 5, 8, 0.25); k.light(9.5, 2.2, -2, 0xffa050, 4, 6); k.light(-9.1, 2.2, -3.2, 0xffd090, 3, 5);
   return k.finish({
     name: 'La Grande Portion',
-    sky: 0xffd9b0, ground: 0x3a1010, hemiI: 1.6, sun: 0xffc890, sunI: 0.8, sunPos: [2, 10, 4],
+    sky: 0xffd9b0, ground: 0x3a1010, hemiI: 1.25, sun: 0xffc890, sunI: 0.45, sunPos: [2, 10, 4], ambient: 0.3,
     start: { x: DATE_TABLE.x, z: DATE_TABLE.z + 1.05, yaw: 0 },
-    board: { x: -6.5, y: 1.38, z: 8.86, ry: Math.PI },
+    board: { x: -3.0, y: 1.38, z: 8.86, ry: Math.PI },
     startFood: ['burger', 'pizza', 'doughnut', 'burger', 'pizza', 'doughnut', 'burger', 'pizza', 'doughnut', 'burger', 'pizza', 'doughnut', 'doughnut', 'doughnut', 'can', 'burger'],
     spotCount: 24,
   });

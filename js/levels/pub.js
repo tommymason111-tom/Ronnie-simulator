@@ -19,6 +19,7 @@
 //   staff area x 8.2..13.5 z -11..1 · corridor z 1..3 · gambling x 6..13.5 z 3..11
 import * as THREE from 'three';
 import { part } from '../geo.js';
+import { streetViewTex } from './kit.js';
 import { Kit, carpetTex, tileTex, canvasTex, FONT, brickTex, booksWallTex, tngTex, oakPanelTex } from './kit.js';
 
 const H = 3.0;
@@ -320,9 +321,37 @@ export function buildPub(scene) {
   );
   for (const [t, w, h, pos, rot, o] of signs) k.label(t, w, h, pos, rot, o);
 
+  // ================================================================ lighting & finishing touches
+  // real warm lights: over the bar, the fire (flickering), the middle of the room, the poker table
+  k.light(7.6, 2.3, -4.5, 0xffb060, 7, 9);
+  k.light(-12.3, 0.8, 4.3, 0xff7a2a, 6, 6, 1);
+  k.light(-4.5, 2.4, 4.3, 0xffc884, 5, 10);
+  k.light(9.8, 2.2, 6.2, 0xffe0a0, 4, 6);
+  // pools of light: under the chandeliers, on every table, along the bar top, by the fire
+  for (const [x, z] of [[-8.9, 2.6], [-2.1, 2.6], [-8.9, 6.0], [-2.1, 6.0], [-2.1, -0.8]]) k.pool(x, 0, z, 3.2, 0xffc070);
+  for (const z of [2.6, 6.0]) for (const x of [-10.6, -7.2, -3.8, -0.4]) k.pool(x, 0.76, z, 1.3, 0xffd090);
+  for (const x of [-3.8, -0.4]) k.pool(x, 0.76, -0.8, 1.3, 0xffd090);
+  for (const x of [-11.5, -8.5, -5.5, -2.5, 0.5]) k.pool(x, 0.76, 9.4, 1.2, 0xffd090);
+  for (const [x, z] of [[2.6, 0.8], [2.6, 4.3], [2.6, 7.8], [-3.2, -4.3], [1.6, -4.3]]) k.pool(x, 1.08, z, 0.9, 0xffd090);
+  for (const z of [-8.5, -6.5, -4.5, -2.5, -0.5]) { k.pool(7.85, 1.14, z, 1.0, 0xffb050); k.pool(6.6, 0, z, 1.6, 0xffa040); }
+  k.pool(-12.2, 0, 4.3, 3.0, 0xff6a20); k.pool(9.8, 0.81, 6.2, 1.8, 0xfff0c0); k.pool(9.8, 0, 6.2, 3.4, 0xffd090);
+  for (const [x, z] of [[-5.5, 4.3], [-2.1, 0.85]]) k.pool(x, 0, z, 2.2, 0xffe0b0);
+  // glowing fire and candles on the tables
+  k.halo(-12.7, 0.45, 4.3, 1.2, 0xff6a10);
+  for (const z of [2.6, 6.0]) for (const x of [-10.6, -7.2, -3.8, -0.4]) { k.cyl(0.025, 0.025, 0.1, x + 0.3, 0.83, z, 0xf5f0dc, 8); k.lamp(x + 0.3, 0.9, z, 0xffb050, 0.018); }
+  // street-view windows above the booths, with burgundy curtains
+  for (const [i, x] of [-11.5, -8.5, -5.5, -2.5, 0.5].entries()) k.window(x, 1.78, 10.86, 1.25, 0.95, Math.PI, streetViewTex(i), { frame: 0x3a2416, bars: 2, curtains: 0x7a1f2a });
+  // dark oak beams across the main room ceiling
+  for (let x = -12.5; x <= 4.5; x += 2.5) k.box(0.18, 0.2, 13.0, x, H - 0.1, 4.5, 0x3a2416);
+  for (const z of [-0.5, 4.3, 9.0]) k.box(18.0, 0.16, 0.16, -4.25, H - 0.12, z, 0x3a2416);
+  // skirting and a dado rail on the plain walls of the front bit and the gambling room
+  k.box(12, 0.14, 0.04, -1, 0.07, -6.4, 0x3a2416); k.box(12, 0.05, 0.04, -1, 0.95, -6.4, 0x3a2416);
+  k.box(0.04, 0.14, 8, 5.92, 0.07, 7, 0x3a2416); k.box(0.04, 0.05, 8, 5.92, 0.95, 7, 0x3a2416);
+  k.box(0.04, 0.14, 8, 6.08, 0.07, 7, 0x1a1a3a); k.box(7.4, 0.14, 0.04, 9.8, 0.07, 10.92, 0x1a1a3a);
+
   const room = k.finish({
     name: 'The Oysterfleet',
-    sky: 0xfff3e0, ground: 0x8a6a5a, hemiI: 2.6, sun: 0xfff0d8, sunI: 1.3, sunPos: [-6, 10, 5],
+    sky: 0xffe2c0, ground: 0x6a4a3a, hemiI: 1.55, sun: 0xfff0d8, sunI: 0.45, sunPos: [-6, 10, 5], ambient: 0.32,
     start: { x: 4.2, z: 2.0, yaw: Math.PI * 0.75 },
     board: { x: 3.6, y: 1.38, z: 10.86, ry: Math.PI },
     startFood: ['can', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza', 'doughnut', 'burger', 'pizza', 'can', 'doughnut', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza'],

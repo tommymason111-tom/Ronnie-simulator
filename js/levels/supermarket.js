@@ -10,7 +10,7 @@
 //   "STAFF ONLY" strip curtains.
 // Plan (x east, z south): entrance doors in the south wall at x 9..11.
 import * as THREE from 'three';
-import { Kit, tileTex, canvasTex, FONT } from './kit.js';
+import { Kit, tileTex, canvasTex, FONT, streetViewTex } from './kit.js';
 
 const H = 4.0;
 
@@ -186,6 +186,13 @@ export function buildSupermarket(scene) {
   ];
   for (const [t, w, h, pos, rot, o] of jokes) sign(t, w, h, pos, rot, o);
 
+  // ================================================================ windows onto the car park + light
+  for (const [i, x] of [3.2, 5.6, 13.3].entries()) k.window(x, 2.1, 10.86, 1.8, 1.2, Math.PI, streetViewTex(i + 3, true), { frame: 0x1e4ea8, bars: 1 });
+  // bright pools under the strip lights and on the bakery and deli counters
+  for (let x = -13; x <= 13; x += 3.25) for (let z = -8; z <= 8; z += 4) k.pool(x, 0, z, 3.0, 0xf4f8ff);
+  for (let z = -3; z < 2.4; z += 1.3) k.pool(13.4, 0, z, 1.6, 0xffc070);
+  for (let x = 10.2; x < 12.9; x += 0.8) k.pool(x, 1.0, -3.4, 0.7, 0xff8a40);
+  k.pool(-3.0, 0, -9.2, 6, 0x9fffb0);     // the MONSTOR fridge glow on the floor
   return k.finish({
     name: 'Liddle-Price',
     sky: 0xf4f8ff, ground: 0x9a9a9a, hemiI: 2.2, sun: 0xffffff, sunI: 0.9, sunPos: [3, 10, 6],

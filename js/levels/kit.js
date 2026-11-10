@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { part, merge, vcLambert, box, cyl } from '../geo.js';
 import { canvasTex, signTex, fitText, FONT } from '../textures.js';
 import { NavGrid } from '../nav.js';
+import { GlowBatch } from './glow.js';
 
 export class Kit {
   constructor(scene, bounds) {
@@ -116,10 +117,35 @@ export class Kit {
     this.blockers.push({ x0: x - 0.18, x1: x + 0.18, z0: z - 0.18, z1: z + 0.18, y1: 0.78 });
   }
   // a warm glowing lamp (no real light: just an emissive shade); batched in finish()
-  lamp(x, y, z, color = 0xffd9a0, size = 0.18) {
+  lamp(x, y, z, color = 0xffd9a0, size = 0.18, halo = true) {
+    if (halo) this.halo(x, y, z, Math.min(1.6, size * 7 + 0.12), color);
     this.lamps = this.lamps || new Map();
     if (!this.lamps.has(color)) this.lamps.set(color, []);
     this.lamps.get(color).push([x, y, z, size]);
+  }
+  // a soft glow round a light (billboard), and a warm pool of light on a surface
+  halo(x, y, z, size, color = 0xffd9a0) { (this.halos = this.halos || new GlowBatch(false, 0.55, 2.4)).add(x, y, z, size, color); }
+  pool(x, y, z, size, color = 0xffc070) { (this.pools = this.pools || new GlowBatch(true, 0.42, 1.6)).add(x, y + 0.004, z, size, color); }
+  // a real (per-pixel) light: use sparingly, a handful per level
+  light(x, y, z, color = 0xffb060, intensity = 4, distance = 7, flicker = 0) {
+    const l = new THREE.PointLight(color, intensity, distance, 1.6); l.position.set(x, y, z); this.scene.add(l);
+    (this.lights = this.lights || []).push({ l, base: intensity, flicker });
+    return l;
+  }
+  // a window in a wall: frame, glazing bars, sill, and a glowing view of outside.
+  // ry: which way the window faces into the room (0 = +z, PI = -z, PI/2 = +x, -PI/2 = -x)
+  window(x, y, z, w, h, ry, view, { frame = 0xf2ece0, bars = 2, curtains = null } = {}) {
+    const c = Math.cos(ry), s = Math.sin(ry), across = Math.abs(c) > 0.5;
+    const put = (dw, dh, dd, ox, oy, od, color) => this.box(across ? dw : dd, dh, across ? dd : dw, x + (across ? ox : od * s), y + oy, z + (across ? od * c : ox), color);
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: view, color: 0xdddddd }));
+    glass.position.set(x - s * 0.005, y, z - c * 0.005); glass.rotation.y = ry; this.scene.add(glass);
+    put(w + 0.16, 0.08, 0.1, 0, h / 2 + 0.04, 0.03, frame); put(w + 0.16, 0.08, 0.1, 0, -h / 2 - 0.04, 0.03, frame);
+    put(0.08, h, 0.1, -w / 2 - 0.04, 0, 0.03, frame); put(0.08, h, 0.1, w / 2 + 0.04, 0, 0.03, frame);
+    for (let i = 1; i <= bars; i++) put(0.03, h, 0.04, -w / 2 + w * i / (bars + 1), 0, 0.02, frame);
+    put(w, 0.03, 0.04, 0, 0, 0.02, frame);
+    put(w + 0.3, 0.05, 0.22, 0, -h / 2 - 0.1, 0.1, frame);                 // sill
+    if (curtains) { put(0.28, h + 0.5, 0.06, -w / 2 - 0.22, 0.1, 0.1, curtains); put(0.28, h + 0.5, 0.06, w / 2 + 0.22, 0.1, 0.1, curtains); put(w + 0.9, 0.06, 0.06, 0, h / 2 + 0.4, 0.12, 0x2a1a10); }
+    this.halo(x + s * 0.2, y, z + c * 0.2, Math.max(w, h) * 1.1, 0x9ab8ff);
   }
   // any repeated mesh (e.g. light glows): batched into one instanced draw call per geometry+material
   instance(geo, mat, matrix) {
@@ -150,19 +176,25 @@ export class Kit {
     this.box(t, h, b.z1 - b.z0, b.x0 + t / 2, h / 2, (b.z0 + b.z1) / 2, color);
     this.box(t, h, b.z1 - b.z0, b.x1 - t / 2, h / 2, (b.z0 + b.z1) / 2, color);
   }
-  finish({ sky = 0xffe6c4, ground = 0x5a3a22, hemiI = 1.6, sun = 0xffe0b0, sunI = 1.6, sunPos = [5, 9, 4], start, board, startFood, spotCount = 30, name } = {}) {
+  finish({ sky = 0xffe6c4, ground = 0x5a3a22, hemiI = 1.6, sun = 0xffe0b0, sunI = 1.6, sunPos = [5, 9, 4], start, board, startFood, spotCount = 30, name, ambient = 0.55 } = {}) {
     this.flushInstances();
+    if (this.pools) this.pools.build(this.scene);
+    if (this.halos) this.halos.build(this.scene);
     const mesh = new THREE.Mesh(merge(this.parts), vcLambert);
     this.scene.add(mesh);
     const hemi = new THREE.HemisphereLight(sky, ground, hemiI);
     this.scene.add(hemi);
-    this.scene.add(new THREE.AmbientLight(0xfff0dc, 0.55));     // big rooms need a little fill everywhere
+    this.scene.add(new THREE.AmbientLight(0xfff0dc, ambient));     // big rooms need a little fill everywhere
     const dl = new THREE.DirectionalLight(sun, sunI); dl.position.set(...sunPos); this.scene.add(dl);
+    const lights = this.lights || [];
     const room = {
       name, big: true,
       colliders: this.colliders, blockers: this.blockers, spawns: this.spawns, bounds: this.bounds,
       hemi, sun: dl, start, board, startFood,
-      update() {},
+      update(dt) {          // flickering lights (fires, candles)
+        this.t = (this.t || 0) + dt;
+        for (const L of lights) if (L.flicker) L.l.intensity = L.base * (1 - L.flicker * 0.5 + L.flicker * 0.5 * (Math.sin(this.t * 13) * 0.3 + Math.sin(this.t * 7.3) * 0.4 + Math.sin(this.t * 23) * 0.3));
+      },
     };
     room.nav = new NavGrid(room);
     room.tommySpots = room.nav.sampleSpots(spotCount);
@@ -246,3 +278,28 @@ export function oakPanelTex() {
   });
 }
 export { canvasTex, signTex, fitText, FONT };
+
+// a night-time view out of a window: sky, terraced houses with lit windows, a street lamp
+export function streetViewTex(seed = 0, day = false) {
+  return canvasTex(512, 384, (g, w, h) => {
+    const sky = g.createLinearGradient(0, 0, 0, h * 0.7);
+    if (day) { sky.addColorStop(0, '#7ec8ff'); sky.addColorStop(1, '#d8f0ff'); } else { sky.addColorStop(0, '#0a1230'); sky.addColorStop(1, '#3a3a6a'); }
+    g.fillStyle = sky; g.fillRect(0, 0, w, h);
+    if (!day) for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect((i * 97 + seed * 31) % w, (i * 53) % (h * 0.4), 2, 2); }
+    else for (let i = 0; i < 3; i++) { g.fillStyle = '#fff'; g.beginPath(); g.arc(80 + i * 160 + seed * 20, 60 + i * 15, 26, 0, 7); g.arc(110 + i * 160 + seed * 20, 50 + i * 15, 30, 0, 7); g.fill(); }
+    // houses
+    for (let i = 0; i < 5; i++) {
+      const x = i * 110 - 20 + (seed * 37) % 60, hh = 150 + ((i + seed) % 3) * 30, y = h * 0.78 - hh;
+      g.fillStyle = ['#6a3a2a', '#7a4a3a', '#5a4a4a', '#8a5a3a'][(i + seed) % 4]; g.fillRect(x, y, 104, hh);
+      g.fillStyle = '#2a1a1a'; g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x + 52, y - 40); g.lineTo(x + 110, y); g.fill();
+      for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) { g.fillStyle = day ? '#9ec9e0' : ((i + r + c + seed) % 3 ? '#ffd27a' : '#1a1a2a'); g.fillRect(x + 16 + c * 46, y + 24 + r * 60, 28, 34); }
+      g.fillStyle = '#3a2416'; g.fillRect(x + 40, y + hh - 50, 24, 50);
+    }
+    // pavement, road, a parked car, the street lamp
+    g.fillStyle = '#5a5a5a'; g.fillRect(0, h * 0.78, w, h * 0.06); g.fillStyle = '#2a2a2e'; g.fillRect(0, h * 0.84, w, h * 0.16);
+    g.fillStyle = ['#c62828', '#1565c0', '#2e7d32'][seed % 3]; g.fillRect(260 - seed * 40, h * 0.8, 130, 30); g.fillRect(285 - seed * 40, h * 0.76, 80, 20);
+    g.fillStyle = '#111'; g.beginPath(); g.arc(290 - seed * 40, h * 0.88, 13, 0, 7); g.arc(360 - seed * 40, h * 0.88, 13, 0, 7); g.fill();
+    g.fillStyle = '#222'; g.fillRect(80, h * 0.3, 6, h * 0.5);
+    if (!day) { const gl = g.createRadialGradient(83, h * 0.3, 2, 83, h * 0.3, 90); gl.addColorStop(0, 'rgba(255,210,120,0.9)'); gl.addColorStop(1, 'rgba(255,210,120,0)'); g.fillStyle = gl; g.fillRect(0, 0, 200, h); }
+  });
+}
