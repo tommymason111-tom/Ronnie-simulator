@@ -31,7 +31,7 @@ export const SQUAD = {
     title: 'NAME THE FOOD', fail: 'named every snack. Ronnie ate every snack.',
     banks: {
       greet: ['Ronnie. Babe. We need to talk about the fridge.', 'Hi babe! I brought celery. Don\'t make that face.'],
-      chatter: ['That\'s Gerald. Gerald had a family.', 'I\'m not talking to you. I\'m talking to your belly. Hello, belly.', 'Did you know a group of chins is called a Ronnie? I made that up. It\'s still true.', '...anyway.', 'I had a dream you were a moon. I\'m starting to think it was a prophecy.', 'You\'re still my Ronnie. There\'s just... SO much more Ronnie.', 'I love every one of your chins. I\'ve named them. That one\'s Barry.'],
+      chatter: ['Ronnie, babe, the waiter just asked if we\'re expecting more people. It\'s just us. It\'s just YOU.', 'I bought you a Fitbit. It sent me an apology.', 'We said we\'d go on a walk this weekend. To the shop doesn\'t count, Ronnie.', 'My mum asked what you\'re like. I said \'a lot\'.', 'I made you a salad. You looked at it like it owed you money.', 'Every time I open the fridge there\'s a little note saying \'Ronnie was here\'.', 'You\'re the love of my life. The second love of yours is a kebab, isn\'t it?', 'I\'m not angry, babe. I\'m just counting. Out loud.', 'That\'s Gerald. Gerald had a family.', 'I\'m not talking to you. I\'m talking to your belly. Hello, belly.', 'Did you know a group of chins is called a Ronnie? I made that up. It\'s still true.', '...anyway.', 'I had a dream you were a moon. I\'m starting to think it was a prophecy.', 'You\'re still my Ronnie. There\'s just... SO much more Ronnie.', 'I love every one of your chins. I\'ve named them. That one\'s Barry.'],
       intervene: ['Ronnie. Put. It. Down.', 'We said one doughnut! ONE!', 'Salad ambush! It\'s for your own good, babe!'],
       name: ['That\'s Gerald. Gerald had dreams, Ronnie.', 'This one\'s called Susan. Susan is a mother.', 'Meet Kevin. Kevin wanted to see the world.'],
       guilt: ['He ate Gerald. He ATE GERALD.', 'Susan had KIDS, Ronnie!', 'Fine. FINE. Eat it. I\'ll just watch. Like a nature documentary.'],
@@ -50,7 +50,7 @@ export const SQUAD = {
     title: 'PROTEIN SWAP', fail: 'swapped the MONSTOR for protein. Ronnie bulked. Not like that.',
     banks: {
       greet: ['BRO. Bro. Put the pastry down, bro.', 'Ronnie! Leg day, bro! Not leg OF LAMB day!'],
-      chatter: ['My dad\'s here somewhere. If anyone shouts LEWY, that\'s him. Ignore him. Please.', 'Look at these arms, Ron. These could be YOUR arms. Not like that though.', 'I benched 140 this morning. You benched a family-size lasagne.', 'My beard? It\'s growing, bro. It\'s a slow grower. Like your self-control.', 'Palace are going up, bro. Like your cholesterol.', 'Ronnie, you\'re not bulking. You\'re just bulk.', 'Tommy, mate, your abs are cute. Mine are just... bigger. Under here. Somewhere.'],
+      chatter: ['Leg day, Ron? Every day\'s leg day for you, bro. Carrying all that.', 'Creatine, protein, chicken and rice. You? Creatine, protein, chicken, rice, chips, cheese, a doughnut.', 'I could deadlift you, bro. I\'d need a forklift, but I could.', 'Bro, I\'ve got a spare gym pass. It\'s got your name on it. In my handwriting. Use it.', 'My dad thinks protein shakes are \'for wrong\'uns\'. He\'s had six of mine.', 'Pump\'s insane today, Ronnie. Look at this vein. Don\'t look at your plate, look at the vein.', 'Palace on the telly later? I\'ll bring the chicken. YOU bring the self-control.', 'My dad\'s here somewhere. If anyone shouts LEWY, that\'s him. Ignore him. Please.', 'Look at these arms, Ron. These could be YOUR arms. Not like that though.', 'I benched 140 this morning. You benched a family-size lasagne.', 'My beard? It\'s growing, bro. It\'s a slow grower. Like your self-control.', 'Palace are going up, bro. Like your cholesterol.', 'Ronnie, you\'re not bulking. You\'re just bulk.', 'Tommy, mate, your abs are cute. Mine are just... bigger. Under here. Somewhere.'],
       intervene: ['Protein swap, bro! Proper fuel! No more MONSTOR!', 'Shakes on the table, bro. Gains only.'],
       shake: ['Bro, my protein shakes are for GAINS, not for... oh. Oh, you\'ve gained.', 'Bro... you\'re bulking. Not like that, bro.'],
       hit: ['Is that it, bro?', 'Didn\'t even hurt. I\'m just trying to help, bro.'],
@@ -68,7 +68,7 @@ export const SQUAD = {
     title: 'CATCH & EAT', fail: 'threw the food away. Ronnie caught it in his mouth. Every time.',
     banks: {
       greet: ['Ronnie, my guy, I\'ve matched with SIX girls this week. Six! None of them have replied, but SIX.'],
-      chatter: ['She said she likes tall guys. I\'m tall! She said she likes guys with abs... I\'m tall!', 'Her bio said "no time-wasters". So I\'ve wasted no time messaging her forty times.', 'West Ham till I die, Ron. Which, with your cooking, could be soon.', 'Ronnie, if you were on a dating app, your profile pic would need to be a panorama.', 'Ronnie, you\'d make an amazing offensive lineman. You\'re already offensive. And a line. A wide line.'],
+      chatter: ['I got a match last night, Ron! She\'s a vegan. I said I\'d give it a go. I lasted till lunch.', 'West Ham fan, single, 6 foot. Well, 5\'11. And a half. In boots.', 'My mates say I\'ve got the rizz of a wet sock. My mum says I\'m handsome. My mum\'s right.', 'Swipe right on that pasty, Ronnie? You don\'t swipe, you SWALLOW.', 'I\'m throwing food AWAY from you, Ron. Long-term thinking. Like my love life. No, wait.', 'Bubbles, Ronnie. Forever blowing bubbles. Not burping them. BLOWING them.', 'Date tonight. Where should I take her? Not anywhere you\'ve been, they\'ve run out of everything.', 'She said she likes tall guys. I\'m tall! She said she likes guys with abs... I\'m tall!', 'Her bio said "no time-wasters". So I\'ve wasted no time messaging her forty times.', 'West Ham till I die, Ron. Which, with your cooking, could be soon.', 'Ronnie, if you were on a dating app, your profile pic would need to be a panorama.', 'Ronnie, you\'d make an amazing offensive lineman. You\'re already offensive. And a line. A wide line.'],
       intervene: ['HAIL MARY! I\'m throwing this as FAR away from you as possible!', 'Hut! Hut! HUT! Get it away from him!'],
       caught: ['TOUCHDOWN! Wait, no, that\'s a doughnut. And it\'s gone.', 'INTERCEPTION! ...and he\'s handed it straight back to Ronnie. Terrible decision.', 'He caught it IN HIS MOUTH. The crowd goes wild. I go home.'],
       hit: ['Still got the phone! I\'m just trying to help!'],
@@ -86,7 +86,7 @@ export const SQUAD = {
     title: 'JUST THE ONE', fail: 'suggested a quiet one. Lost his pint.',
     banks: {
       greet: ['Ronnie. Lad. Sit down. Let\'s have a quiet one and talk about this.'],
-      chatter: ['I\'ve seen a lot of things in my life, Ronnie. I\'ve never seen a man eat a bar stool.', 'The beard\'s got crisps in it, hasn\'t it. You\'re looking at the beard. Don\'t look at the beard.', 'Come on you Irons. Come on, Ronnie, slow down.', 'You\'re the only man I know who orders a pint and a pie and then eats the pub.', 'My nan was from Cork. She\'d have fed you. She\'d have regretted it.', 'My little brother Connor supports Liverpool. We don\'t talk about it at Christmas.', 'Connor says he\'s the better-looking brother. Connor says a lot of things.'],
+      chatter: ['Just the one, Ronnie. Just the one. That\'s what I said in 2016 and I\'m still out.', 'A proper pint takes 119 seconds to pour. You\'ve had three in that time.', 'Irons till I die, Ron. Well. Irons till last orders.', 'My brother Connor thinks he\'s the funny one. He is. Don\'t tell him.', 'Pint of plain is your only man, Ronnie. Plain. Not plain, a burger and chips.', 'Settle, Ron. Let it settle. The pint, I mean. You can\'t settle. You never settle.', 'I\'ve seen a lot of things in my life, Ronnie. I\'ve never seen a man eat a bar stool.', 'The beard\'s got crisps in it, hasn\'t it. You\'re looking at the beard. Don\'t look at the beard.', 'Come on you Irons. Come on, Ronnie, slow down.', 'You\'re the only man I know who orders a pint and a pie and then eats the pub.', 'My nan was from Cork. She\'d have fed you. She\'d have regretted it.', 'My little brother Connor supports Liverpool. We don\'t talk about it at Christmas.', 'Connor says he\'s the better-looking brother. Connor says a lot of things.'],
       intervene: ['Just the one, Ronnie. Here. Let it settle first. Patience.', 'Right. Intervention time. Let\'s be grown-ups about this.'],
       settle: ['You have to let it settle, Ronnie. Patience.', 'Let it settle...', 'Nearly...'],
       drank: ['That\'s a lovely pint. That WAS a lovely pint.', 'You have to let it settle, Ronnie. ...and he\'s drunk it. Mine. That was mine.', 'Ah, now you\'re getting it.'],
@@ -106,7 +106,7 @@ export const SQUAD = {
     title: 'THE TACKLE', fail: 'tackled Ronnie. Bounced off.',
     banks: {
       greet: ['Right, Ronnie, I\'ve brought half-time oranges. HEALTHY.', 'Alright Ron! Fancy some exercise? Rugby? Rugby. Rugby?'],
-      chatter: ['I\'ve tackled props, I\'ve tackled locks, I\'ve never tackled a man with his own moon.', 'United would never let a player get this big. Well. Except the wages.', 'Chelsea fan, eating like this? Typical.', 'Crouch... bind... SET! ...he\'s eaten the ball.'],
+      chatter: ['Rugby\'s a gentleman\'s game, Ronnie. Played by hooligans. Watched by you, eating.', 'Glory glory Man United! Glory glory Ronnie\'s lunch!', 'I\'ve hit rucks softer than your fridge door, Ron.', 'Scrum down! ...Ronnie, that\'s not a scrum, that\'s the buffet queue.', 'Coach says I need to bulk. I said I know a guy. I pointed at you.', 'Line-out, Ron! Throw it in! No. Don\'t eat the ball. DON\'T EAT THE—', 'Proper front-row forward, me. You\'d be a whole front row on your own.', 'I\'ve tackled props, I\'ve tackled locks, I\'ve never tackled a man with his own moon.', 'United would never let a player get this big. Well. Except the wages.', 'Chelsea fan, eating like this? Typical.', 'Crouch... bind... SET! ...he\'s eaten the ball.'],
       intervene: ['Right, Ronnie, I\'m coming in. Brace!', 'TACKLE! It\'s for your own good, mate!'],
       bounced: ['I bounced off you, mate. I BOUNCED. Like a bouncy castle full of gravy.', 'Good hit! I\'m just trying to help!'],
       tackled: ['Got him! Food\'s down! ...he\'s picked it back up.', 'TRY! ...no. No, that\'s him eating.'],
@@ -125,7 +125,7 @@ export const SQUAD = {
     title: 'SHAME CAM', fail: 'filmed Ronnie to shame him. It went viral.',
     banks: {
       greet: ['Hey guys, welcome back to the channel. Today: can my mate Ronnie NOT eat something? Spoiler: no.'],
-      chatter: ['Like, comment and subscribe, and pray for the bakery section.', 'Spurs are rebuilding, Ronnie. Like your sofa.', 'This is content. This is GOLD. This is also a crime.', 'Guys, he\'s eaten the self-checkout. He IS the unexpected item.', 'I\'ve got an idea. What if we put you on a diet... live? Ten million views. Easy.'],
+      chatter: ['I work at Liddle-Price, Ron. I\'ve seen you in the middle aisle at 7am. I\'ve seen things.', 'Staff discount\'s 10 percent. You\'d bankrupt the company with 10 percent.', 'Spurs are \'in transition\', Ronnie. Like your trousers. From medium to... not.', 'I\'ve clipped you eating a whole quiche. 2.4 million views. You\'re welcome.', 'The self-checkout knows your face, Ron. It says \'unexpected item\' before you walk in.', 'Should I do a \'what Ronnie eats in a day\' video? It\'d be eleven hours long.', 'Hit subscribe. Hit the bell. Don\'t hit me, Ronnie.', 'Like, comment and subscribe, and pray for the bakery section.', 'Spurs are rebuilding, Ronnie. Like your sofa.', 'This is content. This is GOLD. This is also a crime.', 'Guys, he\'s eaten the self-checkout. He IS the unexpected item.', 'I\'ve got an idea. What if we put you on a diet... live? Ten million views. Easy.'],
       intervene: ['Shame cam is LIVE. Ronnie, everyone can see you. Put it down.', 'Guys, I\'m filming my mate to shame him into stopping. Let\'s go.'],
       viral: ['Ronnie, you\'ve just gained ten thousand followers. And ten pounds.', 'It\'s trending. RONNIE FOR PM is trending.', 'The followers LOVE you. Why do they love you?!'],
       hit: ['Got it! In 4K! I\'m just trying to help... the algorithm.'],
@@ -142,7 +142,7 @@ export const SQUAD = {
     title: 'THE AMBUSH', fail: 'ambushed Ronnie from a bin. Was found in a bin.',
     banks: {
       greet: ['RONNIEEEEEEE!', 'West Ham, Oasis and attacking Ronnie. The three loves of my life.'],
-      chatter: ['You know what\'s better than that kebab, Ronnie? OASIS. Everything is worse than Oasis.', 'Second album\'s the best, Ronnie, don\'t even start. DON\'T. START.', 'Ronnie, if you were an Oasis album, you\'d be a double album. Triple. Box set.', 'Listen. LISTEN. This one\'s my own song. It\'s called "Don\'t Eat The Fridge, Ron".'],
+      chatter: ['Ronnie. Wonderwall. Acoustic. Right now. You eat, I\'ll play.', 'Liam would\'ve eaten that kebab with more ATTITUDE, Ron.', 'Definitely Maybe, Ronnie. Definitely maybe you should stop eating.', 'Champagne supernova? Nah. Chips and gravy supernova.', 'I\'m small, Ron, I\'m quick, I\'m everywhere. Like crumbs on your shirt.', 'Don\'t look back in anger, Ronnie. Look back at the empty plates.', 'I\'ll hide in a bin if I have to. I\'ve done it before. Don\'t ask.', 'You know what\'s better than that kebab, Ronnie? OASIS. Everything is worse than Oasis.', 'Second album\'s the best, Ronnie, don\'t even start. DON\'T. START.', 'Ronnie, if you were an Oasis album, you\'d be a double album. Triple. Box set.', 'Listen. LISTEN. This one\'s my own song. It\'s called "Don\'t Eat The Fridge, Ron".'],
       intervene: ['...not yet... not yet... NOW!', 'RONNIEEEEEEE! I\'VE GOT HIM! I\'VE GOT HIM!'],
       cling: ['I\'m on you now! I live here now!', 'I\'ll bite you. I\'ll actually bite you. I\'m just trying to help!'],
       shaken: ['AGAIN! DO IT AGAIN! ...I mean, I\'m just trying to help.'],
@@ -161,7 +161,7 @@ export const SQUAD = {
     title: 'THE ROUND', fail: 'bought a round to slow Ronnie down. Ronnie drank the round.',
     banks: {
       greet: ['Ronnie! Get in here, lad. Aidan\'s brother, at your service. The better-looking one.', 'Alright Ron. Pint? Course you will.'],
-      chatter: ['Liverpool are the greatest club on Earth, Ronnie. You\'re the greatest club sandwich.', 'Our mammy says Aidan was the quiet one. I was the one who could finish a pint. You\'re the one who finishes the pub.', 'You\'ll never walk alone, Ronnie. Mostly because you can\'t fit through doors on your own.', 'A proper pint of stout is a meal in a glass, Ron. That\'s not a challenge.', 'Me and Aidan have been arguing about who\'s the older brother for thirty years. He is. He just looks it.', 'Anfield on a European night, Ronnie. The noise. Nearly as loud as your stomach.'],
+      chatter: ['Liverpool, Ronnie. Six European Cups. You\'ve had six breakfasts.', 'Back home in Ireland they\'d have you on a farm. As the farm.', 'Aidan says he\'s the sensible one. He\'s had more pints than me today. He\'s the sensible one.', 'Up the Reds, Ron! Up the... no, sit down, you\'ll take the table with you.', 'Liverpool are the greatest club on Earth, Ronnie. You\'re the greatest club sandwich.', 'Our mammy says Aidan was the quiet one. I was the one who could finish a pint. You\'re the one who finishes the pub.', 'You\'ll never walk alone, Ronnie. Mostly because you can\'t fit through doors on your own.', 'A proper pint of stout is a meal in a glass, Ron. That\'s not a challenge.', 'Me and Aidan have been arguing about who\'s the older brother for thirty years. He is. He just looks it.', 'Anfield on a European night, Ronnie. The noise. Nearly as loud as your stomach.'],
       intervene: ['Right, Ronnie, my round! Two of the black stuff. Sip it slow, like a gentleman.', 'Lads, I\'ll handle this. Nothing slows a man down like a proper Irish stout.'],
       settle: ['Let it settle now. Patience, Ronnie. Patience.', 'One for you, one for me. Not one for Aidan.'],
       drank: ['He drank MY one as well. Aidan, your mate is a menace.', 'Ah, that was a lovely pint. Lovely. For you.', 'You\'ve drunk it faster than Salah runs, Ron.'],
@@ -181,7 +181,7 @@ export const SQUAD = {
     title: 'GALÁCTICO FREE KICK', fail: 'curled three free kicks at Ronnie. Ronnie ate the wall.',
     banks: {
       greet: ['¡Hola, Ronnie! Yes, I\'m from Essex. Yes, I support Real Madrid. Yes, it\'s a big nose. Next question.', 'Ronnie! I smelt you coming. I smelt the kebab before you, actually.'],
-      chatter: ['Hala Madrid, Ronnie. Fifteen Champions Leagues. You\'ve had fifteen breakfasts.', 'Everyone jokes about my nose. Fine. At least you can see my nose. Nobody\'s seen your neck since 2019.', 'My nose can smell a pasty from three postcodes away, Ron. Right now it\'s smelling YOU.', 'People say "why Real Madrid, you\'re from England?" Because I like winning, Ronnie. You should try it. Against a sandwich.', 'I don\'t need a snorkel on holiday. I\'ve got a nose. You don\'t need a lilo. You\'ve got a belly.', 'The Bernabéu holds eighty-odd thousand, Ron. Or about forty of you.'],
+      chatter: ['Vinícius would never, Ronnie. Bellingham would never. You would. You did.', 'Pepsi Max, Ron. No sugar. No calories. No idea why you\'re looking at me like that.', 'My nose gets in every photo before me. Your belly does the same.', 'Real Madrid in the final again, Ron. You in the fridge again.', 'Hala Madrid, Ronnie. Fifteen Champions Leagues. You\'ve had fifteen breakfasts.', 'Everyone jokes about my nose. Fine. At least you can see my nose. Nobody\'s seen your neck since 2019.', 'My nose can smell a pasty from three postcodes away, Ron. Right now it\'s smelling YOU.', 'People say "why Real Madrid, you\'re from England?" Because I like winning, Ronnie. You should try it. Against a sandwich.', 'I don\'t need a snorkel on holiday. I\'ve got a nose. You don\'t need a lilo. You\'ve got a belly.', 'The Bernabéu holds eighty-odd thousand, Ron. Or about forty of you.'],
       intervene: ['Galáctico free kick! Stand still, Ronnie, you\'re the wall!', 'Set piece, Ron! Curling one in. It\'s broccoli. It\'s for your health.'],
       hit: ['Not the nose! Anything but the nose! There\'s a LOT of it to hurt!', 'Ow! I\'m just trying to help, Ronnie!'],
       slap: ['You\'ve just slapped a Real Madrid fan. That\'s a diplomatic incident.'],
@@ -199,6 +199,7 @@ export const SQUAD = {
     banks: {
       greet: ['Alright Ronnie boy! Lewy said you\'d be here. Lewy says a lot of things.', 'Ronnie! Come round ours Sunday, I\'m doing the barbecue. Not for you. Well. A bit for you.'],
       chatter: [
+        'I caught a carp this big up the lake once. Then a swan had a go at me. Canvey\'s lawless, Ronnie.', 'Lewy\'s mum says I\'m not allowed to talk about the council at dinner. I\'m not at dinner, Ronnie.', 'You lot think you\'re funny. I was funny before any of you were born. Ask Lewy\'s nan.', 'Everyone\'s offended these days. I\'m offended by how much you\'ve eaten. Simple as.', 'Bring your own meat Sunday, Ronnie. No. Don\'t bring your own meat. We\'ll have none left.',
         'Lewy! LEWY! Tell your mate to put the sausage down. That\'s for the barbecue.',
         'Canvey Lake, Ronnie. Disgrace. Nobody looks after it. Shopping trolleys. A bike. I pulled out a whole sofa once. Nice sofa, actually.',
         'Went fishing up the lake Saturday. Caught nothing. The fish have all moved out, can\'t blame \'em.',
@@ -227,6 +228,7 @@ export const SQUAD = {
     banks: {
       greet: ['RONNIE! Blues brothers! Come on Chelsea!', 'Ron! Pint? Pint. Course. Then the football. Then another pint.'],
       chatter: [
+        'Chelsea are building something, Ron. Like your second chin.', 'Got a tattoo of the Champions League trophy. Took longer than our actual season.', 'Half-time oranges, Ronnie! Wait, you\'ve already eaten them. And the bag.', 'Sunday league ref sent me off for \'excessive celebration\'. One pint. On the pitch.', 'Blue is the colour, Ronnie! Football is the game! Food is... clearly your other game.',
         'Me and you, Ron. Chelsea till we die. Which for you could be any minute, the rate you\'re going.',
         'Got a new tattoo, Ronnie. Want to see it? It\'s a lion. Like the badge. Like you at a buffet.',
         'I started a back piece once. Massive dragon. Got two hours in and tapped out. It\'s just a tail now. A dragon\'s tail. On its own.',
@@ -567,6 +569,16 @@ export class SquadMember extends Character {
         this.prop.position.add(_v2.set(0, 0.03, 0).applyQuaternion(this.prop.quaternion));
       } else if (this.def.look.prop === 'rod') {  // rod held out in front, tip up
         this.prop.rotation.set(-0.5, this.rag.yaw, 0, 'YXZ');
+        // reeling Ronnie in: a taut line from the rod tip to his middle
+        if (!this.reelLine) { this.reelLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0xffffff })); this.reelLine.frustumCulled = false; this.scene.add(this.reelLine); this.extra = [...(this.extra || []), this.reelLine]; }
+        this.reeling = Math.max(0, (this.reeling || 0) - dt);
+        this.reelLine.visible = this.reeling > 0 && !this.down;
+        if (this.reelLine.visible) {
+          this.prop.updateMatrixWorld(true);
+          const tip = _v2.set(0, 0, 1.45).applyMatrix4(this.prop.matrixWorld);
+          const a = this.reelLine.geometry.attributes.position;
+          a.setXYZ(0, tip.x, tip.y, tip.z); a.setXYZ(1, ctx.head.x, ctx.head.y - 0.45, ctx.head.z); a.needsUpdate = true;
+        }
       } else if (this.def.look.prop === 'jug') { // held by the handle, the jug hanging on the outside
         const pel = this.rag.parts.pelvis.body.position;
         this.prop.rotation.set(0, Math.atan2(hand.x - pel.x, hand.z - pel.z) + Math.PI / 2, 0);
@@ -586,6 +598,9 @@ export class SquadMember extends Character {
     this.state = 'act'; this.stateT = 0; this.phase = 0;
     this.say('intervene', 4);
     this.actStart && this.actStart();
+    // first walk up to Ronnie and do their signature move on him (Noah charges and
+    // Dylan leaps instead; Ian only needs to get within casting range)
+    this.approach = { noah: 0, dylan: 0, ian: 2.4, oliver: 1.8, harry: 1.2 }[this.id] ?? 0.9;
     ({
       chloe: () => { this.salads = 3; },
       lewis: () => { this.goToStation(); },
@@ -617,6 +632,25 @@ export class SquadMember extends Character {
     const r = this.rag, g = this.game;
     this.setIdlePose(this.t);
     const done = () => { this.state = 'idle'; this.stateT = 0; this.nextMove = 3; this.onEvent && this.onEvent('acted', this); };
+    if (this.approach) {
+      _v2.set(ctx.head.x - this.pos.x, 0, ctx.head.z - this.pos.z);
+      const d = _v2.length();
+      this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 7);
+      if (d > this.approach && this.stateT < 7) { r.moveVel.copy(_v2.normalize()).multiplyScalar(1.4); this.walkPose(dt, 1.4); return; }
+      this.approach = 0; this.stateT = 0; this.signT = 1.6;
+      g.stun && g.stun(this);
+      if (this.id === 'harry') this.stateT = -5;          // tells his stories before passing food
+    }
+    if (this.signT > 0) {                                  // a moment for the signature move
+      this.signT -= dt;
+      this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 7);
+      if (this.id === 'lewis' || this.id === 'tommy') { r.aim('uArmL', 0.4, 0.5, 0.8); r.aim('uArmR', -0.4, 0.5, 0.8); r.aim('lArmL', 0.2, 0.8, 0.6); r.aim('lArmR', -0.2, 0.8, 0.6); }
+      else if (this.id === 'aidan' || this.id === 'ethan') { r.aim('uArmR', -0.2, 0.1, 1); r.aim('lArmR', -0.1, 0.1, 1); }
+      else if (this.id === 'alfie') { r.aim('uLegR', -0.1, -0.6, 0.8); r.aim('lLegR', 0, -0.7, 0.7); }
+      else if (this.id === 'ian') { r.aim('uArmR', -0.2, 0.4, 0.9); r.aim('lArmR', -0.1, 0.7, 0.7); }
+      else if (this.id === 'oliver') { r.aim('uArmR', -0.1, 0.2, 1); r.aim('lArmR', 0, 0.3, 1); }
+      return;
+    }
     switch (this.id) {
       case 'chloe':     // salad ambush, then names the next food you eat
         this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 5);
@@ -629,7 +663,7 @@ export class SquadMember extends Character {
         _v2.set(this.stationX - this.pos.x, 0, this.stationZ - this.pos.z);
         const d = _v2.length();
         if (this.phase === 0) {
-          if (d > 0.2 && this.stateT < 6) { this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 6); r.moveVel.copy(_v2.normalize()).multiplyScalar(0.8); this.walkPose(dt, 0.8); }
+          if (d > 0.2 && this.stateT < 6) { this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 6); r.moveVel.copy(_v2.normalize()).multiplyScalar(0.95); this.walkPose(dt, 0.95); }
           else { this.phase = 1; this.stateT = 0; }
         } else if (this.phase === 1) {
           this.turnTo(Math.atan2(this.room.spawns[0].x - this.pos.x, this.room.spawns[0].z - this.pos.z), dt, 6);

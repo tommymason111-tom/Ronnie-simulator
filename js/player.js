@@ -58,6 +58,7 @@ export class Player {
     this.rig.add(camera);
     scene.add(this.rig);
     this.scale = 1;
+    this.clearEffects();
     this.head = new THREE.Vector3();
     this.fwd = new THREE.Vector3(0, 0, -1);
     this.mouth = new THREE.Vector3();
@@ -116,22 +117,24 @@ export class Player {
     if (this.flatHolder?.held) { const it = this.flatHolder.held; this.flatDrop(); it.vel.set((Math.random() - 0.5) * 2, 1.5, 1); }
   }
 
-  // Knocked flat on your back (Noah's tackle): the whole rig tips over around
-  // your feet, you lie on the floor for a moment, then get back up.
-  // dir: horizontal direction you get pushed in.
-  knockDown(dir) {
-    if (this.knock) return;
+  // Knocked flat on your back (Noah's tackle, Tommy's trip): the whole rig tips
+  // over around your feet, you lie on the floor for a moment, then get back up.
+  // dir: horizontal direction you get pushed in. lie: seconds on the floor.
+  knockDown(dir, lie = 2.0) {
+    if (this.knock || this.throwAnim) return;
     this.rig.updateMatrixWorld(true);
     this.camera.getWorldPosition(_v);
     const d = new THREE.Vector3(dir.x, 0, dir.z);
     if (d.lengthSq() < 1e-6) d.set(-this.fwd.x, 0, -this.fwd.z);
     d.normalize();
-    this.knock = { t: 0, pos: this.rig.position.clone(), q: this.rig.quaternion.clone(), pivot: new THREE.Vector3(_v.x, 0, _v.z), axis: new THREE.Vector3().crossVectors(UP, d).normalize() };
+    // remember the yaw as a plain number: copying the quaternion back can come out
+    // as an equivalent Euler with x = z = 180°, which turned the walking controls round
+    this.knock = { t: 0, lie, pos: this.rig.position.clone(), yaw: this.rig.rotation.y, q: this.rig.quaternion.clone(), pivot: new THREE.Vector3(_v.x, 0, _v.z), axis: new THREE.Vector3().crossVectors(UP, d).normalize() };
   }
   updateKnock(dt) {
     const k = this.knock;
     k.t += dt;
-    const FALL = 0.35, LIE = 2.4, UPT = 0.9, MAX = 1.3;
+    const FALL = 0.35, LIE = 0.6 + k.lie, UPT = 0.9, MAX = 1.3;
     let a;
     if (k.t < FALL) { const u = k.t / FALL; a = MAX * u * u; }                       // topple, speeding up
     else if (k.t < FALL + 0.25) a = MAX - 0.12 * Math.sin((k.t - FALL) / 0.25 * Math.PI);   // thud + little bounce
@@ -141,7 +144,59 @@ export class Player {
     _q.setFromAxisAngle(k.axis, a);
     this.rig.position.copy(k.pos).sub(k.pivot).applyQuaternion(_q).add(k.pivot);
     this.rig.quaternion.copy(_q).multiply(k.q);
-    if (k.t >= LIE + UPT) { this.rig.position.copy(k.pos); this.rig.quaternion.copy(k.q); this.knock = null; }
+    if (k.t >= LIE + UPT) { this.rig.position.copy(k.pos); this.rig.rotation.set(0, k.yaw, 0); this.knock = null; this.resetHandHistory(); }
+  }
+
+  // ---------------- status effects from the squad's interventions ----------------
+  // dizzy (wobbly view, drifting), frozen (can't walk), jig (forced to dance),
+  // tether (on Ian's line: can't get far), spin (nutmegged), slow, noEat.
+  effect(kind, dur, opts = {}) {
+    const fx = this.fx;
+    if (kind === 'tether') { this.rig.updateMatrixWorld(true); this.camera.getWorldPosition(_v); fx.tether = { t: dur, x: _v.x, z: _v.z, r: opts.r || 0.6 }; return; }
+    if (kind === 'spin') { fx.spin = Math.max(fx.spin, dur); fx.spinLeft = Math.PI * 2; return; }
+    fx[kind] = Math.max(fx[kind] || 0, dur);
+  }
+  clearEffects() { if (this.jigY) this.rig.position.y -= this.jigY; this.fx = { dizzy: 0, frozen: 0, jig: 0, tether: null, spin: 0, spinLeft: 0, slow: 0, noEat: 0 }; this.jigY = 0; }
+  get stunned() { return !!(this.knock || this.throwAnim || this.fx.frozen > 0 || this.fx.jig > 0); }
+  get canEat() { return !(this.fx.noEat > 0) && !this.knock && !this.throwAnim; }
+  // Lewis picks you up and throws you across the room: fly in an arc to `to`, land in a heap
+  throwTo(to, height = 1.2) {
+    if (this.knock || this.throwAnim) return;
+    this.rig.updateMatrixWorld(true); this.camera.getWorldPosition(_v);
+    this.throwAnim = { t: 0, dur: 0.9, from: this.rig.position.clone(), dx: to.x - _v.x, dz: to.z - _v.z, h: height };
+  }
+  updateEffects(dt, t) {
+    const fx = this.fx;
+    for (const k of ['dizzy', 'frozen', 'jig', 'spin', 'slow', 'noEat']) if (fx[k] > 0) fx[k] = Math.max(0, fx[k] - dt);
+    // thrown across the room
+    if (this.throwAnim) {
+      const a = this.throwAnim; a.t += dt;
+      const u = Math.min(1, a.t / a.dur);
+      this.rig.position.set(a.from.x + a.dx * u, a.from.y + Math.sin(u * Math.PI) * a.h, a.from.z + a.dz * u);
+      if (u >= 1) { this.rig.position.y = a.from.y; this.throwAnim = null; this.resetHandHistory(); this.onLanded && this.onLanded(); this.knockDown({ x: a.dx, z: a.dz }, 1.2); }
+      return;
+    }
+    // dizzy: the view sways and you drift sideways
+    if (fx.dizzy > 0 && !this.knock) {
+      const k = Math.min(1, fx.dizzy);
+      this.rotateAroundHead(Math.sin(t * 1.7) * 0.35 * dt * k);
+      _v.set(this.fwd.z, 0, -this.fwd.x).normalize().multiplyScalar(Math.sin(t * 1.1) * 0.35 * dt * k);
+      this.rig.position.add(_v);
+      if (this.flatMode) this.camera.rotation.z = Math.sin(t * 1.3) * 0.12 * k;
+    }
+    // nutmegged: spin round once
+    if (fx.spinLeft > 0) { const step = Math.min(fx.spinLeft, dt * 7); fx.spinLeft -= step; this.rotateAroundHead(step); }
+    // Irish jig: bounce up and down
+    const jy = fx.jig > 0 ? Math.abs(Math.sin(t * 9)) * 0.09 : 0;
+    this.rig.position.y += jy - (this.jigY || 0); this.jigY = jy;
+    // on Ian's line: can't get further than r from where you were hooked
+    if (fx.tether) {
+      fx.tether.t -= dt;
+      this.rig.updateMatrixWorld(true); this.camera.getWorldPosition(_v);
+      const dx = _v.x - fx.tether.x, dz = _v.z - fx.tether.z, d = Math.hypot(dx, dz);
+      if (d > fx.tether.r) { const f = (d - fx.tether.r) / d; this.rig.position.x -= dx * f; this.rig.position.z -= dz * f; }
+      if (fx.tether.t <= 0) fx.tether = null;
+    }
   }
   get downed() { return !!this.knock; }
 
@@ -178,15 +233,17 @@ export class Player {
 
     if (xr) {
       for (const h of this.hands) this.updateHand(h, dt, t);
-      if (!this.knock) this.locomotion(dt);
+      if (!this.stunned) this.locomotion(dt, this.fx.slow > 0 ? 0.45 : 1);
     } else {
       for (const h of this.hands) { if (h.body) h.body.position.set(0, -10, 0); if (h.ctrlHand) h.ctrlHand.root.visible = false; }
       const mv = this.flatMove;
-      if (this.knock && mv) this.flatMove = { x: 0, z: 0 };
+      if (this.stunned && mv) this.flatMove = { x: 0, z: 0 };
+      else if (this.fx.slow > 0 && mv) this.flatMove = { x: mv.x * 0.45, z: mv.z * 0.45 };
       this.updateFlat(dt, t);
       if (mv) this.flatMove = mv;
     }
     if (this.knock) this.updateKnock(dt);
+    this.updateEffects(dt, t);
     this.updateWristParent(xr);
     this.updateBelly(dt, t);
   }
@@ -306,7 +363,7 @@ export class Player {
   }
 
   // Left stick: smooth move (head-relative). Right stick: 30° snap turn.
-  locomotion(dt) {
+  locomotion(dt, mul = 1) {
     let mx = 0, mz = 0, turn = 0;
     for (const h of this.hands) {
       const gp = h.source?.gamepad;
@@ -319,7 +376,7 @@ export class Player {
     if (Math.abs(mx) > 0.15 || Math.abs(mz) > 0.15) {
       _v.set(this.fwd.x, 0, this.fwd.z).normalize();
       _v2.crossVectors(_v, UP);       // right
-      const sp = TUNING.moveSpeed * dt;
+      const sp = TUNING.moveSpeed * dt * mul;
       this.rig.position.addScaledVector(_v, -mz * sp).addScaledVector(_v2, mx * sp);
     }
     if (this.snapReady && Math.abs(turn) > 0.7) {

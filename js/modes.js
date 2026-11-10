@@ -34,6 +34,32 @@ export function modesFor(place) {
     return true;
   });
 }
+const STUNS = {
+  tommy:  { top: 'TOMMY TRIPS YOU UP!', big: 'DOWN FOR 5 SECONDS' },
+  noah:   { top: 'TACKLED BY NOAH!', big: 'FLOORED!' },
+  aidan:  { top: 'AIDAN FORCES YOU TO HAVE ONE MORE BEER!', big: 'DIZZY!', sfx: 'gulp' },
+  harry:  { top: 'HARRY DISTRACTS YOU WITH HIS DATING HISTORY', big: 'DISTRACTED!', sfx: 'ting' },
+  ethan:  { top: 'ETHAN HITS YOU WITH A PEPSI MAX ATTACK!', big: 'FIZZED! NO EATING!', sfx: 'psst' },
+  connor: { top: 'CONNOR GIVES YOU AN IRISH JIG ATTACK!', big: 'JIG!', sfx: 'boing' },
+  lewis:  { top: 'LEWIS THROWS YOU ACROSS THE ROOM!', big: 'YEET!', sfx: 'boing' },
+  ian:    { top: 'IAN CATCHES YOU ON HIS FISHING ROD!', big: 'HOOKED FOR 5 SECONDS' },
+  chloe:  { top: 'CHLOE PUTS YOU ON A DIET!', big: 'NO EATING!', sfx: 'ting' },
+  oliver: { top: 'OLIVER BLINDS YOU WITH HIS CAMERA FLASH!', big: 'GONE VIRAL!', sfx: 'ting' },
+  dylan:  { top: 'DYLAN IS CLINGING TO YOUR HAND!', big: 'SHAKE HIM OFF!', sfx: 'boing' },
+  alfie:  { top: 'ALFIE NUTMEGS YOU!', big: 'SPUN ROUND!', sfx: 'boing' },
+};
+const DATING = [
+  'So there was this girl from Basildon. Three dates. Turned out she was my cousin\'s ex. And my other cousin\'s ex.',
+  'Matched with someone, she said "you look different in person". I said "so do you". We never spoke again.',
+  'Took a girl to Nando\'s. She ordered extra hot. I ordered lemon and herb. She left. Fair.',
+  'One date, she brought her mum. Her MUM, Ronnie. Her mum liked me more, to be honest.',
+  'I got ghosted by someone I hadn\'t even messaged yet. That\'s a skill, that is.',
+  'Went on a date to the cinema. Fell asleep. Woke up, she\'d gone, and so had my popcorn.',
+  'She said she was 5\'8". She was 5\'8" in heels. On a step. In a photo.',
+  'Last one swiped right, then unmatched me while I was typing "hey". Mid-"hey", Ronnie.',
+  'My longest relationship was eleven days. Twelve if you count the day she was telling everyone.',
+  'Speed dating in Southend. Every single one of them asked if I knew you. Every single one.',
+];
 const VEG_OF = { connor: 'sprout', ethan: 'broccoli', ian: 'pepper', alfie: 'apple', tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', };
 const _v = new THREE.Vector3();
 
@@ -274,18 +300,56 @@ export class Director {
     it.temp = false; it.placedAt = performance.now(); it.placedBy = who;
     sfx('pop', free, 0.5);
   }
+  // Each person's signature move on Ronnie: a banner saying exactly what happened,
+  // and a short stun (dizzy, frozen, thrown, hooked...).
+  stun(who, kind = who.id) {
+    const g = this.g, P = g.player, G = g.G;
+    const S = STUNS[kind]; if (!S) return;
+    if (P.knock || P.throwAnim) return;
+    g.showBanner(S.top, S.big);
+    sfx(S.sfx || 'thud', null, 1);
+    const tint = (color, t, op = 0.3) => { G.fxTint = color; G.fxTintT = t; G.fxTintOp = op; };
+    const away = { x: P.head.x - who.pos.x, z: P.head.z - who.pos.z };
+    switch (kind) {
+      case 'tommy': P.dropAll(); P.knockDown(away, 5); break;
+      case 'noah': P.dropAll(); P.knockDown(away, 2); break;
+      case 'aidan': P.effect('dizzy', 7); tint(0x8a5a1a, 7, 0.22); break;
+      case 'harry': P.effect('frozen', 5); this.storyTime(who); break;
+      case 'ethan': P.effect('noEat', 5); P.effect('slow', 5); tint(0x0b3fa8, 5, 0.32); break;
+      case 'connor': P.effect('jig', 5); who.dancing = true; setTimeout(() => { who.dancing = false; }, 5000); break;
+      case 'lewis': {
+        P.dropAll();
+        const n = g.room.nav, len = Math.hypot(away.x, away.z) || 1;
+        let to = { x: P.head.x + away.x / len * 3.5, z: P.head.z + away.z / len * 3.5 };
+        if (n) { const kk = n.nearestFree(to.x, to.z); if (kk >= 0) { const c = n.center(kk); to = { x: c.x, z: c.y }; } }
+        const b = g.room.bounds; to.x = Math.min(b.x1 - 0.4, Math.max(b.x0 + 0.4, to.x)); to.z = Math.min(b.z1 - 0.4, Math.max(b.z0 + 0.4, to.z));
+        P.throwTo(to, 1.3); P.onLanded = () => sfx('thud', null, 1);
+        break;
+      }
+      case 'ian': P.effect('tether', 5, { r: 0.45 }); who.reeling = 5; break;
+      case 'chloe': P.effect('noEat', 6); tint(0x6aaa3a, 6, 0.18); break;
+      case 'oliver': tint(0xffffff, 2.5, 0.9); P.effect('slow', 3); break;
+      case 'dylan': P.effect('slow', 8); break;
+      case 'alfie': P.effect('spin', 1); P.effect('dizzy', 3); break;
+    }
+  }
+  // Harry's dating history, one disaster at a time, while Ronnie stands there
+  storyTime(harry) {
+    const s = shuffle(DATING.slice()).slice(0, 3);
+    s.forEach((line, i) => setTimeout(() => harry.say(line, 5), i * 1700));
+  }
+
   tackled(noah) {
     const g = this.g;
     const big = g.G.stage >= 2;
     // Ronnie goes down every time (even Big Ronnie: Noah's a prop forward)
-    g.words.show('TACKLED!', g.player.head.clone().addScaledVector(g.player.fwd, 0.7), '#C62828', 0.2);
-    sfx('thud', null, 1);
+    this.stun(noah, 'noah');
     if (big) { g.words.show('BOING!', noah.pos.clone().add({ x: 0, y: 1.2, z: 0 }), '#ffd400', 0.25); sfx('boing', noah.pos, 1); }
-    g.player.dropAll();
-    g.player.knockDown({ x: g.player.head.x - noah.pos.x, z: g.player.head.z - noah.pos.z });
     setTimeout(() => noah.say('tackled', 4), 600);
   }
   clinging(dylan, on) {
+    if (on) this.stun(dylan, 'dylan');
+    else this.g.player.fx.slow = 0;
     if (on) { this.g.words.show('SHAKE HIM OFF!', this.g.player.head.clone().addScaledVector(this.g.player.fwd, 0.8), '#FF6D00', 0.16, 2); }
     else this.g.words.show('SHAKEN OFF!', dylan.pos.clone().add({ x: 0, y: 1, z: 0 }), '#FF6D00', 0.18);
   }

@@ -110,6 +110,7 @@ function onThrow(start, vel, type, who, spec) {
   return b;
 }
 tommy.onThrow = onThrow;
+tommy.onTrip = (t) => director.stun(t, 'tommy');
 
 const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish', hotdog: 'chomp', fries: 'crunch', kebab: 'chomp', chicken: 'crunch', taco: 'crunch', crisps: 'crunch', choc: 'crunch', cookie: 'crunch', icecream: 'squish', sausageroll: 'chomp' };
 const SNACK_WORD = { burger: ['CHOMP!', 'MUNCH!', 'NOM!'], pizza: ['CRUNCH!', 'MUNCH!'], doughnut: ['SQUISH!', 'NOM NOM!'],
@@ -139,6 +140,10 @@ function addChonk(n) {
 function bite(it, hand) {
   if (time - G.lastBite < TUNING.biteCooldown) return;
   G.lastBite = time;
+  if (!player.canEat) {          // on a diet / fizzed up / flat on the floor
+    words.show(player.fx.noEat > 0 ? 'NOT ALLOWED!' : 'CAN\'T!', _b.copy(player.head).addScaledVector(player.fwd, 0.7 * player.scale), '#ff5252', 0.1 * player.scale, 0.8);
+    return;
+  }
   const fx = _a.copy(player.mouth).addScaledVector(player.fwd, 0.12 * player.scale);
   if (it.def.veg) { gag(it); return; }
   if (it.def.poop) { poopOver(it); return; }
@@ -473,6 +478,7 @@ window.addEventListener('resize', fitCamera);
 
 // ---------------- modes ----------------
 function resetRonnie() {
+  player.clearEffects(); G.fxTintT = 0;
   G.chonk = 0; G.stage = 0; G.eaten = 0; G.swats = 0; G.locoT = 0; G.stoutT = 0; G.gagT = 0;
   G.scaleFrom = player.scale; G.scaleTo = 1; G.scaleT = player.scale === 1 ? 1 : 0;
   player.setBelly(STAGES[0].belly); setPitchScale(1); stopLocoMusic(); room.hemi.color.set(0xc9d6ff);
@@ -569,6 +575,7 @@ renderer.setAnimationLoop(() => {
   if (G.stoutT > 0) { G.stoutT -= dt; if (Math.floor((G.stoutT + dt) * 10) !== Math.floor(G.stoutT * 10)) G.wristDirty = true; }
   if (G.gagT > 0) G.gagT -= dt;
   if (G.poopT > 0) { G.poopT -= dt; tint.set(0xff0000, 0.5 * Math.min(1, G.poopT)); }
+  else if (G.fxTintT > 0) { G.fxTintT -= dt; tint.set(G.fxTint, G.fxTintOp * Math.min(1, G.fxTintT)); }
   else if (G.gagT > 0) tint.set(0x2bd62b, 0.35 * Math.min(1, G.gagT));
   else if (G.stoutT > 0) tint.set(0x8a5a1a, 0.18);
   else if (G.locoT > 0) tint.set(0xff8a00, 0.13 + Math.sin(time * 8) * 0.03);

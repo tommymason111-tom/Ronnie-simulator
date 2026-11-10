@@ -62,7 +62,7 @@ export const TUNING = {
   attackInterval: [16, 26],// seconds between broccoli attacks
   broccoliSpeed: 3.0,      // m/s horizontal — slow enough to react, fast enough to sting
   snapTurnDeg: 30,
-  moveSpeed: 1.6,          // smooth locomotion m/s
+  moveSpeed: 1.85,          // smooth locomotion m/s
 };
 
 // Room: 5m x 4.5m, ceiling 2.6m (section 39.1). Origin at room centre on the floor.

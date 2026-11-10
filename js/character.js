@@ -312,7 +312,7 @@ export class Character {
         if (d < 0.15 && this.path && this.path.length) { this.moveTarget = this.path.shift(); break; }   // next waypoint
         if (d < 0.15 || this.stateT > (this.walkLimit || 8)) { this.state = this.afterWalk || 'idle'; this.afterWalk = null; this.stateT = 0; this.nextMove = 8 + Math.random() * 8; break; }
         this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 6);
-        const sp = this.walkSpeed || 0.9;
+        const sp = (this.walkSpeed || 0.9) * 1.15;   // a touch brisker than a stroll
         r.moveVel.copy(_v2.normalize()).multiplyScalar(Math.min(sp, d * 2.5));
         this.walkPose(dt, r.moveVel.length());
         break;

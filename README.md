@@ -45,7 +45,10 @@ Characters find their way round the big levels with a navigation grid, and don't
 
 ## The squad (design doc Part 5)
 
-Chloe, Lewis, Harry, Aidan, Noah, Oliver, Dylan, Connor, Ethan, Ian and Alfie use their own 3D models (`assets/squad/*.glb`). Each was cut from about 1–2 million triangles to 24k (extra detail kept on the face), with its texture and surface detail re-baked from the original, and is rigged at load time onto the same ragdoll as Tommy at their real height. Each person has their own lines and a signature **intervention**:
+Chloe, Lewis, Harry, Aidan, Noah, Oliver, Dylan, Connor, Ethan, Ian and Alfie use their own 3D models (`assets/squad/*.glb`). Each was cut from about 1–2 million triangles to 24k (extra detail kept on the face), with its texture and surface detail re-baked from the original, and is rigged at load time onto the same ragdoll as Tommy at their real height. Each person has their own lines and a signature **intervention**. When it starts they walk up to you and hit you with their signature move, shown on screen ("AIDAN FORCES YOU TO HAVE ONE MORE BEER!"):
+
+- Tommy trips you up (5s on the floor) · Noah tackles you · Aidan: one more beer (dizzy) · Harry: his dating history (frozen) · Ethan: Pepsi Max attack (fizzed, can't eat) · Connor: Irish jig (forced to dance) · Lewis throws you across the room · Ian hooks you on his fishing rod (can't get away for 5s) · Chloe puts you on a diet (can't eat) · Oliver's camera flash (blinded) · Dylan clings to your hand (slowed) · Alfie nutmegs you (spun round, dizzy)
+
 
 | Who | Intervention | What happens |
 |---|---|---|

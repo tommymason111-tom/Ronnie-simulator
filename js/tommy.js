@@ -9,6 +9,8 @@ import { TUNING, pickVeg } from './config.js';
 
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion();
 const MODEL_URL = './assets/tommy.glb';
+const ANNOY_LINES = ['Ronnie. Ronnie. Ronnie. Ronnie. Ronnie. RONNIE.', 'Ron, quick question. Come here. No, closer.', 'Ronnie, your shoelace is undone. Look down. LOOK DOWN.', 'Hey Ron, what\'s that behind you? Don\'t turn round. Do turn round.'];
+const TRIP_LINES = ['Have a lie down, Ron! It\'s for your health!', 'TIMBERRRR!', 'Whoops! My foot was just... there.', 'Floor time! The floor\'s got no calories, Ronnie!'];
 
 export class Tommy extends Character {
   constructor(scene, room, physics) {
@@ -122,12 +124,22 @@ export class Tommy extends Character {
   }
 
   // classic mode: every ~20s he lobs a broccoli at your face
+  // ...and every so often he wanders over, winds you up and trips you over instead
   idleTick(dt, ctx) {
     if (!this.attacks) return;
+    if (this.tripping) {
+      this.tripping -= dt;
+      if (this.distToPlayer < 1.0) { this.tripping = 0; this.say(TRIP_LINES[Math.floor(Math.random() * TRIP_LINES.length)], 4); this.onTrip && this.onTrip(this); this.attackTimer = 14; return; }
+      if (this.tripping <= 0) { this.tripping = 0; return; }
+      _v.set(this.pos.x - ctx.head.x, 0, this.pos.z - ctx.head.z).setLength(0.6);
+      this.goTo(ctx.head.x + _v.x, ctx.head.z + _v.z, 1.5, 'idle');
+      return;
+    }
     this.attackTimer -= dt;
-    if (this.attackTimer <= 0 && this.distToPlayer > 1.2) {
+    if (this.attackTimer <= 0) {
       const [a, b] = TUNING.attackInterval;
       this.attackTimer = a + Math.random() * (b - a);
+      if (Math.random() < 0.35 || this.distToPlayer <= 1.2) { this.tripping = 10; this.say(ANNOY_LINES[Math.floor(Math.random() * ANNOY_LINES.length)], 3); return; }
       this.startThrow({ item: pickVeg('broccoli'), speed: TUNING.broccoliSpeed, line: 'vegThrow' });
     }
   }
