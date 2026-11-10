@@ -28,11 +28,6 @@
     body.in-vr #ui { opacity: 0.25; }
     #play-flat { margin-top: 10px; font: 900 16px "Arial Black", Arial, sans-serif; padding: 12px 22px; border-radius: 14px; border: 0; background: #ffd400; color: #111; cursor: pointer; box-shadow: 0 4px 0 #a88a00; }
     body.flat #ui { display: none; }
-    #modes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 4px 0 12px; }
-    #modes label { font: 700 12px Arial, sans-serif; padding: 7px 10px; border-radius: 999px; border: 2px solid #4b5563; cursor: pointer; color: #e5e7eb; }
-    #modes input { display: none; }
-    #modes input:checked + span { color: #111; }
-    #modes label:has(input:checked) { background: #ffd400; border-color: #ffd400; color: #111; }
     /* on-screen controls (phone / tablet / desktop) */
     #touch { display: none; position: fixed; inset: 0; pointer-events: none; user-select: none; -webkit-user-select: none; }
     #touch.on { display: block; }
@@ -45,6 +40,40 @@
     #btn-eat { right: max(24px, env(safe-area-inset-right)); bottom: max(40px, env(safe-area-inset-bottom)); width: 96px; height: 96px; background: #39ff14; }
     #btn-throw { right: max(132px, calc(env(safe-area-inset-right) + 108px)); bottom: max(22px, env(safe-area-inset-bottom)); width: 76px; height: 76px; background: #ffd400; font-size: 14px; }
     #hint { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); padding: 6px 12px; border-radius: 10px; background: rgba(0,0,0,0.45); font: 600 12px Arial, sans-serif; white-space: nowrap; }
+
+    /* ---------------- start screen ---------------- */
+    #start { position: fixed; inset: 0; z-index: 40; overflow-y: auto; overflow-x: hidden; text-align: center; padding: 16px 16px 40px; box-sizing: border-box;
+      background: radial-gradient(circle at 50% 30%, #2b4fd8 0%, #15237a 45%, #0b1030 100%); }
+    #start.gone { display: none; }
+    #rain { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+    #rain span { position: absolute; top: -60px; font-size: 34px; animation: fall linear infinite; opacity: 0.85; }
+    @keyframes fall { to { transform: translateY(115vh) rotate(540deg); } }
+    #logo { position: relative; margin: 6px auto 0; font: 900 clamp(38px, 9vw, 88px)/0.95 "Arial Black", Impact, sans-serif; color: #ffd400; letter-spacing: 1px;
+      text-shadow: 0 5px 0 #b8860b, 0 10px 18px rgba(0,0,0,0.6); -webkit-text-stroke: 3px #111; animation: wobble 2.4s ease-in-out infinite; }
+    #logo small { display: block; font-size: 0.42em; color: #39ff14; -webkit-text-stroke: 2px #111; text-shadow: 0 3px 0 #0a5a00; margin-top: 6px; }
+    @keyframes wobble { 0%,100% { transform: rotate(-2deg) scale(1); } 50% { transform: rotate(2deg) scale(1.04); } }
+    #hero { position: relative; width: min(300px, 62vw); margin: 4px auto -6px; animation: bounce 1.2s ease-in-out infinite; }
+    @keyframes bounce { 0%,100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-8px) scale(1.04, 0.97); } }
+    #hero .jaw { transform-origin: 150px 150px; animation: chomp 0.6s ease-in-out infinite; }
+    @keyframes chomp { 50% { transform: translateY(7px); } }
+    .tagline { position: relative; font: 700 15px Arial, sans-serif; color: #e8ecff; margin: 4px 0 14px; }
+    .pick { position: relative; max-width: 900px; margin: 0 auto 14px; }
+    .pick h2 { font: 900 18px "Arial Black", Arial, sans-serif; color: #fff; margin: 8px 0; letter-spacing: 2px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .card { background: rgba(255,255,255,0.1); border: 3px solid rgba(255,255,255,0.25); border-radius: 16px; padding: 10px; color: #fff; cursor: pointer; text-align: left; font: 600 12px Arial, sans-serif; transition: transform .12s; }
+    .card:hover { transform: translateY(-2px); }
+    .card b { display: block; font: 900 15px "Arial Black", Arial, sans-serif; margin: 4px 0 2px; }
+    .card .ico { font-size: 30px; }
+    .card.sel { background: #ffd400; border-color: #fff; color: #111; }
+    .card.off { opacity: 0.35; pointer-events: none; }
+    #go { position: relative; font: 900 24px "Arial Black", Arial, sans-serif; padding: 16px 44px; border-radius: 18px; border: 0; background: #39ff14; color: #111; cursor: pointer; box-shadow: 0 6px 0 #1d8a0a; margin-top: 6px; animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 50% { transform: scale(1.05); } }
+    .ghost { margin-top: 8px; font: 700 13px Arial, sans-serif; padding: 8px 12px; border-radius: 10px; border: 2px solid #9ca3af; background: transparent; color: #fff; cursor: pointer; }
+    #menu-btn { position: fixed; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); z-index: 20; display: none; font: 900 12px Arial, sans-serif; padding: 8px 12px; border-radius: 10px; border: 0; background: rgba(0,0,0,0.55); color: #fff; }
+    body.flat #menu-btn { display: block; }
+    #ui { display: none; }
+    body.ready #ui { display: block; }
+    body.flat #ui { display: none; }
   </style>
   <script type="importmap">
     {
@@ -58,17 +87,47 @@
 </head>
 <body>
   <div id="app"></div>
+  <div id="start">
+    <div id="rain"></div>
+    <div id="logo">RONNIE<br>SIMULATOR<small>UNLEASH THE MONSTOR</small></div>
+    <svg id="hero" viewBox="0 0 300 300" aria-label="Ronnie eating a burger">
+      <ellipse cx="150" cy="292" rx="95" ry="8" fill="rgba(0,0,0,0.35)"/>
+      <ellipse cx="150" cy="250" rx="125" ry="70" fill="#1f4fbf" stroke="#111" stroke-width="5"/>
+      <text x="150" y="268" font-family="Arial Black" font-size="26" fill="#fff" text-anchor="middle">10</text>
+      <circle cx="150" cy="135" r="92" fill="#e9b893" stroke="#111" stroke-width="5"/>
+      <circle cx="80" cy="150" r="22" fill="#f29b8a" opacity="0.7"/><circle cx="220" cy="150" r="22" fill="#f29b8a" opacity="0.7"/>
+      <path d="M62 105 Q70 40 150 38 Q230 40 238 105 Q205 75 150 74 Q95 75 62 105Z" fill="#1a1a1a"/>
+      <path d="M100 118 q15 -12 30 0" stroke="#111" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path d="M170 118 q15 -12 30 0" stroke="#111" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path d="M95 98 l35 6 M205 98 l-35 6" stroke="#111" stroke-width="6" stroke-linecap="round"/>
+      <g class="jaw">
+        <path d="M105 170 Q150 225 195 170 Z" fill="#7a1f24" stroke="#111" stroke-width="5"/>
+        <path d="M118 196 Q150 232 182 196 Q165 212 150 214 Q135 212 118 196Z" fill="#1a1a1a"/>
+        <path d="M128 222 Q150 240 172 222" stroke="#1a1a1a" stroke-width="10" fill="none" stroke-linecap="round"/>
+      </g>
+      <g transform="translate(205 168) rotate(-12)">
+        <ellipse cx="0" cy="-14" rx="48" ry="22" fill="#e0a04a" stroke="#111" stroke-width="4"/>
+        <rect x="-50" y="-6" width="100" height="10" fill="#4caf3c"/><rect x="-48" y="2" width="96" height="12" rx="5" fill="#5a2e14"/>
+        <rect x="-50" y="12" width="100" height="6" fill="#ffc21a"/>
+        <ellipse cx="0" cy="24" rx="46" ry="11" fill="#d9933f" stroke="#111" stroke-width="4"/>
+        <circle cx="-15" cy="-22" r="3" fill="#fff4d6"/><circle cx="8" cy="-26" r="3" fill="#fff4d6"/><circle cx="24" cy="-18" r="3" fill="#fff4d6"/>
+      </g>
+      <g transform="translate(62 205) rotate(14)">
+        <rect x="-16" y="-34" width="32" height="68" rx="6" fill="#ff8a00" stroke="#111" stroke-width="4"/>
+        <path d="M-8 -22 q4 18 0 36 M0 -22 q4 18 0 36 M8 -22 q4 18 0 36" stroke="#39ff14" stroke-width="4" fill="none"/>
+      </g>
+    </svg>
+    <p class="tagline">Eat everything. Grow enormous. Your mates are "just trying to help".</p>
+    <div class="pick"><h2>WHERE?</h2><div class="cards" id="places"></div></div>
+    <div class="pick"><h2>WHAT ARE WE PLAYING?</h2><div class="cards" id="modelist"></div></div>
+    <button id="go">LET'S EAT ➜</button>
+    <p class="tagline" style="font-size:12px;opacity:.75">Meta Quest 3 (hands or controllers) · phone · tablet · computer</p>
+  </div>
+  <button id="menu-btn">☰ MENU</button>
   <div id="ui">
     <h1>RONNIE SIMULATOR</h1>
-    <p class="tag">Ronnie's Bedroom · Meta Quest 3 · phone · tablet</p>
-    <div id="modes">
-      <label><input type="radio" name="mode" value="classic" checked><span>Classic</span></label>
-      <label><input type="radio" name="mode" value="intervention"><span>Squad Intervention</span></label>
-      <label><input type="radio" name="mode" value="veggie"><span>Veggie War</span></label>
-      <label><input type="radio" name="mode" value="catch"><span>Catch &amp; Chonk</span></label>
-      <label><input type="radio" name="mode" value="chonkoff"><span>Chonk-Off</span></label>
-      <label><input type="radio" name="mode" value="chonkoff2"><span>Chonk-Off 2P</span></label>
-    </div>
+    <p class="tag" id="ready-tag">Loading…</p>
+    <button id="back-menu" class="ghost">⬅ Change place or mode</button>
     <button id="enter-vr" disabled>CHECKING VR…</button>
     <button id="sound">🔊 Test sound</button><br>
     <button id="play-flat">📱 PLAY ON THIS SCREEN</button>
@@ -83,8 +142,8 @@
       <b>Move:</b> left stick. <b>Turn:</b> right stick (30° snap).<br>
       <b>Chonk Meter:</b> look at your left wrist.<br>
       <b>Grab anyone:</b> grip or pinch on any part of Tommy or the squad and fling them about. Slap with a fast swing.<br>
-      <b>Game modes:</b> pick one above, or press a button on the GAME MODES board on the wall behind you in the bedroom.<br>
-      <b>The squad:</b> Chloe names your food (guilt bonus), Lewis swaps in protein shakes, Harry "throws food away" (catch it in your mouth), Aidan brings a pint (Stout Mode), Noah tackles, Oliver films you, Dylan ambushes from the bin (shake him off).<br>
+      <b>Game modes:</b> pick one on the start screen, or press a button on the GAME MODES board in the level.<br>
+      <b>The squad:</b> Chloe names your food (guilt bonus), Lewis swaps in protein shakes, Harry "throws food away" (catch it in your mouth), Aidan brings a pint (Stout Mode), Noah tackles, Oliver films you, Dylan ambushes from the bin (shake him off), Connor buys a round of stout, Ethan curls Galáctico free kicks of veg at you.<br>
       <b>No headset (phone / tablet / computer)?</b> Press PLAY ON THIS SCREEN. Left joystick (or WASD) to walk, drag to look, tap food to pick it up, EAT / THROW buttons (or E / Space), tap broccoli to swat it, tap Tommy to slap him.
     </details>
   </div>
@@ -92,6 +151,57 @@
     // Show load errors on the page (handy without dev tools on the headset).
     window.addEventListener('error', (e) => { const s = document.getElementById('status'); if (s) s.textContent = 'Error: ' + e.message; });
     window.addEventListener('unhandledrejection', (e) => { const s = document.getElementById('status'); if (s) s.textContent = 'Error: ' + (e.reason && e.reason.message || e.reason); });
+  </script>
+  <script>
+    // ---------------- start screen: pick a place and a mode ----------------
+    (function () {
+      const PLACES = [
+        { id: 'bedroom', ico: '🛏️', name: "RONNIE'S BEDROOM", desc: 'Where it all begins. Small, cosy, full of cans.' },
+        { id: 'pub', ico: '🍺', name: 'THE OYSTERFLEET', desc: "Ronnie's local and his work. The whole squad fits in." },
+        { id: 'shop', ico: '🛒', name: 'LIDDLE-PRICE', desc: 'Aisles, the middle aisle, bakery and a wall of MONSTOR.' },
+        { id: 'restaurant', ico: '🕯️', name: 'LA GRANDE PORTION', desc: 'Fancy dinner. Date night with Chloe.' },
+      ];
+      const MODES = [
+        { id: 'classic', ico: '🍔', name: 'CLASSIC', desc: "Eat, grow, dodge Tommy's broccoli." },
+        { id: 'everyone', ico: '👥', name: 'THE WHOLE SQUAD', desc: 'All 10 of them at once. Big places only.', big: true },
+        { id: 'intervention', ico: '📣', name: 'SQUAD INTERVENTION', desc: 'They try to stop you, one by one.' },
+        { id: 'veggie', ico: '🥦', name: 'VEGGIE WAR', desc: 'Waves of veg. Swat it, block it, survive.' },
+        { id: 'date', ico: '💜', name: 'DATE NIGHT', desc: 'Eat when Chloe looks away.', place: 'restaurant' },
+        { id: 'catch', ico: '🏈', name: 'CATCH & CHONK', desc: "Catch Harry's throws in your mouth." },
+        { id: 'chonkoff', ico: '⏱️', name: 'CHONK-OFF', desc: '60 seconds. Eat everything.' },
+        { id: 'chonkoff2', ico: '🆚', name: 'CHONK-OFF 2P', desc: 'Pass-and-play. Who eats more?' },
+      ];
+      const ok = (m, p) => !(m.place && m.place !== p) && !(m.big && p === 'bedroom');
+      const q = new URLSearchParams(location.search);
+      let place = q.get('place') || 'pub', mode = q.get('mode') || 'everyone';
+      const placesEl = document.getElementById('places'), modesEl = document.getElementById('modelist');
+      const card = (o, sel, off) => `<div class="card${sel ? ' sel' : ''}${off ? ' off' : ''}" data-id="${o.id}"><span class="ico">${o.ico}</span><b>${o.name}</b>${o.desc}</div>`;
+      function draw() {
+        if (!ok(MODES.find(m => m.id === mode), place)) mode = place === 'restaurant' ? 'date' : 'classic';
+        placesEl.innerHTML = PLACES.map(p => card(p, p.id === place)).join('');
+        modesEl.innerHTML = MODES.map(m => card(m, m.id === mode, !ok(m, place))).join('');
+      }
+      placesEl.addEventListener('click', (e) => { const c = e.target.closest('.card'); if (!c) return; place = c.dataset.id; if (place === 'restaurant') mode = 'date'; draw(); });
+      modesEl.addEventListener('click', (e) => { const c = e.target.closest('.card'); if (!c) return; mode = c.dataset.id; const m = MODES.find(m => m.id === mode); if (m.place) place = m.place; draw(); });
+      draw();
+      // raining food
+      const rain = document.getElementById('rain'), food = ['🍔', '🍕', '🍩', '🌭', '🍟', '🥤', '🍗', '🌮', '🥦'];
+      for (let i = 0; i < 18; i++) { const s = document.createElement('span'); s.textContent = food[i % food.length]; s.style.left = (i * 5.6 + Math.random() * 4) + '%'; s.style.animationDuration = (5 + Math.random() * 6) + 's'; s.style.animationDelay = (-Math.random() * 10) + 's'; rain.appendChild(s); }
+      window.ronnieMenu = new Promise((resolve) => {
+        const go = () => {
+          document.getElementById('start').classList.add('gone');
+          document.body.classList.add('ready');
+          const p = PLACES.find(p => p.id === place), m = MODES.find(m => m.id === mode);
+          document.getElementById('ready-tag').textContent = `${p.name} · ${m.name}`;
+          resolve({ place, mode });
+        };
+        document.getElementById('go').addEventListener('click', go);
+        if (q.get('go')) go();
+      });
+      const back = () => { location.href = location.pathname + `?place=${place}&mode=${mode}`; };
+      document.getElementById('back-menu').addEventListener('click', back);
+      document.getElementById('menu-btn').addEventListener('click', back);
+    })();
   </script>
   <script type="module" src="./js/main.js"></script>
 </body>

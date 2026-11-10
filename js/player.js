@@ -293,13 +293,14 @@ export class Player {
   clampHead() {
     this.rig.updateMatrixWorld(true);
     this.camera.getWorldPosition(_v);
-    const m = 0.2, hw = ROOM.w / 2 - m, hd = ROOM.d / 2 - m;
-    let cx = THREE.MathUtils.clamp(_v.x, -hw, hw), cz = THREE.MathUtils.clamp(_v.z, -hd, hd);
+    const m = 0.2, B = this.room ? this.room.bounds : { x0: -ROOM.w / 2, x1: ROOM.w / 2, z0: -ROOM.d / 2, z1: ROOM.d / 2 };
+    let cx = THREE.MathUtils.clamp(_v.x, B.x0 + m, B.x1 - m), cz = THREE.MathUtils.clamp(_v.z, B.z0 + m, B.z1 - m);
     const r = 0.22;
     for (const b of this.room?.blockers || []) {
+      if (!this.flatMode && !((b.y1 ?? 1) > 1.6)) continue;   // in VR only walls stop you (you can lean over tables)
       const nx = THREE.MathUtils.clamp(cx, b.x0, b.x1), nz = THREE.MathUtils.clamp(cz, b.z0, b.z1);
       const dx = cx - nx, dz = cz - nz, d = Math.hypot(dx, dz);
-      if (d < r && this.flatMode) { if (d < 1e-4) { cz = b.z1 + r; } else { cx = nx + dx / d * r; cz = nz + dz / d * r; } }
+      if (d < r) { if (d < 1e-4) { cz = b.z1 + r; } else { cx = nx + dx / d * r; cz = nz + dz / d * r; } }
     }
     this.rig.position.x += cx - _v.x; this.rig.position.z += cz - _v.z;
   }
@@ -353,7 +354,7 @@ export class Player {
     const mx = this.flatMove.x, mz = this.flatMove.z;
     if (Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05) {
       const sp = TUNING.moveSpeed * dt * 0.9;
-      const sy = Math.sin(this.flatYaw), cy = Math.cos(this.flatYaw);
+      const yw = this.flatYaw + this.rig.rotation.y, sy = Math.sin(yw), cy = Math.cos(yw);
       this.rig.position.x += (-sy * -mz + cy * mx) * sp;
       this.rig.position.z += (-cy * -mz - sy * mx) * sp;
     }

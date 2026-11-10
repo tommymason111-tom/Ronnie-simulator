@@ -427,8 +427,29 @@ export class SquadMember extends Character {
   }
 
   // ---- personality idles ----
+  // sitting on a chair (Date Night): thighs forward, forearms on the table
+  sitPose() {
+    const r = this.rag;
+    r.aim('uLegL', 0.05, -0.1, 1); r.aim('lLegL', 0, -1, 0.06);
+    r.aim('uLegR', -0.05, -0.1, 1); r.aim('lLegR', 0, -1, 0.06);
+    r.aim('uArmL', 0.22, -0.8, 0.5); r.aim('lArmL', -0.25, -0.05, 1);
+    r.aim('uArmR', -0.22, -0.8, 0.5); r.aim('lArmR', 0.25, -0.05, 1);
+    r.bob = 0.5 - this.rag.parts.uLegL.def.a.y;
+  }
+  dancePose(t) {     // Chloe's strange little victory dance
+    const r = this.rag, s = Math.sin(t * 7), c2 = Math.cos(t * 7);
+    r.aim('uArmL', 0.6, 0.8 * s, 0.3); r.aim('lArmL', 0.3, 1, 0.2 * c2);
+    r.aim('uArmR', -0.6, -0.8 * s, 0.3); r.aim('lArmR', -0.3, 1, -0.2 * c2);
+    r.aim('uLegL', 0.1, -1, 0.3 * s); r.aim('uLegR', -0.1, -1, -0.3 * s);
+    r.pose.chest.setFromAxisAngle(_v.set(0, 0, 1), s * 0.18);
+    r.yaw += 0.04;
+    r.bob = Math.abs(s) * 0.04;
+  }
+
   personalityPose(t) {
     const r = this.rag;
+    if (this.seated) { this.sitPose(); return; }
+    if (this.dancing) { this.dancePose(t); return; }
     switch (this.id) {
       case 'lewis':   // double-bicep flex every so often
         if ((t % 16) > 14) { r.aim('uArmL', 1, 0.15, 0); r.aim('lArmL', 0.1, 1, 0.1); r.aim('uArmR', -1, 0.15, 0); r.aim('lArmR', -0.1, 1, 0.1); }   // a quick double-bicep flex now and then

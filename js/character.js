@@ -309,7 +309,8 @@ export class Character {
       case 'walk': {
         _v2.set(this.moveTarget.x - pos.x, 0, this.moveTarget.y - pos.z);
         const d = _v2.length();
-        if (d < 0.15 || this.stateT > 8) { this.state = this.afterWalk || 'idle'; this.afterWalk = null; this.stateT = 0; this.nextMove = 8 + Math.random() * 8; break; }
+        if (d < 0.15 && this.path && this.path.length) { this.moveTarget = this.path.shift(); break; }   // next waypoint
+        if (d < 0.15 || this.stateT > (this.walkLimit || 8)) { this.state = this.afterWalk || 'idle'; this.afterWalk = null; this.stateT = 0; this.nextMove = 8 + Math.random() * 8; break; }
         this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 6);
         const sp = this.walkSpeed || 0.9;
         r.moveVel.copy(_v2.normalize()).multiplyScalar(Math.min(sp, d * 2.5));
@@ -355,7 +356,7 @@ export class Character {
 
     // head turns smoothly to look at the player (within reason)
     if (!this.down) {
-      const rel = THREE.MathUtils.clamp(wrapAngle(toPlayerYaw - r.yaw), -0.8, 0.8);
+      const rel = this.lookOverride != null ? this.lookOverride : THREE.MathUtils.clamp(wrapAngle(toPlayerYaw - r.yaw), -0.8, 0.8);
       this.headYaw = (this.headYaw || 0) + (rel - (this.headYaw || 0)) * Math.min(1, dt * 5);
       r.pose.head.setFromAxisAngle(_v.set(0, 1, 0), this.headYaw);
       this.applyFlinch(dt);
@@ -394,7 +395,11 @@ export class Character {
 
   // Walk somewhere (x, z); state goes back to idle (or `after`) on arrival.
   goTo(x, z, speed = 0.9, after = null) {
-    this.moveTarget = new THREE.Vector2(x, z);
+    // big levels: follow a path round the furniture
+    const nav = this.room.nav, pos = this.pos;
+    this.path = nav ? nav.path(pos.x, pos.z, x, z) : null;
+    if (this.path && this.path.length) { this.moveTarget = this.path.shift(); this.walkLimit = 8 + Math.hypot(x - pos.x, z - pos.z) * 1.6; }
+    else { this.moveTarget = new THREE.Vector2(x, z); this.walkLimit = 8; }
     this.walkSpeed = speed;
     this.afterWalk = after;
     this.state = 'walk'; this.stateT = 0;
@@ -410,7 +415,8 @@ export class Character {
       if (self < fd && self > 0.3) { fd = self; fallback = s; }
       if (d < 1.4 || self < 0.3) continue;
       if (this.othersNear && this.othersNear(s)) continue;
-      if (!this.pathClear(pos.x, pos.z, s.x, s.y)) continue;
+      if (!this.room.nav && !this.pathClear(pos.x, pos.z, s.x, s.y)) continue;
+      if (this.room.nav && d > 9) continue;   // big levels: hang around within sight of Ronnie
       const facing = (dx * playerFwd.x + dz * playerFwd.z) / d;
       const score = facing * 2 + Math.random();
       if (score > bestScore) { bestScore = score; best = s; }

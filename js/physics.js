@@ -30,14 +30,14 @@ export function createPhysics(room) {
   };
 
   // floor, ceiling and four walls (planes face into the room)
-  const HW = ROOM.w / 2, HD = ROOM.d / 2;
+  const B = room.bounds || { x0: -ROOM.w / 2, x1: ROOM.w / 2, z0: -ROOM.d / 2, z1: ROOM.d / 2, y1: ROOM.h };
   const q = (ax, ay, az, ang) => new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(ax, ay, az), ang);
   addStatic(new CANNON.Plane(), 0, 0, 0, q(1, 0, 0, -Math.PI / 2));
-  addStatic(new CANNON.Plane(), 0, ROOM.h, 0, q(1, 0, 0, Math.PI / 2));
-  addStatic(new CANNON.Plane(), 0, 0, -HD, null);
-  addStatic(new CANNON.Plane(), 0, 0, HD, q(0, 1, 0, Math.PI));
-  addStatic(new CANNON.Plane(), -HW, 0, 0, q(0, 1, 0, Math.PI / 2));
-  addStatic(new CANNON.Plane(), HW, 0, 0, q(0, 1, 0, -Math.PI / 2));
+  addStatic(new CANNON.Plane(), 0, B.y1, 0, q(1, 0, 0, Math.PI / 2));
+  addStatic(new CANNON.Plane(), 0, 0, B.z0, null);
+  addStatic(new CANNON.Plane(), 0, 0, B.z1, q(0, 1, 0, Math.PI));
+  addStatic(new CANNON.Plane(), B.x0, 0, 0, q(0, 1, 0, Math.PI / 2));
+  addStatic(new CANNON.Plane(), B.x1, 0, 0, q(0, 1, 0, -Math.PI / 2));
 
   // furniture: solid blocks + the surfaces food can sit on
   for (const b of room.blockers) {

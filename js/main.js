@@ -13,6 +13,12 @@ import { FONT } from './textures.js';
 import { createPhysics } from './physics.js';
 import { setupTouch } from './touch.js';
 import { Director, MODES } from './modes.js';
+import { buildPub } from './levels/pub.js';
+import { buildSupermarket } from './levels/supermarket.js';
+import { buildRestaurant } from './levels/restaurant.js';
+
+// wait for the start screen: where are we playing, and what mode?
+const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'bedroom', mode: 'classic' }));
 
 // ---------------- renderer / scene ----------------
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -31,8 +37,15 @@ scene.background = new THREE.Color(0x9db7ff);
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 40);
 camera.position.set(0, 1.6, 0);
 
-const room = buildRoom(scene);
+const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant };
+const room = (BUILD[SEL.place] || buildRoom)(scene);
+room.placeId = BUILD[SEL.place] ? SEL.place : 'bedroom';
+room.start = room.start || { x: 0.05, z: 0.45, yaw: 0 };
+// Tommy turns up a few metres from where you start
+if (room.big) room.tommySpots.sort((a, b) => Math.abs(Math.hypot(a.x - room.start.x, a.y - room.start.z) - 3) - Math.abs(Math.hypot(b.x - room.start.x, b.y - room.start.z) - 3));
 const player = new Player(renderer, scene, camera);
+player.rig.position.set(room.start.x, 0, room.start.z);
+player.rig.rotation.y = room.start.yaw;
 const items = new ItemManager(scene, room);
 player.items = items;
 const physics = createPhysics(room);
@@ -57,8 +70,11 @@ const clock = new THREE.Clock();
 let time = 0;
 
 // starting food: one of each on the snack station, more around the room
-[['burger', 0], ['pizza', 1], ['doughnut', 2], ['can', 3]].forEach(([t, i]) => items.spawn(t, room.spawns[i]));
-['burger', 'pizza', 'doughnut', 'can', 'burger', 'doughnut'].forEach(t => items.spawn(t, items.freeSpawn()));
+if (room.startFood) room.startFood.forEach(t => items.spawn(t, items.freeSpawn()));
+else {
+  [['burger', 0], ['pizza', 1], ['doughnut', 2], ['can', 3]].forEach(([t, i]) => items.spawn(t, room.spawns[i]));
+  ['burger', 'pizza', 'doughnut', 'can', 'burger', 'doughnut'].forEach(t => items.spawn(t, items.freeSpawn()));
+}
 
 // ---------------- events ----------------
 items.onLand = (it, speed) => {
@@ -231,7 +247,8 @@ function showBanner(top, big) {
   const g = bannerCanvas.getContext('2d'), w = 1024, h = 384;
   g.clearRect(0, 0, w, h);
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-  g.font = `900 70px ${FONT}`; g.lineWidth = 16; g.strokeStyle = '#111'; g.strokeText(top, w / 2, 90); g.fillStyle = '#39ff14'; g.fillText(top, w / 2, 90);
+  let ts = 70; g.font = `900 ${ts}px ${FONT}`; while (g.measureText(top).width > w - 60 && ts > 30) { ts -= 4; g.font = `900 ${ts}px ${FONT}`; }
+  g.lineWidth = 16; g.strokeStyle = '#111'; g.strokeText(top, w / 2, 90); g.fillStyle = '#39ff14'; g.fillText(top, w / 2, 90);
   let size = 130; g.font = `900 ${size}px ${FONT}`;
   while (g.measureText(big).width > w - 60 && size > 40) { size -= 6; g.font = `900 ${size}px ${FONT}`; }
   g.lineWidth = 22; g.strokeText(big, w / 2, 240); g.fillStyle = '#ffd400'; g.fillText(big, w / 2, 240);
@@ -379,7 +396,7 @@ function startFlat() {
   touch.show(true);
   director.start(chosenMode());
 }
-function chosenMode() { const el = document.querySelector('input[name="mode"]:checked'); return el ? el.value : 'classic'; }
+function chosenMode() { return SEL.mode || 'classic'; }
 document.getElementById('play-flat').addEventListener('click', startFlat);
 
 // ---------------- Enter VR ----------------
@@ -497,6 +514,17 @@ renderer.setAnimationLoop(() => {
   if (xr) slaps();
   physics.step(dt);
   for (const c of cast) c.update(dt, ctx);
+  // people don't walk through each other (or through Ronnie)
+  for (let i = 0; i < cast.length; i++) {
+    const a = cast[i].rag; if (a.mode === 'ragdoll') continue;
+    const dxp = a.root.x - player.head.x, dzp = a.root.z - player.head.z, dp = Math.hypot(dxp, dzp), minP = 0.45 * player.scale;
+    if (dp < minP && dp > 1e-3) { a.root.x += dxp / dp * (minP - dp); a.root.z += dzp / dp * (minP - dp); }
+    for (let j = i + 1; j < cast.length; j++) {
+      const b = cast[j].rag; if (b.mode === 'ragdoll') continue;
+      const dx = b.root.x - a.root.x, dz = b.root.z - a.root.z, d = Math.hypot(dx, dz);
+      if (d < 0.55 && d > 1e-3) { const p = (0.55 - d) / 2 / d; a.root.x -= dx * p; a.root.z -= dz * p; b.root.x += dx * p; b.root.z += dz * p; }
+    }
+  }
   director.update(dt, ctx);
   if (player.flatMode) updateTouchUI();
 

@@ -10,6 +10,7 @@
 // (press a button with your hand, or tap it on a phone).
 import * as THREE from 'three';
 import { SquadMember, SQUAD } from './squad.js';
+import { DATE_TABLE } from './levels/restaurant.js';
 import { canvasTex, fitText, roundRect, FONT } from './textures.js';
 import { sfx } from './audio.js';
 
@@ -20,8 +21,18 @@ export const MODES = {
   catch:        { name: 'CATCH & CHONK', desc: 'Catch Harry\'s throws in your mouth.', time: 70 },
   chonkoff:     { name: 'CHONK-OFF', desc: '60 seconds. Eat everything.', time: 60 },
   chonkoff2:    { name: 'CHONK-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
+  everyone:     { name: 'THE WHOLE SQUAD', desc: 'Everyone\'s here. Eat while they try to stop you.', time: 0, big: true },
+  date:         { name: 'DATE NIGHT', desc: 'Eat when Chloe looks away. 3 catches and it\'s salad.', time: 180, place: 'restaurant' },
 };
-const BOARD_ORDER = ['classic', 'intervention', 'veggie', 'catch', 'chonkoff', 'chonkoff2'];
+// which modes each place offers (also used by the start screen)
+export function modesFor(place) {
+  return Object.keys(MODES).filter(id => {
+    const m = MODES[id];
+    if (m.place && m.place !== place) return false;
+    if (m.big && place === 'bedroom') return false;
+    return true;
+  });
+}
 const VEG_OF = { connor: 'sprout', ethan: 'broccoli', tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', };
 const _v = new THREE.Vector3();
 
@@ -59,23 +70,34 @@ export class Director {
     tommy.attacks = id === 'classic';
     tommy.active = true;
     let squad = [];
-    if (id === 'intervention') squad = shuffle(Object.keys(SQUAD)).slice(0, 4);
-    else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan']).slice(0, 3);
+    const big = !!g.room.big, everyone = Object.keys(SQUAD);
+    if (id === 'intervention') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 4);
+    else if (id === 'everyone') squad = shuffle(everyone);
+    else if (id === 'date') squad = ['chloe'];
+    else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan']).slice(0, big ? 6 : 3);
     else if (id === 'catch') squad = ['harry'];
     else if (id === 'classic') squad = [];
     else squad = [];
     this.roster = squad;
-    const spots = g.room.tommySpots;
+    // spawn spots: the nearest free hang-out spots around Ronnie (not on top of him)
+    const head = g.player.head;
+    const spots = g.room.tommySpots.filter(s => Math.hypot(s.x - head.x, s.y - head.z) > 1.6)
+      .sort((a, b) => Math.hypot(a.x - head.x, a.y - head.z) - Math.hypot(b.x - head.x, b.y - head.z));
     squad.forEach((sid, i) => {
       const s = spots[(i + 1) % spots.length];
-      const c = new SquadMember(g.scene, g.room, g.physics, sid, [s.x, s.y, Math.atan2(-s.x, -s.y)], this);
+      const c = new SquadMember(g.scene, g.room, g.physics, sid, [s.x, s.y, Math.atan2(head.x - s.x, head.z - s.y)], this);
       this.hook(c);
       g.cast.push(c);
     });
-    g.showBanner(m.name, id === 'classic' ? 'EAT EVERYTHING' : m.desc.toUpperCase().replace(/\.$/, ''));
+    const SHORT = { classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
+    g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
+    if (id === 'date') this.startDate();
+    if (id === 'everyone') { this.nextChaos = 18; tommy.attacks = true; }
     tommy.say({
+      everyone: 'The whole squad\'s out tonight, Ron. Everyone\'s watching what you eat. I\'m just trying to help.',
+      date: 'Date night! I\'m over here on my own table. Behave, Ron. She\'s watching. Mostly.',
       intervention: 'Right, Ron. The whole squad\'s here. It\'s an intervention. I\'m just trying to help.',
       veggie: 'VEGGIE WAR. Everyone, positions. Aim for the mouth.',
       catch: 'Harry\'s going to throw the food AWAY from you. In theory.',
@@ -111,6 +133,10 @@ export class Director {
       lines.push(['VEG SWATTED', st.swats]);
       lines.push(['VEG EATEN (VEG-O-METER)', st.veg]);
       lines.push([st.veg === 0 ? 'CLEAN SHEET! NOT ONE VEG.' : st.veg < 3 ? 'Barely touched a vegetable.' : 'Tommy: "We had him."', '']);
+    } else if (this.mode === 'date') {
+      lines.push(['TIMES BUSTED BY CHLOE', `${this.date.catches} / 3`]);
+      lines.push([this.date.catches >= 3 ? 'Chloe ordered you a salad.' : 'Relationship status: still together, somehow.', '']);
+      lines.push(['The bill is a scroll. It is still unrolling.', '']);
     } else if (this.mode === 'catch') {
       lines.push(['CATCHES', `${st.caught} / ${st.thrown}`]);
       lines.push(['Harry: "Terrible decision."', '']);
@@ -134,6 +160,7 @@ export class Director {
       intervention: 'Another intervention, another failure. I\'ll tell your mum you were good. I\'ll lie.',
       veggie: 'Well done, Ron. You ate the level. The WHOLE level.',
       catch: 'Harry\'s retiring. From throwing. And dating, hopefully.',
+      date: 'Romance isn\'t dead, Ron. You ate it.',
       chonkoff: 'Time! ...the scales have left the building.',
       chonkoff2: 'Time! ...both of you are a disgrace. I\'m very proud.',
     }[this.mode], 5);
@@ -157,6 +184,16 @@ export class Director {
     }
     const idle = (c) => c.state === 'idle' && !c.down;
     switch (this.mode) {
+      case 'date': this.updateDate(dt, ctx); break;
+      case 'everyone': {
+        this.nextChaos -= dt;
+        if (this.nextChaos <= 0) {
+          this.nextChaos = 16 + Math.random() * 12;
+          const c = shuffle(this.cast.slice(1).filter(c => idle(c) && c.distToPlayer < 9))[0];
+          if (c && c.intervene()) { g.showBanner('INTERVENTION', `${c.name.toUpperCase()} — ${c.title}`); sfx('trumpet', null, 0.6); }
+        }
+        break;
+      }
       case 'intervention': {
         // the meter fills as Ronnie eats; when full, the next squad member has a go
         if (this.meter >= 1 && !this.current) {
@@ -207,6 +244,7 @@ export class Director {
   // ------------------------------------------------------------------ events from the game
   onAte(item, chonk) {
     if (!this.running) return;
+    if (this.mode === 'date') this.dateEat();
     this.stats.chonk += Math.max(0, chonk);
     if (this.mode === 'intervention') this.meter = Math.min(1, this.meter + Math.max(0, chonk) / 30);
     for (const c of this.cast) c.onRonnieAte && c.onRonnieAte(item);
@@ -249,6 +287,60 @@ export class Director {
   clinging(dylan, on) {
     if (on) { this.g.words.show('SHAKE HIM OFF!', this.g.player.head.clone().addScaledVector(this.g.player.fwd, 0.8), '#FF6D00', 0.16, 2); }
     else this.g.words.show('SHAKEN OFF!', dylan.pos.clone().add({ x: 0, y: 1, z: 0 }), '#FF6D00', 0.18);
+  }
+
+  // ------------------------------------------------------------------ DATE NIGHT
+  // Chloe sits opposite. When she looks at you, sit still and smile; when she
+  // looks away (phone, waiter, a weird moment) grab food from other tables and
+  // the dessert trolley. Eat (or flail about) while she's looking: BUSTED.
+  startDate() {
+    const chloe = this.cast.find(c => c.id === 'chloe');
+    this.date = { chloe, look: true, t: 4, warned: false, catches: 0, danced: false, grace: 1.5, cool: 0 };
+    if (!chloe) return;
+    chloe.active = false; chloe.seated = true;
+    chloe.rag.placeAt(DATE_TABLE.x, DATE_TABLE.z - 0.75, 0);
+    setTimeout(() => chloe.say('Isn\'t this nice, babe? Just us. And no snacking. Promise?', 5), 1500);
+  }
+  updateDate(dt, ctx) {
+    const d = this.date, c = d.chloe, g = this.g;
+    if (!c || c.down) return;
+    d.t -= dt; d.grace -= dt; d.cool -= dt;
+    if (d.dancing) {
+      c.dancing = true;
+      if (d.t <= 0) { d.dancing = false; c.dancing = false; c.seated = true; c.rag.placeAt(DATE_TABLE.x, DATE_TABLE.z - 0.75, 0); d.look = true; d.t = 4; d.grace = 1; c.lookOverride = null; }
+      return;
+    }
+    if (d.look) {
+      c.lookOverride = null;
+      if (!d.danced && this.timeLeft < 100) {     // the weird moment: a victory dance, for no reason
+        d.danced = true; d.dancing = true; d.look = false; d.t = 6; c.seated = false;
+        c.rag.placeAt(DATE_TABLE.x + 1.1, DATE_TABLE.z - 0.75, -Math.PI / 2);
+        c.say('Victory dance! For no reason! Don\'t look at me, babe!', 5);
+        g.showBanner('CHLOE IS DANCING', '6 SECONDS: EAT EVERYTHING');
+        return;
+      }
+      // flailing about while she's watching gives you away (VR)
+      if (d.grace <= 0 && g.player.hands.some(h => h.tracked && h.speed > 1.6)) this.busted();
+      if (d.t <= 0) {
+        d.look = false; d.warned = false; d.t = 2.8 + Math.random() * 2.7;
+        c.lookOverride = Math.random() < 0.5 ? 1.25 : -1.25;
+        c.say(['Ooh, is that the waiter?', 'Just checking my phone, babe.', '...anyway.', 'Is that a pigeon? Inside?', 'That painting looks like a sausage roll.'][Math.floor(Math.random() * 5)], 2);
+      }
+    } else {
+      if (!d.warned && d.t < 0.6) { d.warned = true; sfx('ting', c.headPos(_v), 1); g.words.show('!', c.headPos(_v).add({ x: 0, y: 0.35, z: 0 }), '#B57BFF', 0.25, 0.6); }
+      if (d.t <= 0) { d.look = true; d.t = 2.5 + Math.random() * 3; d.grace = 0.5; c.lookOverride = null; }
+    }
+    this.g.G.wristDirty = true;
+  }
+  dateEat() { const d = this.date; if (d && d.look && !d.dancing && d.grace <= 0) this.busted(); }
+  busted() {
+    const d = this.date, g = this.g;
+    if (d.cool > 0) return;
+    d.cool = 2.5; d.catches++;
+    sfx('boing', null, 0.8);
+    g.words.show('BUSTED!', g.player.head.clone().addScaledVector(g.player.fwd, 0.8), '#B57BFF', 0.2, 1.4);
+    d.chloe.say(['RONNIE.', 'Ronnie. Put. It. Down.', 'I SAW that, babe.'][Math.min(2, d.catches - 1)], 5);
+    if (d.catches >= 3) { d.chloe.say('That\'s it. I\'ve ordered you a salad.', 6); setTimeout(() => this.end(), 1800); }
   }
 
   // ------------------------------------------------------------------ roast bubbles (unused for now)
@@ -303,7 +395,7 @@ export class Director {
   // ------------------------------------------------------------------ the mode board (on the front wall)
   buildBoard() {
     const g = this.g, grp = new THREE.Group();
-    const W = 0.95, H = 1.15;
+    const nBtn = modesFor(g.room.placeId || 'bedroom').length, W = 0.95, H = 0.45 + nBtn * 0.125;
     const back = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshLambertMaterial({ map: canvasTex(512, 620, (c, w, h) => {
       c.fillStyle = '#1b2a1b'; c.fillRect(0, 0, w, h);
       c.strokeStyle = '#8a6a3a'; c.lineWidth = 22; c.strokeRect(11, 11, w - 22, h - 22);
@@ -311,7 +403,7 @@ export class Director {
       fitText(c, 'touch a button to play', 30, 78, w - 60, 30, 22, { color: '#cfe8cf' });
     }) }));
     grp.add(back);
-    this.buttons = BOARD_ORDER.map((id, i) => {
+    this.buttons = modesFor(g.room.placeId || 'bedroom').map((id, i) => {
       const tex = canvasTex(512, 96, () => {});
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(W * 0.86, 0.105, 0.03), [0, 0, 0, 0, new THREE.MeshBasicMaterial({ map: tex }), 0].map(m => m || new THREE.MeshLambertMaterial({ color: 0x333333 })));
       mesh.position.set(0, H / 2 - 0.25 - i * 0.125, 0.02);
@@ -321,8 +413,9 @@ export class Director {
       return btn;
     });
     // front wall, behind where you start, between the posters
-    grp.position.set(0.17, 1.38, g.room.bounds.z1 - 0.012);
-    grp.rotation.y = Math.PI;
+    const bp = g.room.board || { x: 0.17, y: 1.38, z: g.room.bounds.z1 - 0.012, ry: Math.PI };
+    grp.position.set(bp.x, bp.y, bp.z);
+    grp.rotation.y = bp.ry ?? Math.PI;
     g.scene.add(grp);
     this.board = grp;
     this.boardCool = 0;
@@ -413,6 +506,8 @@ export class Director {
     if (this.mode === 'intervention') extra = `Meter ${Math.round(this.meter * 100)}%`;
     else if (this.mode === 'veggie') extra = `Swats ${this.stats.swats} · Veg ${this.stats.veg}`;
     else if (this.mode === 'catch') extra = `Caught ${this.stats.caught}/${this.stats.thrown}`;
+    else if (this.mode === 'date') extra = `Busted ${this.date.catches}/3 · ${this.date.look ? 'SHE\'S LOOKING!' : 'EAT NOW!'}`;
+    else if (this.mode === 'everyone') return `THE WHOLE SQUAD · Chonk ${Math.round(this.stats.chonk)}`;
     else extra = `Chonk ${Math.round(this.stats.chonk)}`;
     return `${name} ${mm}:${ss} · ${extra}`;
   }
