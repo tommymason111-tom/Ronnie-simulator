@@ -16,7 +16,7 @@ import { canvasTex, FONT } from './textures.js';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4();
 // how long each signature move lasts (seconds)
-const SIGN_T = { beer: 1.9, dating: 5.5, pepsi: 1.6, jig: 5.5, yeet: 1.6, rod: 5.0, bbq: 1.8, diet: 1.8, flash: 1.3, oasis: 6.5, nutmeg: 1.3, turkey: 7.3 };
+const SIGN_T = { beer: 1.9, dating: 5.5, pepsi: 1.6, jig: 6.5, yeet: 1.6, siu: 3.2, rod: 5.0, bbq: 1.8, diet: 1.8, flash: 1.3, oasis: 6.5, nutmeg: 1.3, turkey: 8.5 };
 const OASIS_LINES = ['♪ Today is gonna be the day... that you put down the pie ♪', '♪ And all the roads we have to walk... lead to the chippy ♪', '♪ Don\'t look back in anger, Ronnie... look back at the buffet ♪', '♪ You\'re gonna be the one that eats me... ♪', '♪ Some might say... you\'ve had enough ♪', '♪ Cast no shadow... you cast a BIG shadow, Ron ♪', 'Right, B-side next. No, don\'t move. DON\'T MOVE.'];
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -674,7 +674,7 @@ export class SquadMember extends Character {
       const coals = new THREE.Mesh(new THREE.CircleGeometry(0.27, 16), new THREE.MeshBasicMaterial({ color: 0xff5a10 })); coals.rotation.x = -Math.PI / 2; coals.position.y = 0.66; bbq.add(coals);
       const grill = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.008, 4, 20), new THREE.MeshLambertMaterial({ color: 0x9aa0a8 })); grill.rotation.x = Math.PI / 2; grill.position.y = 0.72; bbq.add(grill);
       for (let i = -3; i <= 3; i++) { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.006, 0.006), grill.material); bar.position.set(0, 0.72, i * 0.07); bbq.add(bar); }
-      this.bbqFood = ['burger', 'hotdog', 'chicken', 'sausageroll'].map((t, i) => { const o = new Item(t).obj; o.scale.setScalar(1); o.position.set((i % 2 ? 0.1 : -0.1), 0.76, (i < 2 ? -0.09 : 0.09)); bbq.add(o); return o; });
+      this.bbqFood = ['pepper', 'tomato', 'broccoli', 'cauliflower'].map((t, i) => { const o = new Item(t).obj; o.scale.setScalar(1); o.position.set((i % 2 ? 0.1 : -0.1), 0.76, (i < 2 ? -0.09 : 0.09)); bbq.add(o); return o; });
       this.bbq = bbq;
       sfx('sizzle', { x: bx, y: 0.8, z: bz }, 1);
     } else if (this.attack === 'pepsi') {              // a big bottle of Pepsi Max in Ethan's hand
@@ -718,6 +718,14 @@ export class SquadMember extends Character {
         r.bob = Math.abs(s(t * 11)) * 0.06;
         if (fx && Math.random() < 0.08) fx.notes(this.headPos(_v).add({ x: 0, y: 0.25, z: 0 }), 1);
         break;
+      case 'siu': {                                                                                        // run, jump, spin in the air, land: SIUUU
+        const r2 = this.rag;
+        if (t < 0.3) { r2.aim('uArmL', 0.3, -0.6, -0.5); r2.aim('uArmR', -0.3, -0.6, -0.5); r2.bob = -0.08; r2.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), 0.3); }
+        else if (t < 0.9) { const u = (t - 0.3) / 0.6; r2.bob = Math.sin(u * Math.PI) * 0.55; r2.aim('uArmL', 0.6, 0.6, 0); r2.aim('uArmR', -0.6, 0.6, 0); r2.aim('uLegL', 0.1, -1, 0.5); r2.aim('uLegR', -0.1, -1, 0.5); }
+        else { r2.aim('uArmL', 0.9, -0.5, 0.15); r2.aim('uArmR', -0.9, -0.5, 0.15); r2.aim('lArmL', 0.7, -0.7, 0); r2.aim('lArmR', -0.7, -0.7, 0); r2.aim('uLegL', 0.35, -1, 0); r2.aim('uLegR', -0.35, -1, 0); r2.bob = -0.05; r2.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), -0.25); }
+        if (t > 0.9 && this.speakT <= 0) this.say('SIUUUUUUUU!', 4);
+        break;
+      }
       case 'yeet':                                                                                         // squat, grab, LIFT, throw
         if (t < 0.7) { r.aim('uArmL', 0.3, -0.2, 1); r.aim('uArmR', -0.3, -0.2, 1); r.aim('lArmL', 0.1, -0.1, 1); r.aim('lArmR', -0.1, -0.1, 1); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), 0.35); r.bob = -0.08; }
         else { r.aim('uArmL', 0.25, 1, 0.3); r.aim('uArmR', -0.25, 1, 0.3); r.aim('lArmL', 0.1, 1, 0.5); r.aim('lArmR', -0.1, 1, 0.5); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), -0.15); }
@@ -770,8 +778,10 @@ export class SquadMember extends Character {
     }
     if (this.signT > 0) {                                  // the signature move itself
       this.signT -= dt;
-      this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 7);
-      this.signPose(this.signDur - this.signT, ctx);
+      const st = this.signDur - this.signT;
+      if (this.attack === 'siu' && st > 0.3 && st < 0.9) this.rag.yaw += Math.PI * dt / 0.6;     // the spin in the air
+      else this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, this.attack === 'siu' ? 2 : 7);
+      this.signPose(st, ctx);
       return;
     }
     // attacks that are the whole move
@@ -781,10 +791,10 @@ export class SquadMember extends Character {
       this.signPose(this.t, ctx);
       if (this.stateT > 1.3 && this.passes > 0) {
         this.passes--; this.stateT = 0.2;
-        const it = ['burger', 'hotdog', 'chicken', 'sausageroll'][this.passes % 4];
+        const it = ['pepper', 'tomato', 'broccoli', 'cauliflower'][this.passes % 4];
         if (this.bbqFood && this.bbqFood[this.passes]) this.bbqFood[this.passes].visible = false;
-        this.throwNow(ctx, { item: it, speed: 3.3, food: true, line: this.passes === 3 ? null : null });
-        this.say(['Get that down you, Ronnie!', 'Proper burger, that! Not like the council\'s!', 'Lewy! Watch this!', 'Last one! Catch it with your gob!'][this.passes], 3);
+        this.throwNow(ctx, { item: it, speed: 3.3, spread: 0.08 });
+        this.say(['Last one! Chargrilled cauliflower! It\'s basically a steak!', 'Broccoli kebab, Ronnie! Lewy loves these!', 'Grilled tomato! Better than anything out of Canvey Lake!', 'Healthy barbecue, Ronnie! Get that pepper down you!'][this.passes], 3);
       }
       if (this.passes <= 0 && this.stateT > 1.3) { this.endAttackProps(); done(); }
       return;

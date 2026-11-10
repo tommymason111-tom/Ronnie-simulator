@@ -153,10 +153,12 @@ export class Player {
   effect(kind, dur, opts = {}) {
     const fx = this.fx;
     if (kind === 'tether') { this.rig.updateMatrixWorld(true); this.camera.getWorldPosition(_v); fx.tether = { t: dur, x: _v.x, z: _v.z, r: opts.r || 0.6 }; return; }
-    if (kind === 'spin') { fx.spin = Math.max(fx.spin, dur); fx.spinLeft = Math.PI * 2; return; }
+    if (kind === 'spin') { fx.spin = Math.max(fx.spin, dur); fx.spinLeft = Math.PI * 2 * (opts.turns || 1); fx.spinSpeed = opts.speed || 7; return; }
+    if (kind === 'dizzy') fx.dizzyAmp = Math.max(opts.amp || 1, fx.dizzy > 0 ? fx.dizzyAmp || 1 : 0);
+    if (kind === 'siu') { this.siuAnim = { t: 0 }; fx.frozen = Math.max(fx.frozen, dur); return; }
     fx[kind] = Math.max(fx[kind] || 0, dur);
   }
-  clearEffects() { if (this.jigY) this.rig.position.y -= this.jigY; this.fx = { dizzy: 0, frozen: 0, jig: 0, tether: null, spin: 0, spinLeft: 0, slow: 0, noEat: 0 }; this.jigY = 0; }
+  clearEffects() { if (this.jigY) this.rig.position.y -= this.jigY; if (this.siuY) { this.rig.position.y -= this.siuY; this.siuY = 0; } this.siuAnim = null; this.fx = { dizzy: 0, frozen: 0, jig: 0, tether: null, spin: 0, spinLeft: 0, slow: 0, noEat: 0 }; this.jigY = 0; }
   get stunned() { return !!(this.knock || this.throwAnim || this.fx.frozen > 0 || this.fx.jig > 0); }
   get canEat() { return !(this.fx.noEat > 0) && !this.knock && !this.throwAnim; }
   // Lewis picks you up and throws you across the room: fly in an arc to `to`, land in a heap
@@ -178,14 +180,22 @@ export class Player {
     }
     // dizzy: the view sways and you drift sideways
     if (fx.dizzy > 0 && !this.knock) {
-      const k = Math.min(1, fx.dizzy);
-      this.rotateAroundHead(Math.sin(t * 1.7) * 0.35 * dt * k);
-      _v.set(this.fwd.z, 0, -this.fwd.x).normalize().multiplyScalar(Math.sin(t * 1.1) * 0.35 * dt * k);
+      const k = Math.min(1, fx.dizzy) * (fx.dizzyAmp || 1), f = 1 + (k - 1) * 0.6;     // amp > 1: faster and wilder
+      this.rotateAroundHead(Math.sin(t * 1.7 * f) * 0.35 * dt * k);
+      _v.set(this.fwd.z, 0, -this.fwd.x).normalize().multiplyScalar(Math.sin(t * 1.1 * f) * 0.35 * dt * k);
       this.rig.position.add(_v);
-      if (this.flatMode) this.camera.rotation.z = Math.sin(t * 1.3) * 0.12 * k;
+      if (this.flatMode) { this.camera.rotation.z = Math.sin(t * 1.3 * f) * 0.12 * k; this.camera.rotation.x += Math.sin(t * 2.3 * f) * 0.05 * k; }
     }
     // nutmegged: spin round once
-    if (fx.spinLeft > 0) { const step = Math.min(fx.spinLeft, dt * 7); fx.spinLeft -= step; this.rotateAroundHead(step); }
+    if (fx.spinLeft > 0) { const step = Math.min(fx.spinLeft, dt * (fx.spinSpeed || 7)); fx.spinLeft -= step; this.rotateAroundHead(step); }
+    // SIUUU: crouch, jump, turn round in the air, land
+    if (this.siuAnim) {
+      const a = this.siuAnim; a.t += dt;
+      const y = a.t < 0.25 ? -0.12 * a.t / 0.25 : a.t < 0.85 ? -0.12 + Math.sin((a.t - 0.25) / 0.6 * Math.PI) * 0.75 + 0.12 * (a.t - 0.25) / 0.6 : 0;
+      this.rig.position.y += y - (this.siuY || 0); this.siuY = y;
+      if (a.t > 0.3 && a.t < 0.8) this.rotateAroundHead(Math.PI * dt / 0.5);
+      if (a.t >= 0.9) { this.rig.position.y -= this.siuY || 0; this.siuY = 0; this.siuAnim = null; this.resetHandHistory(); }
+    }
     // Irish jig: bounce up and down
     const jy = fx.jig > 0 ? Math.abs(Math.sin(t * 9)) * 0.09 : 0;
     this.rig.position.y += jy - (this.jigY || 0); this.jigY = jy;

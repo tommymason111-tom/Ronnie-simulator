@@ -185,6 +185,13 @@ const SOUNDS = {
   fizz(d, t) { noise(d, t, 1.2, 'bandpass', 5000, 0.8, 0.5, 0.02); tone(d, t, 'sine', 200, 900, 0.3, 0.2); },
   whistle(d, t) { tone(d, t, 'sine', 2600, 2700, 0.12, 0.3); tone(d, t + 0.18, 'sine', 2600, 2400, 0.35, 0.3); },
   jet(d, t) { noise(d, t, 2.5, 'lowpass', 600, 1, 0.5, 0.6); tone(d, t, 'sawtooth', 110, 220, 2.2, 0.06, 0.5); },
+  siu(d, t) {          // a stadium roar and a big "SIUUUUU"
+    noise(d, t, 2.6, 'bandpass', 700, 0.6, 0.55, 0.4); noise(d, t + 0.3, 2.2, 'bandpass', 1500, 0.8, 0.25, 0.3);
+    noise(d, t + 0.55, 0.12, 'highpass', 5000, 0.7, 0.45, 0.01);                                   // "S"
+    const o = tone(d, t + 0.65, 'sawtooth', 300, 360, 1.5, 0.12, 0.05);                             // "IUUUUU"
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 7; const lg = ctx.createGain(); lg.gain.value = 12; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t + 0.65); lfo.stop(t + 2.3);
+    tone(d, t + 0.65, 'sine', 600, 720, 1.5, 0.1, 0.05);
+  },
   clink(d, t) { tone(d, t, 'triangle', 1800 + Math.random() * 400, 1700, 0.15, 0.2, 0.001); },
 };
 
@@ -383,16 +390,33 @@ export function playTune(kind, seconds) {
   const end = ctx.currentTime + seconds; let t = ctx.currentTime + 0.05, i = 0;
   const D = 293.66, hzS = (s) => D * Math.pow(2, s / 12);
   // jig: a fiddle in 6/8 over a bodhran; guitar: strummed G-D-Em-C, down-down-up-up-down
-  const JIG = [0, 4, 7, 9, 7, 4, 2, 4, 5, 7, 5, 2, 0, 4, 7, 12, 11, 9, 7, 9, 7, 4, 2, 0];
+  // "The Irish Washerwoman" (traditional, 6/8), in G, semitones from D4; null = hold
+  const JIG = [9, 5, 5, 0, 5, 5, 9, 5, 9, 12, 10, 9, 10, 7, 7, 2, 7, 7, 10, 7, 10, 14, 12, 10,
+               9, 5, 5, 0, 5, 5, 9, 5, 9, 12, 10, 9, 10, 9, 10, 7, 12, 10, 9, 5, 5, 5, null, 12,
+               9, 5, 5, 0, 5, 5, 9, 5, 9, 12, 10, 9, 10, 7, 7, 2, 7, 7, 10, 7, 10, 14, 12, 10,
+               9, 5, 5, 0, 5, 5, 9, 5, 9, 12, 10, 9, 10, 9, 10, 7, 12, 10, 9, 5, 5, 5, null, null];
+  const JIG_BASS = [5, 5, 7, 7, 5, 5, 0, 5];   // a bar (6 eighths) each: G G Am Am G G D G (offset below)
   const CH = [[-5, 2, 7, 11, 14, 19], [-10, -3, 2, 6, 9, 14], [-8, -3, 2, 7, 11, 14], [-9, -2, 2, 7, 10, 14]];
   const sched = () => {
     while (t < ctx.currentTime + 0.8 && t < end) {
       if (kind === 'jig') {
-        const s = JIG[i % JIG.length], f = hzS(s + 12);
-        const o = tone(d, t, 'sawtooth', f, f, 0.13, 0.06, 0.01);
-        const lfo = ctx.createOscillator(); lfo.frequency.value = 6; const lg = ctx.createGain(); lg.gain.value = 4; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + 0.2);
-        if (i % 3 === 0) { tone(d, t, 'sine', 90, 50, 0.12, 0.35); }
-        t += 0.14; i++;
+        const s = JIG[i % JIG.length], step = 0.115;
+        if (s !== null) {
+          const f = hzS(s + 12);
+          // fiddle (bowed saw with vibrato) doubled by a tin whistle an octave up
+          const o = tone(d, t, 'sawtooth', f, f, step * 0.95, 0.045, 0.012);
+          const lfo = ctx.createOscillator(); lfo.frequency.value = 5.5; const lg = ctx.createGain(); lg.gain.value = f * 0.008; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + step + 0.1);
+          tone(d, t, 'sine', f * 2, f * 2, step * 0.8, 0.03, 0.008);
+          if (i % 7 === 3) tone(d, t, 'sine', f * 2.2, f * 2, 0.04, 0.02, 0.002);        // a little whistle cut
+        }
+        const bar = Math.floor(i / 6) % 8, beat = i % 6;
+        if (beat === 0 || beat === 3) {                                                   // bodhran: deep thump on the beats
+          tone(d, t, 'sine', beat === 0 ? 95 : 80, 45, 0.14, 0.4); noise(d, t, 0.05, 'lowpass', 900, 1, 0.12, 0.002);
+          const root = hzS(JIG_BASS[bar] - 24);                                            // guitar: root + chord stab
+          tone(d, t, 'triangle', root, root, 0.25, 0.09, 0.005);
+          for (const iv of [0, 4, 7]) tone(d, t + 0.01, 'triangle', root * 2 * Math.pow(2, (iv + (bar === 2 || bar === 3 ? -1 * (iv === 4) : 0)) / 12), root * 2, 0.18, 0.025, 0.004);
+        } else if (beat === 5) noise(d, t, 0.03, 'bandpass', 2500, 2, 0.06, 0.002);       // rim tap
+        t += step; i++;
       } else {
         const ch = CH[Math.floor(i / 5) % 4], pat = [0, 0.5, 1.25, 1.75, 2.5][i % 5], up = i % 5 === 2 || i % 5 === 3;
         const bar = Math.floor(i / 5) * 3.0 + ctx.currentTime * 0, tt = t;
@@ -404,4 +428,9 @@ export function playTune(kind, seconds) {
     if (t < end) tuneTimer = setTimeout(sched, 250); else tuneTimer = null;
   };
   sched();
+}
+
+// say something out loud with the device's speech voice, if it has one
+export function shout(text, { rate = 1, pitch = 1, volume = 0.8 } = {}) {
+  try { if (!window.speechSynthesis) return; const u = new SpeechSynthesisUtterance(text); u.rate = rate; u.pitch = pitch; u.volume = volume; window.speechSynthesis.speak(u); } catch (e) {}
 }

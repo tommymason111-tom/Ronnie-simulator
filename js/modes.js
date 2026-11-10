@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { SquadMember, SQUAD } from './squad.js';
 import { DATE_TABLE, DINER_TABLES } from './levels/restaurant.js';
 import { canvasTex, fitText, roundRect, FONT } from './textures.js';
-import { sfx, playTune } from './audio.js';
+import { sfx, playTune, shout } from './audio.js';
 import { Item } from './foods.js';
 import { pickVeg, pickJunk } from './config.js';
 
@@ -42,8 +42,8 @@ const ATTACKS = {
   harry:  [{ key: 'dating', icon: '💘', title: 'HARRY DISTRACTS YOU WITH HIS DATING HISTORY', sub: 'STUCK LISTENING!', sfx: 'ting' }],
   ethan:  [{ key: 'pepsi', icon: '🥤', title: 'ETHAN HITS YOU WITH A PEPSI MAX ATTACK!', sub: 'FIZZED! NO EATING!', sfx: 'psst' }],
   connor: [{ key: 'jig', icon: '☘️', title: 'CONNOR GIVES YOU AN IRISH JIG ATTACK!', sub: 'DANCE, RONNIE!', sfx: 'boing' }],
-  lewis:  [{ key: 'yeet', icon: '💪', title: 'LEWIS THROWS YOU ACROSS THE ROOM!', sub: 'YEET!', sfx: 'boing' }],
-  ian:    [{ key: 'bbq', icon: '🍖', title: 'IAN FIRES UP THE BARBECUE!', sub: 'INCOMING BURGERS!', sfx: 'sizzle' },
+  lewis:  [{ key: 'siu', icon: '⚽', title: 'LEWIS IS RONALDO! YOU SIUUU WITH HIM!', sub: 'SIUUUUUUU!', sfx: 'siu', style: 'portugal' }],
+  ian:    [{ key: 'bbq', icon: '🌽', title: 'IAN FIRES UP THE HEALTHY BARBECUE!', sub: 'INCOMING GRILLED VEG!', sfx: 'sizzle' },
            { key: 'rod', icon: '🎣', title: 'IAN CATCHES YOU ON HIS FISHING ROD!', sub: 'HOOKED FOR 5 SECONDS' }],
   chloe:  [{ key: 'diet', icon: '🥗', title: 'CHLOE PUTS YOU ON A DIET!', sub: 'NO EATING!', sfx: 'ting' }],
   oliver: [{ key: 'flash', icon: '📸', title: 'OLIVER BLINDS YOU WITH HIS CAMERA FLASH!', sub: 'GONE VIRAL!' }],
@@ -370,7 +370,7 @@ export class Director {
     key = LEGACY_KEY[key] || key || (ATTACKS[who.id] || [])[0]?.key;
     const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
     if (P.knock || P.throwAnim || (fx && fx.inCutscene)) return;
-    if (fx) fx.showCard({ name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, color: (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
+    if (fx) fx.showCard({ name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
     else g.showBanner(A.title, A.sub);
     sfx(A.sfx || 'thud', null, 1);
     const tint = (color, t, op = 0.3) => { G.fxTint = color; G.fxTintT = t; G.fxTintOp = op; };
@@ -393,17 +393,17 @@ export class Director {
       }
       case 'pepsi': {         // shake, shake, FSSSHHH: a fizz spray right in the face
         P.effect('noEat', 5); P.effect('slow', 5);
-        setTimeout(() => { tint(0x0b3fa8, 5, 0.32); sfx('fizz', null, 1); for (let i = 0; i < 10; i++) setTimeout(() => fx.spray(who.rag.grip('lArmR', P3(0, 0, 0)), P.head, i % 2 ? 0x2a1608 : 0x9ad4ff, 8), i * 90); }, 300);
+        setTimeout(() => {
+          sfx('fizz', null, 1); for (let i = 0; i < 10; i++) setTimeout(() => fx.spray(who.rag.grip('lArmR', P3(0, 0, 0)), P.head, i % 2 ? 0x2a1608 : 0x9ad4ff, 8), i * 90);
+          setTimeout(() => { fx.cutscene('pepsi', 4.2); sfx('fizz', null, 0.8); }, 450);      // ...and then the whole screen fills up with it
+        }, 300);
         break;
       }
-      case 'jig': P.effect('jig', 5.5); who.jig = 5.5; playTune('jig', 5.5); break;
-      case 'yeet': {
+      case 'jig': P.effect('jig', 6.5); who.jig = 6.5; playTune('jig', 6.5); shout('Come on Ronnie, give us a jig!', { rate: 1.1, pitch: 1.1, volume: 0.5 }); break;
+      case 'siu': {           // Lewis does the Ronaldo celebration and you do it with him
         P.dropAll();
-        const n = g.room.nav, len = Math.hypot(away.x, away.z) || 1;
-        let to = { x: P.head.x + away.x / len * 3.5, z: P.head.z + away.z / len * 3.5 };
-        if (n) { const kk = n.nearestFree(to.x, to.z); if (kk >= 0) { const c = n.center(kk); to = { x: c.x, z: c.y }; } }
-        const b = g.room.bounds; to.x = Math.min(b.x1 - 0.4, Math.max(b.x0 + 0.4, to.x)); to.z = Math.min(b.z1 - 0.4, Math.max(b.z0 + 0.4, to.z));
-        setTimeout(() => { sfx('whoosh', null, 1); P.throwTo(to, 1.4); P.onLanded = () => sfx('thud', null, 1); }, 700);
+        setTimeout(() => { P.effect('siu', 3.2); }, 250);
+        setTimeout(() => { fx.cutscene('siu', 2.6); shout('Siuuuuuuu!', { rate: 0.55, pitch: 1.3, volume: 0.9 }); }, 900);
         break;
       }
       case 'rod': P.effect('tether', 5, { r: 0.45 }); who.reeling = 5; sfx('whoosh', null, 0.8); break;
@@ -425,10 +425,10 @@ export class Director {
         const ball = football(), from = who.rag.grip('lArmR', P3(0, 0, 0)), end = P3(P.head.x + away.x * 0.6, 0.11, P.head.z + away.z * 0.6);
         from.y = 0.11; ball.position.copy(from);
         fx.worldProp(ball, 1.2, (t, o) => { const u = Math.min(1, t / 0.9); o.position.lerpVectors(from, end, u); o.rotation.x += 0.4; });
-        setTimeout(() => { P.effect('spin', 1); P.effect('dizzy', 3); }, 450);
+        setTimeout(() => { P.effect('spin', 1.4, { turns: 3, speed: 16 }); P.effect('dizzy', 6, { amp: 2.8 }); fx.dizzyStars(6); tint(0xffd400, 6, 0.12); g.words.show('WHOA-OA-OA!', P.head.clone().addScaledVector(P.fwd, 0.7), '#ffd400', 0.1, 1.5); }, 450);
         break;
       }
-      case 'turkey': P.effect('frozen', 7.3); P.dropAll(); sfx('jet', null, 1); fx.cutscene('turkey', 7); break;
+      case 'turkey': P.effect('frozen', 8.5); P.dropAll(); sfx('jet', null, 1); fx.cutscene('turkey', 8.2); break;
     }
   }
   // which attack does this person do next? (not one they've done, until everyone's had a go)
