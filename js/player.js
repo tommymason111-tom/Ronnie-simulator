@@ -115,6 +115,35 @@ export class Player {
     if (this.flatHolder?.held) { const it = this.flatHolder.held; this.flatDrop(); it.vel.set((Math.random() - 0.5) * 2, 1.5, 1); }
   }
 
+  // Knocked flat on your back (Noah's tackle): the whole rig tips over around
+  // your feet, you lie on the floor for a moment, then get back up.
+  // dir: horizontal direction you get pushed in.
+  knockDown(dir) {
+    if (this.knock) return;
+    this.rig.updateMatrixWorld(true);
+    this.camera.getWorldPosition(_v);
+    const d = new THREE.Vector3(dir.x, 0, dir.z);
+    if (d.lengthSq() < 1e-6) d.set(-this.fwd.x, 0, -this.fwd.z);
+    d.normalize();
+    this.knock = { t: 0, pos: this.rig.position.clone(), q: this.rig.quaternion.clone(), pivot: new THREE.Vector3(_v.x, 0, _v.z), axis: new THREE.Vector3().crossVectors(UP, d).normalize() };
+  }
+  updateKnock(dt) {
+    const k = this.knock;
+    k.t += dt;
+    const FALL = 0.35, LIE = 2.4, UPT = 0.9, MAX = 1.3;
+    let a;
+    if (k.t < FALL) { const u = k.t / FALL; a = MAX * u * u; }                       // topple, speeding up
+    else if (k.t < FALL + 0.25) a = MAX - 0.12 * Math.sin((k.t - FALL) / 0.25 * Math.PI);   // thud + little bounce
+    else if (k.t < LIE) a = MAX;
+    else if (k.t < LIE + UPT) { const u = (k.t - LIE) / UPT; a = MAX * (1 - u * u * (3 - 2 * u)); }
+    else a = 0;
+    _q.setFromAxisAngle(k.axis, a);
+    this.rig.position.copy(k.pos).sub(k.pivot).applyQuaternion(_q).add(k.pivot);
+    this.rig.quaternion.copy(_q).multiply(k.q);
+    if (k.t >= LIE + UPT) { this.rig.position.copy(k.pos); this.rig.quaternion.copy(k.q); this.knock = null; }
+  }
+  get downed() { return !!this.knock; }
+
   // where the on-screen hand is (phone mode) — Dylan clings to it
   flatAnchorPos() {
     if (!this.flatGrip) return this.head.clone();
@@ -148,11 +177,15 @@ export class Player {
 
     if (xr) {
       for (const h of this.hands) this.updateHand(h, dt, t);
-      this.locomotion(dt);
+      if (!this.knock) this.locomotion(dt);
     } else {
       for (const h of this.hands) { if (h.body) h.body.position.set(0, -10, 0); if (h.ctrlHand) h.ctrlHand.root.visible = false; }
+      const mv = this.flatMove;
+      if (this.knock && mv) this.flatMove = { x: 0, z: 0 };
       this.updateFlat(dt, t);
+      if (mv) this.flatMove = mv;
     }
+    if (this.knock) this.updateKnock(dt);
     this.updateWristParent(xr);
     this.updateBelly(dt, t);
   }

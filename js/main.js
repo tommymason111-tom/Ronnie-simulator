@@ -1,7 +1,7 @@
 // RONNIE SIMULATOR — Phase 1 (WebXR / three.js, runs in the Meta Quest 3 browser,
 // and on phones / tablets / computers with on-screen controls).
 import * as THREE from 'three';
-import { STAGES, FOODS, TUNING } from './config.js';
+import { STAGES, FOODS, TUNING, JUNK_TYPES, pickJunk } from './config.js';
 import { buildRoom } from './room.js';
 import { ItemManager } from './foods.js';
 import { Crumbs, Words, Tint } from './fx.js';
@@ -71,6 +71,12 @@ let time = 0;
 
 // starting food: one of each on the snack station, more around the room
 if (room.startFood) room.startFood.forEach(t => items.spawn(t, items.freeSpawn()));
+// big places: loads more food, every kind, and it keeps topping up
+if (room.big) {
+  for (let i = 0; i < 26; i++) items.spawn(JUNK_TYPES[i % JUNK_TYPES.length], items.freeSpawn());
+  items.respawnDelay = 1.5;
+  items.minFood = 44;
+}
 else {
   [['burger', 0], ['pizza', 1], ['doughnut', 2], ['can', 3]].forEach(([t, i]) => items.spawn(t, room.spawns[i]));
   ['burger', 'pizza', 'doughnut', 'can', 'burger', 'doughnut'].forEach(t => items.spawn(t, items.freeSpawn()));
@@ -102,8 +108,10 @@ function onThrow(start, vel, type, who, spec) {
 }
 tommy.onThrow = onThrow;
 
-const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish' };
-const SNACK_WORD = { burger: ['CHOMP!', 'MUNCH!', 'NOM!'], pizza: ['CRUNCH!', 'MUNCH!'], doughnut: ['SQUISH!', 'NOM NOM!'] };
+const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish', hotdog: 'chomp', fries: 'crunch', kebab: 'chomp', chicken: 'crunch', taco: 'crunch', crisps: 'crunch', choc: 'crunch', cookie: 'crunch', icecream: 'squish', sausageroll: 'chomp' };
+const SNACK_WORD = { burger: ['CHOMP!', 'MUNCH!', 'NOM!'], pizza: ['CRUNCH!', 'MUNCH!'], doughnut: ['SQUISH!', 'NOM NOM!'],
+  hotdog: ['CHOMP!', 'DOG DOWN!'], fries: ['CRUNCH!', 'CHIPPY!'], kebab: ['DONER!', 'CHOMP!', '3AM VIBES!'], chicken: ['CRUNCH!', 'FINGER LICKIN!'], taco: ['CRUNCH!', 'TACO TIME!'],
+  crisps: ['CRUNCH!', 'RUSTLE!'], choc: ['SNAP!', 'NOM!'], cookie: ['CRUNCH!', 'NOM!'], icecream: ['BRAIN FREEZE!', 'SLURP!'], sausageroll: ['FLAKY!', 'CHOMP!'] };
 const CRUMB_COLORS = {
   burger: [0xd9933f, 0x5a2e14, 0x4caf3c, 0xffc21a, 0xe0a04a],
   pizza: [0xf2b233, 0xc9852f, 0xb3261e, 0xffe08a],
@@ -111,6 +119,11 @@ const CRUMB_COLORS = {
   broccoli: [0x2e7d32, 0x9ccc65, 0x1b5e20],
   carrot: [0xff7a1a, 0x3fa34d], celery: [0x9ccc65, 0x6aaa3a], sprout: [0x7cb342, 0x9ccc65],
   can: [0xff9a1f, 0xffe94d],
+  hotdog: [0xe0a04a, 0xa8442a, 0xffd21a, 0xd8352a], fries: [0xffcf40, 0xf0b020, 0xd32f2f], kebab: [0xf1d9a8, 0x8b4a2b, 0x6fbf3f, 0xd8352a],
+  chicken: [0xc7782a, 0xa85d1c, 0xf3ead8], taco: [0xf2c14e, 0x7a3b1a, 0x6fbf3f, 0xffd21a], crisps: [0xffe08a, 0xf2c14e, 0x1565c0],
+  choc: [0x5b3a1e, 0x6e4626, 0x6a1b9a], cookie: [0xc98b4a, 0x3b2412], icecream: [0xffc0d8, 0xfff3d6, 0xd9a05b], sausageroll: [0xe8b25a, 0xc98060, 0xb7782a],
+  apple: [0xd62828, 0xfff3d6], pear: [0x9ccc3a, 0xf3f0c0], orange: [0xff8c1a, 0xffc04a], banana: [0xffe135, 0xfff6c8], tomato: [0xe53935, 0xffc107],
+  cucumber: [0x2f6b2a, 0xc5e1a5], pepper: [0xd32f2f, 0xffffff], cauliflower: [0xf5f0dc, 0x6aaa3a],
 };
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion();
 

@@ -21,7 +21,7 @@ export function buildRestaurant(scene) {
   const tables = [[-7, -5], [-3.5, -5], [3.5, -5], [7, -5], [-8, 0], [-4.5, 1], [4.5, 1], [8, 0], [-7, 5.5], [-3, 5.5], [3, 5.5], [7, 5.5]];
   for (const [x, z] of tables) {
     k.table(x, z, 1.1, 1.1, { round: true, cloth: 0xf5f0e8, chairs: 0, spots: 1 });
-    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.4; k.chair(x + Math.sin(a) * 0.85, z + Math.cos(a) * 0.85, a + Math.PI, 0x3a0a10); }
+    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.4; k.chair(x + Math.sin(a) * 0.85, z + Math.cos(a) * 0.85, a, 0x3a0a10); }
   }
   for (const [x, z] of [[DATE_TABLE.x, DATE_TABLE.z], ...tables]) { k.cyl(0.02, 0.02, 0.18, x + 0.18, 0.86, z - 0.15, 0xfff3d0, 8); k.lamp(x + 0.18, 0.97, z - 0.15, 0xffb84d, 0.03); }
 

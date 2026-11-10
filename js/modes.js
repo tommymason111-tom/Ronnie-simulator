@@ -13,6 +13,7 @@ import { SquadMember, SQUAD } from './squad.js';
 import { DATE_TABLE } from './levels/restaurant.js';
 import { canvasTex, fitText, roundRect, FONT } from './textures.js';
 import { sfx } from './audio.js';
+import { pickVeg, pickJunk } from './config.js';
 
 export const MODES = {
   classic:      { name: 'CLASSIC', desc: 'Eat, grow, dodge Tommy\'s broccoli.', time: 0 },
@@ -221,7 +222,7 @@ export class Director {
           const n = wave === 3 ? ready.length : wave;
           ready.slice(0, n).forEach((c, i) => setTimeout(() => {
             if (!idle(c) || !this.running) return;
-            c.startThrow({ item: VEG_OF[c.id] || 'broccoli', speed: c.id === 'harry' ? 3.8 : 3.0, windup: 0.75, line: Math.random() < 0.4 ? 'vegThrow' : null, spread: 0.05 });
+            c.startThrow({ item: pickVeg(VEG_OF[c.id] || 'broccoli'), speed: c.id === 'harry' ? 3.8 : 3.0, windup: 0.75, line: Math.random() < 0.4 ? 'vegThrow' : null, spread: 0.05 });
           }, i * 350));
           if (elapsed > 44 && elapsed < 46.7 && !this.waveTwo) { this.waveTwo = true; g.showBanner('WAVE 2', 'TWO AT ONCE'); }
           if (elapsed > 99 && elapsed < 101.7 && !this.waveThree) { this.waveThree = true; g.showBanner('FINAL WAVE', 'EVERYONE!'); }
@@ -234,7 +235,7 @@ export class Director {
         if (harry && idle(harry) && this.waveT <= 0 && this.stats.thrown < 20) {
           this.waveT = 2.6;
           this.stats.thrown++;
-          harry.startThrow({ item: ['doughnut', 'burger', 'pizza'][this.stats.thrown % 3], speed: 3.0, windup: 0.6, food: true, line: this.stats.thrown === 1 ? 'intervene' : null });
+          harry.startThrow({ item: pickJunk(), speed: 3.0, windup: 0.6, food: true, line: this.stats.thrown === 1 ? 'intervene' : null });
         }
         break;
       }
@@ -276,13 +277,13 @@ export class Director {
   tackled(noah) {
     const g = this.g;
     const big = g.G.stage >= 2;
+    // Ronnie goes down every time (even Big Ronnie: Noah's a prop forward)
+    g.words.show('TACKLED!', g.player.head.clone().addScaledVector(g.player.fwd, 0.7), '#C62828', 0.2);
+    sfx('thud', null, 1);
     if (big) { g.words.show('BOING!', noah.pos.clone().add({ x: 0, y: 1.2, z: 0 }), '#ffd400', 0.25); sfx('boing', noah.pos, 1); }
-    else {
-      g.words.show('TACKLED!', g.player.head.clone().addScaledVector(g.player.fwd, 0.7), '#C62828', 0.2);
-      sfx('thud', null, 1);
-      g.player.dropAll();
-      setTimeout(() => noah.say('tackled', 4), 600);
-    }
+    g.player.dropAll();
+    g.player.knockDown({ x: g.player.head.x - noah.pos.x, z: g.player.head.z - noah.pos.z });
+    setTimeout(() => noah.say('tackled', 4), 600);
   }
   clinging(dylan, on) {
     if (on) { this.g.words.show('SHAKE HIM OFF!', this.g.player.head.clone().addScaledVector(this.g.player.fwd, 0.8), '#FF6D00', 0.16, 2); }

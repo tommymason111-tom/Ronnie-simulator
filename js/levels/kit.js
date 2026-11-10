@@ -90,7 +90,7 @@ export class Kit {
     for (let i = 0; i < n; i++) for (const side of [-1, 1]) {
       const t = (i + 0.5) / n - 0.5;
       const cx = alongX ? x + t * len : x + side * (w / 2 + 0.32), cz = alongX ? z + side * (d / 2 + 0.32) : z + t * len;
-      this.chair(cx, cz, alongX ? (side > 0 ? 0 : Math.PI) : (side > 0 ? -Math.PI / 2 : Math.PI / 2), chairColor, seat);
+      this.chair(cx, cz, alongX ? (side > 0 ? 0 : Math.PI) : (side > 0 ? Math.PI / 2 : -Math.PI / 2), chairColor, seat);
     }
     for (let i = 0; i < spots; i++) {
       const t = spots === 1 ? 0 : (i / (spots - 1) - 0.5) * 0.6;

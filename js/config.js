@@ -22,6 +22,24 @@ export const FOODS = {
   carrot:   { label: 'Carrot',      chonk: -8,  bites: 1, radius: 0.045, mass: 0.15, veg: true },
   celery:   { label: 'Celery',      chonk: -10, bites: 1, radius: 0.05, mass: 0.1, veg: true },
   sprout:   { label: 'Brussels sprout', chonk: -5, bites: 1, radius: 0.03, mass: 0.05, veg: true },
+  hotdog:   { label: 'Hot dog',     chonk: 14, bites: 3, radius: 0.06, mass: 0.3 },
+  fries:    { label: 'Chips',       chonk: 12, bites: 3, radius: 0.05, mass: 0.2 },
+  kebab:    { label: 'Doner kebab', chonk: 18, bites: 3, radius: 0.06, mass: 0.4 },
+  chicken:  { label: 'Fried chicken', chonk: 13, bites: 2, radius: 0.05, mass: 0.2 },
+  taco:     { label: 'Taco',        chonk: 11, bites: 2, radius: 0.06, mass: 0.2 },
+  crisps:   { label: 'Crisps',      chonk: 8,  bites: 2, radius: 0.06, mass: 0.1 },
+  choc:     { label: 'Chocolate bar', chonk: 9, bites: 2, radius: 0.06, mass: 0.1 },
+  cookie:   { label: 'Cookie',      chonk: 6,  bites: 1, radius: 0.045, mass: 0.05 },
+  icecream: { label: 'Ice cream',   chonk: 10, bites: 2, radius: 0.045, mass: 0.15 },
+  sausageroll: { label: 'Sausage roll', chonk: 11, bites: 2, radius: 0.05, mass: 0.15 },
+  apple:    { label: 'Apple',       chonk: -6, bites: 1, radius: 0.038, mass: 0.15, veg: true },
+  pear:     { label: 'Pear',        chonk: -6, bites: 1, radius: 0.04, mass: 0.15, veg: true },
+  orange:   { label: 'Orange',      chonk: -6, bites: 1, radius: 0.038, mass: 0.15, veg: true },
+  banana:   { label: 'Banana',      chonk: -7, bites: 1, radius: 0.05, mass: 0.12, veg: true },
+  tomato:   { label: 'Tomato',      chonk: -5, bites: 1, radius: 0.034, mass: 0.1, veg: true },
+  cucumber: { label: 'Cucumber',    chonk: -8, bites: 1, radius: 0.05, mass: 0.2, veg: true },
+  pepper:   { label: 'Pepper',      chonk: -6, bites: 1, radius: 0.04, mass: 0.12, veg: true },
+  cauliflower: { label: 'Cauliflower', chonk: -12, bites: 1, radius: 0.045, mass: 0.2, veg: true },
   pint:     { label: 'BLACK LIFFEY STOUT', chonk: 20, bites: 1, radius: 0.045, mass: 0.6, drink: true, stout: true },
   shake:    { label: 'Protein shake', chonk: 25, bites: 1, radius: 0.04, mass: 0.5, drink: true, shake: true },
 };
@@ -48,3 +66,10 @@ export const TUNING = {
 
 // Room: 5m x 4.5m, ceiling 2.6m (section 39.1). Origin at room centre on the floor.
 export const ROOM = { w: 5, d: 4.5, h: 2.6 };
+
+// Everything healthy the squad can lob at Ronnie, and the junk food that lies around.
+export const VEG_TYPES = ['broccoli', 'carrot', 'celery', 'sprout', 'apple', 'pear', 'orange', 'banana', 'tomato', 'cucumber', 'pepper', 'cauliflower'];
+export const JUNK_TYPES = ['burger', 'pizza', 'doughnut', 'hotdog', 'fries', 'kebab', 'chicken', 'taco', 'crisps', 'choc', 'cookie', 'icecream', 'sausageroll'];
+// a thrower's favourite about a third of the time, otherwise anything healthy
+export function pickVeg(fav) { return fav && Math.random() < 0.35 ? fav : VEG_TYPES[Math.floor(Math.random() * VEG_TYPES.length)]; }
+export function pickJunk() { return JUNK_TYPES[Math.floor(Math.random() * JUNK_TYPES.length)]; }

@@ -1,7 +1,7 @@
 // Food & veg: low-poly merged meshes + a tiny custom physics engine
 // (sphere vs. room/furniture boxes). No physics library needed.
 import * as THREE from 'three';
-import { FOODS, TUNING } from './config.js';
+import { FOODS, TUNING, pickJunk } from './config.js';
 import { part, merge, vcLambert, cyl, sph, box } from './geo.js';
 import { canLabelTex } from './textures.js';
 
@@ -88,6 +88,90 @@ function shakeGeo() {
   return merge([part(cyl(0.035, 0.035, 0.13, 16), 0xf2f2f2), part(cyl(0.037, 0.037, 0.03, 16), 0xd32f2f, [0, 0.075, 0]), part(box(0.05, 0.05, 0.002), 0x1565c0, [0, 0, 0.035])]);
 }
 
+// ---------- more fast food & snacks ----------
+function hotdogGeo() {
+  const bun = new THREE.CapsuleGeometry(0.026, 0.11, 4, 10); bun.rotateZ(Math.PI / 2);
+  const dog = new THREE.CapsuleGeometry(0.014, 0.13, 4, 8); dog.rotateZ(Math.PI / 2);
+  const p = [part(bun, 0xe0a04a, [0, -0.008, 0], [0, 0, 0], [1, 0.8, 1]), part(dog, 0xa8442a, [0, 0.014, 0])];
+  for (let i = 0; i < 6; i++) p.push(part(box(0.022, 0.004, 0.006), i % 2 ? 0xffd21a : 0xd8352a, [-0.05 + i * 0.02, 0.029, (i % 2 - 0.5) * 0.008], [0, (i % 2 ? 0.6 : -0.6), 0]));
+  return merge(p);
+}
+function friesGeo() {
+  const p = [part(cyl(0.04, 0.03, 0.07, 4), 0xd32f2f, [0, -0.02, 0], [0, Math.PI / 4, 0], [1, 1, 0.6])];
+  p.push(part(box(0.03, 0.02, 0.003), 0xffd21a, [0, -0.012, 0.022]));
+  for (let i = 0; i < 12; i++) p.push(part(box(0.008, 0.07, 0.008), i % 3 ? 0xffcf40 : 0xf0b020, [((i % 4) - 1.5) * 0.012, 0.03 + (i % 3) * 0.006, ((i >> 2) - 1) * 0.008], [(i % 2 - 0.5) * 0.25, 0, ((i % 3) - 1) * 0.15]));
+  return merge(p);
+}
+function kebabGeo() {      // doner in pitta, wrapped in paper
+  const p = [part(cyl(0.036, 0.026, 0.13, 14), 0xf1d9a8, [0, -0.005, 0])];
+  p.push(part(cyl(0.038, 0.028, 0.08, 14), 0xffffff, [0, -0.03, 0]), part(cyl(0.0385, 0.035, 0.012, 14), 0x1565c0, [0, 0.0, 0]));
+  p.push(part(new THREE.IcosahedronGeometry(0.03, 1), 0x8b4a2b, [0, 0.062, 0], [0, 0, 0], [1.1, 0.6, 1.1]));
+  p.push(part(new THREE.IcosahedronGeometry(0.016, 0), 0x6fbf3f, [0.014, 0.072, 0.01]));
+  p.push(part(new THREE.IcosahedronGeometry(0.013, 0), 0xd8352a, [-0.014, 0.074, -0.004]));
+  p.push(part(new THREE.IcosahedronGeometry(0.013, 0), 0xffffff, [0.0, 0.078, -0.016]));
+  return merge(p);
+}
+function chickenGeo() {
+  const p = [part(new THREE.IcosahedronGeometry(0.035, 1), 0xc7782a, [0, 0, 0.02], [0, 0, 0], [1, 0.85, 1.4])];
+  p.push(part(cyl(0.008, 0.01, 0.06, 8), 0xf3ead8, [0, 0, -0.04], [Math.PI / 2, 0, 0]));
+  p.push(part(sph(0.012, 8, 6), 0xf3ead8, [0, 0, -0.072]));
+  for (let i = 0; i < 6; i++) p.push(part(new THREE.IcosahedronGeometry(0.012, 0), 0xa85d1c, [Math.cos(i) * 0.025, Math.sin(i * 2) * 0.02, 0.02 + Math.sin(i) * 0.03]));
+  return merge(p);
+}
+function tacoGeo() {
+  const shell = new THREE.CylinderGeometry(0.06, 0.06, 0.03, 16, 1, true, 0, Math.PI); shell.rotateZ(Math.PI / 2); shell.rotateY(Math.PI / 2);
+  const p = [part(shell, 0xf2c14e, [0, 0, 0], [0, 0, 0], [1, 1, 1])];
+  p.push(part(box(0.1, 0.02, 0.022), 0x7a3b1a, [0, 0.0, 0]));
+  p.push(part(box(0.1, 0.012, 0.024), 0x6fbf3f, [0, 0.014, 0]));
+  p.push(part(box(0.08, 0.008, 0.02), 0xffd21a, [0, 0.022, 0]));
+  return merge(p);
+}
+function crispsGeo() {
+  const p = [part(box(0.09, 0.12, 0.03), 0x1565c0, [0, 0, 0], [0, 0, 0], [1, 1, 1])];
+  p.push(part(box(0.092, 0.012, 0.012), 0x0d47a1, [0, 0.064, 0]), part(box(0.092, 0.012, 0.012), 0x0d47a1, [0, -0.064, 0]));
+  p.push(part(cyl(0.025, 0.025, 0.004, 14), 0xffd21a, [0, 0.0, 0.016], [Math.PI / 2, 0, 0]));
+  p.push(part(box(0.07, 0.014, 0.002), 0xffffff, [0, 0.038, 0.016]));
+  return merge(p);
+}
+function chocGeo() {
+  const p = [part(box(0.13, 0.012, 0.045), 0x5b3a1e)];
+  for (let i = 0; i < 4; i++) p.push(part(box(0.028, 0.006, 0.04), 0x6e4626, [-0.045 + i * 0.03, 0.008, 0]));
+  p.push(part(box(0.08, 0.016, 0.047), 0x6a1b9a, [0.026, 0.002, 0]));                   // half-peeled wrapper
+  p.push(part(box(0.04, 0.002, 0.02), 0xffffff, [0.03, 0.011, 0]));
+  return merge(p);
+}
+function cookieGeo() {
+  const p = [part(cyl(0.045, 0.045, 0.012, 16), 0xc98b4a)];
+  for (let i = 0; i < 8; i++) p.push(part(new THREE.IcosahedronGeometry(0.006, 0), 0x3b2412, [Math.cos(i * 2.4) * (0.012 + (i % 3) * 0.01), 0.007, Math.sin(i * 2.4) * (0.012 + (i % 3) * 0.01)]));
+  return merge(p);
+}
+function icecreamGeo() {
+  const cone = new THREE.ConeGeometry(0.025, 0.09, 10); cone.rotateX(Math.PI);
+  return merge([part(cone, 0xd9a05b, [0, -0.03, 0]), part(sph(0.03, 12, 8), 0xffc0d8, [0, 0.025, 0]), part(sph(0.024, 10, 6), 0xfff3d6, [0, 0.055, 0]), part(sph(0.007, 6, 4), 0xd32f2f, [0, 0.08, 0]), part(box(0.006, 0.05, 0.012), 0x5b3a1e, [0.01, 0.07, 0], [0, 0, -0.4])]);
+}
+function sausageRollGeo() {
+  const pastry = new THREE.CapsuleGeometry(0.028, 0.08, 4, 10); pastry.rotateZ(Math.PI / 2);
+  const p = [part(pastry, 0xe8b25a, [0, 0, 0], [0, 0, 0], [1, 0.85, 1]), part(cyl(0.016, 0.016, 0.004, 10), 0xc98060, [0.068, 0, 0], [0, 0, Math.PI / 2])];
+  for (let i = 0; i < 4; i++) p.push(part(box(0.004, 0.003, 0.04), 0xb7782a, [-0.03 + i * 0.02, 0.024, 0], [0, 0.4, 0]));
+  return merge(p);
+}
+// ---------- more fruit & veg (thrown at Ronnie) ----------
+function appleGeo() { return merge([part(sph(0.036, 14, 10), 0xd62828, [0, 0, 0], [0, 0, 0], [1, 0.92, 1]), part(cyl(0.003, 0.003, 0.02, 5), 0x5b3a1e, [0, 0.038, 0]), part(new THREE.ConeGeometry(0.008, 0.024, 4), 0x3fa34d, [0.01, 0.04, 0], [0, 0, -1.2], [1, 1, 0.3])]); }
+function pearGeo() { return merge([part(sph(0.034, 14, 10), 0x9ccc3a, [0, -0.012, 0]), part(sph(0.022, 12, 8), 0xa8d040, [0, 0.026, 0]), part(cyl(0.003, 0.003, 0.02, 5), 0x5b3a1e, [0, 0.055, 0])]); }
+function orangeGeo() { return merge([part(new THREE.IcosahedronGeometry(0.036, 2), 0xff8c1a), part(new THREE.ConeGeometry(0.008, 0.016, 5), 0x3fa34d, [0, 0.038, 0])]); }
+function bananaGeo() {
+  const c = new THREE.TorusGeometry(0.07, 0.016, 8, 14, 1.6);
+  return merge([part(c, 0xffe135, [0, -0.05, 0], [0, 0, 0.78]), part(cyl(0.006, 0.006, 0.014, 6), 0x5b3a1e, [-0.052, -0.004, 0], [0, 0, 0.9])]);
+}
+function tomatoGeo() { return merge([part(sph(0.032, 14, 10), 0xe53935, [0, 0, 0], [0, 0, 0], [1, 0.82, 1]), part(new THREE.ConeGeometry(0.018, 0.008, 5), 0x2e7d32, [0, 0.027, 0])]); }
+function cucumberGeo() { const g = new THREE.CapsuleGeometry(0.02, 0.15, 4, 10); g.rotateX(Math.PI / 2); return merge([part(g, 0x2f6b2a), part(cyl(0.004, 0.004, 0.01, 5), 0x8bc34a, [0, 0, -0.098], [Math.PI / 2, 0, 0])]); }
+function pepperGeo() { return merge([part(sph(0.034, 12, 8), 0xd32f2f, [0, -0.006, 0], [0, 0, 0], [1, 1.15, 1]), part(sph(0.02, 8, 6), 0xc62828, [0.016, -0.03, 0.012]), part(cyl(0.005, 0.006, 0.02, 6), 0x2e7d32, [0, 0.042, 0])]); }
+function cauliflowerGeo() {
+  const p = [part(new THREE.SphereGeometry(0.04, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), 0x6aaa3a, [0, -0.006, 0])];
+  for (let i = 0; i < 7; i++) p.push(part(new THREE.IcosahedronGeometry(0.022, 1), 0xf5f0dc, [Math.cos(i * 0.9) * (i ? 0.02 : 0), 0.012 + (i ? 0 : 0.012), Math.sin(i * 0.9) * (i ? 0.02 : 0)]));
+  return merge(p);
+}
+
 let canGeoCache = null;
 function canMeshes() {
   if (!canGeoCache) {
@@ -110,7 +194,9 @@ function canMeshes() {
 const geoCache = {};
 function meshFor(type) {
   if (type === 'can') return canMeshes();
-  if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo }[type]();
+  if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo,
+    hotdog: hotdogGeo, fries: friesGeo, kebab: kebabGeo, chicken: chickenGeo, taco: tacoGeo, crisps: crispsGeo, choc: chocGeo, cookie: cookieGeo, icecream: icecreamGeo, sausageroll: sausageRollGeo,
+    apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo }[type]();
   return new THREE.Mesh(geoCache[type], vcLambert);
 }
 
@@ -187,7 +273,7 @@ export class ItemManager {
   }
 
   // Put a fresh item of this type on a free spawn spot after a delay.
-  queueRespawn(type, delay = TUNING.respawnDelay) { this.respawnQueue.push({ type, t: delay }); }
+  queueRespawn(type, delay = this.respawnDelay || TUNING.respawnDelay) { this.respawnQueue.push({ type, t: delay }); }
 
   freeSpawn() {
     const sp = this.room.spawns;
@@ -209,6 +295,13 @@ export class ItemManager {
   }
 
   update(dt) {
+    // big places never run dry: top up with random junk food every so often
+    if (this.minFood && (this.topUpT = (this.topUpT || 0) - dt) <= 0) {
+      this.topUpT = 1.0;
+      let food = this.respawnQueue.length;
+      for (const it of this.items) if (!it.def.veg && !it.temp && !it.empty && !it.incoming) food++;
+      if (food < this.minFood) { const t = pickJunk(); this.spawn(t, this.freeSpawn()); }
+    }
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
       const r = this.respawnQueue[i];
       r.t -= dt;

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { Character } from './character.js';
 import { canvasTex, beamTex } from './textures.js';
 import { sfx } from './audio.js';
-import { TUNING } from './config.js';
+import { TUNING, pickVeg } from './config.js';
 
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion();
 const MODEL_URL = './assets/tommy.glb';
@@ -128,7 +128,7 @@ export class Tommy extends Character {
     if (this.attackTimer <= 0 && this.distToPlayer > 1.2) {
       const [a, b] = TUNING.attackInterval;
       this.attackTimer = a + Math.random() * (b - a);
-      this.startThrow({ item: 'broccoli', speed: TUNING.broccoliSpeed, line: 'vegThrow' });
+      this.startThrow({ item: pickVeg('broccoli'), speed: TUNING.broccoliSpeed, line: 'vegThrow' });
     }
   }
 

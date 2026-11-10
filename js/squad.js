@@ -10,6 +10,7 @@ import * as CANNON from 'cannon-es';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Character, ballistic } from './character.js';
 import { Item } from './foods.js';
+import { pickVeg, pickJunk } from './config.js';
 import { sfx } from './audio.js';
 import { canvasTex, FONT } from './textures.js';
 
@@ -530,7 +531,7 @@ export class SquadMember extends Character {
     switch (this.id) {
       case 'chloe':     // salad ambush, then names the next food you eat
         this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 5);
-        if (this.stateT > 1.2 && this.salads > 0) { this.salads--; this.stateT = 0.2; this.throwNow(ctx, { item: this.salads % 2 ? 'sprout' : 'broccoli', speed: 3.2, spread: 0.1 }); }
+        if (this.stateT > 1.2 && this.salads > 0) { this.salads--; this.stateT = 0.2; this.throwNow(ctx, { item: pickVeg(this.salads % 2 ? 'sprout' : 'broccoli'), speed: 3.2, spread: 0.1 }); }
         if (this.salads <= 0 && this.stateT > 1.2) { g.nameNextFood(this); this.say('name', 4); done(); }
         break;
       case 'lewis':     // walks to the snack station and swaps the cans for protein shakes
@@ -558,12 +559,12 @@ export class SquadMember extends Character {
       }
       case 'ethan':     // Galáctico free kicks: curling veg at Ronnie's face
         this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 5);
-        if (this.stateT > 1.4 && this.passes > 0) { this.passes--; this.stateT = 0.2; this.throwNow(ctx, { item: ['broccoli', 'sprout', 'carrot'][this.passes % 3], speed: 4.2, spread: 0.12 }); }
+        if (this.stateT > 1.4 && this.passes > 0) { this.passes--; this.stateT = 0.2; this.throwNow(ctx, { item: pickVeg(), speed: 4.2, spread: 0.12 }); }
         if (this.passes <= 0 && this.stateT > 1.4) done();
         break;
       case 'harry':     // "throws it away" — straight at Ronnie's mouth
         this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 5);
-        if (this.stateT > 1.6 && this.passes > 0) { this.passes--; this.stateT = 0.3; this.throwNow(ctx, { item: ['doughnut', 'burger', 'pizza'][this.passes % 3], speed: 3.2, food: true }); }
+        if (this.stateT > 1.6 && this.passes > 0) { this.passes--; this.stateT = 0.3; this.throwNow(ctx, { item: pickJunk(), speed: 3.2, food: true }); }
         if (this.passes <= 0 && this.stateT > 1.6) done();
         break;
       case 'noah': {    // the tackle
