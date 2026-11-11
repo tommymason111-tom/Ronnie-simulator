@@ -139,10 +139,22 @@ export class Tommy extends Character {
     if (this.attackTimer <= 0) {
       const [a, b] = TUNING.attackInterval;
       this.attackTimer = a + Math.random() * (b - a);
-      if ((Math.random() < 0.35 || this.distToPlayer <= 1.2) && (!this.canTrip || this.canTrip())) { this.tripping = 12; this.tripStart = this.t; this.onTripAnnounce && this.onTripAnnounce(this); this.say(ANNOY_LINES[Math.floor(Math.random() * ANNOY_LINES.length)], 3); return; }
+      // on his own (classic) he decides when to trip you; with the squad there, the
+      // director gives him his turn in the order like everyone else (startTrip)
+      if (!this.directed && (Math.random() < 0.35 || this.distToPlayer <= 1.2)) { this.startTrip(); return; }
       this.startThrow({ item: pickVeg('broccoli'), speed: TUNING.broccoliSpeed, line: 'vegThrow' });
     }
   }
+
+  // Tommy's own attack: the pop-up, then he walks over and trips you
+  startTrip() {
+    if (this.tripping || this.down) return false;
+    this.tripping = 12; this.tripStart = this.t;
+    this.onTripAnnounce && this.onTripAnnounce(this);
+    this.say(ANNOY_LINES[Math.floor(Math.random() * ANNOY_LINES.length)], 3);
+    return true;
+  }
+  get busyAttacking() { return this.tripping > 0; }
 
   onSpeechEnd() { if (this.speakPri >= 2 && !this.down && Math.random() < 0.5) this.flashTeeth(); }
   flashTeeth() { this.sparkT = 0.5; this.sparkle.visible = true; sfx('ting', this.headPos(_v), 0.8); }

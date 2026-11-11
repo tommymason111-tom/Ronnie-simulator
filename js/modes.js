@@ -158,6 +158,7 @@ export class Director {
     g.cast.length = 1;
     const tommy = g.tommy;
     tommy.attacks = id === 'classic';
+    tommy.directed = false; tommy.tripping = 0;
     tommy.active = true;
     let squad = [];
     const big = !!g.room.big, everyone = Object.keys(SQUAD);
@@ -184,7 +185,7 @@ export class Director {
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
     if (id === 'date') this.startDate();
-    if (id === 'everyone') { this.nextChaos = 18; tommy.attacks = true; }
+    if (id === 'everyone') { this.nextChaos = 18; tommy.attacks = true; tommy.directed = true; }
     tommy.say({
       everyone: 'The whole squad\'s out tonight, Ron. Everyone\'s watching what you eat. I\'m just trying to help.',
       date: 'Date night! I\'m over here on my own table. Behave, Ron. She\'s watching. Mostly.',
@@ -287,16 +288,18 @@ export class Director {
         this.nextChaos -= dt;
         if (this.nextChaos <= 0) {
           this.nextChaos = 16 + Math.random() * 12;
-          const pick = this.pickAttacker(this.cast.slice(1).filter(c => idle(c) && c.distToPlayer < 9));
-          if (pick && pick.c.intervene(pick.attack.key)) { this.markUsed(pick.c, pick.attack.key); sfx('trumpet', null, 0.6); }
+          // one attack at a time: wait while anyone (Tommy included) is mid-attack
+          if (this.attackInProgress()) { this.nextChaos = 2; break; }
+          const pick = this.pickAttacker(this.cast.filter(c => idle(c) && c.distToPlayer < 9 && (c !== g.tommy || g.tommy.attacks)));
+          if (pick && this.launch(pick)) sfx('trumpet', null, 0.6);
         }
         break;
       }
       case 'intervention': {
         // the meter fills as Ronnie eats; when full, the next squad member has a go
         if (this.meter >= 1 && !this.current) {
-          const pick = this.pickAttacker(this.cast.slice(1).filter(idle)), c = pick && pick.c;
-          if (c && c.intervene(pick.attack.key)) {
+          const pick = this.attackInProgress() ? null : this.pickAttacker(this.cast.filter(c => idle(c) && (c !== g.tommy || g.tommy.attacks))), c = pick && pick.c;
+          if (c && this.launch(pick)) {
             this.markUsed(c, pick.attack.key);
             this.nextIntervener++;
             this.meter = 0; this.current = c; this.currentT = 0;
@@ -465,6 +468,14 @@ export class Director {
   }
   markUsed(c, key) { if (!this.used.has(c.id)) this.used.set(c.id, new Set()); this.used.get(c.id).add(key); }
   // pick someone who still has an attack left; once nobody has, everyone's available again
+  // start the picked attack: Tommy trips, the squad intervene
+  launch(pick) {
+    const { c, attack } = pick;
+    const ok = c === this.g.tommy ? c.startTrip() : c.intervene(attack.key);
+    if (ok) this.markUsed(c, attack.key);      // counts as their go from the moment they're picked
+    return ok;
+  }
+  attackInProgress() { return !!this.pending || this.cast.some(c => c.state === 'act' || c.busyAttacking); }
   // everyone in the room who can attack Ronnie (Tommy only when he's on the attack)
   attackers() { return this.cast.filter(c => (ATTACKS[c.id] || []).length && (c !== this.g.tommy || this.g.tommy.attacks)); }
   // the round is over only when EVERY attacker in the room has used every attack;
