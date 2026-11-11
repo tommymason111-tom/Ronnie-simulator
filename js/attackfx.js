@@ -63,19 +63,27 @@ export class AttackFX {
     lines.forEach((ln, i) => { const y = 160 + i * size * 1.05; g.lineWidth = 12; g.strokeStyle = '#111'; g.strokeText(ln, 330, y); g.fillStyle = '#fff'; g.fillText(ln, 330, y); });
     if (sub) { g.font = `900 46px ${FONT}`; g.lineWidth = 10; g.strokeStyle = '#111'; g.strokeText(sub, 330, h - 58); g.fillStyle = '#ffd400'; g.fillText(sub, 330, h - 58); }
     this.cardTex.needsUpdate = true;
-    this.cardT = 0; this.card.visible = true;
+    this.cardT = 0; this.cardOut = -1; this.card.visible = true;
   }
   updateCard(dt) {
     if (this.cardT < 0) return;
     this.cardT += dt;
     const t = this.cardT, c = this.card, s = this.player.scale || 1;
-    let x = 0, y = 0.22, rot = 0, sc = 1, op = 1;
-    if (t < 0.35) { const u = t / 0.35; x = 0.9 * (1 - easeOutBack(u)); rot = -0.5 * (1 - u); sc = 0.6 + 0.4 * u; }        // slams in from the right
-    else if (t < 3.3) { const k = t - 0.35; rot = Math.sin(k * 18) * 0.08 * Math.exp(-k * 3); sc = 1 + Math.sin(k * 9) * 0.03 * Math.exp(-k * 1.2); }   // judders, settles, pulses
-    else if (t < 3.7) { const u = (t - 3.3) / 0.4; y += u * 0.35; op = 1 - u; }                                              // flies off upwards
-    else { c.visible = false; this.cardT = -1; return; }
+    // stays up (centred, big) until the attack actually starts, then flies off
+    if (this.cardOut < 0 && t > 8) this.hideCard();
+    let x = 0, y = 0.05, rot = 0, sc = 1.15, op = 1;
+    if (t < 0.35) { const u = t / 0.35; x = 0.9 * (1 - easeOutBack(u)); rot = -0.5 * (1 - u); sc = 0.7 + 0.45 * u; }       // slams in from the right
+    else { const k = t - 0.35; rot = Math.sin(k * 18) * 0.08 * Math.exp(-k * 3); sc = 1.15 + Math.sin(k * 5) * 0.04; }  // judders, settles, pulses
+    if (this.cardOut >= 0) {
+      this.cardOut += dt; const u = Math.min(1, this.cardOut / 0.35);
+      y += u * 0.45; op = 1 - u; sc *= 1 - u * 0.4;
+      if (u >= 1) { c.visible = false; this.cardT = -1; this.cardOut = -1; return; }
+    }
     c.position.set(x, y * 0.9, -0.75); c.rotation.set(0, 0, rot); c.scale.setScalar(sc); c.material.opacity = op;
   }
+
+  hideCard() { if (this.cardT >= 0 && this.cardOut < 0) this.cardOut = 0; }
+  get cardShowing() { return this.cardT >= 0 && this.cardOut < 0; }
 
   // ---------------------------------------------------------------- props in front of your face
   // offset: position relative to the camera; update(t, obj) animates it; removed after dur

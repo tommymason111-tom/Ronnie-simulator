@@ -77,6 +77,15 @@ if (room.startFood) room.startFood.forEach(t => items.spawn(t, items.freeSpawn()
 // special things placed by the level (the poop in the Oysterfleet toilet)
 const placeExtras = () => (room.extraItems || []).forEach(e => { if (items.items.some(i => i.type === e.type && !i.dead)) return; const it = items.spawn(e.type, e.pos); it.spawnScale = 1; it.obj.scale.setScalar(1); });
 placeExtras();
+// fruit machines pay out in food: a little burst of it, flying out of the tray at you
+room.onPayout = (m) => {
+  sfx('fanfare', m.front, 1); words.show('JACKPOT!', m.front.clone().add({ x: 0, y: 0.7, z: 0 }), '#ffd400', 0.22, 1.4);
+  for (let i = 0; i < 4; i++) setTimeout(() => {
+    const dir = _a.set(player.head.x - m.tray.x, 0, player.head.z - m.tray.z).normalize();
+    const it = items.spawn(i % 2 ? m.win.food : pickJunk(), m.tray.clone(), new THREE.Vector3(dir.x * 2.2 + (Math.random() - 0.5) * 0.8, 2.2 + Math.random(), dir.z * 2.2 + (Math.random() - 0.5) * 0.8));
+    it.spawnScale = 1; it.obj.scale.setScalar(1); sfx('pop', m.tray, 0.8);
+  }, 150 + i * 160);
+};
 // big places: loads more food, every kind, and it keeps topping up
 if (room.big) {
   for (let i = 0; i < 26; i++) items.spawn(JUNK_TYPES[i % JUNK_TYPES.length], items.freeSpawn());
@@ -114,6 +123,7 @@ function onThrow(start, vel, type, who, spec) {
 }
 tommy.onThrow = onThrow;
 tommy.onTrip = (t) => director.stun(t, 'tommy');
+tommy.onTripAnnounce = (t) => director.announce(t, 'trip');
 
 const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish', hotdog: 'chomp', fries: 'crunch', kebab: 'chomp', chicken: 'crunch', taco: 'crunch', crisps: 'crunch', choc: 'crunch', cookie: 'crunch', icecream: 'squish', sausageroll: 'chomp' };
 const SNACK_WORD = { burger: ['CHOMP!', 'MUNCH!', 'NOM!'], pizza: ['CRUNCH!', 'MUNCH!'], doughnut: ['SQUISH!', 'NOM NOM!'],
@@ -408,6 +418,15 @@ const touch = setupTouch({
     raycaster.setFromCamera(ndc, camera);
     const ray = raycaster.ray, reach = 3 * player.scale;
     if (director.tapBoard(ray) || director.tapBubble(ray)) return;
+    // tap a fruit machine to play it
+    for (const m of room.machines || []) {
+      const along = _a.subVectors(m.front, ray.origin).dot(ray.direction);
+      if (along > 0 && ray.distanceSqToPoint(_b.set(12.93, 1.1, m.z)) < 0.4 * 0.4) {
+        if (along > reach + 0.5) { touch.hint('Walk up to the machine to play it'); return; }
+        if (m.spin()) sfx('ting', m.front, 1);
+        return;
+      }
+    }
     // nearest thing along the tap: food or a bit of Tommy
     let best = null, bd = Infinity;
     for (const it of items.items) {
@@ -558,6 +577,8 @@ renderer.setAnimationLoop(() => {
 
   player.update(dt, time);
 
+  // play a fruit machine by touching it (headset hands)
+  if (room.machines && xr) for (const h of player.hands) if (h.tracked) for (const m of room.machines) if (h.palm.distanceTo(m.front) < 0.35 && m.spin()) { sfx('ting', m.front, 1); h.pulse && h.pulse(0.6, 80); }
   // eating & drinking held food (VR hands, or the on-screen hand)
   for (const h of player.flatMode ? [player.flatHolder] : player.hands) {
     const it = h.held;

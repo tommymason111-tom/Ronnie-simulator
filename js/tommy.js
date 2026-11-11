@@ -129,7 +129,7 @@ export class Tommy extends Character {
     if (!this.attacks) return;
     if (this.tripping) {
       this.tripping -= dt;
-      if (this.distToPlayer < 1.0) { this.tripping = 0; this.say(TRIP_LINES[Math.floor(Math.random() * TRIP_LINES.length)], 4); this.onTrip && this.onTrip(this); this.attackTimer = 14; return; }
+      if (this.distToPlayer < 1.0 && this.t - this.tripStart > 3.5) { this.tripping = 0; this.say(TRIP_LINES[Math.floor(Math.random() * TRIP_LINES.length)], 4); this.onTrip && this.onTrip(this); this.attackTimer = 14; return; }
       if (this.tripping <= 0) { this.tripping = 0; return; }
       _v.set(this.pos.x - ctx.head.x, 0, this.pos.z - ctx.head.z).setLength(0.6);
       this.goTo(ctx.head.x + _v.x, ctx.head.z + _v.z, 1.5, 'idle');
@@ -139,7 +139,7 @@ export class Tommy extends Character {
     if (this.attackTimer <= 0) {
       const [a, b] = TUNING.attackInterval;
       this.attackTimer = a + Math.random() * (b - a);
-      if (Math.random() < 0.35 || this.distToPlayer <= 1.2) { this.tripping = 10; this.say(ANNOY_LINES[Math.floor(Math.random() * ANNOY_LINES.length)], 3); return; }
+      if (Math.random() < 0.35 || this.distToPlayer <= 1.2) { this.tripping = 12; this.tripStart = this.t; this.onTripAnnounce && this.onTripAnnounce(this); this.say(ANNOY_LINES[Math.floor(Math.random() * ANNOY_LINES.length)], 3); return; }
       this.startThrow({ item: pickVeg('broccoli'), speed: TUNING.broccoliSpeed, line: 'vegThrow' });
     }
   }

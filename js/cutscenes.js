@@ -6,7 +6,7 @@
 import { FONT } from './textures.js';
 
 const W = 1024, H = 576;
-export const TURKEY_LEN = 8.2;
+export const TURKEY_LEN = 14.4;   // long enough to read every caption
 
 // ------------------------------------------------------------------ helpers
 const ease = (t) => t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t);
@@ -130,14 +130,14 @@ function drawFood(g, kind, x, y, s) {
 
 // ------------------------------------------------------------------ the scenes
 const SCENES = [
-  [0.0, 1.15, sceneInvite],
-  [1.15, 2.3, sceneAirport],
-  [2.3, 3.45, sceneCabin],
-  [3.45, 4.45, sceneIstanbul],
-  [4.45, 5.65, sceneClinic],
-  [5.65, 6.45, sceneRecovery],
-  [6.45, 7.65, sceneReveal],
-  [7.65, TURKEY_LEN, sceneHome],
+  [0.0, 2.0, sceneInvite],
+  [2.0, 3.9, sceneAirport],
+  [3.9, 6.0, sceneCabin],
+  [6.0, 7.8, sceneIstanbul],
+  [7.8, 10.1, sceneClinic],
+  [10.1, 11.5, sceneRecovery],
+  [11.5, 13.4, sceneReveal],
+  [13.4, TURKEY_LEN, sceneHome],
 ];
 export function drawTurkey(g, t) {
   for (const [a, b, fn] of SCENES) if (t < b || fn === sceneHome) {
@@ -163,10 +163,10 @@ function sceneInvite(g, t, d) {
   text(g, 'THE OYSTERFLEET', 820, 250, 30, '#d4af37', { lw: 6 });
   const munch = Math.abs(Math.sin(t * 14));
   ronnie(g, 330, 270, 0.85, { mouth: munch, food: munch > 0.5 ? null : 'burger' });
-  const bx = lerp(1150, 760, ease(t / 0.45));
+  const bx = lerp(1150, 760, ease(t / 0.6));
   ben(g, bx, 290, 0.85, { wave: t * 12, passports: true, mouth: 0.6 });
-  if (t > 0.35) bubble(g, 560, 70, 'RON. TURKEY. NOW.', { tail: 'right' });
-  if (t > 0.7) bubble(g, 120, 90, '...after this burger?', { tail: 'left' });
+  if (t > 0.5) bubble(g, 560, 70, 'RON. TURKEY. NOW.', { tail: 'right' });
+  if (t > 1.1) bubble(g, 120, 90, '...after this burger?', { tail: 'left' });
   caption(g, 'BEN HAS A PLAN', 'Friday, 11pm. The Oysterfleet.', 0, t);
 }
 // 2. Southend Airport: terminal, control tower, the plane races down the runway and takes off
@@ -314,7 +314,7 @@ function sceneReveal(g, t, d) {
   // the mirror
   g.fillStyle = '#d4af37'; rr(g, 520, 40, 420, 420, 40); g.fill(); g.fillStyle = '#cfe8f0'; rr(g, 540, 60, 380, 380, 30); g.fill();
   g.fillStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.moveTo(560, 420); g.lineTo(660, 70); g.lineTo(700, 70); g.lineTo(600, 420); g.fill();
-  const grow = ease((t - 0.15) / 0.6);
+  const grow = ease((t - 0.2) / 1.0);
   g.save(); rr(g, 540, 60, 380, 380, 30); g.clip(); ronnie(g, 730, 250, 0.95, { hair: 'new', newHair: grow, blush: true }); g.restore();
   // the old photo, pinned to the wall
   g.save(); g.translate(240, 190); g.rotate(-0.12); g.fillStyle = '#fff'; g.fillRect(-120, -130, 240, 270); g.save(); g.beginPath(); g.rect(-105, -115, 210, 210); g.clip(); g.fillStyle = '#bcd'; g.fillRect(-105, -115, 210, 210); ronnie(g, 0, 10, 0.55, { hair: 'bald' }); g.restore();
@@ -322,7 +322,7 @@ function sceneReveal(g, t, d) {
   text(g, 'AFTER', 730, 448, 40, '#2e7d32', { lw: 8, stroke: '#fff' });
   for (let i = 0; i < 12; i++) { const a = t * 2.5 + i * 0.52; sparkle(g, 730 + Math.cos(a) * (200 + (i % 3) * 20), 250 + Math.sin(a * 1.2) * 190, 14 + (i % 3) * 6, a); }
   ben(g, 110, 420, 0.5, { thumbs: true, wave: 0.6, mouth: 0.5 });
-  if (t > 0.5) bubble(g, 150, 270, 'WE\'RE TWINS NOW, RON', { tail: 'left' });
+  if (t > 0.9) bubble(g, 150, 270, 'WE\'RE TWINS NOW, RON', { tail: 'left' });
   caption(g, 'NEW HAIRLINE!', 'A Premier League hairline. A Sunday League body.', 0, t);
 }
 // 8. Back to the pub

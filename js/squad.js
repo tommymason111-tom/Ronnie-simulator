@@ -16,7 +16,8 @@ import { canvasTex, FONT } from './textures.js';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4();
 // how long each signature move lasts (seconds)
-const SIGN_T = { beer: 1.9, dating: 5.5, pepsi: 1.6, jig: 6.5, yeet: 1.6, siu: 3.2, rod: 5.0, bbq: 1.8, diet: 1.8, flash: 1.3, oasis: 6.5, nutmeg: 1.3, turkey: 8.5 };
+const ANNOUNCE_T = 3.5;   // how long the attack pop-up shows before the attack lands
+const SIGN_T = { beer: 1.9, dating: 5.5, pepsi: 1.6, jig: 6.5, yeet: 1.6, siu: 3.2, rod: 5.0, bbq: 1.8, diet: 1.8, flash: 1.3, oasis: 6.5, nutmeg: 1.3, turkey: 14.6 };
 const OASIS_LINES = ['♪ Today is gonna be the day... that you put down the pie ♪', '♪ And all the roads we have to walk... lead to the chippy ♪', '♪ Don\'t look back in anger, Ronnie... look back at the buffet ♪', '♪ You\'re gonna be the one that eats me... ♪', '♪ Some might say... you\'ve had enough ♪', '♪ Cast no shadow... you cast a BIG shadow, Ron ♪', 'Right, B-side next. No, don\'t move. DON\'T MOVE.'];
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -647,7 +648,7 @@ export class SquadMember extends Character {
       lewis: () => { this.goToStation(); },
       harry: () => { this.passes = 3; },
       aidan: () => { this.goToStation(); this.pintGiven = false; },
-      noah: () => {},
+      noah: () => { this.game.announce && this.game.announce(this, 'tackle'); this.stateT = -ANNOUNCE_T; },
       oliver: () => { this.filming = 20; this.followers = 1000; },
       dylan: () => {},
       ben: () => {},
@@ -772,9 +773,22 @@ export class SquadMember extends Character {
       this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 7);
       if (d > this.approach && this.stateT < 7) { r.moveVel.copy(_v2.normalize()).multiplyScalar(1.4); this.walkPose(dt, 1.4); return; }
       this.approach = 0; this.stateT = 0;
-      this.signT = SIGN_T[this.attack] ?? 1.6; this.signDur = this.signT;
-      this.startAttackProps();
-      g.stun && g.stun(this, this.attack);
+      this.announceT = ANNOUNCE_T;                         // the pop-up first...
+      g.announce && g.announce(this, this.attack);
+      if (this.attack === 'bbq') this.startAttackProps();  // (Ian gets the barbecue going while you read it)
+    }
+    if (this.announceT > 0) {                              // ...squaring up to Ronnie while it's on screen
+      this.announceT -= dt;
+      this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 7);
+      r.aim('uArmR', -0.15, 0.25, 1); r.aim('lArmR', -0.05, 0.3, 1);                         // pointing at you
+      r.pose.head.setFromAxisAngle(_v.set(1, 0, 0), Math.sin(this.t * 4) * 0.08);
+      if (this.attack === 'bbq') this.signPose(this.t, ctx);
+      if (this.announceT <= 0) {                           // ...then the attack itself
+        this.signT = SIGN_T[this.attack] ?? 1.6; this.signDur = this.signT;
+        if (this.attack !== 'bbq') this.startAttackProps();
+        g.stun && g.stun(this, this.attack);
+      }
+      return;
     }
     if (this.signT > 0) {                                  // the signature move itself
       this.signT -= dt;

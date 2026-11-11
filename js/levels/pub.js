@@ -51,6 +51,7 @@ export function buildPub(scene) {
   k.floor(-7, -6.5, 5, -2, carpet, 0.002, 1.2);
   k.floor(5, -11, 13.5, 3, tiles, 0.002, 1.0);
   k.floor(6, 3, 13.5, 11, carpetTex('#2a3a5a', '#1a2440', '#c9a24a'), 0.003, 1.2);
+  k.floor(4.9, 2.9, 6.05, 11, carpet, 0.0025, 1.2);
   k.floor(-13.5, -11, -7, -2, tileTex('#c9c9c4', '#bdbdb7', '#8f8f8a', 48), 0.003, 0.8);
   k.floor(-7, -11, 1, -6.5, tileTex('#d8d8d8', '#cfcfcf', '#9a9a9a', 40), 0.003, 0.6);
   k.floor(1, -11, 5, -6.5, tiles, 0.003, 1.0);
@@ -162,20 +163,46 @@ export function buildPub(scene) {
   tv(9.8, 2.1, 10.86, Math.PI);               // gambling room
 
   // ================================================================ gambling room
-  k.cyl(0.75, 0.75, 0.06, 9.8, 0.78, 6.2, 0x1e7a3a, 28, { collide: true });
-  k.cyl(0.8, 0.8, 0.05, 9.8, 0.74, 6.2, 0x5a3a1a, 28);
-  k.cyl(0.12, 0.25, 0.72, 9.8, 0.36, 6.2, 0x2a1a10, 12);
-  k.blockers.push({ x0: 9.0, x1: 10.6, z0: 5.4, z1: 7.0, y1: 0.8 });
-  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; k.chair(9.8 + Math.sin(a) * 1.15, 6.2 + Math.cos(a) * 1.15, a, 0x5a1a1a); }   // all facing the table
-  k.spawns.push(new THREE.Vector3(9.8, 0.88, 6.2));
-  // pool table
-  R(8.9, 9.0, 11.1, 10.0, 0.12, 0.78, 0x3a2414, { collide: true, block: true }); R(9.0, 9.1, 11.0, 9.9, 0.02, 0.85, 0x1e6a3a, { collide: true });
-  for (const [x, z] of [[9.0, 9.1], [11.0, 9.1], [9.0, 9.9], [11.0, 9.9]]) R(x - 0.07, z - 0.07, x + 0.07, z + 0.07, 0.72, 0.36, 0x2a1a10);
-  for (let i = 0; i < 6; i++) k.cyl(0.028, 0.028, 0.05, 9.6 + (i % 3) * 0.12, 0.88, 9.4 + (i >> 1) * 0.06, [0xffd400, 0xd32f2f, 0x1565c0, 0x111111, 0xff7a1a, 0x6a1b9a][i], 10);
+  // the poker table: padded leather rail, green baize, a chunky pedestal, chips and cards
+  k.cyl(0.62, 0.62, 0.04, 9.8, 0.79, 6.2, 0x1e7a3a, 32, { collide: true });                      // baize
+  k.parts.push(part(new THREE.TorusGeometry(0.66, 0.06, 8, 32), 0x2a1208, [9.8, 0.81, 6.2], [Math.PI / 2, 0, 0]));   // leather rail
+  k.cyl(0.7, 0.68, 0.06, 9.8, 0.75, 6.2, 0x4a2a14, 32);                                           // wooden apron
+  k.cyl(0.12, 0.16, 0.66, 9.8, 0.4, 6.2, 0x2a1a10, 12); k.cyl(0.42, 0.46, 0.06, 9.8, 0.03, 6.2, 0x2a1a10, 16);
+  k.blockers.push({ x0: 9.0, x1: 10.6, z0: 5.4, z1: 7.0, y1: 0.85 });
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; k.chair(9.8 + Math.sin(a) * 1.1, 6.2 + Math.cos(a) * 1.1, a, 0x5a1a1a, 0x7a1f2a); }   // all facing the table
+  for (let i = 0; i < 6; i++) {                                                                    // chip stacks and cards at each seat
+    const a = i / 6 * Math.PI * 2, cx = 9.8 + Math.sin(a) * 0.45, cz = 6.2 + Math.cos(a) * 0.45;
+    for (let j = 0; j < 3; j++) k.cyl(0.02, 0.02, 0.012 * (2 + j), cx + (j - 1) * 0.045, 0.81 + 0.006 * (2 + j), cz, [0xd32f2f, 0x1565c0, 0x111111][j], 10);
+    k.box(0.06, 0.004, 0.085, 9.8 + Math.sin(a) * 0.3, 0.812, 6.2 + Math.cos(a) * 0.3, 0xffffff, { rot: [0, a, 0] });
+  }
+  for (let i = 0; i < 5; i++) k.box(0.06, 0.004, 0.085, 9.62 + i * 0.09, 0.812, 6.2, i < 3 ? 0xffffff : 0xd32f2f);   // the flop
+  k.spawns.push(new THREE.Vector3(9.8, 0.9, 6.2));
+  // pool table: mahogany frame, green cloth, cushions, pockets, turned legs, balls and a cue
+  R(8.85, 8.95, 11.15, 10.05, 0.16, 0.74, 0x4a1a0a, { collide: true, block: true });
+  R(9.0, 9.1, 11.0, 9.9, 0.02, 0.83, 0x1e6a3a, { collide: true });
+  for (const [x0, z0, x1, z1] of [[9.0, 9.05, 11.0, 9.12], [9.0, 9.88, 11.0, 9.95], [8.95, 9.1, 9.02, 9.9], [10.98, 9.1, 11.05, 9.9]]) R(x0, z0, x1, z1, 0.04, 0.85, 0x175a30);
+  for (const [x, z] of [[9.0, 9.1], [10.0, 9.08], [11.0, 9.1], [9.0, 9.9], [10.0, 9.92], [11.0, 9.9]]) k.cyl(0.045, 0.045, 0.02, x, 0.84, z, 0x111111, 10);
+  for (const [x, z] of [[9.05, 9.15], [10.95, 9.15], [9.05, 9.85], [10.95, 9.85]]) { k.cyl(0.07, 0.05, 0.6, x, 0.36, z, 0x3a1206, 10); k.cyl(0.09, 0.09, 0.06, x, 0.03, z, 0x3a1206, 10); }
+  const BALLS = [0xffd400, 0x1565c0, 0xd32f2f, 0x6a1b9a, 0xff7a1a, 0x2e7d32, 0x8a1a1a, 0x111111, 0xffd400, 0x1565c0];
+  let bi = 0; for (let r = 0; r < 4; r++) for (let c = 0; c <= r; c++) if (bi < 10) k.parts.push(part(new THREE.SphereGeometry(0.028, 10, 8), BALLS[bi++], [10.35 + r * 0.05, 0.868, 9.5 + (c - r / 2) * 0.058]));
+  k.parts.push(part(new THREE.SphereGeometry(0.028, 10, 8), 0xffffff, [9.45, 0.868, 9.5]));
+  k.box(1.45, 0.02, 0.02, 9.0, 0.87, 9.62, 0xc8a070, { rot: [0, 0.15, 0.02] });
+  for (const x of [9.3, 9.5]) k.box(0.02, 1.45, 0.02, x, 0.73, 10.88, 0xc8a070);      // cues on the wall
+  R(9.15, 10.85, 9.65, 10.92, 0.5, 1.6, 0x3a1206);
   k.spawns.push(new THREE.Vector3(10.6, 0.92, 9.5));
+  // the fruit machines (they WORK: touch or tap one, the reels spin, it pays out in food)
+  const machines = [];
   for (const z of [4.4, 5.5, 6.6, 7.7]) {
     R(12.95, z - 0.45, 13.42, z + 0.45, 1.7, 0.85, 0x222244, { block: true });
-    k.label('THE CHIP MACHINE', 0.75, 0.9, [12.93, 1.1, z], [0, -Math.PI / 2, 0], { tex: fruitTex(), glow: true });
+    R(12.85, z - 0.3, 12.96, z + 0.3, 0.06, 0.62, 0xc9a24a);                       // the payout tray
+    R(12.9, z + 0.33, 12.96, z + 0.38, 0.3, 1.25, 0xd32f2f);                       // the lever
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 320;
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    const mesh = k.label('THE CHIP MACHINE', 0.75, 0.9, [12.93, 1.1, z], [0, -Math.PI / 2, 0], { tex, glow: true });
+    const m = { z, front: new THREE.Vector3(12.55, 1.0, z), tray: new THREE.Vector3(12.75, 0.75, z), cv, tex, mesh, t: -1, reels: [0, 1, 2], win: null, cool: 0 };
+    m.spin = () => { if (m.t >= 0 || m.cool > 0) return false; m.t = 0; m.win = MACHINE_SYMS[Math.floor(Math.random() * MACHINE_SYMS.length)]; return true; };
+    drawMachine(m, 0); machines.push(m);
+    k.halo(12.85, 1.1, z, 1.0, 0xffd400);
   }
   k.label('NO RONNIES BEYOND THIS POINT (HE WILL EAT THE CHIPS)', 2.2, 0.4, [7.2, 2.4, 3.09], [0, 0, 0], { bg: '#111', fg: '#ffd400', border: '#ffd400', size: 40 });
 
@@ -261,7 +288,7 @@ export function buildPub(scene) {
   k.colliders.push({ min: new THREE.Vector3(poopAt.x - 0.12, 0, poopAt.z - 0.14), max: new THREE.Vector3(poopAt.x + 0.12, 0.31, poopAt.z + 0.14) });
   k.label("SOMEONE DIDN'T FLUSH", 0.5, 0.15, [-6.42, 1.4, -10.9], [0, 0, 0], { bg: '#fff', fg: '#5a3418', border: '#5a3418', size: 40 });
   // Gents (x -7..-3)
-  clad(-6.9, -10.9, -3.1, -10.88, WTILE, 2.0, 0.5); clad(-6.92, -10.9, -6.9, -6.6, WTILE, 2.0, 0.5); clad(-3.1, -10.9, -3.08, -6.6, WTILE, 2.0, 0.5); clad(-6.9, -6.6, -3.1, -6.58, WTILE, 2.0, 0.5);
+  clad(-6.9, -10.9, -3.1, -10.88, WTILE, 2.0, 0.5); clad(-6.92, -10.9, -6.9, -6.6, WTILE, 2.0, 0.5); clad(-3.1, -10.9, -3.08, -6.6, WTILE, 2.0, 0.5); clad(-6.9, -6.6, -5.8, -6.58, WTILE, 2.0, 0.5); clad(-4.4, -6.6, -3.1, -6.58, WTILE, 2.0, 0.5);
   cubicles(-6.92, 2, 1.0, -10.92, -9.4, false);
   for (const x of [-4.4, -3.65]) { R(x - 0.2, -10.92, x + 0.2, -10.6, 0.7, 0.85, PORCELAIN, { block: true }); R(x - 0.15, -10.62, x + 0.15, -10.55, 0.05, 0.55, 0xd0e8ff); }   // urinals
   R(-4.04, -10.92, -4.0, -10.4, 0.8, 1.0, 0xcfd8dc);
@@ -270,7 +297,7 @@ export function buildPub(scene) {
   k.label('GENTS', 0.7, 0.25, [-5.1, 2.4, -6.41], [0, 0, 0], { bg: '#1f4fbf', fg: '#fff', border: null, size: 90 });
   k.label('NOW WASH YOUR HANDS (RONNIE: THAT INCLUDES THE GRAVY)', 0.8, 0.4, [-3.1, 1.6, -8.4], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: '#1f4fbf', size: 36 });
   // Ladies (x -3..1)
-  clad(-2.9, -10.9, 0.9, -10.88, GTILE, 2.0, 0.5); clad(-2.92, -10.9, -2.9, -6.6, GTILE, 2.0, 0.5); clad(0.9, -10.9, 0.92, -6.6, GTILE, 2.0, 0.5); clad(-2.9, -6.6, 0.9, -6.58, GTILE, 2.0, 0.5);
+  clad(-2.9, -10.9, 0.9, -10.88, GTILE, 2.0, 0.5); clad(-2.92, -10.9, -2.9, -6.6, GTILE, 2.0, 0.5); clad(0.9, -10.9, 0.92, -6.6, GTILE, 2.0, 0.5); clad(-2.9, -6.6, -1.6, -6.58, GTILE, 2.0, 0.5); clad(-0.2, -6.6, 0.9, -6.58, GTILE, 2.0, 0.5);
   cubicles(-2.92, 3, 1.0, -10.92, -9.4, true);
   sinks(0.92, -9.0, -7.2, -1);
   dryer(-2.85, -7.6, Math.PI / 2);
@@ -345,9 +372,8 @@ export function buildPub(scene) {
   for (let x = -12.5; x <= 4.5; x += 2.5) k.box(0.18, 0.2, 13.0, x, H - 0.1, 4.5, 0x3a2416);
   for (const z of [-0.5, 4.3, 9.0]) k.box(18.0, 0.16, 0.16, -4.25, H - 0.12, z, 0x3a2416);
   // skirting and a dado rail on the plain walls of the front bit and the gambling room
-  k.box(12, 0.14, 0.04, -1, 0.07, -6.4, 0x3a2416); k.box(12, 0.05, 0.04, -1, 0.95, -6.4, 0x3a2416);
-  k.box(0.04, 0.14, 8, 5.92, 0.07, 7, 0x3a2416); k.box(0.04, 0.05, 8, 5.92, 0.95, 7, 0x3a2416);
-  k.box(0.04, 0.14, 8, 6.08, 0.07, 7, 0x1a1a3a); k.box(7.4, 0.14, 0.04, 9.8, 0.07, 10.92, 0x1a1a3a);
+  for (const [x0, x1] of [[-7, -5.8], [-4.4, -1.6], [-0.2, 1]]) k.box(x1 - x0, 0.14, 0.04, (x0 + x1) / 2, 0.07, -6.4, 0x3a2416);
+  for (const [z0, z1] of [[3, 8.8], [10.3, 11]]) { k.box(0.04, 0.14, z1 - z0, 5.9, 0.07, (z0 + z1) / 2, 0x3a2416); k.box(0.04, 0.14, z1 - z0, 6.1, 0.07, (z0 + z1) / 2, 0x1a1a3a); }
 
   const room = k.finish({
     name: 'The Oysterfleet',
@@ -358,6 +384,18 @@ export function buildPub(scene) {
     spotCount: 36,
   });
   room.extraItems = [{ type: 'poop', pos: poopAt }];
+  // fruit machines: spin for 1.8s, line up three of the same, and pay out
+  room.machines = machines;
+  const baseUpdate = room.update.bind(room);
+  room.update = (dt) => {
+    baseUpdate(dt);
+    for (const m of machines) {
+      if (m.cool > 0) m.cool -= dt;
+      if (m.t < 0) continue;
+      m.t += dt; drawMachine(m, m.t);
+      if (m.t >= 2.0) { m.t = -1; m.cool = 1.5; drawMachine(m, 9, true); room.onPayout && room.onPayout(m); }
+    }
+  };
   return room;
 }
 
@@ -415,14 +453,28 @@ function tvTex() {
     g.fillStyle = 'rgba(200,16,46,0.9)'; g.fillRect(0, h - 26, w, 26); g.fillStyle = '#fff'; g.font = 'bold 15px Arial'; g.fillText('BREAKING: LOCAL BARMAN EATS ENTIRE PUB', 10, h - 8);
   });
 }
-function fruitTex() {
-  return canvasTex(256, 320, (g, w, h) => {
-    g.fillStyle = '#1a1a3a'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#ffd400'; g.font = `900 30px ${FONT}`; g.textAlign = 'center'; g.fillText('THE CHIP', w / 2, 40); g.fillText('MACHINE', w / 2, 72);
-    const sym = ['🍟', '🍔', '🍕'];
-    for (let i = 0; i < 3; i++) { g.fillStyle = '#fff'; g.fillRect(18 + i * 76, 100, 68, 90); g.font = '48px sans-serif'; g.fillText(sym[i], 52 + i * 76, 162); }
-    g.fillStyle = '#ff1744'; g.fillRect(40, 220, w - 80, 40); g.fillStyle = '#fff'; g.font = `900 22px ${FONT}`; g.fillText('JACKPOT: 1 PIE', w / 2, 248);
-  });
+const MACHINE_SYMS = [{ s: '🍔', food: 'burger' }, { s: '🍕', food: 'pizza' }, { s: '🍩', food: 'doughnut' }, { s: '🌭', food: 'hotdog' }, { s: '🍟', food: 'fries' }];
+const ALL_SYMS = ['🍔', '🍕', '🍩', '🌭', '🍟', '🥦', '🍒'];
+// redraw a machine's screen: reels scroll while spinning and stop one by one on the winning symbol
+function drawMachine(m, t, won = false) {
+  const g = m.cv.getContext('2d'), w = 256, h = 320;
+  g.fillStyle = '#1a1a3a'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 10; i++) { g.fillStyle = (Math.floor(t * 8) + i) % 2 && t > 0 ? '#ffd400' : '#ff1744'; g.beginPath(); g.arc(14 + i * 25, 8, 5, 0, 7); g.fill(); }
+  g.fillStyle = '#ffd400'; g.font = `900 30px ${FONT}`; g.textAlign = 'center'; g.fillText('THE CHIP', w / 2, 44); g.fillText('MACHINE', w / 2, 76);
+  for (let i = 0; i < 3; i++) {
+    const x = 18 + i * 76; g.fillStyle = '#fff'; g.fillRect(x, 100, 68, 100);
+    g.save(); g.beginPath(); g.rect(x, 100, 68, 100); g.clip();
+    const stopAt = 0.9 + i * 0.45, spinning = t > 0 && t < stopAt;
+    g.font = '46px sans-serif'; g.textBaseline = 'middle';
+    if (spinning) { const off = (t * 900) % 60; for (let k = -1; k < 3; k++) g.fillText(ALL_SYMS[(Math.floor(t * 15) + k + i * 2) % ALL_SYMS.length], x + 34, 120 + k * 60 + off); }
+    else g.fillText(t > 0 && m.win ? m.win.s : ['🍟', '🍔', '🍕'][i], x + 34, 152);
+    g.restore();
+  }
+  g.textBaseline = 'alphabetic';
+  g.fillStyle = won ? '#00c853' : '#ff1744'; g.fillRect(30, 222, w - 60, 44);
+  g.fillStyle = '#fff'; g.font = `900 22px ${FONT}`; g.fillText(won ? 'JACKPOT! FOOD!' : t > 0 ? 'SPINNING...' : 'TOUCH TO PLAY', w / 2, 252);
+  g.font = `700 16px ${FONT}`; g.fillStyle = '#9aa'; g.fillText('PAYS OUT IN FOOD ONLY', w / 2, 296);
+  m.tex.needsUpdate = true;
 }
 function pubSignTex() {
   return canvasTex(1024, 224, (g, w, h) => {

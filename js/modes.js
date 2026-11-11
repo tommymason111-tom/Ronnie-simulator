@@ -14,6 +14,7 @@ import { DATE_TABLE, DINER_TABLES } from './levels/restaurant.js';
 import { canvasTex, fitText, roundRect, FONT } from './textures.js';
 import { sfx, playTune, shout } from './audio.js';
 import { Item } from './foods.js';
+import { TURKEY_LEN } from './cutscenes.js';
 import { pickVeg, pickJunk } from './config.js';
 
 export const MODES = {
@@ -365,13 +366,22 @@ export class Director {
   // and a short stun (dizzy, frozen, thrown, hooked...).
   // Each person's signature attack on Ronnie: an animated card saying exactly what
   // happened, props and effects, and a short stun (dizzy, frozen, thrown, hooked...).
+  // 1) the pop-up: says what's about to happen (shown ~3.5s before the attack lands)
+  announce(who, key) {
+    const g = this.g, fx = g.fx;
+    key = LEGACY_KEY[key] || key || (ATTACKS[who.id] || [])[0]?.key;
+    const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
+    if (fx) fx.showCard({ name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
+    else g.showBanner(A.title, A.sub);
+    sfx('trumpet', null, 0.7);
+  }
+  // 2) the attack itself: the pop-up goes, and the effects and animation play
   stun(who, key) {
     const g = this.g, P = g.player, G = g.G, fx = g.fx;
     key = LEGACY_KEY[key] || key || (ATTACKS[who.id] || [])[0]?.key;
     const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
+    if (fx) fx.hideCard();
     if (P.knock || P.throwAnim || (fx && fx.inCutscene)) return;
-    if (fx) fx.showCard({ name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
-    else g.showBanner(A.title, A.sub);
     sfx(A.sfx || 'thud', null, 1);
     const tint = (color, t, op = 0.3) => { G.fxTint = color; G.fxTintT = t; G.fxTintOp = op; };
     const away = { x: P.head.x - who.pos.x, z: P.head.z - who.pos.z };
@@ -428,7 +438,7 @@ export class Director {
         setTimeout(() => { P.effect('spin', 1.4, { turns: 3, speed: 16 }); P.effect('dizzy', 6, { amp: 2.8 }); fx.dizzyStars(6); tint(0xffd400, 6, 0.08); fx.cutscene('nutmeg', 3.5); g.words.show('WHOA-OA-OA!', P.head.clone().addScaledVector(P.fwd, 0.7), '#ffd400', 0.1, 1.5); }, 450);
         break;
       }
-      case 'turkey': P.effect('frozen', 8.5); P.dropAll(); sfx('jet', null, 1); fx.cutscene('turkey', 8.2); break;
+      case 'turkey': P.effect('frozen', TURKEY_LEN + 0.4); P.dropAll(); sfx('jet', null, 1); fx.cutscene('turkey', TURKEY_LEN); break;
     }
   }
   // which attack does this person do next? (not one they've done, until everyone's had a go)

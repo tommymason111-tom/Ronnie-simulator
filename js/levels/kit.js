@@ -98,16 +98,17 @@ export class Kit {
       this.spawns.push(new THREE.Vector3(alongX ? x + t * w : x, h + 0.08, alongX ? z : z + t * d));
     }
   }
-  // ry = direction the chair faces (0 = toward -z)
+  // ry = direction the chair faces (0 = toward -z); every part is rotated with it,
+  // so chairs round a round table look right at any angle
   chair(x, z, ry, color = 0x5a3a22, seat = null) {
     const c = Math.cos(ry), s = Math.sin(ry);
-    this.box(0.42, 0.05, 0.42, x, 0.45, z, color);
-    if (seat) this.box(0.38, 0.05, 0.38, x, 0.49, z, seat);          // padded seat
-    const bx = x + s * 0.2, bz = z + c * 0.2;   // backrest: spindles under a curved top rail
-    const across = Math.abs(c) > 0.5;
-    this.box(across ? 0.44 : 0.05, 0.07, across ? 0.05 : 0.44, bx, 0.92, bz, color);
-    for (const t of [-0.15, -0.05, 0.05, 0.15]) this.box(0.025, 0.42, 0.025, bx + (across ? t : 0), 0.7, bz + (across ? 0 : t), color);
-    for (const a of [-1, 1]) for (const b of [-1, 1]) this.box(0.04, 0.44, 0.04, x + a * 0.17, 0.22, z + b * 0.17, 0x2a1a10);
+    const at = (lx, lz) => [x + lx * c + lz * s, z - lx * s + lz * c];      // local (x right, z back) -> world
+    const rb = (w, h, d, lx, y, lz, col) => { const [px, pz] = at(lx, lz); this.box(w, h, d, px, y, pz, col, { rot: [0, ry, 0] }); };
+    rb(0.42, 0.05, 0.42, 0, 0.45, 0, color);
+    if (seat) rb(0.38, 0.05, 0.38, 0, 0.49, 0, seat);                  // padded seat
+    rb(0.44, 0.07, 0.05, 0, 0.92, 0.2, color);                          // curved top rail
+    for (const t of [-0.15, -0.05, 0.05, 0.15]) rb(0.025, 0.42, 0.025, t, 0.7, 0.2, color);   // spindles
+    for (const a of [-1, 1]) for (const b of [-1, 1]) rb(0.04, 0.44, 0.04, a * 0.17, 0.22, b * 0.17, 0x2a1a10);
   }
   stool(x, z, color = 0x7a1f24, metal = 0x222222, h = 0.75) {
     this.cyl(0.18, 0.17, 0.1, x, h, z, color, 16);                    // padded leather seat
