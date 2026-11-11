@@ -475,6 +475,8 @@ export class Director {
     }
   }
 
+  attackClock() { return this.attackInProgress() ? 'ATTACK IN PROGRESS!' : this.nextAttackT > 0 ? `NEXT ATTACK IN ${Math.ceil(this.nextAttackT)}s` : 'NEXT ATTACK: ANY SECOND!'; }
+
   // start the picked attack: Tommy trips, the squad intervene
   launch(pick) {
     const { c, attack } = pick;
@@ -778,11 +780,11 @@ export class Director {
     const t = this.timeLeft, mm = Math.floor(t / 60), ss = String(Math.floor(t % 60)).padStart(2, '0');
     const name = MODES[this.mode].name;
     let extra = '';
-    if (this.mode === 'intervention') extra = `Next attack ${Math.max(0, Math.ceil(this.nextAttackT))}s`;
+    if (this.mode === 'intervention') extra = this.attackClock();
     else if (this.mode === 'veggie') extra = `Swats ${this.stats.swats} · Veg ${this.stats.veg}`;
     else if (this.mode === 'catch') extra = `Caught ${this.stats.caught}/${this.stats.thrown}`;
     else if (this.mode === 'date') extra = `Busted ${this.date.catches}/3 · ${this.date.look ? 'SHE\'S LOOKING!' : 'EAT NOW!'}`;
-    else if (this.mode === 'everyone') return `THE WHOLE SQUAD · Next attack ${Math.max(0, Math.ceil(this.nextAttackT))}s`;
+    else if (this.mode === 'everyone') return `THE WHOLE SQUAD · ${this.attackClock()}`;
     else extra = `Eat ${Math.round(this.stats.chonk)}`;
     return `${name} ${mm}:${ss} · ${extra}`;
   }

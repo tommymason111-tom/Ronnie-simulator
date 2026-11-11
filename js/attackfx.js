@@ -83,7 +83,7 @@ export class AttackFX {
   }
 
   // the "NEXT ATTACK IN 12" counter at the top of the view (null hides it).
-  // Phone: a little bar at the top of the screen. Headset: a small sign up in your view.
+  // Phone: a little bar at the top of the screen. Headset: it's on your wrist (see director.hud()).
   setCountdown(textStr) {
     if (textStr === this.cdText) return;
     this.cdText = textStr;
@@ -99,7 +99,7 @@ export class AttackFX {
     const xr = this.player.renderer && this.player.renderer.xr.isPresenting;
     this.cdEl.style.display = textStr && !xr ? 'block' : 'none';
     this.cdEl.textContent = textStr || '';
-    this.cdMesh.visible = !!textStr && xr;
+    this.cdMesh.visible = false;      // in the headset the countdown lives on your wrist instead
     if (textStr) {
       const g = this.cdCv.getContext('2d'); g.clearRect(0, 0, 512, 64);
       g.fillStyle = 'rgba(160,20,20,0.85)'; roundRect(g, 4, 4, 504, 56, 18); g.fill();

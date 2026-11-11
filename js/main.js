@@ -642,6 +642,7 @@ renderer.setAnimationLoop(() => {
   if (G.fpsT >= 1) { G.fps = Math.round(G.fpsFrames / G.fpsT); G.fpsFrames = 0; G.fpsT = 0; G.wristDirty = true; }
   G.wristT -= dt;
   if (director.running && director.mode !== 'classic' && Math.floor(director.timeLeft) !== G.lastHudSec) { G.lastHudSec = Math.floor(director.timeLeft); G.wristDirty = true; }
+  { const hl = director.hud(); if (hl !== G.lastHudLine) { G.lastHudLine = hl; G.wristDirty = true; } }   // e.g. the attack countdown ticking
   if (G.wristDirty && G.wristT <= 0) {
     G.wristDirty = false; G.wristT = 0.1;
     const max = G.stage === STAGES.length - 1;
