@@ -254,6 +254,7 @@ export class Player {
     }
     if (this.knock) this.updateKnock(dt);
     this.updateEffects(dt, t);
+    this.placeHeld();
     this.updateWristParent(xr);
     this.updateBelly(dt, t);
   }
@@ -296,17 +297,38 @@ export class Player {
     }
 
     // held item follows the hand
-    if (h.held) {
-      if (h.held.dead) { h.held = null; return; }
-      const o = h.held.obj;
+    if (h.held && h.held.dead) h.held = null;
+    // (the held item itself is placed in placeHeld(), after everything has moved)
+  }
+
+  // Put held food exactly in the hand. Runs LAST each frame, after walking, dizzy
+  // sway, spins, jigs, falls and jumps have moved the view, so it can't lag behind
+  // the hand and float next to it.
+  placeHeld() {
+    this.rig.updateMatrixWorld(true);
+    for (const h of this.hands) {
+      const it = h.held; if (!it || it.dead || !h.tracked) continue;
+      const o = it.obj;
       if (h.isHand) {     // real tracked fingers do the holding: keep it where it was pinched
+        const j = h.hand.joints, a = j['index-finger-tip'], b = j['thumb-tip'], w = j['wrist'];
+        if (a && b && w) { a.getWorldPosition(h.pos); b.getWorldPosition(_v); h.pos.add(_v).multiplyScalar(0.5); w.getWorldQuaternion(h.quat); }
         o.position.copy(h.offPos).applyQuaternion(h.quat).add(h.pos);
         o.quaternion.copy(h.quat).multiply(h.offQuat);
       } else {            // controller: it sits in the fist, fingers closed round it
-        const ht = holdTransform(h.held.type, h.handedness === 'left' ? 'left' : 'right');
-        o.position.copy(ht.p).applyQuaternion(h.quat).add(h.pos);
+        h.grip.matrixWorld.decompose(h.pos, h.quat, _s);
+        const ht = holdTransform(it.type, h.handedness === 'left' ? 'left' : 'right');
+        o.position.copy(ht.p).multiplyScalar(_s.x).applyQuaternion(h.quat).add(h.pos);
         o.quaternion.copy(h.quat).multiply(ht.q);
       }
+    }
+    const f = this.flatHolder;
+    if (this.flatMode && f && f.held && !f.held.dead) {
+      this.camera.updateMatrixWorld(true);
+      this.flatGrip.updateMatrixWorld(true);
+      this.flatGrip.matrixWorld.decompose(_v, _q, _s);
+      const ht = holdTransform(f.held.type, 'right'), o = f.held.obj;
+      o.position.copy(ht.p).multiplyScalar(_s.x).applyQuaternion(_q).add(_v);
+      o.quaternion.copy(_q).multiply(ht.q);
     }
   }
 
@@ -480,16 +502,7 @@ export class Player {
       g.rotation.set(FLAT_REST + (drink ? 1.7 : 0.2) * k, 0.3 * (1 - k), 0);
     } else { g.position.set(0.18, -0.21 + Math.sin(t * 2) * 0.004, -0.4); g.rotation.set(FLAT_REST, 0.3, 0); }
     if (this.flatHandModel.ready) { const c = f.held ? holdTransform(f.held.type, 'right').curl : 0.35; for (const n in this.flatHandModel.curl) this.flatHandModel.curl[n] += (c - this.flatHandModel.curl[n]) * 0.3; this.flatHandModel.update(); }
-    if (f.held) {
-      if (f.held.dead) { f.held = null; return; }
-      this.camera.updateMatrixWorld(true);
-      g.updateMatrixWorld(true);
-      const o = f.held.obj;
-      g.matrixWorld.decompose(_v, _q, _s);
-      const ht = holdTransform(f.held.type, 'right');
-      o.position.copy(ht.p).applyQuaternion(_q).add(_v);
-      o.quaternion.copy(_q).multiply(ht.q);
-    }
+    if (f.held && f.held.dead) f.held = null;
   }
 
   // After the rig jumps (snap turn, growth, teleport) hands would look like they
