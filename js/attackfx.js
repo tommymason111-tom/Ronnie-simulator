@@ -8,7 +8,7 @@
 // Everything is attached to the camera, so it works in the headset and on a phone.
 import * as THREE from 'three';
 import { FONT, roundRect } from './textures.js';
-import { drawTurkey, OVERLAYS } from './cutscenes.js';
+import { drawTurkey, OVERLAYS, setCanvas } from './cutscenes.js';
 
 const _v = new THREE.Vector3();
 
@@ -127,6 +127,10 @@ export class AttackFX {
     this.endCutscene();
     const overlay = kind !== 'turkey';
     const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 576;
+    if (overlay) {      // the overlay's canvas has the same shape as the screen
+      const asp = this.viewAspect();
+      if (asp >= 1) { cv.width = 1024; cv.height = Math.round(1024 / asp); } else { cv.height = 1024; cv.width = Math.round(1024 * asp); }
+    }
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
     const back = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 10), new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide, depthTest: false, depthWrite: false, transparent: true, opacity: 0 }));
     // the full scene sits like a big screen; overlays cover the whole view
@@ -137,6 +141,7 @@ export class AttackFX {
     this.camera.add(screen);
     this.cut = { kind, t: 0, dur, cv, tex, back, screen, overlay };
   }
+  viewAspect() { return this.player.renderer && this.player.renderer.xr.isPresenting ? 1.1 : this.camera.aspect; }
   endCutscene() { if (!this.cut) return; this.camera.remove(this.cut.back); this.camera.remove(this.cut.screen); this.cut = null; }
   get inCutscene() { return !!(this.cut && !this.cut.overlay); }
   updateCutscene(dt) {
@@ -145,12 +150,16 @@ export class AttackFX {
     const fade = c.overlay ? 1 : Math.min(1, c.t / 0.35, (c.dur - c.t) / 0.4);
     if (c.overlay) {     // overlays exactly fill the view (phone screen or headset)
       const xr = this.player.renderer && this.player.renderer.xr.isPresenting;
-      const fov = THREE.MathUtils.degToRad(xr ? 100 : this.camera.fov), aspect = xr ? 1.1 : this.camera.aspect;
+      const fov = THREE.MathUtils.degToRad(xr ? 100 : this.camera.fov), aspect = this.viewAspect();
       const hh = 2 * 0.6 * Math.tan(fov / 2) * 1.04;
       c.screen.scale.set(hh * aspect / 2.6, hh / 1.95, 1);
+    } else if (!(this.player.renderer && this.player.renderer.xr.isPresenting)) {   // the film always fits across the screen
+      const vw = 2 * 0.66 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
+      c.screen.scale.setScalar(Math.min(1, vw * 0.96 / 0.96));
     }
     c.back.material.opacity = Math.max(0, fade); c.screen.material.opacity = Math.max(0, fade);
     const g = c.cv.getContext('2d');
+    setCanvas(c.cv.width, c.cv.height);
     if (c.kind === 'turkey') drawTurkey(g, c.t);
     else if (OVERLAYS[c.kind]) OVERLAYS[c.kind](g, c.t, c.dur);
     c.tex.needsUpdate = true;

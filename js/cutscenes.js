@@ -5,7 +5,10 @@
 // Everything is drawn on a 1024x576 canvas each frame.
 import { FONT } from './textures.js';
 
-const W = 1024, H = 576;
+// canvas size: the Turkey film is always 16:9; overlays match the screen's shape
+// (tall on a phone held upright) so nothing gets squashed thin
+let W = 1024, H = 576;
+export function setCanvas(w, h) { W = w; H = h; }
 export const TURKEY_LEN = 20.0;   // long enough to read every caption
 
 // ------------------------------------------------------------------ helpers
@@ -419,15 +422,18 @@ export function drawBeer(g, t, dur) {
 export function drawDating(g, t, dur) {
   g.clearRect(0, 0, W, H); const a = fadeIO(t, dur);
   g.save(); g.globalAlpha = a;
-  g.fillStyle = 'rgba(40,0,20,0.55)'; g.fillRect(0, 0, W, H);
-  // the phone
-  const px = W / 2 - 150, py = 30 + (1 - ease(t / 0.35)) * 400;
-  g.fillStyle = '#111'; rr(g, px, py, 300, 520, 36); g.fill();
-  g.fillStyle = grad(g, py, py + 520, [[0, '#ff5f8a'], [1, '#ff3b6b']]); rr(g, px + 12, py + 14, 276, 492, 28); g.fill();
-  text(g, 'MATCHR', W / 2, py + 52, 30, '#fff');
+  g.fillStyle = 'rgba(40,0,20,0.6)'; g.fillRect(0, 0, W, H);
+  // broken hearts floating up the sides (behind the phone)
+  for (let n = 0; n < 12; n++) { const hx = n % 2 ? rnd(n) * W * 0.25 + 30 : W - rnd(n) * W * 0.25 - 30, hy = H - ((t * 90 + n * 70) % (H + 60)); text(g, n % 3 ? '💔' : '❤', hx, hy, 38, '#ff6b8b'); }
+  // the phone: as big as the screen allows (most of a phone screen held upright)
+  const k = Math.min((H * 0.84) / 520, (W * 0.9) / 300);
+  g.save(); g.translate(W / 2, H * 0.03 + (1 - ease(t / 0.35)) * H * 0.7); g.scale(k, k);
+  g.fillStyle = '#111'; rr(g, -150, 0, 300, 520, 36); g.fill();
+  g.fillStyle = grad(g, 0, 520, [[0, '#ff5f8a'], [1, '#ff3b6b']]); rr(g, -138, 14, 276, 492, 28); g.fill();
+  text(g, 'MATCHR', 0, 52, 30, '#fff');
   const names = ['STACEY, 27', 'JADE, 25', 'KELLY, 29', 'AMBER, 26', 'CHANTELLE, 28'], bios = ['"No time-wasters"', '"6ft only (Harry: 5\'11 and a half)"', '"Must love dogs"', '"Here for a good time"', '"If you know Harry, swipe left"'];
-  const i = Math.floor(t / 1.05) % names.length, k = (t % 1.05) / 1.05, sw = k > 0.7 ? (k - 0.7) / 0.3 : 0;
-  g.save(); g.translate(W / 2 - sw * 320, py + 250); g.rotate(-sw * 0.5);
+  const i = Math.floor(t / 1.05) % names.length, kk = (t % 1.05) / 1.05, sw = kk > 0.7 ? (kk - 0.7) / 0.3 : 0;
+  g.save(); g.translate(-sw * 320, 250); g.rotate(-sw * 0.5);
   g.fillStyle = '#fff'; rr(g, -120, -170, 240, 330, 20); g.fill();
   g.fillStyle = ['#e8b48a', '#f2c9a0', '#c98a5a', '#ffd9b8', '#e0a070'][i]; g.beginPath(); g.arc(0, -70, 62, 0, 7); g.fill();
   g.fillStyle = ['#5a3a22', '#e8c070', '#1a1210', '#a0522d', '#3a2416'][i]; g.beginPath(); g.arc(0, -90, 64, Math.PI, 0); g.fill();
@@ -436,12 +442,10 @@ export function drawDating(g, t, dur) {
   text(g, names[i], 0, 40, 26, '#111'); text(g, bios[i], 0, 72, 16, '#555', { weight: 700, maxW: 220 });
   if (sw > 0) { g.save(); g.rotate(0.3); g.strokeStyle = '#c0392b'; g.lineWidth = 6; rr(g, -90, 90, 180, 50, 8); g.stroke(); text(g, 'NOPE', 0, 128, 34, '#c0392b'); g.restore(); }
   g.restore();
-  // a chat bubble from Harry
   const chats = ['hey', 'hey', 'u there?', 'hellooo', 'ok then'];
-  g.fillStyle = '#fff'; rr(g, px + 30, py + 430, 200, 46, 18); g.fill(); text(g, `Harry: "${chats[i]}"`, px + 130, py + 461, 18, '#333', { weight: 700 });
-  // broken hearts floating up the sides
-  for (let n = 0; n < 10; n++) { const hx = n % 2 ? 80 + rnd(n) * 180 : W - 260 + rnd(n) * 180, hy = H - ((t * 90 + n * 70) % (H + 60)); text(g, n % 3 ? '💔' : '❤', hx, hy, 38, '#ff6b8b'); }
-  text(g, 'HARRY\'S DATING HISTORY: 47 MATCHES · 0 REPLIES', W / 2, H - 20, 26, '#fff', { lw: 6, maxW: W - 60 });
+  g.fillStyle = '#fff'; rr(g, -120, 430, 240, 46, 18); g.fill(); text(g, `Harry: "${chats[i]}"`, 0, 461, 18, '#333', { weight: 700 });
+  g.restore();
+  text(g, 'HARRY\'S DATING HISTORY: 47 MATCHES · 0 REPLIES', W / 2, H - 20, 26, '#fff', { lw: 6, maxW: W - 40 });
   g.restore();
 }
 // Chloe: the diet plan clipboard slides in, junk food gets crossed off, lettuce rains down

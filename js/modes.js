@@ -52,6 +52,7 @@ const ATTACKS = {
   alfie:  [{ key: 'nutmeg', icon: '⚽', title: 'ALFIE NUTMEGS YOU!', sub: 'SPUN ROUND!' }],
   ben:    [{ key: 'turkey', icon: '✈️', title: 'BEN TAKES YOU TO TURKEY!', sub: 'TO GET YOUR HAIRLINE DONE' }],
 };
+const ANNOUNCE_T = 2;     // how long the attack pop-up shows before the attack lands
 const LEGACY_KEY = { tommy: 'trip', noah: 'tackle' };
 // props held in front of Ronnie's face
 function datingPhone() {
@@ -144,7 +145,7 @@ export class Director {
   start(id) {
     const g = this.g, m = MODES[id];
     if (!m) return;
-    this.mode = id; this.running = true; this.used.clear();
+    this.mode = id; this.running = true; this.used.clear(); this.pending = null;
     this.timeLeft = m.time;
     this.stats = { chonk: 0, veg: 0, swats: 0, popped: 0, roasted: 0, caught: 0, thrown: 0, attempts: 0, fails: [] };
     this.meter = 0; this.nextIntervener = 0; this.waveT = 2.5; this.spawned = 0;
@@ -261,6 +262,14 @@ export class Director {
   // ------------------------------------------------------------------ per frame
   update(dt, ctx) {
     const g = this.g;
+    if (this.pending) {                       // an announced attack that hasn't landed yet
+      const pd = this.pending, P = g.player;
+      pd.t -= dt;
+      if (pd.t <= 0) {
+        if (P.knock || P.throwAnim || (g.fx && g.fx.inCutscene)) { if ((pd.wait += dt) > 12) { this.pending = null; g.fx && g.fx.hideCard(); } }
+        else this.stun(pd.who, pd.key);
+      }
+    }
     this.updateBoard(dt, ctx);
     this.updateBubbles(dt, ctx);
     if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; }
@@ -374,14 +383,20 @@ export class Director {
     if (fx) fx.showCard({ name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
     else g.showBanner(A.title, A.sub);
     sfx('trumpet', null, 0.7);
+    // the attack WILL happen once the pop-up has been up for ANNOUNCE_T seconds. Noah's
+    // tackle and Tommy's trip land when they reach you, with this as a backstop.
+    this.pending = { who, key, t: ANNOUNCE_T + (key === 'tackle' || key === 'trip' ? 4 : 0), wait: 0 };
   }
   // 2) the attack itself: the pop-up goes, and the effects and animation play
   stun(who, key) {
     const g = this.g, P = g.player, G = g.G, fx = g.fx;
     key = LEGACY_KEY[key] || key || (ATTACKS[who.id] || [])[0]?.key;
     const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
+    const prev = this.pending && this.pending.key === key ? this.pending : null;
+    this.pending = null;
+    // Ronnie's busy (on the floor, mid-air, in Ben's film): hold the attack until he isn't
+    if (P.knock || P.throwAnim || (fx && fx.inCutscene)) { this.pending = { who, key, t: 0, wait: prev ? prev.wait : 0 }; return; }
     if (fx) fx.hideCard();
-    if (P.knock || P.throwAnim || (fx && fx.inCutscene)) return;
     sfx(A.sfx || 'thud', null, 1);
     const tint = (color, t, op = 0.3) => { G.fxTint = color; G.fxTintT = t; G.fxTintOp = op; };
     const away = { x: P.head.x - who.pos.x, z: P.head.z - who.pos.z };

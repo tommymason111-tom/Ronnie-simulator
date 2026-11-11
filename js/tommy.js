@@ -129,7 +129,7 @@ export class Tommy extends Character {
     if (!this.attacks) return;
     if (this.tripping) {
       this.tripping -= dt;
-      if (this.distToPlayer < 1.0 && this.t - this.tripStart > 3.5) { this.tripping = 0; this.say(TRIP_LINES[Math.floor(Math.random() * TRIP_LINES.length)], 4); this.onTrip && this.onTrip(this); this.attackTimer = 14; return; }
+      if (this.distToPlayer < 1.0 && this.t - this.tripStart > 2) { this.tripping = 0; this.say(TRIP_LINES[Math.floor(Math.random() * TRIP_LINES.length)], 4); this.onTrip && this.onTrip(this); this.attackTimer = 14; return; }
       if (this.tripping <= 0) { this.tripping = 0; return; }
       _v.set(this.pos.x - ctx.head.x, 0, this.pos.z - ctx.head.z).setLength(0.6);
       this.goTo(ctx.head.x + _v.x, ctx.head.z + _v.z, 1.5, 'idle');

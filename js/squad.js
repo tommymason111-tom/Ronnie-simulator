@@ -16,7 +16,7 @@ import { canvasTex, FONT } from './textures.js';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4();
 // how long each signature move lasts (seconds)
-const ANNOUNCE_T = 3.5;   // how long the attack pop-up shows before the attack lands
+const ANNOUNCE_T = 2;   // how long the attack pop-up shows before the attack lands
 const SIGN_T = { beer: 1.9, dating: 5.5, pepsi: 1.6, jig: 6.5, yeet: 1.6, siu: 3.2, rod: 5.0, bbq: 1.8, diet: 1.8, flash: 1.3, oasis: 6.5, nutmeg: 1.3, turkey: 20.2 };
 const OASIS_LINES = ['♪ Today is gonna be the day... that you put down the pie ♪', '♪ And all the roads we have to walk... lead to the chippy ♪', '♪ Don\'t look back in anger, Ronnie... look back at the buffet ♪', '♪ You\'re gonna be the one that eats me... ♪', '♪ Some might say... you\'ve had enough ♪', '♪ Cast no shadow... you cast a BIG shadow, Ron ♪', 'Right, B-side next. No, don\'t move. DON\'T MOVE.'];
 const UP = new THREE.Vector3(0, 1, 0);
@@ -786,7 +786,7 @@ export class SquadMember extends Character {
       if (this.announceT <= 0) {                           // ...then the attack itself
         this.signT = SIGN_T[this.attack] ?? 1.6; this.signDur = this.signT;
         if (this.attack !== 'bbq') this.startAttackProps();
-        g.stun && g.stun(this, this.attack);
+        // (the attack's effect itself is fired by the director, so it always lands)
       }
       return;
     }
