@@ -660,6 +660,8 @@ export class SquadMember extends Character {
     return true;
   }
 
+  get busyAttacking() { return this.state === 'act' && (this.approach > 0 || this.announceT > 0 || this.signT > 0 || (this.id === 'noah' && this.stateT < 5) || this.attack === 'bbq'); }
+
   // ---------------- attack props & poses ----------------
   startAttackProps() {
     this.endAttackProps();

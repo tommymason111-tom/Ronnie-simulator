@@ -186,6 +186,8 @@ export class Director {
     else this.player2 = null;
     if (id === 'date') this.startDate();
     if (id === 'everyone') { this.nextChaos = 18; tommy.attacks = true; tommy.directed = true; }
+    this.nextAttackT = id === 'everyone' ? 12 : 15;
+    if (g.fx) g.fx.setCountdown(null);
     tommy.say({
       everyone: 'The whole squad\'s out tonight, Ron. Everyone\'s watching what you eat. I\'m just trying to help.',
       date: 'Date night! I\'m over here on my own table. Behave, Ron. She\'s watching. Mostly.',
@@ -210,6 +212,7 @@ export class Director {
   end() {
     if (!this.running || this.mode === 'classic') return;
     this.running = false;
+    if (this.g.fx) this.g.fx.setCountdown(null);
     const g = this.g, st = this.stats, m = MODES[this.mode];
     const lines = [];
     lines.push(['MODE', m.name]);
@@ -284,33 +287,10 @@ export class Director {
     const idle = (c) => c.state === 'idle' && !c.down;
     switch (this.mode) {
       case 'date': this.updateDate(dt, ctx); break;
-      case 'everyone': {
-        this.nextChaos -= dt;
-        if (this.nextChaos <= 0) {
-          this.nextChaos = 16 + Math.random() * 12;
-          // one attack at a time: wait while anyone (Tommy included) is mid-attack
-          if (this.attackInProgress()) { this.nextChaos = 2; break; }
-          const pick = this.pickAttacker(this.cast.filter(c => idle(c) && c.distToPlayer < 9 && (c !== g.tommy || g.tommy.attacks)));
-          if (pick && this.launch(pick)) sfx('trumpet', null, 0.6);
-        }
+      case 'everyone':
+      case 'intervention':
+        this.updateAttacks(dt);
         break;
-      }
-      case 'intervention': {
-        // the meter fills as Ronnie eats; when full, the next squad member has a go
-        if (this.meter >= 1 && !this.current) {
-          const pick = this.attackInProgress() ? null : this.pickAttacker(this.cast.filter(c => idle(c) && (c !== g.tommy || g.tommy.attacks))), c = pick && pick.c;
-          if (c && this.launch(pick)) {
-            this.markUsed(c, pick.attack.key);
-            this.nextIntervener++;
-            this.meter = 0; this.current = c; this.currentT = 0;
-            this.stats.attempts++;
-            this.stats.fails.push(`${c.name}: ${c.failLine}`);
-            sfx('trumpet', null, 0.6);
-          }
-        }
-        if (this.current) { this.currentT += dt; if (this.currentT > 25) this.current = null; }
-        break;
-      }
       case 'veggie': {
         // waves: 1 attacker → 2 at once → everyone
         const elapsed = MODES.veggie.time - this.timeLeft;
@@ -347,7 +327,7 @@ export class Director {
     if (!this.running) return;
     if (this.mode === 'date') this.dateEat();
     this.stats.chonk += Math.max(0, chonk);
-    if (this.mode === 'intervention') this.meter = Math.min(1, this.meter + Math.max(0, chonk) / 30);
+    if (this.mode === 'intervention') { this.meter = Math.min(1, this.meter + Math.max(0, chonk) / 30); this.nextAttackT -= Math.max(0, chonk) / 6; }   // the more you eat, the sooner they intervene
     for (const c of this.cast) c.onRonnieAte && c.onRonnieAte(item);
   }
   // the whole item has gone (last bite / drink finished)
@@ -468,6 +448,33 @@ export class Director {
   }
   markUsed(c, key) { if (!this.used.has(c.id)) this.used.set(c.id, new Set()); this.used.get(c.id).add(key); }
   // pick someone who still has an attack left; once nobody has, everyone's available again
+  // The attack clock (The Whole Squad + Squad Intervention): a countdown to the next
+  // attack, shown at the top of the screen. It never stops: if nobody's free it
+  // keeps checking every moment, and anyone stuck mid-attack gets un-stuck.
+  updateAttacks(dt) {
+    const g = this.g;
+    for (const c of this.cast) {                     // watchdog: nobody stays "mid-attack" forever
+      if (c.state === 'act') { c.actT = (c.actT || 0) + dt; if (c.actT > 30) { c.cancelAction && c.cancelAction(); c.state = 'idle'; c.stateT = 0; c.actT = 0; c.approach = 0; c.announceT = 0; c.signT = 0; } }
+      else c.actT = 0;
+    }
+    if (this.current) { this.currentT += dt; if (this.currentT > 25 || this.current.state !== 'act') this.current = null; }
+    if (this.attackInProgress()) { g.fx && g.fx.setCountdown('ATTACK IN PROGRESS!'); return; }
+    this.nextAttackT -= dt;
+    if (this.nextAttackT > 0) { g.fx && g.fx.setCountdown(`NEXT ATTACK IN ${Math.ceil(this.nextAttackT)}`); return; }
+    g.fx && g.fx.setCountdown('NEXT ATTACK: ANY SECOND...');
+    // anyone who's up and about can be picked (wherever they are: they walk over)
+    const pool = this.cast.filter(c => !c.down && (c.state === 'idle' || c.state === 'walk' || c.state === 'enter') && (c !== g.tommy || g.tommy.attacks));
+    const pick = this.pickAttacker(pool);
+    if (!pick || !this.launch(pick)) return;        // nobody free right now: try again next frame
+    sfx('trumpet', null, 0.6);
+    this.nextAttackT = this.mode === 'everyone' ? 14 + Math.random() * 6 : 16;
+    if (this.mode === 'intervention') {
+      const c = pick.c;
+      this.nextIntervener++; this.meter = 0; this.current = c; this.currentT = 0;
+      this.stats.attempts++; this.stats.fails.push(`${c.name}: ${c.failLine || 'tried to help'}`);
+    }
+  }
+
   // start the picked attack: Tommy trips, the squad intervene
   launch(pick) {
     const { c, attack } = pick;
@@ -475,7 +482,9 @@ export class Director {
     if (ok) this.markUsed(c, attack.key);      // counts as their go from the moment they're picked
     return ok;
   }
-  attackInProgress() { return !!this.pending || this.cast.some(c => c.state === 'act' || c.busyAttacking); }
+  // only the attack itself (walk up, pop-up, the move) holds the clock; follow-ups like
+  // Oliver filming or Harry's food passes carry on while the next countdown runs
+  attackInProgress() { return !!this.pending || this.cast.some(c => c.busyAttacking); }
   // everyone in the room who can attack Ronnie (Tommy only when he's on the attack)
   attackers() { return this.cast.filter(c => (ATTACKS[c.id] || []).length && (c !== this.g.tommy || this.g.tommy.attacks)); }
   // the round is over only when EVERY attacker in the room has used every attack;
@@ -769,11 +778,11 @@ export class Director {
     const t = this.timeLeft, mm = Math.floor(t / 60), ss = String(Math.floor(t % 60)).padStart(2, '0');
     const name = MODES[this.mode].name;
     let extra = '';
-    if (this.mode === 'intervention') extra = `Meter ${Math.round(this.meter * 100)}%`;
+    if (this.mode === 'intervention') extra = `Next attack ${Math.max(0, Math.ceil(this.nextAttackT))}s`;
     else if (this.mode === 'veggie') extra = `Swats ${this.stats.swats} · Veg ${this.stats.veg}`;
     else if (this.mode === 'catch') extra = `Caught ${this.stats.caught}/${this.stats.thrown}`;
     else if (this.mode === 'date') extra = `Busted ${this.date.catches}/3 · ${this.date.look ? 'SHE\'S LOOKING!' : 'EAT NOW!'}`;
-    else if (this.mode === 'everyone') return `THE WHOLE SQUAD · Eat ${Math.round(this.stats.chonk)}`;
+    else if (this.mode === 'everyone') return `THE WHOLE SQUAD · Next attack ${Math.max(0, Math.ceil(this.nextAttackT))}s`;
     else extra = `Eat ${Math.round(this.stats.chonk)}`;
     return `${name} ${mm}:${ss} · ${extra}`;
   }

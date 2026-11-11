@@ -82,6 +82,31 @@ export class AttackFX {
     c.position.set(x, y * 0.9, -0.75); c.rotation.set(0, 0, rot); c.scale.setScalar(sc); c.material.opacity = op;
   }
 
+  // the "NEXT ATTACK IN 12" counter at the top of the view (null hides it).
+  // Phone: a little bar at the top of the screen. Headset: a small sign up in your view.
+  setCountdown(textStr) {
+    if (textStr === this.cdText) return;
+    this.cdText = textStr;
+    if (!this.cdEl) {
+      const el = document.createElement('div'); el.id = 'nextAttack';
+      el.style.cssText = 'position:fixed;left:50%;top:calc(max(12px, env(safe-area-inset-top)) + 34px);transform:translateX(-50%);padding:6px 14px;border-radius:12px;background:rgba(160,20,20,0.85);color:#fff;font:900 15px "Arial Black",Arial,sans-serif;letter-spacing:0.5px;pointer-events:none;z-index:20;display:none;white-space:nowrap;box-shadow:0 3px 0 rgba(0,0,0,0.35)';
+      document.body.appendChild(el); this.cdEl = el;
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 64; this.cdCv = cv;
+      this.cdTex = new THREE.CanvasTexture(cv); this.cdTex.colorSpace = THREE.SRGBColorSpace;
+      this.cdMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.05), new THREE.MeshBasicMaterial({ map: this.cdTex, transparent: true, depthTest: false, depthWrite: false }));
+      this.cdMesh.renderOrder = 39; this.cdMesh.position.set(0, 0.3, -0.9); this.cdMesh.visible = false; this.camera.add(this.cdMesh);
+    }
+    const xr = this.player.renderer && this.player.renderer.xr.isPresenting;
+    this.cdEl.style.display = textStr && !xr ? 'block' : 'none';
+    this.cdEl.textContent = textStr || '';
+    this.cdMesh.visible = !!textStr && xr;
+    if (textStr) {
+      const g = this.cdCv.getContext('2d'); g.clearRect(0, 0, 512, 64);
+      g.fillStyle = 'rgba(160,20,20,0.85)'; roundRect(g, 4, 4, 504, 56, 18); g.fill();
+      g.fillStyle = '#fff'; g.font = `900 30px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(textStr, 256, 34);
+      this.cdTex.needsUpdate = true;
+    }
+  }
   hideCard() { if (this.cardT >= 0 && this.cardOut < 0) this.cardOut = 0; }
   get cardShowing() { return this.cardT >= 0 && this.cardOut < 0; }
 
