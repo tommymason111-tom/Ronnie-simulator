@@ -383,6 +383,7 @@ export class Director {
     if (fx) fx.showCard({ name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
     else g.showBanner(A.title, A.sub);
     sfx('trumpet', null, 0.7);
+    this.markUsed(who, key);
     // the attack WILL happen once the pop-up has been up for ANNOUNCE_T seconds. Noah's
     // tackle and Tommy's trip land when they reach you, with this as a backstop.
     this.pending = { who, key, t: ANNOUNCE_T + (key === 'tackle' || key === 'trip' ? 4 : 0), wait: 0 };
@@ -464,10 +465,16 @@ export class Director {
   }
   markUsed(c, key) { if (!this.used.has(c.id)) this.used.set(c.id, new Set()); this.used.get(c.id).add(key); }
   // pick someone who still has an attack left; once nobody has, everyone's available again
+  // everyone in the room who can attack Ronnie (Tommy only when he's on the attack)
+  attackers() { return this.cast.filter(c => (ATTACKS[c.id] || []).length && (c !== this.g.tommy || this.g.tommy.attacks)); }
+  // the round is over only when EVERY attacker in the room has used every attack;
+  // until then nobody repeats (even if the ones who haven't gone yet are busy)
+  refreshRound() { if (this.attackers().every(c => !this.nextAttack(c))) this.used.clear(); }
+  canAttack(c, key) { this.refreshRound(); const u = this.used.get(c.id); return !(u && u.has(key)); }
   pickAttacker(pool) {
-    let ready = pool.filter(c => this.nextAttack(c));
-    if (!ready.length && pool.length) { this.used.clear(); ready = pool.filter(c => this.nextAttack(c)); }
-    if (!ready.length) return null;
+    this.refreshRound();
+    const ready = pool.filter(c => this.nextAttack(c));
+    if (!ready.length) return null;         // whoever's left isn't free right now: try again later
     const c = ready[Math.floor(Math.random() * ready.length)];
     return { c, attack: this.nextAttack(c) };
   }

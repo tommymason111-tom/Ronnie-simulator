@@ -139,7 +139,7 @@ export class Tommy extends Character {
     if (this.attackTimer <= 0) {
       const [a, b] = TUNING.attackInterval;
       this.attackTimer = a + Math.random() * (b - a);
-      if (Math.random() < 0.35 || this.distToPlayer <= 1.2) { this.tripping = 12; this.tripStart = this.t; this.onTripAnnounce && this.onTripAnnounce(this); this.say(ANNOY_LINES[Math.floor(Math.random() * ANNOY_LINES.length)], 3); return; }
+      if ((Math.random() < 0.35 || this.distToPlayer <= 1.2) && (!this.canTrip || this.canTrip())) { this.tripping = 12; this.tripStart = this.t; this.onTripAnnounce && this.onTripAnnounce(this); this.say(ANNOY_LINES[Math.floor(Math.random() * ANNOY_LINES.length)], 3); return; }
       this.startThrow({ item: pickVeg('broccoli'), speed: TUNING.broccoliSpeed, line: 'vegThrow' });
     }
   }

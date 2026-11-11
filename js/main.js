@@ -124,6 +124,7 @@ function onThrow(start, vel, type, who, spec) {
 tommy.onThrow = onThrow;
 tommy.onTrip = (t) => director.stun(t, 'tommy');
 tommy.onTripAnnounce = (t) => director.announce(t, 'trip');
+tommy.canTrip = () => director.canAttack(tommy, 'trip');   // he waits his turn like everyone else
 
 const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish', hotdog: 'chomp', fries: 'crunch', kebab: 'chomp', chicken: 'crunch', taco: 'crunch', crisps: 'crunch', choc: 'crunch', cookie: 'crunch', icecream: 'squish', sausageroll: 'chomp' };
 const SNACK_WORD = { burger: ['CHOMP!', 'MUNCH!', 'NOM!'], pizza: ['CRUNCH!', 'MUNCH!'], doughnut: ['SQUISH!', 'NOM NOM!'],
