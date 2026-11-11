@@ -6,7 +6,7 @@
 import { FONT } from './textures.js';
 
 const W = 1024, H = 576;
-export const TURKEY_LEN = 14.4;   // long enough to read every caption
+export const TURKEY_LEN = 20.0;   // long enough to read every caption
 
 // ------------------------------------------------------------------ helpers
 const ease = (t) => t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t);
@@ -130,14 +130,14 @@ function drawFood(g, kind, x, y, s) {
 
 // ------------------------------------------------------------------ the scenes
 const SCENES = [
-  [0.0, 2.0, sceneInvite],
-  [2.0, 3.9, sceneAirport],
-  [3.9, 6.0, sceneCabin],
-  [6.0, 7.8, sceneIstanbul],
-  [7.8, 10.1, sceneClinic],
-  [10.1, 11.5, sceneRecovery],
-  [11.5, 13.4, sceneReveal],
-  [13.4, TURKEY_LEN, sceneHome],
+  [0.0, 2.8, sceneInvite],
+  [2.8, 5.4, sceneAirport],
+  [5.4, 8.4, sceneCabin],
+  [8.4, 10.9, sceneIstanbul],
+  [10.9, 14.1, sceneClinic],
+  [14.1, 16.1, sceneRecovery],
+  [16.1, 18.6, sceneReveal],
+  [18.6, TURKEY_LEN, sceneHome],
 ];
 export function drawTurkey(g, t) {
   for (const [a, b, fn] of SCENES) if (t < b || fn === sceneHome) {

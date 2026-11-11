@@ -6,6 +6,8 @@
   <title>RONNIE SIMULATOR</title>
   <meta name="description" content="RONNIE SIMULATOR — a WebXR comedy eating game for Meta Quest 3.">
   <style>
+    /* phones: no double-tap zoom, no text selection or callout menus when you hold a finger down */
+    html, body, button, #start, #ui, #touch { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
     html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1020; font-family: "Arial Black", Impact, Arial, sans-serif; color: #fff; }
     #app canvas { display: block; touch-action: none; }
     #ui {
@@ -83,6 +85,21 @@
         "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
       }
     }
+  </script>
+  <script>
+    // iOS ignores user-scalable=no, so block pinch / double-tap zoom and long-press
+    // selection ourselves (scrolling the start screen still works)
+    (() => {
+      const stop = (e) => e.preventDefault();
+      document.addEventListener('gesturestart', stop, { passive: false });
+      document.addEventListener('gesturechange', stop, { passive: false });
+      document.addEventListener('dblclick', stop, { passive: false });
+      document.addEventListener('selectstart', stop);
+      document.addEventListener('contextmenu', stop);
+      let last = 0;
+      document.addEventListener('touchend', (e) => { const now = Date.now(); if (now - last < 350) e.preventDefault(); last = now; }, { passive: false });
+      document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    })();
   </script>
 </head>
 <body>
