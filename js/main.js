@@ -39,8 +39,6 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.xr.enabled = true;
 renderer.xr.setReferenceSpaceType('local-floor');
-renderer.xr.setFoveation(1);                               // Quest: render the edges of the view at lower resolution (you don't see them)
-renderer.xr.setFramebufferScaleFactor(1.0);
 renderer.xr.setFoveation(1);
 document.getElementById('app').appendChild(renderer.domElement);
 
@@ -756,10 +754,7 @@ renderer.setAnimationLoop(() => {
   // fps (shown on the wrist so you can check you're at 72)
   G.fpsFrames++; G.fpsT += dt;
   if (G.fpsT >= 1) { G.fps = Math.round(G.fpsFrames / G.fpsT); G.fpsFrames = 0; G.fpsT = 0; G.wristDirty = true;
-    // dynamic resolution (phones and computers): drop the render resolution a step when it's struggling, raise it again when there's headroom
-    if (!renderer.xr.isPresenting) { const maxPR = Math.min(window.devicePixelRatio, 1.75), pr = renderer.getPixelRatio();
-      if (G.fps < 48 && pr > 0.7) { renderer.setPixelRatio(Math.max(0.7, pr - 0.15)); G.prCool = 3; }
-      else if (G.fps >= 58 && pr < maxPR && (G.prCool = (G.prCool || 0) - 1) <= 0) { renderer.setPixelRatio(Math.min(maxPR, pr + 0.1)); G.prCool = 2; } } }
+}
   G.wristT -= dt;
   if (director.running && director.mode !== 'classic' && Math.floor(director.timeLeft) !== G.lastHudSec) { G.lastHudSec = Math.floor(director.timeLeft); G.wristDirty = true; }
   { const hl = director.hud(); if (hl !== G.lastHudLine) { G.lastHudLine = hl; G.wristDirty = true; } }   // e.g. the attack countdown ticking

@@ -3,6 +3,7 @@
 // same "room" object the game uses (bounds, colliders, blockers, spawns...).
 import * as THREE from 'three';
 import { part, merge, vcLambert, box, cyl } from '../geo.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { canvasTex, signTex, signFits, fitText, FONT } from '../textures.js';
 import { NavGrid } from '../nav.js';
 import { GlowBatch } from './glow.js';
@@ -59,6 +60,24 @@ export class Kit {
     for (const b of this.blockers) { const bl = f.axis === 'x' ? [b.x0, b.x1, b.z0, b.z1] : [b.z0, b.z1, b.x0, b.x1]; if (bl[1] <= lo || bl[0] >= hi || bl[3] <= a0 || bl[2] >= a1 || (b.y1 ?? 2) <= y0) continue; return false; }
     return true;
   }
+  // Textured boxes (walls, cladding, panelling, bulkheads...) that share a material are merged into one mesh per
+  // 8m patch: the same look, far fewer draw calls, and patches out of view are still skipped.
+  mergeTexBoxes() {
+    const groups = new Map();
+    for (const m of this.texMeshes || []) {
+      if (m.parent !== this.scene || Array.isArray(m.material)) continue;
+      m.updateMatrixWorld(true); const p = m.getWorldPosition(new THREE.Vector3()), key = m.material.uuid + ':' + Math.floor(p.x / 8) + ',' + Math.floor(p.z / 8);
+      (groups.get(key) || groups.set(key, []).get(key)).push(m);
+    }
+    for (const list of groups.values()) {
+      if (list.length < 2) continue;
+      const geos = list.map(m => m.geometry.clone().applyMatrix4(m.matrixWorld));
+      const g = mergeGeometries(geos, false); if (!g) continue;
+      geos.forEach(x => x.dispose());
+      const merged = new THREE.Mesh(g, list[0].material); this.scene.add(merged);
+      for (const m of list) { this.scene.remove(m); m.geometry.dispose(); }
+    }
+  }
   // Two boxes with a face in exactly the same place flicker ("z-fighting": the GPU can't tell which is in front).
   // Find every such pair (same plane, facing the same way, overlapping) and pull the later box's face in by 1.5mm.
   separateCoplanar() {
@@ -101,7 +120,7 @@ export class Kit {
     const uv = g.attributes.uv, dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
     for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) { const k = f * 4 + i; uv.setXY(k, uv.getX(k) * dims[f][0] / tile, uv.getY(k) * dims[f][1] / tile); }
     const m = new THREE.Mesh(g, this.texMats.get(key));
-    m.position.set(x, y, z); this.scene.add(m);
+    m.position.set(x, y, z); this.scene.add(m); (this.texMeshes = this.texMeshes || []).push(m);
     (this.boxRec = this.boxRec || []).push({ g: m, min: [x - w / 2, y - h / 2, z - d / 2], max: [x + w / 2, y + h / 2, z + d / 2] });
     if (collide) this.colliders.push({ min: new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2), max: new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2) });
     if (block) this.blockers.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, y1: y + h / 2 });
@@ -251,6 +270,7 @@ export class Kit {
   }
   finish({ sky = 0xffe6c4, ground = 0x5a3a22, hemiI = 1.6, sun = 0xffe0b0, sunI = 1.6, sunPos = [5, 9, 4], start, board, startFood, spotCount = 30, name, ambient = 0.55 } = {}) {
     this.flushInstances();
+    this.mergeTexBoxes();
     this.zfixed = this.separateCoplanar();
     if (this.pools) this.pools.build(this.scene);
     if (this.halos) this.halos.build(this.scene);

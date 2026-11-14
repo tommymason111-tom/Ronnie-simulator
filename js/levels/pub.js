@@ -57,6 +57,7 @@ export function pubFloorAt(x, z) {
 }
 
 export function buildPub(scene) {
+  const sceneStart = scene.children.length;
   const k = new Kit(scene, { ...B, y1: H });
   const WALL = 0xeee6d6, PLASTER = 0xf2ecdf, DARKWOOD = 0x3a2416, WOOD = 0x4a2c18, REDLEATHER = 0x7a1f2a, BRASS = 0xc9a24a, CREAM = 0xe8dcc0, LIGHTWOOD = 0xc89a5a;
   const STEEL = 0xb8bcc2, DSTEEL = 0x8a9098, WHITE = 0xf8f8f6, PORCELAIN = 0xfbfbfb;
@@ -1179,6 +1180,7 @@ export function buildPub(scene) {
     spotCount: 40,
   });
   room.floorAt = pubFloorAt;
+  for (const o of scene.children.slice(sceneStart)) if (o.isMesh || o.isInstancedMesh) { o.updateMatrix(); o.updateMatrixWorld(true); o.matrixAutoUpdate = false; }   // (static: no per-frame matrix work)
   room.chairsAt = chairsAt;
   room.extraItems = [{ type: 'poop', pos: poopAt }];
   room.machines = machines;

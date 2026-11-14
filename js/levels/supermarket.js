@@ -575,6 +575,7 @@ export function buildSupermarket(scene) {
     spotCount: 36,
   });
   room.dormant = dorm;
+  for (const o of scene.children.slice(sceneStart)) if (o.isMesh || o.isInstancedMesh) { o.updateMatrix(); o.updateMatrixWorld(true); o.matrixAutoUpdate = false; }   // (static: no per-frame matrix work)
   room.tills = [-3.45, -0.99, 1.53].map(widenX);
   return room;
 }

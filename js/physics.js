@@ -14,7 +14,7 @@ export function createPhysics(room) {
   const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.81, 0) });
   world.broadphase = new CANNON.SAPBroadphase(world);
   world.allowSleep = false;
-  world.solver.iterations = 10;                       // (plenty for the ragdolls, and much cheaper with lots of them)
+  world.solver.iterations = 16;
   world.defaultContactMaterial.friction = 0.6;
   world.defaultContactMaterial.restitution = 0.05;
   world.defaultContactMaterial.contactEquationStiffness = 1e7;

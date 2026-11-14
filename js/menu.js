@@ -2,7 +2,7 @@
 var GAME_VERSION = '1.5.9', GAME_DATE = '14 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
-  ['1.5.9', ['Smoother: no lag when knocking people over, lighter Lidl shelves, off-screen stock not drawn, automatic resolution on phones, foveated rendering on Quest']],
+  ['1.5.9', ['Smoother at full quality: no lag knocking people over, off-screen stock not drawn, walls and panelling merged into far fewer draw calls, no per-frame work for anything that doesn\'t move']],
   ['1.5.8', ['Oysterfleet beer garden out the back door: a deck, the green stream and its little footbridge, block paving, the octagonal outdoor bar, picnic benches and yellow parasols, a raised deck by the river, a smoking shelter', 'The pub\'s MONSTOR fridge, back bar and cellar fitted out']],
   ['1.5.7', ['Lewis\'s house: family photos of Lewis and Ian made from their own 3D models (over the sofa, in the dining room, the hall and up the stairs)', 'Feature wallpaper and panelling, Ian\'s prize carp on a plaque, a HOME sign, a key rack']],
   ['1.5.6', ['Oysterfleet walls: burgundy anaglypta, a dark dado rail, cream damask paper, cornices and old framed pictures with picture lights', 'Lidl walls: kick strips, bumper rails, corner guards, posters, fire points and CCTV', 'Lewis\'s dining room: drawers and a tall cupboard']],
