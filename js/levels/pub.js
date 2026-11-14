@@ -432,7 +432,7 @@ export function buildPub(scene) {
       if (b > 0) k.texBox(0.06, 1.25, 0.3, W - 0.03, 2.12, z0, BRICK, { tile: 0.6 });
     }
   };
-  backBar(X(855) - 0.08, Z(612), Z(920), true);                                    // one long back bar (the staff room's way in is from the far end)
+  backBar(X(855) - 0.08, Z(612), Z(920), true, [[Z(600), Z(640)]]);                                    // one long back bar (the staff room's way in is from the far end)
   backBar(X(895) - 0.08, Z(1012), Z(1228), true, [[Z(1015) + 0.7, Z(1015) + 1.35]]);
   // ...and fitted out like a real bar: a double sink with a mixer tap, the glass washer, an ice well, a bottle bin,
   // mixers and cordials, racks of clean glasses, bar towels, the drip trays and the cash register
@@ -448,11 +448,45 @@ export function buildPub(scene) {
     R(W - 0.38, z0 + 4.2, W - 0.06, z0 + 4.55, 0.2, 1.0, 0x222222); R(W - 0.35, z0 + 4.22, W - 0.09, z0 + 4.53, 0.12, 1.16, 0x2a6ad8);   // cash register
     k.spawns.push(new THREE.Vector3(W - 0.3, 0.98, z0 + 2.9));
   }
+  // the working side of the counter: a speed rail of spirits, shakers, a garnish tray (lemons, limes), a stack of trays,
+  // boxes of crisps and nuts, a glass-washer basket, bar blades, a radio, a pint glass tower, under-counter fridges
+  for (const b of [bar1, bar4]) {
+    for (let s2 = 0.4; s2 < b.L - 0.3; s2 += 0.07) { const [x, z] = b.at(s2, 0.68); k.cyl(0.03, 0.03, 0.22, x, 0.82, z, [0x6a1a1a, 0xd4a017, 0xe8e8e8, 0x2e5a2a, 0x8a4a1a, 0x1f3f8a][Math.round(s2 * 14) % 6], 8); k.cyl(0.011, 0.011, 0.05, x, 0.955, z, 0x333333, 6); }
+    { const [x, z] = b.at(b.L * 0.6, 0.66); R(x - 0.06, z - 0.06, x + 0.06, z + 0.06, 0.4, 0.5, 0x3a3e44); }
+    for (let s2 = 0.9; s2 < b.L - 0.6; s2 += 1.6) { const [x, z] = b.at(s2, 0.43);
+      R(x - 0.15, z - 0.08, x + 0.15, z + 0.08, 0.03, 1.1, 0x1a1a1a); for (let i = 0; i < 6; i++) k.cyl(0.025, 0.025, 0.006, x - 0.12 + i * 0.045, 1.12, z + (i % 2 ? 0.03 : -0.03), i % 3 ? 0xf2e050 : 0x7ac83a, 10);   // garnish tray
+      k.cyl(0.045, 0.04, 0.2, x + 0.25, 1.18, z, 0xc8ccd0, 10); k.cyl(0.03, 0.045, 0.08, x + 0.25, 1.32, z, 0xc8ccd0, 10); }                                                                                   // shaker
+    { const [x, z] = b.at(0.5, 0.42); for (let i = 0; i < 5; i++) k.cyl(0.045, 0.035, 0.15, x, 1.18 + i * 0.12, z, 0xe8f4f8, 10); }       // a tower of pint glasses
+  }
+  { const W2 = X(855) - 0.62;
+    for (const [z, col, lbl] of [[Z(640), 0xc8102e, 'CRISPS'], [Z(660), 0x1e5aa8, 'S&V'], [Z(680), 0xd4a017, 'NUTS']]) { R(W2 - 0.3, z - 0.18, W2, z + 0.18, 0.3, 1.05, col); }
+    for (let i = 0; i < 8; i++) R(W2 - 0.3, Z(700) - 0.18, W2, Z(700) + 0.18, 0.012, 0.92 + i * 0.014, i % 2 ? 0x2a2a2a : 0x3a3a3a);   // a stack of round trays
+    R(W2 - 0.25, Z(720) - 0.1, W2 - 0.05, Z(720) + 0.1, 0.12, 0.98, 0x8a1a1a); k.cyl(0.03, 0.03, 0.01, W2 - 0.15, 1.04, Z(720) - 0.1, 0xc8c8c8, 8);   // a radio
+  }
   // under the counter on the staff side: drip trays, a second sink, a bin, more glasses
   for (const b of [bar1, bar4]) { const [x, z] = b.at(b.L * 0.35, 0.62); k.cyl(0.16, 0.14, 0.5, x + b.nx * 0.2, 0.25, z + b.nz * 0.2, 0x2e2e2e, 10); }
   // along the top wall: the MONSTOR fridge and the coffee machine, a chalkboard
-  R(X(760), Z(605) + 0.08, X(830), Z(605) + 0.62, 1.9, 0.95, 0x111111, { block: true });
-  k.label('fridge', 1.4, 1.7, [(X(760) + X(830)) / 2, 0.98, Z(605) + 0.63], [0, 0, 0], { tex: monstorFridgeTex(), glow: true });
+  // the MONSTOR fridge behind the bar: black cabinet glowing green inside, four shelves packed with cans behind two
+  // glass doors (chrome handles), a lit MONSTOR header, a drip tray of empties and a promo sticker
+  { const fx0 = X(760), fx1 = X(830), fz0 = Z(605) + 0.08, fz1 = Z(605) + 0.62, FH = 1.95, fxc = (fx0 + fx1) / 2;
+    R(fx0, fz0, fx1, fz1, 0.12, 0.06, 0x111111); R(fx0, fz0, fx1, fz1, 0.1, FH - 0.05, 0x111111); R(fx0, fz0, fx1, fz0 + 0.05, FH, FH / 2, 0x0e2a12);
+    for (const x of [fx0 + 0.03, fx1 - 0.03]) R(x - 0.03, fz0, x + 0.03, fz1, FH, FH / 2, 0x111111);
+    const CANS = [[0x111111, 0x7cff3a], [0x111111, 0xff9a1f], [0x111111, 0x3ac8ff], [0xc8102e, 0xffffff]];
+    [0.16, 0.58, 1.0, 1.42].forEach((y, li) => { R(fx0 + 0.06, fz0 + 0.06, fx1 - 0.06, fz1 - 0.04, 0.02, y, 0x9aa0a6, { collide: true });
+      for (let x = fx0 + 0.12, i = 0; x < fx1 - 0.1; x += 0.075, i++) for (const dz of [0.15, 0.3]) { const [bod, band] = CANS[(i + li * 2 + (dz > 0.2 ? 1 : 0)) % 4], z = fz0 + dz + 0.06;
+        k.cyl(0.033, 0.033, 0.12, x, y + 0.072, z, bod, 10); k.cyl(0.0335, 0.0335, 0.035, x, y + 0.08, z, band, 10); k.cyl(0.027, 0.033, 0.012, x, y + 0.138, z, 0xc0c4c8, 10); }
+      k.spawns.push(new THREE.Vector3(fxc, y + 0.1, fz1 - 0.15)); });
+    for (const y of [0.45, 0.87, 1.29, 1.71]) k.lamp(fxc, y, fz0 + 0.1, 0x6aff4a, 0.05, false);
+    const gl = new THREE.Mesh(new THREE.PlaneGeometry(fx1 - fx0 - 0.1, FH - 0.25), new THREE.MeshLambertMaterial({ color: 0xdff0f4, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }));
+    gl.position.set(fxc, 0.12 + (FH - 0.25) / 2, fz1 + 0.005); gl.renderOrder = 3; scene.add(gl);
+    for (const x of [fx0 + 0.03, fxc, fx1 - 0.03]) R(x - 0.025, fz1, x + 0.025, fz1 + 0.03, FH - 0.15, FH / 2, 0x111111);
+    for (const y of [0.13, FH - 0.12]) R(fx0, fz1, fx1, fz1 + 0.03, 0.05, y, 0x111111);
+    for (const x of [fxc - 0.07, fxc + 0.07]) k.box(0.025, 0.6, 0.03, x, 1.05, fz1 + 0.05, 0xc8ccd0);
+    R(fx0, fz1, fx1, fz1 + 0.04, 0.28, FH + 0.1, 0x111111);
+    const hdr = canvasTex(512, 96, (g, w, h) => { g.fillStyle = '#0a0a0a'; g.fillRect(0, 0, w, h); g.fillStyle = '#39ff14'; g.font = '900 64px ' + FONT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('MONSTOR', w / 2, h / 2 + 2); g.strokeStyle = '#39ff14'; g.lineWidth = 4; g.strokeRect(6, 6, w - 12, h - 12); });
+    k.label('MONSTOR', fx1 - fx0 - 0.1, 0.24, [fxc, FH + 0.1, fz1 + 0.042], [0, 0, 0], { tex: hdr, glow: true });
+    k.pool(fxc, 0, fz1 + 0.6, 1.8, 0x9fffb0); blk(fx0, fz0, fx1, fz1 + 0.06, FH + 0.2);
+  }
   R(X(700) + 0.65, Z(605) + 0.08, X(745), Z(605) + 0.62, 0.9, 0.45, 0x4a2c18, { collide: true, block: true });
   R(X(700) + 0.8, Z(605) + 0.15, X(700) + 1.25, Z(605) + 0.5, 0.45, 1.13, 0x2a2a2a); k.cyl(0.02, 0.02, 0.1, X(700) + 0.95, 0.98, Z(605) + 0.5, CHROMEC, 6); k.cyl(0.02, 0.02, 0.1, X(700) + 1.1, 0.98, Z(605) + 0.5, CHROMEC, 6);   // coffee machine
   k.label('COFFEES — CAPPUCCINO · LATTE · AMERICANO (RONNIE: ONE OF EACH)', 0.7, 0.45, [X(700) + 1.0, 1.75, Z(605) + 0.1], [0, 0, 0], { bg: '#1f3f8a', fg: '#fff', border: '#fff', size: 34 });
@@ -530,7 +564,33 @@ export function buildPub(scene) {
   }
   { const x0 = X(895), x1 = X(1045), z0 = Z(975), z1 = Z(1305);
     for (let i = 0; i < 12; i++) { const x = x1 - 0.4 - (i % 3) * 0.55, z = z0 + 0.6 + Math.floor(i / 3) * 0.7; k.cyl(0.22, 0.22, 0.6, x, 0.3, z, 0xb8bcc2, 14, { block: true, collide: true }); k.cyl(0.05, 0.05, 0.08, x, 0.64, z, 0x333333, 8); for (const y of [0.08, 0.52]) k.cyl(0.225, 0.225, 0.04, x, y, z, 0x8a9098, 14); }   // beer kegs
-    for (let i = 0; i < 6; i++) R(x0 + 0.2, z1 - 0.7 - i * 0.0, x0 + 0.75, z1 - 0.25, 0.3, 0.15 + i * 0.3, [0xc8a050, 0x2e7d32, 0x5a3a22][i % 3], { block: true });   // crates
+    // the cellar: racking of cases and crates down the side, gas lines from every keg up to a panel of regulators, the
+    // cellar cooler on the wall, stacks of empty kegs, a pallet truck, cases of crisps and wine, a mop sink, the log sheet
+    for (const y of [0.1, 0.75, 1.4, 2.05]) R(x0 + 0.1, z0 + 1.6, x0 + 0.6, z0 + 5.4, 0.04, y, 0x2e6ab8, { collide: true });
+    for (const z of [z0 + 1.6, z0 + 3.5, z0 + 5.4]) for (const x of [x0 + 0.1, x0 + 0.6]) R(x - 0.025, z - 0.025, x + 0.025, z + 0.025, 2.2, 1.1, 0xff8a1f);
+    blk(x0 + 0.08, z0 + 1.58, x0 + 0.62, z0 + 5.42, 2.2);
+    let ci = 0; for (const y of [0.12, 0.77, 1.42]) for (let z = z0 + 1.7; z < z0 + 5.2; z += 0.42, ci++) { const t = ci % 4;
+      if (t === 0) { R(x0 + 0.14, z, x0 + 0.56, z + 0.36, 0.26, y + 0.15, 0x1e6a32); for (let i = 0; i < 6; i++) k.cyl(0.028, 0.028, 0.08, x0 + 0.2 + (i % 3) * 0.12, y + 0.32, z + 0.1 + Math.floor(i / 3) * 0.16, 0x1e4a1e, 6); }   // crates of bottles
+      else if (t === 1) R(x0 + 0.14, z, x0 + 0.56, z + 0.36, 0.3, y + 0.17, 0xc8a070);                                   // cases
+      else if (t === 2) { R(x0 + 0.14, z, x0 + 0.56, z + 0.36, 0.28, y + 0.16, 0xd8202a); R(x0 + 0.13, z + 0.08, x0 + 0.14, z + 0.28, 0.1, y + 0.16, 0xffd400); }   // crisps
+      else R(x0 + 0.14, z, x0 + 0.56, z + 0.36, 0.32, y + 0.18, 0x7a1a2a); }                                                // wine
+    // the gas lines and regulator panel (CO2 and mixed gas) on the end wall, a line to each keg
+    R(x1 - 0.14, z0 + 0.1, x1 - 0.1, z0 + 1.4, 0.8, 1.7, 0xe8e8e8);
+    for (let i = 0; i < 6; i++) { k.cyl(0.04, 0.04, 0.05, x1 - 0.16, 1.85, z0 + 0.25 + i * 0.2, 0xc8ccd0, 10); k.cyl(0.03, 0.03, 0.01, x1 - 0.185, 1.85, z0 + 0.25 + i * 0.2, 0xffffff, 10); }
+    for (let i = 0; i < 12; i++) { const kx = x1 - 0.4 - (i % 3) * 0.55, kz = z0 + 0.6 + Math.floor(i / 3) * 0.7, col = [0x1e88e5, 0xd32f2f, 0xffd400, 0x2e7d32][i % 4];
+      k.cyl(0.008, 0.008, H - 0.72, kx + 0.04, (0.68 + H) / 2 - 0.05, kz, col, 4); k.box(Math.abs(kx + 0.04 - (x1 - 0.15)) + 0.01, 0.012, 0.012, (kx + 0.04 + x1 - 0.15) / 2, H - 0.12, kz, col); }
+    // the cellar cooler, a thermometer, the log sheet on a clipboard
+    R(x1 - 0.5, z1 - 1.6, x1 - 0.08, z1 - 0.6, 0.6, H - 0.4, 0xd8dce0); for (let i = 0; i < 8; i++) R(x1 - 0.51, z1 - 1.55 + i * 0.12, x1 - 0.5, z1 - 1.5 + i * 0.12, 0.45, H - 0.4, 0x8a9098);
+    k.box(0.02, 0.2, 0.06, x1 - 0.09, 1.5, z1 - 2.0, 0xffffff); k.box(0.005, 0.15, 0.01, x1 - 0.102, 1.5, z1 - 2.0, 0xd32f2f);
+    k.box(0.02, 0.32, 0.24, x1 - 0.09, 1.3, z1 - 2.5, 0x8a5a2a); k.label('CELLAR LOG: 11°C. LINES CLEANED. RONNIE FOUND ASLEEP ON KEG 4.', 0.2, 0.26, [x1 - 0.1015, 1.28, z1 - 2.5], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: null, size: 26 });
+    // empty kegs stacked on their sides by the door out, a pallet truck, a mop sink, a hose reel, a bin of empties
+    for (let i = 0; i < 4; i++) { const g = new THREE.CylinderGeometry(0.22, 0.22, 0.6, 14); g.rotateZ(Math.PI / 2); k.parts.push(part(g, 0x9aa0a6, [x1 - 0.7 - (i % 2) * 0.0, 0.22 + Math.floor(i / 2) * 0.44, z1 - 0.3 - (i % 2) * 0.46])); }
+    blk(x1 - 1.02, z1 - 0.8, x1 - 0.38, z1 - 0.05, 0.9);
+    R(x0 + 1.2, z1 - 0.8, x0 + 1.6, z1 - 0.2, 0.1, 0.06, 0xd32f2f); R(x0 + 1.2, z1 - 0.8, x0 + 1.26, z1 - 0.2, 1.1, 0.55, 0xd32f2f);   // pallet truck
+    R(x0 + 0.1, z0 + 0.9, x0 + 0.6, z0 + 1.4, 0.45, 0.225, 0xc8ccd0, { block: true }); k.cyl(0.012, 0.012, 0.3, x0 + 0.15, 0.6, z0 + 1.15, 0xd0d0d0, 6);   // mop sink
+    { const hr = new THREE.TorusGeometry(0.16, 0.03, 6, 16); hr.rotateY(Math.PI / 2); k.parts.push(part(hr, 0x2e7d32, [x0 + 0.04, 1.3, z0 + 1.15])); }
+    k.cyl(0.2, 0.18, 0.6, x1 - 1.6, 0.3, z0 + 0.35, 0x37474f, 12, { block: true }); for (let i = 0; i < 6; i++) k.cyl(0.025, 0.025, 0.2, x1 - 1.66 + (i % 3) * 0.06, 0.66, z0 + 0.3 + Math.floor(i / 3) * 0.08, 0x1e5a24, 6);
+    k.light((x0 + x1) / 2, 2.6, (z0 + z1) / 2, 0xf4f8ff, 2.5, 7);
     for (let i = 0; i < 3; i++) k.cyl(0.12, 0.12, 0.9, x0 + 0.35 + i * 0.3, 0.45, z0 + 0.4, 0x1565c0, 10, { block: true });   // gas cylinders
     k.label('BEER KEGS — RONNIE IS NOT A KEG. STOP LYING DOWN IN HERE.', 1.4, 0.4, [x1 - 0.1, 1.8, (z0 + z1) / 2], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: '#c0392b', size: 36 });
     k.label('BACK ROOM', 0.9, 0.25, [x0 - 0.1, 2.4, Z(1268)], [0, -Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: null, size: 60 });
