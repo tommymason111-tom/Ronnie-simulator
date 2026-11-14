@@ -558,8 +558,20 @@ export class SquadMember extends Character {
 
   personalityPose(t) {
     const r = this.rag;
+    if (this.activity === 'lounge') { this.sitPose(); r.aim('lLegL', 0, -0.25, 1); r.aim('lLegR', 0, -0.25, 1); r.aim('uArmL', 0.5, 0.3, -0.6); r.aim('uArmR', -0.5, 0.3, -0.6); r.bob -= 0.12; return; }
     if (this.seated) { this.sitPose(); return; }
     if (this.dancing) { this.dancePose(t); return; }
+    // free roam: what they're up to
+    const ph = (this.id.charCodeAt(0) % 7) * 1.3;
+    switch (this.activity) {
+      case 'phone': r.aim('uArmR', -0.2, -1, 0.3); r.aim('lArmR', -0.1, 0.2, 1); r.aim('uArmL', 0.25, -1, 0.35); r.aim('lArmL', -0.2, 0.25, 1); r.pose.head && r.pose.head.setFromAxisAngle(_v.set(1, 0, 0), 0.35); return;
+      case 'drink': { const up = ((t + ph) % 7) > 5.6; r.aim('uArmR', -0.15, up ? -0.2 : -1, up ? 1 : 0.3); r.aim('lArmR', up ? 0.4 : -0.05, up ? 1 : 0.1, up ? -0.3 : 1); return; }
+      case 'watch': r.aim('uArmL', 0.2, -1, 0.35); r.aim('lArmL', -1, 0.15, 0.3); r.aim('uArmR', -0.2, -1, 0.35); r.aim('lArmR', 1, 0.2, 0.3); return;
+      case 'chat': { const s = Math.sin((t + ph) * 2.2); r.aim('uArmR', -0.3, -0.7, 0.6); r.aim('lArmR', -0.3 + s * 0.4, 0.4, 1); r.aim('uArmL', 0.25, -0.9, 0.3); r.aim('lArmL', 0.2, 0.1 + s * 0.2, 1); return; }
+      case 'darts': { const k = ((t + ph) % 4) / 4, wind = k < 0.25 ? k / 0.25 : k < 0.32 ? 1 - (k - 0.25) / 0.07 : 0;
+        r.aim('uArmR', -0.1, 0.05, 1); r.aim('lArmR', 0, 0.2 + wind * 0.9, 1 - wind * 0.9); return; }
+      case 'bat': r.aim('uArmR', -0.4, -0.5, 0.7); r.aim('lArmR', -0.2, 0.3 + Math.sin((t + ph) * 3) * 0.3, 1); r.aim('uLegL', 0.2, -1, 0.05); r.aim('uLegR', -0.2, -1, 0.05); return;
+    }
     switch (this.id) {
       case 'lewis':   // double-bicep flex every so often
         if ((t % 16) > 14) { r.aim('uArmL', 1, 0.15, 0); r.aim('lArmL', 0.1, 1, 0.1); r.aim('uArmR', -1, 0.15, 0); r.aim('lArmR', -0.1, 1, 0.1); }   // a quick double-bicep flex now and then

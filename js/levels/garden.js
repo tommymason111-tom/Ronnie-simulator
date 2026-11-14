@@ -335,8 +335,8 @@ export function buildGarden(scene) {
   for (const z of [9.7, 10.6]) R(0.25, z - 0.42, 0.62, z + 0.42, 0.12, 0.5, CUSH);
   k.spawns.push(new THREE.Vector3(-1.6, 0.62, 11.4));
   // a short wall off the end of the dining/kitchen wall into the room, with the armchair backed against it, facing the TV
-  wallRun('z', -0.6, 6.4, 8.7, CEIL, [], { color: PAINT, t: 0.12 });
-  { const ax = -1.12, az = 8.15, ry = Math.atan2(-(-5.9 - ax), -(11.4 - az)), c = Math.cos(ry), s = Math.sin(ry), COL = 0x6a3a2a, CUSH = 0x8a5a3a;
+  wallRun('x', 7.2, -2.2, -0.54, CEIL, [], { color: PAINT, t: 0.12 });                               // dining | living: a short wall out from the kitchen corner (the rest stays open)
+  { const ax = -1.35, az = 7.78, ry = Math.atan2(-(-5.9 - ax), -(11.4 - az)), c = Math.cos(ry), s = Math.sin(ry), COL = 0x6a3a2a, CUSH = 0x8a5a3a;
     const at = (lx, lz) => [ax + lx * c + lz * s, az - lx * s + lz * c];
     const rb = (w, h, d, lx, y, lz, col) => { const [px, pz] = at(lx, lz); k.box(w, h, d, px, y, pz, col, { rot: [0, ry, 0] }); };
     rb(0.8, 0.4, 0.8, 0, 0.2, 0, COL); rb(0.62, 0.12, 0.6, 0, 0.46, -0.05, CUSH);                 // base + seat cushion
@@ -373,8 +373,8 @@ export function buildGarden(scene) {
     const IN = 0.106;
     // dining + living (left half)
     trim('x', HZ0 + IN, HX0 + 0.1, -0.66, 1); trim('z', HX0 + IN, HZ0 + 0.1, HZ1 - 0.1, 1);
-    trim('z', -0.66, HZ0 + 0.1, 2.4, -1); trim('z', -0.66, 3.4, 8.7, -1); trim('x', HZ1 - IN, HX0 + 0.1, 1.09, -1);
-    trim('z', 1.09, 7.5, HZ1 - 0.1, -1); trim('z', -0.54, 6.46, 8.7, 1); trim('x', 6.46, -0.54, 1.09, 1);
+    trim('z', -0.66, HZ0 + 0.1, 2.4, -1); trim('z', -0.66, 3.4, 7.14, -1); trim('x', 7.14, -2.2, -0.66, -1); trim('x', 7.26, -2.2, -0.54, 1); trim('x', HZ1 - IN, HX0 + 0.1, 1.09, -1);
+    trim('z', 1.09, 7.5, HZ1 - 0.1, -1); trim('x', 6.46, -0.54, 1.09, 1);
     // kitchen
     trim('z', -0.54, HZ0 + 0.1, 2.4, 1); trim('z', -0.54, 3.4, 5.7, 1); trim('x', HZ0 + IN, -0.54, 0, 1); trim('x', HZ0 + IN, 1.0, HX1 - 0.1, 1); trim('z', HX1 - IN, HZ0 + 0.1, 6.34, -1);
     // hall
@@ -928,6 +928,28 @@ export function buildGarden(scene) {
   room.pingpong = new PingPong(scene, { c: new THREE.Vector3(TT.x, TT.y, F(TT.z)) });
   ppScore.material.map = room.pingpong.board.tex; ppScore.material.needsUpdate = true;
   room.games = [room.dartboard, room.pingpong];
+  // free roam: where people hang out and what they're doing (x, z, the way they face, what they're up to)
+  const face = (x, z, tx, tz) => Math.atan2(tx - x, tz - z);
+  room.activities = [
+    { x: -3.8, z: -0.3, yaw: face(-3.8, -0.3, BBQ_SPOT.x, BBQ_SPOT.z), pose: 'drink' },            // round the barbecue
+    { x: -5.6, z: -0.9, yaw: face(-5.6, -0.9, BBQ_SPOT.x, BBQ_SPOT.z), pose: 'chat' },
+    { x: 2.43, z: 1.38, yaw: face(2.43, 1.38, 3.05, 1.5), pose: 'sit' },                            // the bistro chair
+    { x: 5.0, z: 0.9, yaw: face(5.0, 0.9, 5.7, 1.45), pose: 'drink' },                              // by the cool box
+    { x: 0.6, z: 0.95, yaw: Math.PI, pose: 'phone' },                                               // on the back step
+    { x: -4.6, z: F(-4.7) + 0.25, yaw: 0, pose: 'lounge' }, { x: -3.5, z: F(-4.7) + 0.25, yaw: 0, pose: 'lounge' },   // sun loungers
+    { x: TT.x - TL / 2 - 0.45, z: F(TT.z), yaw: Math.PI / 2, pose: 'bat' }, { x: TT.x + TL / 2 + 0.45, z: F(TT.z), yaw: -Math.PI / 2, pose: 'bat' },   // table tennis
+    { x: TT.x - 0.3, z: F(TT.z) + 1.4, yaw: Math.PI, pose: 'watch' },
+    { x: DB.x + 2.45, z: F(DB.z), yaw: -Math.PI / 2, pose: 'darts' }, { x: DB.x + 2.9, z: F(DB.z) + 0.7, yaw: -Math.PI / 2 - 0.4, pose: 'drink' },   // darts in the cabin
+    { x: 0.9, z: F(-15.6), yaw: 0, pose: 'sit' }, { x: 2.5, z: F(-15.6), yaw: 0, pose: 'sit' },      // cabin sofa
+    { x: 4.2, z: F(-12.4), yaw: -Math.PI / 2, pose: 'sit' },                                        // cabin armchair
+    { x: -2.6, z: F(-12.15), yaw: Math.PI, pose: 'phone' },                                         // spare room table
+    { x: -1.5, z: F(-9.2), yaw: face(-1.5, F(-9.2), -2.3, F(-9.0)), pose: 'chat' },                // by the bird bath
+    { x: 0.35, z: 5.0, yaw: 0, pose: 'drink' },                                                     // raiding the fridge
+    { x: -2.6, z: 11.45, yaw: Math.PI, pose: 'sit' }, { x: -1.6, z: 11.45, yaw: Math.PI, pose: 'sit' },   // living room sofa, telly on
+    { x: -1.35, z: 7.78, yaw: face(-1.35, 7.78, -5.9, 11.4), pose: 'sit' },                         // the armchair
+    { x: -4.42, z: 4.6, yaw: Math.PI / 2, pose: 'sit' },                                            // dining table
+    { x: 2.0, z: 8.6, yaw: Math.PI / 2, pose: 'phone' },                                            // in the hall
+  ];
   return room;
 }
 

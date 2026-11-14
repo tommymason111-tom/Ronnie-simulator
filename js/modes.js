@@ -217,7 +217,7 @@ export class Director {
     if (id === 'bbq') this.startBbq();
     if (id !== 'sweep') this.removeTrolley();
     if (id === 'everyone') { this.nextChaos = 18; tommy.attacks = true; tommy.directed = true; }
-    if (id === 'roam') { tommy.attacks = false; tommy.directed = false; this.pending = null; if (g.fx) { g.fx.setCountdown(null); g.fx.hideCard && g.fx.hideCard(); } }
+    if (id === 'roam') { tommy.attacks = false; tommy.directed = false; this.pending = null; if (g.fx) { g.fx.setCountdown(null); g.fx.hideCard && g.fx.hideCard(); } this.startRoam(); }
     this.nextAttackT = id === 'everyone' ? 12 : 15;
     if (g.fx) g.fx.setCountdown(null);
     tommy.say({
@@ -336,6 +336,7 @@ export class Director {
     const idle = (c) => c.state === 'idle' && !c.down;
     switch (this.mode) {
       case 'date': this.updateDate(dt, ctx); break;
+      case 'roam': this.updateRoam(dt); break;
       case 'sweep': this.updateSweep(dt, ctx); break;
       case 'bbq': this.updateBbq(dt, ctx); this.updateAttacks(dt); break;
       case 'everyone':
@@ -618,6 +619,56 @@ export class Director {
         for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; sw.total = Math.max(0, sw.total - 1.5); }
         g.showBanner('CAUGHT BY OLIVER!', `-${lose} ITEMS`); sfx('whistle', null, 1);
         oli.say(['Bag check! These are coming with me.', 'Caught on camera, Ron. Literally. 40k views already.', 'Sir. SIR. Those aren\'t paid for.'][sw.caught % 3], 4);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ FREE ROAM
+  // Everyone spread right round the place, each doing their own thing (on the sofa, at the darts,
+  // by the barbecue, on their phone, having a drink, chatting), and every so often someone gets up
+  // and wanders off to do something else.
+  startRoam() {
+    const g = this.g, room = g.room, squad = this.cast.filter(c => c !== g.tommy);
+    let acts = (room.activities || []).map(a => ({ ...a }));
+    if (acts.length < squad.length + 3) {
+      // spread spots right across the map (farthest-point sampling over the free hang-out spots)
+      const pool = room.nav ? room.nav.sampleSpots(60, 1.2) : room.tommySpots.slice(), picked = [];
+      const head = g.player.head;
+      let cur = pool.reduce((b, s) => Math.hypot(s.x - head.x, s.y - head.z) > Math.hypot(b.x - head.x, b.y - head.z) ? s : b, pool[0]);
+      while (cur && picked.length < squad.length + 4 - acts.length) {
+        picked.push(cur);
+        let best = null, bd = -1; for (const s of pool) { const d = Math.min(...picked.map(p => Math.hypot(p.x - s.x, p.y - s.y)), ...acts.map(a => Math.hypot(a.x - s.x, a.z - s.y))); if (d > bd) { bd = d; best = s; } }
+        if (bd < 0.9) break; cur = best;
+      }
+      const POSES = ['phone', 'drink', 'watch', 'chat', 'stand', 'phone', 'drink'];
+      picked.forEach((s, i) => acts.push({ x: s.x, z: s.y, yaw: Math.random() * 6.28, pose: POSES[i % POSES.length] }));
+    }
+    this.roamActs = shuffle(acts);
+    for (const c of squad) { const a = this.roamActs.find(a => !a.who); if (!a) break; this.takeAct(c, a, true); c.roamT = 25 + Math.random() * 40; }
+  }
+  takeAct(c, a, now) {
+    for (const o of this.roamActs) if (o.who === c) o.who = null;
+    a.who = c; c.roamAct = a; c.active = false; c.lookOverride = null; c.seated = false; c.activity = null;
+    if (now) this.settleAct(c); else { c.roamGoing = true; c.goTo(a.x, a.z, 0.8); }
+  }
+  settleAct(c) {
+    const a = c.roamAct; c.roamGoing = false;
+    c.state = 'idle'; c.stateT = 0; c.rag.placeAt(a.x, a.z, a.yaw); c.faceYaw = a.yaw;
+    c.seated = a.pose === 'sit' || a.pose === 'lounge'; c.activity = a.pose;
+  }
+  updateRoam(dt) {
+    if (!this.roamActs) return;
+    for (const c of this.cast) {
+      if (!c.roamAct || c.down) continue;
+      if (c.roamGoing && c.state === 'idle') this.settleAct(c);
+      if (c.roamGoing || c.state !== 'idle') continue;
+      // knocked out of their seat? back into it
+      if (c.seated && Math.hypot(c.pos.x - c.roamAct.x, c.pos.z - c.roamAct.z) > 0.3) this.settleAct(c);
+      if ((c.roamT -= dt) <= 0) {
+        c.roamT = 30 + Math.random() * 45;
+        const free = this.roamActs.filter(a => !a.who); if (!free.length) continue;
+        free.sort((p, q) => Math.hypot(p.x - c.pos.x, p.z - c.pos.z) - Math.hypot(q.x - c.pos.x, q.z - c.pos.z));
+        this.takeAct(c, free[Math.floor(Math.random() * Math.min(4, free.length))], false);
       }
     }
   }

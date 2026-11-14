@@ -74,6 +74,7 @@ export class Character {
       const b = this.room.bounds, m = 0.3;
       root.x = THREE.MathUtils.clamp(root.x, b.x0 + m, b.x1 - m);
       root.z = THREE.MathUtils.clamp(root.z, b.z0 + m, b.z1 - m);
+      if (this.seated) return;          // sat down in a chair / on a sofa: it's meant to be "in" the furniture
       for (const k of this.room.blockers) {
         const p = 0.22;
         if (root.x > k.x0 - p && root.x < k.x1 + p && root.z > k.z0 - p && root.z < k.z1 + p) {
