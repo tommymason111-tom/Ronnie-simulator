@@ -436,11 +436,10 @@ export function buildGarden(scene) {
     // light switches and plug sockets by the doors and along the walls
     const sw = (axis, c, a, y, d) => axis === 'x' ? k.box(0.08, 0.08, 0.012, a, y, c + d * 0.006, 0xf8f8f8) : k.box(0.012, 0.08, 0.08, c + d * 0.006, y, a, 0xf8f8f8);
     sw('z', -0.66, 3.55, 1.2, -1); sw('z', -0.54, 3.55, 1.2, 1); sw('z', 1.09, 7.65, 1.2, -1); sw('z', 1.21, 7.65, 1.2, 1); sw('x', HZ1 - IN, 2.75, 1.2, -1);
-    for (const [axis, c, a, d] of [['x', HZ1 - IN, -0.2, -1], ['x', HZ1 - IN, -4.8, -1], ['z', HX0 + IN, 6.5, 1], ['z', -0.66, 5.8, -1], ['x', HZ0 + IN, 0.6, 1], ['z', 1.21, 11.2, 1]]) { sw(axis, c, a, 0.3, d); }
+    for (const [axis, c, a, d] of [['x', HZ1 - IN, -0.2, -1], ['x', HZ1 - IN, -4.8, -1], ['z', HX0 + IN, 6.5, 1], ['z', -0.66, 5.8, -1], ['z', 1.21, 11.2, 1]]) { sw(axis, c, a, 0.3, d); }
     // kitchen: white tile splashback, wall cupboards, a cooker with hob and hood, microwave, toaster, kitchen roll, a calendar
     const SPL = tileTex('#f4f4f2', '#ececea', '#c8c8c4', 32);
     k.texBox(0.008, 0.6, 4.1, HX1 - IN - 0.004, 1.24, 4.2, SPL, { tile: 0.3 }); k.texBox(2.85, 0.6, 0.008, 2.43, 1.24, 6.34 - 0.004, SPL, { tile: 0.3 });
-    k.texBox(0.98, 0.95, 0.008, -0.04, 1.4, HZ0 + IN + 0.002, SPL, { tile: 0.3 });
     for (let i = 0; i < 4; i++) { const z = 2.4 + i * 0.85; k.box(0.34, 0.7, 0.8, HX1 - 0.27, 1.95, z, 0xf2f2ee); k.box(0.01, 0.12, 0.02, HX1 - 0.445, 1.7, z - 0.32, 0x888888); }
     for (let i = 0; i < 3; i++) { const x = 1.9 + i * 0.75; k.box(0.7, 0.7, 0.34, x, 1.95, 6.17, 0xf2f2ee); k.box(0.12, 0.01, 0.02, x + 0.25, 1.7, 5.995, 0x888888); }
     { const cx = 2.45; k.box(0.6, 0.84, 0.02, cx, 0.42, 5.73, 0x2a2a2e); k.box(0.46, 0.34, 0.01, cx, 0.42, 5.72, 0x111418); k.box(0.42, 0.02, 0.02, cx, 0.66, 5.71, 0xb0b0b0);   // oven door
@@ -471,7 +470,7 @@ export function buildGarden(scene) {
     k.cyl(0.25, 0.25, 0.04, -5.6, 4.95, HZ0 - 0.32, 0xdcdcdc, 18); k.box(0.03, 0.3, 0.03, -5.6, 4.95, HZ0 - 0.18, 0x888888); k.box(0.04, 0.04, 0.3, -5.6, 4.95, HZ0 - 0.45, 0x888888);   // satellite dish
     k.box(0.08, 0.08, 0.06, -1.2, 0.6, HZ0 - 0.13, 0x9a9a9a); k.box(0.1, 0.03, 0.03, -1.2, 0.66, HZ0 - 0.15, 0x3a8a3a); k.cyl(0.012, 0.012, 0.08, -1.2, 0.54, HZ0 - 0.18, 0x9a9a9a, 6);   // outside tap
     k.cyl(0.035, 0.035, TOP - 0.2, 4.35, (TOP - 0.2) / 2, HZ0 - 0.13, 0x2a2a2a, 8);                         // second downpipe
-    for (let i = 0; i < 40; i++) { const x = -6.4 + rnd() * 10.8, y = 0.3 + rnd() * 5; if (Math.abs(x + 3.8) < 1.4 && y < 2.3) continue; k.box(0.18, 0.06, 0.005, x, y, HZ0 - 0.103, [0x7a3220, 0x9a4a30, 0x6a2a1a][i % 3]); }   // weathered bricks
+    for (let i = 0; i < 40; i++) { const x = -6.4 + rnd() * 10.8, y = 0.3 + rnd() * 5; const holes = [[-4.9, -2.7, 0.8, 2.3], [1.9, 3.6, 0.9, 2.3], [-4.9, -2.7, 3.2, 4.65], [1.9, 3.6, 3.2, 4.65], [-0.15, 1.15, -1, 2.3]]; if (holes.some(([a, b, c, d]) => x > a - 0.12 && x < b + 0.12 && y > c && y < d)) continue; k.box(0.18, 0.06, 0.005, x, y, HZ0 - 0.103, [0x7a3220, 0x9a4a30, 0x6a2a1a][i % 3]); }   // weathered bricks
   }
 
   // ======================================================== THE PATIO
