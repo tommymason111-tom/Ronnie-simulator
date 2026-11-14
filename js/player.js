@@ -422,6 +422,7 @@ export class Player {
   clampHead() {
     this.rig.updateMatrixWorld(true);
     this.camera.getWorldPosition(_v);
+    if (this.zoomLean > 0.001) { const f = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(new THREE.Quaternion())); _v.addScaledVector(f, -this.zoomLean); }   // (ignore the darts lean-in)
     const m = 0.2, B = this.room ? this.room.bounds : { x0: -ROOM.w / 2, x1: ROOM.w / 2, z0: -ROOM.d / 2, z1: ROOM.d / 2 };
     let cx = THREE.MathUtils.clamp(_v.x, B.x0 + m, B.x1 - m), cz = THREE.MathUtils.clamp(_v.z, B.z0 + m, B.z1 - m);
     const r = 0.22;
@@ -471,6 +472,7 @@ export class Player {
     const db = this.room && this.room.dartboard;
     if (it.def.dart && db) {
       const o = this.camera.getWorldPosition(new THREE.Vector3()), dir = this.camera.getWorldDirection(new THREE.Vector3());
+      if (this.zoomLean > 0.001) { it.pos.addScaledVector(dir, -this.zoomLean); it.prev.copy(it.pos); }      // zoomed in: the dart still leaves from where you're actually standing
       const den = dir.dot(db.n);
       if (den < -0.2) {
         const t = new THREE.Vector3().subVectors(db.c, o).dot(db.n) / den;
@@ -493,8 +495,11 @@ export class Player {
 
   updateFlat(dt, t) {
     if (!this.flatMode) return;
-    this.camera.position.set(0, 1.6, 0);
     this.camera.rotation.set(this.flatPitch, this.flatYaw, 0, 'YXZ');
+    // darts zoom: lean your view in towards where you're looking (your hand and the dart come with it)
+    this.zoomLean = (this.zoomLean || 0) + ((this.zoom ? (this.zoomDist || 1.4) : 0) - (this.zoomLean || 0)) * Math.min(1, dt * 7);
+    this.camera.position.set(0, 1.6, 0);
+    if (this.zoomLean > 0.001) { const f = new THREE.Vector3(0, 0, -1).applyEuler(this.camera.rotation); this.camera.position.addScaledVector(f, this.zoomLean); }
     const mx = this.flatMove.x, mz = this.flatMove.z;
     if (Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05) {
       const sp = TUNING.moveSpeed * dt * 0.9 * (this.speedMul || 1) * (this.sprint ? 1.9 : 1);

@@ -44,6 +44,8 @@
     .tbtn.down { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.35); }
     .tbtn.off { opacity: 0.4; }
     #btn-sprint { left: max(36px, calc(env(safe-area-inset-left) + 20px)); bottom: max(200px, calc(env(safe-area-inset-bottom) + 180px)); width: 92px; height: 44px; border-radius: 22px; background: rgba(255,255,255,0.85); font-size: 13px; }
+    #btn-zoom { display: none; right: max(24px, env(safe-area-inset-right)); bottom: max(150px, calc(env(safe-area-inset-bottom) + 146px)); width: 96px; height: 44px; border-radius: 22px; background: rgba(255,255,255,0.85); font-size: 13px; }
+    #btn-zoom.show { display: block; } #btn-zoom.on { background: #1e88e5; color: #fff; box-shadow: 0 0 16px #1e88e5, 0 5px 0 rgba(0,0,0,0.35); }
     #btn-sprint.on { background: #ff6d00; color: #fff; box-shadow: 0 0 16px #ff6d00, 0 5px 0 rgba(0,0,0,0.35); }
     #btn-eat { right: max(24px, env(safe-area-inset-right)); bottom: max(40px, env(safe-area-inset-bottom)); width: 96px; height: 96px; background: #39ff14; }
     #btn-throw { right: max(132px, calc(env(safe-area-inset-right) + 108px)); bottom: max(22px, env(safe-area-inset-bottom)); width: 76px; height: 76px; background: #ffd400; font-size: 14px; }

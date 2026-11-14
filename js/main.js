@@ -430,6 +430,7 @@ const touch = setupTouch({
   },
   onEat: () => { if (player.flatHolder?.held) player.flatEat(); },
   onThrow: () => player.flatThrow(),
+  onZoom: (dir) => { player.zoom = dir === undefined ? !player.zoom : dir; return player.zoom; },
   onSprint: () => { player.sprint = !player.sprint; sfx(player.sprint ? 'whoosh' : 'pop', null, 0.4); return player.sprint; },
   onTap: (x, y) => {
     if (!player.flatMode) return;
@@ -496,6 +497,14 @@ const touch = setupTouch({
     player.flatGrab(best);
   },
 });
+// darts: zoom in on the board (button, wheel or Z) while you're holding a dart: your view leans in towards it
+let zoomShown = null;
+function updateZoom() {
+  const held = player.flatHolder?.held, db = room.dartboard, can = !!(player.flatMode && held && held.def.dart && db && db.playing);
+  if (!can) player.zoom = false;
+  if (can) { const d = camera.getWorldPosition(_a).distanceTo(db.c) + (player.zoomLean || 0); player.zoomDist = Math.max(0, Math.min(1.6, d - 0.75)); }   // stop short of the board
+  if (zoomShown !== can + '|' + !!player.zoom) { zoomShown = can + '|' + !!player.zoom; touch.setZoomAvailable(can, !!player.zoom); }
+}
 function updateTouchUI() {
   const held = player.flatHolder?.held;
   touch.setEatLabel(held && held.def.drink ? 'DRINK' : 'EAT', !!held && !held.empty);
@@ -639,7 +648,8 @@ renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
   time += dt;
   const xr = renderer.xr.isPresenting;
-  if (loadShown && time > 0.15) hideLoading();      // a couple of frames in: the level's there
+  if (loadShown && time > 0.15) hideLoading();
+  if (!xr) updateZoom();      // a couple of frames in: the level's there
 
   if (!xr && !player.flatMode) { camera.position.set(0, 1.6, 0); camera.rotation.set(-0.3, time * 0.05, 0, 'YXZ'); }   // slow look-around behind the menu
 

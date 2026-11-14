@@ -11,6 +11,7 @@ export function setupTouch(cb) {
     <button id="btn-eat" class="tbtn">EAT</button>
     <button id="btn-throw" class="tbtn">THROW</button>
     <button id="btn-sprint" class="tbtn">🏃 SPRINT</button>
+    <button id="btn-zoom" class="tbtn">🔍 ZOOM</button>
     <div id="hint"></div>`;
   document.body.appendChild(root);
   const stick = root.querySelector('#stick'), knob = root.querySelector('#knob');
@@ -41,7 +42,11 @@ export function setupTouch(cb) {
   const press = (el, fn) => el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); cb.onUserGesture?.(); fn(); el.classList.add('down'); setTimeout(() => el.classList.remove('down'), 150); });
   press(eat, () => cb.onEat());
   press(thr, () => cb.onThrow());
-  press(spr, () => showSprint(cb.onSprint()));          // tap to switch sprinting on / off (no cooldown)
+  press(spr, () => showSprint(cb.onSprint()));
+  const zm = root.querySelector('#btn-zoom'), showZoom = (on) => { zm.classList.toggle('on', on); zm.textContent = on ? '🔍 ZOOMED' : '🔍 ZOOM'; };
+  press(zm, () => showZoom(cb.onZoom()));
+  // mouse wheel zooms too (while it's allowed)
+  window.addEventListener('wheel', (e) => { if (!root.classList.contains('on') || !zm.classList.contains('show')) return; showZoom(cb.onZoom(e.deltaY < 0)); }, { passive: true });          // tap to switch sprinting on / off (no cooldown)
 
   // ---- look + tap on the 3D view ----
   const canvas = cb.canvas;
@@ -76,6 +81,7 @@ export function setupTouch(cb) {
     if (!root.classList.contains('on')) return;
     if (e.code === 'KeyE') cb.onEat();
     else if (e.code === 'Space' || e.code === 'KeyF') { e.preventDefault(); cb.onThrow(); }
+    else if (e.code === 'KeyZ' && zm.classList.contains('show')) showZoom(cb.onZoom());
     else if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyR') && !e.repeat) showSprint(cb.onSprint());
     keys.add(e.code); updKeys();
   });
@@ -84,6 +90,7 @@ export function setupTouch(cb) {
   return {
     show(on) { root.classList.toggle('on', on); },
     setSprint: showSprint,
+    setZoomAvailable(on, zoomed) { zm.classList.toggle('show', on); showZoom(on && zoomed); },
     setEatLabel(txt, enabled) { eat.textContent = txt; eat.classList.toggle('off', !enabled); },
     setThrowEnabled(on) { thr.classList.toggle('off', !on); },
     hint(txt) { hint.textContent = txt; hint.classList.add('on'); clearTimeout(hint._t); hint._t = setTimeout(() => hint.classList.remove('on'), 2200); },
