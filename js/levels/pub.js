@@ -647,12 +647,55 @@ export function buildPub(scene) {
     const g = new THREE.Mesh(new THREE.PlaneGeometry(door.L - 0.3, 2.2), new THREE.MeshBasicMaterial({ map: streetViewTex(1), color: 0xdddddd })); g.position.set(mx, 1.1, mz); g.rotation.y = door.ry; scene.add(g);
     k.box(0.04, 2.2, 0.06, mx, 1.1, mz, DARKWOOD, { rot: [0, door.ry, 0] });
     k.label('EXIT', 0.4, 0.18, [mx, 2.5, mz], [0, door.ry, 0], { bg: '#1b8a3a', fg: '#fff', border: null, size: 90, glow: true });
-    R(X(700), Z(440), X(760), Z(470), 1.15, 0.575, DARKWOOD, { block: true, collide: true }); R(X(700) - 0.05, Z(440) - 0.05, X(760) + 0.05, Z(470) + 0.05, 0.05, 1.18, 0x2a1a10);
-    k.label('PLEASE WAIT TO BE SEATED', 0.9, 0.3, [X(730), 0.8, Z(470) + 0.006], [0, 0, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 44 });
-    k.label('BOOKINGS: "RONNIE, TABLE FOR ONE, FOOD FOR TWELVE"', 0.5, 0.35, [X(730), 1.21, Z(455)], [-Math.PI / 2, 0, 0], { bg: '#fffdf2', fg: '#111', border: null, size: 30 });
-    for (let x = X(625); x < X(670); x += 0.4) k.box(0.1, 0.04, 0.04, x, 1.7, Z(560), 0x3a2416);
-    k.label('WELCOME TO THE OYSTERFLEET — PLEASE KEEP RONNIE AWAY FROM THE BAR SNACKS', 2.0, 0.5, [X(835) - 0.1, 1.8, Z(465)], [0, -Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 38 });
-    k.lamp(X(725), H - 0.02, Z(480), 0xfff1d0, 0.1);
+    // the reception counter, against the right-hand wall: customers come in the front doors and step up to it,
+    // staff stand on the pub side; oak panelled front with a raised ledge, a working top behind
+    const cx0 = X(700), cx1 = X(835) - 0.08, cz0 = Z(440), cz1 = cz0 + 0.62, OAKC = 0x8a5a30;
+    R(cx0, cz0, cx1, cz1, 0.92, 0.46, OAKC, { collide: true, block: true });
+    const np = Math.round((cx1 - cx0) / 0.6), pw = (cx1 - cx0) / np;
+    for (let i = 0; i <= np; i++) R(cx0 + i * pw - 0.035, cz0 - 0.03, cx0 + i * pw + 0.035, cz0, 1.0, 0.55, 0x9a6a3a);   // stiles
+    for (let i = 0; i < np; i++) { R(cx0 + i * pw + 0.07, cz0 - 0.025, cx0 + (i + 1) * pw - 0.07, cz0, 0.7, 0.55, OAKC); R(cx0 + i * pw + 0.12, cz0 - 0.035, cx0 + (i + 1) * pw - 0.12, cz0 - 0.02, 0.58, 0.55, 0x93623a); }
+    R(cx0 - 0.03, cz0 - 0.08, cx1, cz0 + 0.22, 0.05, 1.12, 0x4a2a14, { collide: true }); R(cx0 - 0.03, cz0 - 0.09, cx1, cz0 - 0.06, 0.06, 1.12, 0x3a1e0c);   // the raised ledge
+    R(cx0, cz0 + 0.2, cx1, cz1 + 0.05, 0.04, 0.93, 0x5a3216, { collide: true });                                                // the working top
+    R(cx0 - 0.05, cz0 - 0.05, cx0, cz1 + 0.05, 1.15, 0.575, 0x9a6a3a); R(cx0, cz0 - 0.03, cx1, cz0, 0.1, 0.05, 0x2a1a10);
+    blk(cx0 - 0.05, cz0 - 0.1, cx1, cz1 + 0.05, 1.15);
+    // on the ledge: the bell, the bookings book, a bowl of mints, a stack of menus, a candle; on the top: the screen, phone, card machine
+    k.cyl(0.04, 0.05, 0.035, cx0 + 0.35, 1.165, cz0 + 0.05, 0xd4af37, 12); k.cyl(0.006, 0.006, 0.03, cx0 + 0.35, 1.195, cz0 + 0.05, 0x333333, 6);
+    R(cx0 + 0.6, cz0 - 0.02, cx0 + 1.1, cz0 + 0.18, 0.025, 1.158, 0x7a1f24); R(cx0 + 0.62, cz0, cx0 + 1.08, cz0 + 0.16, 0.012, 1.175, 0xfaf6ea);
+    k.label('BOOKINGS: "RONNIE, TABLE FOR ONE, FOOD FOR TWELVE"', 0.42, 0.14, [cx0 + 0.85, 1.183, cz0 + 0.08], [-Math.PI / 2, 0, 0], { bg: '#faf6ea', fg: '#111', border: null, size: 28 });
+    k.cyl(0.07, 0.04, 0.05, cx0 + 1.4, 1.17, cz0 + 0.06, 0xe8eef2, 14); for (let i = 0; i < 6; i++) k.parts.push(part(new THREE.SphereGeometry(0.012, 6, 4), [0xffffff, 0x2e7d32][i % 2], [cx0 + 1.38 + (i % 3) * 0.02, 1.2, cz0 + 0.05 + Math.floor(i / 3) * 0.02]));
+    for (let i = 0; i < 6; i++) R(cx0 + 1.8, cz0 - 0.02, cx0 + 2.1, cz0 + 0.2, 0.008, 1.152 + i * 0.009, i % 2 ? 0x1b2a1b : 0x162216);
+    k.cyl(0.03, 0.03, 0.08, cx1 - 0.3, 1.19, cz0 + 0.06, 0xf5f0dc, 8); k.lamp(cx1 - 0.3, 1.25, cz0 + 0.06, 0xffb050, 0.015);
+    k.box(0.4, 0.28, 0.03, cx0 + 1.0, 1.15, cz1 - 0.15, 0x111111, { rot: [-0.2, 0, 0] }); k.box(0.36, 0.24, 0.005, cx0 + 1.0, 1.15, cz1 - 0.132, 0x2a6ad8, { rot: [-0.2, 0, 0] }); k.box(0.04, 0.2, 0.04, cx0 + 1.0, 1.03, cz1 - 0.1, 0x222222);
+    R(cx0 + 1.6, cz1 - 0.3, cx0 + 1.8, cz1 - 0.1, 0.05, 0.975, 0x222222); R(cx0 + 2.2, cz1 - 0.25, cx0 + 2.3, cz1 - 0.08, 0.06, 0.98, 0x111111);
+    k.spawns.push(new THREE.Vector3(cx0 + 2.6, 1.2, cz0 + 0.06));
+    // a "please wait to be seated" stand at the end of the counter
+    { const sx = cx0 - 0.4, sz = cz0 + 0.5; k.cyl(0.18, 0.2, 0.03, sx, 0.015, sz, 0x222222, 14); k.cyl(0.015, 0.015, 1.3, sx, 0.65, sz, 0xc9a24a, 8); R(sx - 0.24, sz - 0.015, sx + 0.24, sz + 0.015, 0.34, 1.3, 0x1b3a2a);
+      k.label('PLEASE WAIT TO BE SEATED', 0.44, 0.3, [sx, 1.3, sz - 0.017], [0, Math.PI, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 44 }); blk(sx - 0.22, sz - 0.22, sx + 0.22, sz + 0.22, 1.5); }
+    // a big coir mat inside the front doors
+    { const mx = (door.x0 + door.x1) / 2 - door.uz * 0.75, mz = (door.z0 + door.z1) / 2 + door.ux * 0.75; k.box(door.L - 0.3, 0.012, 1.1, mx, 0.006, mz, 0x8a6a3a, { rot: [0, door.ry, 0] });
+      const mt = canvasTex(256, 96, (g, w, h) => { g.fillStyle = '#8a6a3a'; g.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '60,40,20' : '170,140,90'},0.4)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 1); } g.fillStyle = '#2a1a0a'; g.font = '700 30px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('THE OYSTERFLEET', w / 2, h / 2); });
+      k.label('mat', door.L - 0.5, 0.75, [mx, 0.014, mz], [-Math.PI / 2, 0, door.ry], { tex: mt }); }
+    // the waiting bench (button-back leather) along the left wall, framed old photos over it, the welcome sign above
+    { const bx = X(615) + 0.08, bz0 = Z(470), bz1 = Z(585);
+      R(bx, bz0, bx + 0.5, bz1, 0.42, 0.21, 0x3a2416, { block: true }); R(bx, bz0, bx + 0.5, bz1, 0.12, 0.48, 0x5a1a1a, { collide: true }); R(bx, bz0, bx + 0.14, bz1, 0.95, 0.475, 0x5a1a1a);
+      for (let z = bz0 + 0.15; z < bz1 - 0.1; z += 0.18) for (const y of [0.7, 0.85]) k.parts.push(part(new THREE.SphereGeometry(0.012, 6, 4), 0x3a0e0e, [bx + 0.145, y, z]));
+      for (const z of [bz0, bz1]) R(bx, z - 0.04, bx + 0.52, z + 0.04, 0.65, 0.325, 0x5a1a1a);
+      const photo = (seed) => canvasTex(160, 120, (g, w, h) => { g.fillStyle = '#e8dcc0'; g.fillRect(0, 0, w, h); g.fillStyle = '#5a4a3a'; g.fillRect(12, 12, w - 24, h - 24); g.fillStyle = '#b8a888'; g.fillRect(12, 60 + seed * 5, w - 24, 48 - seed * 5); for (let i = 0; i < 4 + seed; i++) { g.fillStyle = '#2a1e14'; g.fillRect(20 + i * 25, 40 + (i % 2) * 8, 10, 30); g.beginPath(); g.arc(25 + i * 25, 36 + (i % 2) * 8, 6, 0, 7); g.fill(); } g.fillStyle = '#3a2a1a'; g.font = 'italic 10px Georgia'; g.fillText(['The Oysterfleet, 1952', 'Darts team, 1978', 'Opening night, 1931'][seed % 3], 18, h - 4); });
+      [[bz0 + 0.5, 1.6, 0], [bz0 + 1.25, 1.75, 1], [bz0 + 2.0, 1.6, 2]].forEach(([z, y, sd]) => { R(bx, z - 0.3, bx + 0.04, z + 0.3, 0.46, y, 0x2a1a10); k.label('photo', 0.52, 0.38, [bx + 0.042, y, z], [0, Math.PI / 2, 0], { tex: photo(sd) }); });
+      k.label('WELCOME TO THE OYSTERFLEET — PLEASE KEEP RONNIE AWAY FROM THE BAR SNACKS', 2.2, 0.45, [bx + 0.004, 2.35, (bz0 + bz1) / 2], [0, Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 38 });
+      blk(bx, bz0 - 0.05, bx + 0.52, bz1 + 0.05, 0.95); }
+    // coat hooks with coats on the back wall, an umbrella stand by the door, two big plants, a chalkboard
+    { const hz = Z(385) + 0.09; for (let i = 0; i < 5; i++) { const x = X(705) + i * 0.35; k.box(0.03, 0.03, 0.08, x, 1.75, hz + 0.02, 0xc9a24a);
+        if (i % 2 === 0) { R(x - 0.2, hz + 0.02, x + 0.2, hz + 0.18, 0.85, 1.28, [0x2a3a5a, 0x5a3a2a, 0x2a2a2a][i / 2]); R(x - 0.12, hz + 0.03, x + 0.12, hz + 0.16, 0.1, 1.72, [0x2a3a5a, 0x5a3a2a, 0x2a2a2a][i / 2]); } }
+      R(X(705) - 0.12, Z(385) + 0.08, X(705) + 1.55, Z(385) + 0.1, 0.12, 1.75, 0x3a2416);
+      const ux = X(775) - 0.4, uz = Z(385) + 0.35; k.cyl(0.13, 0.12, 0.5, ux, 0.25, uz, 0x2a2a2a, 12, { block: true }); for (let i = 0; i < 3; i++) { k.cyl(0.01, 0.01, 0.85, ux - 0.04 + i * 0.04, 0.6, uz + (i - 1) * 0.03, 0x111111, 6); k.cyl(0.03, 0.045, 0.3, ux - 0.04 + i * 0.04, 0.85, uz + (i - 1) * 0.03, [0x1e4ea8, 0xc62828, 0x111111][i], 8); }
+      for (const [px, pz] of [[X(625) + 0.3, Z(470) - 0.35], [X(820) - 0.35, Z(520) + 0.2]]) { k.cyl(0.24, 0.18, 0.5, px, 0.25, pz, 0x2a2420, 14, { block: true }); for (let i = 0; i < 80; i++) { const a = i * 2.4, r = 0.08 + (i % 5) * 0.06, h = 0.65 + (i % 7) * 0.13; const leaf = new THREE.SphereGeometry(0.06, 6, 4); leaf.scale(1, 0.3, 0.5); leaf.rotateY(a); k.parts.push(part(leaf, [0x2e6a2a, 0x3a7a32, 0x24561f][i % 3], [px + Math.cos(a) * r, h, pz + Math.sin(a) * r])); } }
+      const cbx = X(722), cbz = Z(585) - 0.15; for (const sd of [-1, 1]) k.box(0.58, 1.06, 0.03, cbx, 0.53, cbz + sd * 0.12, 0x3a2416);
+      k.label("TODAY'S SPECIALS: PIE & MASH · STEAK PIE · RONNIE'S PLATTER", 0.5, 0.72, [cbx, 0.55, cbz - 0.12 - 0.017], [0, Math.PI, 0], { bg: '#1a1a1a', fg: '#f5f0e6', border: '#8a6a3a', size: 32 });
+      blk(cbx - 0.3, cbz - 0.25, cbx + 0.3, cbz + 0.25, 0.9); }
+    // lights: two glass globes over the counter, downlights, a wall lamp by the door
+    for (const x of [cx0 + 0.8, cx0 + 2.2]) { k.cyl(0.004, 0.004, 0.6, x, H - 0.3, cz0 + 0.3, 0x222222, 4); k.cyl(0.03, 0.045, 0.06, x, H - 0.63, cz0 + 0.3, 0xb87333, 10); for (let i = 0; i < 6; i++) { const r = new THREE.TorusGeometry(0.11, 0.004, 4, 16); r.rotateY(i / 6 * Math.PI); k.parts.push(part(r, 0xf0e6c8, [x, H - 0.77, cz0 + 0.3])); } k.lamp(x, H - 0.77, cz0 + 0.3, 0xffe2a8, 0.1); k.pool(x, 1.15, cz0 + 0.1, 0.9, 0xffc070); }
+    for (const [x, z] of [[X(660), Z(520)], [X(740), Z(560)], [X(760), Z(420)]]) { k.lamp(x, H - 0.01, z, 0xfffbe8, 0.04); k.pool(x, 0, z, 1.8, 0xfff0d0); }
   }
   // the beer garden door at the end of the passage
   { const xc = (X(722) + X(793)) / 2; k.window(xc, 1.15, Z(1645) - 0.1, X(793) - X(722) - 0.2, 2.2, Math.PI, streetViewTex(5, true), { frame: DARKWOOD, bars: 1 });
@@ -788,7 +831,6 @@ export function buildPub(scene) {
   const signs = [
     ['STAFF OF THE MONTH: RONNIE (ATE THE CERTIFICATE)', 0.9, 0.7, [X(195) + 0.12, 1.8, Z(650)], [0, Math.PI / 2, 0], {}],
     ["TODAY'S SPECIALS: WHATEVER RONNIE HASN'T EATEN", 0.8, 1.0, [X(195) + 0.12, 1.55, Z(1160)], [0, Math.PI / 2, 0], { bg: '#1b2a1b', fg: '#f5f0e6', border: '#8a6a3a', size: 56 }],
-    ['MAX OCCUPANCY: 120 (OR 3 RONNIES)', 1.1, 0.45, [X(615) + 0.09, 1.9, Z(540)], [0, Math.PI / 2, 0], {}],
     ['QUIZ NIGHT — Q1: How many pies did Ronnie eat last night? A: Yes.', 1.0, 0.7, [X(480), 1.9, Z(1305) + 0.105], [0, 0, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 48 }],
     ['WE DO NOT SERVE SALAD ("YES YOU DO" — Chloe)', 1.0, 0.5, [X(540), 1.9, Z(1305) + 0.105], [0, 0, 0], { bg: '#fff', fg: '#c0392b' }],
     ['OYSTERFLEET PIE-EATING CHAMPION — RONNIE (UNDEFEATED, UNCHALLENGED, UNWELL)', 1.0, 0.5, [X(195) + 0.12, 2.62, Z(1252)], [0, Math.PI / 2, 0], { bg: '#d4af37', fg: '#111', border: '#7a5a10', size: 48 }],
