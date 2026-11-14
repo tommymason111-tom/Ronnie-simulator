@@ -178,6 +178,12 @@
     #pause .where { font: 700 13px Arial, sans-serif; color: #c9d3ff; margin: 0 0 14px; }
     #pause button { display: block; width: 100%; margin: 10px 0 0; font: 900 18px "Arial Black", Arial, sans-serif; padding: 13px; border-radius: 16px; border: 0; cursor: pointer; }
     #pause .resume { background: #39ff14; color: #111; box-shadow: 0 5px 0 #1d8a0a; font-size: 22px; }
+    #pause .ctrls { display: none; max-height: calc(100% - 40px); overflow-y: auto; }
+    #pause.show-ctrls .ctrls { display: block; } #pause.show-ctrls .box:not(.ctrls) { display: none; }
+    #pause .clist { display: none; text-align: left; gap: 8px; margin: 10px 0 4px; }
+    #pause .clist.on { display: grid; }
+    #pause .clist div { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 9px 10px; font: 700 14px Arial, sans-serif; color: #fff; display: flex; gap: 10px; align-items: center; }
+    #pause .clist span { font-size: 22px; }
     #pause .alt { background: rgba(255,255,255,0.12); color: #fff; border: 3px solid #fff; }
     #ui { display: none; }
     body.ready #ui { display: block; }
@@ -336,9 +342,33 @@
       <h2>PAUSED</h2>
       <p class="where" id="pause-where"></p>
       <button class="resume" id="pause-resume">▶ RESUME</button>
+      <button class="alt" id="pause-controls">🎮 CONTROLS</button>
       <button class="alt" id="pause-restart">🔄 RESTART ROUND</button>
       <button class="alt" id="pause-sound">🔊 SOUND: ON</button>
       <button class="alt" id="pause-quit">🏠 MAIN MENU</button>
+    </div>
+    <div class="box ctrls" id="pause-ctrls">
+      <h2>CONTROLS</h2>
+      <div class="clist" data-d="touch">
+        <div><span>🕹️</span>Joystick (bottom left) to walk</div>
+        <div><span>👆</span>Drag anywhere to look around</div>
+        <div><span>🍔</span>Tap food to pick it up</div>
+        <div><span>😋</span>EAT button to take a bite (DRINK for cans)</div>
+        <div><span>🎯</span>THROW button to throw what you're holding</div>
+        <div><span>🥦</span>Tap flying veg to swat it away</div>
+        <div><span>✋</span>Tap anyone nearby to slap them</div>
+        <div><span>🎰</span>Tap a fruit machine to play it</div>
+      </div>
+      <div class="clist" data-d="pc">
+        <div><span>⌨️</span>W A S D or arrow keys to walk</div>
+        <div><span>🖱️</span>Click and drag to look around</div>
+        <div><span>🍔</span>Click food to pick it up</div>
+        <div><span>😋</span>E to eat (or drink)</div>
+        <div><span>🎯</span>Space or F to throw</div>
+        <div><span>🥦</span>Click flying veg to swat it, click anyone nearby to slap them</div>
+        <div><span>⏸</span>Esc to pause</div>
+      </div>
+      <button class="resume" id="pause-ctrls-back">⬅ BACK</button>
     </div>
   </div>
   <div id="ui">

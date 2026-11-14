@@ -567,7 +567,7 @@ function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t 
 let paused = false;
 const pauseEl = document.getElementById('pause');
 function setPaused(on) {
-  paused = on; pauseEl.classList.toggle('on', on);
+  paused = on; pauseEl.classList.toggle('on', on); if (!on) pauseEl.classList.remove('show-ctrls');
   if (on) { const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = t ? t.textContent : ''; try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
   setMuted(on || soundOff);
 }
@@ -577,6 +577,12 @@ document.getElementById('pause-resume').addEventListener('click', () => { initAu
 document.getElementById('pause-restart').addEventListener('click', () => { setPaused(false); director.start(chosenMode()); });
 document.getElementById('pause-sound').addEventListener('click', (e) => { soundOff = !soundOff; e.currentTarget.textContent = soundOff ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'; });
 document.getElementById('pause-quit').addEventListener('click', () => { location.href = location.pathname; });
+document.getElementById('pause-controls').addEventListener('click', () => {
+  const touchy = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window;
+  document.querySelectorAll('#pause .clist').forEach(l => l.classList.toggle('on', l.dataset.d === (touchy ? 'touch' : 'pc')));
+  pauseEl.classList.add('show-ctrls');
+});
+document.getElementById('pause-ctrls-back').addEventListener('click', () => pauseEl.classList.remove('show-ctrls'));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && player.flatMode) setPaused(!paused); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && player.flatMode && !paused) setPaused(true); });   // switching apps pauses
 
