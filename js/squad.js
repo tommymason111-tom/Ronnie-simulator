@@ -592,11 +592,11 @@ export class SquadMember extends Character {
   personalityPose(t) {
     const r = this.rag;
     if (this.activity === 'lounge') {      // lying back on a sun lounger: legs out straight, body reclined on the backrest, hands behind the head
-      r.aim('uLegL', 0.06, -0.06, 1); r.aim('lLegL', 0.03, -0.04, 1); r.aim('uLegR', -0.06, -0.06, 1); r.aim('lLegR', -0.03, -0.04, 1);
+      r.aim('uLegL', 0.025, 0.02, 1); r.aim('lLegL', 0.01, 0.0, 1); r.aim('uLegR', -0.025, 0.02, 1); r.aim('lLegR', -0.01, 0.0, 1);   // legs flat along the seat, on top of it
       r.aim('uArmL', 0.7, 0.75, -0.2); r.aim('lArmL', -0.75, 0.2, -0.35); r.aim('uArmR', -0.7, 0.75, -0.2); r.aim('lArmR', 0.75, 0.2, -0.35);
-      _lq.setFromAxisAngle(_lx, -0.95 + Math.sin(t * 0.7) * 0.015);           // recline (a slow breath)
+      _lq.setFromAxisAngle(_lx, -0.65 + Math.sin(t * 0.7) * 0.015);           // recline at the backrest's angle (a slow breath)
       for (const n of ['pelvis', 'chest', 'head', 'uArmL', 'lArmL', 'uArmR', 'lArmR']) if (r.pose[n]) r.pose[n].premultiply(_lq);
-      r.bob = 0.4 - r.parts.uLegL.def.a.y;
+      r.bob = 0.49 - r.parts.uLegL.def.a.y;   // hips up on the slats (they're at 0.37)
       return;
     }
     if (this.seated) { this.sitPose(); return; }
