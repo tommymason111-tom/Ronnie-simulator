@@ -21,6 +21,8 @@ import { characterGroup, GROUP } from './physics.js';
 // Every model is downloaded once (shared by every character that uses it), started as early as possible
 // (while you're still on the menu), and retried if the connection drops, so nobody turns up invisible.
 const MODELS = new Map();
+// raised floors: the level can tell the ragdolls how high the floor is at (x, z)
+export const FLOOR = { at: null };
 export function fetchModel(url) {
   if (!MODELS.has(url)) {
     const p = (async () => {
@@ -500,7 +502,7 @@ export class Ragdoll {
   // root (feet) position and yaw.
   computeFK(out) {
     this.yawQ.setFromAxisAngle(Y_AXIS, this.yaw);
-    const base = _v2.set(this.root.x, 0.02 + this.bob, this.root.z);
+    const base = _v2.set(this.root.x, 0.02 + this.bob + (FLOOR.at ? FLOOR.at(this.root.x, this.root.z) : 0), this.root.z);
     this.defs.forEach((d, i) => {     // parents always come first in defs
       const o = out[i];
       o.q.copy(this.yawQ).multiply(this.pose[d.name]);

@@ -17,7 +17,7 @@ import { Director, MODES } from './modes.js';
 import { buildPub } from './levels/pub.js';
 import { buildSupermarket } from './levels/supermarket.js';
 import { buildRestaurant } from './levels/restaurant.js';
-import { preloadModels } from './ragdoll.js';
+import { preloadModels, FLOOR } from './ragdoll.js';
 import { SQUAD } from './squad.js';
 import { buildGarden } from './levels/garden.js';
 
@@ -49,6 +49,7 @@ camera.position.set(0, 1.6, 0);
 
 const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant, garden: buildGarden };
 const room = (BUILD[SEL.place] || buildRoom)(scene);
+FLOOR.at = room.floorAt || null;            // (raised floors: the ragdolls stand on them)
 if (room.shadows) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }     // sunny places get real sun shadows
 room.placeId = BUILD[SEL.place] ? SEL.place : 'bedroom';
 room.start = room.start || { x: 0.05, z: 0.45, yaw: 0 };
@@ -458,7 +459,7 @@ const touch = setupTouch({
     // tap a fruit machine to play it
     for (const m of room.machines || []) {
       const along = _a.subVectors(m.front, ray.origin).dot(ray.direction);
-      if (along > 0 && ray.distanceSqToPoint(_b.set(12.93, 1.1, m.z)) < 0.4 * 0.4) {
+      if (along > 0 && ray.distanceSqToPoint(m.screen) < 0.4 * 0.4) {
         if (along > reach + 0.5) { touch.hint('Walk up to the machine to play it'); return; }
         if (m.spin()) sfx('ting', m.front, 1);
         return;

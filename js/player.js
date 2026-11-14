@@ -433,6 +433,9 @@ export class Player {
       if (d < r) { if (d < 1e-4) { cz = b.z1 + r; } else { cx = nx + dx / d * r; cz = nz + dz / d * r; } }
     }
     this.rig.position.x += cx - _v.x; this.rig.position.z += cz - _v.z;
+    // raised floors (the Oysterfleet's top-left seating area): step up and down smoothly
+    const fy = this.room?.floorAt ? this.room.floorAt(cx, cz) : 0, f0 = this.floorY || 0, f1 = Math.abs(fy - f0) < 0.005 ? fy : f0 + (fy - f0) * 0.25;
+    if (f1 !== f0) { this.rig.position.y += f1 - f0; this.floorY = f1; }
   }
 
   // ---------------- phone / tablet / desktop (no headset) ----------------
