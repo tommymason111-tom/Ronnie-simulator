@@ -16,7 +16,6 @@
   ];
   const MODES = [
     { id: 'everyone', ico: '👥', name: 'THE WHOLE SQUAD', desc: 'The main game. Everyone is here, taking turns to attack you while you eat. A countdown shows the next one.', stars: 3, who: 'Everyone' },
-    { id: 'veggie', ico: '🥦', name: 'VEGGIE WAR', desc: 'Waves of veg. Swat it, block it, survive 2½ minutes.', stars: 2, who: 'Up to 6' },
     { id: 'date', ico: '💜', name: 'DATE NIGHT', desc: "Eat when Chloe looks away. Three catches and it's salad.", stars: 2, who: 'Chloe + the lads', place: 'restaurant' },
     { id: 'catch', ico: '🏈', name: 'CATCH & EAT', desc: "Harry throws food. Catch it in your mouth.", stars: 1, who: 'Harry' },
     { id: 'chonkoff', ico: '⏱️', name: 'EAT-OFF', desc: '60 seconds. Eat everything. Beat your best.', stars: 1, who: 'Just you' },

@@ -21,7 +21,7 @@ export const MODES = {
   everyone:     { name: 'THE WHOLE SQUAD', desc: 'Everyone\'s here. Eat while they take turns to stop you.', time: 0 },
   classic:      { name: 'CLASSIC', desc: 'Eat, grow, dodge Tommy\'s broccoli.', time: 0, hidden: true },
   intervention: { name: 'SQUAD INTERVENTION', desc: 'Everyone tries to stop you. Nobody can.', time: 240, hidden: true },
-  veggie:       { name: 'VEGGIE WAR', desc: 'The squad attacks with veg. Survive 2½ minutes.', time: 150 },
+  veggie:       { name: 'VEGGIE WAR', desc: 'The squad attacks with veg. Survive 2½ minutes.', time: 150, hidden: true },
   catch:        { name: 'CATCH & EAT', desc: 'Catch Harry\'s throws in your mouth.', time: 70 },
   chonkoff:     { name: 'EAT-OFF', desc: '60 seconds. Eat everything.', time: 60 },
   chonkoff2:    { name: 'EAT-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
