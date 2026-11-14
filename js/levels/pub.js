@@ -467,6 +467,15 @@ export function buildPub(scene) {
   };
   machine(PX + 0.31 + 0.5, PZ, Math.PI / 2);                                              // by the pillar, facing the bar
   barChair(PX + 0.81 + 0.72, PZ, Math.PI / 2);                                            // a tall chair to sit at it
+  // a tall leafy fig in a pot on the machine's right
+  { const fx = PX + 0.62, fz = PZ - 0.8;
+    k.cyl(0.22, 0.17, 0.42, fx, 0.21, fz, 0x2a2420, 14, { block: true }); k.cyl(0.215, 0.215, 0.02, fx, 0.4, fz, 0x3a2a1a, 14);
+    for (let i = 0; i < 3; i++) { const g = new THREE.CylinderGeometry(0.012, 0.02, 1.3, 6); g.rotateZ((i - 1) * 0.12); g.rotateY(i * 2.1); g.translate(fx + (i - 1) * 0.03, 1.05, fz); k.parts.push(part(g, 0x6a4a2a)); }
+    let sd = 7; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 260; i++) { const a = r() * 6.28, h = 0.75 + r() * 1.2, rad = (0.12 + r() * 0.3) * (1 - Math.abs(h - 1.35) * 0.45);
+      const leaf = new THREE.SphereGeometry(0.045, 6, 4); leaf.scale(1, 0.25, 0.55); leaf.rotateZ(r() - 0.5); leaf.rotateY(a);
+      k.parts.push(part(leaf, [0x2e6a2a, 0x3a7a32, 0x24561f, 0x4a8a3a][i % 4], [fx + Math.cos(a) * rad, h, fz + Math.sin(a) * rad])); }
+  }
   // the gambling room: machines down both walls and along the end, stools in front
   for (let z = Z(1430); z < Z(1600); z += 0.9) machine(X(795) + 0.08 + 0.5, z, Math.PI / 2);
   for (let z = Z(1330); z < Z(1600); z += 0.9) machine(X(975) - 0.08 - 0.5, z, -Math.PI / 2);

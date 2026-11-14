@@ -91,6 +91,11 @@
     #settings h3 { margin: 0 0 12px; color: #ffd400; font: 900 22px "Arial Black", Impact, sans-serif; }
     #settings .setrow { display: flex; justify-content: space-between; gap: 24px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.15); font: 700 15px Arial, sans-serif; }
     #settings .setrow b { color: #7cff6a; }
+    #settings h4 { margin: 14px 0 6px; color: #ffd400; font: 900 15px "Arial Black", Impact, sans-serif; text-align: left; }
+    #settings .setbox { max-width: min(92vw, 420px); max-height: 86vh; overflow-y: auto; }
+    #set-updates { text-align: left; max-height: 44vh; overflow-y: auto; font: 13px/1.35 Arial, sans-serif; padding-right: 4px; }
+    #set-updates .upd { margin-bottom: 10px; } #set-updates .upd b { color: #7cff6a; display: block; margin-bottom: 2px; }
+    #set-updates ul { margin: 0; padding-left: 18px; } #set-updates li { margin: 2px 0; color: #e8eaf6; }
     #settings .midbtn { margin-top: 14px; }
     @keyframes popIn { from { transform: scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
     .screen { z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; }
@@ -301,6 +306,8 @@
           <h3>⚙️ SETTINGS</h3>
           <div class="setrow"><span>Version</span><b id="set-version"></b></div>
           <div class="setrow"><span>Released</span><b id="set-date"></b></div>
+          <h4>LATEST UPDATES</h4>
+          <div id="set-updates"></div>
           <button class="midbtn" id="set-close">CLOSE</button>
         </div>
       </div>

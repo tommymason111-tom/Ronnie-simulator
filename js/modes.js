@@ -731,9 +731,9 @@ export class Director {
     let workers;
     if (id === 'roam') workers = shuffle(this.cast.filter(c => c !== g.tommy && c.id !== 'oliver' && c.id !== 'aidanw')).slice(0, 3);
     else workers = shuffle(Object.keys(SQUAD).filter(s => !['oliver', 'aidanw', 'tommy'].includes(s) && !this.cast.some(c => c.id === s))).slice(0, 3).map(sid => {
-      const c = new SquadMember(g.scene, g.room, g.physics, sid, [TILLS[0] + 0.75, 10.25, -Math.PI / 2], this); this.hook(c); g.cast.push(c); return c; });
+      const c = new SquadMember(g.scene, g.room, g.physics, sid, [TILLS[0] - 0.74, 10.3, Math.PI / 2], this); this.hook(c); g.cast.push(c); return c; });
     workers.forEach((c, i) => {
-      const x = TILLS[i] + 0.75, z = 10.25, yaw = -Math.PI / 2;      // standing at the till, facing the belt
+      const x = TILLS[i] - 0.74, z = 10.3, yaw = Math.PI / 2;        // at the till on the cashier's side, facing the belt
       c.tillJob = { x, z, yaw }; c.stayPut = true; c.active = false; c.lookOverride = null; c.seated = false; c.activity = null; c.roamAct = null;
       c.rag.placeAt(x, z, yaw); c.faceYaw = yaw; c.state = 'idle'; c.tillT = 6 + Math.random() * 14;
       c.rag.wearUniform(first(c));

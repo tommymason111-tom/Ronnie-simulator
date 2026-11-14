@@ -140,6 +140,7 @@ export const SQUAD = {
   },
   dylan: {
     name: 'Dylan', color: '#FF6D00', voicePitch: 1.25,
+    shoes: 0x111111,             // black trainers
     model: './assets/squad/dylan.glb', modelBody: { h: 1.65, bind: { sh: [0.17, 1.35, 0], el: [0.26, 1.08, 0], ha: [0.32, 0.72, 0.04], hipX: 0.10, hipY: 0.83, kneeY: 0.46, neckY: 1.40, topY: 1.66, headZ: 0.01, chestW: 0.16, chestD: 0.11, pelvisW: 0.15, arm: 0.045, leg: 0.07 } },
     body: { h: 1.65, sw: 0.9, girth: 0.82, limb: 0.82 },
     look: { skin: SKIN.light, hair: { style: 'short', color: 0x111111 }, beard: { style: 'goatee', color: 0x1a1210 }, top: 0x5b5a3a, top2: 0x7a1f3d, pattern: 'parka', sleeves: 'long', bottom: 0x2a3b5c, legs: 'trousers', shoes: 0xf5f5f5, shades: true },
@@ -559,6 +560,7 @@ export class SquadMember extends Character {
     } else this.rag.setMesh(buildBody(this.rag, def.look), new THREE.MeshLambertMaterial({ vertexColors: true }));
     if (def.look.prop) { this.prop = makeProp(def.look.prop, this.rag.height / 1.68); scene.add(this.prop); }
     this.stayPut = !!def.stayPut;      // (Aidan W: the knee. He doesn't walk anywhere)
+    if (def.shoes) this.rag.wearShoes(def.shoes);
     this.ready = true;
   }
 

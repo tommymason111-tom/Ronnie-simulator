@@ -409,12 +409,44 @@ export class Ragdoll {
     this.modelLoaded = true;
     this.sync();
     if (this.wantUniform) this.wearUniform();
+    if (this.wantShoes) this.wearShoes(this.wantShoes);
   }
 
   // A Lidl staff uniform: a navy polo shirt (short sleeves, yellow trim) and navy trousers made from
   // the body itself (the torso, upper arms and legs of the skin, pushed out a little and skinned to
   // the same bones, so it moves exactly with them), a Lidl badge on the chest and a name badge.
   // The head, forearms, hands and shoes stay as they are.
+  // Trainers: a shell round each foot made from the model's own foot (so it fits and moves with the leg):
+  // the upper in `color` with a slight sheen, a darker sole.
+  wearShoes(color = 0x111111) {
+    this.wantShoes = color;
+    if (!this.modelLoaded || this.shoes) return;
+    const src = this.mesh.geometry, pos = src.attributes.position, nrm = src.attributes.normal, n = pos.count;
+    if (!nrm) return;
+    const si = src.attributes.skinIndex, D = this.defs, kH = this.height / 1.68, v = new THREE.Vector3();
+    const legs = D.map((d, i) => d.name.startsWith('lLeg') ? i : -1).filter(i => i >= 0);
+    let minY = Infinity; for (let i = 0; i < n; i++) if (legs.includes(si.getX(i))) minY = Math.min(minY, pos.getY(i));
+    const top = minY + 0.11 * kH, sole = minY + 0.028 * kH;
+    const kind = new Uint8Array(n);
+    for (let i = 0; i < n; i++) { if (!legs.includes(si.getX(i))) continue; const y = pos.getY(i); if (y < top) kind[i] = 1; }
+    const geo = new THREE.BufferGeometry(), P = new Float32Array(n * 3), C = new Float32Array(n * 3), up = new THREE.Color(color), dark = new THREE.Color(0x3a3a3a), c = new THREE.Color();
+    for (let i = 0; i < n; i++) {
+      const y = pos.getY(i), off = (y < sole ? 0.016 : 0.011) * kH;
+      P[i * 3] = pos.getX(i) + nrm.getX(i) * off; P[i * 3 + 1] = Math.max(minY - 0.004, pos.getY(i) + nrm.getY(i) * off); P[i * 3 + 2] = pos.getZ(i) + nrm.getZ(i) * off;
+      c.copy(y < minY + 0.018 * kH ? dark : up); c.multiplyScalar(0.92 + 0.08 * Math.sin(i * 7.31));
+      C[i * 3] = c.r; C[i * 3 + 1] = c.g; C[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', nrm.clone()); geo.setAttribute('color', new THREE.BufferAttribute(C, 3));
+    geo.setAttribute('skinIndex', si.clone()); geo.setAttribute('skinWeight', src.attributes.skinWeight.clone());
+    const idx = src.index ? src.index.array : Array.from({ length: n }, (_, i) => i), keep = [];
+    for (let f = 0; f < idx.length; f += 3) { const a = idx[f], b = idx[f + 1], cc = idx[f + 2]; if (kind[a] + kind[b] + kind[cc] >= 2) keep.push(a, b, cc); }
+    for (const i of keep) if (!kind[i]) P[i * 3 + 1] = Math.min(P[i * 3 + 1], top);          // a clean line round the ankle, no spikes
+    geo.setIndex(keep);
+    const shell = new THREE.SkinnedMesh(geo, new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, shininess: 40, specular: 0x333333 })); shell.frustumCulled = false;
+    this.group.add(shell); shell.bind(this.mesh.skeleton, this.mesh.bindMatrix);
+    this.shoes = shell;
+  }
+
   wearUniform(name = '') {
     this.wantUniform = true; this.uniformName = name || this.uniformName || '';
     if (!this.modelLoaded || this.uniform) return;

@@ -313,6 +313,19 @@ export class Character {
         const d = _v2.length();
         if (d < 0.15 && this.path && this.path.length) { this.moveTarget = this.path.shift(); break; }   // next waypoint
         if (d < 0.15 || this.stateT > (this.walkLimit || 8)) { this.state = this.afterWalk || 'idle'; this.afterWalk = null; this.stateT = 0; this.nextMove = 8 + Math.random() * 8; break; }
+        // not getting anywhere (caught on a corner, a shelf, someone else)? find a new way round, and if that fails too, stop
+        this.walkT = (this.walkT || 0) + dt;                                              // (keeps counting even when someone keeps re-aiming the walk)
+        if (!this.walkProbe) this.walkProbe = { t: this.walkT, x: pos.x, z: pos.z, tries: 0 };
+        if (this.walkT - this.walkProbe.t > 1.2) {
+          const moved = Math.hypot(pos.x - this.walkProbe.x, pos.z - this.walkProbe.z);
+          if (moved < 0.12) {
+            if (this.walkGoal && this.walkProbe.tries < 2) { const g = this.walkGoal, tries = this.walkProbe.tries + 1, after = this.afterWalk, sp0 = this.walkSpeed;
+              const a = Math.random() * 6.28; pos.x += Math.cos(a) * 0.04; pos.z += Math.sin(a) * 0.04;          // a little wiggle free
+              this.goTo(g.x, g.z, sp0, after); this.walkProbe = { t: this.walkT, x: pos.x, z: pos.z, tries }; break; }
+            this.state = this.afterWalk || 'idle'; this.afterWalk = null; this.stateT = 0; this.nextMove = 2 + Math.random() * 3; this.walkProbe = null; this.walkT = 0; this.stallT = 3; break;
+          }
+          this.walkProbe = { t: this.walkT, x: pos.x, z: pos.z, tries: 0 };
+        }
         this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 6);
         const sp = (this.walkSpeed || 0.9) * 1.15;   // a touch brisker than a stroll
         r.moveVel.copy(_v2.normalize()).multiplyScalar(Math.min(sp, d * 2.5));
@@ -404,6 +417,8 @@ export class Character {
     else { this.moveTarget = new THREE.Vector2(x, z); this.walkLimit = 8; }
     this.walkSpeed = speed;
     this.afterWalk = after;
+    this.walkGoal = { x, z };
+    if (this.state !== 'walk') { this.walkProbe = null; this.walkT = 0; }
     this.state = 'walk'; this.stateT = 0;
   }
 

@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { Stock, priceTex } from './stock.js';
 import { Kit, tileTex, canvasTex, FONT, streetViewTex } from './kit.js';
 import { Dormant } from './dormant.js';
+import { part } from '../geo.js';
 
 const H = 4.0;
 // the angled bakery line (glass, with the bins in front of it) and the rooms
@@ -39,6 +40,7 @@ export function buildSupermarket(scene) {
   const BS = { bg: '#1e4ea8', fg: '#ffd400', border: '#ffd400', size: 54 };
   const hang = (t, x, z, w = 2.2, ry = 0) => {
     for (const dx of [-w / 2 + 0.15, w / 2 - 0.15]) k.box(0.01, 0.75, 0.01, x + Math.cos(ry) * dx, H - 0.38, z - Math.sin(ry) * dx, 0x333333);
+    k.box(w + 0.04, 0.49, 0.02, x, H - 0.98, z, 0x1e4ea8, { rot: [0, ry, 0] });                                  // the sign board itself
     sign(t, w, 0.45, [x + Math.sin(ry) * 0.012, H - 0.98, z + Math.cos(ry) * 0.012], [0, ry, 0], BS);
     sign(t, w, 0.45, [x - Math.sin(ry) * 0.012, H - 0.98, z - Math.cos(ry) * 0.012], [0, ry + Math.PI, 0], BS);
   };
@@ -72,13 +74,13 @@ export function buildSupermarket(scene) {
   for (const [z0, z1] of [[9.5, 11.7], [12.6, 14.4]]) { R(10.92, z0, 11.08, z1, H - 2.4, 2.4 + (H - 2.4) / 2, WALL); R(10.9, z0, 11.1, z1, 0.06, 2.37, BLACK); for (const z of [z0 + 0.04, z1 - 0.04]) R(10.92, z - 0.04, 11.08, z + 0.04, 2.4, 1.2, BLACK); }
   for (const [z0, z1] of [[9.5, 9.85], [11.35, 11.7]]) R(10.97, z0, 11.03, z1, 2.3, 1.15, 0xbfe0ee);
   sign('ENTRANCE', 1.4, 0.3, [10.88, 2.6, 10.6], [0, -Math.PI / 2, 0], BS); sign('EXIT', 1.0, 0.3, [10.88, 2.6, 13.5], [0, -Math.PI / 2, 0], { ...BS, bg: '#fff', fg: '#1e4ea8' });
-  sign('NO ENTRY', 0.6, 0.25, [11.12, 1.6, 13.5], [0, Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: null, size: 60 });
+  sign('NO ENTRY', 0.6, 0.25, [11.095, 2.7, 13.5], [0, Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: null, size: 60 });
   R(10.6, 12.62, 10.66, 14.38, 0.06, 1.0, STEEL); for (const z of [12.65, 13.5, 14.35]) R(10.6, z - 0.03, 10.66, z + 0.03, 1.0, 0.5, STEEL);
   k.blockers.push({ x0: 10.55, x1: 10.7, z0: 12.62, z1: 13.1, y1: 1.0 });
   // the foyer: glass doors out to the car park, flowers along the wall
   wallZ(9.0, 11, 14.4); wallX(14.4, 9.0, 14.7);
   k.window(14.36, 1.3, 11.8, 2.6, 2.4, -Math.PI / 2, carParkTex(2), { frame: BLACK, bars: 1 });
-  sign('LIDL', 2.2, 0.55, [14.35, 3.0, 11.8], [0, -Math.PI / 2, 0], { tex: logoTex(), glow: true });
+  sign('LIDL', 2.2, 0.55, [14.305, 3.0, 11.8], [0, -Math.PI / 2, 0], { tex: logoTex(), glow: true });
   for (let i = 0; i < 9; i++) {
     const x = 11.4 + i * 0.33, z = 9.35 + (i % 2) * 0.28, y = (i % 2) * 0.25;
     k.cyl(0.13, 0.11, 0.28, x, y + 0.14, z, 0x2a2c30, 10);
@@ -144,27 +146,27 @@ export function buildSupermarket(scene) {
     });
     if (!low) for (let a = a0 + 1; a < a1; a += 2) k.lamp(along === 'x' ? a : c + dir * 0.5, 1.98, along === 'x' ? c + dir * 0.5 : a, 0xe0f4ff, 0.05, false);
     if (along === 'x') blk(a0, Math.min(c, c + dir * 0.68), a1, Math.max(c, c + dir * 0.68), TOP); else blk(Math.min(c, c + dir * 0.68), a0, Math.max(c, c + dir * 0.68), a1, TOP);
-    if (tag && !low) { if (along === 'x') sign(tag, 2.2, 0.32, [ac, 2.32, c + dir * 0.68], [0, dir > 0 ? 0 : Math.PI, 0], BS); else sign(tag, 2.2, 0.32, [c + dir * 0.68, 2.32, ac], [0, dir * Math.PI / 2, 0], BS); }
+    if (tag && !low) { P(0.63, Math.min(1, 2.4 / len), 0.36, 0.03, 2.33, BLUE); for (const o of [-1.0, 1.0]) if (along === 'x') k.box(0.02, 0.3, 0.02, ac + o, 2.3, c + dir * 0.63, 0x888888); else k.box(0.02, 0.3, 0.02, c + dir * 0.63, 2.3, ac + o, 0x888888);
+      if (along === 'x') sign(tag, 2.2, 0.32, [ac, 2.33, c + dir * 0.6475], [0, dir > 0 ? 0 : Math.PI, 0], BS); else sign(tag, 2.2, 0.32, [c + dir * 0.6475, 2.33, ac], [0, dir * Math.PI / 2, 0], BS); }
   };
   // a stack of drinks / crisps / chocolate on a pallet at an aisle end, with a price board on a pole
   const STACKS = { can: ['KOLA 24 CANS £6.99', 0.125, 6], bottle: ['KOLA 2L 2 FOR £3', 0.32, 3], crisps: ['CRISPS MULTIPACK £1.49', 0.27, 3], choc: ['CHOCOLATE 3 FOR £2', 0.17, 4], wine: ['WINE £4.99', 0.345, 2] };
-  const endStack = (x, z, cat) => {
-    const [txt, lh, layers] = STACKS[cat];
-    for (const dx of [-0.42, 0, 0.42]) R(x + dx - 0.05, z - 0.4, x + dx + 0.05, z + 0.4, 0.1, 0.05, 0xc8a070);
-    R(x - 0.5, z - 0.4, x + 0.5, z + 0.4, 0.03, 0.115, 0xd6b48a, { collide: true, block: true });
-    stock.addStack(cat, x, z, 0.9, 0.72, 0.13, layers, lh + 0.008, 1, cat === 'bottle' ? 0.1 : cat === 'can' ? 0.072 : cat === 'crisps' ? 0.11 : 0.1);
-    R(x - 0.5, z - 0.4, x + 0.5, z + 0.4, 0.004, 0.13 + layers * (lh + 0.008), 0xe8f0f4);                                     // shrink-wrap on top
-    k.box(0.025, 1.9, 0.025, x + 0.45, 0.95, z, 0x888888);
-    sign(txt, 0.9, 0.4, [x + 0.45, 1.95, z - 0.015], [0, Math.PI, 0], { bg: '#ffd400', fg: '#1e4ea8', border: '#e53935', size: 44 });
-    sign(txt, 0.9, 0.4, [x + 0.45, 1.95, z + 0.015], [0, 0, 0], { bg: '#ffd400', fg: '#1e4ea8', border: '#e53935', size: 44 });
-    k.spawns.push(new THREE.Vector3(x, 0.22 + layers * (lh + 0.008), z));
-    blk(x - 0.5, z - 0.4, x + 0.5, z + 0.4, 1.2);
+  const endStack = (x, z, cat, dir) => {      // a slim stack of boxes/packs against the end of an aisle (dir: which way it faces)
+    const [txt, lh] = STACKS[cat], layers = Math.max(2, Math.min(4, Math.floor(0.62 / (lh + 0.008)))), cz = z + dir * 0.17;
+    R(x - 0.48, cz - 0.16, x + 0.48, cz + 0.16, 0.06, 0.03, 0xc8a070);
+    R(x - 0.47, cz - 0.15, x + 0.47, cz + 0.15, 0.02, 0.07, 0xd6b48a, { collide: true });
+    stock.addStack(cat, x, cz, 0.88, 0.26, 0.08, layers, lh + 0.008, dir, cat === 'bottle' ? 0.1 : cat === 'can' ? 0.072 : cat === 'crisps' ? 0.11 : 0.1);
+    const top = 0.09 + layers * (lh + 0.008);
+    R(x - 0.47, cz - 0.15, x + 0.47, cz + 0.15, 0.004, top, 0xe8f0f4);
+    k.box(0.02, 0.26, 0.02, x, top + 0.02, cz, 0x888888); k.box(0.52, 0.24, 0.02, x, top + 0.2, cz, 0xffd400); sign(txt, 0.5, 0.22, [x, top + 0.2, cz + dir * 0.0115], [0, dir > 0 ? 0 : Math.PI, 0], { bg: '#ffd400', fg: '#1e4ea8', border: null, size: 40 });
+    k.spawns.push(new THREE.Vector3(x, top + 0.1, cz));
+    blk(x - 0.48, cz - 0.16, x + 0.48, cz + 0.16, top);
   };
 
   // ---- back wall: MILK, then more fridges
   chiller('x', -14.62, -10.9, -6.1, 1, ['milk', 'milk', 'milk', 'yog'], 'MILK');
   chiller('x', -14.62, -6.0, 3.25, 1, ['meat', 'yog', 'jar', 'yog'], 'CHEESE, HAM & YOGHURTS');
-  sign('MILK: 4 PINTS FOR £1.45 (RONNIE: "IS THAT ONE SERVING?")', 2.4, 0.4, [-8.5, 2.75, -14.5], [0, 0, 0], { bg: '#fff', fg: '#1e4ea8', border: '#ffd400', size: 40 });
+  sign('MILK: 4 PINTS FOR £1.45 (RONNIE: "IS THAT ONE SERVING?")', 2.4, 0.4, [-8.5, 2.75, -14.61], [0, 0, 0], { bg: '#fff', fg: '#1e4ea8', border: '#ffd400', size: 40 });
   // ---- top half: all low, so you can see right over it
   const ZA0 = -12.3, ZA1 = -5.9, ZB0 = -3.5, ZB1 = 3.5;
   const AX = -7.7, BX = -4.5, CX = -1.3;
@@ -201,7 +203,8 @@ export function buildSupermarket(scene) {
         stock.addStack(cat, x + side * 0.27, bc, 0.44, bl - 0.16, FL + 0.01, cat === 'roll' ? 2 : 2, cat === 'roll' ? 0.25 : 0.33, side, cat === 'roll' ? 0.2 : 0.3);
         const tex = cardTex[Math.floor(rnd() * cardTex.length)];
         k.box(0.012, 0.5, 0.012, x + side * (W / 2 - 0.05), TOPY + 0.2, bc, 0x666666);
-        sign('card', 0.34, 0.17, [x + side * (W / 2 - 0.04), TOPY + 0.42, bc], [0, side * Math.PI / 2, 0], { tex });
+        k.box(0.012, 0.19, 0.36, x + side * (W / 2 - 0.05), TOPY + 0.42, bc, 0xffd400);                                     // the card's stiff backing
+        sign('card', 0.34, 0.17, [x + side * (W / 2 - 0.05 + 0.0075), TOPY + 0.42, bc], [0, side * Math.PI / 2, 0], { tex });
         k.spawns.push(new THREE.Vector3(x + side * 0.27, TOPY + 0.15, bc + (rnd() - 0.5) * 0.4));
       }
     }
@@ -224,9 +227,9 @@ export function buildSupermarket(scene) {
   shelf(CX, ZB0, ZB1, ['crisps', 'choc', 'sweets', 'crisps'], ['cereal', 'loaf', 'tube', 'cereal']);
   sign('ALCOHOL — CHALLENGE 25 (RONNIE: CHALLENGE 25 SAUSAGE ROLLS)', 2.4, 0.4, [-10.87, 2.45, 0], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#1e4ea8', border: '#ffd400', size: 40 });
   // stacks at the ends of the aisles, along the cross aisle (and the front)
-  endStack(AX, ZA1 + 0.55, 'can'); endStack(BX, ZA1 + 0.55, 'bottle'); endStack(CX, ZA1 + 0.55, 'crisps');
-  endStack(AX, ZB0 - 0.55, 'choc'); endStack(BX, ZB0 - 0.55, 'can'); endStack(CX, ZB0 - 0.55, 'wine');
-  endStack(AX, ZB1 + 0.55, 'bottle'); endStack(BX, ZB1 + 0.55, 'choc'); endStack(CX, ZB1 + 0.55, 'crisps');
+  endStack(AX, ZA1, 'can', 1); endStack(BX, ZA1, 'bottle', 1); endStack(CX, ZA1, 'crisps', 1);
+  endStack(AX, ZB0, 'choc', -1); endStack(BX, ZB0, 'can', -1); endStack(CX, ZB0, 'wine', -1);
+  endStack(AX, ZB1, 'bottle', 1); endStack(BX, ZB1, 'choc', 1); endStack(CX, ZB1, 'crisps', 1);
   // fruit and veg: black crates on stands, the produce itself real (pick it up... it's veg, Ronnie)
   const PRODUCE = { apple: 0.036, orange: 0.037, pear: 0.04, tomato: 0.03, pepper: 0.04, banana: 0.04, cucumber: 0.025, carrot: 0.03, broccoli: 0.05, cauliflower: 0.05, celery: 0.04, sprout: 0.02 };
   const fillCrate = (type, cx, cz, w, d, y, tilt = 0, rotY = 0) => {
@@ -260,12 +263,14 @@ export function buildSupermarket(scene) {
     sign('FRESH FRUIT & VEG — RONNIE HAS NEVER BEEN IN THIS SECTION', 3.2, 0.35, [x - 0.03, 2.45, (z0 + z1) / 2], [0, -Math.PI / 2, 0], { bg: '#2e7d32', fg: '#fff', border: '#ffd400', size: 40 });
     k.spawns.push(new THREE.Vector3(x - 0.3, 1.45, -1.0));
   }
-  sign('BANANAS: 5 FOR 50p (RONNIE: "WHAT\'S A BANANA?")', 0.9, 0.3, [0.95, 1.0, 3.26], [0, 0, 0], { bg: '#ffd400', fg: '#1e4ea8', border: null, size: 36 });
+  sign('BANANAS: 5 FOR 50p (RONNIE: "WHAT\'S A BANANA?")', 0.9, 0.3, [0.95, 0.42, 3.256], [0, 0, 0], { bg: '#ffd400', fg: '#1e4ea8', border: null, size: 36 });
   // ---- the hanging aisle signs
   hang('FREEZERS', -9.0, -9.1, 1.8, 0); hang('MIDDLE AISLE', (AX + BX) / 2, -9.1, 2.0, 0); hang('MIDDLE AISLE', (BX + CX) / 2, -9.1, 2.0, 0); hang('FRESH MEAT', 2.2, -9.1, 1.6, 0);
   hang('ALCOHOL', -9.2, 0, 1.8, 0); hang('TOILETRIES', (AX + BX) / 2, 0, 1.8, 0); hang('CHOCOLATE, SWEETS & CRISPS', (BX + CX) / 2, 0, 2.6, 0); hang('FRUIT & VEG', 2.1, 0, 1.6, 0);
   { const t = canvasTex(1024, 256, (g, w, h) => { g.fillStyle = '#ffd400'; g.fillRect(0, 0, w, h); g.fillStyle = '#1e4ea8'; g.fillRect(0, 0, w, 40); g.fillRect(0, h - 40, w, 40); g.fillStyle = '#1e4ea8'; g.font = `900 110px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('MIDDLE OF LIDL', w / 2, h / 2 + 4); });
-    for (const ry of [0, Math.PI]) sign('MIDDLE OF LIDL', 3.6, 0.9, [(BX + CX) / 2, H - 0.9, -9.1 + (ry ? -0.9 : 0.9)], [0, ry, 0], { tex: t, glow: true }); }
+    const mx = (BX + CX) / 2, mz = -11.4; for (const dx of [-1.6, 1.6]) k.box(0.012, 0.5, 0.012, mx + dx, H - 0.25, mz, 0x333333);
+    k.box(3.68, 0.94, 0.03, mx, H - 0.95, mz, 0x1e4ea8);
+    for (const ry of [0, Math.PI]) sign('MIDDLE OF LIDL', 3.6, 0.9, [mx, H - 0.95, mz + (ry ? -0.0165 : 0.0165)], [0, ry, 0], { tex: t, glow: true }); }
 
   // ================================================================ the bakery: bins in front of the glass, the bake-off room behind
   const BAKE_TYPES = ['croissant', 'painchoc', 'muffin', 'swirl', 'icedbun', 'pretzel', 'doughnut', 'cookie', 'sausageroll'];
@@ -294,7 +299,7 @@ export function buildSupermarket(scene) {
       if (bi % 5 === 4) {           // a tall basket of baguettes standing up
         box(0.56, 0.5, 0.44, 0, 0.55, 0, 0xb08050);
         for (let i = 0; i < 6; i++) { const [px, pz] = at(-0.2 + (i % 3) * 0.2, -0.08 + Math.floor(i / 3) * 0.16); dorm.add('baguette', px, 0.85 + (i % 2) * 0.05, pz, ry, 0, 0, Math.PI / 2 - 0.15 + (i % 3) * 0.1); }
-        sign('tag', 0.3, 0.075, [at(0, 0.26)[0], 0.75, at(0, 0.26)[1]], [0, ry, 0], { tex: bakeTag('baguette') });
+        sign('tag', 0.3, 0.075, [at(0, 0.226)[0], 0.62, at(0, 0.226)[1]], [0, ry, 0], { tex: bakeTag('baguette') });
       } else {
         [0.35, 0.78, 1.2].forEach((y, ti) => {
           const type = BAKE_TYPES[(bi * 3 + ti) % BAKE_TYPES.length], h = BAKE_SIZE[type] || 0.03;
@@ -302,16 +307,15 @@ export function buildSupermarket(scene) {
           box(0.56, 0.06, 0.012, 0, y + 0.04, 0.225, 0xcfe8f2);                                                       // a low perspex lip
           k.colliders.push({ min: new THREE.Vector3(x - 0.2, y - 0.02, z - 0.2), max: new THREE.Vector3(x + 0.2, y + 0.012, z + 0.2) });
           for (let i = 0; i < 6; i++) { const [px, pz] = at(-0.18 + (i % 3) * 0.18, -0.1 + Math.floor(i / 3) * 0.2); dorm.add(type, px, y + 0.012 + h + (i % 2) * 0.004, pz, ry + (rnd() - 0.5) * 0.6, 0); }
-          sign('tag', 0.3, 0.075, [at(0, 0.26)[0], y - 0.02, at(0, 0.26)[1]], [0, ry, 0], { tex: bakeTag(type) });
+          sign('tag', 0.3, 0.055, [at(0, 0.2335)[0], y + 0.04, at(0, 0.2335)[1]], [0, ry, 0], { tex: bakeTag(type) });
         });
       }
       bi++;
     }
     k.lamp((ax + bx) / 2 + nx * 0.6, 2.4, (az + bz) / 2 + nz * 0.6, 0xffd8a0, 0.08);
   }
+  for (const [px, pz] of [G0, G1, G2]) { k.box(0.34, H, 0.34, px, H / 2, pz, WALL, { rot: [0, Math.PI / 4, 0] }); k.box(0.36, 0.3, 0.36, px, 3.0, pz, BLUE, { rot: [0, Math.PI / 4, 0] }); blk(px - 0.2, pz - 0.2, px + 0.2, pz + 0.2, H); }   // corners joined up
   sign('IN-STORE BAKERY — FRESH EVERY 2 HOURS (RONNIE: EVERY 2 MINUTES)', 3.4, 0.36, [8.9, 3.45, 7.74], [0, Math.atan2(-(G2[1] - G1[1]), G2[0] - G1[0]), 0], { bg: '#fff3e0', fg: '#8a4a10', border: '#ffd400', size: 40, glow: true });
-  R(4.6, 6.2, 5.0, 6.6, 0.9, 0.45, 0xc8a070, { block: true }); R(4.62, 6.25, 4.98, 6.55, 0.25, 1.02, 0xf2e6d0);        // paper bags and tongs
-  sign('CUSTOMERS MAY ONLY USE TONGS (THIS INCLUDES RONNIE\'S MOUTH)', 0.8, 0.3, [4.8, 1.35, 6.62], [0, 0, 0], { bg: '#fff', fg: '#c0392b', border: '#c0392b', size: 34 });
   for (const [x, z] of [[4.4, 5.6], [8.5, 9.1]]) k.pool(x, 0, z, 2.4, 0xffd8a0);
   // the bake-off room: deck ovens glowing, rack trolleys of trays, a proving cabinet, the bench, flour
   { const STEEL2 = 0xc8ccd2, oven = ovenTex();
@@ -327,7 +331,7 @@ export function buildSupermarket(scene) {
     // a rack oven (tall, the door open a crack) and a proving cabinet against the stock-room wall
     R(3.6, -1.32, 4.9, -0.2, 2.4, 1.2, STEEL2, { block: true }); k.label('oven', 0.7, 1.6, [4.25, 1.1, -0.19], [0, 0, 0], { tex: oven, glow: true }); k.halo(4.25, 1.1, 0.0, 1.4, 0xff9a40);
     R(5.1, -1.32, 5.9, -0.6, 2.0, 1.0, STEEL2, { block: true }); R(5.15, -0.6, 5.85, -0.58, 1.7, 1.0, 0xcfe8f2);
-    sign('PROVING', 0.5, 0.15, [5.5, 1.95, -0.57], [0, 0, 0], { bg: '#fff', fg: '#111', border: null, size: 50 });
+    sign('PROVING', 0.5, 0.1, [5.5, 1.925, -0.595], [0, 0, 0], { bg: '#fff', fg: '#111', border: null, size: 50 });
     // rack trolleys of trays (the bread on them is real too)
     const rack = (x, z, types) => {
       for (const dx of [-0.3, 0.3]) for (const dz of [-0.35, 0.35]) k.box(0.025, 1.75, 0.025, x + dx, 0.9, z + dz, STEEL2);
@@ -359,36 +363,50 @@ export function buildSupermarket(scene) {
     blk(Math.min(x0, x1) - 0.05, Math.min(z0, z1) - 0.05, Math.max(x0, x1) + 0.05, Math.max(z0, z1) + 0.05, 1.0);
   };
   RAIL(-11, 5.27, -7.67, 5.27);
-  sign('CUSTOMER SERVICE (RONNIE: PLEASE STOP ASKING FOR THE MANAGER\'S LUNCH)', 2.6, 0.35, [-9.3, 2.4, 5.3], [0, 0, 0], { bg: '#fff', fg: '#1e4ea8', border: '#ffd400', size: 36 });
+  k.box(2.7, 0.45, 0.02, -9.3, 2.4, 5.29, 0xffffff);
+  sign('CUSTOMER SERVICE (RONNIE: PLEASE STOP ASKING FOR THE MANAGER\'S LUNCH)', 2.6, 0.35, [-9.3, 2.4, 5.3015], [0, 0, 0], { bg: '#fff', fg: '#1e4ea8', border: '#ffd400', size: 36 });
   k.box(0.02, 1.0, 0.02, -10.2, H - 0.5, 5.3, 0x333333); k.box(0.02, 1.0, 0.02, -8.4, H - 0.5, 5.3, 0x333333);
   RAIL(-9.93, 6.6, -7.13, 6.6); RAIL(-7.13, 6.6, -7.13, 7.8); RAIL(-7.13, 7.8, -4.93, 7.8); RAIL(-4.93, 7.8, -4.93, 12.33); RAIL(-11, 7.8, -8.33, 7.8);
-  const kiosk = (x, z, dir) => {
-    R(x - 0.3, z - 0.32, x + 0.3, z + 0.32, 0.9, 0.45, 0xe6e6e4, { block: true, collide: true });
-    k.box(0.05, 0.36, 0.48, x - dir * 0.18, 1.18, z, BLACK, { rot: [0, 0, dir * 0.3] }); k.label('scan', 0.42, 0.3, [x - dir * 0.15, 1.19, z], [0, dir * Math.PI / 2, -dir * 0.3], { tex: kioskTex(), glow: true });
-    R(x + dir * 0.32 - 0.25, z - 0.3, x + dir * 0.32 + 0.25, z + 0.3, 0.8, 0.4, 0xd0d2d4, { block: true, collide: true });
-    k.box(0.12, 0.02, 0.22, x, 0.91, z, 0x111111);
-    k.spawns.push(new THREE.Vector3(x - dir * 0.05, 0.98, z));
-    dorm.add('lidlbag', x + dir * 0.32, 0.8 + 0.16, z, dir > 0 ? Math.PI / 2 : -Math.PI / 2);
+  const kiosk = (x, z, dir) => {      // dir: which way the customer stands (+x or -x of it)
+    const yaw = dir > 0 ? Math.PI / 2 : -Math.PI / 2, T = 0.32, at = (lx, lz) => [x + dir * lz, z - dir * lx];
+    const P = (geo, col, lx, y, lz, tilt = 0) => { geo.rotateX(-tilt); geo.rotateY(yaw); const [px, pz] = at(lx, lz); geo.translate(px, y, pz); k.parts.push(part(geo, col)); };
+    R(x - 0.3, z - 0.2, x + 0.3, z + 0.2, 0.88, 0.44, 0xe6e6e4, { block: true, collide: true });                                   // the scanner unit
+    P(new THREE.BoxGeometry(0.34, 0.02, 0.28), 0x111111, 0, 0.895, 0.02); P(new THREE.BoxGeometry(0.3, 0.012, 0.24), 0x3a6a8a, 0, 0.902, 0.02);   // scanner glass
+    P(new THREE.BoxGeometry(0.05, 0.42, 0.05), 0x666a70, 0, 1.1, -0.18);                                                           // the screen's stand
+    P(new THREE.BoxGeometry(0.46, 0.34, 0.04), BLACK, 0, 1.42, -0.17, T);                                                          // the screen, facing you, leaning back a little
+    { const m = k.label('scan', 0.42, 0.3, [0, 0, 0], [0, 0, 0], { tex: kioskTex(), glow: true }); const [px, pz] = at(0, -0.17 + 0.022 * Math.cos(T)); m.position.set(px, 1.42 + 0.022 * Math.sin(T), pz); m.rotation.order = 'YXZ'; m.rotation.set(-T, yaw, 0); }
+    P(new THREE.BoxGeometry(0.1, 0.06, 0.02), 0x222222, 0.14, 1.05, 0.2); P(new THREE.BoxGeometry(0.08, 0.004, 0.06), 0x2a2a2a, 0.15, 0.885, 0.14);   // card reader, receipt slot
+    // a shelf to put your basket/shopping down on one side, the bagging area with a bag on the other
+    P(new THREE.BoxGeometry(0.42, 0.04, 0.4), 0xb8bcc2, -0.45, 0.62, 0.02); P(new THREE.BoxGeometry(0.04, 0.6, 0.36), 0x9aa0a6, -0.65, 0.3, 0.02);
+    k.colliders.push({ min: new THREE.Vector3(Math.min(...[at(-0.66, -0.18)[0], at(-0.24, 0.22)[0]]), 0.6, Math.min(at(-0.66, -0.18)[1], at(-0.24, 0.22)[1])), max: new THREE.Vector3(Math.max(at(-0.66, -0.18)[0], at(-0.24, 0.22)[0]), 0.64, Math.max(at(-0.66, -0.18)[1], at(-0.24, 0.22)[1])) });
+    P(new THREE.BoxGeometry(0.42, 0.03, 0.4), 0xd0d2d4, 0.45, 0.8, 0.02); P(new THREE.BoxGeometry(0.42, 0.8, 0.04), 0xc8cacc, 0.45, 0.4, -0.18);
+    for (const lx of [0.27, 0.63]) P(new THREE.BoxGeometry(0.02, 0.4, 0.02), 0x9aa0a6, lx, 1.0, -0.15); P(new THREE.BoxGeometry(0.38, 0.02, 0.02), 0x9aa0a6, 0.45, 1.2, -0.15);   // bag hooks
+    blk(Math.min(at(-0.68, -0.22)[0], at(0.68, 0.22)[0]), Math.min(at(-0.68, -0.22)[1], at(0.68, 0.22)[1]), Math.max(at(-0.68, -0.22)[0], at(0.68, 0.22)[0]), Math.max(at(-0.68, -0.22)[1], at(0.68, 0.22)[1]), 0.9);
+    k.spawns.push(new THREE.Vector3(at(-0.45, 0.02)[0], 0.7, at(-0.45, 0.02)[1]));
+    { const [px, pz] = at(0.45, 0.02); dorm.add('lidlbag', px, 0.815 + 0.16, pz, yaw); }
   };
   for (const z of [9.0, 10.4, 11.8, 13.2]) kiosk(-10.4, z, 1);
   for (const z of [9.0, 10.4, 11.8]) kiosk(-5.65, z, -1);
   hang('SELF CHECKOUTS', -8.0, 10.6, 2.4, 0);
-  sign('UNEXPECTED ITEM IN BAGGING AREA: RONNIE', 1.8, 0.3, [-4.86, 1.4, 10.0], [0, Math.PI / 2, 0], { bg: '#003', fg: '#ff5252', border: null, size: 34, glow: true });
+  k.box(0.02, 0.36, 1.9, -4.93, 0.73, 10.0, 0x111133);
+  sign('UNEXPECTED ITEM IN BAGGING AREA: RONNIE', 1.8, 0.3, [-4.9185, 0.73, 10.0], [0, Math.PI / 2, 0], { bg: '#003', fg: '#ff5252', border: null, size: 34, glow: true });
   [[-3.45, '3'], [-0.99, '2'], [1.53, '1']].forEach(([x, n]) => {
     R(x - 0.4, 7.15, x + 0.4, 12.3, 0.85, 0.425, BLACK, { collide: true, block: true });
     R(x - 0.3, 7.25, x + 0.3, 10.6, 0.02, 0.86, 0x111111); R(x - 0.32, 10.6, x + 0.32, 10.62, 0.06, 0.88, 0x555555);
     R(x - 0.38, 10.7, x + 0.38, 12.25, 0.03, 0.865, 0x8a8e94);
-    R(x + 0.45, 10.7, x + 1.0, 11.4, 0.85, 0.425, 0x3a3c40, { block: true }); R(x + 0.5, 10.8, x + 0.95, 11.3, 0.3, 1.0, BLACK);
-    k.box(0.32, 0.22, 0.05, x + 0.25, 1.15, 10.55, BLACK); k.box(0.28, 0.18, 0.01, x + 0.25, 1.15, 10.52, 0x2a6ad8);
-    k.cyl(0.025, 0.025, 1.9, x - 0.3, 1.8, 7.2, 0x888888, 6);
-    sign(n, 0.42, 0.42, [x - 0.3, 2.85, 7.2], [0, 0, 0], { bg: '#1e4ea8', fg: '#ffd400', border: '#ffd400', size: 200 });
-    sign(n, 0.42, 0.42, [x - 0.3, 2.85, 7.19], [0, Math.PI, 0], { bg: '#1e4ea8', fg: '#ffd400', border: '#ffd400', size: 200 });
+    R(x - 1.0, 10.7, x - 0.45, 11.4, 0.85, 0.425, 0x3a3c40, { block: true }); R(x - 0.95, 10.8, x - 0.5, 11.3, 0.3, 1.0, BLACK);       // the cashier's seat
+    k.box(0.32, 0.22, 0.05, x - 0.25, 1.15, 10.55, BLACK); k.box(0.28, 0.18, 0.01, x - 0.25, 1.15, 10.52, 0x2a6ad8);
+    k.cyl(0.025, 0.025, 1.9, x + 0.3, 1.8, 7.2, 0x888888, 6);
+    k.box(0.46, 0.46, 0.02, x + 0.3, 2.85, 7.195, 0x1e4ea8);
+    sign(n, 0.42, 0.42, [x + 0.3, 2.85, 7.2065], [0, 0, 0], { bg: '#1e4ea8', fg: '#ffd400', border: '#ffd400', size: 200 });
+    sign(n, 0.42, 0.42, [x + 0.3, 2.85, 7.1835], [0, Math.PI, 0], { bg: '#1e4ea8', fg: '#ffd400', border: '#ffd400', size: 200 });
     k.spawns.push(new THREE.Vector3(x, 0.95, 8.0), new THREE.Vector3(x, 0.95, 9.2));
-    R(x - 0.85, 7.15, x - 0.5, 8.2, 1.3, 0.65, WHITE, { collide: true, block: true });
-    for (const [i, y] of [0.45, 0.8, 1.15].entries()) { R(x - 0.86, 7.2, x - 0.84, 8.15, 0.14, y, [RED, YEL, 0x8e24aa][i]); stock.addRun(['choc', 'sweets', 'choc'][i], x - 0.92, y - 0.05, 7.22, 8.13, -1); }
+    R(x + 0.5, 7.15, x + 0.85, 8.2, 1.3, 0.65, WHITE, { collide: true, block: true });                                                // sweets by the queue
+    for (const [i, y] of [0.45, 0.8, 1.15].entries()) { R(x + 0.84, 7.2, x + 0.86, 8.15, 0.14, y, [RED, YEL, 0x8e24aa][i]); stock.addRun(['choc', 'sweets', 'choc'][i], x + 0.92, y - 0.05, 7.22, 8.13, 1); }
     dorm.add('lidlbag', x - 0.1, 0.88 + 0.16, 11.9, 0.2); dorm.add('lidlbag', x + 0.15, 0.88 + 0.16, 11.45, -0.3);
   });
-  sign('TILL 3: OLIVER (FILMING YOU)', 0.9, 0.3, [-3.75, 2.35, 7.21], [0, 0, 0], { bg: '#fff', fg: '#1e4ea8', border: '#ffd400', size: 40 });
+  k.box(0.94, 0.34, 0.02, -3.15, 2.35, 7.215, 0xffffff);
+  sign('TILL 3: OLIVER (FILMING YOU)', 0.9, 0.3, [-3.15, 2.35, 7.2265], [0, 0, 0], { bg: '#fff', fg: '#1e4ea8', border: '#ffd400', size: 40 });
   // magazines: proper shelving (four sloping shelves, a magazine every 20cm, all of them throwable)
   const magShelf = (x0, x1, z, sides) => {      // along x at z, faces -z and/or +z
     const len = x1 - x0, xc = (x0 + x1) / 2;
@@ -414,19 +432,16 @@ export function buildSupermarket(scene) {
     for (let x = x0; x <= x1 + 1e-3; x += (x1 - x0) / 3) R(x - 0.025, z - 0.025, x + 0.025, z + 0.025, 1.88, 0.94, CHROME);
     blk(x0, z - 0.06, x1, z + 0.06, 1.9);
   }
-  sign('EXIT — RECEIPTS ARE CHECKED. RONNIE\'S RECEIPT IS 4 METRES LONG.', 2.6, 0.35, [8.0, 2.65, 14.5], [0, Math.PI, 0], { bg: '#fff', fg: '#111', border: '#1e4ea8', size: 36 });
+  sign('EXIT — RECEIPTS ARE CHECKED. RONNIE\'S RECEIPT IS 4 METRES LONG.', 2.6, 0.35, [8.0, 2.65, 14.61], [0, Math.PI, 0], { bg: '#fff', fg: '#111', border: '#1e4ea8', size: 36 });
 
   // ================================================================ Lidl bags lying about (pick one up: what's inside?)
-  R(2.4, 6.2, 3.2, 6.5, 1.6, 0.8, STEEL, { block: true });
-  for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) dorm.add('lidlbag', 2.55 + i * 0.25, 0.5 + j * 0.6 + 0.16, 6.08, Math.PI);
-  sign('BAG FOR LIFE 20p (RONNIE\'S ARE FOR LUNCH)', 0.9, 0.25, [2.8, 1.75, 6.06], [0, Math.PI, 0], { bg: '#ffd400', fg: '#1e4ea8', border: null, size: 36 });
   for (const [x, z, ry] of [[-6.1, -8.0, 0.4], [-2.9, 1.5, 2.0], [-9.0, -1.2, 1.0], [2.2, -9.5, 3.0], [-6.0, 4.6, 0.8], [5.0, 10.6, 2.4], [-9.3, -4.6, 1.6], [-2.9, -8.6, 2.2], [7.5, 9.8, 0.6]]) dorm.add('lidlbag', x, 0.16, z, ry);
 
   // ================================================================ the back stock room (STAFF ONLY)
-  sign('STAFF ONLY (YES, RONNIE, THAT MEANS YOU)', 1.4, 0.3, [3.24, 2.5, -4.6], [0, -Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: null, size: 44 });
+  sign('STAFF ONLY (YES, RONNIE, THAT MEANS YOU)', 1.4, 0.3, [3.31, 2.5, -4.6], [0, -Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: null, size: 44 });
   const pallet = (x, z, c, h) => { R(x - 0.6, z - 0.5, x + 0.6, z + 0.5, 0.14, 0.07, 0xc8a070, { collide: true }); R(x - 0.55, z - 0.45, x + 0.55, z + 0.45, h, 0.14 + h / 2, c, { collide: true, block: true }); k.spawns.push(new THREE.Vector3(x, 0.14 + h + 0.08, z)); };
   pallet(5.0, -13.6, 0xc8a070, 1.1); pallet(6.6, -13.6, 0x39a845, 0.9); pallet(7.4, -11.0, 0xc8a070, 1.4); pallet(5.0, -11.0, 0xe8e8e8, 0.8);
-  sign('MONSTOR: 4,000 CANS. ORDERED BY: ???. DRUNK BY: ONE MAN.', 1.0, 0.4, [6.6, 1.3, -13.09], [0, 0, 0], { bg: '#111', fg: '#39ff14', border: '#39ff14', size: 36, glow: true });
+  sign('MONSTOR: 4,000 CANS. ORDERED BY: ???. DRUNK BY: ONE MAN.', 1.0, 0.4, [6.6, 0.6, -13.145], [0, 0, 0], { bg: '#111', fg: '#39ff14', border: '#39ff14', size: 36, glow: true });
   for (const z of [-8.4, -7.2]) { R(5.4, z - 0.35, 6.2, z + 0.35, 0.04, 0.2, 0x777777); for (const dx of [-0.38, 0.38]) R(5.8 + dx - 0.02, z - 0.35, 5.8 + dx + 0.02, z + 0.35, 1.6, 0.9, 0x777777); R(5.4, z - 0.3, 6.2, z + 0.3, 0.9, 0.67, 0xd6b48a, { block: true }); }
   R(7.4, -6.6, 8.3, -6.1, 0.12, 0.12, RED); R(7.4, -6.6, 7.5, -6.1, 1.1, 0.6, RED);
   for (const y of [0.1, 1.0, 1.9, 2.8]) R(8.0, -12.4, 8.42, -4.8, 0.05, y, 0xff8a1f, { collide: true });
@@ -445,11 +460,11 @@ export function buildSupermarket(scene) {
 
   // ================================================================ branding + jokes
   sign('LIDL', 4, 0.95, [-10.88, 3.35, -4.7], [0, Math.PI / 2, 0], { tex: logoTex(), glow: true });
-  sign('LIDL', 4, 0.95, [-4.0, 3.4, 14.5], [0, Math.PI, 0], { tex: logoTex(), glow: true });
+  sign('LIDL', 4, 0.95, [-4.0, 3.45, 14.595], [0, Math.PI, 0], { tex: logoTex(), glow: true });
   const jokes = [
     ['PRICE: PRICELESS (PLEASE LEAVE)', 1.6, 0.45, [-10.88, 2.0, 9.5], [0, Math.PI / 2, 0], { bg: '#000', fg: '#ffd400', border: null, size: 50, glow: true }],
     ['CUSTOMER OF THE MONTH: RONNIE (12 MONTHS RUNNING) (NOT RUNNING. WALKING SLOWLY. TO THE BAKERY.)', 1.4, 0.9, [-10.88, 1.9, -8.0], [0, Math.PI / 2, 0], { bg: '#fffde7', fg: '#111', border: '#1e4ea8', size: 36 }],
-    ['LOST CHILD? PLEASE WAIT BY THE TILLS. LOST RONNIE? CHECK THE BAKERY.', 1.6, 0.5, [10.88, 2.0, 12.15], [0, -Math.PI / 2, 0], { bg: '#e3f2fd', fg: '#0d47a1', border: '#0d47a1', size: 36 }],
+    ['LOST CHILD? PLEASE WAIT BY THE TILLS. LOST RONNIE? CHECK THE BAKERY.', 0.8, 0.5, [10.915, 2.0, 12.15], [0, -Math.PI / 2, 0], { bg: '#e3f2fd', fg: '#0d47a1', border: '#0d47a1', size: 36 }],
     ['TROLLEY £1 COIN. RONNIE\'S TROLLEY NEEDS A MORTGAGE.', 1.4, 0.35, [12.7, 2.3, 14.58], [0, Math.PI, 0], { bg: '#fff', fg: '#1e4ea8', border: '#ffd400', size: 36 }],
   ];
   for (const [t, w, h, pos, rot, o] of jokes) sign(t, w, h, pos, rot, o);
@@ -463,7 +478,7 @@ export function buildSupermarket(scene) {
   const room = k.finish({
     name: 'Lidl',
     sky: 0xf4f8ff, ground: 0x9a9a9a, hemiI: 2.2, sun: 0xffffff, sunI: 0.9, sunPos: [3, 10, 6],
-    start: { x: 12.6, z: 11.0, yaw: Math.PI / 2 },
+    start: { x: 12.9, z: 10.25, yaw: Math.PI / 2 },       // in the foyer by the flowers, facing the way in
     board: { x: -10.89, y: 1.6, z: -4.6, ry: Math.PI / 2 },
     startFood: ['can', 'burger', 'pizza', 'doughnut', 'doughnut', 'doughnut', 'burger', 'pizza', 'can', 'doughnut', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza', 'doughnut', 'can'],
     spotCount: 36,

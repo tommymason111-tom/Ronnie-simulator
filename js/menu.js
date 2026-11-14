@@ -1,5 +1,12 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.4.0', GAME_DATE = '14 Nov 2026';
+var GAME_VERSION = '1.5.0', GAME_DATE = '14 Nov 2026';
+// what's new (newest first) — shown under the settings cog
+var GAME_UPDATES = [
+  ['1.5.0', ['Lidl: self checkouts rebuilt (screens facing you, a shelf for your shopping, a bagging area)', 'Lidl: staff sit on the cashier side of the tills', 'Lidl: slimmer stacks at the aisle ends, a clear walkway round them', 'Lidl: bakery corners joined up, bag stands removed', 'Lidl: you start in the foyer by the flowers, facing the way in', 'Oysterfleet: a fig plant by the fruit machine', 'Dylan has black trainers on']],
+  ['1.4.2', ['Oysterfleet: windows through to the conservatory, a brick cubby with a booth and TV', 'Tall tables with cream leather bar chairs, one at the fruit machine', 'Bar food menus on every table', 'Fixed walls that had gone missing at the conservatory and beer garden door']],
+  ['1.4.1', ['Oysterfleet bar rebuilt from the real one: open behind, walk in from the end, into the staff room', 'No more flickering walls, floors or signs', 'Every sign fits its words and sits on a wall (nothing floating)', 'Beer mats on every table']],
+  ['1.4.0', ['Settings cog with the version', 'Oysterfleet: panelled half walls, brick pillars, farmhouse chairs, antler chandeliers', 'Lidl: bakery with a bake-off room and real bakery food, middle aisle baskets, Lidl bags with surprises inside, magazines, staff in uniforms', 'Supermarket Sweep counts calories']],
+];
 // RONNIE SIMULATOR — the start screen: a few animated screens you tap through.
 //   TITLE   bouncing logo, tap Ronnie (he chomps and talks), catch the falling food
 //   PLACE   swipe through the places, each with its own little animated scene
@@ -62,6 +69,7 @@ var GAME_VERSION = '1.4.0', GAME_DATE = '14 Nov 2026';
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   // settings cog (top corner of the title screen): shows the version you're playing
   $('#set-version').textContent = 'v' + GAME_VERSION; $('#set-date').textContent = GAME_DATE;
+  $('#set-updates').innerHTML = GAME_UPDATES.map(([v, list]) => `<div class="upd"><b>v${v}</b><ul>${list.map(t => `<li>${t}</li>`).join('')}</ul></div>`).join('');
   $('#cog').addEventListener('click', () => { $('#settings').hidden = false; });
   $('#set-close').addEventListener('click', () => { $('#settings').hidden = true; });
   $('#settings').addEventListener('click', (e) => { if (e.target.id === 'settings') $('#settings').hidden = true; });
