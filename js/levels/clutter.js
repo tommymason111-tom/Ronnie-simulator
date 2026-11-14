@@ -107,10 +107,30 @@ function pizzaInsideTex() {
 // lie an upright thing (height along y from 0) on its side: centre it, roll it over, lift it by its radius
 const layDown = (radius, halfH) => new THREE.Matrix4().makeTranslation(0, radius, 0).multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2)).multiply(new THREE.Matrix4().makeTranslation(0, -halfH, 0));
 
+const WAKE = { can: 'can', canLying: 'can', bottle: 'beer', bottleLying: 'beer', crisps: 'crisps', pizza: 'pizza', pizzaOpen: 'pizza' };
+const _zero = new THREE.Matrix4().makeScale(0, 0, 0), _w = new THREE.Vector3();
+
 export class Clutter {
-  constructor() { this.list = []; }
+  constructor() { this.list = []; this.entries = []; }
   // record an item: kind 'can' | 'canLying' | 'canCrushed' | 'bottle' | 'bottleLying' | 'crisps' | 'pizza' | 'pizzaOpen'
   add(kind, x, y, z, yaw = 0, v = 0) { this.list.push({ kind, x, y, z, yaw, v }); }
+  // swap a piece of mess for a real item (hidden decor, real food in its place) so it can be grabbed
+  wake(items, e) {
+    e.woken = true;
+    for (const [key, i] of e.parts) { const im = this.kinds[key].im; im.setMatrixAt(i, _zero); im.instanceMatrix.needsUpdate = true; }
+    const type = WAKE[e.kind]; if (!type) return null;
+    const it = items.spawn(type, _w.copy(e.pos).add(new THREE.Vector3(0, type === 'pizza' ? 0.03 : type === 'crisps' ? 0.03 : 0.07, 0)));
+    it.spawnScale = 1; it.obj.scale.setScalar(1); it.resting = true; it.fromClutter = true;
+    if (e.kind === 'canLying' || e.kind === 'bottleLying') { it.obj.rotation.set(0, 0, Math.PI / 2); it.pos.y = e.pos.y + 0.035; }
+    return it;
+  }
+  wakeNear(items, p, r) { if (!this.kinds) return; for (const e of this.entries) if (!e.woken && WAKE[e.kind] && e.pos.distanceToSquared(p) < r * r) this.wake(items, e); }
+  wakeRay(items, ray, reach) {
+    if (!this.kinds) return;
+    for (const e of this.entries) { if (e.woken || !WAKE[e.kind]) continue;
+      const along = _w.subVectors(e.pos, ray.origin).dot(ray.direction);
+      if (along > 0 && along < reach && ray.distanceSqToPoint(e.pos) < 0.12 * 0.12) this.wake(items, e); }
+  }
   build(scene, mapZ = (z) => z) {
     const lam = (t, o = {}) => new THREE.MeshStandardMaterial({ map: t, roughness: 0.55, metalness: 0, ...o });
     const kinds = {};
@@ -127,11 +147,12 @@ export class Clutter {
     const BOX = new THREE.BoxGeometry(0.4, 0.045, 0.4), TRAY = new THREE.BoxGeometry(0.4, 0.03, 0.4), LID = new THREE.BoxGeometry(0.4, 0.006, 0.4);
     const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), S = new THREE.Vector3(1, 1, 1), V = new THREE.Vector3(), L = new THREE.Matrix4();
     for (const it of this.list) {
+      const ent = { kind: it.kind, pos: new THREE.Vector3(it.x, it.y, mapZ(it.z)), parts: [] }; this.entries.push(ent);
       const z = mapZ(it.z), r = Math.abs(Math.sin(it.x * 12.9898 + it.z * 78.233) * 43758.5453) % 1;      // a steady random per item
       const place = (key, geo, mat, local = null, scl = null, tilt = null) => {
         E.set(tilt ? tilt[0] : 0, it.yaw, tilt ? tilt[2] : 0, 'YXZ'); Q.setFromEuler(E);
         M.compose(V.set(it.x, it.y, z), Q, scl || S); if (local) M.multiply(local);
-        part(key, geo, mat).m.push(M.clone());
+        const pk = part(key, geo, mat); ent.parts.push([key, pk.m.length]); pk.m.push(M.clone());
       };
       if (it.kind === 'can' || it.kind === 'canLying' || it.kind === 'canCrushed') {
         const b = it.v % BRANDS.length;
@@ -152,9 +173,10 @@ export class Clutter {
         place('plid', LID, lidMats, hinge);
       }
     }
+    this.kinds = kinds;
     for (const key in kinds) {
       const k = kinds[key], im = new THREE.InstancedMesh(k.geo, k.mat, k.m.length);
-      k.m.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true;
+      k.m.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true; k.im = im;
       im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
     }
   }

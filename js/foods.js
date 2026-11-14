@@ -202,6 +202,16 @@ function canMeshes() {
   return g;
 }
 
+// a bottle of lager: green glass, label, gold cap (stands on y = 0 -> centred like the can)
+function beerGeo() {
+  const p = [];
+  p.push(part(cyl(0.031, 0.031, 0.13, 14), 0x1f5a24, [0, -0.045, 0]));
+  p.push(part(cyl(0.0315, 0.0315, 0.06, 14), 0xf4ecd2, [0, -0.05, 0]));              // label
+  p.push(part(cyl(0.013, 0.031, 0.05, 14), 0x1f5a24, [0, 0.045, 0]));                // shoulders
+  p.push(part(cyl(0.012, 0.013, 0.05, 10), 0x1f5a24, [0, 0.095, 0]));                // neck
+  p.push(part(cyl(0.0145, 0.0145, 0.01, 10), 0xd4af37, [0, 0.124, 0]));              // cap
+  return merge(p);
+}
 // a dart: steel tip pointing along -z, tungsten barrel, shaft, flights
 function dartGeo() {
   const R = [-Math.PI / 2, 0, 0], p = [];
@@ -219,7 +229,7 @@ function meshFor(type) {
   if (type === 'bat') return batMesh();
   if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo, poop: poopGeo,
     hotdog: hotdogGeo, fries: friesGeo, kebab: kebabGeo, chicken: chickenGeo, taco: tacoGeo, crisps: crispsGeo, choc: chocGeo, cookie: cookieGeo, icecream: icecreamGeo, sausageroll: sausageRollGeo,
-    apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo, dart: dartGeo }[type]();
+    apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo, dart: dartGeo, beer: beerGeo }[type]();
   return new THREE.Mesh(geoCache[type], vcLambert);
 }
 
@@ -247,7 +257,7 @@ export class Item {
     this.opened = false;
     this.chug = 0;
     this.thrownByPlayer = false;
-    this.shelf = false;
+    this.shelf = false; this.fromClutter = false;
     this.incoming = false;      // thrown at Ronnie by a character
     this.foodPass = false;      // ...and it's food (Harry's passes), not veg
     this.thrower = null;
@@ -309,6 +319,7 @@ export class ItemManager {
   }
 
   nearest(point, radius, filter = null) {
+    if (this.room.clutter) this.room.clutter.wakeNear(this, point, radius + 0.05);     // cans, bottles, crisps and pizza lying about can be picked up
     let best = null, bd = radius * radius;
     for (const it of this.items) {
       if (it.dead || (filter && !filter(it))) continue;

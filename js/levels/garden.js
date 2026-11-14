@@ -981,6 +981,7 @@ export function buildGarden(scene) {
   room.pingpong = new PingPong(scene, { c: new THREE.Vector3(TT.x, TT.y, F(TT.z)) });
   ppScore.material.map = room.pingpong.board.tex; ppScore.material.needsUpdate = true;
   room.games = [room.dartboard, room.pingpong];
+  room.clutter = clutter;                                                                    // the mess can be picked up
   // free roam: where people hang out and what they're doing (x, z, the way they face, what they're up to)
   const face = (x, z, tx, tz) => Math.atan2(tx - x, tz - z);
   room.activities = [

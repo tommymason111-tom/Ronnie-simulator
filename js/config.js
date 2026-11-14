@@ -41,6 +41,7 @@ export const FOODS = {
   pepper:   { label: 'Pepper',      chonk: -6, bites: 1, radius: 0.04, mass: 0.12, veg: true },
   cauliflower: { label: 'Cauliflower', chonk: -12, bites: 1, radius: 0.045, mass: 0.2, veg: true },
   poop:     { label: 'Poop', chonk: 0, bites: 1, radius: 0.045, mass: 0.2, poop: true },
+  beer:     { label: 'Bottle of lager', chonk: 15, bites: 1, radius: 0.035, mass: 0.4, drink: true, beer: true },
   dart:     { label: 'Dart', chonk: 0, bites: 1, radius: 0.025, mass: 0.02, dart: true, prop: true },
   bat:      { label: 'Table tennis bat', chonk: 0, bites: 1, radius: 0.02, mass: 0.1, bat: true, prop: true },
   pint:     { label: 'BLACK LIFFEY STOUT', chonk: 20, bites: 1, radius: 0.045, mass: 0.6, drink: true, stout: true },

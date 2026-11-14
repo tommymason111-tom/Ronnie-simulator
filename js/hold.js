@@ -26,6 +26,7 @@ const X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1], nX = [-1, 0, 0], nY = [0, -1,
 const SPEC = {
   // drinks and tall things: held round the middle, top out of the thumb side
   can:      { axis: nY, up: Z, at: [0, 0, 0], r: 0.033 },
+  beer:     { axis: nY, up: Z, at: [0, -0.04, 0], r: 0.031 },
   bat:      { axis: nY, up: X, at: [0, -0.1, 0], r: 0.013 },              // table tennis bat: shakehand grip, face along the palm
   pint:     { axis: nY, up: Z, at: [0, -0.01, 0], r: 0.039 },
   shake:    { axis: nY, up: Z, at: [0, -0.01, 0], r: 0.035 },

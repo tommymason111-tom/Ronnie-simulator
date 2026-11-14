@@ -188,7 +188,7 @@ function bite(it, hand) {
   if (it.bitesLeft <= 0) {
     setTimeout(() => sfx('gulp', null, 1), 220);
     items.remove(it);
-    if (!it.foodPass) items.queueRespawn(it.type);
+    if (!it.foodPass && !it.fromClutter) items.queueRespawn(it.type);
     G.eaten++;
     director.onFinished(it);
     if (time - G.lastEatLine > 7 && Math.random() < 0.6) { G.lastEatLine = time; setTimeout(() => tommy.say('eat'), 700); }
@@ -287,11 +287,13 @@ function finishDrink(it) {
     amount *= 1.5;
     words.show('BULKING!', at, '#e53935', 0.15 * player.scale, 1.6);
     say(it.placedBy || cast.find(c => c.id === 'lewis'), 'shake');
+  } else if (it.def.beer) {    // a lager from Lewis's mess
+    words.show(['CHEERS!', 'GET IT DOWN YA!', 'WARM. STILL GOOD.'][Math.floor(Math.random() * 3)], at, '#ffd400', 0.13 * player.scale, 1.4);
   } else {
     setTimeout(() => sfx('trumpet', null, 1), 250);
     startLoco();
     words.show('MANGO LOCO!', at, '#ff9a1f', 0.15 * player.scale, 1.6);
-    items.queueRespawn('can', 8);
+    if (!it.fromClutter) items.queueRespawn('can', 8);
     setTimeout(() => tommy.say('drink'), 900);
   }
   addChonk(amount);
@@ -452,7 +454,8 @@ const touch = setupTouch({
         return;
       }
     }
-    // nearest thing along the tap: food or a bit of Tommy
+    // nearest thing along the tap: food or a bit of Tommy (the mess lying about wakes up into real food first)
+    room.clutter && room.clutter.wakeRay(items, ray, reach + 1);
     let best = null, bd = Infinity;
     for (const it of items.items) {
       if (it.heldBy) continue;
