@@ -238,9 +238,23 @@ export function buildSupermarket(scene) {
   chiller('z', 0.95, ZA0 + 0.3, ZA1 - 0.3, -1, ['meat', 'meat', 'meat'], null, { low: true });
   // the right-hand wall: dairy & salad fridges, the MONSTOR fridge
   chiller('z', 3.32, -11.9, -6.0, -1, ['yog', 'milk', 'meat', 'jar'], 'DAIRY, SALADS & READY MEALS');
-  R(2.85, -14.0, 3.32, -12.3, 2.0, 1.0, BLACK, { block: true }); k.label('fridges', 1.6, 1.8, [2.84, 1.0, -13.15], [0, -Math.PI / 2, 0], { tex: fridgeTex(), glow: true });
-  for (let z = -13.8; z < -12.5; z += 0.4) for (const y of [0.5, 1.0, 1.5]) k.spawns.push(new THREE.Vector3(2.95, y, z));
-  for (const y of [0.42, 0.92, 1.42]) R(2.85, -13.95, 3.3, -12.35, 0.03, y, 0x444444, { collide: true });
+  // the MONSTOR fridge: black cabinet, lit green inside, three shelves packed with real cans behind a glass door
+  { const x1 = 3.32, x0 = 2.7, z0 = -14.0, z1 = -12.3, zc = (z0 + z1) / 2, FH = 2.0;
+    R(x0, z0, x1, z1, 0.12, 0.06, BLACK); R(x0, z0, x1, z1, 0.1, FH - 0.05, BLACK);                                  // plinth, top
+    R(x1 - 0.05, z0, x1, z1, FH, FH / 2, 0x0e2a12); for (const z of [z0 + 0.03, z1 - 0.03]) R(x0, z - 0.03, x1, z + 0.03, FH, FH / 2, BLACK);
+    [0.16, 0.6, 1.04, 1.48].forEach(y => { R(x0 + 0.05, z0 + 0.06, x1 - 0.05, z1 - 0.06, 0.02, y, 0x9aa0a6, { collide: true });
+      stock.addRun('can', x0 + 0.3, y + 0.012, z0 + 0.1, z1 - 0.1, -1);
+      for (let z = z0 + 0.3; z < z1 - 0.2; z += 0.4) k.spawns.push(new THREE.Vector3(x0 + 0.2, y + 0.1, z)); });
+    for (const y of [0.45, 0.9, 1.35, 1.8]) k.lamp(x0 + 0.08, y, zc, 0x6aff4a, 0.05, false);
+    const gl = new THREE.Mesh(new THREE.PlaneGeometry(z1 - z0 - 0.12, FH - 0.25), glassMat); gl.position.set(x0 - 0.005, 0.12 + (FH - 0.25) / 2, zc); gl.rotation.y = -Math.PI / 2; gl.renderOrder = 3; scene.add(gl);
+    for (const z of [z0 + 0.03, zc, z1 - 0.03]) R(x0 - 0.03, z - 0.03, x0, z + 0.03, FH - 0.15, FH / 2, 0x111111);
+    for (const y of [0.13, FH - 0.12]) R(x0 - 0.03, z0, x0, z1, 0.05, y, 0x111111);
+    for (const z of [zc - 0.08, zc + 0.08]) k.box(0.03, 0.6, 0.025, x0 - 0.05, 1.05, z, 0xc8ccd0);
+    R(x0 - 0.04, z0, x0, z1, 0.28, FH + 0.1, BLACK);
+    const hdr = canvasTex(512, 96, (g, w, h) => { g.fillStyle = '#0a0a0a'; g.fillRect(0, 0, w, h); g.fillStyle = '#39ff14'; g.font = `900 64px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('MONSTOR', w / 2, h / 2 + 2); g.strokeStyle = '#39ff14'; g.lineWidth = 4; g.strokeRect(6, 6, w - 12, h - 12); });
+    k.label('MONSTOR', z1 - z0 - 0.1, 0.24, [x0 - 0.045, FH + 0.1, zc], [0, -Math.PI / 2, 0], { tex: hdr, glow: true });
+    blk(x0 - 0.06, z0, x1, z1, FH + 0.2);
+  }
   k.pool(2.5, 0, -13.1, 2.4, 0x9fffb0);
   // ---- bottom half: alcohol, toiletries, chocolate sweets & crisps, veg
   wallShelf(-10.95, ZB0, ZB1, 1, ['can', 'wine', 'wine', 'bottle']);
