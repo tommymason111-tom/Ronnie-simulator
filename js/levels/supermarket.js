@@ -10,6 +10,7 @@
 //   "STAFF ONLY" strip curtains.
 // Plan (x east, z south): entrance doors in the south wall at x 9..11.
 import * as THREE from 'three';
+import { Stock, priceTex } from './stock.js';
 import { Kit, tileTex, canvasTex, FONT, streetViewTex } from './kit.js';
 
 const H = 4.0;
@@ -114,13 +115,20 @@ export function buildSupermarket(scene) {
 
   // ================================================================ the aisles (with a cross-aisle through the middle)
   const shelfTexes = [productTex(0), productTex(1), productTex(2), productTex(3)];
-  const shelf = (x, z0, z1, ti) => {
+  const stock = new Stock(), PRICES = priceTex(), BACK = backTex();
+  BACK.wrapS = BACK.wrapT = THREE.RepeatWrapping; BACK.repeat.set(8, 3.2);
+  const CATS = [['crisps', 'crisps', 'tube', 'crisps'], ['tube', 'cereal', 'crisps', 'tube'], ['tin', 'pasta', 'tin', 'tin'], ['bottle', 'can', 'bottle', 'can'], ['cereal', 'loaf', 'jar', 'cereal']];
+  const shelf = (x, z0, z1, ti, cat = ti % 5) => {
     const len = z1 - z0, zc = (z0 + z1) / 2;
     k.box(1.0, 1.75, len, x, 0.875, zc, SHELF, { collide: true, block: true });
     for (const side of [-1, 1]) {
-      for (const y of [0.55, 1.05, 1.5]) k.box(0.28, 0.03, len, x + side * 0.62, y, zc, LEDGE, { collide: true });
-      k.label('shelf', len, 1.6, [x + side * 0.505, 0.9, zc], [0, side * Math.PI / 2, 0], { tex: shelfTexes[(ti + (side > 0 ? 1 : 0)) % 4] });
-      for (let z = z0 + 0.4; z < z1 - 0.3; z += 0.55) for (const y of [0.62, 1.12, 1.57]) k.spawns.push(new THREE.Vector3(x + side * 0.62, y, z + (y > 1 ? 0.2 : 0)));   // every shelf, all the way along
+      [0.1, 0.55, 1.05, 1.5].forEach((y, li) => {
+        k.box(0.3, 0.03, len, x + side * 0.63, y, zc, LEDGE, { collide: true });
+        k.texBox(0.006, 0.04, len, x + side * 0.783, y - 0.005, zc, PRICES, { tile: 0.5 });                           // price strip on the shelf edge
+        stock.addRun(CATS[cat][li], x + side * 0.56, y + 0.016, z0 + 0.05, z1 - 0.05, side);                           // the products themselves
+      });
+      k.label('shelf', len, 1.6, [x + side * 0.505, 0.9, zc], [0, side * Math.PI / 2, 0], { tex: BACK });
+      for (let z = z0 + 0.4; z < z1 - 0.3; z += 0.55) for (const y of [0.62, 1.12, 1.57]) k.spawns.push(new THREE.Vector3(x + side * 0.7, y, z + (y > 1 ? 0.2 : 0)));   // food to grab, at the front of every shelf
     }
     // end caps: offer bays facing the cross-aisle and the front
     for (const [ez, dir] of [[z0, -1], [z1, 1]]) { R(x - 0.5, ez + dir * 0.0, x + 0.5, ez + dir * 0.45, 1.2, 0.6, YEL, { collide: true, block: true }); k.spawns.push(new THREE.Vector3(x, 1.28, ez + dir * 0.22)); }
@@ -133,7 +141,7 @@ export function buildSupermarket(scene) {
     [-0.5, '5', 'CEREAL, BREAD & SPREADS'],
   ];
   AISLES.forEach(([x, n, name], i) => {
-    shelf(x, -6.4, -2.4, i); shelf(x, -0.6, 3.6, i + 1);
+    shelf(x, -6.4, -2.4, i, i); shelf(x, -0.6, 3.6, i + 1, i);
     // hanging aisle sign
     k.cyl(0.006, 0.006, 0.8, x, H - 0.4, -1.5, 0x333333, 4);
     sign(`${n}  ${name}`, 2.0, 0.42, [x, H - 1.0, -1.49], [0, 0, 0], { bg: '#1e4ea8', fg: '#fff', border: '#ffd400', size: 40 });
@@ -193,6 +201,7 @@ export function buildSupermarket(scene) {
   for (let z = -3; z < 2.4; z += 1.3) k.pool(13.4, 0, z, 1.6, 0xffc070);
   for (let x = 10.2; x < 12.9; x += 0.8) k.pool(x, 1.0, -3.4, 0.7, 0xff8a40);
   k.pool(-3.0, 0, -9.2, 6, 0x9fffb0);     // the MONSTOR fridge glow on the floor
+  stock.build(scene);
   return k.finish({
     name: 'Lidl',
     sky: 0xf4f8ff, ground: 0x9a9a9a, hemiI: 2.2, sun: 0xffffff, sunI: 0.9, sunPos: [3, 10, 6],
@@ -203,6 +212,9 @@ export function buildSupermarket(scene) {
   });
 }
 
+function backTex() {
+  return canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#dfe3e8'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,0.12)'; for (let y = 6; y < h; y += 16) for (let x = 6; x < w; x += 16) g.fillRect(x, y, 3, 3); });   // pegboard
+}
 function productTex(seed) {
   return canvasTex(1024, 256, (g, w, h) => {
     g.fillStyle = '#e8eaee'; g.fillRect(0, 0, w, h);
