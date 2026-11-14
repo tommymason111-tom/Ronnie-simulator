@@ -17,6 +17,7 @@ import { Director, MODES } from './modes.js';
 import { buildPub } from './levels/pub.js';
 import { buildSupermarket } from './levels/supermarket.js';
 import { buildRestaurant } from './levels/restaurant.js';
+import { buildGarden } from './levels/garden.js';
 
 // wait for the start screen: where are we playing, and what mode?
 const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'pub', mode: 'everyone' }));
@@ -38,7 +39,7 @@ scene.background = new THREE.Color(0x9db7ff);
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 40);
 camera.position.set(0, 1.6, 0);
 
-const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant };
+const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant, garden: buildGarden };
 const room = (BUILD[SEL.place] || buildRoom)(scene);
 room.placeId = BUILD[SEL.place] ? SEL.place : 'bedroom';
 room.start = room.start || { x: 0.05, z: 0.45, yaw: 0 };
@@ -105,6 +106,8 @@ items.onLand = (it, speed) => {
 };
 items.onSpawn = () => sfx('pop', null, 0.15);
 player.onGrab = (it) => {
+  // Supermarket Sweep: straight into the trolley
+  if (director.running && director.mode === 'sweep' && !it.incoming && !it.def.veg) { const h = it.heldBy; if (h) h.held = null; it.heldBy = null; director.sweepGrab(it); return; }
   sfx('pop', it.pos, 0.3);
   if (it.incoming) {
     words.show('CAUGHT!', it.pos.clone().add(new THREE.Vector3(0, 0.15, 0)), '#7cff6a', 0.22);

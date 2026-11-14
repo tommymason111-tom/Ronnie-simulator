@@ -15,6 +15,7 @@ import { canvasTex, fitText, roundRect, FONT } from './textures.js';
 import { sfx, playTune, shout } from './audio.js';
 import { Item } from './foods.js';
 import { TURKEY_LEN } from './cutscenes.js';
+import { BBQ_SPOT, IAN_SPOT } from './levels/garden.js';
 import { pickVeg, pickJunk } from './config.js';
 
 export const MODES = {
@@ -25,6 +26,8 @@ export const MODES = {
   catch:        { name: 'CATCH & EAT', desc: 'Catch Harry\'s throws in your mouth.', time: 70 },
   chonkoff:     { name: 'EAT-OFF', desc: '60 seconds. Eat everything.', time: 60 },
   chonkoff2:    { name: 'EAT-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
+  sweep:        { name: 'SUPERMARKET SWEEP', desc: '90 seconds, one trolley. Grab everything. Dodge Oliver.', time: 90, place: 'shop' },
+  bbq:          { name: "IAN'S BARBECUE", desc: 'Round Lewis\'s house. Eat off the grill before Ian makes it healthy.', time: 150, place: 'garden' },
   date:         { name: 'DATE NIGHT', desc: 'Eat when Chloe looks away. 3 catches and it\'s salad.', time: 180, place: 'restaurant' },
 };
 // which modes each place offers (also used by the start screen)
@@ -53,7 +56,25 @@ const ATTACKS = {
   alfie:  [{ key: 'nutmeg', icon: '⚽', title: 'ALFIE NUTMEGS YOU!', sub: 'SPUN ROUND!' }],
   ben:    [{ key: 'turkey', icon: '✈️', title: 'BEN TAKES YOU TO TURKEY!', sub: 'TO GET YOUR HAIRLINE DONE' }],
 };
-const ANNOUNCE_T = 2;     // how long the attack pop-up shows before the attack lands
+const ANNOUNCE_T = 2;
+// Supermarket Sweep prices
+const PRICE = { can: 1.49, burger: 3.99, pizza: 4.49, doughnut: 0.99, hotdog: 2.49, fries: 1.99, kebab: 5.99, chicken: 3.49, taco: 2.99, crisps: 1.29, choc: 0.89, cookie: 0.79, icecream: 2.29, sausageroll: 1.19, pint: 4.80, shake: 2.50 };
+const TROLLEY_PARTS = 12;
+// a shopping trolley (the basket is open on top so you can see what's in it)
+function makeTrolley() {
+  const g = new THREE.Group(), steel = new THREE.MeshLambertMaterial({ color: 0xb8bec6 }), blue = new THREE.MeshLambertMaterial({ color: 0x1e4ea8 });
+  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+  add(new THREE.BoxGeometry(0.6, 0.02, 0.8), steel, 0, 0.55, 0);                       // basket floor
+  add(new THREE.BoxGeometry(0.6, 0.35, 0.02), steel, 0, 0.72, 0.4); add(new THREE.BoxGeometry(0.6, 0.35, 0.02), steel, 0, 0.72, -0.4);
+  add(new THREE.BoxGeometry(0.02, 0.35, 0.8), steel, 0.3, 0.72, 0); add(new THREE.BoxGeometry(0.02, 0.35, 0.8), steel, -0.3, 0.72, 0);
+  add(new THREE.BoxGeometry(0.64, 0.05, 0.05), blue, 0, 0.98, -0.46);                  // handle (on Ronnie's side)
+  add(new THREE.BoxGeometry(0.03, 0.55, 0.03), steel, 0.28, 0.28, -0.38); add(new THREE.BoxGeometry(0.03, 0.55, 0.03), steel, -0.28, 0.28, -0.38);
+  add(new THREE.BoxGeometry(0.03, 0.55, 0.03), steel, 0.25, 0.28, 0.38); add(new THREE.BoxGeometry(0.03, 0.55, 0.03), steel, -0.25, 0.28, 0.38);
+  const wheel = new THREE.CylinderGeometry(0.05, 0.05, 0.03, 10); wheel.rotateZ(Math.PI / 2);
+  add(wheel, blue, 0.26, 0.05, -0.36); add(wheel, blue, -0.26, 0.05, 0.36);
+  g.children.forEach(m => { m.castShadow = false; });
+  return g;
+}     // how long the attack pop-up shows before the attack lands
 const LEGACY_KEY = { tommy: 'trip', noah: 'tackle' };
 // props held in front of Ronnie's face
 function datingPhone() {
@@ -160,7 +181,7 @@ export class Director {
     const tommy = g.tommy;
     tommy.attacks = id === 'classic';
     tommy.directed = false; tommy.tripping = 0;
-    tommy.active = true;
+    tommy.active = true; tommy.attacks = tommy.attacks && id !== 'bbq';
     let squad = [];
     const big = !!g.room.big, everyone = Object.keys(SQUAD);
     if (id === 'intervention') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 4);
@@ -168,6 +189,8 @@ export class Director {
     else if (id === 'date') squad = ['chloe', ...shuffle(everyone.filter(s => s !== 'chloe')).slice(0, 6 + Math.floor(Math.random() * 4))];   // the mates are out for dinner too
     else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan', 'ian', 'alfie', 'ben']).slice(0, big ? 6 : 3);
     else if (id === 'catch') squad = ['harry'];
+    else if (id === 'sweep') squad = ['oliver'];
+    else if (id === 'bbq') squad = ['ian', 'lewis', ...shuffle(everyone.filter(s => s !== 'ian' && s !== 'lewis')).slice(0, 4)];
     else if (id === 'classic') squad = [];
     else squad = [];
     this.roster = squad;
@@ -181,16 +204,21 @@ export class Director {
       this.hook(c);
       g.cast.push(c);
     });
-    const SHORT = { classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
+    const SHORT = { sweep: 'FILL THE TROLLEY!', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
     g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
     if (id === 'date') this.startDate();
+    if (id === 'sweep') this.startSweep();
+    if (id === 'bbq') this.startBbq();
+    if (id !== 'sweep') this.removeTrolley();
     if (id === 'everyone') { this.nextChaos = 18; tommy.attacks = true; tommy.directed = true; }
     this.nextAttackT = id === 'everyone' ? 12 : 15;
     if (g.fx) g.fx.setCountdown(null);
     tommy.say({
       everyone: 'The whole squad\'s out tonight, Ron. Everyone\'s watching what you eat. I\'m just trying to help.',
+      sweep: 'Supermarket Sweep! Ninety seconds, Ron. Oliver\'s on security. He takes it VERY seriously.',
+      bbq: 'Ian\'s barbecue, Ron. He says it\'s healthy. It\'s not healthy. Be quick.',
       date: 'Date night! I\'m over here on my own table. Behave, Ron. She\'s watching. Mostly.',
       intervention: 'Right, Ron. The whole squad\'s here. It\'s an intervention. I\'m just trying to help.',
       veggie: 'VEGGIE WAR. Everyone, positions. Aim for the mouth.',
@@ -232,6 +260,18 @@ export class Director {
       lines.push(['TIMES BUSTED BY CHLOE', `${this.date.catches} / 3`]);
       lines.push([this.date.catches >= 3 ? 'Chloe ordered you a salad.' : 'Relationship status: still together, somehow.', '']);
       lines.push(['The bill is a scroll. It is still unrolling.', '']);
+    } else if (this.mode === 'sweep') {
+      const sw = this.sweep, best = +(safeGet('rs_best_sweep') || 0), total = Math.round(sw.total * 100) / 100;
+      lines.length = 1;
+      lines.push(['ITEMS IN THE TROLLEY', sw.items]);
+      lines.push(['TOTAL', '£' + total.toFixed(2)]);
+      lines.push(['CAUGHT BY OLIVER', sw.caught]);
+      if (total > best) { safeSet('rs_best_sweep', total); lines.push(['NEW RECORD!', '£' + total.toFixed(2)]); } else lines.push(['BEST EVER', '£' + best.toFixed(2)]);
+      lines.push(['Oliver: "That\'s going on my story."', '']);
+    } else if (this.mode === 'bbq') {
+      lines.push(['OFF THE GRILL', this.bbq.ate]);
+      lines.push(['GRILLED VEG EATEN', st.veg]);
+      lines.push([st.veg === 0 ? 'Ian: "You didn\'t touch my peppers."' : 'Ian: "See? HEALTHY. Lewy, he loved it."', '']);
     } else if (this.mode === 'catch') {
       lines.push(['CATCHES', `${st.caught} / ${st.thrown}`]);
       lines.push(['Harry: "Terrible decision."', '']);
@@ -254,6 +294,8 @@ export class Director {
     g.tommy.say({
       intervention: 'Another intervention, another failure. I\'ll tell your mum you were good. I\'ll lie.',
       veggie: 'Well done, Ron. You ate the level. The WHOLE level.',
+      sweep: 'Time! Put the trolley down, Ron. PUT IT DOWN.',
+      bbq: 'Ian says you\'re not invited next year. He says that every year.',
       catch: 'Harry\'s retiring. From throwing. And dating, hopefully.',
       date: 'Romance isn\'t dead, Ron. You ate it.',
       chonkoff: 'Time! ...the scales have left the building.',
@@ -288,6 +330,8 @@ export class Director {
     const idle = (c) => c.state === 'idle' && !c.down;
     switch (this.mode) {
       case 'date': this.updateDate(dt, ctx); break;
+      case 'sweep': this.updateSweep(dt, ctx); break;
+      case 'bbq': this.updateBbq(dt, ctx); this.updateAttacks(dt); break;
       case 'everyone':
       case 'intervention':
         this.updateAttacks(dt);
@@ -518,6 +562,107 @@ export class Director {
   clinging(dylan, on) {
     if (on) { this.g.words.show('SHAKE HIM OFF!', this.g.player.head.clone().addScaledVector(this.g.player.fwd, 0.8), '#FF6D00', 0.16, 2); }
     else this.g.words.show('SHAKEN OFF!', dylan.pos.clone().add({ x: 0, y: 1, z: 0 }), '#FF6D00', 0.18);
+  }
+
+  // ------------------------------------------------------------------ SUPERMARKET SWEEP
+  // Everything you pick up goes straight into your trolley (which rolls along in
+  // front of you). Bigger and better food is worth more. Oliver's on security:
+  // if he catches you, three things come back out of the trolley.
+  startSweep() {
+    const g = this.g;
+    this.sweep = { items: 0, total: 0, caught: 0, cool: 3, list: [] };
+    if (!this.trolley) this.trolley = makeTrolley();
+    this.trolley.visible = true; this.trolley.children.slice(TROLLEY_PARTS).forEach(m => this.trolley.remove(m));
+    g.scene.add(this.trolley);
+    g.items.minFood = 64; g.items.respawnDelay = 1.2;
+    const oli = this.cast.find(c => c.id === 'oliver');
+    if (oli) { oli.active = false; setTimeout(() => oli.say('Store security. Walk, don\'t run. And DEFINITELY don\'t eat the stock, Ron.', 5), 1800); }
+  }
+  removeTrolley() { if (this.trolley) { this.trolley.visible = false; this.g.scene.remove(this.trolley); } if (this.g.items) { this.g.items.minFood = this.g.room.big ? 44 : 0; } }
+  // the game calls this when Ronnie picks something up during the sweep
+  sweepGrab(it) {
+    if (!this.running || this.mode !== 'sweep') return false;
+    const g = this.g, sw = this.sweep, price = PRICE[it.type] || 1.5;
+    sw.items++; sw.total += price;
+    g.words.show(`+£${price.toFixed(2)}`, it.pos.clone().add(new THREE.Vector3(0, 0.2, 0)), '#ffd400', 0.16, 0.9);
+    sfx('ting', it.pos, 0.8);
+    // a copy goes into the basket, stacking up
+    const m = new Item(it.type).obj; m.scale.setScalar(0.8);
+    const n = this.trolley.children.length - TROLLEY_PARTS;
+    m.position.set(-0.22 + (n % 4) * 0.15, 0.62 + Math.floor(n / 12) * 0.08, -0.2 + (Math.floor(n / 4) % 3) * 0.18);
+    m.rotation.set(Math.random(), Math.random() * 6, Math.random());
+    this.trolley.add(m); sw.list.push(m);
+    g.items.remove(it); g.items.queueRespawn(it.type, 1.2);
+    return true;
+  }
+  updateSweep(dt, ctx) {
+    const g = this.g, P = g.player, sw = this.sweep; if (!sw) return;
+    // the trolley rolls along in front of Ronnie
+    const f = new THREE.Vector3(P.fwd.x, 0, P.fwd.z).normalize();
+    const want = P.head.clone().addScaledVector(f, 0.75); want.y = 0;
+    this.trolley.position.lerp(want, Math.min(1, dt * 8));
+    this.trolley.rotation.y = Math.atan2(f.x, f.z);
+    // Oliver chases you round the shop
+    const oli = this.cast.find(c => c.id === 'oliver'); sw.cool -= dt;
+    if (oli && !oli.down) {
+      if (oli.state === 'idle' || oli.state === 'walk') { oli.chaseT = (oli.chaseT || 0) - dt; if (oli.chaseT <= 0) { oli.chaseT = 1.2; oli.goTo(P.head.x, P.head.z, 1.25, 'idle'); } }
+      if (oli.distToPlayer < 0.85 && sw.cool <= 0 && sw.items > 0) {
+        sw.cool = 6; sw.caught++;
+        const lose = Math.min(3, sw.list.length);
+        for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; sw.total = Math.max(0, sw.total - 1.5); }
+        g.showBanner('CAUGHT BY OLIVER!', `-${lose} ITEMS`); sfx('whistle', null, 1);
+        oli.say(['Bag check! These are coming with me.', 'Caught on camera, Ron. Literally. 40k views already.', 'Sir. SIR. Those aren\'t paid for.'][sw.caught % 3], 4);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ IAN'S BARBECUE (Lewis's house)
+  // Ian's on the grill: every few seconds something comes off it onto the grill
+  // and the side shelves. Get it before he turns it into "healthy" grilled veg
+  // and lobs it at you. The rest of the lads take turns to attack as usual.
+  startBbq() {
+    const g = this.g;
+    this.bbq = { ate: 0, cookT: 3, vegT: 9, grill: [] };
+    g.items.minFood = 0;
+    const ian = this.cast.find(c => c.id === 'ian');
+    if (ian) {
+      ian.active = false; ian.grilling = true;
+      ian.rag.placeAt(IAN_SPOT.x, IAN_SPOT.z, 0); ian.faceYaw = 0;
+      if (ian.prop) ian.prop.visible = false;
+      setTimeout(() => ian.say('Right, Lewy, get the plates! Ronnie, wait your turn. RONNIE.', 5), 1500);
+    }
+    this.tommyOff = true;
+  }
+  updateBbq(dt, ctx) {
+    const g = this.g, b = this.bbq; if (!b) return;
+    const ian = this.cast.find(c => c.id === 'ian');
+    if (ian && !ian.down && ian.state === 'idle') {
+      ian.faceYaw = 0;
+      // flipping burgers
+      ian.rag.aim('uArmR', -0.2, -0.3, 1); ian.rag.aim('lArmR', -0.05, -0.2 + Math.sin(performance.now() / 140) * 0.35, 1);
+      if (ian.prop) ian.prop.visible = false;
+    }
+    b.cookT -= dt;
+    b.grill = b.grill.filter(it => !it.dead && !it.heldBy);
+    if (b.cookT <= 0 && b.grill.length < 4) {
+      b.cookT = 3.5 + Math.random() * 2;
+      const spots = [[-0.4, 0], [0, 0], [0.4, 0], [-0.95, 0], [0.95, 0]].map(([dx, dz]) => new THREE.Vector3(BBQ_SPOT.x + dx, 1.05, BBQ_SPOT.z + dz));
+      const free = spots.find(p => b.grill.every(it => it.pos.distanceTo(p) > 0.15));
+      if (free) {
+        const t = ['burger', 'hotdog', 'chicken', 'sausageroll', 'burger', 'kebab'][Math.floor(Math.random() * 6)];
+        const it = g.items.spawn(t, free); it.temp = true; b.grill.push(it);
+        sfx('sizzle', free, 0.6);
+        if (ian && Math.random() < 0.4) ian.say(['Burger\'s up! Lewy! LEWY!', 'Proper meat, that. From the butcher. Not the council.', 'Who wants a hot dog? Not you, Ronnie. Fine. Yes, you.'][Math.floor(Math.random() * 3)], 3);
+      }
+    }
+    // left too long on the grill? Ian swaps it for veg and throws it at you
+    b.vegT -= dt;
+    if (b.vegT <= 0 && ian && !ian.down && ian.state === 'idle') {
+      b.vegT = 9 + Math.random() * 5;
+      const old = b.grill.shift(); if (old && !old.dead) g.items.remove(old);
+      ian.startThrow({ item: ['pepper', 'tomato', 'cauliflower', 'broccoli'][Math.floor(Math.random() * 4)], speed: 3.2, windup: 0.8, spread: 0.08 });
+      ian.say(['Healthy option! Catch!', 'That burger was looking at me funny. Have a pepper.', 'Grilled veg, Ronnie! It\'s basically a steak!'][Math.floor(Math.random() * 3)], 3);
+    }
   }
 
   // ------------------------------------------------------------------ DATE NIGHT
@@ -784,6 +929,8 @@ export class Director {
     if (this.mode === 'intervention') extra = this.attackClock();
     else if (this.mode === 'veggie') extra = `Swats ${this.stats.swats} · Veg ${this.stats.veg}`;
     else if (this.mode === 'catch') extra = `Caught ${this.stats.caught}/${this.stats.thrown}`;
+    else if (this.mode === 'sweep' && this.sweep) extra = `Trolley ${this.sweep.items} · £${this.sweep.total.toFixed(2)}`;
+    else if (this.mode === 'bbq' && this.bbq) extra = `Off the grill ${this.bbq.ate} · ${this.attackClock()}`;
     else if (this.mode === 'date') extra = `Busted ${this.date.catches}/3 · ${this.date.look ? 'SHE\'S LOOKING!' : 'EAT NOW!'}`;
     else if (this.mode === 'everyone') return `THE WHOLE SQUAD · ${this.attackClock()}`;
     else extra = `Eat ${Math.round(this.stats.chonk)}`;

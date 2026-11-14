@@ -12,10 +12,13 @@
     { id: 'pub', ico: '🍺', name: 'THE OYSTERFLEET', desc: "Ronnie's local and his work. The whole squad fits in.", bg: 'linear-gradient(160deg,#5a1a24,#2a1208)', props: ['🍺', '🎯', '📺', '🍟', '🎰'] },
     { id: 'shop', ico: '🛒', name: 'LIDDLE-PRICE', desc: 'Aisles, the middle aisle, the bakery and a wall of MONSTOR.', bg: 'linear-gradient(160deg,#1e4ea8,#ffd400)', props: ['🛒', '🥐', '🥫', '🍩', '🧺'] },
     { id: 'restaurant', ico: '🕯️', name: 'LA GRANDE PORTION', desc: 'Fancy dinner. Date night with Chloe (and the lads at the other tables).', bg: 'linear-gradient(160deg,#5a0f18,#1a0508)', props: ['🕯️', '🍷', '🦞', '🍰', '🎹'] },
+    { id: 'garden', ico: '🏡', name: "LEWIS'S HOUSE", desc: 'A sunny back garden. Ian is on the barbecue. Lewy is fetching plates.', bg: 'linear-gradient(160deg,#4aa8f0,#5a9a36)', props: ['🍔', '🌭', '🍗', '⚽', '🌻'] },
     { id: 'bedroom', ico: '🛏️', name: "RONNIE'S BEDROOM", desc: 'Where it all begins. Small, cosy, full of cans.', bg: 'linear-gradient(160deg,#3a2a6a,#1f4fbf)', props: ['🛏️', '🥫', '🎮', '🍕', '🥫'] },
   ];
   const MODES = [
     { id: 'everyone', ico: '👥', name: 'THE WHOLE SQUAD', desc: 'The main game. Everyone is here, taking turns to attack you while you eat. A countdown shows the next one.', stars: 3, who: 'Everyone' },
+    { id: 'sweep', ico: '🛒', name: 'SUPERMARKET SWEEP', desc: '90 seconds and a trolley in Liddle-Price. Grab everything you can. Oliver is on security.', stars: 2, who: 'Oliver', place: 'shop' },
+    { id: 'bbq', ico: '🍖', name: "IAN'S BARBECUE", desc: "Round Lewis's house. Grab the food off the grill before Ian makes it healthy and throws it at you.", stars: 2, who: 'Ian, Lewis + the lads', place: 'garden' },
     { id: 'date', ico: '💜', name: 'DATE NIGHT', desc: "Eat when Chloe looks away. Three catches and it's salad.", stars: 2, who: 'Chloe + the lads', place: 'restaurant' },
     { id: 'catch', ico: '🏈', name: 'CATCH & EAT', desc: "Harry throws food. Catch it in your mouth.", stars: 1, who: 'Harry' },
     { id: 'chonkoff', ico: '⏱️', name: 'EAT-OFF', desc: '60 seconds. Eat everything. Beat your best.', stars: 1, who: 'Just you' },
@@ -38,7 +41,8 @@
   ];
   const RONNIE_LINES = ['Pass us that burger.', 'Mmm. MMMM.', 'Is there any more?', 'Go on then. One more.', 'Is that a burger?', 'One more. Just one.', "I'm not hungry. I'm BORED.", 'UNLEASH THE MONSTOR!', 'Who ate my pie? ...oh. Me.', 'Five a day? FIVE A DAY.', 'Chelsea, pies and MONSTOR.'];
   const ok = (m, p) => !(m.place && m.place !== p) && !(m.big && p === 'bedroom');
-  const why = (m, p) => m.place && m.place !== p ? 'Only at La Grande Portion' : m.big && p === 'bedroom' ? 'Needs a bigger place' : '';
+  const PLACE_NAME = { restaurant: 'La Grande Portion', shop: 'Liddle-Price', garden: "Lewis's House", pub: 'the Oysterfleet', bedroom: "Ronnie's bedroom" };
+  const why = (m, p) => m.place && m.place !== p ? 'Only at ' + PLACE_NAME[m.place] : m.big && p === 'bedroom' ? 'Needs a bigger place' : '';
 
   const q = new URLSearchParams(location.search);
   let saved = {}; try { saved = JSON.parse(localStorage.getItem('rs_menu') || '{}'); } catch (e) {}
@@ -150,6 +154,7 @@
     $$('.scene', track).forEach((el, i) => { el.classList.toggle('cur', i === pi); el.style.transform = `translateX(${(i - pi) * 104}%) scale(${i === pi ? 1 : 0.86}) rotate(${(i - pi) * 3}deg)`; el.style.opacity = Math.abs(i - pi) > 1 ? 0 : i === pi ? 1 : 0.5; });
     $$('#place-dots i').forEach((d, i) => d.classList.toggle('on', i === pi));
     if (!MODES.some(m => m.id === mode) || !ok(MODES.find(m => m.id === mode), place)) mode = 'everyone';
+    if (place === 'garden' && mode === 'everyone') mode = 'bbq';   // the garden is for Ian's barbecue
   }
   const stepPlace = (d) => { pi = (pi + d + PLACES.length) % PLACES.length; drawPlace(); blip(440 + pi * 60, 0.05); };
   $('#place-prev').addEventListener('click', () => stepPlace(-1));
