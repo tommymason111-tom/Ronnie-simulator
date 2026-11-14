@@ -14,7 +14,7 @@ import { pickVeg, pickJunk } from './config.js';
 import { sfx } from './audio.js';
 import { canvasTex, FONT } from './textures.js';
 
-const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4();
+const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _lq = new THREE.Quaternion(), _lx = new THREE.Vector3(1, 0, 0);
 // how long each signature move lasts (seconds)
 const ANNOUNCE_T = 2;   // how long the attack pop-up shows before the attack lands
 const SIGN_T = { knee: 1.6, beer: 1.9, dating: 5.5, pepsi: 1.6, jig: 6.5, yeet: 1.6, siu: 3.2, rod: 5.0, bbq: 1.8, diet: 1.8, flash: 1.3, oasis: 6.5, nutmeg: 1.3, turkey: 20.2 };
@@ -591,7 +591,14 @@ export class SquadMember extends Character {
 
   personalityPose(t) {
     const r = this.rag;
-    if (this.activity === 'lounge') { this.sitPose(); r.aim('lLegL', 0, -0.25, 1); r.aim('lLegR', 0, -0.25, 1); r.aim('uArmL', 0.5, 0.3, -0.6); r.aim('uArmR', -0.5, 0.3, -0.6); r.bob -= 0.12; return; }
+    if (this.activity === 'lounge') {      // lying back on a sun lounger: legs out straight, body reclined on the backrest, hands behind the head
+      r.aim('uLegL', 0.06, -0.06, 1); r.aim('lLegL', 0.03, -0.04, 1); r.aim('uLegR', -0.06, -0.06, 1); r.aim('lLegR', -0.03, -0.04, 1);
+      r.aim('uArmL', 0.7, 0.75, -0.2); r.aim('lArmL', -0.75, 0.2, -0.35); r.aim('uArmR', -0.7, 0.75, -0.2); r.aim('lArmR', 0.75, 0.2, -0.35);
+      _lq.setFromAxisAngle(_lx, -0.95 + Math.sin(t * 0.7) * 0.015);           // recline (a slow breath)
+      for (const n of ['pelvis', 'chest', 'head', 'uArmL', 'lArmL', 'uArmR', 'lArmR']) if (r.pose[n]) r.pose[n].premultiply(_lq);
+      r.bob = 0.4 - r.parts.uLegL.def.a.y;
+      return;
+    }
     if (this.seated) { this.sitPose(); return; }
     if (this.dancing) { this.dancePose(t); return; }
     // free roam: what they're up to

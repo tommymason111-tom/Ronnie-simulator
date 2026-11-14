@@ -940,7 +940,7 @@ export function buildGarden(scene) {
     { x: 2.43, z: 1.38, yaw: face(2.43, 1.38, 3.05, 1.5), pose: 'sit' },                            // the bistro chair
     { x: 5.0, z: 0.9, yaw: face(5.0, 0.9, 5.7, 1.45), pose: 'drink' },                              // by the cool box
     { x: 0.6, z: 0.95, yaw: Math.PI, pose: 'phone' },                                               // on the back step
-    { x: -4.6, z: F(-4.7) + 0.25, yaw: 0, pose: 'lounge' }, { x: -3.5, z: F(-4.7) + 0.25, yaw: 0, pose: 'lounge' },   // sun loungers
+    { x: -4.6, z: F(-4.7) - 0.42, yaw: 0, pose: 'lounge' }, { x: -3.5, z: F(-4.7) - 0.42, yaw: 0, pose: 'lounge' },   // sun loungers
     { x: TT.x - TL / 2 - 0.45, z: F(TT.z), yaw: Math.PI / 2, pose: 'bat' }, { x: TT.x + TL / 2 + 0.45, z: F(TT.z), yaw: -Math.PI / 2, pose: 'bat' },   // table tennis
     { x: TT.x - 0.3, z: F(TT.z) + 1.4, yaw: Math.PI, pose: 'watch' },
     { x: DB.x + 2.45, z: F(DB.z), yaw: -Math.PI / 2, pose: 'darts' }, { x: DB.x + 2.9, z: F(DB.z) + 0.7, yaw: -Math.PI / 2 - 0.4, pose: 'drink' },   // darts in the cabin
