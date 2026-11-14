@@ -79,9 +79,33 @@ function jarTex([fill, name]) {
   return canvasTex(128, 256, (g, w, h) => { g.fillStyle = fill; g.fillRect(0, 0, w, h); const y0 = h * (1 - 3 / 7) + 6, y1 = h * (1 - 2 / 7) - 6; g.fillStyle = '#fff8e1'; g.fillRect(0, y0, w, y1 - y0); txt(g, name, w / 4, (y0 + y1) / 2, 14, fill, 60); txt(g, name, 3 * w / 4, (y0 + y1) / 2, 14, fill, 60); });
 }
 const priceTex = () => canvasTex(512, 32, (g, w, h) => {
-  g.fillStyle = '#f4f4f4'; g.fillRect(0, 0, w, h);
-  for (let x = 0; x < w; x += 128) { g.fillStyle = '#ffd400'; g.fillRect(x + 8, 3, 70, h - 6); g.fillStyle = '#e53935'; g.fillRect(x + 8, 3, 70, 6); txt(g, '£' + (0.49 + ((x / 128) * 0.37) % 2.5).toFixed(2), x + 43, h / 2 + 3, 16, '#111', 64); g.fillStyle = '#1e4ea8'; g.fillRect(x + 84, 8, 30, h - 16); }
+  g.fillStyle = '#1e4ea8'; g.fillRect(0, 0, w, h);                                                             // blue shelf-edge strip
+  for (let x = 0; x < w; x += 128) { g.fillStyle = '#ffd400'; g.fillRect(x + 8, 3, 74, h - 6); txt(g, '£' + (0.49 + ((x / 128) * 0.37) % 2.5).toFixed(2), x + 45, h / 2 + 2, 16, '#1e4ea8', 66); g.fillStyle = '#fff'; g.fillRect(x + 88, 9, 30, h - 18); }
 });
+
+const WINES = [['#3a0a14', '#f4ecd8', 'ROUGE'], ['#2a3a10', '#fff8e0', 'BLANC'], ['#4a0a1a', '#ffd400', 'MERLOT'], ['#e8d8a8', '#1e4ea8', 'ROSÉ']];
+function wineTex([glass, label, name]) {
+  // wine lathe: 10 points, body between points 2 and 3
+  return canvasTex(128, 512, (g, w, h) => { g.fillStyle = glass; g.fillRect(0, 0, w, h); const b0 = h * (1 - 3 / 9), b1 = h * (1 - 2 / 9); g.fillStyle = label; g.fillRect(0, b0 + 10, w, b1 - b0 - 20); txt(g, name, w / 4, (b0 + b1) / 2, 14, '#333', 58); txt(g, name, 3 * w / 4, (b0 + b1) / 2, 14, '#333', 58); });
+}
+const MILKS = [['#1e88e5', 'WHOLE'], ['#43a047', 'SEMI'], ['#e53935', 'SKIMMED']];
+const milkTex = ([cap, name]) => canvasTex(128, 256, (g, w, h) => { g.fillStyle = '#fbfbf8'; g.fillRect(0, 0, w, h); const y0 = h * (1 - 3 / 7), y1 = h * (1 - 2 / 7); g.fillStyle = cap; g.fillRect(0, y0, w, y1 - y0); txt(g, name, w / 4, (y0 + y1) / 2, 15, '#fff', 58); txt(g, name, 3 * w / 4, (y0 + y1) / 2, 15, '#fff', 58); });
+const MEATS = [['MINCE', '#b0303a'], ['CHICKEN', '#f0c8a8'], ['SAUSAGES', '#c86a5a'], ['BACON', '#d8686a'], ['STEAKS', '#8a1a22']];
+const meatTex = ([name, meat]) => canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#111'; g.fillRect(0, 0, w, h); g.fillStyle = meat; g.fillRect(8, 8, w - 16, h - 16); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(10, 10, w - 20, 12); g.fillStyle = '#ffd400'; g.fillRect(14, h - 38, w - 28, 26); txt(g, name, w / 2, h - 25, 15, '#1e4ea8', w - 34); });
+const CHOCS = [['MILK CHOC', '#5a2a8a'], ['CARAMEL', '#c8102e'], ['NUTTY', '#e8a020'], ['DARK 70%', '#1a1a1a'], ['WHITE', '#f0e8d0']];
+const chocTex = ([name, bg]) => canvasTex(128, 192, (g, w, h) => { g.fillStyle = bg; g.fillRect(0, 0, w, h); g.fillStyle = '#5d3a1a'; g.fillRect(14, 90, w - 28, 60); g.strokeStyle = '#3a2410'; g.lineWidth = 3; for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(14 + i * (w - 28) / 4, 90); g.lineTo(14 + i * (w - 28) / 4, 150); g.stroke(); } txt(g, name, w / 2, 40, 20, bg === '#f0e8d0' ? '#5d3a1a' : '#fff', 110); txt(g, '200g', w / 2, 172, 14, '#ffd400', 100); });
+const SWEETS = [['FIZZY WORMS', '#e91e63'], ['JELLY BABIES', '#ff9800'], ['COLA BOTTLES', '#795548'], ['SOUR STARS', '#7cb342']];
+const sweetTex = ([name, bg]) => canvasTex(128, 192, (g, w, h) => { g.fillStyle = bg; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,0.85)'; g.beginPath(); g.ellipse(w / 2, 110, 46, 40, 0, 0, 7); g.fill(); for (let i = 0; i < 9; i++) { g.fillStyle = ['#e53935', '#ffd400', '#43a047', '#8e24aa'][i % 4]; g.beginPath(); g.ellipse(w / 2 - 28 + (i % 3) * 28, 88 + Math.floor(i / 3) * 22, 10, 6, i, 0, 7); g.fill(); } txt(g, name, w / 2, 34, 18, '#fff', 116); });
+const TOILS = [['SHAMPOO', '#26a6d9'], ['SHOWER GEL', '#7e57c2'], ['CONDITIONER', '#ec407a'], ['BODY SPRAY', '#212121']];
+const toilTex = ([name, bg]) => canvasTex(128, 256, (g, w, h) => { g.fillStyle = bg; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(0, 0, 14, h); const y0 = h * (1 - 3 / 7), y1 = h * (1 - 2 / 7); txt(g, name, w / 4, (y0 + y1) / 2, 12, '#fff', 58); txt(g, name, 3 * w / 4, (y0 + y1) / 2, 12, '#fff', 58); });
+const ROLLS = [['TOILET ROLL 9', '#1e88e5'], ['KITCHEN ROLL 4', '#43a047']];
+const rollTex = ([name, bg]) => canvasTex(256, 192, (g, w, h) => { g.fillStyle = '#f6f6f2'; g.fillRect(0, 0, w, h); for (let i = 0; i < 3; i++) { g.strokeStyle = '#ddd'; g.lineWidth = 3; g.strokeRect(6 + i * 82, 50, 78, 120); } g.fillStyle = bg; g.fillRect(0, 0, w, 44); txt(g, name, w / 2, 22, 24, '#fff', 230); g.fillStyle = '#ffd400'; g.fillRect(w - 70, h - 40, 60, 30); txt(g, 'VALUE', w - 40, h - 25, 13, '#1e4ea8', 56); });
+const BUYS = [['AIR FRYER', '#263238'], ['PRESSURE WASHER', '#ffd400'], ['SNORKEL SET', '#00acc1'], ['WELDING MASK', '#424242'], ['HEATED BLANKET', '#8d6e63'], ['DRILL SET', '#2e7d32'], ['SLOW COOKER', '#c62828'], ['SKI GOGGLES', '#1e4ea8']];
+const buyTex = ([name, bg]) => canvasTex(192, 160, (g, w, h) => { g.fillStyle = bg; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.fillRect(12, 40, w - 24, h - 70); g.fillStyle = '#9aa0a6'; g.fillRect(w / 2 - 34, 56, 68, h - 104); txt(g, name, w / 2, 22, 20, bg === '#ffd400' ? '#111' : '#fff', w - 16); g.fillStyle = '#ffd400'; g.fillRect(w - 66, h - 28, 58, 22); txt(g, 'NEW', w - 37, h - 17, 14, '#c8102e', 50); });
+const YOGS = [['#f8bbd0', 'STRAWB'], ['#fff59d', 'VANILLA'], ['#c5e1a5', 'GOOSEB']];
+const yogTex = ([bg, name]) => canvasTex(128, 128, (g, w, h) => { g.fillStyle = bg; g.fillRect(0, 0, w, h); txt(g, name, w / 4, h * 0.6, 14, '#1e4ea8', 58); txt(g, name, 3 * w / 4, h * 0.6, 14, '#1e4ea8', 58); });
+const FROZE = [['CHIPS', '#ffd400'], ['FISH FINGERS', '#1e88e5'], ['PIZZA', '#c62828'], ['PEAS', '#2e7d32'], ['ICE CREAM', '#f8bbd0']];
+const frozeTex = ([name, bg]) => canvasTex(192, 128, (g, w, h) => { g.fillStyle = bg; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,0.75)'; g.fillRect(10, 44, w - 20, 60); txt(g, name, w / 2, 24, 20, bg === '#ffd400' || bg === '#f8bbd0' ? '#1e4ea8' : '#fff', w - 16); txt(g, 'FROZEN', w / 2, 74, 16, '#1e4ea8', w - 30); });
 
 // ---------- shapes (front faces +z, standing on y = 0) ----------
 const lathe = (pts, seg = 9) => new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), seg);
@@ -100,6 +124,12 @@ function shapes() {
     bottle: lathe([[0, 0.004], [0.032, 0], [0.044, 0.012], [0.044, 0.2], [0.044, 0.22], [0.03, 0.27], [0.015, 0.3], [0.014, 0.31], [0.016, 0.312], [0, 0.312]]),
     can: lathe([[0, 0.004], [0.026, 0], [0.033, 0.012], [0.033, 0.104], [0.028, 0.115], [0.0265, 0.122], [0, 0.12]]),
     jar: lathe([[0, 0.003], [0.036, 0], [0.04, 0.01], [0.04, 0.1], [0.036, 0.11], [0.032, 0.112], [0.033, 0.12], [0, 0.12]]),
+    wine: lathe([[0, 0.004], [0.036, 0], [0.038, 0.01], [0.038, 0.21], [0.036, 0.23], [0.016, 0.27], [0.013, 0.33], [0.015, 0.335], [0.015, 0.34], [0, 0.34]]),
+    milk: lathe([[0, 0.003], [0.05, 0], [0.055, 0.02], [0.055, 0.17], [0.045, 0.2], [0.02, 0.23], [0.02, 0.245], [0, 0.245]]),
+    meat: box(0.2, 0.05, 0.15), choc: box(0.1, 0.16, 0.02), sweets: bag(0.13, 0.19, 0.06),
+    toil: lathe([[0, 0.003], [0.03, 0], [0.034, 0.02], [0.034, 0.17], [0.03, 0.19], [0.014, 0.2], [0.014, 0.23], [0, 0.23]]),
+    roll: box(0.3, 0.24, 0.2), buy: box(0.38, 0.32, 0.3), froze: box(0.22, 0.05, 0.16),
+    yog: lathe([[0, 0.002], [0.026, 0], [0.034, 0.075], [0.036, 0.078], [0, 0.079]]),
     cap: (() => { const g = new THREE.CylinderGeometry(0.016, 0.016, 0.018, 7); g.translate(0, 0.32, 0); return g; })(),
     lid: (() => { const g = new THREE.CylinderGeometry(0.035, 0.035, 0.02, 8); g.translate(0, 0.128, 0); return g; })(),
   };
@@ -109,6 +139,8 @@ export class Stock {
   constructor() { this.runs = []; }
   // a run of products along z at (x, y), z0..z1, facing +x (face = 1) or -x (face = -1)
   addRun(cat, x, y, z0, z1, face) { this.runs.push({ cat, x, y, z0, z1, face }); }
+  // ...or along x at z, facing +z (face = 1) or -z (face = -1)
+  addRunX(cat, z, y, x0, x1, face) { this.runs.push({ cat, x: z, y, z0: x0, z1: x1, face, alongX: true }); }
   build(scene) {
     const S = shapes(), std = ({ roughness, metalness, ...o }) => new THREE.MeshLambertMaterial(o);   // (Lambert: much cheaper to draw thousands of)
     const boxMats = (front, side) => { const s = std({ map: side }); return [s, s, s, s, std({ map: front }), s]; };
@@ -122,10 +154,20 @@ export class Stock {
     BISCUITS.forEach((c, i) => D['tube' + i] = { geo: S.tube, mat: std({ map: wrapTex(c), roughness: 0.4, metalness: 0.2 }), w: 0.075, stackY: 0.068 });
     BREAD.forEach((c, i) => D['loaf' + i] = { geo: S.loaf, mat: std({ map: breadTex(c), roughness: 0.5, transparent: true, opacity: 0.97 }), w: 0.13 });
     JARS.forEach((c, i) => D['jar' + i] = { geo: S.jar, mat: std({ map: jarTex(c), roughness: 0.15 }), w: 0.088, extra: 'lid' + i });
+    WINES.forEach((c, i) => D['wine' + i] = { geo: S.wine, mat: std({ map: wineTex(c) }), w: 0.085 });
+    MILKS.forEach((c, i) => D['milk' + i] = { geo: S.milk, mat: std({ map: milkTex(c) }), w: 0.12 });
+    MEATS.forEach((c, i) => D['meat' + i] = { geo: S.meat, mat: boxMats(meatTex(c), sideTex('#111')), w: 0.21, stackY: 0.052 });
+    CHOCS.forEach((c, i) => D['choc' + i] = { geo: S.choc, mat: boxMats(chocTex(c), sideTex(c[1])), w: 0.11 });
+    SWEETS.forEach((c, i) => D['sweets' + i] = { geo: S.sweets, mat: std({ map: sweetTex(c) }), w: 0.14 });
+    TOILS.forEach((c, i) => D['toil' + i] = { geo: S.toil, mat: std({ map: toilTex(c) }), w: 0.075 });
+    ROLLS.forEach((c, i) => D['roll' + i] = { geo: S.roll, mat: boxMats(rollTex(c), sideTex(c[1])), w: 0.31 });
+    BUYS.forEach((c, i) => D['buy' + i] = { geo: S.buy, mat: boxMats(buyTex(c), sideTex(c[1])), w: 0.4 });
+    YOGS.forEach((c, i) => D['yog' + i] = { geo: S.yog, mat: std({ map: yogTex(c) }), w: 0.075 });
+    FROZE.forEach((c, i) => D['froze' + i] = { geo: S.froze, mat: boxMats(frozeTex(c), sideTex(c[1])), w: 0.23, stackY: 0.052 });
     const capCols = [0xc8102e, 0x1e5aa8, 0x2e7d32, 0x1e88e5], lidCols = [0xd4af37, 0xc62828, 0xffffff];
     capCols.forEach((c, i) => D['cap' + i] = { geo: S.cap, mat: std({ color: c, roughness: 0.4 }) });
     lidCols.forEach((c, i) => D['lid' + i] = { geo: S.lid, mat: std({ color: c, roughness: 0.3, metalness: 0.3 }) });
-    const CAT = { crisps: ['crisps', 4], cereal: ['cereal', 4], pasta: ['pasta', 3], tin: ['tin', 4], bottle: ['bottle', 4], can: ['can', 4], tube: ['tube', 3], loaf: ['loaf', 2], jar: ['jar', 3] };
+    const CAT = { crisps: ['crisps', 4], cereal: ['cereal', 4], pasta: ['pasta', 3], tin: ['tin', 4], bottle: ['bottle', 4], can: ['can', 4], tube: ['tube', 3], loaf: ['loaf', 2], jar: ['jar', 3], wine: ['wine', 4], milk: ['milk', 3], meat: ['meat', 5], choc: ['choc', 5], sweets: ['sweets', 4], toil: ['toil', 4], roll: ['roll', 2], buy: ['buy', 8], yog: ['yog', 3], froze: ['froze', 5] };
     const list = {}; const push = (key, m) => (list[key] = list[key] || []).push(m);
     const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0);
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -136,10 +178,11 @@ export class Stock {
         if (block <= 0) { v = (v + 1 + Math.floor(rnd() * (nv - 1))) % nv; block = 3 + Math.floor(rnd() * 6); }   // a few of each design together, like a real shelf
         const d = D[base + v], w = d.w;
         if (rnd() < 0.06) { z += w * 2; block--; continue; }                                                          // sold out
-        const rows = base === 'tube' ? 2 : 1, deep = base === 'can' || base === 'tin' || base === 'jar' ? 2 : 1;
+        const rows = base === 'tube' || base === 'meat' || base === 'froze' ? (base === 'tube' ? 2 : 3) : 1, deep = base === 'can' || base === 'tin' || base === 'jar' || base === 'milk' || base === 'yog' || base === 'wine' ? 2 : 1;
         for (let k = 0; k < deep; k++) for (let st = 0; st < rows; st++) {
-          Q.setFromAxisAngle(up, r.face * Math.PI / 2 + (rnd() - 0.5) * 0.12);
-          M.compose(V.set(r.x - r.face * k * 0.085, r.y + st * (d.stackY || 0), z + (rnd() - 0.5) * 0.01), Q, one);
+          const dep = k * (base === 'milk' ? 0.12 : 0.085), jit = (rnd() - 0.5) * 0.01;
+          if (r.alongX) { Q.setFromAxisAngle(up, (r.face > 0 ? 0 : Math.PI) + (rnd() - 0.5) * 0.12); M.compose(V.set(z + jit, r.y + st * (d.stackY || 0), r.x - r.face * dep), Q, one); }
+          else { Q.setFromAxisAngle(up, r.face * Math.PI / 2 + (rnd() - 0.5) * 0.12); M.compose(V.set(r.x - r.face * dep, r.y + st * (d.stackY || 0), z + jit), Q, one); }
           push(base + v, M.clone()); if (d.extra) push(d.extra, M.clone());
         }
         z += w + 0.008; block--;
