@@ -49,7 +49,8 @@ camera.position.set(0, 1.6, 0);
 
 const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant, garden: buildGarden };
 const room = (BUILD[SEL.place] || buildRoom)(scene);
-FLOOR.at = room.floorAt || null;            // (raised floors: the ragdolls stand on them)
+FLOOR.at = room.floorAt || null;
+if (room.familyPhotos) setTimeout(() => import('./portraits.js').then(m => m.paintPhotos(renderer, room.familyPhotos)).catch(e => console.warn('photos', e)), 400);   // family photos from the models            // (raised floors: the ragdolls stand on them)
 if (room.shadows) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }     // sunny places get real sun shadows
 room.placeId = BUILD[SEL.place] ? SEL.place : 'bedroom';
 room.start = room.start || { x: 0.05, z: 0.45, yaw: 0 };

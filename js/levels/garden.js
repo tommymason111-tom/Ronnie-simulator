@@ -23,6 +23,8 @@ import { sofa, unitFronts, tv, stairRunner, fenceTex, wheelieBin } from './furni
 import { Sky } from 'three/addons/objects/Sky.js';
 const _skyV = new THREE.Vector3();
 import { part, sph, cyl } from '../geo.js';
+import { photoSlot } from '../portraits.js';
+import { tngTex } from './kit.js';
 
 export const BBQ_SPOT = { x: -4.8, z: 0.35 };        // the grill (Ian stands behind it, his back to the house)
 export const IAN_SPOT = { x: -4.8, z: 1.2 };
@@ -261,6 +263,7 @@ export function buildGarden(scene) {
   }
 
   // ======================================================== THE HOUSE (x -6.5..4.5, z 2..12)
+  let room_photos;
   const HX0 = -6.5, HX1 = 4.5, HZ0 = 2, HZ1 = 12, CEIL = 2.6, TOP = 5.4;
   // floors: wood in the dining room, tiles in the kitchen, carpet in the living room / hall
   k.floor(HX0, HZ0, -0.6, 7.2, woodTex('#8a5a32'), 0.004, 1.4);
@@ -443,9 +446,33 @@ export function buildGarden(scene) {
     const pic = (axis, c, a, y, w, h, d, seed) => { const tex = streetViewTex(seed, true);
       if (axis === 'x') { k.box(w + 0.08, h + 0.08, 0.03, a, y, c + d * 0.015, 0x2a1a10); k.label('', w, h, [a, y, c + d * 0.032], [0, d > 0 ? 0 : Math.PI, 0], { tex }); }
       else { k.box(0.03, h + 0.08, w + 0.08, c + d * 0.015, y, a, 0x2a1a10); k.label('', w, h, [c + d * 0.032, y, a], [0, d > 0 ? Math.PI / 2 : -Math.PI / 2, 0], { tex }); } };
-    pic('x', HZ1 - IN, -1.9, 1.6, 0.9, 0.6, -1, 1); pic('x', HZ1 - IN, -0.6, 1.65, 0.45, 0.6, -1, 2);       // over the sofa
-    pic('z', HX0 + IN, 3.6, 1.6, 0.8, 0.55, 1, 0); pic('z', HX0 + IN, 5.4, 1.6, 0.55, 0.55, 1, 3);         // dining room
-    pic('z', 1.21, 9.4, 1.6, 0.5, 0.7, 1, 4);                                                              // hall
+    // family photos: Lewis and Ian, made from their own models once they've loaded (see portraits.js)
+    const LEW = './assets/squad/lewis.glb', IAN = './assets/squad/ian.glb', photos = [];
+    const fam = (axis, c, a, y, w, h, d, who, bg, caption, frameCol = 0x2a1a10) => {
+      const sl = photoSlot(w > h ? 320 : 240, w > h ? 250 : 320, { who, bg, caption }); photos.push(sl);
+      if (axis === 'x') { k.box(w + 0.1, h + 0.1, 0.03, a, y, c + d * 0.015, frameCol); k.box(w + 0.02, h + 0.02, 0.005, a, y, c + d * 0.031, 0xf6f2e8); k.label('photo', w - 0.04, h - 0.04, [a, y, c + d * 0.035], [0, d > 0 ? 0 : Math.PI, 0], { tex: sl.tex }); }
+      else { k.box(0.03, h + 0.1, w + 0.1, c + d * 0.015, y, a, frameCol); k.box(0.005, h + 0.02, w + 0.02, c + d * 0.031, y, a, 0xf6f2e8); k.label('photo', w - 0.04, h - 0.04, [c + d * 0.035, y, a], [0, d > 0 ? Math.PI / 2 : -Math.PI / 2, 0], { tex: sl.tex }); }
+    };
+    room_photos = photos;
+    fam('x', HZ1 - IN, -1.9, 1.62, 0.9, 0.7, -1, [LEW, IAN], 'xmas', 'Lewis & Ian · Christmas');
+    fam('x', HZ1 - IN, -0.6, 1.65, 0.45, 0.6, -1, [LEW], 'gym', 'Lewy · leg day (allegedly)', 0x111111);       // over the sofa
+    pic('z', HX0 + IN, 3.4, 1.6, 0.7, 0.5, 1, 0); fam('z', HX0 + IN, 5.2, 1.62, 0.75, 0.58, 1, [IAN, LEW], 'beach', 'Benidorm, the lads\' holiday', 0xc9a24a);         // dining room
+    fam('z', 1.21, 9.4, 1.6, 0.5, 0.66, 1, [IAN], 'lake', 'Ian & the one that got away');
+    // up the stairs: a gallery of family photos climbing with the steps
+    fam('z', HX1 - IN, 10.2, 1.55, 0.36, 0.46, -1, [LEW], 'studio', 'Lewis', 0x111111); fam('z', HX1 - IN, 9.5, 1.85, 0.46, 0.36, -1, [LEW, IAN], 'studio', 'The boys', 0x111111); fam('z', HX1 - IN, 8.8, 2.12, 0.36, 0.46, -1, [IAN], 'studio', 'Ian', 0x111111);
+    // a standing photo on the sideboard
+    { const sl = photoSlot(240, 200, { who: [LEW, IAN], bg: 'beach', caption: 'Summer!' }); photos.push(sl);
+      k.box(0.03, 0.3, 0.36, -6.18, 1.0, 4.3, 0xc9a24a, { rot: [0, 0, -0.15] }); k.label('photo', 0.3, 0.24, [-6.155, 1.0, 4.3], [0, Math.PI / 2, -0.15], { tex: sl.tex }); }
+    // more on the walls: feature wallpaper and a dado rail in the dining room, white beaded panelling under the hall's dado,
+    // Ian's prize carp on a plaque, a "HOME" sign in the kitchen, a key rack, a wall calendar's neighbour: the Wi-Fi password
+    k.texBox(0.006, CEIL - 0.95, 4.2, HX0 + 0.109, 0.95 + (CEIL - 0.95) / 2, 4.2, paper(1), { tile: 0.7 }); k.box(0.03, 0.05, 4.2, HX0 + 0.12, 0.92, 4.2, OAKD);
+    k.texBox(0.006, 0.8, 4.2, HX0 + 0.109, 0.53, 4.2, tngTex(), { tile: 0.5, color: 0xffffff });
+    k.texBox(0.006, 0.8, HZ1 - 7.6, 1.215, 0.53, (7.5 + HZ1 - 0.1) / 2, tngTex(), { tile: 0.5, color: 0xffffff });
+    { const fz = 7.95; k.box(0.03, 0.34, 0.7, 1.225, 1.95, fz, 0x5a3a20); const fish = new THREE.SphereGeometry(0.12, 12, 8); fish.scale(0.25, 0.8, 2.2); k.parts.push(part(fish, 0x6a7a3a, [1.27, 1.95, fz]));
+      k.parts.push(part(new THREE.ConeGeometry(0.1, 0.14, 4), 0x5a6a2a, [1.27, 1.95, fz + 0.3], [Math.PI / 2, 0, 0], [0.3, 1, 1]));
+      k.box(0.005, 0.05, 0.3, 1.242, 1.81, fz, 0xc9a24a); k.label("IAN'S CARP, 23LB 4OZ", 0.28, 0.045, [1.2455, 1.81, fz], [0, Math.PI / 2, 0], { bg: '#c9a24a', fg: '#2a1a10', border: null, size: 40 }); }
+    k.box(0.5, 0.16, 0.02, 2.0, 2.15, 6.33 - 0.36 - 0.02, 0xf4ece0); k.label('HOME', 0.48, 0.14, [2.0, 2.15, 6.33 - 0.36 - 0.031], [0, Math.PI, 0], { bg: '#f4ece0', fg: '#3a2a1a', border: null, size: 80 });
+    k.box(0.3, 0.06, 0.02, 1.6, 1.45, 11.88, 0x6a4428); for (let i = 0; i < 4; i++) { k.box(0.01, 0.04, 0.03, 1.5 + i * 0.07, 1.42, 11.86, 0xc9a24a); k.box(0.02, 0.06, 0.004, 1.5 + i * 0.07, 1.37, 11.85, [0xc9a24a, 0x9aa0a8, 0xc62828, 0x1e4ea8][i]); }                                                              // hall
     k.box(0.03, 1.0, 0.6, 1.23, 1.45, 10.6, 0xc8a050); k.box(0.01, 0.92, 0.52, 1.25, 1.45, 10.6, 0xb8d0dc); // hall mirror
     k.cyl(0.17, 0.17, 0.04, -0.68, 1.95, 4.6, 0x222222, 20);
     { const cm = new THREE.Mesh(new THREE.CircleGeometry(0.15, 24), new THREE.MeshLambertMaterial({ map: clockTex() })); cm.position.set(-0.705, 1.95, 4.6); cm.rotation.y = -Math.PI / 2; scene.add(cm); }
@@ -1107,6 +1134,7 @@ export function buildGarden(scene) {
     { x: -5.12, z: 4.6, yaw: Math.PI / 2, pose: 'sit' },                                            // dining table
     { x: 2.0, z: 8.6, yaw: Math.PI / 2, pose: 'phone' },                                            // in the hall
   ];
+  room.familyPhotos = room_photos;
   return room;
 }
 

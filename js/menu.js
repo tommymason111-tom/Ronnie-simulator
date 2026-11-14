@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.5.6', GAME_DATE = '14 Nov 2026';
+var GAME_VERSION = '1.5.7', GAME_DATE = '14 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['1.5.7', ['Lewis\'s house: family photos of Lewis and Ian made from their own 3D models (over the sofa, in the dining room, the hall and up the stairs)', 'Feature wallpaper and panelling, Ian\'s prize carp on a plaque, a HOME sign, a key rack']],
   ['1.5.6', ['Oysterfleet walls: burgundy anaglypta, a dark dado rail, cream damask paper, cornices and old framed pictures with picture lights', 'Lidl walls: kick strips, bumper rails, corner guards, posters, fire points and CCTV', 'Lewis\'s dining room: drawers and a tall cupboard']],
   ['1.5.5', ['Lidl: every aisle is twice as wide', 'Lidl: tall glass-door freezers and fridges (freezers, meat, dairy), a real MONSTOR fridge, a proper staff-only doorway', 'Lidl: magazines face the right way', 'Oysterfleet: a detailed kitchen']],
   ['1.5.4', ['Oysterfleet reception: a proper counter running to the wall, a waiting bench with old photos, coats, plants, a chalkboard, a mat at the door', 'Low wall beside the DJ booth', 'A two-seater by the raised area\'s half wall']],
