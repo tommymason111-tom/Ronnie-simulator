@@ -54,12 +54,13 @@ export function unitFronts(k, axis, c, a0, a1, d, col = 0xf2f2ee, skip = []) {
 }
 
 // a flat-screen TV on a thin stand, a picture on it (the football: Spurs losing), a soundbar
-export function tv(k, scene, { x, y, z, ry, w = 1.25 }) {
+export function tv(k, scene, { x, y, z, ry, w = 1.25, wall = false }) {
   const h = w * 0.58, c = Math.cos(ry), s = Math.sin(ry);
   const P = (geo, col, lx, ly, lz) => k.parts.push(part(geo, col, [x + lx * c + lz * s, y + ly, z - lx * s + lz * c], [0, ry, 0]));
   P(rbox(w, h, 0.04, 0.01), 0x111111, 0, 0, 0);
-  P(new THREE.BoxGeometry(0.06, 0.16, 0.04), 0x1a1a1a, 0, -h / 2 - 0.08, 0.02); P(new THREE.BoxGeometry(0.4, 0.015, 0.2), 0x1a1a1a, 0, -h / 2 - 0.16, 0.02);   // stand
-  P(rbox(0.8, 0.07, 0.08, 0.02), 0x222222, 0, -h / 2 - 0.12, -0.12);                                       // soundbar in front
+  if (wall) { P(new THREE.BoxGeometry(0.4, 0.3, 0.05), 0x2a2a2a, 0, 0, 0.045); P(rbox(0.8, 0.07, 0.08, 0.02), 0x222222, 0, -h / 2 - 0.09, 0.0); }   // wall bracket, soundbar under
+  else { P(new THREE.BoxGeometry(0.06, 0.16, 0.04), 0x1a1a1a, 0, -h / 2 - 0.08, 0.02); P(new THREE.BoxGeometry(0.4, 0.015, 0.2), 0x1a1a1a, 0, -h / 2 - 0.16, 0.02);   // stand
+    P(rbox(0.8, 0.07, 0.08, 0.02), 0x222222, 0, -h / 2 - 0.12, -0.12); }                                   // soundbar in front
   const scr = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.04, h - 0.04), new THREE.MeshBasicMaterial({ map: matchTex(), color: 0xdddddd }));
   scr.position.set(x - 0.021 * s, y, z - 0.021 * c); scr.rotation.y = ry + Math.PI; scene.add(scr);
   return scr;

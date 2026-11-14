@@ -593,6 +593,7 @@ export function buildGarden(scene) {
     k.cyl(0.055, 0.055, 0.1, 5.3, 0.055, -0.75, 0xe8e4d8, 10);
     k.cyl(0.14, 0.11, 0.3, 2.5, 0.15, -0.6, 0x2a5a8a, 12); k.box(0.03, 1.3, 0.03, 2.3, 0.65, -0.5, 0x6a4a2a, { rot: [0.15, 0, 0.12] }); k.box(0.28, 0.08, 0.1, 2.31, 0.05, -0.42, 0x3a2a1a);
     for (let i = 0; i < 6; i++) k.box(0.002, 0.002, 0.45, GX1 - 0.35, GH - 0.08 - i * 0.03, -0.55 - i * 0.03, 0xdddddd, { rot: [0, 0.8, 0] });
+    k.label('', 0.62, 0.62, [4.7, 1.5, zIn + 0.012], [0, 0, 0], { tex: harrySignTex() });               // the Harry incident
     k.label('PLEASE DON\'T, RONNIE', 0.5, 0.18, [4.4, 1.6, zF - 0.008], [0, Math.PI, 0], { bg: '#e8e0c8', fg: '#8a1a1a', border: '#8a1a1a', size: 40 });
     k.cyl(0.003, 0.003, 0.3, 4.2, GH - 0.16, -1.35, 0x111111, 4); k.lamp(4.2, GH - 0.34, -1.35, 0xffd890, 0.035);   // bare bulb
   }
@@ -685,6 +686,7 @@ export function buildGarden(scene) {
   // the dartboard cabinet on the partition (lounge side): red cabinet, doors open flat either side
   // with chalkboards inside for the scores; the oche is the yellow line on the floor
   const DB = { x: PART + 0.11, y: 1.73, z: -14.0 }, CAB = 0x8a1a1a, wx = PART + 0.05;
+  tv(k, scene, { x: CX1 - 0.12, y: 1.62, z: DB.z, ry: Math.PI / 2, w: 1.3, wall: true });                       // a big telly on the wall opposite the dartboard
   k.box(0.02, 0.64, 0.64, wx + 0.01, DB.y, DB.z, 0x2a1a10);                                         // cabinet back
   for (const s of [-1, 1]) { k.box(0.1, 0.035, 0.66, wx + 0.05, DB.y + s * 0.31, DB.z, CAB); k.box(0.1, 0.62, 0.035, wx + 0.05, DB.y, DB.z + s * 0.31, CAB); }
   const chalkL = chalkCanvas(), chalkR = chalkCanvas();
@@ -1010,6 +1012,15 @@ function laceTex() {
     for (let y = 8; y < h; y += 24) for (let x = (y / 24 % 2) * 12; x < w; x += 24) { g.beginPath(); g.arc(x, y, 7, 0, 7); g.stroke(); g.beginPath(); g.arc(x, y, 2, 0, 7); g.stroke(); }
     for (let x = 0; x < w; x += 16) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 8, h); g.stroke(); }
     for (let i = 0; i < 6; i++) { g.beginPath(); g.ellipse(w / 2, h * 0.45, 30 + i * 14, 50 + i * 16, 0, 0, 7); g.stroke(); }
+  });
+}
+function harrySignTex() {
+  return canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#fff8dc'; g.fillRect(0, 0, w, h); g.strokeStyle = '#b71c1c'; g.lineWidth = 10; g.strokeRect(6, 6, w - 12, h - 12);
+    g.fillStyle = '#ffd400'; g.beginPath(); g.moveTo(w / 2, 22); g.lineTo(w / 2 + 44, 98); g.lineTo(w / 2 - 44, 98); g.closePath(); g.fill(); g.strokeStyle = '#111'; g.lineWidth = 5; g.stroke();
+    g.fillStyle = '#111'; g.font = '900 52px Arial'; g.textAlign = 'center'; g.fillText('!', w / 2, 92);
+    const lines = [['WARNING', '900 30px', '#b71c1c'], ['HARRY WAS SICK HERE', '900 19px', '#111'], ['(TWICE. SAME NIGHT.)', '700 15px', '#333'], ['AIM FOR THE BOWL, LADS', '900 17px', '#111'], ['— LEWY & IAN', '700 15px', '#555']];
+    lines.forEach(([t, f, c], i) => { g.font = f + ' Arial'; g.fillStyle = c; g.fillText(t, w / 2, 130 + i * 25); });
   });
 }
 function frostedTex() {
