@@ -43,6 +43,15 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   const geo = cutLips(src.geometry.clone().applyMatrix4(src.matrixWorld));
   const old = src.material;
   const mat = new THREE.MeshStandardMaterial({ map: old.map, normalMap: old.normalMap || null, roughness: 0.75, metalness: 0 });
+  // only his body fades out, right at the bottom of the shirt (the food never fades)
+  mat.transparent = true;
+  const fadeU = { value: new THREE.Vector2(-1, -0.9) };
+  mat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vBodyY;').replace('#include <skinning_vertex>', '#include <skinning_vertex>\nvBodyY = transformed.y;');
+    sh.uniforms.uFade = fadeU;
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vBodyY;\nuniform vec2 uFade;').replace('#include <dithering_fragment>', '#include <dithering_fragment>\ngl_FragColor.a *= smoothstep(uFade.x, uFade.y, vBodyY);');
+  };
+
   if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
 
   // ---- skeleton: head (root) + jaw hinged at the TMJ ----
@@ -179,7 +188,11 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   function frame(now) {
     if (!running) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
-    if (renderer.domElement.width !== Math.round(W() * renderer.getPixelRatio())) { renderer.setSize(W(), H(), false); camera.aspect = W() / H(); camera.updateProjectionMatrix(); }
+    if (renderer.domElement.width !== Math.round(W() * renderer.getPixelRatio()) || fadeU.value.x < -0.5) {
+      renderer.setSize(W(), H(), false); camera.aspect = W() / H(); camera.updateProjectionMatrix();
+      const rb = new THREE.Raycaster(); rb.setFromCamera(new THREE.Vector2(0, -1), camera); const hb = new THREE.Vector3();
+      if (rb.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.1), hb)) fadeU.value.set(hb.y + 0.004, hb.y + 0.055);
+    }
     // auto-eat when nobody's playing with him
     if (!eating && !dragging) { idleT -= dt; if (idleT <= 0) { const o = tray[Math.floor(Math.random() * tray.length)]; if (o.userData.pop >= 1) eat(o); else idleT = 0.5; } }
     if (!eating && !dragging && talkT <= 0) jawTarget = 0;
