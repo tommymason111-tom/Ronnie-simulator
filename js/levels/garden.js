@@ -339,11 +339,11 @@ export function buildGarden(scene) {
     for (let i = 0; i < 4; i++) k.cyl(0.035, 0.035, 0.09, DX + 0.11, 1.31, DZ0 + 0.18 + i * 0.17, [0xffcc80, 0xef9a9a, 0xa5d6a7, 0xfff59d][i], 10);           // jars
     k.box(0.08, 0.04, 0.6, DX + 0.11, 1.64, DZ0 + 0.45, 0xfff8e1);                                                   // butter dish
   }
-  R(1.0, 2.5, 3.3, 4.1, 0.9, 0.45, 0x3a3a40, { block: true });
-  unitFronts(k, 'z', 1.0, 2.5, 4.1, -1, 0x3a3a40); unitFronts(k, 'x', 4.1, 1.0, 3.3, 1, 0x3a3a40); unitFronts(k, 'z', 3.3, 2.5, 4.1, 1, 0x3a3a40); unitFronts(k, 'x', 2.5, 3.3, 3.8, 1); R(0.98, 2.52, 3.32, 4.15, 0.05, 0.945, 0xf0f0f0, { collide: true });   // the island runs straight off the counter under the window (a peninsula), no stools
+  R(1.0, 2.5, 1.9, 4.1, 0.9, 0.45, 0x3a3a40, { block: true });
+  unitFronts(k, 'z', 1.0, 2.5, 4.1, -1, 0x3a3a40); unitFronts(k, 'x', 4.1, 1.0, 1.9, 1, 0x3a3a40); unitFronts(k, 'z', 1.9, 2.5, 4.1, 1, 0x3a3a40); unitFronts(k, 'x', 2.5, 1.9, 3.8, 1); R(0.98, 2.52, 1.92, 4.15, 0.05, 0.945, 0xf0f0f0, { collide: true });   // the island runs straight off the counter under the window (a peninsula), no stools
   R(1.0, 2.15, 3.8, 2.5, 0.9, 0.45, UNIT, { block: true }); R(0.98, 2.13, 3.82, 2.52, 0.04, 0.92, TOP_C, { collide: true });     // under the window
   k.cyl(0.13, 0.11, 0.25, 3.0, 1.06, 2.32, 0x8a8a8a, 12);                                                                         // kettle
-  for (const [x, z] of [[1.6, 3.7], [2.5, 3.2], [3.0, 3.8]]) k.spawns.push(new THREE.Vector3(x, 1.06, z));
+  for (const [x, z] of [[1.45, 3.7], [1.45, 3.0], [2.6, 2.32]]) k.spawns.push(new THREE.Vector3(x, 1.06, z));
   k.spawns.push(new THREE.Vector3(4.15, 1.0, 3.0), new THREE.Vector3(2.4, 1.0, 6.05));
   // --- dining room: long table with chairs all round
   const dx = -3.6, dz = 4.6;
