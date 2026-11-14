@@ -19,9 +19,37 @@ export class Kit {
   }
   // a coloured box; collide = food can sit on it, block = people/Ronnie can't walk through
   box(w, h, d, x, y, z, color, { collide = false, block = false, rot = null } = {}) {
-    this.parts.push(part(box(w, h, d), color, [x, y, z], rot || [0, 0, 0]));
+    const g = part(box(w, h, d), color, [x, y, z], rot || [0, 0, 0]);
+    this.parts.push(g);
+    if (!rot || (!rot[0] && !rot[1] && !rot[2])) (this.boxRec = this.boxRec || []).push({ g, off: [0, 0, 0], min: [x - w / 2, y - h / 2, z - d / 2], max: [x + w / 2, y + h / 2, z + d / 2] });
     if (collide) this.colliders.push({ min: new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2), max: new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2) });
     if (block) this.blockers.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, y1: y + h / 2 });
+  }
+  // Two boxes with a face in exactly the same place flicker ("z-fighting": the GPU can't tell which is in front).
+  // Find every such pair (same plane, facing the same way, overlapping) and pull the later box's face in by 1.5mm.
+  separateCoplanar() {
+    const L = this.boxRec || [], E = 1e-4, EPS = 0.0015, key = (v) => Math.round(v / E);
+    let n = 0;
+    for (let a = 0; a < 3; a++) for (const side of ['min', 'max']) {
+      const buckets = new Map();
+      L.forEach((b, i) => { const k = key(b[side][a]); (buckets.get(k) || buckets.set(k, []).get(k)).push(i); });
+      for (const ids of buckets.values()) {
+        if (ids.length < 2) continue;
+        for (let jj = 1; jj < ids.length; jj++) for (let ii = 0; ii < jj; ii++) {
+          const A = L[ids[ii]], Bx = L[ids[jj]], o1 = (a + 1) % 3, o2 = (a + 2) % 3;
+          const ov1 = Math.min(A.max[o1], Bx.max[o1]) - Math.max(A.min[o1], Bx.min[o1]), ov2 = Math.min(A.max[o2], Bx.max[o2]) - Math.max(A.min[o2], Bx.min[o2]);
+          if (ov1 <= 1e-4 || ov2 <= 1e-4) continue;
+          // move the face of whichever box is thicker along this axis (the thin one may be a cladding sheet)
+          const tA = A.max[a] - A.min[a], tB = Bx.max[a] - Bx.min[a], M = tB >= tA ? Bx : A;
+          if (M.max[a] - M.min[a] < EPS * 3) continue;
+          const plane = M[side][a], dir = side === 'max' ? -1 : 1, pos = M.g.attributes ? M.g.attributes.position : null;
+          if (M.g.isMesh) { const gp = M.g.geometry.attributes.position, c = M.g.position.getComponent(a); for (let i = 0; i < gp.count; i++) if (Math.abs(gp.getComponent(i, a) + c - plane) < 1e-5) gp.setComponent(i, a, gp.getComponent(i, a) + dir * EPS); gp.needsUpdate = true; }
+          else if (pos) { for (let i = 0; i < pos.count; i++) if (Math.abs(pos.getComponent(i, a) - plane) < 1e-5) pos.setComponent(i, a, pos.getComponent(i, a) + dir * EPS); pos.needsUpdate = true; }
+          M[side][a] += dir * EPS; n++;
+        }
+      }
+    }
+    return n;
   }
   cyl(rt, rb, h, x, y, z, color, seg = 16, { block = false, collide = false } = {}) {
     this.parts.push(part(cyl(rt, rb, h, seg), color, [x, y, z]));
@@ -40,6 +68,7 @@ export class Kit {
     for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) { const k = f * 4 + i; uv.setXY(k, uv.getX(k) * dims[f][0] / tile, uv.getY(k) * dims[f][1] / tile); }
     const m = new THREE.Mesh(g, this.texMats.get(key));
     m.position.set(x, y, z); this.scene.add(m);
+    (this.boxRec = this.boxRec || []).push({ g: m, min: [x - w / 2, y - h / 2, z - d / 2], max: [x + w / 2, y + h / 2, z + d / 2] });
     if (collide) this.colliders.push({ min: new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2), max: new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2) });
     if (block) this.blockers.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, y1: y + h / 2 });
     return m;
@@ -52,7 +81,8 @@ export class Kit {
   floor(x0, z0, x1, z1, tex, y = 0.002, repeat = 1) {
     const g = new THREE.PlaneGeometry(x1 - x0, z1 - z0);
     const t = tex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set((x1 - x0) / repeat, (z1 - z0) / repeat);
-    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: t }));
+    this.floorN = (this.floorN || 0) + 1;
+    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: t, polygonOffset: true, polygonOffsetFactor: -this.floorN, polygonOffsetUnits: -2 * this.floorN }));
     m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
     this.scene.add(m);
     return m;
@@ -75,7 +105,8 @@ export class Kit {
     }
     const key = w + 'x' + h;
     if (!this.geoCache.has(key)) this.geoCache.set(key, new THREE.PlaneGeometry(w, h));
-    const mat = opts.glow ? new THREE.MeshBasicMaterial({ map: tex }) : new THREE.MeshLambertMaterial({ map: tex });
+    const PO = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 };
+    const mat = opts.glow ? new THREE.MeshBasicMaterial({ map: tex, ...PO }) : new THREE.MeshLambertMaterial({ map: tex, ...PO });
     const m = new THREE.Mesh(this.geoCache.get(key), mat);
     m.position.set(...pos); m.rotation.set(...rot); m.userData.sign = text; m.userData.size = [w, h];
     this.scene.add(m);
@@ -186,6 +217,7 @@ export class Kit {
   }
   finish({ sky = 0xffe6c4, ground = 0x5a3a22, hemiI = 1.6, sun = 0xffe0b0, sunI = 1.6, sunPos = [5, 9, 4], start, board, startFood, spotCount = 30, name, ambient = 0.55 } = {}) {
     this.flushInstances();
+    this.zfixed = this.separateCoplanar();
     if (this.pools) this.pools.build(this.scene);
     if (this.halos) this.halos.build(this.scene);
     const mesh = new THREE.Mesh(merge(this.parts), vcLambert);
@@ -206,6 +238,7 @@ export class Kit {
     };
     room.nav = new NavGrid(room);
     room.tommySpots = room.nav.sampleSpots(spotCount);
+    room.zfixed = this.zfixed;
     return room;
   }
 }
