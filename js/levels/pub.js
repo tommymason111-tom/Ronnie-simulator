@@ -192,7 +192,7 @@ export function buildPub(scene) {
   const put = (geo, color, x, z, ry, lx, y, lz, rx = 0, rz = 0, ry0 = 0) => { geo.rotateZ(rz); geo.rotateX(rx); geo.rotateY(ry0); geo.translate(lx, y, lz); geo.rotateY(ry); geo.translate(x, 0, z); k.parts.push(part(geo, color)); };
   const turned = (h, r) => new THREE.LatheGeometry([[0, 0], [r * 0.8, 0], [r * 0.9, h * 0.06], [r * 0.8, h * 0.14], [r * 1.1, h * 0.2], [r * 0.85, h * 0.27], [r * 0.95, h * 0.45], [r * 1.12, h * 0.52], [r * 0.9, h * 0.58], [r * 0.95, h * 0.9], [r * 1.0, h], [0, h]].map(([a, b]) => new THREE.Vector2(a, b)), 7);
   const bent = (w, h, d, bend) => { const g = new THREE.BoxGeometry(w, h, d, 6, 1, 1), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i) / (w / 2); p.setZ(i, p.getZ(i) + bend * x * x); } g.computeVertexNormals(); return g; };
-  let chairN = 0;
+  let chairN = 0; const chairsAt = [];
   const pubChair = (x, z, ry) => {
     const C = PINE[chairN % 3], splat = chairN % 3 === 1; chairN++;
     put(new RoundedBoxGeometry(0.44, 0.045, 0.42, 2, 0.015), C, x, z, ry, 0, 0.455, -0.01);                                 // the seat (dished a little)
@@ -208,7 +208,7 @@ export function buildPub(scene) {
       const hole = new THREE.Path(); hole.absellipse(0, 0.27, 0.018, 0.04, 0, Math.PI * 2); sh.holes.push(hole);
       put(new THREE.ExtrudeGeometry(sh, { depth: 0.016, bevelEnabled: false, curveSegments: 6 }), C, x, z, ry, 0, 0.48, 0.2, 0.1); }
     for (const t of splat ? [-0.15, -0.09, 0.09, 0.15] : [-0.15, -0.075, 0, 0.075, 0.15]) { const sp = new THREE.CylinderGeometry(0.007, 0.0105, 0.4, 6); sp.translate(0, 0.2, 0); put(sp, C, x, z, ry, t, 0.475, 0.2 + 0.01, 0.1); }   // spindles
-    const c = Math.cos(ry), s2 = Math.sin(ry); k.blockers.push({ x0: x - 0.24, x1: x + 0.24, z0: z - 0.24, z1: z + 0.24, y1: 0.5 });
+    k.blockers.push({ x0: x - 0.24, x1: x + 0.24, z0: z - 0.24, z1: z + 0.24, y1: 0.5 }); chairsAt.push([x, z, ry]);
   };
   const tableTop = (x, z, w, d, y = 0.76) => {
     put(new RoundedBoxGeometry(w, 0.045, d, 2, 0.012), OAKTOP, x, z, 0, 0, y - 0.022, 0);
@@ -586,7 +586,7 @@ export function buildPub(scene) {
   boothTable(X(390), Z(1305) + 0.95, false, 1); boothTable(X(590), Z(1305) + 0.95, false, 1);
   bench(true, X(195) + 0.08, Z(1390), Z(1530), 1);                                       // "Table booth" on the left wall
   boothTable(X(195) + 0.95, Z(1420), true, 1); boothTable(X(195) + 0.95, Z(1500), true, 1);
-  freeTable(X(685), Z(1465), true);
+  freeTable(X(655), Z(1465), true);
   for (const px of [325, 430, 540]) freeTable(X(px), Z(1590), true);
   { const x0 = X(195), x1 = X(715), z0 = Z(1305), z1 = Z(1645);
     const sky = canvasTex(256, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#9ccff2'); gr.addColorStop(1, '#e8f4fc'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,0.8)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.ellipse(40 + i * 40, 60 + (i % 3) * 50, 40, 14, 0, 0, 7); g.fill(); } });
@@ -689,6 +689,7 @@ export function buildPub(scene) {
     spotCount: 40,
   });
   room.floorAt = pubFloorAt;
+  room.chairsAt = chairsAt;
   room.extraItems = [{ type: 'poop', pos: poopAt }];
   room.machines = machines;
   const baseUpdate = room.update.bind(room);
