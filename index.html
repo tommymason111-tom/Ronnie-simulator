@@ -43,6 +43,8 @@
     .tbtn { position: absolute; pointer-events: auto; touch-action: none; border: 0; border-radius: 50%; font: 900 17px "Arial Black", Arial, sans-serif; color: #111; box-shadow: 0 5px 0 rgba(0,0,0,0.35); }
     .tbtn.down { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.35); }
     .tbtn.off { opacity: 0.4; }
+    #btn-sprint { left: max(36px, calc(env(safe-area-inset-left) + 20px)); bottom: max(200px, calc(env(safe-area-inset-bottom) + 180px)); width: 92px; height: 44px; border-radius: 22px; background: rgba(255,255,255,0.85); font-size: 13px; }
+    #btn-sprint.on { background: #ff6d00; color: #fff; box-shadow: 0 0 16px #ff6d00, 0 5px 0 rgba(0,0,0,0.35); }
     #btn-eat { right: max(24px, env(safe-area-inset-right)); bottom: max(40px, env(safe-area-inset-bottom)); width: 96px; height: 96px; background: #39ff14; }
     #btn-throw { right: max(132px, calc(env(safe-area-inset-right) + 108px)); bottom: max(22px, env(safe-area-inset-bottom)); width: 76px; height: 76px; background: #ffd400; font-size: 14px; }
     #hint:not(.on) { display: none; }

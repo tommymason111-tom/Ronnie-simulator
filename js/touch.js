@@ -10,10 +10,12 @@ export function setupTouch(cb) {
     <div id="stick"><div id="knob"></div></div>
     <button id="btn-eat" class="tbtn">EAT</button>
     <button id="btn-throw" class="tbtn">THROW</button>
+    <button id="btn-sprint" class="tbtn">🏃 SPRINT</button>
     <div id="hint"></div>`;
   document.body.appendChild(root);
   const stick = root.querySelector('#stick'), knob = root.querySelector('#knob');
-  const eat = root.querySelector('#btn-eat'), thr = root.querySelector('#btn-throw'), hint = root.querySelector('#hint');
+  const eat = root.querySelector('#btn-eat'), thr = root.querySelector('#btn-throw'), hint = root.querySelector('#hint'), spr = root.querySelector('#btn-sprint');
+  const showSprint = (on) => { spr.classList.toggle('on', on); spr.textContent = on ? '🏃 SPRINTING' : '🏃 SPRINT'; };
 
   // ---- joystick ----
   let stickId = null, sx = 0, sy = 0;
@@ -39,6 +41,7 @@ export function setupTouch(cb) {
   const press = (el, fn) => el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); cb.onUserGesture?.(); fn(); el.classList.add('down'); setTimeout(() => el.classList.remove('down'), 150); });
   press(eat, () => cb.onEat());
   press(thr, () => cb.onThrow());
+  press(spr, () => showSprint(cb.onSprint()));          // tap to switch sprinting on / off (no cooldown)
 
   // ---- look + tap on the 3D view ----
   const canvas = cb.canvas;
@@ -73,12 +76,14 @@ export function setupTouch(cb) {
     if (!root.classList.contains('on')) return;
     if (e.code === 'KeyE') cb.onEat();
     else if (e.code === 'Space' || e.code === 'KeyF') { e.preventDefault(); cb.onThrow(); }
+    else if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyR') && !e.repeat) showSprint(cb.onSprint());
     keys.add(e.code); updKeys();
   });
   window.addEventListener('keyup', (e) => { keys.delete(e.code); updKeys(); });
 
   return {
     show(on) { root.classList.toggle('on', on); },
+    setSprint: showSprint,
     setEatLabel(txt, enabled) { eat.textContent = txt; eat.classList.toggle('off', !enabled); },
     setThrowEnabled(on) { thr.classList.toggle('off', !on); },
     hint(txt) { hint.textContent = txt; hint.classList.add('on'); clearTimeout(hint._t); hint._t = setTimeout(() => hint.classList.remove('on'), 2200); },

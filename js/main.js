@@ -428,6 +428,7 @@ const touch = setupTouch({
   },
   onEat: () => { if (player.flatHolder?.held) player.flatEat(); },
   onThrow: () => player.flatThrow(),
+  onSprint: () => { player.sprint = !player.sprint; sfx(player.sprint ? 'whoosh' : 'pop', null, 0.4); return player.sprint; },
   onTap: (x, y) => {
     if (!player.flatMode) return;
     ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
