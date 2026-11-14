@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { Kit, tileTex, canvasTex, brickTex, woodTex, carpetTex, streetViewTex } from './kit.js';
 import { DartGame, dartboardTex, chalkCanvas } from '../darts.js';
 import { PingPong } from '../pingpong.js';
+import { Clutter } from './clutter.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 const _skyV = new THREE.Vector3();
 import { part, sph, cyl } from '../geo.js';
@@ -28,6 +29,7 @@ export const IAN_YAW = Math.PI;                      // facing the garden
 export function buildGarden(scene) {
   const B = { x0: -6.5, x1: 6.5, z0: -16.5, z1: 12 };
   const k = new Kit(scene, { ...B, y1: 8 });
+  const clutter = new Clutter();
   const sceneStart = scene.children.length, smooth = [];        // (see stretchGarden below)
   const mark = () => k.parts.length;
   const R = (x0, z0, x1, z1, h, y, color, opts) => k.box(Math.abs(x1 - x0), h, Math.abs(z1 - z0), (x0 + x1) / 2, y ?? h / 2, (z0 + z1) / 2, color, opts);
@@ -712,13 +714,13 @@ export function buildGarden(scene) {
   { const face = (x, z, tx, tz) => Math.atan2(-(tx - x), -(tz - z)); for (const [x, z] of [[0.05, -12.6], [0.6, -11.7], [4.3, -14.1]]) k.chair(x, z, face(x, z, 2.2, -13.4), 0x2a2a2a, 0x4a4a4a); }
   R(1.6, -12.95, 3.0, -12.35, 0.42, 0.21, 0x5a3a22, { collide: true, block: true }); k.spawns.push(new THREE.Vector3(2.3, 0.5, -12.65));   // coffee table
   // the mess: cans, bottles, pizza boxes, crisp packets everywhere
-  const CANS = [0xd32f2f, 0x1e5aa8, 0xffd400, 0x2e7d32, 0x111111, 0xe0e0e0, 0x8a1a8a];
-  const can = (x, y, z) => k.cyl(0.033, 0.033, 0.12, x, y + 0.06, z, CANS[Math.floor(rnd() * CANS.length)], 8);
-  const lyingCan = (x, y, z) => k.box(0.12, 0.066, 0.066, x, y + 0.033, z, CANS[Math.floor(rnd() * CANS.length)], { rot: [0, rnd() * 3, 0] });
-  const bottle = (x, y, z) => { k.cyl(0.035, 0.035, 0.2, x, y + 0.1, z, 0x2a6a2a, 8); k.cyl(0.012, 0.02, 0.07, x, y + 0.23, z, 0x2a6a2a, 6); };
-  const pizza = (x, y, z, r) => { k.box(0.4, 0.04, 0.4, x, y + 0.02, z, 0xe8d8b8, { rot: [0, r, 0] }); k.box(0.36, 0.005, 0.36, x, y + 0.042, z, 0xc82a1a, { rot: [0, r, 0] }); };
-  const crisps = (x, y, z) => k.box(0.16, 0.03, 0.22, x, y + 0.015, z, [0xd32f2f, 0x1e5aa8, 0x2e7d32, 0xffd400][Math.floor(rnd() * 4)], { rot: [0, rnd() * 3, 0] });
-  const strewn = (x0, z0, x1, z1, n, y = 0.01) => { for (let i = 0; i < n; i++) { const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), t = rnd(); if (t < 0.45) lyingCan(x, y, z); else if (t < 0.65) can(x, y, z); else if (t < 0.8) crisps(x, y, z); else if (t < 0.9) bottle(x, y, z); else pizza(x, y, z, rnd() * 3); } };
+  // (detailed, instanced: see clutter.js)
+  const can = (x, y, z) => clutter.add(rnd() < 0.15 ? 'canCrushed' : 'can', x, y, z, rnd() * 6.28, Math.floor(rnd() * 5));
+  const lyingCan = (x, y, z) => clutter.add(rnd() < 0.3 ? 'canCrushed' : 'canLying', x, y, z, rnd() * 6.28, Math.floor(rnd() * 5));
+  const bottle = (x, y, z, lying = false) => clutter.add(lying ? 'bottleLying' : 'bottle', x, y, z, rnd() * 6.28, Math.floor(rnd() * 2));
+  const pizza = (x, y, z, r, open = rnd() < 0.45) => clutter.add(open ? 'pizzaOpen' : 'pizza', x, y, z, r, 0);
+  const crisps = (x, y, z) => clutter.add('crisps', x, y, z, rnd() * 6.28, Math.floor(rnd() * 4));
+  const strewn = (x0, z0, x1, z1, n, y = 0.01) => { for (let i = 0; i < n; i++) { const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), t = rnd(); if (t < 0.45) lyingCan(x, y, z); else if (t < 0.65) can(x, y, z); else if (t < 0.8) crisps(x, y, z); else if (t < 0.9) bottle(x, y, z, y < 0.1 && rnd() < 0.5); else pizza(x, y, z, rnd() * 3); } };
   strewn(-0.5, -15.2, 4.8, -11.3, 80);                               // lounge floor: a proper mess
   strewn(1.65, -12.9, 2.95, -12.4, 6, 0.42);                         // coffee table
   strewn(3.95, -15.55, 4.65, -14.85, 4, 0.76);                       // round table
@@ -737,7 +739,7 @@ export function buildGarden(scene) {
   for (let i = 0; i < 6; i++) can(3.3 + i * 0.19, 0.92, -11.08);
   for (let i = 0; i < 5; i++) pizza(-3.9 + (i % 2) * 0.05, 0.02 + i * 0.045, -14.3 + (i % 2) * 0.04, i * 0.3);   // a tower of pizza boxes
   // mess in the garage too
-  strewn(2.4, -7.6, 5.6, -3.0, 10); strewn(5.85, -7.8, 6.3, -5.3, 4, 0.9);
+  strewn(2.4, -5.3, 5.6, -3.0, 10); strewn(5.85, -5.3, 6.3, -3.5, 4, 0.9);
 
   // ======================================================== SUMMER DETAILS
   const FLOWERS = [0xff4f7b, 0xffd400, 0xffffff, 0x9a4aff, 0xff7a1a, 0xff2a2a, 0x4a8aff, 0xffa0d0];
@@ -894,6 +896,7 @@ export function buildGarden(scene) {
   // borders) stretch; the stepping stones, solar lights and daisies spread out evenly along the lawn.
   stretchGarden();
   plantsAndWillow();
+  clutter.build(scene, F);
   const room = k.finish({
     name: "Lewis's House",
     sky: 0xcfe8ff, ground: 0x6f8f45, hemiI: 1.5, sun: 0xffeccc, sunI: 3.0, sunPos: [8, 16, -5], ambient: 0.32,
