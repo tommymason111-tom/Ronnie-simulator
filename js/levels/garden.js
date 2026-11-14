@@ -520,11 +520,17 @@ export function buildGarden(scene) {
   k.floor(GX0, GZ0, GX1, -2.4, tileTex('#8a8a86', '#84847f', '#6a6a66', 128), 0.007, 2);
   k.floor(GX0, -2.4, GX1, GZ1, tileTex('#5e5a54', '#57534d', '#3e3b37', 128), 0.007, 1.6);         // the outside loo: old stained concrete
   wallRun('z', GX0, GZ0, GZ1, GH, [[-4.2, -3.2, 0, 2.0], [-1.75, -1.05, 1.3, 1.85]], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
-  wallRun('x', GZ0, GX0, GX1, GH, [[4.4, 5.6, 1.1, 1.9]], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
+  wallRun('x', GZ0, GX0, GX1, GH, [], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
+  // the garage runs on further back toward the shed (a store at the back, no way in): side walls, back wall with a window, roof
+  { const ZB = -5.95;      // (past the stretch line, so it lands just short of the shed)
+    k.box(0.2, GH, GZ0 - ZB, GX0, GH / 2, (GZ0 + ZB) / 2, RENDER, { collide: true, block: true }); k.box(0.2, GH, GZ0 - ZB, GX1 - 0.1, GH / 2, (GZ0 + ZB) / 2, RENDER, { collide: true, block: true });
+    wallRun('x', ZB, GX0 - 0.1, GX1, GH, [[4.4, 5.6, 1.1, 1.9]], { color: RENDER });
+    glaze('x', ZB, 4.4, 5.6, 1.1, 1.9); k.box(1.2, 0.8, 0.02, 5.0, 1.5, ZB + 0.12, 0x2a2622);   // dusty dark store behind the glass
+    k.box(GX1 - GX0 + 0.25, 0.07, GZ0 - ZB, (GX0 + GX1 - 0.05) / 2, GH + 0.04, (GZ0 + ZB) / 2, 0x3a3a3a);   // roof carries on
+    k.box(GX1 - GX0 + 0.25, 0.07, 0.3, (GX0 + GX1 - 0.05) / 2, GH + 0.04, ZB - 0.05, 0x3a3a3a); }
   wallRun('x', GZ1, GX0, GX1, GH, [], { color: RENDER, inColor: 0xd8d4cc, inSign: -1 });
   wallRun('z', GX1 - 0.1, GZ0, GZ1, GH, [], { color: RENDER, inColor: 0xd8d4cc, inSign: -1 });
   wallRun('x', -2.4, GX0, GX1, GH, [[2.6, 3.4, 0, 2.0]], { color: RENDER, t: 0.12 });                // garage | toilet (the loo's only door is in here)
-  glaze('x', GZ0, 4.4, 5.6, 1.1, 1.9);
   R(GX0 - 0.15, GZ0 - 0.15, GX1 + 0.05, GZ1 + 0.15, 0.12, GH + 0.06, 0x3a3a3a);                         // flat felt roof
   { const gc = new THREE.Mesh(new THREE.PlaneGeometry(GX1 - GX0, GZ1 - GZ0), new THREE.MeshBasicMaterial({ color: 0xcfcac0 })); gc.rotation.x = Math.PI / 2; gc.position.set((GX0 + GX1) / 2, GH - 0.005, (GZ0 + GZ1) / 2); scene.add(gc); }
   leaf('z', GX0, -4.2, -3.2, 1, 0x2e5a3a); leaf('x', -2.4, 2.6, 3.4, 1, 0x5a4a3a);
@@ -586,8 +592,9 @@ export function buildGarden(scene) {
     for (let i = 0; i < 14; i++) k.box(0.008, 0.045, 0.008, WX - 0.08, 2.1 - i * 0.05, TZ - 0.29, 0x8a8a80);
     k.box(0.04, 0.1, 0.04, WX - 0.08, 1.37, TZ - 0.29, 0xe8e0c8);                                         // pull handle
     // the ladder stood up behind the loo, against the far wall
-    for (const z of [TZ - 0.2, TZ + 0.2]) k.box(0.04, 2.45, 0.05, xR - 0.06, 1.2, z, 0x8a8a8a, { rot: [0, 0, 0.12] });
-    for (let i = 0; i < 7; i++) k.box(0.03, 0.025, 0.38, xR - 0.03 - i * 0.036, 0.25 + i * 0.3, TZ, 0x7a7a7a);
+    { const LZ = TZ - 0.6;      // to the left of the loo as you face it, leaning on the far wall
+      for (const z of [LZ - 0.19, LZ + 0.19]) k.box(0.04, 2.45, 0.05, xR - 0.18, 1.2, z, 0x8a8a8a, { rot: [0, 0, 0.12] });
+      for (let i = 0; i < 7; i++) k.box(0.03, 0.025, 0.38, xR - 0.15 - i * 0.036, 0.25 + i * 0.3, LZ, 0x7a7a7a); }
     // bits and bobs: loo rolls, a bucket, a broom, a cobweb, the sign
     for (let i = 0; i < 2; i++) k.cyl(0.055, 0.055, 0.1, xR - 0.12, 0.05 + i * 0.1, -0.55, 0xe8e4d8, 10);
     k.cyl(0.055, 0.055, 0.1, 5.3, 0.055, -0.75, 0xe8e4d8, 10);
