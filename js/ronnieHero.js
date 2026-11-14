@@ -213,6 +213,8 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     ready: true,
     canvas,
     stop() { running = false; renderer.dispose(); renderer.forceContextLoss && renderer.forceContextLoss(); canvas.remove(); },
+    pause() { if (running) { running = false; } },
+    resume() { if (!running) { running = true; last = performance.now(); requestAnimationFrame(frame); } },
     talk(sec = 1.4) { talkT = sec; },
     eatNow() { if (!eating) eat(tray[0]); },
     _debug: { set open(v) { jawTarget = v; talkT = 99; jawOpen = v; }, camera, tray, bust },

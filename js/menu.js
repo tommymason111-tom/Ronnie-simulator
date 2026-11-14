@@ -75,6 +75,7 @@
     void to.offsetWidth; to.classList.add('on'); to.classList.remove('in-right', 'in-left');
     setTimeout(() => from.classList.remove('out-left', 'out-right'), 450);
     current = id; start.scrollTop = 0;
+    if (window.ronnieHero) { if (id === 'title') window.ronnieHero.resume(); else window.ronnieHero.pause(); }   // only draw him when he's on screen
     $$('.dots i').forEach((d, i) => d.classList.toggle('on', ['place', 'mode', 'ready'].indexOf(id) === i));
     $('.dots').classList.toggle('hide', !['place', 'mode', 'ready'].includes(id));
     if (id === 'mode') drawModes();
