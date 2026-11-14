@@ -17,6 +17,8 @@ import * as THREE from 'three';
 import { Kit, tileTex, canvasTex, brickTex, woodTex, carpetTex } from './kit.js';
 import { DartGame, dartboardTex, chalkCanvas } from '../darts.js';
 import { PingPong } from '../pingpong.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+const _skyV = new THREE.Vector3();
 import { part, sph, cyl } from '../geo.js';
 
 export const BBQ_SPOT = { x: -4.8, z: 0.35 };        // the grill (Ian stands behind it, his back to the house)
@@ -26,6 +28,8 @@ export const IAN_YAW = Math.PI;                      // facing the garden
 export function buildGarden(scene) {
   const B = { x0: -6.5, x1: 6.5, z0: -16.5, z1: 12 };
   const k = new Kit(scene, { ...B, y1: 8 });
+  const sceneStart = scene.children.length, smooth = [];        // (see stretchGarden below)
+  const mark = () => k.parts.length;
   const R = (x0, z0, x1, z1, h, y, color, opts) => k.box(Math.abs(x1 - x0), h, Math.abs(z1 - z0), (x0 + x1) / 2, y ?? h / 2, (z0 + z1) / 2, color, opts);
   const WOOD = 0x8a5a32, DARKWOOD = 0x5a3a20, WHITE = 0xf4f4f0, PAINT = 0xefe8dc, RENDER = 0xe4ddd0;
   const BRICK = brickTex(), CLAD = woodTex('#9a6a3a'), PINE = woodTex('#d8b07a');
@@ -75,8 +79,20 @@ export function buildGarden(scene) {
   }
 
   // ---------------- sky + the world beyond the fences ----------------
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(70, 24, 14), new THREE.MeshBasicMaterial({ map: skyTex(), side: THREE.BackSide, depthWrite: false }));
-  sky.position.set(0, -5, 0); sky.renderOrder = -10; scene.add(sky);
+  // a real atmosphere (Rayleigh/Mie scattering, sun at the same place as the light) with soft
+  // cumulus on a dome above it; the whole sky moves with your head so it's always "at infinity"
+  // (and inside the camera's far plane)
+  const SUN_DIR = new THREE.Vector3(8, 16, -5).normalize();
+  const skyRig = new THREE.Group(); scene.add(skyRig);
+  const sky = new Sky(); sky.scale.setScalar(30); sky.renderOrder = -100; sky.frustumCulled = false;
+  sky.material.uniforms.turbidity.value = 2.2; sky.material.uniforms.rayleigh.value = 2.4;
+  sky.material.uniforms.mieCoefficient.value = 0.003; sky.material.uniforms.mieDirectionalG.value = 0.82; sky.material.uniforms.sunPosition.value.copy(SUN_DIR);
+  // (the scattering model is in real-world brightness; tone it down to sit under the game's exposure)
+  sky.material.fragmentShader = sky.material.fragmentShader.replace('#include <tonemapping_fragment>', 'gl_FragColor.rgb *= 0.42;\n#include <tonemapping_fragment>');
+  skyRig.add(sky);
+  const clouds = new THREE.Mesh(new THREE.SphereGeometry(34, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.52), new THREE.MeshBasicMaterial({ map: cloudTex(), side: THREE.BackSide, transparent: true, depthWrite: false, fog: false }));
+  clouds.renderOrder = -98; clouds.frustumCulled = false; skyRig.add(clouds);
+  sky.onBeforeRender = (r, sc, cam) => { _skyV.setFromMatrixPosition(cam.matrixWorld); if (skyRig.position.distanceToSquared(_skyV) > 1e-6) { skyRig.position.copy(_skyV); skyRig.updateMatrixWorld(true); } };
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(140, 140), new THREE.MeshLambertMaterial({ color: 0x5f8f3a }));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.01; scene.add(ground);
   for (const [x, z, w, h, c] of [[-6, -23, 10, 6.5, 0x9a5a3a], [6, -23, 9, 6, 0xa86a48], [-12.5, -9, 6, 6, 0x8a4a32], [12.5, -6, 6, 6.2, 0xb07a52], [-12.5, 6, 6, 6, 0x9a6a4a], [12.5, 7, 6, 5.8, 0xa45c3c]]) {
@@ -96,9 +112,11 @@ export function buildGarden(scene) {
   k.floor(1.0, -4.3, 2.1, -0.5, CONCRETE, 0.0062, 2.4);             // the strip up to the garage door
   k.floor(B.x0, -2.7, -3.5, -0.5, CONCRETE, 0.0064, 2.4);           // under the umbrella, by the barbecue
   // stepping stones from the patio to the cabin door
+  let sm = mark();
   for (const [x, z, r] of [[0.45, -3.45, 0.24], [0.05, -4.4, 0.22], [-0.85, -4.5, 0.2], [-0.6, -5.4, 0.23], [-1.2, -6.0, 0.2], [-0.3, -7.55, 0.24], [0.75, -8.3, 0.22], [1.0, -9.3, 0.23], [1.9, -9.8, 0.21], [1.6, -10.5, 0.22]]) {
     k.cyl(r, r + 0.02, 0.05, x, 0.025, z, [0xb8b4aa, 0xa8a49a, 0xc4c0b6][Math.floor(rnd() * 3)], 12);
-  }
+  }  smooth.push([sm, mark()]);
+
   // timber edging across the lawn (the line on the plan)
   R(B.x0, -6.66, 2.1, -6.54, 0.08, 0.04, 0x6a4a2a);
   // the planted border between the lawn and the patio
@@ -117,6 +135,38 @@ export function buildGarden(scene) {
   k.box(0.18, 0.03, 0.03, 4.75, 1.0, 1.93, 0x111111);                                            // latch
   k.label('SIDE GATE', 0.5, 0.14, [5.5, 1.62, 1.935], [0, Math.PI, 0], { bg: '#fff', fg: '#111', border: null, size: 40 });
   k.blockers.push({ x0: 4.6, x1: B.x1, z0: 2.05, z1: B.z1, y1: 3 });                          // the side passage (out of the garden)
+
+  // the stretch: F moves a point (two 1.5m cuts in the lawn), Gs spreads the lawn evenly
+  const CUT1 = -5.8, CUT2 = -10.0, GAP = 1.5;
+  function F(z) { return z >= CUT1 ? z : z >= CUT2 ? z - GAP : z - 2 * GAP; }
+  function Gs(z) { return z >= -0.5 ? z : z >= -11 ? -0.5 + (z + 0.5) * (10.5 + 2 * GAP) / 10.5 : z - 2 * GAP; }
+  function stretchGarden() {
+    const box = new THREE.Box3(), crosses = (a, b) => (a < CUT1 && b > CUT1) || (a < CUT2 && b > CUT2);
+    const stretchy = (bb) => { const zx = bb.max.z - bb.min.z, xx = bb.max.x - bb.min.x, yy = bb.max.y - bb.min.y; return crosses(bb.min.z, bb.max.z) && (zx > 1.6 * xx || yy < 0.08 || xx < 0.35); };
+    const warpGeo = (g) => { const pa = g.attributes.position; for (let i = 0; i < pa.count; i++) pa.setZ(i, F(pa.getZ(i))); pa.needsUpdate = true; g.computeBoundingBox(); g.computeBoundingSphere(); };
+    const shiftGeo = (g, dz) => { if (dz) g.translate(0, 0, dz); };
+    const inSmooth = (i) => smooth.some(([a, b]) => i >= a && i < b);
+    k.parts.forEach((g, i) => {
+      g.computeBoundingBox(); const bb = g.boundingBox, cz = (bb.min.z + bb.max.z) / 2;
+      if (inSmooth(i)) shiftGeo(g, Gs(cz) - cz); else if (stretchy(bb)) warpGeo(g); else shiftGeo(g, F(cz) - cz);
+    });
+    for (const o of scene.children.slice(sceneStart)) {
+      if (!o.isMesh && !o.isSprite) continue;
+      if (o === ground) continue;
+      o.updateMatrixWorld(true); box.setFromObject(o);
+      const cz = (box.min.z + box.max.z) / 2;
+      if (o.isMesh && stretchy(box)) { o.geometry = o.geometry.clone().applyMatrix4(o.matrixWorld); warpGeo(o.geometry); o.position.set(0, 0, 0); o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); }
+      else o.position.z += F(cz) - cz;
+    }
+    for (const list of [k.colliders]) for (const c of list) { const cz = (c.min.z + c.max.z) / 2; if (crosses(c.min.z, c.max.z) && c.max.z - c.min.z > 1) { c.min.z = F(c.min.z); c.max.z = F(c.max.z); } else { const d = F(cz) - cz; c.min.z += d; c.max.z += d; } }
+    for (const b of k.blockers) { const cz = (b.z0 + b.z1) / 2; if (crosses(b.z0, b.z1) && b.z1 - b.z0 > 1) { b.z0 = F(b.z0); b.z1 = F(b.z1); } else { const d = F(cz) - cz; b.z0 += d; b.z1 += d; } }
+    for (const p of k.spawns) p.z = F(p.z);
+    for (const L of k.lights || []) L.l.position.z = F(L.l.position.z);
+    for (const [col, list] of k.lamps || []) for (const l of list) l[2] = col === 0xfff8e0 ? Gs(l[2]) : F(l[2]);    // (the solar lights follow the stones)
+    for (const gb of [k.halos, k.pools]) if (gb) for (const l of gb.list) l[2] = F(l[2]);
+    for (const b of flutter) b.userData.cz = F(b.userData.cz);
+    k.bounds.z0 = F(B.z0);
+  }
 
   // ======================================================== THE HOUSE (x -6.5..4.5, z 2..12)
   const HX0 = -6.5, HX1 = 4.5, HZ0 = 2, HZ1 = 12, CEIL = 2.6, TOP = 5.4;
@@ -526,6 +576,7 @@ export function buildGarden(scene) {
   k.parts.push(part(sph(0.11, 10, 8), 0xffffff, [-3.9, 0.11, -9.9]));
   for (let i = 0; i < 5; i++) k.parts.push(part(sph(0.035, 4, 3), 0x111111, [-3.9 + Math.cos(i * 1.26) * 0.09, 0.11 + Math.sin(i * 2.1) * 0.06, -9.9 + Math.sin(i * 1.26) * 0.09]));
   // daisies and clover all over the lawn
+  sm = mark();
   for (let i = 0; i < 260; i++) {
     const x = B.x0 + 0.9 + rnd() * 8.0, z = -10.6 + rnd() * 9.6;
     if ((x > 1.9 && z > -5.75) || (x > 4.0 && z > -8.45 && z < -5.8)) continue;
@@ -534,6 +585,7 @@ export function buildGarden(scene) {
   for (let i = 0; i < 70; i++) { const x = B.x0 + 0.9 + rnd() * 8.0, z = -10.6 + rnd() * 9.6; if ((x > 1.9 && z > -5.75) || (x > 4.0 && z > -8.45 && z < -5.8)) continue; k.cyl(0.0, 0.05, 0.1, x, 0.05, z, LEAF[i % 4], 5); }   // tufts
   // solar lights along the stepping stones
   for (const [x, z] of [[1.0, -3.9], [-0.3, -5.0], [-1.6, -6.3], [0.3, -7.9], [1.5, -9.0], [2.3, -10.2]]) { k.cyl(0.012, 0.012, 0.32, x, 0.16, z, 0x222222, 6); k.cyl(0.04, 0.05, 0.05, x, 0.34, z, 0x111111, 8); k.lamp(x, 0.39, z, 0xfff8e0, 0.03, false); }
+  smooth.push([sm, mark()]);
   // the back of the house: hanging baskets, outside light, drainpipe, chimney, step, hose reel
   for (const x of [-0.6, 1.6]) {
     k.box(0.03, 0.03, 0.3, x, 2.3, 1.75, 0x111111); k.cyl(0.005, 0.005, 0.25, x, 2.15, 1.62, 0x111111, 4);
@@ -591,6 +643,11 @@ export function buildGarden(scene) {
     } }
 
   // ---------------- sunshine ----------------
+  // ---------------- a longer garden ----------------
+  // Everything above was laid out on the short plan; here the lawn gets 1.5m more on each side of the
+  // middle line. Things beyond each cut slide back; long things that cross a cut (fences, floors,
+  // borders) stretch; the stepping stones, solar lights and daisies spread out evenly along the lawn.
+  stretchGarden();
   const room = k.finish({
     name: "Lewis's House",
     sky: 0xcfe8ff, ground: 0x6f8f45, hemiI: 1.5, sun: 0xffeccc, sunI: 3.0, sunPos: [8, 16, -5], ambient: 0.32,
@@ -602,15 +659,15 @@ export function buildGarden(scene) {
   // a lovely summer's day: warm low-ish sun with real soft shadows, a light haze in the distance
   room.shadows = true;
   const sun = room.sun; sun.castShadow = true;
-  sun.target.position.set(0, 0, -2.5); scene.add(sun.target); sun.position.set(8, 16, -7.5);
-  Object.assign(sun.shadow.camera, { left: -17, right: 17, top: 17, bottom: -17, near: 2, far: 50 }); sun.shadow.camera.updateProjectionMatrix();
+  sun.target.position.set(0, 0, -4); scene.add(sun.target); sun.position.set(8, 16, -9);
+  Object.assign(sun.shadow.camera, { left: -19, right: 19, top: 19, bottom: -19, near: 2, far: 55 }); sun.shadow.camera.updateProjectionMatrix();
   sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03; sun.shadow.radius = 3;
   scene.traverse(o => { if (o.isMesh && o !== sky && o !== ground) { o.castShadow = !o.material.transparent; o.receiveShadow = true; } });
-  ground.receiveShadow = true; sky.material.fog = false;
-  scene.fog = new THREE.Fog(0xd8ecff, 28, 95);
+  ground.receiveShadow = true;
+  scene.fog = new THREE.Fog(0xcfe0ee, 22, 40);                                   // summer haze, fading the far edge into the sky
   // the sun itself, glowing in the sky
   { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunGlowTex(), color: 0xfff6e0, transparent: true, depthWrite: false, fog: false }));
-    sp.position.set(8, 16, -5).normalize().multiplyScalar(60); sp.scale.setScalar(16); sp.renderOrder = -9; scene.add(sp); }
+    sp.position.copy(SUN_DIR).multiplyScalar(28); sp.scale.setScalar(9); sp.renderOrder = -97; sp.frustumCulled = false; skyRig.add(sp); }
   // butterflies flutter round the flowers; the squad cast shadows too
   const baseUpdate = room.update.bind(room); let shT = 0;
   room.update = (dt) => {
@@ -621,8 +678,8 @@ export function buildGarden(scene) {
       b.rotation.y = -a * 0.8; const f = Math.sin(t * 22 + u.ph) * 0.9; u.w1.rotation.y = f; u.w2.rotation.y = -f; }
     if ((shT -= dt) <= 0) { shT = 1; scene.traverse(o => { if ((o.isSkinnedMesh || (o.isMesh && o.parent && o.parent.isBone)) && !o.userData.shad) { o.castShadow = true; o.userData.shad = true; } }); }
   };
-  room.dartboard = new DartGame({ center: new THREE.Vector3(DB.x, DB.y, DB.z), normal: new THREE.Vector3(1, 0, 0), stand: DART_STAND, chalkL, chalkR });
-  room.pingpong = new PingPong(scene, { c: new THREE.Vector3(TT.x, TT.y, TT.z) });
+  room.dartboard = new DartGame({ center: new THREE.Vector3(DB.x, DB.y, F(DB.z)), normal: new THREE.Vector3(1, 0, 0), stand: DART_STAND.map(v => v.setZ(F(v.z))), chalkL, chalkR });
+  room.pingpong = new PingPong(scene, { c: new THREE.Vector3(TT.x, TT.y, F(TT.z)) });
   ppScore.material.map = room.pingpong.board.tex; ppScore.material.needsUpdate = true;
   room.games = [room.dartboard, room.pingpong];
   return room;
@@ -640,6 +697,30 @@ function sunGlowTex() {
     gr.addColorStop(0, 'rgba(255,255,245,1)'); gr.addColorStop(0.12, 'rgba(255,250,220,1)'); gr.addColorStop(0.3, 'rgba(255,240,190,0.45)'); gr.addColorStop(1, 'rgba(255,240,190,0)');
     g.fillStyle = gr; g.fillRect(0, 0, w, w);
   });
+}
+// soft fair-weather cumulus: fractal noise, thresholded, lit from above, thinning toward the zenith
+// and the horizon (equirectangular, wraps round)
+function cloudTex() {
+  const W = 1024, H = 256, N = 64, M = 16;
+  const grid = (n, m, seed) => { const a = new Float32Array(n * m); let x = seed; for (let i = 0; i < a.length; i++) { x = (x * 16807) % 2147483647; a[i] = x / 2147483647; } return a; };
+  const oct = [[N, M, 11, 1], [N * 2, M * 2, 23, 0.5], [N * 4, M * 4, 37, 0.25], [N * 8, M * 8, 51, 0.125]].map(([n, m, s, a]) => ({ n, m, a, g: grid(n, m + 1, s) }));
+  const val = (o, u, v) => { const x = u * o.n, y = v * o.m, x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const g = o.g, n = o.n, at = (i, j) => g[(j % (o.m + 1)) * n + ((i % n) + n) % n];
+    return (at(x0, y0) * (1 - sx) + at(x0 + 1, y0) * sx) * (1 - sy) + (at(x0, y0 + 1) * (1 - sx) + at(x0 + 1, y0 + 1) * sx) * sy; };
+  return canvasTex(W, H, (g) => {
+    const img = g.createImageData(W, H), d = img.data;
+    for (let j = 0; j < H; j++) {
+      const v = j / H;                                                  // 0 = zenith, 1 = just above the horizon
+      const band = Math.min(1, v / 0.35) * Math.min(1, (1 - v) / 0.25);
+      for (let i = 0; i < W; i++) {
+        const u = i / W; let n = 0; for (const o of oct) n += val(o, u, v * 0.9) * o.a; n /= 1.875;
+        const c = Math.max(0, Math.min(1, (n - 0.6) / 0.14)) * band;
+        const shade = 0.82 + 0.18 * Math.min(1, (n - 0.5) * 4);         // thicker = brighter tops
+        const k = (j * W + i) * 4; d[k] = 255 * shade; d[k + 1] = 255 * shade; d[k + 2] = 255 * Math.min(1, shade + 0.03); d[k + 3] = 255 * Math.pow(c, 0.8) * 0.92;
+      }
+    }
+    g.putImageData(img, 0, 0);
+  }, { mips: true });
 }
 function skyTex() {
   return canvasTex(512, 256, (g, w, h) => {
