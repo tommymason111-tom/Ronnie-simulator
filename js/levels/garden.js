@@ -18,6 +18,7 @@ import { Kit, tileTex, canvasTex, brickTex, woodTex, carpetTex, streetViewTex } 
 import { DartGame, dartboardTex, chalkCanvas } from '../darts.js';
 import { PingPong } from '../pingpong.js';
 import { Clutter } from './clutter.js';
+import { buildGarage } from './garage.js';
 import { sofa, unitFronts, tv, stairRunner, fenceTex, wheelieBin } from './furniture.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 const _skyV = new THREE.Vector3();
@@ -522,18 +523,8 @@ export function buildGarden(scene) {
   leaf('z', GX0, -4.2, -3.2, 1, 0x2e5a3a); leaf('x', -2.4, 2.6, 3.4, 1, 0x5a4a3a);
   k.label('GARAGE', 0.6, 0.16, [GX0 - 0.11, 2.2, -3.7], [0, -Math.PI / 2, 0], { bg: '#2e5a3a', fg: '#fff', border: null, size: 44 });
   k.label('BOG', 0.4, 0.16, [3.0, 2.2, -2.47], [0, Math.PI, 0], { bg: '#fff', fg: '#111', border: '#111', size: 44 });
-  // the mess: workbench, boxes, tyres, a bike, paint tins, crates, an old telly
-  R(5.8, -5.4, 6.35, -3.4, 0.9, 0.45, 0x7a5a3a, { block: true, collide: true });
-  for (let i = 0; i < 6; i++) k.box(0.05 + rnd() * 0.1, 0.04, 0.2 + rnd() * 0.2, 6.0 + rnd() * 0.2, 0.93, -5.2 + i * 0.3, [0xd32f2f, 0x555555, 0xffd400, 0x1e5aa8][i % 4], { rot: [0, rnd() * 3, 0] });
-  k.box(0.04, 0.9, 1.8, 6.36, 1.6, -4.4, 0x9a7a5a);                                                   // pegboard
-  k.spawns.push(new THREE.Vector3(6.0, 1.0, -3.8), new THREE.Vector3(6.05, 1.0, -4.9));
-  for (const [x, z, n] of [[2.65, -5.2, 3], [4.15, -5.25, 1]]) for (let i = 0; i < n; i++) k.box(0.55 + rnd() * 0.2, 0.42, 0.5 + rnd() * 0.15, x + (rnd() - 0.5) * 0.08, 0.21 + i * 0.42, z, [0xb8925a, 0xa8844e, 0xc8a26a][i % 3], { block: i === 0, collide: i === n - 1, rot: [0, (rnd() - 0.5) * 0.3, 0] });
-  for (let i = 0; i < 3; i++) { k.cyl(0.32, 0.32, 0.2, 5.25, 0.1 + i * 0.2, -2.95, 0x1a1a1a, 14, { block: i === 0 }); k.cyl(0.18, 0.18, 0.21, 5.25, 0.1 + i * 0.2, -2.95, 0x3a3a3a, 10); }
-  k.box(0.04, 0.66, 0.66, 2.55, 0.36, -4.85, 0x111111, { rot: [0, 0, 0.1] }); k.box(0.05, 0.05, 0.6, 2.58, 0.68, -4.55, 0xd32f2f);   // a bike wheel and frame by the door
-  for (let i = 0; i < 6; i++) k.cyl(0.11, 0.11, 0.22, 3.3 + (i % 3) * 0.25, 0.11 + Math.floor(i / 3) * 0.22, -5.25 + (i % 2) * 0.05, [0xffffff, 0x2a8ae0, 0xd32f2f][i % 3], 10);   // paint tins
-  for (let i = 0; i < 3; i++) R(4.0 + i * 0.05, -3.1, 4.5 + i * 0.05, -2.7, 0.28, 0.14 + i * 0.28, [0xffd400, 0x1e5aa8, 0xd32f2f][i]);   // beer crates
-  R(4.7, -5.5, 5.5, -4.95, 0.55, 0.275, 0x2a2a2a, { block: true }); k.box(0.7, 0.42, 0.02, 5.1, 0.3, -4.94, 0x3a4a5a);   // an old telly on the floor
-  k.light(4.2, 2.3, -4.0, 0xfff0d0, 2.5, 6); k.lamp(4.2, 2.42, -4.0, 0xffffff, 0.1);
+  buildGarage(k, scene, R, rnd);                                                                // workbench + tools, shelving, freezer, Lewy's gym, Ian's fishing gear (garage.js)
+  k.light(4.3, 2.3, -4.0, 0xf0f6ff, 3, 6);
   // the little green shed behind the garage: sage clapboard, apex felt roof, a dusty window
   { const SX0 = 4.25, SX1 = 6.4, SZ0 = -8.25, SZ1 = -5.95, EAVE = 1.95, RIDGE = 2.45;
     const SHED = canvasTex(256, 256, (g, w, h) => {
@@ -735,7 +726,7 @@ export function buildGarden(scene) {
   for (let i = 0; i < 6; i++) can(3.3 + i * 0.19, 0.92, -11.08);
   for (let i = 0; i < 5; i++) pizza(-3.9 + (i % 2) * 0.05, 0.02 + i * 0.045, -14.3 + (i % 2) * 0.04, i * 0.3);   // a tower of pizza boxes
   // mess in the garage too
-  strewn(2.4, -5.3, 5.6, -3.0, 10); strewn(5.85, -5.3, 6.3, -3.5, 4, 0.9);
+  strewn(2.6, -4.3, 3.5, -2.6, 3); can(5.4, 0.92, -5.35); lyingCan(6.2, 0.91, -5.3);
 
   // ======================================================== SUMMER DETAILS
   const FLOWERS = [0xff4f7b, 0xffd400, 0xffffff, 0x9a4aff, 0xff7a1a, 0xff2a2a, 0x4a8aff, 0xffa0d0];
