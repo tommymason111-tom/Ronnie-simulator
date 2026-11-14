@@ -197,7 +197,7 @@
   const roster = $('#roster');
   roster.innerHTML = SQUAD.map((s, i) => `
     <div class="mate" data-i="${i}" style="--c:${s.c};animation-delay:${i * 0.04}s">
-      <div class="face-badge">${s.n[0]}</div><b>${s.n}</b>
+      <div class="face-badge"><img src="./assets/portraits/${s.n.toLowerCase()}.webp" alt="${s.n}" loading="lazy" draggable="false"></div><b>${s.n}</b>
       <div class="atk">${s.a} ${s.t}</div>
     </div>`).join('');
   const quote = $('#mate-quote');
@@ -210,12 +210,15 @@
     blip(300 + (+c.dataset.i) * 40, 0.07, 'triangle', 0.08);
   });
 
-  // ---------------------------------------------------------------- HOW: tabs
-  $$('.tabs button').forEach(b => b.addEventListener('click', () => {
-    $$('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-    $$('.howpane').forEach(p => p.classList.toggle('on', p.dataset.p === b.dataset.p));
-    blip(560, 0.05);
-  }));
+  // ---------------------------------------------------------------- HOW: tabs (opens on your device's tab)
+  const pickTab = (id) => {
+    $$('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.p === id));
+    $$('.howpane').forEach(p => p.classList.toggle('on', p.dataset.p === id));
+  };
+  $$('.tabs button').forEach(b => b.addEventListener('click', () => { pickTab(b.dataset.p); blip(560, 0.05); }));
+  const touchy = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window;
+  pickTab(touchy ? 'flat' : 'pc');
+  try { if (navigator.xr && navigator.xr.isSessionSupported) navigator.xr.isSessionSupported('immersive-vr').then(v => { if (v) pickTab('vr'); }).catch(() => {}); } catch (e) {}
 
   // ---------------------------------------------------------------- start the game
   window.ronnieMenu = new Promise((resolve) => {
