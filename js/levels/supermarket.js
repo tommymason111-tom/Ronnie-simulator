@@ -62,7 +62,32 @@ export function buildSupermarket(scene) {
   wallZ(-14.7, -11, 8.5); wallX(-11, -14.7, 14.7); wallZ(14.7, -11, 14.4);
   // the right-hand wall: the stock room behind it (strip-curtain door off the meat aisle), the bake-off room after it
   wallX(3.4, -14.7, -5.3); wallX(3.4, -3.9, G0[1]); R(3.32, -5.3, 3.48, -3.9, H - 2.3, 2.3 + (H - 2.3) / 2, WALL);
-  for (let z = -5.28; z < -3.92; z += 0.1) R(3.38, z, 3.42, z + 0.08, 2.3, 1.15, 0xbfe0ee);
+  // the STAFF ONLY doorway: steel frame with buffer rails, a rail of overlapping clear PVC strips (slightly swung),
+  // a lit sign box over it, notices, a keypad, yellow-and-black hazard tape on the floor, a cage trolley and a bin by it
+  { const sx = 3.32, za = -5.3, zb = -3.9, STL = 0xa8aeb6;
+    const stripMat = new THREE.MeshLambertMaterial({ color: 0xcfe8f0, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+    const sg = new THREE.PlaneGeometry(0.2, 2.18);
+    for (let i = 0, z = za + 0.08; z < zb - 0.08; z += 0.13, i++) { const m = new THREE.Mesh(sg, stripMat); m.position.set(3.4 + (i % 2 ? 0.012 : -0.012), 1.17, z + 0.06); m.rotation.y = Math.PI / 2 + Math.sin(i * 1.7) * 0.18; m.rotation.z = Math.sin(i * 2.3) * 0.02; m.renderOrder = 3; scene.add(m); }
+    R(3.3, za, 3.5, zb, 0.06, 2.28, 0x777c84);                                                                  // the strip rail
+    for (const z of [za, zb]) { R(3.28, z - 0.06, 3.52, z + 0.06, 2.3, 1.15, STL); R(3.22, z - 0.05, 3.28, z + 0.05, 0.8, 0.5, 0xffd400); }   // steel jambs, yellow buffers
+    R(3.27, za - 0.06, 3.53, zb + 0.06, 0.08, 2.34, STL);
+    for (const z of [za + 0.03, zb - 0.03]) for (const y of [0.3, 0.8]) R(3.2, z - 0.025, 3.28, z + 0.025, 0.05, y, 0x3a3c40);   // corner guards
+    // hazard tape across the floor at the threshold
+    const tape = canvasTex(256, 32, (g, w, h) => { for (let x = -32; x < w + 32; x += 32) { g.fillStyle = '#ffd400'; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 16, 0); g.lineTo(x + 32, h); g.lineTo(x + 16, h); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.moveTo(x + 16, 0); g.lineTo(x + 32, 0); g.lineTo(x + 48, h); g.lineTo(x + 32, h); g.fill(); } });
+    k.label('tape', zb - za, 0.1, [3.2, 0.006, (za + zb) / 2], [-Math.PI / 2, 0, Math.PI / 2], { tex: tape });
+    // the lit sign box over the door
+    R(3.18, za + 0.05, 3.3, zb - 0.05, 0.36, 2.62, 0xc62828);
+    // notices and a keypad beside it
+    k.box(0.06, 0.16, 0.1, 3.29, 1.35, zb + 0.22, 0x2a2a2a); k.box(0.01, 0.1, 0.07, 3.255, 1.36, zb + 0.22, 0x445566); k.lamp(3.25, 1.43, zb + 0.22, 0x39ff14, 0.01, false);
+    blk(3.2, za - 0.08, 3.55, za + 0.06, H); blk(3.2, zb - 0.06, 3.55, zb + 0.08, H);
+    // a cage trolley of stock waiting by the door, a tall bin
+    const cz = za - 0.55; R(2.7, cz - 0.35, 3.25, cz + 0.35, 0.05, 0.12, 0x777777); for (const [dx, dz] of [[-0.25, -0.33], [0.25, -0.33], [-0.25, 0.33], [0.25, 0.33]]) k.box(0.02, 1.55, 0.02, 2.975 + dx, 0.9, cz + dz, 0x888888);
+    for (let y = 0.3; y < 1.7; y += 0.18) { k.box(0.52, 0.015, 0.015, 2.975, y, cz - 0.33, 0x888888); k.box(0.015, 0.015, 0.66, 2.73, y, cz, 0x888888); }
+    for (let i = 0; i < 6; i++) R(2.76 + (i % 2) * 0.24, cz - 0.3 + Math.floor(i / 2) * 0.0, 2.98 + (i % 2) * 0.24, cz + 0.3, 0.3, 0.3 + Math.floor(i / 2) * 0.32, [0xc8a070, 0xd6b48a, 0xb8905a][i % 3]);
+    for (const [dx, dz] of [[-0.22, -0.3], [0.22, -0.3], [-0.22, 0.3], [0.22, 0.3]]) k.cyl(0.03, 0.03, 0.05, 2.975 + dx, 0.03, cz + dz, 0x222222, 8);
+    blk(2.68, cz - 0.37, 3.27, cz + 0.37, 1.7);
+    k.cyl(0.17, 0.15, 0.85, 3.08, 0.425, zb + 0.55, 0x2a2a2a, 12, { block: true }); k.cyl(0.18, 0.18, 0.04, 3.08, 0.86, zb + 0.55, 0x1e4ea8, 12);
+  }
   wallZ(-1.4, 3.4, 6.0); wallZ(-1.4, 7.0, 8.5); R(6.0, -1.48, 7.0, -1.32, H - 2.2, 2.2 + (H - 2.2) / 2, WALL);    // stock room | bake-off room (door)
   wallX(8.5, -14.7, 4.6); wallZ(4.6, 8.5, 11); wallX(11, 4.6, G2[1]);
   // everything outside the rooms is solid (merged into strips so it stays cheap)
@@ -474,7 +499,9 @@ export function buildSupermarket(scene) {
   for (const [x, z, ry] of [[-6.1, -8.0, 0.4], [-2.9, 1.5, 2.0], [-9.0, -1.2, 1.0], [2.2, -9.5, 3.0], [-6.0, 4.6, 0.8], [5.0, 10.6, 2.4], [-9.3, -4.6, 1.6], [-2.9, -8.6, 2.2], [7.5, 9.8, 0.6]]) dorm.add('lidlbag', x, 0.16, z, ry);
 
   // ================================================================ the back stock room (STAFF ONLY)
-  sign('STAFF ONLY (YES, RONNIE, THAT MEANS YOU)', 1.4, 0.3, [3.31, 2.5, -4.6], [0, -Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: null, size: 44 });
+  sign('STAFF ONLY (YES, RONNIE, THAT MEANS YOU)', 1.3, 0.32, [3.175, 2.62, -4.6], [0, -Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: null, size: 44, glow: true });
+  k.box(0.02, 0.4, 0.3, 3.31, 1.5, -3.9 + 0.62, 0xffffff); sign('AUTHORISED PERSONNEL ONLY · HI-VIS BEYOND THIS POINT', 0.28, 0.38, [3.297, 1.5, -3.9 + 0.62], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#c62828', border: '#c62828', size: 40 });
+  k.box(0.02, 0.32, 0.3, 3.31, 1.5, -5.3 - 0.35, 0x1e4ea8); sign('CAUTION: FORKLIFTS & RONNIES', 0.28, 0.3, [3.297, 1.5, -5.3 - 0.35], [0, -Math.PI / 2, 0], { bg: '#ffd400', fg: '#111', border: '#111', size: 40 });
   const pallet = (x, z, c, h) => { R(x - 0.6, z - 0.5, x + 0.6, z + 0.5, 0.14, 0.07, 0xc8a070, { collide: true }); R(x - 0.55, z - 0.45, x + 0.55, z + 0.45, h, 0.14 + h / 2, c, { collide: true, block: true }); k.spawns.push(new THREE.Vector3(x, 0.14 + h + 0.08, z)); };
   pallet(5.0, -13.6, 0xc8a070, 1.1); pallet(6.6, -13.6, 0x39a845, 0.9); pallet(7.4, -11.0, 0xc8a070, 1.4); pallet(5.0, -11.0, 0xe8e8e8, 0.8);
   sign('MONSTOR: 4,000 CANS. ORDERED BY: ???. DRUNK BY: ONE MAN.', 1.0, 0.4, [6.6, 0.6, -13.145], [0, 0, 0], { bg: '#111', fg: '#39ff14', border: '#39ff14', size: 36, glow: true });
