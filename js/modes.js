@@ -26,7 +26,7 @@ export const MODES = {
   catch:        { name: 'CATCH & EAT', desc: 'Catch Harry\'s throws in your mouth.', time: 70, hidden: true },
   chonkoff:     { name: 'EAT-OFF', desc: '60 seconds. Eat everything.', time: 60 },
   chonkoff2:    { name: 'EAT-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
-  sweep:        { name: 'SUPERMARKET SWEEP', desc: '90 seconds, one trolley. Grab everything. Dodge Oliver.', time: 90, place: 'shop' },
+  sweep:        { name: 'SUPERMARKET SWEEP', desc: '90 seconds, one trolley. Grab the most calories. Dodge Oliver.', time: 90, place: 'shop' },
   bbq:          { name: "IAN'S BARBECUE", desc: 'Round Lewis\'s house. Eat off the grill before Ian makes it healthy.', time: 150, place: 'garden' },
   roam:         { name: 'FREE ROAM', desc: 'Have a look round. Everyone\'s here, nobody attacks.', time: 0 },
   date:         { name: 'DATE NIGHT', desc: 'Eat when Chloe looks away. 3 catches and it\'s salad.', time: 180, place: 'restaurant' },
@@ -61,8 +61,9 @@ const ATTACKS = {
   ben:    [{ key: 'turkey', icon: '✈️', title: 'BEN TAKES YOU TO TURKEY!', sub: 'TO GET YOUR HAIRLINE DONE' }],
 };
 const ANNOUNCE_T = 2;
-// Supermarket Sweep prices
-const PRICE = { can: 1.49, burger: 3.99, pizza: 4.49, doughnut: 0.99, hotdog: 2.49, fries: 1.99, kebab: 5.99, chicken: 3.49, taco: 2.99, crisps: 1.29, choc: 0.89, cookie: 0.79, icecream: 2.29, sausageroll: 1.19, pint: 4.80, shake: 2.50 };
+// Supermarket Sweep: what each thing's worth in calories (the score is the trolley's total kcal)
+const KCAL = { can: 160, burger: 550, pizza: 290, doughnut: 260, hotdog: 330, fries: 420, kebab: 900, chicken: 380, taco: 230, crisps: 180, choc: 250, cookie: 210, icecream: 270, sausageroll: 330, pint: 210, shake: 320, beer: 150 };
+const kc = (n) => Math.round(n).toLocaleString('en-GB') + ' kcal';
 const TROLLEY_PARTS = 12;
 // a shopping trolley (the basket is open on top so you can see what's in it)
 function makeTrolley() {
@@ -268,12 +269,13 @@ export class Director {
       lines.push([this.date.catches >= 3 ? 'Chloe ordered you a salad.' : 'Relationship status: still together, somehow.', '']);
       lines.push(['The bill is a scroll. It is still unrolling.', '']);
     } else if (this.mode === 'sweep') {
-      const sw = this.sweep, best = +(safeGet('rs_best_sweep') || 0), total = Math.round(sw.total * 100) / 100;
+      const sw = this.sweep, best = +(safeGet('rs_best_sweep_kcal') || 0), total = Math.round(sw.total);
       lines.length = 1;
       lines.push(['ITEMS IN THE TROLLEY', sw.items]);
-      lines.push(['TOTAL', '£' + total.toFixed(2)]);
+      lines.push(['CALORIES IN THE TROLLEY', kc(total)]);
       lines.push(['CAUGHT BY OLIVER', sw.caught]);
-      if (total > best) { safeSet('rs_best_sweep', total); lines.push(['NEW RECORD!', '£' + total.toFixed(2)]); } else lines.push(['BEST EVER', '£' + best.toFixed(2)]);
+      if (total > best) { safeSet('rs_best_sweep_kcal', total); lines.push(['NEW RECORD!', kc(total)]); } else lines.push(['BEST EVER', kc(best)]);
+      lines.push([total >= 2500 ? `That's ${(total / 2500).toFixed(1)} days' worth. Before tea.` : 'Barely a snack, Ron.', '']);
       lines.push(['Oliver: "That\'s going on my story."', '']);
     } else if (this.mode === 'bbq') {
       lines.push(['OFF THE GRILL', this.bbq.ate]);
@@ -599,24 +601,24 @@ export class Director {
   // the game calls this when Ronnie picks something up during the sweep
   sweepGrab(it) {
     if (!this.running || this.mode !== 'sweep') return false;
-    const g = this.g, sw = this.sweep, price = PRICE[it.type] || 1.5;
+    const g = this.g, sw = this.sweep, price = KCAL[it.type] || 200;
     if (it.def.veg) {           // fruit and veg: not what we're here for. It costs you.
       const lose = Math.min(2, sw.list.length);
-      for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; }
-      sw.total = Math.max(0, sw.total - 2.5);
-      g.words.show('HEALTHY?! -£2.50', it.pos.clone().add(new THREE.Vector3(0, 0.2, 0)), '#ff5252', 0.16, 1.1);
+      let lost = 0; for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; lost += m.userData.kcal || 0; }
+      sw.total = Math.max(0, sw.total - lost);
+      g.words.show(lost ? `HEALTHY?! -${kc(lost)}` : 'HEALTHY?! NO THANKS', it.pos.clone().add(new THREE.Vector3(0, 0.2, 0)), '#ff5252', 0.16, 1.1);
       sfx('bleurgh', it.pos, 0.8); g.items.remove(it); g.items.queueRespawn(it.type, 2);
       return true;
     }
     sw.items++; sw.total += price;
-    g.words.show(`+£${price.toFixed(2)}`, it.pos.clone().add(new THREE.Vector3(0, 0.2, 0)), '#ffd400', 0.16, 0.9);
+    g.words.show(`+${kc(price)}`, it.pos.clone().add(new THREE.Vector3(0, 0.2, 0)), '#ffd400', 0.16, 0.9);
     sfx('ting', it.pos, 0.8);
     // a copy goes into the basket, stacking up
     const m = new Item(it.type).obj; m.scale.setScalar(0.8);
     const n = this.trolley.children.length - TROLLEY_PARTS;
     m.position.set(-0.22 + (n % 4) * 0.15, 0.62 + Math.floor(n / 12) * 0.08, -0.2 + (Math.floor(n / 4) % 3) * 0.18);
     m.rotation.set(Math.random(), Math.random() * 6, Math.random());
-    this.trolley.add(m); sw.list.push(m);
+    m.userData.kcal = price; this.trolley.add(m); sw.list.push(m);
     g.items.remove(it); g.items.queueRespawn(it.type, 1.2);
     return true;
   }
@@ -638,7 +640,7 @@ export class Director {
       else { it.glow.material.color.setHex(0x39ff14); it.glow.scale.setScalar((0.27 + Math.sin(t * 4 + it.pos.x * 3) * 0.03) * s); }
     }
     // the countdown, big at the top of the screen (and what's in the trolley so far)
-    if (g.fx) { const tl = Math.max(0, Math.ceil(this.timeLeft)); g.fx.setCountdown(`⏱ ${Math.floor(tl / 60)}:${String(tl % 60).padStart(2, '0')}  ·  🛒 ${sw.items} ITEMS  ·  £${sw.total.toFixed(2)}${tl <= 10 ? '  ·  HURRY!' : ''}`); }
+    if (g.fx) { const tl = Math.max(0, Math.ceil(this.timeLeft)); g.fx.setCountdown(`⏱ ${Math.floor(tl / 60)}:${String(tl % 60).padStart(2, '0')}  ·  🛒 ${sw.items} ITEMS  ·  🔥 ${kc(sw.total)}${tl <= 10 ? '  ·  HURRY!' : ''}`); }
     // Aidan W hobbles after you too (the knee: he's slow, but he never stops, and he moans the whole way)
     const aw = this.cast.find(c => c.id === 'aidanw'); sw.awCool -= dt;
     if (aw && !aw.down) {
@@ -647,7 +649,7 @@ export class Director {
       if (aw.distToPlayer < 0.85 && sw.awCool <= 0 && sw.items > 0) {
         sw.awCool = 7; sw.caught++;
         const lose = Math.min(2, sw.list.length);
-        for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; sw.total = Math.max(0, sw.total - 1.5); }
+        for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; sw.total = Math.max(0, sw.total - (m.userData.kcal || 0)); }
         g.showBanner('CAUGHT BY AIDAN W!', `-${lose} ITEMS (HE'S SITTING DOWN NOW)`); sfx('whistle', null, 1);
         aw.say(['Got you! Right, I need a sit down.', 'Caught you, Ron. Worth it. Not for my knee.', 'Spurs never win anything. I just did.'][sw.caught % 3], 4);
       }
@@ -659,7 +661,7 @@ export class Director {
       if (oli.distToPlayer < 0.85 && sw.cool <= 0 && sw.items > 0) {
         sw.cool = 6; sw.caught++;
         const lose = Math.min(3, sw.list.length);
-        for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; sw.total = Math.max(0, sw.total - 1.5); }
+        for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; sw.total = Math.max(0, sw.total - (m.userData.kcal || 0)); }
         g.showBanner('CAUGHT BY OLIVER!', `-${lose} ITEMS`); sfx('whistle', null, 1);
         oli.say(['Bag check! These are coming with me.', 'Caught on camera, Ron. Literally. 40k views already.', 'Sir. SIR. Those aren\'t paid for.'][sw.caught % 3], 4);
       }
@@ -1041,7 +1043,7 @@ export class Director {
     if (this.mode === 'intervention') extra = this.attackClock();
     else if (this.mode === 'veggie') extra = `Swats ${this.stats.swats} · Veg ${this.stats.veg}`;
     else if (this.mode === 'catch') extra = `Caught ${this.stats.caught}/${this.stats.thrown}`;
-    else if (this.mode === 'sweep' && this.sweep) extra = `Trolley ${this.sweep.items} · £${this.sweep.total.toFixed(2)}`;
+    else if (this.mode === 'sweep' && this.sweep) extra = `Trolley ${this.sweep.items} · ${kc(this.sweep.total)}`;
     else if (this.mode === 'bbq' && this.bbq) extra = `Off the grill ${this.bbq.ate} · ${this.attackClock()}`;
     else if (this.mode === 'date') extra = `Busted ${this.date.catches}/3 · ${this.date.look ? 'SHE\'S LOOKING!' : 'EAT NOW!'}`;
     else if (this.mode === 'everyone') return `THE WHOLE SQUAD · ${this.attackClock()}`;
