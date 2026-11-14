@@ -233,14 +233,13 @@
         resolve({ place, mode });
       };
       if (instant === true) return finish();
-      // 3... 2... 1... CHOMP!
-      const cd = $('#countdown'); cd.classList.add('on');
-      const steps = ['3', '2', '1', 'CHOMP!'];
-      steps.forEach((s, i) => setTimeout(() => {
-        cd.textContent = s; cd.classList.remove('beat'); void cd.offsetWidth; cd.classList.add('beat');
-        i < 3 ? blip(440, 0.1, 'square', 0.07) : (chompSfx(), blip(880, 0.25, 'square', 0.07));
-      }, i * 520));
-      setTimeout(finish, steps.length * 520 + 250);
+      // a quick CHOMP! while the level starts loading straight away underneath,
+      // then the overlay always goes (it used to stay stuck over the screen)
+      const cd = $('#countdown'); cd.textContent = 'CHOMP!'; cd.classList.add('on', 'beat');
+      chompSfx(); blip(880, 0.25, 'square', 0.07);
+      const hide = () => cd.classList.remove('on', 'beat');
+      setTimeout(() => { finish(); setTimeout(hide, 450); }, 60);
+      setTimeout(hide, 2500);   // backstop
     };
     $('#go').addEventListener('click', () => go());
     if (q.get('go')) go(true);
