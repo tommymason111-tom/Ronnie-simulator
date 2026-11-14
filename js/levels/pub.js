@@ -196,8 +196,8 @@ export function buildPub(scene) {
   boothTable(X(565), Z(1305) - 0.95, false, -1); boothTable(X(655), Z(1305) - 0.95, false, -1);
   // the pillar in the middle, opposite the bar, with a fruit machine on its right
   const pillar = (x, z) => {
-    k.texBox(0.46, H - 0.05, 0.46, x, (H - 0.05) / 2, z, BRICK, { tile: 0.9, collide: true, block: true });
-    for (const [dx, dz] of [[0.24, 0], [-0.24, 0], [0, 0.24], [0, -0.24]]) { k.box(Math.abs(dx) ? 0.04 : 0.14, 0.12, Math.abs(dz) ? 0.04 : 0.14, x + dx * 1.15, 1.95, z + dz * 1.15, 0xf2f2f2); sconceGlow(k, x + dx * 1.25, 1.95, z + dz * 1.25, x, z); }
+    k.texBox(0.62, H, 0.62, x, H / 2, z, BRICK, { tile: 0.9, collide: true, block: true });                         // solid brick, floor to ceiling, like the walls
+    for (const [dx, dz] of [[0.32, 0], [-0.32, 0], [0, 0.32], [0, -0.32]]) k.box(Math.abs(dx) ? 0.04 : 0.12, 0.1, Math.abs(dz) ? 0.04 : 0.12, x + dx * 1.06, 2.3, z + dz * 1.06, 0x2a2a2a);   // small black wall lights
   };
   const PX = X(540), PZ = Z(830);
   pillar(PX, PZ);
@@ -277,7 +277,7 @@ export function buildPub(scene) {
     k.halo(x + nx * 0.1, 1.1, z + nz * 0.1, 1.0, 0xffd400);
     blk(cx - 0.4, cz - 0.4, cx + 0.4, cz + 0.4, 1.8);
   };
-  machine(PX + 0.23 + 0.5, PZ, Math.PI / 2);                                              // by the pillar, facing the bar
+  machine(PX + 0.31 + 0.5, PZ, Math.PI / 2);                                              // by the pillar, facing the bar
   // the gambling room: machines down both walls and along the end, stools in front
   for (let z = Z(1430); z < Z(1600); z += 0.9) machine(X(795) + 0.08 + 0.5, z, Math.PI / 2);
   for (let z = Z(1330); z < Z(1600); z += 0.9) machine(X(975) - 0.08 - 0.5, z, -Math.PI / 2);
@@ -478,7 +478,7 @@ export function buildPub(scene) {
     ['MAX OCCUPANCY: 120 (OR 3 RONNIES)', 1.1, 0.45, [X(650), 1.9, Z(605) + 0.1], [0, 0, 0], {}],
     ['QUIZ NIGHT — Q1: How many pies did Ronnie eat last night? A: Yes.', 1.2, 0.8, [X(290), 1.6, Z(1305) - 0.12], [0, Math.PI, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 48 }],
     ['WE DO NOT SERVE SALAD ("YES YOU DO" — Chloe)', 1.0, 0.5, [X(600), 2.4, Z(1305) - 0.12], [0, Math.PI, 0], { bg: '#fff', fg: '#c0392b' }],
-    ['OYSTERFLEET PIE-EATING CHAMPION — RONNIE (UNDEFEATED, UNCHALLENGED, UNWELL)', 1.2, 0.6, [PX + 0.24, 2.4, PZ], [0, Math.PI / 2, 0], { bg: '#d4af37', fg: '#111', border: '#7a5a10', size: 48 }],
+    ['OYSTERFLEET PIE-EATING CHAMPION — RONNIE (UNDEFEATED, UNCHALLENGED, UNWELL)', 1.2, 0.6, [X(195) + 0.12, 1.6, Z(1240)], [0, Math.PI / 2, 0], { bg: '#d4af37', fg: '#111', border: '#7a5a10', size: 48 }],
     ['PLEASE DO NOT FEED THE BARMAN', 1.2, 0.45, [X(855) - 0.43, 0.75, Z(820)], [0, -Math.PI / 2, 0], { bg: '#fff8e7', fg: '#111' }],
     ['LAST ORDERS — Ronnie: last orders means for the CUSTOMERS', 0.8, 0.4, [X(835) - 0.1, 1.9, Z(1100)], [0, -Math.PI / 2, 0], { bg: '#fff06a', fg: '#111', border: null, size: 40 }],
     ['BARRED: RONNIE (FROM THE KITCHEN) (FROM THE CELLAR) (FROM THE CRISP CLIP)', 1.3, 0.6, [X(195) + 0.12, 1.6, Z(1065)], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c62828', border: '#c62828', size: 38 }],
