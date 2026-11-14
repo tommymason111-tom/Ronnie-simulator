@@ -133,7 +133,6 @@ export function buildGarden(scene) {
   glaze('x', HZ0, -4.9, -2.7, 0.9, 2.15); glaze('x', HZ0, 1.9, 3.6, 1.0, 2.15);
   glaze('x', HZ1, -5.6, -3.4, 0.9, 2.15); glaze('z', HX0, 8.5, 10, 1.0, 2.1);
   for (const [a, b] of [[-4.9, -2.7], [1.9, 3.6]]) { const g = new THREE.Mesh(new THREE.PlaneGeometry(b - a, 1.2), new THREE.MeshLambertMaterial({ color: 0x3a4a5a })); g.position.set((a + b) / 2, 3.9, HZ0 + 0.06); g.rotation.y = Math.PI; scene.add(g); glaze('x', HZ0 - 0.02, a, b, 3.3, 4.5); }   // upstairs windows (dark rooms)
-  leaf('x', HZ0, 0.0, 1.0, 1, WHITE, 2.05);                                                    // back door, open
   R(1.6, HZ1 - 0.06, 2.6, HZ1 + 0.06, 2.05, 1.025, 0x1e3a6a); k.cyl(0.03, 0.03, 0.06, 2.45, 1.0, HZ1 - 0.09, 0xd4af37, 8);   // front door (shut)
   k.label('47', 0.2, 0.12, [2.1, 1.8, HZ1 - 0.065], [0, Math.PI, 0], { bg: '#1e3a6a', fg: '#d4af37', border: null, size: 60 });
   // ceiling + roof
@@ -150,10 +149,10 @@ export function buildGarden(scene) {
   // --- kitchen: worktops round the side and back, sink, fridge, island bar with stools
   const TOP_C = 0x2a2a2e, UNIT = 0xf2f2ee;
   R(3.9, 2.15, 4.4, 6.3, 0.9, 0.45, UNIT, { block: true }); R(3.86, 2.12, 4.42, 6.32, 0.04, 0.92, TOP_C, { collide: true });
-  R(1.0, 5.75, 3.86, 6.33, 0.9, 0.45, UNIT, { block: true }); R(0.98, 5.72, 3.86, 6.35, 0.04, 0.92, TOP_C, { collide: true });
+  R(1.35, 5.75, 3.86, 6.33, 0.9, 0.45, UNIT, { block: true }); R(1.33, 5.72, 3.86, 6.35, 0.04, 0.92, TOP_C, { collide: true });
   R(3.95, 4.7, 4.35, 5.4, 0.03, 0.935, 0x9aa0a8); k.cyl(0.02, 0.02, 0.3, 4.35, 1.08, 5.05, 0xc8c8c8, 6);   // sink + tap
-  R(-0.5, 5.7, 0.95, 6.33, 1.9, 0.95, 0xe8e8ea, { collide: true, block: true }); R(0.35, 5.68, 0.37, 5.7, 0.8, 1.2, 0x888888);   // big fridge
-  k.label('LEWY\'S PROTEIN SHAKES. HANDS OFF.', 0.5, 0.22, [0.2, 1.5, 5.68], [0, Math.PI, 0], { bg: '#fffbe8', fg: '#c62828', border: null, size: 34 });
+  R(-0.5, 5.7, 0.4, 6.33, 1.9, 0.95, 0xe8e8ea, { collide: true, block: true }); R(0.3, 5.68, 0.32, 5.7, 0.8, 1.2, 0x888888);   // big fridge (leaves the way through to the living room clear)
+  k.label('LEWY\'S PROTEIN SHAKES. HANDS OFF.', 0.5, 0.22, [-0.05, 1.5, 5.68], [0, Math.PI, 0], { bg: '#fffbe8', fg: '#c62828', border: null, size: 34 });
   R(1.0, 2.5, 3.3, 4.1, 0.9, 0.45, 0x3a3a40, { block: true }); R(0.98, 2.52, 3.32, 4.15, 0.05, 0.945, 0xf0f0f0, { collide: true });   // the island runs straight off the counter under the window (a peninsula), no stools
   R(1.0, 2.15, 3.8, 2.5, 0.9, 0.45, UNIT, { block: true }); R(0.98, 2.13, 3.82, 2.52, 0.04, 0.92, TOP_C, { collide: true });     // under the window
   k.cyl(0.13, 0.11, 0.25, 3.0, 1.06, 2.32, 0x8a8a8a, 12);                                                                         // kettle
