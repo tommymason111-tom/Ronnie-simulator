@@ -282,8 +282,40 @@ export function buildGarden(scene) {
   R(3.9, 2.15, 4.4, 6.3, 0.9, 0.45, UNIT, { block: true }); R(3.86, 2.12, 4.42, 6.32, 0.04, 0.92, TOP_C, { collide: true });
   R(1.35, 5.75, 3.86, 6.33, 0.9, 0.45, UNIT, { block: true }); R(1.33, 5.72, 3.86, 6.35, 0.04, 0.92, TOP_C, { collide: true });
   R(3.95, 4.7, 4.35, 5.4, 0.03, 0.935, 0x9aa0a8); k.cyl(0.02, 0.02, 0.3, 4.35, 1.08, 5.05, 0xc8c8c8, 6);   // sink + tap
-  R(-0.5, 5.7, 0.4, 6.33, 1.9, 0.95, 0xe8e8ea, { collide: true, block: true }); R(0.3, 5.68, 0.32, 5.7, 0.8, 1.2, 0x888888);   // big fridge (leaves the way through to the living room clear)
-  k.label('LEWY\'S PROTEIN SHAKES. HANDS OFF.', 0.5, 0.22, [-0.05, 1.5, 5.68], [0, Math.PI, 0], { bg: '#fffbe8', fg: '#c62828', border: null, size: 34 });
+  // the big fridge, left wide open: lit up inside, shelves of food and drink (some of it you can grab)
+  { const X0 = -0.5, X1 = 0.4, ZF = 5.7, ZB = 6.33, H = 1.9, T = 0.04, WH = 0xe8e8ea, IN = 0xf6f8fa, GL = 0xd8eef4;
+    R(X0, ZB - T, X1, ZB, H, H / 2, WH); R(X0, ZF, X0 + T, ZB, H, H / 2, WH); R(X1 - T, ZF, X1, ZB, H, H / 2, WH);   // back, sides
+    R(X0, ZF, X1, ZB, T, H - T / 2, WH); R(X0, ZF, X1, ZB, 0.1, 0.05, 0x9a9aa0);                                     // top, plinth
+    R(X0 + T, ZB - T - 0.01, X1 - T, ZB - T, H - 0.2, H / 2, IN);                                                   // bright inside back
+    k.blockers.push({ x0: X0, x1: X1, z0: ZF, z1: ZB, y1: H });
+    const shelves = [0.1, 0.52, 0.9, 1.28, 1.52];
+    for (const y of shelves) R(X0 + T, ZF + 0.03, X1 - T, ZB - T, 0.02, y, y === 1.52 ? WH : GL, { collide: true });   // glass shelves, freezer floor
+    R(X0 + T, ZF + 0.02, X0 + T + 0.38, ZF + 0.3, 0.3, 0.27, 0xdfeef2); R(X0 + T + 0.42, ZF + 0.02, X1 - T, ZF + 0.3, 0.3, 0.27, 0xdfeef2);   // salad drawers
+    for (let i = 0; i < 4; i++) k.box(0.08 + rnd() * 0.06, 0.06, 0.08, -0.35 + i * 0.1, 0.33, ZF + 0.16, [0xe53935, 0x2e7d32, 0xff9800, 0x9ccc65][i]);   // veg in the drawer (as if)
+    k.lamp(-0.05, H - 0.32, ZB - 0.12, 0xf4fbff, 0.035); k.light(-0.05, 1.3, 5.45, 0xeaf6ff, 1.2, 1.6);                // fridge light
+    // what's in it: milk, juice, beer, cans, cheese, a cake, eggs, ham, a pizza box, Lewy's protein shakes
+    const bottle = (x, y, z, col, h = 0.26, r = 0.04) => { k.cyl(r, r, h, x, y + h / 2, z, col, 10); k.cyl(r * 0.45, r * 0.7, 0.05, x, y + h + 0.025, z, col, 8); };
+    for (let i = 0; i < 3; i++) bottle(-0.38 + i * 0.1, 0.92, 6.15, 0xffffff, 0.24, 0.045);                            // milk
+    k.box(0.09, 0.22, 0.07, -0.08, 1.03, 6.15, 0xffa726); k.box(0.09, 0.22, 0.07, 0.03, 1.03, 6.15, 0xe53935);         // juice cartons
+    for (let i = 0; i < 6; i++) k.cyl(0.033, 0.033, 0.12, 0.08 + (i % 3) * 0.08, 0.6 + Math.floor(i / 3) * 0.0, 6.2 - Math.floor(i / 3) * 0.09, [0x1e88e5, 0xd32f2f, 0xffd400][i % 3], 8);   // cans
+    k.box(0.2, 0.06, 0.12, -0.3, 0.57, 6.05, 0xffd54f); k.box(0.24, 0.07, 0.11, -0.3, 0.57, 5.88, 0xf4e8d0);            // cheese, eggs
+    for (let i = 0; i < 6; i++) k.parts.push(part(sph(0.022, 6, 4), 0xf0e0c0, [-0.39 + (i % 3) * 0.08, 0.62, 5.85 + Math.floor(i / 3) * 0.05]));
+    k.cyl(0.13, 0.13, 0.1, 0.15, 1.35, 6.05, 0x7a3f1c, 16); k.cyl(0.13, 0.13, 0.02, 0.15, 1.41, 6.05, 0xfff4e0, 16);     // a chocolate cake
+    k.box(0.3, 0.04, 0.3, -0.25, 1.32, 6.05, 0xd8c8a8); k.box(0.26, 0.004, 0.2, -0.25, 1.345, 6.0, 0xb3261e);          // a pizza box, lid not quite shut
+    k.box(0.2, 0.03, 0.14, -0.25, 0.135, 6.12, 0xf08aa0);                                                            // ham
+    for (let i = 0; i < 4; i++) bottle(-0.38 + i * 0.09, 1.54, 6.15, 0x7b1fa2, 0.2, 0.035);                          // Lewy's protein shakes, top shelf
+    k.label('LEWY\'S. HANDS OFF.', 0.36, 0.08, [-0.25, 1.86, 5.72], [0, Math.PI, 0], { bg: '#fffbe8', fg: '#c62828', border: null, size: 40 });
+    for (const [x, y, z] of [[0.15, 0.97, 5.9], [-0.25, 0.97, 5.85], [0.2, 0.18, 5.95], [0.0, 1.6, 5.85]]) k.spawns.push(new THREE.Vector3(x, y, z));   // real food turns up in here too
+    // the door, swung right open against the dining wall: shelves inside it full of bottles and jars
+    const DZ0 = ZF - 0.9, DX = X0 + 0.02;
+    R(DX - 0.03, DZ0, DX + 0.05, ZF, H, H / 2, WH, { block: true }); R(DX + 0.05, DZ0 + 0.05, DX + 0.06, ZF - 0.05, H - 0.1, H / 2, IN);
+    k.box(0.02, 0.6, 0.03, DX - 0.04, 1.15, DZ0 + 0.1, 0x888888);                                                   // handle (now facing the wall)
+    for (const y of [0.35, 0.8, 1.25, 1.6]) { R(DX + 0.06, DZ0 + 0.06, DX + 0.16, ZF - 0.06, 0.02, y, 0xe8f4f8); R(DX + 0.15, DZ0 + 0.06, DX + 0.16, ZF - 0.06, 0.08, y + 0.04, 0xcfe6ee); }
+    for (let i = 0; i < 6; i++) bottle(DX + 0.11, 0.36, DZ0 + 0.13 + i * 0.12, [0x2e7d32, 0x5d4037, 0x2e7d32, 0xf9a825, 0x2e7d32, 0x5d4037][i], 0.22, 0.03);   // beers, ketchup, mustard
+    for (let i = 0; i < 5; i++) bottle(DX + 0.11, 0.81, DZ0 + 0.15 + i * 0.14, [0xd32f2f, 0xffeb3b, 0xf5f5f5, 0x8d6e63, 0xd32f2f][i], 0.14, 0.03);              // sauces
+    for (let i = 0; i < 4; i++) k.cyl(0.035, 0.035, 0.09, DX + 0.11, 1.31, DZ0 + 0.18 + i * 0.17, [0xffcc80, 0xef9a9a, 0xa5d6a7, 0xfff59d][i], 10);           // jars
+    k.box(0.08, 0.04, 0.6, DX + 0.11, 1.64, DZ0 + 0.45, 0xfff8e1);                                                   // butter dish
+  }
   R(1.0, 2.5, 3.3, 4.1, 0.9, 0.45, 0x3a3a40, { block: true }); R(0.98, 2.52, 3.32, 4.15, 0.05, 0.945, 0xf0f0f0, { collide: true });   // the island runs straight off the counter under the window (a peninsula), no stools
   R(1.0, 2.15, 3.8, 2.5, 0.9, 0.45, UNIT, { block: true }); R(0.98, 2.13, 3.82, 2.52, 0.04, 0.92, TOP_C, { collide: true });     // under the window
   k.cyl(0.13, 0.11, 0.25, 3.0, 1.06, 2.32, 0x8a8a8a, 12);                                                                         // kettle
