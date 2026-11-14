@@ -223,25 +223,129 @@ function dartGeo() {
   return merge(p);
 }
 
+
+// ---------- the Lidl bakery ----------
+const GOLD = 0xd99a3a, DGOLD = 0xb8742a, PALE = 0xf0c878;
+function croissantGeo() {
+  // a crescent of rolled pastry: a thick bent body with rolled ridges across it, tapering points
+  const p = [];
+  const body = new THREE.TorusGeometry(0.035, 0.019, 10, 18, Math.PI * 1.15); body.rotateX(Math.PI / 2); body.rotateY(Math.PI * 0.07 + Math.PI);
+  p.push(part(body, GOLD, [0, 0, 0.012], [0, 0, 0], [1, 0.75, 1]));
+  for (let i = 0; i < 7; i++) { const a = Math.PI * (0.62 + i * 0.13) + Math.PI, r = 0.019 * (1 - Math.abs(i - 3) * 0.17);
+    const ring = new THREE.TorusGeometry(r, 0.0045, 6, 12); ring.rotateY(-a);
+    p.push(part(ring, i % 2 ? DGOLD : GOLD, [Math.cos(a) * 0.035, 0, Math.sin(a) * -0.035 + 0.012], [0, 0, 0], [1, 0.8, 1])); }
+  for (const s of [-1, 1]) p.push(part(new THREE.ConeGeometry(0.012, 0.03, 8), DGOLD, [s * 0.04, 0, 0.03], [Math.PI / 2, 0, -s * 0.9]));
+  return merge(p);
+}
+function baguetteGeo() {
+  const g = new THREE.CapsuleGeometry(0.024, 0.26, 6, 12); g.rotateZ(Math.PI / 2);
+  const p = [part(g, 0xc98a3c, [0, 0, 0], [0, 0, 0], [1, 0.8, 1.05])];
+  for (let i = 0; i < 5; i++) p.push(part(new THREE.CapsuleGeometry(0.006, 0.035, 3, 6), 0xf0d090, [-0.11 + i * 0.055, 0.018, 0], [0, 0.5, Math.PI / 2], [1, 0.5, 1]));   // the slashes
+  for (let i = 0; i < 18; i++) p.push(part(new THREE.IcosahedronGeometry(0.0025, 0), 0xf6efe0, [-0.14 + Math.random() * 0.28, 0.019, (Math.random() - 0.5) * 0.03]));     // flour
+  return merge(p);
+}
+function muffinGeo() {
+  const cup = new THREE.LatheGeometry([[0.024, -0.03], [0.03, 0.01], [0.031, 0.012]].map(([x, y]) => new THREE.Vector2(x, y)), 16);
+  const p = [part(cup, 0xf2f0ea)];
+  for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; p.push(part(new THREE.BoxGeometry(0.002, 0.04, 0.004), 0xd8d4c8, [Math.cos(a) * 0.028, -0.01, Math.sin(a) * 0.028], [0, -a, 0.08])); }   // paper pleats
+  p.push(part(new THREE.SphereGeometry(0.037, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), 0x5a2e14, [0, 0.008, 0], [0, 0, 0], [1, 0.85, 1]));                                                  // domed top
+  for (let i = 0; i < 14; i++) { const a = i * 2.4, r = 0.006 + (i % 4) * 0.008; p.push(part(new THREE.IcosahedronGeometry(0.0045, 0), 0x2a140a, [Math.cos(a) * r, 0.008 + Math.sqrt(Math.max(0, 0.037 * 0.037 - r * r)) * 0.85, Math.sin(a) * r])); }
+  return merge(p);
+}
+function painchocGeo() {
+  const p = [];
+  for (let i = 0; i < 3; i++) { const g = new THREE.CapsuleGeometry(0.018 - i * 0.002, 0.07, 4, 10); g.rotateZ(Math.PI / 2); p.push(part(g, i % 2 ? GOLD : DGOLD, [0, -0.008 + i * 0.012, 0], [0, 0, 0], [1, 0.55, 1.6 - i * 0.25])); }   // laminated layers
+  for (const s of [-1, 1]) p.push(part(new THREE.BoxGeometry(0.008, 0.012, 0.022), 0x3a1a0a, [s * 0.052, 0.0, 0]));        // chocolate poking out the ends
+  return merge(p);
+}
+function swirlGeo() {
+  const p = [part(cyl(0.045, 0.047, 0.022, 20), GOLD)];
+  for (let i = 0; i < 4; i++) p.push(part(new THREE.TorusGeometry(0.01 + i * 0.011, 0.004, 5, 20), 0x7a4018, [0, 0.011, 0], [Math.PI / 2, 0, 0]));   // the cinnamon spiral
+  for (let i = 0; i < 6; i++) p.push(part(new THREE.CapsuleGeometry(0.0025, 0.07, 2, 4), 0xffffff, [0, 0.014, -0.03 + i * 0.012], [0, 0.3 * (i % 2 ? 1 : -1), Math.PI / 2]));   // icing drizzle
+  return merge(p);
+}
+function icedbunGeo() {
+  const g = new THREE.CapsuleGeometry(0.026, 0.08, 4, 12); g.rotateZ(Math.PI / 2);
+  const ice = new THREE.CapsuleGeometry(0.022, 0.078, 4, 12); ice.rotateZ(Math.PI / 2);
+  return merge([part(g, PALE, [0, 0, 0], [0, 0, 0], [1, 0.8, 1]), part(ice, 0xfff8f0, [0, 0.009, 0], [0, 0, 0], [1, 0.6, 1.02]), part(sph(0.006, 8, 6), 0xd32f2f, [0, 0.026, 0])]);
+}
+function pretzelGeo() {
+  const p = [];
+  const loop = (cx, a0) => { const t = new THREE.TorusGeometry(0.022, 0.008, 6, 14, Math.PI * 1.6); t.rotateX(Math.PI / 2); t.rotateY(a0); return part(t, 0x8a4a1a, [cx, 0, 0]); };
+  p.push(loop(-0.018, 0.3), loop(0.018, Math.PI - 0.3 + Math.PI * 0.4));
+  const cross = new THREE.CapsuleGeometry(0.008, 0.05, 3, 6); cross.rotateZ(Math.PI / 2);
+  p.push(part(cross, 0x8a4a1a, [0, 0.004, 0.012], [0, 0.6, 0]), part(cross.clone(), 0x8a4a1a, [0, 0.004, 0.012], [0, -0.6, 0]));
+  for (let i = 0; i < 14; i++) p.push(part(new THREE.IcosahedronGeometry(0.002, 0), 0xffffff, [(Math.random() - 0.5) * 0.08, 0.009, (Math.random() - 0.5) * 0.05]));   // salt
+  return merge(p);
+}
+// ---------- a magazine (printed cover) and a Lidl bag ----------
+const MAG_COVERS = [['HEAT', '#e53935'], ['GOSSIP!', '#ec407a'], ['TOTAL FOOTY', '#1e88e5'], ['CAKE WEEKLY', '#fdd835'], ['GAMER', '#111111'], ['CHAT', '#8e24aa'], ['TV TIMES', '#ff7043'], ['PIE MONTHLY', '#43a047']];
+let magMats = null;
+export function magazineCoverTex([title, bg]) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 168; const g = c.getContext('2d');
+  g.fillStyle = bg; g.fillRect(0, 0, 128, 168);
+  g.fillStyle = bg === '#fdd835' ? '#111' : '#fff'; g.font = '900 20px "Arial Black", Impact, sans-serif'; g.textAlign = 'center'; g.fillText(title, 64, 26, 120);
+  g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(16, 36, 96, 96);
+  g.fillStyle = '#f0c8a0'; g.beginPath(); g.arc(64, 78, 24, 0, 7); g.fill(); g.fillStyle = '#5a3a20'; g.fillRect(40, 54, 48, 12);   // a celebrity
+  g.fillStyle = '#2a4a8a'; g.fillRect(36, 104, 56, 28);
+  g.fillStyle = '#ffd400'; g.font = '900 12px Arial'; g.fillText('RONNIE: "I ATE IT ALL"', 64, 148, 120); g.fillStyle = '#fff'; g.font = '700 10px Arial'; g.fillText('£2.50', 110, 162);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const MAG_GEO = (() => { const g = new THREE.BoxGeometry(0.17, 0.006, 0.22); return g; })();
+export function magazineParts(v) {
+  if (!magMats) { const pages = new THREE.MeshLambertMaterial({ color: 0xf4f2ec }); magMats = MAG_COVERS.map(c => { const cov = new THREE.MeshLambertMaterial({ map: magazineCoverTex(c) }); return [pages, pages, cov, pages, pages, pages]; }); }
+  return [[MAG_GEO, magMats[v % magMats.length]]];
+}
+let bagCache = null;
+export function bagParts() {
+  if (!bagCache) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 256; const g = c.getContext('2d');
+    g.fillStyle = '#1e4ea8'; g.fillRect(0, 0, 256, 256); g.fillStyle = '#ffd400'; g.fillRect(0, 210, 256, 46);
+    g.fillStyle = '#ffd400'; g.beginPath(); g.arc(128, 110, 80, 0, 7); g.fill(); g.strokeStyle = '#e53935'; g.lineWidth = 8; g.beginPath(); g.arc(128, 110, 72, 0, 7); g.stroke();
+    g.fillStyle = '#e53935'; g.font = '900 60px "Arial Black", Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Lidl', 128, 114);
+    g.fillStyle = '#1e4ea8'; g.font = '900 22px Arial'; g.fillText('BAG FOR LIFE', 128, 233);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    // a bag that's a bit wider at the bottom, with gussets, a folded top hem and two handles
+    const body = new THREE.BoxGeometry(0.3, 0.32, 0.14, 4, 6, 2), pa = body.attributes.position;
+    for (let i = 0; i < pa.count; i++) { const y = pa.getY(i), k = 1 - (y + 0.16) / 0.32 * 0.12; pa.setX(i, pa.getX(i) * k); pa.setZ(i, pa.getZ(i) * (1 - 0.15 * Math.pow(Math.abs(pa.getX(i)) / 0.15, 2))); }
+    body.computeVertexNormals();
+    const side = new THREE.MeshLambertMaterial({ color: 0x1e4ea8 }), face = new THREE.MeshLambertMaterial({ map: t });
+    const hem = new THREE.BoxGeometry(0.27, 0.025, 0.13); hem.translate(0, 0.165, 0);
+    const handle = merge([part(new THREE.TorusGeometry(0.07, 0.008, 6, 14, Math.PI), 0xffd400, [0, 0.17, 0.035]), part(new THREE.TorusGeometry(0.07, 0.008, 6, 14, Math.PI), 0xffd400, [0, 0.17, -0.035])]);
+    bagCache = [[body, [side, side, side, side, face, face]], [hem, new THREE.MeshLambertMaterial({ color: 0x173f8a })], [handle, vcLambert]];
+  }
+  return bagCache;
+}
+
 const geoCache = {};
-function meshFor(type) {
+function meshFor(type, v = 0) {
   if (type === 'can') return canMeshes();
+  if (type === 'magazine' || type === 'lidlbag') { const g = new THREE.Group(); for (const [geo, mat] of (type === 'magazine' ? magazineParts(v) : bagParts())) g.add(new THREE.Mesh(geo, mat)); return g; }
   if (type === 'bat') return batMesh();
   if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo, poop: poopGeo,
     hotdog: hotdogGeo, fries: friesGeo, kebab: kebabGeo, chicken: chickenGeo, taco: tacoGeo, crisps: crispsGeo, choc: chocGeo, cookie: cookieGeo, icecream: icecreamGeo, sausageroll: sausageRollGeo,
+    croissant: croissantGeo, baguette: baguetteGeo, muffin: muffinGeo, painchoc: painchocGeo, swirl: swirlGeo, icedbun: icedbunGeo, pretzel: pretzelGeo,
     apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo, dart: dartGeo, beer: beerGeo }[type]();
   return new THREE.Mesh(geoCache[type], vcLambert);
+}
+
+// geometry + material pairs for showing an item without making it a real item (instanced shop displays)
+export function itemParts(type, v = 0) {
+  if (type === 'magazine') return magazineParts(v);
+  if (type === 'lidlbag') return bagParts();
+  const m = meshFor(type); const out = []; m.traverse(o => { if (o.isMesh) out.push([o.geometry, o.material]); }); return out;
 }
 
 // ---------- items ----------
 const _v = new THREE.Vector3(), _c = new THREE.Vector3();
 
 export class Item {
-  constructor(type) {
+  constructor(type, v = 0) {
     this.type = type;
     this.def = FOODS[type];
+    this.variant = v;
     this.obj = new THREE.Group();
-    this.obj.add(meshFor(type));
+    this.obj.add(meshFor(type, v));
     this.radius = this.def.radius;
     this.vel = new THREE.Vector3();
     this.prev = new THREE.Vector3();   // position last frame (for swept hit tests)
@@ -270,6 +374,7 @@ export class Item {
     this.vel.set(0, 0, 0); this.spin.set(0, 0, 0);
     this.obj.visible = true;
   }
+  setVariant(v) { if (this.variant === v) return; this.variant = v; const s = this.obj.scale.x; this.obj.clear(); this.obj.add(meshFor(this.type, v)); this.obj.scale.setScalar(s); }
   get pos() { return this.obj.position; }
   get eatFraction() { return this.bitesLeft / this.def.bites; }
 }
@@ -284,9 +389,10 @@ export class ItemManager {
     this.onLand = null;        // callback(item, speed)
   }
 
-  spawn(type, pos, vel = null) {
+  spawn(type, pos, vel = null, v = null) {
     const pool = this.pool[type] || (this.pool[type] = []);
-    const it = pool.pop() || new Item(type);
+    const it = pool.pop() || new Item(type, v ?? 0);
+    if (v !== null && v !== undefined) it.setVariant(v);
     it.reset();
     it.obj.position.copy(pos);
     it.prev.copy(pos);
@@ -319,7 +425,8 @@ export class ItemManager {
   }
 
   nearest(point, radius, filter = null) {
-    if (this.room.clutter) this.room.clutter.wakeNear(this, point, radius + 0.05);     // cans, bottles, crisps and pizza lying about can be picked up
+    if (this.room.clutter) this.room.clutter.wakeNear(this, point, radius + 0.05);
+    if (this.room.dormant) this.room.dormant.wakeNear(this, point, radius + 0.05);       // shop displays: bakery, magazines, bags     // cans, bottles, crisps and pizza lying about can be picked up
     let best = null, bd = radius * radius;
     for (const it of this.items) {
       if (it.dead || (filter && !filter(it))) continue;
@@ -398,6 +505,7 @@ export class ItemManager {
 function settle(it) {
   const r = it.obj.rotation;
   if (it.def.drink) { r.x = it.empty ? Math.PI / 2 : 0; r.z = 0; }
+  else if (it.def.mag) { r.x = 0; r.z = 0; }
   else if (it.def.bat) { r.x = -Math.PI / 2; r.z = 0; }
   else { r.x = 0; r.z = 0; }
 }

@@ -46,6 +46,17 @@ export const FOODS = {
   bat:      { label: 'Table tennis bat', chonk: 0, bites: 1, radius: 0.02, mass: 0.1, bat: true, prop: true },
   pint:     { label: 'BLACK LIFFEY STOUT', chonk: 20, bites: 1, radius: 0.045, mass: 0.6, drink: true, stout: true },
   shake:    { label: 'Protein shake', chonk: 25, bites: 1, radius: 0.04, mass: 0.5, drink: true, shake: true },
+  // the Lidl bakery
+  croissant: { label: 'Croissant', chonk: 11, bites: 2, radius: 0.05, mass: 0.1, bake: true },
+  baguette:  { label: 'Baguette', chonk: 16, bites: 4, radius: 0.06, mass: 0.25, bake: true },
+  muffin:    { label: 'Chocolate muffin', chonk: 13, bites: 2, radius: 0.045, mass: 0.12, bake: true },
+  painchoc:  { label: 'Pain au chocolat', chonk: 12, bites: 2, radius: 0.045, mass: 0.1, bake: true },
+  swirl:     { label: 'Cinnamon swirl', chonk: 12, bites: 2, radius: 0.05, mass: 0.1, bake: true },
+  icedbun:   { label: 'Iced finger bun', chonk: 12, bites: 2, radius: 0.045, mass: 0.12, bake: true },
+  pretzel:   { label: 'Pretzel', chonk: 10, bites: 2, radius: 0.05, mass: 0.1, bake: true },
+  // things to throw
+  magazine:  { label: 'Magazine', chonk: 0, bites: 1, radius: 0.06, mass: 0.2, prop: true, mag: true },
+  lidlbag:   { label: 'Lidl bag', chonk: 0, bites: 1, radius: 0.09, mass: 0.4, prop: true, bag: true },
 };
 
 export const TUNING = {
@@ -73,6 +84,7 @@ export const ROOM = { w: 5, d: 4.5, h: 2.6 };
 
 // Everything healthy the squad can lob at Ronnie, and the junk food that lies around.
 export const VEG_TYPES = ['broccoli', 'carrot', 'celery', 'sprout', 'apple', 'pear', 'orange', 'banana', 'tomato', 'cucumber', 'pepper', 'cauliflower'];
+export const BAKERY_TYPES = ['croissant', 'baguette', 'muffin', 'painchoc', 'swirl', 'icedbun', 'pretzel', 'doughnut', 'cookie', 'sausageroll'];
 export const JUNK_TYPES = ['burger', 'pizza', 'doughnut', 'hotdog', 'fries', 'kebab', 'chicken', 'taco', 'crisps', 'choc', 'cookie', 'icecream', 'sausageroll'];
 // a thrower's favourite about a third of the time, otherwise anything healthy
 export function pickVeg(fav) { return fav && Math.random() < 0.35 ? fav : VEG_TYPES[Math.floor(Math.random() * VEG_TYPES.length)]; }

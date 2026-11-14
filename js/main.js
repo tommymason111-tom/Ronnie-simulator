@@ -121,12 +121,33 @@ player.onGrab = (it) => {
   // Supermarket Sweep: straight into the trolley
   if (director.running && director.mode === 'sweep' && !it.incoming && !it.def.prop) { const h = it.heldBy; if (h) h.held = null; it.heldBy = null; director.sweepGrab(it); return; }
   sfx('pop', it.pos, 0.3);
+  if (it.def.bag && !it.opened) openBag(it);
   if (it.incoming) {
     words.show('CAUGHT!', it.pos.clone().add(new THREE.Vector3(0, 0.15, 0)), '#7cff6a', 0.22);
     if (it.foodPass) { director.onCaught(); it.thrower && setTimeout(() => it.thrower.say('caught', 4), 400); }
     it.incoming = false;
   }
 };
+// Lidl bags: the first time you pick one up it opens on the screen and shows you what's inside,
+// then the food pops out in front of you (the bag's still yours to throw)
+const BAG_FOOD = { burger: '🍔', pizza: '🍕', doughnut: '🍩', hotdog: '🌭', fries: '🍟', kebab: '🥙', chicken: '🍗', taco: '🌮', crisps: '🥔', choc: '🍫', cookie: '🍪', icecream: '🍦', sausageroll: '🥐', croissant: '🥐', baguette: '🥖', muffin: '🧁', pretzel: '🥨', can: '🥤', shake: '🥛' };
+function openBag(bag) {
+  bag.opened = true;
+  const n = 2 + Math.floor(Math.random() * 3), pool = Object.keys(BAG_FOOD), found = [];
+  for (let i = 0; i < n; i++) found.push(pool[Math.floor(Math.random() * pool.length)]);
+  const el = document.getElementById('bagreveal');
+  if (el) {
+    el.innerHTML = `<div class="bagbox"><div class="bag"><div class="flap"></div><span>Lidl</span></div><div class="bagtitle">IN THE BAG...</div><div class="bagfound">${found.map((t, i) => `<div class="bf" style="animation-delay:${0.55 + i * 0.22}s"><b>${BAG_FOOD[t]}</b><i>${FOODS[t].label}</i></div>`).join('')}</div></div>`;
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+    clearTimeout(openBag.t); openBag.t = setTimeout(() => el.classList.remove('show'), 2600 + n * 220);
+  }
+  sfx('ting', bag.pos, 0.8);
+  found.forEach((t, i) => setTimeout(() => {
+    const from = _a.copy(player.head).addScaledVector(player.fwd, 0.55 * player.scale); from.y -= 0.25 * player.scale;
+    const v = new THREE.Vector3(player.fwd.x * 0.6 + (Math.random() - 0.5) * 0.8, 2.0 + Math.random() * 0.6, player.fwd.z * 0.6 + (Math.random() - 0.5) * 0.8);
+    const it = items.spawn(t, from.clone(), v); it.spawnScale = 0.2; sfx('pop', from, 0.6);
+  }, 700 + i * 220));
+}
 player.onRelease = (it, h, sp) => { if (sp > 2.5) sfx('whoosh', it.pos, Math.min(1, sp / 6)); };
 
 // anyone throwing anything at Ronnie
@@ -141,10 +162,11 @@ tommy.onTrip = (t) => director.stun(t, 'tommy');
 tommy.onTripAnnounce = (t) => director.announce(t, 'trip');
 tommy.canTrip = () => director.canAttack(tommy, 'trip');   // he waits his turn like everyone else
 
-const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish', hotdog: 'chomp', fries: 'crunch', kebab: 'chomp', chicken: 'crunch', taco: 'crunch', crisps: 'crunch', choc: 'crunch', cookie: 'crunch', icecream: 'squish', sausageroll: 'chomp' };
+const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish', hotdog: 'chomp', fries: 'crunch', kebab: 'chomp', chicken: 'crunch', taco: 'crunch', crisps: 'crunch', choc: 'crunch', cookie: 'crunch', icecream: 'squish', sausageroll: 'chomp', croissant: 'crunch', baguette: 'crunch', muffin: 'squish', painchoc: 'crunch', swirl: 'squish', icedbun: 'squish', pretzel: 'crunch' };
 const SNACK_WORD = { burger: ['CHOMP!', 'MUNCH!', 'NOM!'], pizza: ['CRUNCH!', 'MUNCH!'], doughnut: ['SQUISH!', 'NOM NOM!'],
   hotdog: ['CHOMP!', 'DOG DOWN!'], fries: ['CRUNCH!', 'CHIPPY!'], kebab: ['DONER!', 'CHOMP!', '3AM VIBES!'], chicken: ['CRUNCH!', 'FINGER LICKIN!'], taco: ['CRUNCH!', 'TACO TIME!'],
-  crisps: ['CRUNCH!', 'RUSTLE!'], choc: ['SNAP!', 'NOM!'], cookie: ['CRUNCH!', 'NOM!'], icecream: ['BRAIN FREEZE!', 'SLURP!'], sausageroll: ['FLAKY!', 'CHOMP!'] };
+  crisps: ['CRUNCH!', 'RUSTLE!'], choc: ['SNAP!', 'NOM!'], cookie: ['CRUNCH!', 'NOM!'], icecream: ['BRAIN FREEZE!', 'SLURP!'], sausageroll: ['FLAKY!', 'CHOMP!'],
+  croissant: ['FLAKY!', 'OUI OUI!'], baguette: ['CRUNCH!', 'OH LA LA!'], muffin: ['SQUISH!', 'CHOC!'], painchoc: ['FLAKY!', 'MAGNIFIQUE!'], swirl: ['SWIRL!', 'NOM!'], icedbun: ['STICKY!', 'NOM!'], pretzel: ['TWISTED!', 'CRUNCH!'] };
 const CRUMB_COLORS = {
   burger: [0xd9933f, 0x5a2e14, 0x4caf3c, 0xffc21a, 0xe0a04a],
   pizza: [0xf2b233, 0xc9852f, 0xb3261e, 0xffe08a],
@@ -157,6 +179,7 @@ const CRUMB_COLORS = {
   choc: [0x5b3a1e, 0x6e4626, 0x6a1b9a], cookie: [0xc98b4a, 0x3b2412], icecream: [0xffc0d8, 0xfff3d6, 0xd9a05b], sausageroll: [0xe8b25a, 0xc98060, 0xb7782a],
   apple: [0xd62828, 0xfff3d6], pear: [0x9ccc3a, 0xf3f0c0], orange: [0xff8c1a, 0xffc04a], banana: [0xffe135, 0xfff6c8], tomato: [0xe53935, 0xffc107],
   cucumber: [0x2f6b2a, 0xc5e1a5], pepper: [0xd32f2f, 0xffffff], cauliflower: [0xf5f0dc, 0x6aaa3a],
+  croissant: [0xd99a3a, 0xf0c878, 0xb8742a], baguette: [0xc98a3c, 0xf6efe0], muffin: [0x5a2e14, 0x2a140a, 0xf2f0ea], painchoc: [0xd99a3a, 0x3a1a0a], swirl: [0xd99a3a, 0x7a4018, 0xffffff], icedbun: [0xf0c878, 0xfff8f0, 0xd32f2f], pretzel: [0x8a4a1a, 0xffffff],
 };
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion();
 
@@ -174,7 +197,7 @@ function bite(it, hand) {
     return;
   }
   const fx = _a.copy(player.mouth).addScaledVector(player.fwd, 0.12 * player.scale);
-  if (it.def.prop) { words.show(it.def.dart ? 'THAT\'S A DART, RON' : 'THAT\'S A BAT, RON', _b.copy(player.head).addScaledVector(player.fwd, 0.7 * player.scale), '#ff5252', 0.08 * player.scale, 1); return; }
+  if (it.def.prop) { words.show(it.def.dart ? 'THAT\'S A DART, RON' : it.def.mag ? 'THAT\'S A MAGAZINE, RON' : it.def.bag ? 'THAT\'S A BAG, RON' : 'THAT\'S A BAT, RON', _b.copy(player.head).addScaledVector(player.fwd, 0.7 * player.scale), '#ff5252', 0.08 * player.scale, 1); return; }
   if (it.def.veg) { gag(it); return; }
   if (it.def.poop) { poopOver(it); return; }
   it.bitesLeft--;
@@ -467,6 +490,7 @@ const touch = setupTouch({
     }
     // nearest thing along the tap: food or a bit of Tommy (the mess lying about wakes up into real food first)
     room.clutter && room.clutter.wakeRay(items, ray, reach + 1);
+    room.dormant && room.dormant.wakeRay(items, ray, reach + 1);
     let best = null, bd = Infinity;
     for (const it of items.items) {
       if (it.heldBy) continue;

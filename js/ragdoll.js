@@ -406,7 +406,84 @@ export class Ragdoll {
     this.group.updateMatrixWorld(true);
     this.mesh.bind(new THREE.Skeleton(this.bones), this.mesh.matrixWorld);
     this.ready = true;
+    this.modelLoaded = true;
     this.sync();
+    if (this.wantUniform) this.wearUniform();
+  }
+
+  // A Lidl staff uniform: a navy polo shirt (short sleeves, yellow trim) and navy trousers made from
+  // the body itself (the torso, upper arms and legs of the skin, pushed out a little and skinned to
+  // the same bones, so it moves exactly with them), a Lidl badge on the chest and a name badge.
+  // The head, forearms, hands and shoes stay as they are.
+  wearUniform(name = '') {
+    this.wantUniform = true; this.uniformName = name || this.uniformName || '';
+    if (!this.modelLoaded || this.uniform) return;
+    const src = this.mesh.geometry, pos = src.attributes.position, nrm = src.attributes.normal, n = pos.count;
+    if (!nrm) return;
+    const si = src.attributes.skinIndex, D = this.defs, kH = this.height / 1.68;
+    const ix = (nm) => D.findIndex(d => d.name === nm), head = ix('head'), chest = ix('chest'), pelvis = ix('pelvis');
+    const neckY = D[head].a.y, hipY = D[ix('uLegL')].a.y, beltY = hipY + 0.07 * kH, collarY = neckY - 0.045 * kH;
+    const v = new THREE.Vector3(), segT = (d) => { const ab = v.clone().sub(d.a), L = d.b.distanceTo(d.a); return L > 1e-4 ? ab.dot(d.dir) / L : 0; };
+    // per vertex: 0 = not clothing, 1 = shirt, 2 = trousers; plus a trim flag
+    const kind = new Uint8Array(n), trim = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      v.fromBufferAttribute(pos, i);
+      const b = si.getX(i), d = D[b], nm = d.name;
+      if (b === head) continue;
+      if (b === chest) {       // everything but a round neck opening (the shoulders stay covered right up to the top)
+        const r = Math.hypot(v.x - D[head].a.x, v.z - D[head].a.z);
+        if (v.y > collarY && r < 0.095 * kH) continue;
+        if (v.y > collarY - 0.06 * kH && r < 0.11 * kH && v.y > collarY - 0.06 * kH + (r - 0.06 * kH) * 0.6) trim[i] = 1;
+        kind[i] = v.y > beltY ? 1 : 2; continue;
+      }
+      if (b === pelvis) { kind[i] = v.y > beltY ? 1 : 2; continue; }
+      if (nm.startsWith('uArm')) { kind[i] = 1; continue; }
+      if (nm.startsWith('lArm')) { const t = segT(d); if (t < 0.8) { kind[i] = 1; if (t > 0.72) trim[i] = 1; } continue; }   // long sleeves, a cuff at the wrist
+      if (nm.startsWith('uLeg')) { kind[i] = 2; continue; }
+      if (nm.startsWith('lLeg')) { if (segT(d) < 0.86) kind[i] = 2; continue; }
+    }
+    // the shell: the same vertices, pushed out along their normals (shirt a touch looser than the trousers)
+    const geo = new THREE.BufferGeometry(), P = new Float32Array(n * 3), C = new Float32Array(n * 3);
+    const NAVY = new THREE.Color(0x1b2a52), DARK = new THREE.Color(0x141b33), YEL = new THREE.Color(0xffd400), c = new THREE.Color();
+    for (let i = 0; i < n; i++) {
+      const off = (kind[i] === 2 ? 0.011 : 0.014) * kH;
+      P[i * 3] = pos.getX(i) + nrm.getX(i) * off; P[i * 3 + 1] = pos.getY(i) + nrm.getY(i) * off; P[i * 3 + 2] = pos.getZ(i) + nrm.getZ(i) * off;
+      c.copy(kind[i] === 2 ? DARK : NAVY);
+      const shade = 0.97 + 0.03 * Math.sin(i * 12.9898); c.multiplyScalar(shade);     // a little weave
+      C[i * 3] = c.r; C[i * 3 + 1] = c.g; C[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(P, 3));
+    geo.setAttribute('normal', nrm.clone());
+    geo.setAttribute('color', new THREE.BufferAttribute(C, 3));
+    geo.setAttribute('skinIndex', si.clone()); geo.setAttribute('skinWeight', src.attributes.skinWeight.clone());
+    const idx = src.index ? src.index.array : Array.from({ length: n }, (_, i) => i), keep = [];
+    for (let f = 0; f < idx.length; f += 3) { const a = idx[f], b = idx[f + 1], cc = idx[f + 2]; if ((kind[a] ? 1 : 0) + (kind[b] ? 1 : 0) + (kind[cc] ? 1 : 0) >= 2) keep.push(a, b, cc); }   // (2 of 3: smoother edges)
+    geo.setIndex(keep);
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x0b0f1c, side: THREE.DoubleSide });
+    const shell = new THREE.SkinnedMesh(geo, mat); shell.frustumCulled = false;
+    this.group.add(shell); shell.bind(this.mesh.skeleton, this.mesh.bindMatrix);
+    // badges on the chest: the Lidl logo over the heart, a name badge on the other side
+    const front = (sx) => {     // the front of the chest at this side, just under the collar
+      let best = null;
+      for (let i = 0; i < n; i++) { if (kind[i] !== 1) continue; v.fromBufferAttribute(pos, i);
+        if (v.y < neckY - 0.2 * kH || v.y > neckY - 0.11 * kH || Math.abs(v.x - sx * 0.065 * kH) > 0.03 * kH) continue;
+        if (!best || v.z > best.z) best = v.clone(); }
+      return best;
+    };
+    const cb = this.bones[chest], cc = D[chest].center;
+    const badge = (tex, w, h, p) => { if (!p) return; const m = new THREE.Mesh(new THREE.PlaneGeometry(w * kH, h * kH), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+      m.position.set(p.x - cc.x, p.y - cc.y, p.z - cc.z + 0.018 * kH); cb.add(m); };
+    // a proper polo collar: a yellow-edged navy band round the neck opening, on the chest bone
+    { const na = D[head].a, ring = new THREE.TorusGeometry(0.097 * kH, 0.014 * kH, 8, 28); ring.rotateX(Math.PI / 2); ring.scale(1, 1, 0.9);
+      const col = new THREE.Mesh(ring, new THREE.MeshLambertMaterial({ color: 0x1b2a52, emissive: 0x0b0f1c }));
+      col.position.set(na.x - cc.x, collarY + 0.012 * kH - cc.y, na.z - cc.z - 0.004 * kH); col.rotation.x = 0.18; cb.add(col);
+      const edge = new THREE.Mesh(new THREE.TorusGeometry(0.106 * kH, 0.004 * kH, 6, 28), new THREE.MeshLambertMaterial({ color: 0xffd400, emissive: 0x332a00 }));
+      edge.geometry.rotateX(Math.PI / 2); edge.scale.set(1, 1, 0.9); edge.position.copy(col.position).add(new THREE.Vector3(0, 0.012 * kH, 0)); edge.rotation.x = 0.18; cb.add(edge);
+      // placket: two buttons down the front
+      for (let k = 0; k < 2; k++) { const fp = front(0); if (!fp) break; const bt = new THREE.Mesh(new THREE.SphereGeometry(0.006 * kH, 6, 4), new THREE.MeshLambertMaterial({ color: 0xffd400 })); bt.position.set(fp.x - cc.x, fp.y + 0.03 * kH - k * 0.035 * kH - cc.y, fp.z - cc.z + 0.016 * kH); cb.add(bt); } }
+    badge(UNIFORM_TEX.logo(), 0.075, 0.075, front(1));
+    badge(UNIFORM_TEX.name(this.uniformName), 0.075, 0.03, front(-1));
+    this.uniform = shell;
   }
 
   // Keep every loose piece of the scan in one piece. Scans contain small
@@ -668,3 +745,24 @@ function segDist(p, a, b) {
   const dx = apx - abx * t, dy = apy - aby * t, dz = apz - abz * t;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
+
+// ---- Lidl uniform badges ----
+const UNIFORM_TEX = {
+  _logo: null,
+  logo() {
+    if (this._logo) return this._logo;
+    const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+    g.fillStyle = '#1e4ea8'; g.fillRect(0, 0, 128, 128);
+    g.fillStyle = '#ffd400'; g.beginPath(); g.arc(64, 64, 54, 0, 7); g.fill();
+    g.strokeStyle = '#e53935'; g.lineWidth = 7; g.beginPath(); g.arc(64, 64, 49, 0, 7); g.stroke();
+    g.fillStyle = '#1e4ea8'; g.font = '900 38px "Arial Black", Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Lidl', 64, 67);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return (this._logo = t);
+  },
+  name(nm) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 96; const g = c.getContext('2d');
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, 256, 96); g.fillStyle = '#1e4ea8'; g.fillRect(0, 0, 256, 26);
+    g.fillStyle = '#ffd400'; g.font = '900 20px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('LIDL', 128, 14);
+    g.fillStyle = '#111'; g.font = '900 40px Arial, sans-serif'; g.fillText((nm || 'STAFF').toUpperCase(), 128, 62);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  },
+};

@@ -62,7 +62,7 @@ const ATTACKS = {
 };
 const ANNOUNCE_T = 2;
 // Supermarket Sweep: what each thing's worth in calories (the score is the trolley's total kcal)
-const KCAL = { can: 160, burger: 550, pizza: 290, doughnut: 260, hotdog: 330, fries: 420, kebab: 900, chicken: 380, taco: 230, crisps: 180, choc: 250, cookie: 210, icecream: 270, sausageroll: 330, pint: 210, shake: 320, beer: 150 };
+const KCAL = { can: 160, burger: 550, pizza: 290, doughnut: 260, hotdog: 330, fries: 420, kebab: 900, chicken: 380, taco: 230, crisps: 180, choc: 250, cookie: 210, icecream: 270, sausageroll: 330, pint: 210, shake: 320, beer: 150, croissant: 230, baguette: 650, muffin: 420, painchoc: 280, swirl: 340, icedbun: 300, pretzel: 290 };
 const kc = (n) => Math.round(n).toLocaleString('en-GB') + ' kcal';
 const TROLLEY_PARTS = 12;
 // a shopping trolley (the basket is open on top so you can see what's in it)
@@ -215,6 +215,7 @@ export class Director {
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
     if (id === 'date') this.startDate();
+    if (g.room.name === 'Lidl' && (id === 'sweep' || id === 'roam')) this.setupLidlStaff(id);    // uniforms, and people on the tills
     if (id === 'sweep') this.startSweep();
     if (id === 'bbq') this.startBbq();
     if (id !== 'sweep') this.removeTrolley();
@@ -337,6 +338,7 @@ export class Director {
       if (this.timeLeft <= 0) { this.timeLeft = 0; this.end(); return; }
     }
     const idle = (c) => c.state === 'idle' && !c.down;
+    this.updateTills(dt);
     switch (this.mode) {
       case 'date': this.updateDate(dt, ctx); break;
       case 'roam': this.updateRoam(dt); break;
@@ -675,7 +677,7 @@ export class Director {
   // by the barbecue, on their phone, having a drink, chatting), and every so often someone gets up
   // and wanders off to do something else.
   startRoam() {
-    const g = this.g, room = g.room, squad = this.cast.filter(c => c !== g.tommy);
+    const g = this.g, room = g.room, squad = this.cast.filter(c => c !== g.tommy && !c.tillJob);
     let acts = (room.activities || []).map(a => ({ ...a }));
     if (acts.length < squad.length + 3) {
       // spread spots right across the map (farthest-point sampling over the free hang-out spots)
@@ -718,6 +720,33 @@ export class Director {
         free.sort((p, q) => Math.hypot(p.x - c.pos.x, p.z - c.pos.z) - Math.hypot(q.x - c.pos.x, q.z - c.pos.z));
         this.takeAct(c, free[Math.floor(Math.random() * Math.min(4, free.length))], false);
       }
+    }
+  }
+
+  // ------------------------------------------------------------------ LIDL STAFF
+  // Oliver and Aidan W work here (uniforms on), and three of the squad are on the tills.
+  setupLidlStaff(id) {
+    const g = this.g, TILLS = [-3.45, -0.99, 1.53], first = (c) => c.def.name.split(' ')[0];
+    for (const c of this.cast) if (c.id === 'oliver' || c.id === 'aidanw') c.rag.wearUniform(c.id === 'aidanw' ? 'Aidan W' : first(c));
+    let workers;
+    if (id === 'roam') workers = shuffle(this.cast.filter(c => c !== g.tommy && c.id !== 'oliver' && c.id !== 'aidanw')).slice(0, 3);
+    else workers = shuffle(Object.keys(SQUAD).filter(s => !['oliver', 'aidanw', 'tommy'].includes(s) && !this.cast.some(c => c.id === s))).slice(0, 3).map(sid => {
+      const c = new SquadMember(g.scene, g.room, g.physics, sid, [TILLS[0] + 0.75, 10.25, -Math.PI / 2], this); this.hook(c); g.cast.push(c); return c; });
+    workers.forEach((c, i) => {
+      const x = TILLS[i] + 0.75, z = 10.25, yaw = -Math.PI / 2;      // standing at the till, facing the belt
+      c.tillJob = { x, z, yaw }; c.stayPut = true; c.active = false; c.lookOverride = null; c.seated = false; c.activity = null; c.roamAct = null;
+      c.rag.placeAt(x, z, yaw); c.faceYaw = yaw; c.state = 'idle'; c.tillT = 6 + Math.random() * 14;
+      c.rag.wearUniform(first(c));
+    });
+  }
+  updateTills(dt) {
+    const LINES = ['Unexpected item in bagging area. It\'s you, Ron.', 'Do you need a bag? You need a bigger bag.', 'Card or cash? Or crumbs?', 'Can you put the doughnuts on the belt, Ron? Not in your mouth.', 'Next customer please. Not you again.', 'Clubcard? Wrong shop. Lidl Plus? Didn\'t think so.', 'Is that a whole cake or a big biscuit?', 'Till 3, price check on a sausage roll. He\'s eaten it.'];
+    for (const c of this.cast) {
+      if (!c.tillJob || c.down) continue;
+      const t = c.tillJob;
+      if (c.state === 'idle' && c.rag.mode === 'anim' && Math.hypot(c.pos.x - t.x, c.pos.z - t.z) > 0.35) { c.rag.placeAt(t.x, t.z, t.yaw); c.faceYaw = t.yaw; }
+      c.faceYaw = t.yaw; c.stayPut = true; c.active = false;
+      if ((c.tillT -= dt) <= 0) { c.tillT = 14 + Math.random() * 20; if (c.state === 'idle' && Math.hypot(c.pos.x - this.g.player.head.x, c.pos.z - this.g.player.head.z) < 7) c.say(LINES[Math.floor(Math.random() * LINES.length)], 4); }
     }
   }
 

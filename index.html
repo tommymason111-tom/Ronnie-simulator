@@ -44,6 +44,19 @@
     .tbtn.down { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.35); }
     .tbtn.off { opacity: 0.4; }
     #btn-sprint { left: max(36px, calc(env(safe-area-inset-left) + 20px)); bottom: max(200px, calc(env(safe-area-inset-bottom) + 180px)); width: 92px; height: 44px; border-radius: 22px; background: rgba(255,255,255,0.85); font-size: 13px; }
+    #bagreveal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; pointer-events: none; z-index: 60; }
+    #bagreveal.show { display: flex; }
+    #bagreveal .bagbox { text-align: center; animation: bagIn 0.45s cubic-bezier(.2,1.6,.4,1) both; }
+    #bagreveal .bag { position: relative; width: 120px; height: 130px; margin: 0 auto; background: #1e4ea8; border-radius: 8px 8px 14px 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-bottom: 18px solid #ffd400; }
+    #bagreveal .bag span { position: absolute; left: 50%; top: 46%; transform: translate(-50%,-50%); width: 76px; height: 76px; line-height: 76px; border-radius: 50%; background: #ffd400; box-shadow: 0 0 0 5px #e53935 inset; color: #e53935; font: 900 26px "Arial Black", Impact, sans-serif; }
+    #bagreveal .flap { position: absolute; left: 6px; right: 6px; top: -4px; height: 26px; background: #173f8a; border-radius: 6px; transform-origin: bottom center; animation: flapOpen 0.5s 0.3s ease-out both; }
+    #bagreveal .bagtitle { margin-top: 10px; color: #ffd400; font: 900 26px "Arial Black", Impact, sans-serif; text-shadow: 0 3px 0 #1e4ea8, 0 0 18px rgba(0,0,0,0.6); animation: bagIn 0.4s 0.35s both; }
+    #bagreveal .bagfound { display: flex; gap: 12px; justify-content: center; margin-top: 8px; }
+    #bagreveal .bf { background: rgba(255,255,255,0.92); border: 3px solid #ffd400; border-radius: 14px; padding: 6px 10px; min-width: 70px; animation: popOut 0.5s cubic-bezier(.2,1.8,.4,1) both; }
+    #bagreveal .bf b { display: block; font-size: 34px; } #bagreveal .bf i { display: block; font: 700 11px Arial, sans-serif; color: #1e4ea8; font-style: normal; }
+    @keyframes bagIn { from { transform: scale(0.2) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes flapOpen { from { transform: none; } to { transform: perspective(200px) rotateX(-120deg) translateY(-6px); } }
+    @keyframes popOut { 0% { transform: translateY(-90px) scale(0.2); opacity: 0; } 100% { transform: none; opacity: 1; } }
     #btn-zoom { display: none; right: max(24px, env(safe-area-inset-right)); bottom: max(150px, calc(env(safe-area-inset-bottom) + 146px)); width: 96px; height: 44px; border-radius: 22px; background: rgba(255,255,255,0.85); font-size: 13px; }
     #btn-zoom.show { display: block; } #btn-zoom.on { background: #1e88e5; color: #fff; box-shadow: 0 0 16px #1e88e5, 0 5px 0 rgba(0,0,0,0.35); }
     #btn-sprint.on { background: #ff6d00; color: #fff; box-shadow: 0 0 16px #ff6d00, 0 5px 0 rgba(0,0,0,0.35); }
@@ -263,6 +276,7 @@
 <body>
   <div id="app"></div>
   <!-- shown from the moment you press LET'S EAT until the level's built and the squad are in -->
+  <div id="bagreveal"></div>
   <div id="loadscreen"><div class="lsb">🍔</div><div class="lst">LOADING</div><div class="lsp" id="ls-place"></div><div class="lsbar"><i></i></div><div class="lsh" id="ls-hint"></div></div>
   <div id="start">
     <div id="rain"></div>

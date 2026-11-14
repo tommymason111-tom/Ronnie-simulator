@@ -4,6 +4,7 @@
 // have sold out. All instanced: one draw call per product design.
 import * as THREE from 'three';
 import { canvasTex } from '../textures.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const FONT = '"Arial Black", Impact, sans-serif';
 const txt = (g, s, x, y, size, col, maxW, rot = 0) => { g.save(); g.translate(x, y); g.rotate(rot); g.fillStyle = col; let f = size; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(s).width > maxW && f > 8); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(s, 0, 0); g.restore(); };
@@ -108,30 +109,41 @@ const FROZE = [['CHIPS', '#ffd400'], ['FISH FINGERS', '#1e88e5'], ['PIZZA', '#c6
 const frozeTex = ([name, bg]) => canvasTex(192, 128, (g, w, h) => { g.fillStyle = bg; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,0.75)'; g.fillRect(10, 44, w - 20, 60); txt(g, name, w / 2, 24, 20, bg === '#ffd400' || bg === '#f8bbd0' ? '#1e4ea8' : '#fff', w - 16); txt(g, 'FROZEN', w / 2, 74, 16, '#1e4ea8', w - 30); });
 
 // ---------- shapes (front faces +z, standing on y = 0) ----------
-const lathe = (pts, seg = 9) => new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), seg);
+const lathe = (pts, seg = 14) => new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), seg);
 function shapes() {
-  const box = (w, h, d) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(0, h / 2, 0); return g; };
+  // boxes with properly rounded edges and corners (no hard-edged blocks on the shelves)
+  const box = (w, h, d, r = Math.min(w, h, d) * 0.12) => { const g = new RoundedBoxGeometry(w, h, d, 2, r); g.translate(0, h / 2, 0); return g; };
+  // a pillow: a rounded box puffed out in the middle (packs in film, frozen bags, meat trays under film)
+  const pillow = (w, h, d, puff = 0.25, r = Math.min(w, h, d) * 0.2) => { const g = new RoundedBoxGeometry(w, h, d, 3, r), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i) / (w / 2), y = p.getY(i) / (h / 2), z = p.getZ(i) / (d / 2), k = 1 + puff * (1 - x * x) * (1 - z * z) * Math.sign(y) * Math.abs(y); p.setY(i, p.getY(i) * k); }
+    g.computeVertexNormals(); g.translate(0, h / 2, 0); return g; };
+  // a chocolate bar: thin and flat, crimped flat at both ends
+  const bar = (w, h, d) => { const g = new RoundedBoxGeometry(w, h, d, 3, Math.min(w, d) * 0.08), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) { const y = p.getY(i) / (h / 2), e = Math.abs(y); if (e > 0.82) p.setZ(i, p.getZ(i) * 0.25); }
+    g.computeVertexNormals(); g.translate(0, h / 2, 0); return g; };
   const bag = (w, h, d) => {            // a puffed bag standing up, crimped top and bottom
     const g = new THREE.BoxGeometry(w, h, d, 2, 6, 1), p = g.attributes.position;
     for (let i = 0; i < p.count; i++) { const y = p.getY(i), e = Math.abs(y) / (h / 2), k = 1 - Math.pow(e, 4); p.setZ(i, p.getZ(i) * (0.2 + 0.8 * k)); p.setX(i, p.getX(i) * (0.92 + 0.08 * k)); }
     g.computeVertexNormals(); g.translate(0, h / 2, 0); return g;
   };
-  const tube = () => { const g = new THREE.CylinderGeometry(0.034, 0.034, 0.2, 9, 1); g.rotateZ(Math.PI / 2); g.translate(0, 0.034, 0); return g; };
+  const tube = () => { const g = new THREE.CylinderGeometry(0.034, 0.034, 0.2, 14, 8), p = g.attributes.position;     // a biscuit tube, wrapper twisted shut at the ends
+    for (let i = 0; i < p.count; i++) { const y = p.getY(i) / 0.1, e = Math.abs(y), k = e > 0.86 ? 0.25 + (1 - e) * 4 : 1 - 0.04 * Math.cos(y * 20); p.setX(i, p.getX(i) * Math.max(0.2, k)); p.setZ(i, p.getZ(i) * Math.max(0.2, k)); }
+    g.computeVertexNormals(); g.rotateZ(Math.PI / 2); g.translate(0, 0.034, 0); return g; };
   const loaf = () => { const g = new THREE.BoxGeometry(0.12, 0.12, 0.26, 3, 2, 1), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); if (y > 0) { const x = p.getX(i) / 0.06; p.setY(i, y + 0.025 * (1 - x * x)); } } g.computeVertexNormals(); g.translate(0, 0.06, 0); return g; };
   return {
-    cereal: box(0.19, 0.28, 0.07), crisps: bag(0.17, 0.26, 0.09), pasta: bag(0.13, 0.22, 0.05), loaf: loaf(), tube: tube(),
+    cereal: box(0.19, 0.28, 0.07, 0.006), crisps: bag(0.17, 0.26, 0.09), pasta: bag(0.13, 0.22, 0.05), loaf: loaf(), tube: tube(),
     tin: lathe([[0, 0.002], [0.033, 0], [0.037, 0.006], [0.037, 0.104], [0.035, 0.108], [0.036, 0.11], [0.03, 0.11], [0, 0.109]]),
     bottle: lathe([[0, 0.004], [0.032, 0], [0.044, 0.012], [0.044, 0.2], [0.044, 0.22], [0.03, 0.27], [0.015, 0.3], [0.014, 0.31], [0.016, 0.312], [0, 0.312]]),
     can: lathe([[0, 0.004], [0.026, 0], [0.033, 0.012], [0.033, 0.104], [0.028, 0.115], [0.0265, 0.122], [0, 0.12]]),
     jar: lathe([[0, 0.003], [0.036, 0], [0.04, 0.01], [0.04, 0.1], [0.036, 0.11], [0.032, 0.112], [0.033, 0.12], [0, 0.12]]),
     wine: lathe([[0, 0.004], [0.036, 0], [0.038, 0.01], [0.038, 0.21], [0.036, 0.23], [0.016, 0.27], [0.013, 0.33], [0.015, 0.335], [0.015, 0.34], [0, 0.34]]),
     milk: lathe([[0, 0.003], [0.05, 0], [0.055, 0.02], [0.055, 0.17], [0.045, 0.2], [0.02, 0.23], [0.02, 0.245], [0, 0.245]]),
-    meat: box(0.2, 0.05, 0.15), choc: box(0.1, 0.16, 0.02), sweets: bag(0.13, 0.19, 0.06),
+    meat: pillow(0.2, 0.05, 0.15, 0.35), choc: bar(0.1, 0.16, 0.02), sweets: bag(0.13, 0.19, 0.06),
     toil: lathe([[0, 0.003], [0.03, 0], [0.034, 0.02], [0.034, 0.17], [0.03, 0.19], [0.014, 0.2], [0.014, 0.23], [0, 0.23]]),
-    roll: box(0.3, 0.24, 0.2), buy: box(0.38, 0.32, 0.3), froze: box(0.22, 0.05, 0.16),
+    roll: pillow(0.3, 0.24, 0.2, 0.12), buy: box(0.38, 0.32, 0.3, 0.012), froze: pillow(0.22, 0.05, 0.16, 0.45),
     yog: lathe([[0, 0.002], [0.026, 0], [0.034, 0.075], [0.036, 0.078], [0, 0.079]]),
-    cap: (() => { const g = new THREE.CylinderGeometry(0.016, 0.016, 0.018, 7); g.translate(0, 0.32, 0); return g; })(),
-    lid: (() => { const g = new THREE.CylinderGeometry(0.035, 0.035, 0.02, 8); g.translate(0, 0.128, 0); return g; })(),
+    cap: (() => { const g = new THREE.CylinderGeometry(0.016, 0.016, 0.018, 12); g.translate(0, 0.32, 0); return g; })(),
+    lid: (() => { const g = new THREE.CylinderGeometry(0.035, 0.035, 0.02, 14); g.translate(0, 0.128, 0); return g; })(),
   };
 }
 
@@ -140,6 +152,8 @@ export class Stock {
   // a run of products along z at (x, y), z0..z1, facing +x (face = 1) or -x (face = -1)
   addRun(cat, x, y, z0, z1, face) { this.runs.push({ cat, x, y, z0, z1, face }); }
   // ...or along x at z, facing +z (face = 1) or -z (face = -1)
+  // a stack: rows of runs along z, `layers` high (on a pallet, in a bin)
+  addStack(cat, cx, cz, w, d, y, layers, layerH, face = 1, rowGap = 0.1) { for (let l = 0; l < layers; l++) for (let x = cx - w / 2 + rowGap / 2; x < cx + w / 2; x += rowGap) this.runs.push({ cat, x, y: y + l * layerH, z0: cz - d / 2, z1: cz + d / 2, face, full: true }); }
   addRunX(cat, z, y, x0, x1, face) { this.runs.push({ cat, x: z, y, z0: x0, z1: x1, face, alongX: true }); }
   build(scene) {
     const S = shapes(), std = ({ roughness, metalness, ...o }) => new THREE.MeshLambertMaterial(o);   // (Lambert: much cheaper to draw thousands of)
@@ -177,7 +191,7 @@ export class Stock {
       while (z < r.z1 - 0.06) {
         if (block <= 0) { v = (v + 1 + Math.floor(rnd() * (nv - 1))) % nv; block = 3 + Math.floor(rnd() * 6); }   // a few of each design together, like a real shelf
         const d = D[base + v], w = d.w;
-        if (rnd() < 0.06) { z += w * 2; block--; continue; }                                                          // sold out
+        if (!r.full && rnd() < 0.06) { z += w * 2; block--; continue; }                                                          // sold out
         const rows = base === 'tube' || base === 'meat' || base === 'froze' ? (base === 'tube' ? 2 : 3) : 1, deep = base === 'can' || base === 'tin' || base === 'jar' || base === 'milk' || base === 'yog' || base === 'wine' ? 2 : 1;
         for (let k = 0; k < deep; k++) for (let st = 0; st < rows; st++) {
           const dep = k * (base === 'milk' ? 0.12 : 0.085), jit = (rnd() - 0.5) * 0.01;
