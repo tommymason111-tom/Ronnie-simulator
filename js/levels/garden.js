@@ -818,7 +818,7 @@ export function buildGarden(scene) {
   { const G = 0xc8c6c0, x0 = 1.6, x1 = 3.0, z0 = -12.95, z1 = -12.35;
     R(x0, z0, x1, z1, 0.04, 0.42, G, { collide: true, block: true }); R(x0 + 0.04, z0 + 0.04, x1 - 0.04, z1 - 0.04, 0.025, 0.12, G);   // top + lower shelf
     for (const x of [x0 + 0.03, x1 - 0.03]) R(x - 0.03, z0, x + 0.03, z1, 0.4, 0.2, G);                                             // panel legs
-    k.box(0.34, 0.24, 0.05, 2.1, 0.56, -12.62, 0x111111); k.label('', 0.31, 0.21, [2.1, 0.56, -12.594], [0, 0, 0], { tex: lightboxTex() });   // the lightbox sign
+    k.box(0.34, 0.24, 0.05, 2.1, 0.56, -12.62, 0x111111); var LIGHTBOX = makeLightbox(k.label('', 0.31, 0.21, [2.1, 0.56, -12.594], [0, 0, 0], { tex: new THREE.CanvasTexture(document.createElement('canvas')) }));   // the lightbox sign (you can change what it says)
     for (const [x, r] of [[2.55, 0.3], [2.75, -0.2]]) k.box(0.075, 0.008, 0.15, x, 0.444, -12.7, 0x111111, { rot: [0, r, 0] });             // phones
     k.box(0.12, 0.03, 0.18, 1.8, 0.455, -12.55, 0x2a2a2a);                                                                             // a card machine
     k.cyl(0.11, 0.07, 0.07, 1.78, 0.475, -12.82, 0xf4f4f4, 16); for (let i = 0; i < 10; i++) k.cyl(0.018, 0.018, 0.03, 1.78 + Math.cos(i * 2.4) * 0.05, 0.515, -12.82 + Math.sin(i * 2.4) * 0.05, [0xffb0d0, 0xb0e0ff, 0xfff0a0, 0xd0b0ff, 0xffffff][i % 5], 8);   // a bowl of marshmallows
@@ -1029,7 +1029,8 @@ export function buildGarden(scene) {
   room.pingpong = new PingPong(scene, { c: new THREE.Vector3(TT.x, TT.y, F(TT.z)) });
   ppScore.material.map = room.pingpong.board.tex; ppScore.material.needsUpdate = true;
   room.games = [room.dartboard, room.pingpong];
-  room.clutter = clutter;                                                                    // the mess can be picked up
+  room.clutter = clutter;
+  room.lightbox = LIGHTBOX;                                                                    // the mess can be picked up
   // free roam: where people hang out and what they're doing (x, z, the way they face, what they're up to)
   const face = (x, z, tx, tz) => Math.atan2(tx - x, tz - z);
   room.activities = [
@@ -1137,10 +1138,28 @@ function floralTex() {
       g.fillStyle = '#c8a070'; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); g.strokeStyle = '#8a9a6a'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + 10); g.quadraticCurveTo(x + 14, y + 26, x + 4, y + 40); g.stroke(); }
     for (let x = 0; x < w; x += 10) { g.fillStyle = 'rgba(0,0,0,0.06)'; g.fillRect(x, 0, 4, h); } });
 }
-function lightboxTex() {
-  return canvasTex(256, 176, (g, w, h) => { g.fillStyle = '#f8f8f2'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,0.08)'; for (let y = 44; y < h; y += 44) g.fillRect(0, y, w, 2);
-    const word = 'OI OI', cw = 30; g.font = '900 30px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    [...word].forEach((ch, i) => { const x = w / 2 + (i - (word.length - 1) / 2) * cw; if (ch !== ' ') { g.fillStyle = '#e8e8e2'; g.fillRect(x - 13, 4, 26, 36); g.fillStyle = '#111'; g.fillText(ch, x, 23); } }); });
+// the lightbox on the cabin coffee table: up to 3 rows of letter tiles. Tap it (phone/PC) to type a new message,
+// touch it in VR to flick through some; it remembers what you put
+const LIGHTBOX_PRESETS = ['OI OI', 'RONNIE\nWAS\nHERE', 'LADS\nLADS\nLADS', 'SPURS\n0 - 3', 'FEED\nRONNIE', 'MY\nKNEE', 'HARRY\nWAS SICK', 'IAN\'S BBQ\nRULES'];
+function makeLightbox(mesh) {
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 176; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  mesh.material.map = tex; mesh.material.needsUpdate = true;
+  const draw = (msg) => {
+    const g = cv.getContext('2d'), w = 256, h = 176;
+    g.fillStyle = '#f8f8f2'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,0.08)'; for (let y = 58; y < h; y += 58) g.fillRect(0, y, w, 2);
+    const lines = String(msg).toUpperCase().split(/\n|\|/).map(l => l.trim()).slice(0, 3);
+    const top = (3 - lines.length) * 29;
+    lines.forEach((line, r) => { const chars = [...line].slice(0, 10), cw = Math.min(24, 240 / Math.max(1, chars.length)); g.font = `900 ${Math.round(cw * 1.1)}px Arial`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      chars.forEach((ch, i) => { const x = w / 2 + (i - (chars.length - 1) / 2) * cw, y = top + 29 + r * 58; if (ch !== ' ') { g.fillStyle = '#e8e8e2'; g.fillRect(x - cw / 2 + 1.5, y - 22, cw - 3, 44); g.fillStyle = '#111'; g.fillText(ch, x, y + 1); } }); });
+    tex.needsUpdate = true;
+  };
+  let text = 'OI OI'; try { text = localStorage.getItem('rs_lightbox') || text; } catch (e) {}
+  draw(text);
+  return {
+    mesh, get text() { return text; },
+    set(t) { text = String(t).slice(0, 34) || ' '; draw(text); try { localStorage.setItem('rs_lightbox', text); } catch (e) {} },
+    next() { const i = LIGHTBOX_PRESETS.indexOf(text); this.set(LIGHTBOX_PRESETS[(i + 1) % LIGHTBOX_PRESETS.length]); },
+  };
 }
 function renderTex() {
   return canvasTex(256, 256, (g, w, h) => {

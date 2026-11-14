@@ -437,6 +437,15 @@ const touch = setupTouch({
     raycaster.setFromCamera(ndc, camera);
     const ray = raycaster.ray, reach = 3 * player.scale;
     if (director.tapBoard(ray) || director.tapBubble(ray)) return;
+    // the lightbox sign in Lewis's cabin: tap it to write your own message
+    if (room.lightbox) { const lb = room.lightbox, lp = lb.mesh.getWorldPosition(_b);
+      const along = _a.subVectors(lp, ray.origin).dot(ray.direction);
+      if (along > 0 && ray.distanceSqToPoint(lp) < 0.18 * 0.18) {
+        if (along > reach + 1.5) { touch.hint('Walk up to the sign to change it'); return; }
+        const t = window.prompt('What should the lightbox say? (use | for a new line, 3 lines max)', lb.text.replace(/\n/g, ' | '));
+        if (t !== null) { lb.set(t.replace(/\s*\|\s*/g, '\n')); sfx('ting', lp, 0.6); }
+        return;
+      } }
     // the PLAY / STOP signs over the little games
     for (const gm of room.games || []) if (gm.button && gm.button.visible) {
       const along = _a.subVectors(gm.button.position, ray.origin).dot(ray.direction);
@@ -642,6 +651,8 @@ renderer.setAnimationLoop(() => {
 
   player.update(dt, time);
 
+  // touch the cabin lightbox in VR to flick to the next message
+  if (xr && room.lightbox) { const lp = room.lightbox.mesh.getWorldPosition(_b); for (const h of player.hands) if (h.tracked && h.palm.distanceTo(lp) < 0.14) { if (!room.lightbox.cool) { room.lightbox.next(); sfx('ting', lp, 0.6); h.pulse && h.pulse(0.5, 50); } room.lightbox.cool = 1; } if (room.lightbox.cool) room.lightbox.cool = Math.max(0, room.lightbox.cool - dt) || 0; }
   // press a game's PLAY sign by touching it (headset hands)
   if (xr) for (const gm of room.games || []) if (gm.button && gm.button.visible) for (const h of player.hands) if (h.tracked && h.palm.distanceTo(gm.button.position) < 0.2) { gm.toggle(); h.pulse && h.pulse(0.6, 60); }
   // play a fruit machine by touching it (headset hands)
