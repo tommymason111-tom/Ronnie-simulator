@@ -76,15 +76,18 @@
       text-shadow: 0 5px 0 #b8860b, 0 10px 18px rgba(0,0,0,0.6); -webkit-text-stroke: 3px #111; }
     #logo small { display: block; font-size: 0.4em; color: #39ff14; -webkit-text-stroke: 2px #111; text-shadow: 0 3px 0 #0a5a00; margin-top: 8px; animation: glow 1.4s ease-in-out infinite; }
     @keyframes glow { 50% { filter: drop-shadow(0 0 10px #39ff14); } }
-    .herobox { position: relative; width: min(280px, 60vw); margin: 4px auto -4px; }
-    #hero { width: 100%; cursor: pointer; animation: bob 1.2s ease-in-out infinite; }
+    .herobox { position: relative; width: min(380px, 92vw); height: min(330px, 40vh); margin: 2px auto 0; }
+    .herobox canvas { position: absolute; inset: 0; }
+    .herobox.three #hero { display: none; }
+    .herobox #hero { position: absolute; left: 50%; top: 0; height: 100%; width: auto; transform: translateX(-50%); }
+    #hero { cursor: pointer; animation: bob 1.2s ease-in-out infinite; }
     #hero.gobble { animation: gobble .45s; }
     @keyframes bob { 0%,100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-8px) scale(1.04, 0.97); } }
     @keyframes gobble { 30% { transform: scale(1.18, 0.86); } 60% { transform: scale(0.92, 1.1); } }
     #hero .jaw { transform-origin: 150px 150px; animation: chomp 0.6s ease-in-out infinite; }
     #hero.gobble .jaw { animation-duration: .15s; }
     @keyframes chomp { 50% { transform: translateY(7px); } }
-    #ronnie-says { position: absolute; top: 4%; left: 72%; min-width: 120px; max-width: 46vw; background: #fff; color: #111; font: 900 14px Arial, sans-serif; padding: 8px 12px; border-radius: 16px; border: 3px solid #111; transform: scale(0); transform-origin: 0 100%; transition: transform .2s cubic-bezier(.3,1.6,.5,1); }
+    #ronnie-says { position: absolute; z-index: 2; pointer-events: none; top: 2%; left: 62%; min-width: 120px; max-width: 46vw; background: #fff; color: #111; font: 900 14px Arial, sans-serif; padding: 8px 12px; border-radius: 16px; border: 3px solid #111; transform: scale(0); transform-origin: 0 100%; transition: transform .2s cubic-bezier(.3,1.6,.5,1); }
     #ronnie-says.on { transform: scale(1); }
     .tagline { position: relative; font: 700 15px Arial, sans-serif; color: #e8ecff; margin: 6px 0 14px; }
     .hint-tap { font: 700 12px Arial, sans-serif; color: #ffd400; opacity: 0.85; margin: -6px 0 12px; animation: glow 1.4s infinite; }
@@ -403,6 +406,19 @@
     window.addEventListener('unhandledrejection', (e) => { const s = document.getElementById('status'); if (s) s.textContent = 'Error: ' + (e.reason && e.reason.message || e.reason); });
   </script>
   <script src="./js/menu.js"></script>
+  <script type="module">
+    // the 3D Ronnie on the title screen (falls back to the drawing if it can't load)
+    import { startHero } from './js/ronnieHero.js';
+    const box = document.querySelector('.herobox');
+    startHero(box, {
+      onTap: () => window.ronnieSay && window.ronnieSay(),
+      onEat: () => window.menuNom && window.menuNom(),
+      sfx: (n) => window.menuSfx && window.menuSfx(n),
+    }).then((h) => {
+      box.classList.add('three'); window.ronnieHero = h;
+      if (document.getElementById('start').classList.contains('gone')) h.stop();
+    }).catch((e) => console.warn('3D Ronnie unavailable, using the drawing', e));
+  </script>
   <script type="module" src="./js/main.js"></script>
 </body>
 </html>

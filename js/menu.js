@@ -37,7 +37,7 @@
     { n: 'Alfie', c: '#034694', a: '🌀', t: 'The nutmeg', l: 'I started a back piece once. It\'s just a dragon\'s tail now. On its own.' },
     { n: 'Ben', c: '#2f6fd6', a: '✈️', t: 'Takes you to Turkey', l: 'Got my hairline done in Turkey, Ron. Let me take you.' },
   ];
-  const RONNIE_LINES = ['Is that a burger?', 'One more. Just one.', "I'm not hungry. I'm BORED.", 'UNLEASH THE MONSTOR!', 'Who ate my pie? ...oh. Me.', 'Five a day? FIVE A DAY.', 'Chelsea, pies and MONSTOR.'];
+  const RONNIE_LINES = ['Pass us that burger.', 'Mmm. MMMM.', 'Is there any more?', 'Go on then. One more.', 'Is that a burger?', 'One more. Just one.', "I'm not hungry. I'm BORED.", 'UNLEASH THE MONSTOR!', 'Who ate my pie? ...oh. Me.', 'Five a day? FIVE A DAY.', 'Chelsea, pies and MONSTOR.'];
   const ok = (m, p) => !(m.place && m.place !== p) && !(m.big && p === 'bedroom');
   const why = (m, p) => m.place && m.place !== p ? 'Only at La Grande Portion' : m.big && p === 'bedroom' ? 'Needs a bigger place' : '';
 
@@ -90,11 +90,18 @@
   $$('.bounce').forEach(el => { el.innerHTML = [...el.textContent].map((ch, i) => ch === ' ' ? ' ' : `<span style="animation-delay:${i * 0.07}s">${ch}</span>`).join(''); });
   const hero = $('#hero'), say = $('#ronnie-says');
   let sayT = 0;
-  hero.addEventListener('click', () => {
-    hero.classList.remove('gobble'); void hero.getBoundingClientRect(); hero.classList.add('gobble');
-    chompSfx(); crumbs(hero);
+  const ronnieSay = () => {
     say.textContent = RONNIE_LINES[Math.floor(Math.random() * RONNIE_LINES.length)]; say.classList.add('on');
-    clearTimeout(sayT); sayT = setTimeout(() => say.classList.remove('on'), 1800);
+    clearTimeout(sayT); sayT = setTimeout(() => say.classList.remove('on'), 2200);
+    blip(300 + Math.random() * 120, 0.08, 'triangle', 0.07);
+    if (window.ronnieHero) window.ronnieHero.talk(1.6);
+  };
+  window.ronnieSay = ronnieSay;
+  window.menuSfx = (n) => { if (n === 'chomp') chompSfx(); else if (n === 'gulp') blip(160, 0.18, 'sine', 0.09); };
+  window.menuNom = () => { const r = $('.herobox').getBoundingClientRect(); pop(r.left + r.width / 2, r.top + r.height * 0.55, ['NOM!', 'MUNCH!', 'GULP!', 'YUM!'][Math.floor(Math.random() * 4)], '#ffd400'); };
+  hero.addEventListener('click', () => {          // the drawing (fallback)
+    hero.classList.remove('gobble'); void hero.getBoundingClientRect(); hero.classList.add('gobble');
+    chompSfx(); crumbs(hero); ronnieSay();
   });
   function crumbs(el) {
     const r = el.getBoundingClientRect();
@@ -225,6 +232,7 @@
       try { localStorage.setItem('rs_menu', JSON.stringify({ place, mode })); } catch (e) {}
       const finish = () => {
         start.classList.add('gone');
+        if (window.ronnieHero) window.ronnieHero.stop();
         document.body.classList.add('ready');
         const p = PLACES.find(p => p.id === place), m = MODES.find(m => m.id === mode);
         const tag = document.getElementById('ready-tag'); if (tag) tag.textContent = `${p.name} · ${m.name}`;
