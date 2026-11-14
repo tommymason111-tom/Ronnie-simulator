@@ -45,7 +45,9 @@
 
   const q = new URLSearchParams(location.search);
   let saved = {}; try { saved = JSON.parse(localStorage.getItem('rs_menu') || '{}'); } catch (e) {}
-  let place = q.get('place') || saved.place || 'pub', mode = q.get('mode') || saved.mode || 'everyone';
+  // always start at the Oysterfleet; only ?go=1 quick-starts use the address's place/mode
+  const quick = !!q.get('go');
+  let place = (quick && q.get('place')) || 'pub', mode = (quick && q.get('mode')) || 'everyone';
   if (!PLACES.some(p => p.id === place)) place = 'pub';
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const start = $('#start');
@@ -241,9 +243,10 @@
     $('#go').addEventListener('click', () => go());
     if (q.get('go')) go(true);
     // coming back from a level ("Change place or mode"): jump straight to picking
-    else if (q.get('place') || q.get('mode')) { $('.screen[data-s="title"]').classList.remove('on'); $('.screen[data-s="place"]').classList.add('on'); current = 'place'; $('.dots').classList.remove('hide'); $$('.dots i').forEach((d, i) => d.classList.toggle('on', i === 0)); }
+    // otherwise always open on the title screen, and tidy the address bar
+    else if (location.search) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
   });
-  const back = () => { location.href = location.pathname + `?place=${place}&mode=${mode}`; };
+  const back = () => { location.href = location.pathname; };   // back to the title screen
   document.getElementById('back-menu').addEventListener('click', back);
   document.getElementById('menu-btn').addEventListener('click', back);
   // keyboard: arrows on the place screen, Enter to go on
