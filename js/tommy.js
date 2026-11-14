@@ -26,7 +26,7 @@ export class Tommy extends Character {
     });
     // personal spotlight that follows him everywhere (section 2.2)
     this.spot = new THREE.SpotLight(0xfff0d0, 9, 5, 0.42, 0.7, 1.2);
-    scene.add(this.spot, this.spot.target);
+    this.spot.visible = false;        // (no spotlight on him any more)
     const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.75, 2.5, 20, 1, true),
       new THREE.MeshBasicMaterial({ map: beamTex(), color: 0xfff2d0, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
     cone.position.y = 1.3; this.fx.add(cone);
@@ -157,7 +157,7 @@ export class Tommy extends Character {
   get busyAttacking() { return this.tripping > 0; }
 
   onSpeechEnd() { if (this.speakPri >= 2 && !this.down && Math.random() < 0.5) this.flashTeeth(); }
-  flashTeeth() { this.sparkT = 0.5; this.sparkle.visible = true; sfx('ting', this.headPos(_v), 0.8); }
+  flashTeeth() { sfx('ting', this.headPos(_v), 0.8); }      // (no sparkle on his mouth any more, just the ting)
 
   afterUpdate(dt, ctx) {
     this.updateEyes(dt, ctx.head);
@@ -166,7 +166,7 @@ export class Tommy extends Character {
     this.spot.position.set(pos.x, 2.55, pos.z + 0.01);
     this.spot.target.position.set(pos.x, 0, pos.z);
     if (this.sparkT > 0) {
-      this.sparkT -= dt; this.sparkle.visible = this.sparkT > 0; this.sparkle.material.rotation += dt * 6;
+      this.sparkT = 0; this.sparkle.visible = false; this.sparkle.material.rotation += dt * 6;
       const head = this.headPos(_v);
       const q = this.rag.parts.head.body.quaternion; _q.set(q.x, q.y, q.z, q.w);
       this.sparkle.position.set(0, -0.06, 0.12).applyQuaternion(_q).add(head);
