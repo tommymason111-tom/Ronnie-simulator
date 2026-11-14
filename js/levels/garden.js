@@ -652,14 +652,14 @@ export function buildGarden(scene) {
 
   // ======================================================== THE CABIN (x -4.5..5, z -16.2..-11)
   const CX0 = -4.5, CX1 = 5.0, CZ0 = -16.2, CZ1 = -11, CH = 2.4, PART = -0.7;
-  const DARK = woodTex('#5e3820');
-  k.floor(CX0, CZ0, CX1, CZ1, woodTex('#6a4024'), 0.008, 1.2);                                         // the same warm stained boards as the walls
+  const DARK = woodTex('#b8682e');                                              // honey-orange pine boards, like the real cabin
+  k.floor(CX0, CZ0, CX1, CZ1, woodTex('#a65a2c'), 0.008, 1.0);                                         // orange-brown floorboards
   // a grey concrete plinth all round the bottom, sticking out a touch
   for (const [x0, z0, x1, z1] of [[CX0 - 0.12, CZ0 - 0.12, CX1 + 0.12, CZ0 + 0.1], [CX0 - 0.12, CZ1 - 0.1, CX1 + 0.12, CZ1 + 0.12], [CX0 - 0.12, CZ0, CX0 + 0.1, CZ1], [CX1 - 0.1, CZ0, CX1 + 0.12, CZ1]]) R(x0, z0, x1, z1, 0.2, 0.1, 0xb4b0a6, { collide: true });   // (a ring under the walls, so the floor inside stays wood) R(CX0 - 0.13, CZ1 + 0.1, CX1 + 0.13, CZ1 + 0.13, 0.02, 0.2, 0xc8c4ba);
-  wallRun('x', CZ1, CX0, CX1, CH, [[-3.05, -2.0, 1.05, 1.9], [1.9, 3.5, 0, 2.05]], { tex: CLAD, inTex: DARK, inColor: 0x5e3820, inSign: -1, t: 0.14 });   // small window (spare room), double doors (lounge)
-  wallRun('x', CZ0, CX0, CX1, CH, [], { tex: CLAD, inTex: DARK, inColor: 0x5e3820, inSign: 1, t: 0.14 });
-  wallRun('z', CX0, CZ0, CZ1, CH, [[-14.6, -13.2, 0.9, 1.9]], { tex: CLAD, inTex: DARK, inColor: 0x5e3820, inSign: 1, t: 0.14 });
-  wallRun('z', CX1, CZ0, CZ1, CH, [], { tex: CLAD, inTex: DARK, inColor: 0x5e3820, inSign: -1, t: 0.14 });
+  wallRun('x', CZ1, CX0, CX1, CH, [[-3.05, -2.0, 1.05, 1.9], [1.9, 3.5, 0, 2.05]], { tex: CLAD, inTex: DARK, inColor: 0xb8682e, inSign: -1, t: 0.14 });   // small window (spare room), double doors (lounge)
+  wallRun('x', CZ0, CX0, CX1, CH, [], { tex: CLAD, inTex: DARK, inColor: 0xb8682e, inSign: 1, t: 0.14 });
+  wallRun('z', CX0, CZ0, CZ1, CH, [[-14.6, -13.2, 0.9, 1.9]], { tex: CLAD, inTex: DARK, inColor: 0xb8682e, inSign: 1, t: 0.14 });
+  wallRun('z', CX1, CZ0, CZ1, CH, [], { tex: CLAD, inTex: DARK, inColor: 0xb8682e, inSign: -1, t: 0.14 });
   wallRun('z', PART, CZ0, CZ1, CH, [[-13.0, -12.1, 0, 2.0]], { tex: DARK, t: 0.1 });               // spare room | lounge (dark boards)
   glaze('z', CX0, -14.6, -13.2, 0.9, 1.9, 0x3a2a1a);
   // --- the front, as in the photo ---
@@ -681,7 +681,7 @@ export function buildGarden(scene) {
   k.box(1.7, 0.08, 0.16, 2.7, 2.09, FZ, HONEY); for (const x of [1.87, 3.53]) k.box(0.06, 2.0, 0.16, x, 1.05, FZ, HONEY);   // door frame
   k.box(1.6, 0.04, 0.3, 2.7, 0.21, CZ1 + 0.02, 0x8a6a4a);                                              // threshold
   // white curtains tied back inside the doorway, a doormat
-  for (const x of [2.05, 3.35]) { k.box(0.26, 1.95, 0.08, x, 1.05, CZ1 - 0.2, 0xf4f0e6); k.box(0.18, 0.04, 0.1, x, 1.0, CZ1 - 0.2, 0xe8e0d0); }
+  for (const x of [2.05, 3.35]) { k.texBox(0.3, 1.95, 0.08, x, 1.05, CZ1 - 0.2, floralTex(), { tile: 0.6 }); k.box(0.2, 0.04, 0.1, x, 1.0, CZ1 - 0.17, 0xc8b898); }   // cream floral curtains, tied back
   k.box(1.1, 0.012, 0.6, 2.7, 0.015, CZ1 - 0.6, 0x9a8a70);
   // paving slabs on the grass just outside the doors
   for (const [x, z] of [[2.25, 0.5], [3.15, 0.5], [2.25, 1.15], [3.15, 1.15], [4.05, 0.5]]) k.box(0.62, 0.04, 0.6, x, 0.02, CZ1 + z, [0xc4bfb4, 0xb8b3a8, 0xcac5ba][Math.floor(rnd() * 3)], { collide: true });
@@ -702,9 +702,9 @@ export function buildGarden(scene) {
       const m = new THREE.Mesh(g, wood(1, 1)); m.position.set(mid, CH, z); scene.add(m); }
     const pTop = CH + (RISE - 0.08) * (1 - Math.abs(PART - mid) / hw);
     k.texBox(0.1, pTop - CH, D - 0.14, PART, (CH + pTop) / 2, (CZ0 + CZ1) / 2, DARK, { tile: 1.2 });
-    k.box(0.12, 0.14, D, mid, CH + RISE - 0.15, (CZ0 + CZ1) / 2, 0x24140a);                                  // ridge beam
-    for (const z of [CZ0 + 1.6, CZ1 - 1.6]) k.box(CX1 - CX0 - 0.1, 0.1, 0.1, mid, CH + 0.05, z, 0x24140a);   // ties
-    k.box(CX1 - CX0, 0.1, 0.06, mid, CH - 0.03, CZ1 - 0.1, 0x24140a); k.box(CX1 - CX0, 0.1, 0.06, mid, CH - 0.03, CZ0 + 0.1, 0x24140a);   // wall plates
+    k.box(0.12, 0.14, D, mid, CH + RISE - 0.15, (CZ0 + CZ1) / 2, 0x9a5424);                                  // ridge beam
+    for (const z of [CZ0 + 1.6, CZ1 - 1.6]) k.box(CX1 - CX0 - 0.1, 0.1, 0.1, mid, CH + 0.05, z, 0x9a5424);   // ties
+    k.box(CX1 - CX0, 0.1, 0.06, mid, CH - 0.03, CZ1 - 0.1, 0x9a5424); k.box(CX1 - CX0, 0.1, 0.06, mid, CH - 0.03, CZ0 + 0.1, 0x9a5424);   // wall plates
   }
   // the roof: a low triangle, ridge running front to back, gable end on the front with scalloped
   // bargeboards, a pointed finial at the top and a trim board down the middle
@@ -724,7 +724,7 @@ export function buildGarden(scene) {
     k.box(0.12, RISE + 0.1, 0.04, mid, CH + RISE / 2 - 0.05, CZ1 + 0.1, 0x5a3020);                     // trim board up the middle
     k.box(CX1 - CX0, 0.08, 0.06, mid, CH - 0.02, CZ1 + 0.1, 0x5a3020);                                  // fascia along the eaves line
   }
-  k.light(-2.6, 2.6, -13.6, 0xffe4b8, 5, 7); k.light(1.2, 2.8, -14.6, 0xffe4b8, 5.5, 8); k.light(3.6, 2.8, -12.4, 0xffe4b8, 4.5, 7);   // warm and cosy, but you can see
+  k.light(-2.6, 2.6, -13.6, 0xfff0d8, 3.5, 7); k.light(1.2, 2.8, -14.6, 0xfff0d8, 4, 8); k.light(3.6, 2.8, -12.4, 0xfff0d8, 3.5, 7);   // warm and cosy, but you can see
   k.lamp(-2.6, 2.3, -13.6, 0xfff0d0, 0.1); k.lamp(2.2, 2.3, -13.6, 0xfff0d0, 0.1);
   // spare room: the table, the big cupboard along the back
   k.table(-2.6, -12.9, 1.4, 0.8, { chairs: 1, top: 0x8a6a42, legs: 0x4a3420, chairColor: 0x4a3420, spots: 2 });
@@ -733,7 +733,15 @@ export function buildGarden(scene) {
   // the dartboard cabinet on the partition (lounge side): red cabinet, doors open flat either side
   // with chalkboards inside for the scores; the oche is the yellow line on the floor
   const DB = { x: PART + 0.11, y: 1.73, z: -14.0 }, CAB = 0x8a1a1a, wx = PART + 0.05;
-  tv(k, scene, { x: CX1 - 0.12, y: 1.62, z: DB.z, ry: Math.PI / 2, w: 1.3, wall: true });                       // a big telly on the wall opposite the dartboard
+  // the TV wall, from the photo: vertical framing posts, a plywood board with a double socket at the top, the telly on it,
+  // and the consumer unit (fuse box) up in the front corner with its cable running down
+  { const wx = CX1 - 0.08;
+    for (const z of [-15.6, -14.95, -13.05, -12.2, -11.4]) k.box(0.05, CH, 0.07, wx - 0.02, CH / 2, z, 0xa65a26);               // studs
+    k.box(0.022, 1.0, 1.75, wx - 0.012, 1.6, DB.z, 0xd8c09a); for (const y of [1.36, 1.85]) k.box(0.004, 0.006, 1.7, wx - 0.024, y, DB.z, 0xb8a07a);   // plywood board
+    k.box(0.03, 0.09, 0.17, wx - 0.03, 2.04, DB.z - 0.66, 0xf4f4f0); for (const dz of [-0.04, 0.04]) for (const [a, b] of [[-0.01, 0.004], [0.012, -0.012]]) k.box(0.005, 0.016, 0.005, wx - 0.046, 2.045 + b, DB.z - 0.66 + dz + a, 0x222222);   // double socket
+    k.box(0.12, 0.3, 0.24, wx - 0.06, 2.12, -11.32, 0xf2f2ee); k.box(0.012, 0.22, 0.18, wx - 0.125, 2.13, -11.32, 0xdcdcd6); k.box(0.02, 0.6, 0.02, wx - 0.02, 1.68, -11.25, 0x222222);   // consumer unit + cable
+    k.box(0.08, 0.1, 0.06, wx - 0.04, 1.32, -11.25, 0xf2f2ee); }
+  tv(k, scene, { x: CX1 - 0.135, y: 1.6, z: DB.z, ry: Math.PI / 2, w: 1.3, wall: true });                       // the telly on the board, opposite the dartboard
   k.box(0.02, 0.64, 0.64, wx + 0.01, DB.y, DB.z, 0x2a1a10);                                         // cabinet back
   for (const s of [-1, 1]) { k.box(0.1, 0.035, 0.66, wx + 0.05, DB.y + s * 0.31, DB.z, CAB); k.box(0.1, 0.62, 0.035, wx + 0.05, DB.y, DB.z + s * 0.31, CAB); }
   const chalkL = chalkCanvas(), chalkR = chalkCanvas();
@@ -758,10 +766,19 @@ export function buildGarden(scene) {
   sofa(k, { x: 1.7, z: CZ0 + 0.52, len: 3.0, depth: 0.86, ry: Math.PI, color: 0x3a3a4a, seats: 3, pillows: 2, throwCol: 0x6a2a2a });
   k.spawns.push(new THREE.Vector3(1.7, 0.62, CZ0 + 0.65));
   k.table(4.3, -15.2, 0.9, 0.9, { round: true, chairs: 0, top: 0x6a4a2a, legs: 0x3a2a1a, spots: 1 });
-  sofa(k, { x: 4.25, z: -12.4, len: 0.95, depth: 0.9, ry: Math.PI / 2, color: 0x7a2a2a, seats: 1, pillows: 1 });   // armchair, facing the sofa
+  sofa(k, { x: 4.25, z: -12.4, len: 0.95, depth: 0.9, ry: Math.PI / 2, color: 0xddd0b4, seats: 1, pillows: 0 });   // the big cream puffy armchair, facing the sofa
   // the seats all turn in to face the room (a chair faces -z at ry 0, so face (tx, tz) with atan2(-dx, -dz))
-  { const face = (x, z, tx, tz) => Math.atan2(-(tx - x), -(tz - z)); for (const [x, z] of [[0.05, -12.6], [0.6, -11.7], [4.3, -14.1]]) k.chair(x, z, face(x, z, 2.2, -13.4), 0x2a2a2a, 0x4a4a4a); }
-  R(1.6, -12.95, 3.0, -12.35, 0.42, 0.21, 0x5a3a22, { collide: true, block: true }); k.spawns.push(new THREE.Vector3(2.3, 0.5, -12.65));   // coffee table
+  { const face = (x, z, tx, tz) => Math.atan2(-(tx - x), -(tz - z)); [[0.05, -12.6, 0x5a4a8a, 0x6a5a9a], [0.6, -11.7, 0x2a2a2a, 0x4a4a4a]].forEach(([x, z, c, sc]) => k.chair(x, z, face(x, z, 2.2, -13.4), c, sc));
+    k.cyl(0.17, 0.17, 0.05, 4.3, 0.62, -14.1, 0x1a1a1a, 14); k.cyl(0.03, 0.04, 0.6, 4.3, 0.3, -14.1, 0x333333, 8); k.cyl(0.2, 0.22, 0.03, 4.3, 0.015, -14.1, 0x333333, 14); k.blockers.push({ x0: 4.1, x1: 4.5, z0: -14.3, z1: -13.9, y1: 0.65 }); }   // the purple chair and a black stool
+  { const G = 0xc8c6c0, x0 = 1.6, x1 = 3.0, z0 = -12.95, z1 = -12.35;
+    R(x0, z0, x1, z1, 0.04, 0.42, G, { collide: true, block: true }); R(x0 + 0.04, z0 + 0.04, x1 - 0.04, z1 - 0.04, 0.025, 0.12, G);   // top + lower shelf
+    for (const x of [x0 + 0.03, x1 - 0.03]) R(x - 0.03, z0, x + 0.03, z1, 0.4, 0.2, G);                                             // panel legs
+    k.box(0.34, 0.24, 0.05, 2.1, 0.56, -12.62, 0x111111); k.label('', 0.31, 0.21, [2.1, 0.56, -12.594], [0, 0, 0], { tex: lightboxTex() });   // the lightbox sign
+    for (const [x, r] of [[2.55, 0.3], [2.75, -0.2]]) k.box(0.075, 0.008, 0.15, x, 0.444, -12.7, 0x111111, { rot: [0, r, 0] });             // phones
+    k.box(0.12, 0.03, 0.18, 1.8, 0.455, -12.55, 0x2a2a2a);                                                                             // a card machine
+    k.cyl(0.11, 0.07, 0.07, 1.78, 0.475, -12.82, 0xf4f4f4, 16); for (let i = 0; i < 10; i++) k.cyl(0.018, 0.018, 0.03, 1.78 + Math.cos(i * 2.4) * 0.05, 0.515, -12.82 + Math.sin(i * 2.4) * 0.05, [0xffb0d0, 0xb0e0ff, 0xfff0a0, 0xd0b0ff, 0xffffff][i % 5], 8);   // a bowl of marshmallows
+    k.spawns.push(new THREE.Vector3(2.4, 0.5, -12.5)); }
+  k.floor(0.9, -14.8, 3.4, -13.0, fluffTex(), 0.014, 0.35);                                                   // the grey fluffy rug
   // the mess: cans, bottles, pizza boxes, crisp packets everywhere
   // (detailed, instanced: see clutter.js)
   const can = (x, y, z) => clutter.add(rnd() < 0.15 ? 'canCrushed' : 'can', x, y, z, rnd() * 6.28, Math.floor(rnd() * 5));
@@ -771,7 +788,7 @@ export function buildGarden(scene) {
   const crisps = (x, y, z) => clutter.add('crisps', x, y, z, rnd() * 6.28, Math.floor(rnd() * 4));
   const strewn = (x0, z0, x1, z1, n, y = 0.01) => { for (let i = 0; i < n; i++) { const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), t = rnd(); if (t < 0.45) lyingCan(x, y, z); else if (t < 0.65) can(x, y, z); else if (t < 0.8) crisps(x, y, z); else if (t < 0.9) bottle(x, y, z, y < 0.1 && rnd() < 0.5); else pizza(x, y, z, rnd() * 3); } };
   strewn(-0.5, -15.2, 4.8, -11.3, 80);                               // lounge floor: a proper mess
-  strewn(1.65, -12.9, 2.95, -12.4, 6, 0.42);                         // coffee table
+  strewn(2.4, -12.9, 2.95, -12.85, 2, 0.42);                          // coffee table
   strewn(3.95, -15.55, 4.65, -14.85, 4, 0.76);                       // round table
   strewn(-3.25, -13.2, -1.95, -12.6, 5, 0.76);                       // spare room table
   strewn(-4.3, -14.8, -0.9, -11.3, 34);                              // spare room floor
@@ -780,7 +797,7 @@ export function buildGarden(scene) {
   R(-0.9, -15.8, -0.5, -15.4, 0.55, 0.275, 0x2a2a2a); for (let i = 0; i < 4; i++) lyingCan(-0.7, 0.55 + i * 0.066, -15.6);   // the bin, overflowing
   // even more: cans on the sofa and the armchair, a can pyramid on the coffee table, crates, bin bags, empties on the window sills
   strewn(0.45, -15.9, 2.95, -15.3, 7, 0.45); strewn(3.85, -12.75, 4.4, -12.05, 3, 0.45);
-  for (let row = 0, y = 0.42; row < 4; row++, y += 0.12) for (let i = 0; i < 4 - row; i++) can(2.0 + (i + row * 0.5) * 0.07, y, -12.65);
+
   for (let i = 0; i < 3; i++) { R(4.0, -11.65 + i * 0.0, 4.55, -11.25, 0.26, 0.13 + i * 0.26, [0xd32f2f, 0x2e7d32, 0x1e5aa8][i]); }   // beer crates stacked by the door
   for (let i = 0; i < 6; i++) bottle(4.05 + (i % 3) * 0.17, 0.78, -11.55 + Math.floor(i / 3) * 0.17);
   for (const [x, z] of [[-0.35, -11.4], [-0.25, -11.75], [-4.2, -15.6]]) { k.parts.push(part(sph(0.26, 8, 6), 0x151515, [x, 0.24, z], [0, 0, 0], [1, 1.15, 1])); k.box(0.06, 0.08, 0.06, x, 0.53, z, 0x151515); }   // bin bags
@@ -906,7 +923,11 @@ export function buildGarden(scene) {
         for (let i = 0; i <= n; i++) { const t = i / n, sag = 0.06 * Math.abs(Math.sin(t * L / 1.1 * Math.PI)); k.lamp(x0 + (x1 - x0) * t, y0 - sag, z0 + (z1 - z0) * t, [0xfff0c0, 0xffe0a0, 0xfff6dc][i % 3], 0.016, i % 4 === 0); } };
       const X0 = -4.5 + IN, X1 = 5.0 - IN, Z0 = -16.2 + IN, Z1 = -11 + IN * -1, P = -0.7;
       run(X0, Z0, P - 0.06, Z0); run(P - 0.06, Z0, P - 0.06, Z1); run(P - 0.06, Z1, X0, Z1); run(X0, Z1, X0, Z0);      // spare room
-      run(P + 0.06, Z0, X1, Z0); run(X1, Z0, X1, Z1); run(X1, Z1, P + 0.06, Z1); run(P + 0.06, Z1, P + 0.06, Z0);      // lounge
+      // lounge: an LED strip tight along the top of the walls (white and warm yellow), like the real one
+      const strip = (x0, z0, x1, z1) => { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.round(L / 0.07);
+        if (Math.abs(x1 - x0) > Math.abs(z1 - z0)) k.box(L, 0.025, 0.02, (x0 + x1) / 2, 2.36, (z0 + z1) / 2, 0xe8e8e0); else k.box(0.02, 0.025, L, (x0 + x1) / 2, 2.36, (z0 + z1) / 2, 0xe8e8e0);
+        for (let i = 0; i <= n; i++) { const t = i / n; k.lamp(x0 + (x1 - x0) * t, 2.355, z0 + (z1 - z0) * t, Math.floor(i / 6) % 3 === 2 ? 0xfff07a : 0xf4fbff, 0.011, i % 5 === 0); } };
+      strip(P + 0.07, Z0 - 0.08, X1 + 0.08, Z0 - 0.08); strip(X1 + 0.08, Z0, X1 + 0.08, Z1); strip(X1, Z1 + 0.08, P + 0.07, Z1 + 0.08); strip(P + 0.07, Z1, P + 0.07, Z0);
     }
   }
   wheelieBin(k, { x: 4.75, z: 0.12, ry: Math.PI, col: 0x1a1a1a }); wheelieBin(k, { x: 3.95, z: 0.12, ry: Math.PI, col: 0x2e6a2e }); wheelieBin(k, { x: 5.55, z: 0.12, ry: Math.PI, col: 0x2a4a8a });
@@ -1078,6 +1099,21 @@ function pebbleTex() {
     for (let i = 0; i < 2600; i++) { const v = 150 + Math.floor(r() * 90); g.fillStyle = `rgb(${v},${v - 6},${v - 18})`; const s = 1 + r() * 3; g.beginPath(); g.arc(r() * w, r() * h, s, 0, 7); g.fill(); }
     for (let i = 0; i < 600; i++) { g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(r() * w, r() * h, 1.5, 1.5); }
   });
+}
+function fluffTex() {
+  return canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#9a9a98'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 9000; i++) { const v = 90 + Math.floor(Math.random() * 150); g.strokeStyle = `rgba(${v},${v},${v - 4},0.8)`; g.lineWidth = 1.6; const x = Math.random() * w, y = Math.random() * h, a = Math.random() * 6.28; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 5, y + Math.sin(a) * 5); g.stroke(); } });
+}
+function floralTex() {
+  return canvasTex(128, 256, (g, w, h) => { g.fillStyle = '#ece2cc'; g.fillRect(0, 0, w, h);
+    for (let y = 20; y < h; y += 60) for (let x = (y / 60 % 2) * 32 + 16; x < w; x += 64) { g.fillStyle = '#9a4a5a'; for (let i = 0; i < 5; i++) { const a = i * 1.257; g.beginPath(); g.ellipse(x + Math.cos(a) * 8, y + Math.sin(a) * 8, 7, 4, a, 0, 7); g.fill(); }
+      g.fillStyle = '#c8a070'; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); g.strokeStyle = '#8a9a6a'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + 10); g.quadraticCurveTo(x + 14, y + 26, x + 4, y + 40); g.stroke(); }
+    for (let x = 0; x < w; x += 10) { g.fillStyle = 'rgba(0,0,0,0.06)'; g.fillRect(x, 0, 4, h); } });
+}
+function lightboxTex() {
+  return canvasTex(256, 176, (g, w, h) => { g.fillStyle = '#f8f8f2'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,0.08)'; for (let y = 44; y < h; y += 44) g.fillRect(0, y, w, 2);
+    const word = 'OI OI', cw = 30; g.font = '900 30px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    [...word].forEach((ch, i) => { const x = w / 2 + (i - (word.length - 1) / 2) * cw; if (ch !== ' ') { g.fillStyle = '#e8e8e2'; g.fillRect(x - 13, 4, 26, 36); g.fillStyle = '#111'; g.fillText(ch, x, 23); } }); });
 }
 function frostedTex() {
   return canvasTex(128, 128, (g, w, h) => {
