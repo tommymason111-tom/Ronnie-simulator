@@ -344,8 +344,9 @@ export function buildGarden(scene) {
   R(-6.4, 3.0, -6.0, 5.6, 0.85, 0.425, 0x5a3a22, { block: true, collide: true });                // sideboard
   // --- living room: L sofa, armchair, corner TV, little table, stairs, hall
   const SOFA = 0x5a6a7a, CUSH = 0x6a7a8a;
-  sofa(k, { x: -1.15, z: 11.5, len: 4.1, depth: 0.8, ry: 0, color: SOFA, seats: 3, armR: false, pillows: 3, throwCol: 0x8a6a4a });   // along the front wall
-  sofa(k, { x: 0.52, z: 10.16, len: 1.9, depth: 0.76, ry: Math.PI / 2, color: SOFA, seats: 2, armR: false, pillows: 1 });   // the L, up the side
+  sofa(k, { x: -1.15, z: 11.5, len: 4.1, depth: 0.8, ry: 0, color: SOFA, seats: 4, armR: false, pillows: 3 });   // along the front wall, running into the corner seat
+  k.box(0.16, 0.62, 0.72, 0.84, 0.55, 11.45, SOFA); k.box(0.2, 0.46, 0.66, 0.7, 0.66, 11.42, 0x6a7a8a, { rot: [0, 0, 0.16] });   // the corner's side back + cushion, so the L wraps round
+  sofa(k, { x: 0.5, z: 10.16, len: 1.9, depth: 0.8, ry: Math.PI / 2, color: SOFA, seats: 2, armL: false, pillows: 1 });   // the L, up the side: open at the corner (joins the long side), arm at the far end
   k.spawns.push(new THREE.Vector3(-1.6, 0.62, 11.4));
   // a short wall off the end of the dining/kitchen wall into the room, with the armchair backed against it, facing the TV
   wallRun('x', 7.2, -2.2, -0.54, CEIL, [], { color: PAINT, t: 0.12 });
