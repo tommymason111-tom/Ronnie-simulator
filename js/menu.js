@@ -10,9 +10,9 @@
 (function () {
   const PLACES = [
     { id: 'pub', ico: '🍺', name: 'THE OYSTERFLEET', desc: "Ronnie's local and his work. The whole squad fits in.", bg: 'linear-gradient(160deg,#5a1a24,#2a1208)', props: ['🍺', '🎯', '📺', '🍟', '🎰'] },
+    { id: 'garden', ico: '🏡', name: "LEWIS'S HOUSE", desc: 'A sunny back garden. Ian is on the barbecue. Lewy is fetching plates.', bg: 'linear-gradient(160deg,#4aa8f0,#5a9a36)', props: ['🍔', '🌭', '🍗', '⚽', '🌻'] },
     { id: 'shop', ico: '🛒', name: 'LIDL', desc: 'Aisles, the middle aisle, the bakery and a wall of MONSTOR.', bg: 'linear-gradient(160deg,#1e4ea8,#ffd400)', props: ['🛒', '🥐', '🥫', '🍩', '🧺'] },
     { id: 'restaurant', ico: '🕯️', name: 'LA GRANDE PORTION', desc: 'Fancy dinner. Date night with Chloe (and the lads at the other tables).', bg: 'linear-gradient(160deg,#5a0f18,#1a0508)', props: ['🕯️', '🍷', '🦞', '🍰', '🎹'] },
-    { id: 'garden', ico: '🏡', name: "LEWIS'S HOUSE", desc: 'A sunny back garden. Ian is on the barbecue. Lewy is fetching plates.', bg: 'linear-gradient(160deg,#4aa8f0,#5a9a36)', props: ['🍔', '🌭', '🍗', '⚽', '🌻'] },
     { id: 'bedroom', ico: '🛏️', name: "RONNIE'S BEDROOM", desc: 'Where it all begins. Small, cosy, full of cans.', bg: 'linear-gradient(160deg,#3a2a6a,#1f4fbf)', props: ['🛏️', '🥫', '🎮', '🍕', '🥫'] },
   ];
   const MODES = [
