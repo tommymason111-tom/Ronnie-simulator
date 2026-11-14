@@ -417,12 +417,12 @@ export function buildSupermarket(scene) {
     });
     blk(x0, z - 0.3, x1, z + 0.3, 1.55);
   };
-  magShelf(3.45, 7.0, 12.2, [-1, 1]);
-  { const x = 3.4, z0 = 8.3, z1 = 12.1;      // along the wall end, facing the tills
-    R(x - 0.06, z0, x + 0.06, z1, 1.55, 0.775, SHELF, { collide: true }); R(x - 0.3, z0, x + 0.06, z1, 0.1, 0.05, BLACK);
-    [0.35, 0.7, 1.05, 1.4].forEach(y => { R(x - 0.28, z0, x - 0.06, z1, 0.02, y, LEDGE, { collide: true }); R(x - 0.29, z0, x - 0.27, z1, 0.05, y + 0.03, CHROME);
-      for (let z = z0 + 0.12; z < z1 - 0.08; z += 0.2) dorm.add('magazine', x - 0.17, y + 0.02, z, 0, Math.floor(rnd() * 8), 0, 0.35); });
-    blk(x - 0.3, z0, x + 0.06, z1, 1.55);
+  magShelf(3.45, 7.0, 12.2, [1]);                 // magazines on the exit-lane side only
+  { const x = 3.4, z0 = 8.3, z1 = 12.1;      // along the end of the tills, facing into the entrance and exit side
+    R(x - 0.06, z0, x + 0.06, z1, 1.55, 0.775, SHELF, { collide: true }); R(x - 0.06, z0, x + 0.3, z1, 0.1, 0.05, BLACK);
+    [0.35, 0.7, 1.05, 1.4].forEach(y => { R(x + 0.06, z0, x + 0.28, z1, 0.02, y, LEDGE, { collide: true }); R(x + 0.27, z0, x + 0.29, z1, 0.05, y + 0.03, CHROME);
+      for (let z = z0 + 0.12; z < z1 - 0.08; z += 0.2) dorm.add('magazine', x + 0.17, y + 0.02, z, 0, Math.floor(rnd() * 8), 0, -0.35); });
+    blk(x - 0.06, z0, x + 0.3, z1, 1.55);
   }
   hang('MAGAZINES', 5.2, 12.2, 1.8, 0);
   // a clear glass screen (head height) between the entrance and the exit lane, up to the magazines
