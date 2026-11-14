@@ -202,6 +202,9 @@ export function buildGarden(scene) {
     // --- the trellis at the halfway line: clematis and roses all over it ---
     const TZ0f = F(-8.5), PZf = F(-6.6);
     for (let i = 0; i < 26; i++) { const z = TZ0f + rnd() * (PZf - TZ0f), y = 0.6 + rnd() * 1.7; card(i % 3 === 0 ? ROSE : CLEM, B.x0 + 0.2 + rnd() * 0.04, y, z, 0.5 + rnd() * 0.3, 0.5 + rnd() * 0.3, Math.PI / 2, 0, rnd() * 3); }
+    // ...and on the panel across the lawn, both faces, with a few shrubs at its foot
+    for (let i = 0; i < 44; i++) { const x = B.x0 + 0.3 + rnd() * 1.75, y = 0.55 + rnd() * 1.75, side = i % 2 ? 1 : -1; card(i % 3 === 0 ? ROSE : CLEM, x, y, PZf + side * (0.05 + rnd() * 0.03), 0.5 + rnd() * 0.3, 0.5 + rnd() * 0.3, side > 0 ? 0 : Math.PI, 0, rnd() * 3); }
+    for (let x = B.x0 + 0.45; x < B.x0 + 2.0; x += 0.5 + rnd() * 0.2) for (const side of [-1, 1]) { const h = 0.45 + rnd() * 0.35; for (let c = 0; c < 3; c++) card(rnd() < 0.4 ? BLOOM : LEAFY, x, h / 2, PZf + side * 0.18, 0.5 + rnd() * 0.15, h, c * 1.05 + rnd() * 0.3, 0, 0); }
     // --- the willow: one tree, trunk just over the fence, limbs arching into a crown that weeps over the corner ---
     const T = { x: B.x0 - 0.7, z: F(-12.0) }, C = { x: B.x0 + 0.25, y: 4.85, z: F(-12.0) }, RX = 2.2, RY = 1.25, RZ = 2.6;
     const BARK = 0x5e4a38;
@@ -875,6 +878,15 @@ export function buildGarden(scene) {
     for (const y of [0.6, 2.28]) k.box(0.05, 0.05, PZ - TZ0, px, y, (PZ + TZ0) / 2, GREY);
     for (let z = TZ0 + 0.15; z < PZ - 0.05; z += 0.15) k.box(0.02, 1.68, 0.025, px + 0.02, 1.44, z, 0x9a9a8e);                     // trellis uprights
     for (let y = 0.75; y < 2.25; y += 0.15) k.box(0.025, 0.025, PZ - TZ0 - 0.1, px + 0.035, y, (PZ + TZ0) / 2, 0x9a9a8e);       // and rails
+    // a second trellis panel off the same post, out along the edging line across the lawn (climbers on both sides)
+    { const X1 = px + 1.9, mx = (px + X1) / 2;
+      k.box(0.1, 2.35, 0.1, X1, 1.175, PZ, GREY, { block: true, collide: true }); k.box(0.12, 0.04, 0.12, X1, 2.37, PZ, GREY);
+      for (const y of [0.6, 2.28]) k.box(X1 - px, 0.05, 0.05, mx, y, PZ, GREY);
+      for (let x = px + 0.15; x < X1 - 0.05; x += 0.15) k.box(0.025, 1.68, 0.02, x, 1.44, PZ, 0x9a9a8e);
+      for (let y = 0.75; y < 2.25; y += 0.15) k.box(X1 - px - 0.1, 0.025, 0.025, mx, y, PZ, 0x9a9a8e);
+      k.blockers.push({ x0: px, x1: X1, z0: PZ - 0.04, z1: PZ + 0.04, y1: 2.3 });   // you can't walk through it
+      for (let i = 0; i < 8; i++) k.box(0.3 + rnd() * 0.3, 0.01, 0.01, px + 0.2 + rnd() * 1.5, 2.3 + rnd() * 0.35, PZ, 0x6a5a3a, { rot: [0, 0, 0.6 + rnd()] });   // twiggy bits over the top
+    }
     // the scroll bracket off the post, toward the house
     k.box(0.02, 0.025, 0.5, px + 0.06, 2.12, PZ + 0.25, IRON);
     k.parts.push(part(new THREE.TorusGeometry(0.1, 0.008, 4, 14, Math.PI * 1.4), IRON, [px + 0.06, 2.0, PZ + 0.2], [0, Math.PI / 2, 0]));
