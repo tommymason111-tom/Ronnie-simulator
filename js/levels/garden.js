@@ -349,10 +349,32 @@ export function buildGarden(scene) {
   for (const [x, z] of [[1.45, 3.7], [1.45, 3.0], [2.6, 2.32]]) k.spawns.push(new THREE.Vector3(x, 1.06, z));
   k.spawns.push(new THREE.Vector3(4.15, 1.0, 3.0), new THREE.Vector3(2.4, 1.0, 6.05));
   // --- dining room: long table with chairs all round
-  const dx = -3.6, dz = 4.6;
+  const dx = -4.3, dz = 4.6;
   k.table(dx, dz, 1.0, 2.3, { chairs: 3, top: 0x6a4428, legs: 0x3a2416, chairColor: 0x3a2416, seat: 0xd8d0c0, spots: 3 });
   k.chair(dx, dz - 1.5, Math.PI, 0x3a2416, 0xd8d0c0); k.chair(dx, dz + 1.5, 0, 0x3a2416, 0xd8d0c0);
   R(-6.4, 3.0, -6.0, 5.6, 0.85, 0.425, 0x5a3a22, { block: true, collide: true });                // sideboard
+  // on the right-hand wall: a chest of drawers under the clock, and a tall cupboard in the corner (dark oak like the table)
+  { const W = -0.66, OAKC = 0x5a3a20, OAKF = 0x6a4428, BRASSK = 0xc9a24a;
+    // chest of drawers: four drawers, two small on top, brass knobs, a plinth, a lamp and photos on top
+    const z0 = 4.05, z1 = 5.25, zc = (z0 + z1) / 2;
+    R(W - 0.48, z0, W, z1, 0.92, 0.46, OAKC, { block: true, collide: true }); R(W - 0.5, z0 - 0.02, W, z1 + 0.02, 0.035, 0.937, 0x4a2c18, { collide: true });
+    R(W - 0.49, z0 + 0.02, W - 0.48, z1 - 0.02, 0.06, 0.03, 0x2a1a10);
+    const rows = [[0.12, 0.27], [0.36, 0.27], [0.6, 0.27]];
+    for (const [y, h] of rows) { R(W - 0.495, z0 + 0.04, W - 0.48, z1 - 0.04, h - 0.03, y + h / 2, OAKF); for (const z of [zc - 0.28, zc + 0.28]) k.cyl(0.018, 0.018, 0.02, W - 0.505, y + h / 2, z, BRASSK, 8); }
+    for (const [a, b] of [[z0 + 0.04, zc - 0.01], [zc + 0.01, z1 - 0.04]]) { R(W - 0.495, a, W - 0.48, b, 0.0, 0.87, OAKF); }
+    k.cyl(0.07, 0.09, 0.05, W - 0.25, 0.98, z0 + 0.25, 0x8a8a8a, 12); k.cyl(0.012, 0.012, 0.3, W - 0.25, 1.15, z0 + 0.25, 0xc9a24a, 6); k.cyl(0.09, 0.14, 0.18, W - 0.25, 1.34, z0 + 0.25, 0xf4ecd8, 16); k.lamp(W - 0.25, 1.3, z0 + 0.25, 0xffe2a8, 0.04);
+    for (const [z, w] of [[zc + 0.05, 0.2], [zc + 0.35, 0.16]]) { k.box(0.02, w * 1.2, w, W - 0.2, 0.955 + w * 0.6, z, 0x2a2a2a, { rot: [0, 0, 0.18] }); k.box(0.005, w * 1.05, w * 0.85, W - 0.212, 0.955 + w * 0.6, z, 0xd8c8a8, { rot: [0, 0, 0.18] }); }
+    k.spawns.push(new THREE.Vector3(W - 0.3, 1.0, zc));
+    // the tall cupboard in the corner: two panelled doors over two drawers, a cornice, brass handles
+    const c0 = 5.45, c1 = 6.3, cc = (c0 + c1) / 2, CH2 = 2.05;
+    R(W - 0.55, c0, W, c1, CH2, CH2 / 2, OAKC, { block: true, collide: true }); R(W - 0.6, c0 - 0.03, W, c1 + 0.03, 0.07, CH2 + 0.035, 0x4a2c18); R(W - 0.56, c0, W, c1, 0.08, 0.04, 0x2a1a10);
+    for (const [a, b] of [[c0 + 0.03, cc - 0.01], [cc + 0.01, c1 - 0.03]]) {
+      R(W - 0.565, a, W - 0.55, b, 1.35, 1.38, OAKF); R(W - 0.575, a + 0.06, W - 0.565, b - 0.06, 1.15, 1.38, 0x7a5030);                   // doors with raised panels
+      R(W - 0.565, a, W - 0.55, b, 0.24, 0.42, OAKF); k.cyl(0.016, 0.016, 0.02, W - 0.575, 0.42, (a + b) / 2, BRASSK, 8);                 // drawers
+    }
+    for (const z of [cc - 0.06, cc + 0.06]) k.box(0.02, 0.14, 0.02, W - 0.585, 1.25, z, BRASSK);
+    k.box(0.3, 0.22, 0.25, W - 0.3, CH2 + 0.18, cc - 0.15, 0xb8905a); k.box(0.25, 0.15, 0.2, W - 0.3, CH2 + 0.145, cc + 0.2, 0xd6b48a);   // boxes stored on top
+  }
   // --- living room: L sofa, armchair, corner TV, little table, stairs, hall
   const SOFA = 0x5a6a7a, CUSH = 0x6a7a8a;
   sofa(k, { x: -1.15, z: 11.5, len: 4.1, depth: 0.8, ry: 0, color: SOFA, seats: 4, armR: false, pillows: 3 });   // along the front wall, running into the corner seat
@@ -463,9 +485,9 @@ export function buildGarden(scene) {
     k.cyl(0.06, 0.06, 0.26, 4.15, 1.07, 5.0, 0xfafafa, 12);                                                // kitchen roll
     k.label('JUNE · BINS THURSDAY · LEWY GYM 6AM (LIES)', 0.3, 0.42, [-0.535, 1.6, 4.6], [0, Math.PI / 2, 0], { bg: '#fffef8', fg: '#333', border: '#c62828', size: 26 });
     // dining room: a ceiling pendant shade, a fruit bowl and table runner, candlesticks on the sideboard
-    k.cyl(0.01, 0.01, 0.4, -3.6, 2.4, 4.6, 0x222222, 4); k.cyl(0.12, 0.3, 0.22, -3.6, 2.12, 4.6, 0x2a3a2a, 16);
-    k.box(0.3, 0.004, 1.9, -3.6, 0.765, 4.6, 0xd8c8a0); k.cyl(0.14, 0.09, 0.07, -3.6, 0.8, 4.6, 0xf4f4f4, 14);
-    for (let i = 0; i < 5; i++) k.parts.push(part(sph(0.035, 6, 4), [0xff8a1a, 0xd62828, 0x9ccc3a, 0xffe135, 0xd62828][i], [-3.6 + Math.cos(i * 1.3) * 0.06, 0.85, 4.6 + Math.sin(i * 1.3) * 0.06]));
+    k.cyl(0.01, 0.01, 0.4, -4.3, 2.4, 4.6, 0x222222, 4); k.cyl(0.12, 0.3, 0.22, -4.3, 2.12, 4.6, 0x2a3a2a, 16);
+    k.box(0.3, 0.004, 1.9, -4.3, 0.765, 4.6, 0xd8c8a0); k.cyl(0.14, 0.09, 0.07, -4.3, 0.8, 4.6, 0xf4f4f4, 14);
+    for (let i = 0; i < 5; i++) k.parts.push(part(sph(0.035, 6, 4), [0xff8a1a, 0xd62828, 0x9ccc3a, 0xffe135, 0xd62828][i], [-4.3 + Math.cos(i * 1.3) * 0.06, 0.85, 4.6 + Math.sin(i * 1.3) * 0.06]));
     for (const z of [3.3, 5.3]) { k.cyl(0.03, 0.04, 0.25, -6.2, 0.98, z, 0xc8a050, 8); k.cyl(0.012, 0.012, 0.12, -6.2, 1.16, z, 0xf8f0e0, 6); }
     // hall: coat hooks with coats, a shoe rack, a radiator shelf with keys, a doormat inside
     k.box(0.03, 0.08, 0.9, 1.23, 1.7, 11.3, OAKD);
@@ -1082,7 +1104,7 @@ export function buildGarden(scene) {
     { x: 0.35, z: 5.0, yaw: 0, pose: 'drink' },                                                     // raiding the fridge
     { x: -2.6, z: 11.45, yaw: Math.PI, pose: 'sit' }, { x: -1.6, z: 11.45, yaw: Math.PI, pose: 'sit' },   // living room sofa, telly on
     { x: -1.35, z: 7.78, yaw: face(-1.35, 7.78, -5.9, 11.4), pose: 'sit' },                         // the armchair
-    { x: -4.42, z: 4.6, yaw: Math.PI / 2, pose: 'sit' },                                            // dining table
+    { x: -5.12, z: 4.6, yaw: Math.PI / 2, pose: 'sit' },                                            // dining table
     { x: 2.0, z: 8.6, yaw: Math.PI / 2, pose: 'phone' },                                            // in the hall
   ];
   return room;
