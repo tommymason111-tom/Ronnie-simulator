@@ -10,7 +10,7 @@ export function setupTouch(cb) {
     <div id="stick"><div id="knob"></div></div>
     <button id="btn-eat" class="tbtn">EAT</button>
     <button id="btn-throw" class="tbtn">THROW</button>
-    <div id="hint">Drag to look · tap food to grab · tap anyone to slap · game modes board is behind you</div>`;
+    <div id="hint"></div>`;
   document.body.appendChild(root);
   const stick = root.querySelector('#stick'), knob = root.querySelector('#knob');
   const eat = root.querySelector('#btn-eat'), thr = root.querySelector('#btn-throw'), hint = root.querySelector('#hint');
@@ -81,6 +81,6 @@ export function setupTouch(cb) {
     show(on) { root.classList.toggle('on', on); },
     setEatLabel(txt, enabled) { eat.textContent = txt; eat.classList.toggle('off', !enabled); },
     setThrowEnabled(on) { thr.classList.toggle('off', !on); },
-    hint(txt) { hint.textContent = txt; },
+    hint(txt) { hint.textContent = txt; hint.classList.add('on'); clearTimeout(hint._t); hint._t = setTimeout(() => hint.classList.remove('on'), 2200); },
   };
 }

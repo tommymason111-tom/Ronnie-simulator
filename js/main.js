@@ -9,7 +9,7 @@ import { Player } from './player.js';
 import { Tommy } from './tommy.js';
 import { STAGE_LINES } from './dialogue.js';
 import { AttackFX } from './attackfx.js';
-import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience } from './audio.js';
+import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience, setMuted } from './audio.js';
 import { FONT } from './textures.js';
 import { createPhysics } from './physics.js';
 import { setupTouch } from './touch.js';
@@ -563,7 +563,25 @@ const ctx = {
 // ---------------- main loop ----------------
 function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * (2 * Math.PI / 3)) + 1; }
 
+// ---------------- pause menu (the ⏸ button on phones / computers) ----------------
+let paused = false;
+const pauseEl = document.getElementById('pause');
+function setPaused(on) {
+  paused = on; pauseEl.classList.toggle('on', on);
+  if (on) { const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = t ? t.textContent : ''; try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
+  setMuted(on || soundOff);
+}
+let soundOff = false;
+document.getElementById('menu-btn').addEventListener('click', () => setPaused(true));
+document.getElementById('pause-resume').addEventListener('click', () => { initAudio(); setPaused(false); });
+document.getElementById('pause-restart').addEventListener('click', () => { setPaused(false); director.start(chosenMode()); });
+document.getElementById('pause-sound').addEventListener('click', (e) => { soundOff = !soundOff; e.currentTarget.textContent = soundOff ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'; });
+document.getElementById('pause-quit').addEventListener('click', () => { location.href = location.pathname; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && player.flatMode) setPaused(!paused); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && player.flatMode && !paused) setPaused(true); });   // switching apps pauses
+
 renderer.setAnimationLoop(() => {
+  if (paused) { clock.getDelta(); renderer.render(scene, camera); return; }    // frozen until RESUME
   const dt = Math.min(clock.getDelta(), 0.05);
   time += dt;
   const xr = renderer.xr.isPresenting;

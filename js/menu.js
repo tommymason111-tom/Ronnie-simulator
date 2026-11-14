@@ -249,7 +249,6 @@
   });
   const back = () => { location.href = location.pathname; };   // back to the title screen
   document.getElementById('back-menu').addEventListener('click', back);
-  document.getElementById('menu-btn').addEventListener('click', back);
   // keyboard: arrows on the place screen, Enter to go on
   document.addEventListener('keydown', (e) => {
     if (start.classList.contains('gone')) return;

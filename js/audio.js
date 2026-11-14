@@ -434,3 +434,9 @@ export function playTune(kind, seconds) {
 export function shout(text, { rate = 1, pitch = 1, volume = 0.8 } = {}) {
   try { if (!window.speechSynthesis) return; const u = new SpeechSynthesisUtterance(text); u.rate = rate; u.pitch = pitch; u.volume = volume; window.speechSynthesis.speak(u); } catch (e) {}
 }
+
+// mute / unmute everything (pause menu)
+export function setMuted(on) {
+  if (!ctx || !master) return;
+  master.gain.setTargetAtTime(on ? 0 : 0.8, ctx.currentTime, 0.05);
+}
