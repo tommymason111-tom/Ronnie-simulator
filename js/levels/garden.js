@@ -370,7 +370,8 @@ export function buildGarden(scene) {
   k.spawns.push(new THREE.Vector3(1.7, 0.62, CZ0 + 0.65));
   k.table(4.3, -15.2, 0.9, 0.9, { round: true, chairs: 0, top: 0x6a4a2a, legs: 0x3a2a1a, spots: 1 });
   R(3.75, -12.85, 4.65, -11.95, 0.45, 0.225, 0x7a2a2a, { block: true }); R(4.45, -12.85, 4.75, -11.95, 0.9, 0.45, 0x7a2a2a); for (const z of [-12.85, -11.95]) R(3.75, z - 0.08, 4.75, z + 0.08, 0.65, 0.325, 0x7a2a2a);   // armchair, facing the sofa
-  k.chair(0.05, -12.6, Math.PI / 2, 0x2a2a2a, 0x4a4a4a); k.chair(0.6, -11.7, Math.PI * 0.85, 0x2a2a2a, 0x4a4a4a); k.chair(4.3, -14.1, Math.PI, 0x2a2a2a, 0x4a4a4a);
+  // the seats all turn in to face the room (a chair faces -z at ry 0, so face (tx, tz) with atan2(-dx, -dz))
+  { const face = (x, z, tx, tz) => Math.atan2(-(tx - x), -(tz - z)); for (const [x, z] of [[0.05, -12.6], [0.6, -11.7], [4.3, -14.1]]) k.chair(x, z, face(x, z, 2.2, -13.4), 0x2a2a2a, 0x4a4a4a); }
   R(1.6, -12.95, 3.0, -12.35, 0.42, 0.21, 0x5a3a22, { collide: true, block: true }); k.spawns.push(new THREE.Vector3(2.3, 0.5, -12.65));   // coffee table
   // the mess: cans, bottles, pizza boxes, crisp packets everywhere
   const CANS = [0xd32f2f, 0x1e5aa8, 0xffd400, 0x2e7d32, 0x111111, 0xe0e0e0, 0x8a1a8a];
@@ -380,14 +381,23 @@ export function buildGarden(scene) {
   const pizza = (x, y, z, r) => { k.box(0.4, 0.04, 0.4, x, y + 0.02, z, 0xe8d8b8, { rot: [0, r, 0] }); k.box(0.36, 0.005, 0.36, x, y + 0.042, z, 0xc82a1a, { rot: [0, r, 0] }); };
   const crisps = (x, y, z) => k.box(0.16, 0.03, 0.22, x, y + 0.015, z, [0xd32f2f, 0x1e5aa8, 0x2e7d32, 0xffd400][Math.floor(rnd() * 4)], { rot: [0, rnd() * 3, 0] });
   const strewn = (x0, z0, x1, z1, n, y = 0.01) => { for (let i = 0; i < n; i++) { const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), t = rnd(); if (t < 0.45) lyingCan(x, y, z); else if (t < 0.65) can(x, y, z); else if (t < 0.8) crisps(x, y, z); else if (t < 0.9) bottle(x, y, z); else pizza(x, y, z, rnd() * 3); } };
-  strewn(-0.5, -15.2, 4.8, -11.3, 34);                               // lounge floor
+  strewn(-0.5, -15.2, 4.8, -11.3, 80);                               // lounge floor: a proper mess
   strewn(1.65, -12.9, 2.95, -12.4, 6, 0.42);                         // coffee table
   strewn(3.95, -15.55, 4.65, -14.85, 4, 0.76);                       // round table
   strewn(-3.25, -13.2, -1.95, -12.6, 5, 0.76);                       // spare room table
-  strewn(-4.3, -14.8, -0.9, -11.3, 12);                              // spare room floor
+  strewn(-4.3, -14.8, -0.9, -11.3, 34);                              // spare room floor
   for (const [x, z] of [[0.6, -15.4], [2.9, -15.3]]) pizza(x, 0.45, z, rnd());
   for (let i = 0; i < 6; i++) bottle(-1.0 + i * 0.12, 0, -15.95);    // a row of empties along the back wall
   R(-0.9, -15.8, -0.5, -15.4, 0.55, 0.275, 0x2a2a2a); for (let i = 0; i < 4; i++) lyingCan(-0.7, 0.55 + i * 0.066, -15.6);   // the bin, overflowing
+  // even more: cans on the sofa and the armchair, a can pyramid on the coffee table, crates, bin bags, empties on the window sills
+  strewn(0.45, -15.9, 2.95, -15.3, 7, 0.45); strewn(3.85, -12.75, 4.4, -12.05, 3, 0.45);
+  for (let row = 0, y = 0.42; row < 4; row++, y += 0.12) for (let i = 0; i < 4 - row; i++) can(2.0 + (i + row * 0.5) * 0.07, y, -12.65);
+  for (let i = 0; i < 3; i++) { R(4.0, -11.65 + i * 0.0, 4.55, -11.25, 0.26, 0.13 + i * 0.26, [0xd32f2f, 0x2e7d32, 0x1e5aa8][i]); }   // beer crates stacked by the door
+  for (let i = 0; i < 6; i++) bottle(4.05 + (i % 3) * 0.17, 0.78, -11.55 + Math.floor(i / 3) * 0.17);
+  for (const [x, z] of [[-0.35, -11.4], [-0.25, -11.75], [-4.2, -15.6]]) { k.parts.push(part(sph(0.26, 8, 6), 0x151515, [x, 0.24, z], [0, 0, 0], [1, 1.15, 1])); k.box(0.06, 0.08, 0.06, x, 0.53, z, 0x151515); }   // bin bags
+  for (let i = 0; i < 9; i++) can(-3.5 + i * 0.2, 0.92, -11.08);                    // a row of empties along the spare room sill
+  for (let i = 0; i < 6; i++) can(3.3 + i * 0.19, 0.92, -11.08);
+  for (let i = 0; i < 5; i++) pizza(-3.9 + (i % 2) * 0.05, 0.02 + i * 0.045, -14.3 + (i % 2) * 0.04, i * 0.3);   // a tower of pizza boxes
   // mess in the garage too
   strewn(2.4, -7.6, 5.6, -3.0, 10); strewn(5.85, -7.8, 6.3, -5.3, 4, 0.9);
 
