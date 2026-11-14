@@ -145,7 +145,9 @@ export function buildGarden(scene) {
   R(HX0 - 0.1, HZ0 - 0.25, HX1 + 0.1, HZ0 - 0.05, 0.14, TOP - 0.05, 0x333333);                // gutter
   // inside walls: dining | kitchen (door near the window), kitchen | living room
   wallRun('z', -0.6, HZ0, 6.4, CEIL, [[2.4, 3.4, 0, 2.05]], { color: PAINT, t: 0.12 });
-  wallRun('x', 6.4, -0.6, 3.4, CEIL, [], { color: PAINT, t: 0.12 });                                // kitchen | living room: solid (into the kitchen via the dining room)
+  wallRun('x', 6.4, -0.6, 3.4, CEIL, [], { color: PAINT, t: 0.12 });
+  wallRun('z', 1.15, 6.4, HZ1, CEIL, [[6.6, 7.5, 0, 2.05]], { color: PAINT, t: 0.12 });              // living room | hallway (behind the L sofa), doorway at the far end
+  k.lamp(2.3, 2.45, 9.0, 0xfff4e0, 0.1);                                                              // hall light                                // kitchen | living room: solid (into the kitchen via the dining room)
   // --- kitchen: worktops round the side and back, sink, fridge, island bar with stools
   const TOP_C = 0x2a2a2e, UNIT = 0xf2f2ee;
   R(3.9, 2.15, 4.4, 6.3, 0.9, 0.45, UNIT, { block: true }); R(3.86, 2.12, 4.42, 6.32, 0.04, 0.92, TOP_C, { collide: true });
@@ -177,9 +179,15 @@ export function buildGarden(scene) {
   R(-6.4, 11.1, -5.6, 11.9, 0.5, 0.25, 0x3a2a1a, { block: true });
   for (let i = 0; i < 13; i++) R(3.4, 10.8 - (i + 1) * 0.34, 4.45, 10.8 - i * 0.34, 0.2 * (i + 1), 0.1 * (i + 1), i % 2 ? 0xd8d0c0 : 0xc8bfae, { collide: true });   // stairs up
   k.blockers.push({ x0: 3.4, x1: HX1, z0: 6.4, z1: 10.8, y1: 2.6 });
-  R(3.35, 6.4, 3.4, 10.8, 0.9, 1.4, DARKWOOD);                                                   // banister
+  // the banister follows the stairs up: newel post at the bottom, a sloped handrail, spindles off every step
+  { const bx = 3.37, rise = (z) => 0.2 * (10.8 - z) / 0.34, zTop = 10.8 - 2.6 * 0.34 / 0.2 * (1.55 / 2.6);
+    const y1 = rise(10.8) + 0.92, y2 = rise(zTop) + 0.92, dz = 10.8 - zTop, dy = y2 - y1;
+    k.box(0.07, 0.06, Math.hypot(dz, dy), bx, (y1 + y2) / 2, (10.8 + zTop) / 2, DARKWOOD, { rot: [Math.atan2(dy, dz), 0, 0] });   // handrail
+    k.box(0.1, 1.15, 0.1, bx, 0.575, 10.85, DARKWOOD, { block: true }); k.box(0.13, 0.06, 0.13, bx, 1.18, 10.85, DARKWOOD);
+    for (let z = 10.7; z > zTop + 0.05; z -= 0.17) { const yb = rise(z - 0.17) + 0.2, yt = rise(z) + 0.9; k.box(0.03, yt - yb, 0.03, bx, (yb + yt) / 2, z, 0xf0ece4); }
+  }
   R(1.7, 11.3, 2.5, 11.9, 0.01, 0.006, 0x3a2a1a);                                                // doormat
-  k.light(-3.2, 2.35, 5.2, 0xfff0d8, 3, 8); k.light(1.2, 2.35, 8.5, 0xfff0d8, 3, 8);
+  k.light(-3.2, 2.35, 5.2, 0xfff0d8, 3, 8); k.light(-1.9, 2.35, 9.4, 0xfff0d8, 3, 8);
   k.lamp(-3.6, 2.4, 4.6, 0xfff4e0, 0.14); k.lamp(2.2, 2.4, 3.7, 0xfff4e0, 0.12); k.lamp(-2, 2.4, 9.8, 0xfff4e0, 0.14);
 
   // ======================================================== THE PATIO
