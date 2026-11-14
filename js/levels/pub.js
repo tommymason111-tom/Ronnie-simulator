@@ -612,7 +612,6 @@ export function buildPub(scene) {
     for (let i = 0; i < 4; i++) { k.cyl(0.004, 0.004, 0.3, (x0 + x1) / 2 - 0.45 + i * 0.3, H - 0.5, z0 + 5.0, 0x222222, 4); }
     k.label('clock', 0.35, 0.35, [(x0 + x1) / 2, 2.65, z0 + 0.025], [0, 0, 0], { tex: clockTex() });
     k.label('PIE OF THE DAY: GONE (RONNIE)', 1.2, 0.6, [(x0 + x1) / 2, 2.05, z0 + 0.03], [0, 0, 0], { bg: '#222', fg: '#fff', border: '#ffd400', size: 50 });
-    for (let i = 0; i < 3; i++) { k.box(0.04, 0.04, 0.06, x1 - 0.03, 1.75, z1 - 0.35 - i * 0.3, 0x333333); R(x1 - 0.1, z1 - 0.47 - i * 0.3, x1 - 0.04, z1 - 0.23 - i * 0.3, 0.75, 1.35, 0xf6f6f2); }
     k.label('FOOD HYGIENE RATING: 5 (BEFORE RONNIE STARTED WORKING HERE)', 0.5, 0.3, [x1 - 0.025, 2.3, z0 + 5.3], [0, -Math.PI / 2, 0], { bg: '#2e7d32', fg: '#fff', border: '#fff', size: 34 });
     k.label('ALLERGENS: ASK STAFF. RONNIE IS ALLERGIC TO SALAD.', 0.5, 0.3, [x1 - 0.025, 1.9, z0 + 7.2], [0, -Math.PI / 2, 0], { bg: '#fff8e1', fg: '#c62828', border: '#c62828', size: 34 });
     // ---- the island: steel prep table with an under-shelf of pans, boards, a knife block, food prepped, a pan rack over it
@@ -634,7 +633,7 @@ export function buildPub(scene) {
     for (const [x, col] of [[x1 - 0.3, 0x2e7d32], [x1 - 0.75, 0x37474f], [x1 - 1.2, 0x1565c0]]) { k.cyl(0.2, 0.18, 0.75, x, 0.375, z1 - 0.3, col, 12, { block: true }); k.cyl(0.21, 0.21, 0.04, x, 0.77, z1 - 0.3, col, 12); }
     k.cyl(0.16, 0.14, 0.28, x1 - 0.35, 0.14, doorZ1 + 0.45, 0xffd400, 12); k.box(0.02, 1.2, 0.02, x1 - 0.3, 0.75, doorZ1 + 0.45, 0x8a5a2a, { rot: [0, 0, 0.15] });
     k.cyl(0.07, 0.07, 0.5, x1 - 0.12, 0.45, doorZ0 - 0.35, 0xd32f2f, 10); k.label('FIRE', 0.12, 0.07, [x1 - 0.12, 0.45, doorZ0 - 0.279], [0, 0, 0], { bg: '#d32f2f', fg: '#fff', border: null, size: 60 });
-    R(x1 - 0.06, doorZ0 - 0.75, x1, doorZ0 - 0.5, 0.3, 1.5, 0xd32f2f); R(x1 - 0.06, z1 - 1.6, x1, z1 - 1.3, 0.25, 1.6, 0x2e7d32);
+    R(x1 - 0.06, doorZ0 - 0.75, x1, doorZ0 - 0.5, 0.3, 1.5, 0xd32f2f);
     k.label('KITCHEN — STAFF ONLY (ESPECIALLY NOT RONNIE)', 1.1, 0.3, [X(195) + 0.1, 2.45, Z(1012)], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c0392b', border: '#c0392b', size: 40 });
     k.box(0.32, 0.6, 0.02, (x0 + x1) / 2 + 0.6, 0.3, z1 - 1.6, 0xffd400, { rot: [0.25, 0.6, 0] });                                          // wet floor sign
   }
