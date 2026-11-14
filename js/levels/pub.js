@@ -131,7 +131,7 @@ export function buildPub(scene) {
   // the bar: top wall, back wall of the back bar, the corridor behind
   WX(605, 695, 855); WZ(855, 605, 925); WX(925, 835, 855);      // (a doorway from the corridor in behind the bar)      // (a door from behind the bar into the staff room)
   // staff room, back room, gambling room
-  WX(690, 855, 1045, [], WALL); WZ(1045, 690, 1305, [], WALL); WX(975, 895, 1045); WX(975, 855, 895, [[858, 892]]);
+  WX(690, 855, 1045, [], WALL); WZ(1045, 690, 1305, [], WALL); WX(975, 895, 1045); WX(975, 855, 895); WZ(855, 925, 975, [[928, 972]]);      // (the staff room's door is on its side now, off the end of the bar)
   WZ(895, 975, 1305, [[1235, 1300]]);
   WX(1305, 790, 1045);
   WZ(795, 1305, 1620, [[1335, 1400]]); WZ(975, 1305, 1620, [], WALL); WX(1620, 795, 975, [], WALL);
@@ -525,7 +525,7 @@ export function buildPub(scene) {
     k.spawns.push(new THREE.Vector3(x0 + 1.2, 1.0, z0 + 0.35));
     R(x1 - 2.4, z1 - 0.9, x1 - 0.6, z1 - 0.1, 0.45, 0.225, 0x37474f, { block: true }); R(x1 - 2.4, z1 - 0.3, x1 - 0.6, z1 - 0.1, 0.9, 0.45, 0x37474f);   // battered sofa
     k.label("STAFF FOOD ALLOWANCE: ONE (1) BAG OF CRISPS. RONNIE THIS MEANS YOU. — THE GAFFER", 1.3, 0.7, [x0 + 1.0, 1.6, z0 + 0.09], [0, 0, 0], { bg: '#fff', fg: '#111' });
-    k.label('STAFF ROOM', 1.0, 0.25, [X(875), 2.4, z1 + 0.09], [0, 0, 0], { bg: '#1b3a2a', fg: '#d4af37', border: null, size: 60 });
+    k.label('STAFF ROOM', 0.9, 0.2, [X(855) - 0.09, 2.45, Z(950)], [0, -Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: null, size: 60 });
     k.lamp((x0 + x1) / 2, H - 0.02, (z0 + z1) / 2, 0xffffff, 0.12);
   }
   { const x0 = X(895), x1 = X(1045), z0 = Z(975), z1 = Z(1305);
