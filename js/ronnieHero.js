@@ -69,8 +69,6 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   const lowTex = toothTex.clone(); lowTex.flipY = false; lowTex.needsUpdate = true;
   const toothMatLow = new THREE.MeshStandardMaterial({ map: lowTex, roughness: 0.4, side: THREE.DoubleSide });
   const teethArc = (y, h) => { const g = new THREE.CylinderGeometry(0.044, 0.044, h, 22, 1, true, -1.05, 2.1); g.translate(0, y, 0); return g; };
-  const upperTeeth = new THREE.Mesh(teethArc(0, 0.012), toothMat); upperTeeth.position.set(0, LIP_Y - 0.001, 0.281); head.add(upperTeeth);
-  const lowerTeeth = new THREE.Mesh(teethArc(0, 0.011), toothMatLow); lowerTeeth.position.set(0, LIP_Y - 0.008 - PIVOT.y, 0.282 - PIVOT.z); jaw.add(lowerTeeth);
   const tongue = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), new THREE.MeshStandardMaterial({ color: 0xb8434f, roughness: 0.5 }));
   tongue.scale.set(0.034, 0.012, 0.04); tongue.position.set(0, LIP_Y - 0.022 - PIVOT.y, 0.276 - PIVOT.z); jaw.add(tongue);
 
