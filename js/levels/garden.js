@@ -18,6 +18,7 @@ import { Kit, tileTex, canvasTex, brickTex, woodTex, carpetTex, streetViewTex } 
 import { DartGame, dartboardTex, chalkCanvas } from '../darts.js';
 import { PingPong } from '../pingpong.js';
 import { Clutter } from './clutter.js';
+import { sofa, unitFronts, tv, stairRunner, fenceTex, wheelieBin } from './furniture.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 const _skyV = new THREE.Vector3();
 import { part, sph, cyl } from '../geo.js';
@@ -129,7 +130,10 @@ export function buildGarden(scene) {
   // ---------------- fences + the side gate ----------------
   const fence = (x0, z0, x1, z1) => {
     const len = Math.hypot(x1 - x0, z1 - z0), along = Math.abs(x1 - x0) > Math.abs(z1 - z0);
-    R(Math.min(x0, x1), Math.min(z0, z1) - (along ? 0.04 : 0), Math.max(x0, x1) + (along ? 0 : 0.04), Math.max(z0, z1) + (along ? 0.04 : 0), 1.8, 0.9, WOOD, { collide: true, block: true });
+    { const ax0 = Math.min(x0, x1), az0 = Math.min(z0, z1) - (along ? 0.04 : 0), ax1 = Math.max(x0, x1) + (along ? 0 : 0.04), az1 = Math.max(z0, z1) + (along ? 0.04 : 0);
+      k.texBox(ax1 - ax0, 1.8, az1 - az0, (ax0 + ax1) / 2, 0.9, (az0 + az1) / 2, fenceTex(), { tile: 0.9, collide: true, block: true });
+      for (const y of [0.3, 1.5]) along ? k.box(len, 0.08, 0.03, (x0 + x1) / 2, y, (z0 + z1) / 2 + 0.055, 0x6a4424) : k.box(0.03, 0.08, len, (x0 + x1) / 2 + 0.055, y, (z0 + z1) / 2, 0x6a4424);   // rails
+      along ? k.box(len, 0.04, 0.14, (x0 + x1) / 2, 1.82, (z0 + z1) / 2, 0x5a3a20) : k.box(0.14, 0.04, len, (x0 + x1) / 2, 1.82, (z0 + z1) / 2, 0x5a3a20); }   // capping rail
     for (let t = 0; t <= len; t += 1.8) { const px = x0 + (x1 - x0) * t / len, pz = z0 + (z1 - z0) * t / len; k.box(0.1, 1.95, 0.1, px, 0.975, pz, DARKWOOD); }
   };
   fence(B.x0, B.z0, B.x1, B.z0); fence(B.x0, B.z0, B.x0, 2); fence(B.x1, B.z0, B.x1, B.z1);
@@ -282,8 +286,8 @@ export function buildGarden(scene) {
   k.lamp(2.3, 2.45, 9.0, 0xfff4e0, 0.1);                                                              // hall light                                // kitchen | living room: solid (into the kitchen via the dining room)
   // --- kitchen: worktops round the side and back, sink, fridge, island bar with stools
   const TOP_C = 0x2a2a2e, UNIT = 0xf2f2ee;
-  R(3.9, 2.15, 4.4, 6.3, 0.9, 0.45, UNIT, { block: true }); R(3.86, 2.12, 4.42, 6.32, 0.04, 0.92, TOP_C, { collide: true });
-  R(1.35, 5.75, 3.86, 6.33, 0.9, 0.45, UNIT, { block: true }); R(1.33, 5.72, 3.86, 6.35, 0.04, 0.92, TOP_C, { collide: true });
+  R(3.9, 2.15, 4.4, 6.3, 0.9, 0.45, UNIT, { block: true }); unitFronts(k, 'z', 3.9, 2.55, 5.75, -1); R(3.86, 2.12, 4.42, 6.32, 0.04, 0.92, TOP_C, { collide: true });
+  R(1.35, 5.75, 3.86, 6.33, 0.9, 0.45, UNIT, { block: true }); unitFronts(k, 'x', 5.75, 1.35, 3.86, -1, UNIT, [[2.15, 2.75]]); R(1.33, 5.72, 3.86, 6.35, 0.04, 0.92, TOP_C, { collide: true });
   R(3.95, 4.7, 4.35, 5.4, 0.03, 0.935, 0x9aa0a8); k.cyl(0.02, 0.02, 0.3, 4.35, 1.08, 5.05, 0xc8c8c8, 6);   // sink + tap
   // the big fridge, left wide open: lit up inside, shelves of food and drink (some of it you can grab)
   { const X0 = -0.5, X1 = 0.4, ZF = 5.7, ZB = 6.33, H = 1.9, T = 0.04, WH = 0xe8e8ea, IN = 0xf6f8fa, GL = 0xd8eef4;
@@ -319,7 +323,8 @@ export function buildGarden(scene) {
     for (let i = 0; i < 4; i++) k.cyl(0.035, 0.035, 0.09, DX + 0.11, 1.31, DZ0 + 0.18 + i * 0.17, [0xffcc80, 0xef9a9a, 0xa5d6a7, 0xfff59d][i], 10);           // jars
     k.box(0.08, 0.04, 0.6, DX + 0.11, 1.64, DZ0 + 0.45, 0xfff8e1);                                                   // butter dish
   }
-  R(1.0, 2.5, 3.3, 4.1, 0.9, 0.45, 0x3a3a40, { block: true }); R(0.98, 2.52, 3.32, 4.15, 0.05, 0.945, 0xf0f0f0, { collide: true });   // the island runs straight off the counter under the window (a peninsula), no stools
+  R(1.0, 2.5, 3.3, 4.1, 0.9, 0.45, 0x3a3a40, { block: true });
+  unitFronts(k, 'z', 1.0, 2.5, 4.1, -1, 0x3a3a40); unitFronts(k, 'x', 4.1, 1.0, 3.3, 1, 0x3a3a40); unitFronts(k, 'z', 3.3, 2.5, 4.1, 1, 0x3a3a40); unitFronts(k, 'x', 2.5, 3.3, 3.8, 1); R(0.98, 2.52, 3.32, 4.15, 0.05, 0.945, 0xf0f0f0, { collide: true });   // the island runs straight off the counter under the window (a peninsula), no stools
   R(1.0, 2.15, 3.8, 2.5, 0.9, 0.45, UNIT, { block: true }); R(0.98, 2.13, 3.82, 2.52, 0.04, 0.92, TOP_C, { collide: true });     // under the window
   k.cyl(0.13, 0.11, 0.25, 3.0, 1.06, 2.32, 0x8a8a8a, 12);                                                                         // kettle
   for (const [x, z] of [[1.6, 3.7], [2.5, 3.2], [3.0, 3.8]]) k.spawns.push(new THREE.Vector3(x, 1.06, z));
@@ -331,28 +336,21 @@ export function buildGarden(scene) {
   R(-6.4, 3.0, -6.0, 5.6, 0.85, 0.425, 0x5a3a22, { block: true, collide: true });                // sideboard
   // --- living room: L sofa, armchair, corner TV, little table, stairs, hall
   const SOFA = 0x5a6a7a, CUSH = 0x6a7a8a;
-  R(-3.2, 11.15, 0.9, 11.9, 0.45, 0.225, SOFA, { block: true }); R(-3.2, 11.65, 0.9, 11.9, 0.85, 0.425, SOFA);   // along the front wall
-  R(0.2, 9.2, 0.9, 11.15, 0.45, 0.225, SOFA, { block: true }); R(0.65, 9.2, 0.9, 11.15, 0.85, 0.425, SOFA);     // the L, up the side
-  for (const x of [-2.6, -1.6, -0.6]) R(x - 0.45, 11.2, x + 0.45, 11.62, 0.12, 0.5, CUSH);
-  for (const z of [9.7, 10.6]) R(0.25, z - 0.42, 0.62, z + 0.42, 0.12, 0.5, CUSH);
+  sofa(k, { x: -1.15, z: 11.5, len: 4.1, depth: 0.8, ry: 0, color: SOFA, seats: 3, armR: false, pillows: 3, throwCol: 0x8a6a4a });   // along the front wall
+  sofa(k, { x: 0.52, z: 10.16, len: 1.9, depth: 0.76, ry: Math.PI / 2, color: SOFA, seats: 2, armR: false, pillows: 1 });   // the L, up the side
   k.spawns.push(new THREE.Vector3(-1.6, 0.62, 11.4));
   // a short wall off the end of the dining/kitchen wall into the room, with the armchair backed against it, facing the TV
   wallRun('x', 7.2, -2.2, -0.54, CEIL, [], { color: PAINT, t: 0.12 });                               // dining | living: a short wall out from the kitchen corner (the rest stays open)
-  { const ax = -1.35, az = 7.78, ry = Math.atan2(-(-5.9 - ax), -(11.4 - az)), c = Math.cos(ry), s = Math.sin(ry), COL = 0x6a3a2a, CUSH = 0x8a5a3a;
-    const at = (lx, lz) => [ax + lx * c + lz * s, az - lx * s + lz * c];
-    const rb = (w, h, d, lx, y, lz, col) => { const [px, pz] = at(lx, lz); k.box(w, h, d, px, y, pz, col, { rot: [0, ry, 0] }); };
-    rb(0.8, 0.4, 0.8, 0, 0.2, 0, COL); rb(0.62, 0.12, 0.6, 0, 0.46, -0.05, CUSH);                 // base + seat cushion
-    rb(0.8, 0.55, 0.18, 0, 0.67, 0.31, COL); rb(0.6, 0.4, 0.08, 0, 0.66, 0.2, CUSH);              // back
-    for (const sx of [-1, 1]) rb(0.13, 0.25, 0.8, sx * 0.335, 0.52, 0, COL);                     // arms
-    k.blockers.push({ x0: ax - 0.45, x1: ax + 0.45, z0: az - 0.45, z1: az + 0.45, y1: 0.8 });
-    k.spawns.push(new THREE.Vector3(ax, 0.6, az));
-  }
+  { const ax = -1.35, az = 7.78, ry = Math.atan2(-(-5.9 - ax), -(11.4 - az));
+    sofa(k, { x: ax, z: az, len: 0.95, depth: 0.85, ry, color: 0x6a3a2a, seats: 1, pillows: 1 }); k.spawns.push(new THREE.Vector3(ax, 0.6, az)); }
   R(-6.4, 8.2, -5.8, 9.0, 0.6, 0.3, 0x5a3a22, { block: true, collide: true }); k.spawns.push(new THREE.Vector3(-6.1, 0.66, 8.6));   // side table
-  k.box(1.3, 0.75, 0.06, -5.9, 1.3, 11.4, 0x111111, { rot: [0, Math.PI * 0.75, 0] });         // corner TV
-  k.box(1.22, 0.68, 0.02, -5.88, 1.3, 11.38, 0x2a5aa8, { rot: [0, Math.PI * 0.75, 0] });
-  R(-6.4, 11.1, -5.6, 11.9, 0.5, 0.25, 0x3a2a1a, { block: true });
+  R(-6.4, 11.1, -5.6, 11.9, 0.5, 0.25, 0x3a2a1a, { block: true, collide: true });                      // TV unit
+  for (const [dx, dz] of [[-0.25, 0.25], [0.25, -0.25]]) k.box(0.36, 0.36, 0.01, -6.0 + dx * 0.9, 0.25, 11.5 + dz * 0.9, 0x4a3a2a, { rot: [0, Math.PI * 0.75, 0] });
+  tv(k, scene, { x: -5.98, y: 0.93, z: 11.48, ry: Math.PI * 0.75 + Math.PI, w: 1.2 });                    // corner TV, the football on
+  k.box(0.3, 0.06, 0.24, -5.8, 0.53, 11.6, 0xf4f4f4, { rot: [0, 0.6, 0] });                              // games console
   for (let i = 0; i < 13; i++) R(3.4, 10.8 - (i + 1) * 0.34, 4.45, 10.8 - i * 0.34, 0.2 * (i + 1), 0.1 * (i + 1), i % 2 ? 0xd8d0c0 : 0xc8bfae, { collide: true });   // stairs up
   k.blockers.push({ x0: 3.4, x1: HX1, z0: 6.4, z1: 10.8, y1: 2.6 });
+  stairRunner(k, { x0: 3.62, x1: 4.23, zTop: 10.8 });
   // the banister follows the stairs up: newel post at the bottom, a sloped handrail, spindles off every step
   { const bx = 3.37, rise = (z) => 0.2 * (10.8 - z) / 0.34, zTop = 10.8 - 2.6 * 0.34 / 0.2 * (1.55 / 2.6);
     const y1 = rise(10.8) + 0.92, y2 = rise(zTop) + 0.92, dz = 10.8 - zTop, dy = y2 - y1;
@@ -704,12 +702,10 @@ export function buildGarden(scene) {
   k.table(DB.x + 2.75, -14.85, 0.5, 0.5, { round: true, h: 1.0, chairs: 0, spots: 0, top: 0x2a2a2a, legs: 0x9a9a9a });   // where the darts wait
   const DART_STAND = [-0.1, 0, 0.1].map(dz => new THREE.Vector3(DB.x + 2.75 + dz * 0.5, 1.06, -14.85 + dz));
   // lounge: sofa along the back, round table, armchair, seats
-  R(0.2, CZ0 + 0.1, 3.2, CZ0 + 0.95, 0.45, 0.225, 0x3a3a4a, { block: true }); R(0.2, CZ0 + 0.1, 3.2, CZ0 + 0.35, 0.9, 0.45, 0x3a3a4a);
-  for (const s of [0.2, 3.0]) R(s, CZ0 + 0.1, s + 0.2, CZ0 + 0.95, 0.65, 0.325, 0x3a3a4a);
-  for (const x of [0.9, 1.7, 2.5]) R(x - 0.38, CZ0 + 0.38, x + 0.38, CZ0 + 0.9, 0.12, 0.5, 0x4a4a5a);
+  sofa(k, { x: 1.7, z: CZ0 + 0.52, len: 3.0, depth: 0.86, ry: Math.PI, color: 0x3a3a4a, seats: 3, pillows: 2, throwCol: 0x6a2a2a });
   k.spawns.push(new THREE.Vector3(1.7, 0.62, CZ0 + 0.65));
   k.table(4.3, -15.2, 0.9, 0.9, { round: true, chairs: 0, top: 0x6a4a2a, legs: 0x3a2a1a, spots: 1 });
-  R(3.75, -12.85, 4.65, -11.95, 0.45, 0.225, 0x7a2a2a, { block: true }); R(4.45, -12.85, 4.75, -11.95, 0.9, 0.45, 0x7a2a2a); for (const z of [-12.85, -11.95]) R(3.75, z - 0.08, 4.75, z + 0.08, 0.65, 0.325, 0x7a2a2a);   // armchair, facing the sofa
+  sofa(k, { x: 4.25, z: -12.4, len: 0.95, depth: 0.9, ry: Math.PI / 2, color: 0x7a2a2a, seats: 1, pillows: 1 });   // armchair, facing the sofa
   // the seats all turn in to face the room (a chair faces -z at ry 0, so face (tx, tz) with atan2(-dx, -dz))
   { const face = (x, z, tx, tz) => Math.atan2(-(tx - x), -(tz - z)); for (const [x, z] of [[0.05, -12.6], [0.6, -11.7], [4.3, -14.1]]) k.chair(x, z, face(x, z, 2.2, -13.4), 0x2a2a2a, 0x4a4a4a); }
   R(1.6, -12.95, 3.0, -12.35, 0.42, 0.21, 0x5a3a22, { collide: true, block: true }); k.spawns.push(new THREE.Vector3(2.3, 0.5, -12.65));   // coffee table
@@ -860,6 +856,7 @@ export function buildGarden(scene) {
       run(P + 0.06, Z0, X1, Z0); run(X1, Z0, X1, Z1); run(X1, Z1, P + 0.06, Z1); run(P + 0.06, Z1, P + 0.06, Z0);      // lounge
     }
   }
+  wheelieBin(k, { x: 4.75, z: 0.12, ry: Math.PI, col: 0x1a1a1a }); wheelieBin(k, { x: 3.95, z: 0.12, ry: Math.PI, col: 0x2e6a2e }); wheelieBin(k, { x: 5.55, z: 0.12, ry: Math.PI, col: 0x2a4a8a });
   // the rusty garden incinerator by the front-right corner of the cabin, straw poking out under the lid
   { const ix = 5.6, iz = -11.45, RUST = [0x8a4a22, 0x9a5a2a, 0x7a3e1c, 0xa8622e];
     k.cyl(0.26, 0.27, 0.62, ix, 0.31, iz, 0x8a4a22, 18, { block: true, collide: true });
