@@ -172,7 +172,17 @@ export function buildGarden(scene) {
   for (const x of [-2.6, -1.6, -0.6]) R(x - 0.45, 11.2, x + 0.45, 11.62, 0.12, 0.5, CUSH);
   for (const z of [9.7, 10.6]) R(0.25, z - 0.42, 0.62, z + 0.42, 0.12, 0.5, CUSH);
   k.spawns.push(new THREE.Vector3(-1.6, 0.62, 11.4));
-  k.chair(-2.4, 8.6, -Math.PI * 0.75, 0x6a3a2a, 0x8a5a3a); R(-2.75, 8.25, -2.05, 8.95, 0.3, 0.5, 0x6a3a2a, { rot: [0, Math.PI / 4, 0] });   // armchair
+  // a short wall off the end of the dining/kitchen wall into the room, with the armchair backed against it, facing the TV
+  wallRun('z', -0.6, 6.4, 8.7, CEIL, [], { color: PAINT, t: 0.12 });
+  { const ax = -1.12, az = 8.15, ry = Math.atan2(-(-5.9 - ax), -(11.4 - az)), c = Math.cos(ry), s = Math.sin(ry), COL = 0x6a3a2a, CUSH = 0x8a5a3a;
+    const at = (lx, lz) => [ax + lx * c + lz * s, az - lx * s + lz * c];
+    const rb = (w, h, d, lx, y, lz, col) => { const [px, pz] = at(lx, lz); k.box(w, h, d, px, y, pz, col, { rot: [0, ry, 0] }); };
+    rb(0.8, 0.4, 0.8, 0, 0.2, 0, COL); rb(0.62, 0.12, 0.6, 0, 0.46, -0.05, CUSH);                 // base + seat cushion
+    rb(0.8, 0.55, 0.18, 0, 0.67, 0.31, COL); rb(0.6, 0.4, 0.08, 0, 0.66, 0.2, CUSH);              // back
+    for (const sx of [-1, 1]) rb(0.13, 0.25, 0.8, sx * 0.335, 0.52, 0, COL);                     // arms
+    k.blockers.push({ x0: ax - 0.45, x1: ax + 0.45, z0: az - 0.45, z1: az + 0.45, y1: 0.8 });
+    k.spawns.push(new THREE.Vector3(ax, 0.6, az));
+  }
   R(-6.4, 8.2, -5.8, 9.0, 0.6, 0.3, 0x5a3a22, { block: true, collide: true }); k.spawns.push(new THREE.Vector3(-6.1, 0.66, 8.6));   // side table
   k.box(1.3, 0.75, 0.06, -5.9, 1.3, 11.4, 0x111111, { rot: [0, Math.PI * 0.75, 0] });         // corner TV
   k.box(1.22, 0.68, 0.02, -5.88, 1.3, 11.38, 0x2a5aa8, { rot: [0, Math.PI * 0.75, 0] });
