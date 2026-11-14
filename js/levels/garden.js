@@ -519,9 +519,9 @@ export function buildGarden(scene) {
   const GX0 = 2.1, GX1 = B.x1, GZ0 = -5.6, GZ1 = -0.3, GH = 2.5;
   k.floor(GX0, GZ0, GX1, -2.4, tileTex('#8a8a86', '#84847f', '#6a6a66', 128), 0.007, 2);
   k.floor(GX0, -2.4, GX1, GZ1, tileTex('#5e5a54', '#57534d', '#3e3b37', 128), 0.007, 1.6);         // the outside loo: old stained concrete
-  wallRun('z', GX0, GZ0, GZ1, GH, [[-4.2, -3.2, 0, 2.0]], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
+  wallRun('z', GX0, GZ0, GZ1, GH, [[-4.2, -3.2, 0, 2.0], [-1.75, -1.05, 1.3, 1.85]], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
   wallRun('x', GZ0, GX0, GX1, GH, [[4.4, 5.6, 1.1, 1.9]], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
-  wallRun('x', GZ1, GX0, GX1, GH, [[5.45, 6.15, 1.3, 1.85]], { color: RENDER, inColor: 0xd8d4cc, inSign: -1 });
+  wallRun('x', GZ1, GX0, GX1, GH, [], { color: RENDER, inColor: 0xd8d4cc, inSign: -1 });
   wallRun('z', GX1 - 0.1, GZ0, GZ1, GH, [], { color: RENDER, inColor: 0xd8d4cc, inSign: -1 });
   wallRun('x', -2.4, GX0, GX1, GH, [[2.6, 3.4, 0, 2.0]], { color: RENDER, t: 0.12 });                // garage | toilet (the loo's only door is in here)
   glaze('x', GZ0, 4.4, 5.6, 1.1, 1.9);
@@ -555,39 +555,45 @@ export function buildGarden(scene) {
     k.box(0.75, 1.75, 0.02, SX0 + 0.75, 0.9, SZ0 - 0.01, 0x84a894); k.cyl(0.02, 0.02, 0.06, SX0 + 1.0, 0.95, SZ0 - 0.04, 0x222222, 6);
     for (const y of [0.35, 1.45]) k.box(0.7, 0.04, 0.02, SX0 + 0.75, y, SZ0 - 0.025, 0x333333);     // hinges
   }
-  // the outside toilet: grubby walls, a bare bulb, an old high-level cistern with a pull chain,
-  // a ladder stood behind the loo, and a frosted window opposite
-  { const GRIME = 0x77716a, DIRT = 0x5c5750;
-    k.box(GX1 - 0.1 - GX0 - 0.1, GH, 0.01, (GX0 + GX1 - 0.1 + 0.1) / 2, GH / 2, -2.4 + 0.067, GRIME);      // inner faces, dark
-    k.box(0.01, GH, 2.1, GX0 + 0.113, GH / 2, -1.35, GRIME); k.box(0.01, GH, 2.1, GX1 - 0.213, GH / 2, -1.35, GRIME);
-    for (const [a, b] of [[GX0 + 0.1, 5.45], [6.15, GX1 - 0.2]]) k.box(b - a, GH, 0.01, (a + b) / 2, GH / 2, GZ1 - 0.113, GRIME);
-    k.box(0.7, 1.3, 0.01, 5.8, 0.65, GZ1 - 0.113, GRIME); k.box(0.7, GH - 1.85, 0.01, 5.8, (GH + 1.85) / 2, GZ1 - 0.113, GRIME);
-    for (let i = 0; i < 26; i++) k.box(0.1 + rnd() * 0.4, 0.05 + rnd() * 0.3, 0.005, GX0 + 0.3 + rnd() * 3.8, 0.1 + rnd() * 2.2, -2.4 + 0.073, [DIRT, 0x6a5e48, 0x4e4a44][i % 3]);   // damp patches
+  // the outside toilet: in through the door from the garage; the frosted window on the right-hand wall as you
+  // come in, the loo opposite it on the far wall with the old high-level cistern and pull chain, a ladder stood behind it
+  { const GRIME = 0x77716a, DIRT = 0x5c5750, WZ0 = -1.75, WZ1 = -1.05, TX = GX1 - 0.2 - 0.32, TZ = -1.4;
+    const zIn = -2.4 + 0.067, xL = GX0 + 0.113, xR = GX1 - 0.213, zF = GZ1 - 0.113;
+    // grubby inside faces (all leave the doorway and the window open)
+    for (const [a, b] of [[GX0 + 0.1, 2.6], [3.4, GX1 - 0.2]]) k.box(b - a, GH, 0.01, (a + b) / 2, GH / 2, zIn, GRIME);
+    k.box(0.8, GH - 2.0, 0.01, 3.0, (GH + 2.0) / 2, zIn, GRIME);                                            // above the door
+    for (const [a, b] of [[-2.4, WZ0], [WZ1, GZ1]]) k.box(0.01, GH, b - a, xL, GH / 2, (a + b) / 2, GRIME);
+    k.box(0.01, 1.3, WZ1 - WZ0, xL, 0.65, (WZ0 + WZ1) / 2, GRIME); k.box(0.01, GH - 1.85, WZ1 - WZ0, xL, (GH + 1.85) / 2, (WZ0 + WZ1) / 2, GRIME);
+    k.box(0.01, GH, 2.1, xR, GH / 2, -1.35, GRIME); k.box(GX1 - GX0 - 0.3, GH, 0.01, (GX0 + GX1 - 0.1) / 2, GH / 2, zF, GRIME);
+    for (let i = 0; i < 26; i++) { const x = GX0 + 0.3 + rnd() * 3.8; if (x > 2.45 && x < 3.55) continue; k.box(0.1 + rnd() * 0.4, 0.05 + rnd() * 0.3, 0.005, x, 0.1 + rnd() * 2.2, zIn + 0.006, [DIRT, 0x6a5e48, 0x4e4a44][i % 3]); }   // damp patches
+    for (let i = 0; i < 14; i++) k.box(0.005, 0.05 + rnd() * 0.3, 0.1 + rnd() * 0.4, xR - 0.006, 0.1 + rnd() * 2.2, -2.3 + rnd() * 1.9, [DIRT, 0x6a5e48][i % 2]);
     const lc = new THREE.Mesh(new THREE.PlaneGeometry(GX1 - GX0 - 0.2, 2.1), new THREE.MeshBasicMaterial({ color: 0x4a4740 }));
     lc.rotation.x = Math.PI / 2; lc.position.set((GX0 + GX1 - 0.1) / 2, GH - 0.012, -1.35); scene.add(lc);
-    // frosted window (you can't see through it), opposite the loo
-    const fw = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.55), new THREE.MeshBasicMaterial({ map: frostedTex(), color: 0xc8d0c8 })); fw.position.set(5.8, 1.575, GZ1 - 0.02); fw.rotation.y = Math.PI; scene.add(fw);
-    const fw2 = fw.clone(); fw2.rotation.y = 0; fw2.position.z = GZ1 + 0.02; scene.add(fw2);
-    for (const [w, h, x, y] of [[0.76, 0.05, 5.8, 1.85], [0.76, 0.05, 5.8, 1.3], [0.05, 0.6, 5.45, 1.575], [0.05, 0.6, 6.15, 1.575]]) for (const z of [GZ1 - 0.09, GZ1 + 0.09]) k.box(w, h, 0.04, x, y, z, 0xd8d0b8);
-    // the loo itself: yellowed bowl, wooden seat
-    k.cyl(0.2, 0.16, 0.42, 5.95, 0.21, -1.65, 0xd8d0b4, 14, { block: true }); k.cyl(0.22, 0.22, 0.035, 5.95, 0.445, -1.65, 0x6a4a2a, 14); k.cyl(0.13, 0.13, 0.04, 5.95, 0.45, -1.65, 0x2a2420, 12);
-    k.box(0.36, 0.5, 0.03, 5.95, 0.72, -1.88, 0x6a4a2a, { rot: [-0.18, 0, 0] });                               // seat lid, up
-    // high-level cistern on brackets with the long flush pipe and the pull chain
-    k.box(0.46, 0.24, 0.2, 5.95, 2.22, -2.21, 0x2a3a2e); k.box(0.48, 0.03, 0.22, 5.95, 2.35, -2.21, 0x1e2a22);
-    for (const x of [5.78, 6.12]) k.box(0.03, 0.03, 0.2, x, 2.08, -2.24, 0x222222);
-    k.cyl(0.022, 0.022, 1.7, 5.95, 1.23, -2.28, 0x3a3a36, 8); k.box(0.04, 0.04, 0.42, 5.95, 0.42, -2.07, 0x3a3a36);
-    k.box(0.22, 0.02, 0.02, 6.13, 2.13, -2.13, 0x222222);
-    for (let i = 0; i < 14; i++) k.box(0.008, 0.045, 0.008, 6.24, 2.1 - i * 0.05, -2.13, 0x8a8a80);         // chain
-    k.box(0.04, 0.1, 0.04, 6.24, 1.37, -2.13, 0xe8e0c8);                                                   // pull handle
-    // ladder stood up behind the loo, against the wall
-    for (const x of [5.62, 6.0]) k.box(0.05, 2.45, 0.04, x, 1.2, -2.18, 0x8a8a8a, { rot: [-0.12, 0, 0] });
-    for (let i = 0; i < 7; i++) k.box(0.38, 0.025, 0.03, 5.81, 0.25 + i * 0.3, -2.06 - i * 0.036, 0x7a7a7a);
-    // bits and bobs: loo rolls, a bucket, a broom, a cobweb
-    for (let i = 0; i < 2; i++) k.cyl(0.055, 0.055, 0.1, 6.25, 0.05 + i * 0.1, -0.6, 0xe8e4d8, 10);
+    // the frosted window (you can't see through it either way)
+    const wm = (Math.PI / 2), fz = (WZ0 + WZ1) / 2;
+    for (const [x, r] of [[GX0 + 0.02, wm], [GX0 - 0.02, -wm]]) { const fw = new THREE.Mesh(new THREE.PlaneGeometry(WZ1 - WZ0, 0.55), new THREE.MeshBasicMaterial({ map: frostedTex(), color: 0xc8d0c8 })); fw.position.set(x, 1.575, fz); fw.rotation.y = r; scene.add(fw); }
+    for (const x of [GX0 - 0.09, GX0 + 0.09]) { k.box(0.04, 0.05, WZ1 - WZ0 + 0.06, x, 1.85, fz, 0xd8d0b8); k.box(0.04, 0.05, WZ1 - WZ0 + 0.06, x, 1.3, fz, 0xd8d0b8); k.box(0.04, 0.6, 0.05, x, 1.575, WZ0, 0xd8d0b8); k.box(0.04, 0.6, 0.05, x, 1.575, WZ1, 0xd8d0b8); }
+    k.box(0.18, 0.03, WZ1 - WZ0 + 0.2, GX0 + 0.15, 1.28, fz, 0xd8d0b8);                                     // sill
+    // the loo itself, against the far wall, facing the window: yellowed bowl, wooden seat (lid up)
+    k.cyl(0.2, 0.16, 0.42, TX, 0.21, TZ, 0xd8d0b4, 14, { block: true }); k.cyl(0.22, 0.22, 0.035, TX, 0.445, TZ, 0x6a4a2a, 14); k.cyl(0.13, 0.13, 0.04, TX, 0.45, TZ, 0x2a2420, 12);
+    k.box(0.03, 0.5, 0.36, TX + 0.23, 0.72, TZ, 0x6a4a2a, { rot: [0, 0, 0.18] });
+    // high-level cistern on brackets, the long flush pipe down to the bowl, the pull chain
+    const WX = xR - 0.1;
+    k.box(0.2, 0.24, 0.46, WX, 2.22, TZ, 0x2a3a2e); k.box(0.22, 0.03, 0.48, WX, 2.35, TZ, 0x1e2a22);
+    for (const z of [TZ - 0.17, TZ + 0.17]) k.box(0.2, 0.03, 0.03, WX + 0.02, 2.08, z, 0x222222);
+    k.cyl(0.022, 0.022, 1.7, WX + 0.04, 1.23, TZ, 0x3a3a36, 8); k.box(0.3, 0.04, 0.04, TX + 0.12, 0.42, TZ, 0x3a3a36);
+    k.box(0.02, 0.02, 0.22, WX - 0.08, 2.13, TZ - 0.18, 0x222222);
+    for (let i = 0; i < 14; i++) k.box(0.008, 0.045, 0.008, WX - 0.08, 2.1 - i * 0.05, TZ - 0.29, 0x8a8a80);
+    k.box(0.04, 0.1, 0.04, WX - 0.08, 1.37, TZ - 0.29, 0xe8e0c8);                                         // pull handle
+    // the ladder stood up behind the loo, against the far wall
+    for (const z of [TZ - 0.2, TZ + 0.2]) k.box(0.04, 2.45, 0.05, xR - 0.06, 1.2, z, 0x8a8a8a, { rot: [0, 0, 0.12] });
+    for (let i = 0; i < 7; i++) k.box(0.03, 0.025, 0.38, xR - 0.03 - i * 0.036, 0.25 + i * 0.3, TZ, 0x7a7a7a);
+    // bits and bobs: loo rolls, a bucket, a broom, a cobweb, the sign
+    for (let i = 0; i < 2; i++) k.cyl(0.055, 0.055, 0.1, xR - 0.12, 0.05 + i * 0.1, -0.55, 0xe8e4d8, 10);
     k.cyl(0.055, 0.055, 0.1, 5.3, 0.055, -0.75, 0xe8e4d8, 10);
-    k.cyl(0.14, 0.11, 0.3, 2.5, 0.15, -0.7, 0x2a5a8a, 12); k.box(0.03, 1.3, 0.03, 2.3, 0.65, -0.55, 0x6a4a2a, { rot: [0.15, 0, 0.12] }); k.box(0.28, 0.08, 0.1, 2.31, 0.05, -0.47, 0x3a2a1a);
-    for (let i = 0; i < 6; i++) k.box(0.002, 0.002, 0.45, GX1 - 0.35, GH - 0.08 - i * 0.03, -2.15 + i * 0.03, 0xdddddd, { rot: [0, 0.8, 0] });
-    k.label('PLEASE DON\'T, RONNIE', 0.5, 0.18, [GX0 + 0.12, 1.6, -1.35], [0, Math.PI / 2, 0], { bg: '#e8e0c8', fg: '#8a1a1a', border: '#8a1a1a', size: 40 });
+    k.cyl(0.14, 0.11, 0.3, 2.5, 0.15, -0.6, 0x2a5a8a, 12); k.box(0.03, 1.3, 0.03, 2.3, 0.65, -0.5, 0x6a4a2a, { rot: [0.15, 0, 0.12] }); k.box(0.28, 0.08, 0.1, 2.31, 0.05, -0.42, 0x3a2a1a);
+    for (let i = 0; i < 6; i++) k.box(0.002, 0.002, 0.45, GX1 - 0.35, GH - 0.08 - i * 0.03, -0.55 - i * 0.03, 0xdddddd, { rot: [0, 0.8, 0] });
+    k.label('PLEASE DON\'T, RONNIE', 0.5, 0.18, [4.4, 1.6, zF - 0.008], [0, Math.PI, 0], { bg: '#e8e0c8', fg: '#8a1a1a', border: '#8a1a1a', size: 40 });
     k.cyl(0.003, 0.003, 0.3, 4.2, GH - 0.16, -1.35, 0x111111, 4); k.lamp(4.2, GH - 0.34, -1.35, 0xffd890, 0.035);   // bare bulb
   }
   // the wheelbarrow behind the garage
