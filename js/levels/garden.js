@@ -535,8 +535,11 @@ export function buildGarden(scene) {
     for (let i = 0; i < 2; i++) { for (let j = 0; j < 5; j++) k.box(0.025, 1.0, 0.1, 1.95 - i * 0.12, 0.5, -2.6 + j * 0.2, 0xa8865a, { rot: [0, 0, 0.12] }); k.box(0.05, 0.08, 1.0, 1.92 - i * 0.12, 0.15, -2.2, 0x9a7a4a, { rot: [0, 0, 0.12] }); k.box(0.05, 0.08, 1.0, 1.82 - i * 0.12, 0.85, -2.2, 0x9a7a4a, { rot: [0, 0, 0.12] }); }
     k.cyl(0.2, 0.2, 0.06, 1.55, 0.35, -1.6, 0x2e7d32, 14); k.cyl(0.07, 0.07, 0.3, 1.55, 0.35, -1.6, 0x1b5e20, 10); for (let i = 0; i < 6; i++) k.cyl(0.21 - i * 0.012, 0.21 - i * 0.012, 0.015, 1.55, 0.25 + i * 0.03, -1.6, 0x3a8a3a, 14);
     k.cyl(0.02, 0.15, 0.5, 1.5, 0.25, -0.9, 0xff5a1a, 12); for (const y of [0.22, 0.35]) k.cyl(0.11 - (y - 0.2) * 0.25, 0.12 - (y - 0.2) * 0.25, 0.05, 1.5, y, -0.9, 0xffffff, 12); k.box(0.32, 0.03, 0.32, 1.5, 0.015, -0.9, 0x111111);   // traffic cone
-    k.chair(1.45, -3.2, -Math.PI / 2, 0x2e6a3e, 0x3a7a4a);
-    for (const [x, z] of [[1.6, -3.9], [1.35, -4.1]]) k.parts.push(part(sph(0.24, 8, 6), 0x111111, [x, 0.22, z], [0, 0, 0], [1, 1.15, 1]));
+    // buckets stacked and lined up against the wall, to the left of the garage door
+    const bucket = (x, z, col, y = 0, tip = 0) => { k.parts.push(part(new THREE.CylinderGeometry(0.15, 0.12, 0.3, 14, 1, true), col, [x, y + 0.15, z], [0, 0, tip])); k.cyl(0.12, 0.12, 0.01, x, y + 0.005, z, col, 14); k.cyl(0.155, 0.155, 0.02, x, y + 0.3, z, col, 14);
+      k.parts.push(part(new THREE.TorusGeometry(0.15, 0.006, 4, 14, Math.PI), 0x888888, [x, y + 0.3, z], [0, Math.PI / 2, 0])); };
+    bucket(1.88, -4.5, 0x2a6ac8); bucket(1.88, -4.5, 0x2a6ac8, 0.22); bucket(1.86, -4.88, 0x111111); bucket(1.55, -4.75, 0xd84315); bucket(1.86, -5.22, 0xf4f4f0);
+    k.blockers.push({ x0: 1.38, x1: 2.05, z0: -5.4, z1: -4.32, y1: 0.55 });
   }
   // patio table + chairs on the right, cool box
   // a tiny round bistro table against the house wall, one rusty black garden chair
