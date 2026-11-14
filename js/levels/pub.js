@@ -123,7 +123,7 @@ export function buildPub(scene) {
   // the top wall of the pub floor: the corridor opening, the women's door
   WX(605, 195, 615, [[362, 410], [430, 472]]);
   // women's
-  WX(345, 415, 615, [], WALL); WZ(615, 345, 710);
+  WX(345, 415, 615, [], WALL); WZ(615, 345, 605); WZ(615, 605, 710, [], DARKWOOD, 1.1);   // (low beside the DJ booth, full height from the entrance)
   // entrance booking area (the front doors are on the angled top-right corner)
   WD(615, 465, 695, 385, WALL); WX(385, 695, 775, [], WALL);
   const door = WD(775, 385, 835, 425, 0x3a2416, H, 0.1);
@@ -788,7 +788,7 @@ export function buildPub(scene) {
   const signs = [
     ['STAFF OF THE MONTH: RONNIE (ATE THE CERTIFICATE)', 0.9, 0.7, [X(195) + 0.12, 1.8, Z(650)], [0, Math.PI / 2, 0], {}],
     ["TODAY'S SPECIALS: WHATEVER RONNIE HASN'T EATEN", 0.8, 1.0, [X(195) + 0.12, 1.55, Z(1160)], [0, Math.PI / 2, 0], { bg: '#1b2a1b', fg: '#f5f0e6', border: '#8a6a3a', size: 56 }],
-    ['MAX OCCUPANCY: 120 (OR 3 RONNIES)', 1.1, 0.45, [X(615) + 0.09, 1.9, Z(660)], [0, Math.PI / 2, 0], {}],
+    ['MAX OCCUPANCY: 120 (OR 3 RONNIES)', 1.1, 0.45, [X(615) + 0.09, 1.9, Z(540)], [0, Math.PI / 2, 0], {}],
     ['QUIZ NIGHT — Q1: How many pies did Ronnie eat last night? A: Yes.', 1.0, 0.7, [X(480), 1.9, Z(1305) + 0.105], [0, 0, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 48 }],
     ['WE DO NOT SERVE SALAD ("YES YOU DO" — Chloe)', 1.0, 0.5, [X(540), 1.9, Z(1305) + 0.105], [0, 0, 0], { bg: '#fff', fg: '#c0392b' }],
     ['OYSTERFLEET PIE-EATING CHAMPION — RONNIE (UNDEFEATED, UNCHALLENGED, UNWELL)', 1.0, 0.5, [X(195) + 0.12, 2.62, Z(1252)], [0, Math.PI / 2, 0], { bg: '#d4af37', fg: '#111', border: '#7a5a10', size: 48 }],
