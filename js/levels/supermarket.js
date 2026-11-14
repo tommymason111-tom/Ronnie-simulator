@@ -29,6 +29,7 @@ const inPoly = (poly, x, z) => { let c = false; for (let i = 0, j = poly.length 
 const inside = (x, z) => INSIDE.some(p => inPoly(p, x, z));
 
 export function buildSupermarket(scene) {
+  const sceneStart = scene.children.length;
   const k = new Kit(scene, { x0: -11, x1: 14.4, z0: -14.7, z1: 14.7, y1: H });
   const WALL = 0xf4f4f2, BLUE = 0x1e4ea8, YEL = 0xffd400, RED = 0xe53935, SHELF = 0xc6c9cd, LEDGE = 0xdadcdf, BLACK = 0x26282c, STEEL = 0xa8aeb6, CHROME = 0xd8dce0, WHITE = 0xfafafa;
   const R = (x0, z0, x1, z1, h, y, color, opts) => k.box(Math.abs(x1 - x0), h, Math.abs(z1 - z0), (x0 + x1) / 2, y ?? h / 2, (z0 + z1) / 2, color, opts);
@@ -535,17 +536,19 @@ export function buildSupermarket(scene) {
   for (let i = 0; i < 4; i++) R(11.3, 14.1, 11.9, 14.5, 0.22, 0.12 + i * 0.22, i % 2 ? YEL : BLUE);
   blk(11.25, 14.05, 11.95, 14.55, 1);
 
+  widenAisles(k, scene, sceneStart, stock, dorm);
   stock.build(scene);
   dorm.build(scene);
   const room = k.finish({
     name: 'Lidl',
     sky: 0xf4f8ff, ground: 0x9a9a9a, hemiI: 2.2, sun: 0xffffff, sunI: 0.9, sunPos: [3, 10, 6],
     start: { x: 12.9, z: 10.25, yaw: Math.PI / 2 },       // in the foyer by the flowers, facing the way in
-    board: { x: -10.89, y: 1.6, z: -4.6, ry: Math.PI / 2 },
+    board: { x: widenX(-10.89), y: 1.6, z: -4.6, ry: Math.PI / 2 },
     startFood: ['can', 'burger', 'pizza', 'doughnut', 'doughnut', 'doughnut', 'burger', 'pizza', 'can', 'doughnut', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza', 'doughnut', 'can'],
     spotCount: 36,
   });
   room.dormant = dorm;
+  room.tills = [-3.45, -0.99, 1.53].map(widenX);
   return room;
 }
 
@@ -602,4 +605,56 @@ function logoTex() {
     g.fillStyle = '#e53935'; g.beginPath(); g.arc(120, h / 2, 60, 0, 7); g.fill();
     g.fillStyle = '#fff'; g.font = `900 170px ${FONT}`; g.textBaseline = 'middle'; g.textAlign = 'center'; g.fillText('LIDL', (240 + w) / 2, h / 2 + 8);
   });
+}
+
+// ---------------------------------------------------------------- double-width aisles
+// The shop is laid out on the plan's grid, then every walkway between the shelf runs is doubled in width:
+// the shelf units keep their size and slide apart, the left wall goes back, and anything long (walls, floors,
+// the back fridges, rails, windows) stretches to suit. widenX maps an old x to its new place.
+const AISLES = [[-10.2, -8.45], [-6.98, -5.06], [-3.94, -1.86], [-0.74, 0.13], [1.57, 2.52]];   // the walkways (free in both halves)
+export function widenX(x) {
+  let sh = 0;
+  for (let i = AISLES.length - 1; i >= 0; i--) {
+    const [a, b] = AISLES[i], e = b - a;
+    if (x >= b) continue;
+    if (x <= a) { sh -= e; continue; }
+    sh -= e * (b - x) / (b - a);
+  }
+  return x + sh;
+}
+function widenAisles(k, scene, sceneStart, stock, dorm) {
+  const M = widenX, RIGID = 1.0, box = new THREE.Box3();
+  const mapRange = (a, b) => (b - a < RIGID) ? [a + M((a + b) / 2) - (a + b) / 2, b + M((a + b) / 2) - (a + b) / 2] : [M(a), M(b)];
+  // the merged geometry
+  for (const g of k.parts) {
+    g.computeBoundingBox(); const bb = g.boundingBox, pa = g.attributes.position;
+    const xl = bb.max.x - bb.min.x, signBoard = xl < 4 && bb.max.z - bb.min.z < 0.06 && bb.max.y - bb.min.y > 0.2;    // (sign boards move, they don't stretch)
+    if (xl < RIGID || signBoard) { const d = M((bb.min.x + bb.max.x) / 2) - (bb.min.x + bb.max.x) / 2; if (d) g.translate(d, 0, 0); }
+    else { for (let i = 0; i < pa.count; i++) pa.setX(i, M(pa.getX(i))); pa.needsUpdate = true; g.computeBoundingBox(); g.computeBoundingSphere(); }
+  }
+  // meshes already in the scene: signs move, long panels (floors, windows, textured walls, the ceiling) stretch
+  for (const o of scene.children.slice(sceneStart)) {
+    if (!o.isMesh) continue;
+    o.updateMatrixWorld(true); box.setFromObject(o);
+    const a = box.min.x, b = box.max.x, cx = (a + b) / 2;
+    if (o.userData.sign || b - a < RIGID) { o.position.x += M(cx) - cx; continue; }
+    const r = (M(b) - M(a)) / (b - a); if (Math.abs(r - 1) < 1e-4) { o.position.x += M(cx) - cx; continue; }
+    const lx = new THREE.Vector3(1, 0, 0).applyQuaternion(o.quaternion);
+    if (Math.abs(lx.x) > 0.9) o.scale.x *= r; else o.scale.z *= r;                       // (the local axis that lies along world x)
+    o.position.x = (M(a) + M(b)) / 2 + (o.position.x - cx) * r;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    o.material = mats.map(m => { if (!m.map) return m; const c = m.clone(); c.map = m.map.clone(); c.map.needsUpdate = true; c.map.wrapS = THREE.RepeatWrapping; c.map.repeat.x *= r; return c; });
+    if (!Array.isArray(o.userData.mats) && o.material.length === 1) o.material = o.material[0];
+  }
+  for (const c of k.colliders) [c.min.x, c.max.x] = mapRange(c.min.x, c.max.x);
+  for (const b of k.blockers) [b.x0, b.x1] = mapRange(b.x0, b.x1);
+  for (const r of k.boxRec || []) [r.min[0], r.max[0]] = mapRange(r.min[0], r.max[0]);
+  for (const p of k.spawns) p.x = M(p.x);
+  for (const L of k.lights || []) L.l.position.x = M(L.l.position.x);
+  for (const [, list] of k.lamps || []) for (const l of list) l[0] = M(l[0]);
+  for (const gb of [k.halos, k.pools]) if (gb) for (const l of gb.list) l[0] = M(l[0]);
+  for (const v of (k.inst || new Map()).values()) for (const m of v.list) m.elements[12] = M(m.elements[12]);
+  for (const r of stock.runs) { if (r.alongX) { r.z0 = M(r.z0); r.z1 = M(r.z1); } else r.x = M(r.x); }
+  for (const e of dorm.entries) e.pos.x = M(e.pos.x);
+  k.bounds.x0 = M(k.bounds.x0);
 }

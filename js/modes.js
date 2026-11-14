@@ -726,7 +726,7 @@ export class Director {
   // ------------------------------------------------------------------ LIDL STAFF
   // Oliver and Aidan W work here (uniforms on), and three of the squad are on the tills.
   setupLidlStaff(id) {
-    const g = this.g, TILLS = [-3.45, -0.99, 1.53], first = (c) => c.def.name.split(' ')[0];
+    const g = this.g, TILLS = g.room.tills || [-3.45, -0.99, 1.53], first = (c) => c.def.name.split(' ')[0];
     for (const c of this.cast) if (c.id === 'oliver' || c.id === 'aidanw') c.rag.wearUniform(c.id === 'aidanw' ? 'Aidan W' : first(c));
     let workers;
     if (id === 'roam') workers = shuffle(this.cast.filter(c => c !== g.tommy && c.id !== 'oliver' && c.id !== 'aidanw')).slice(0, 3);
