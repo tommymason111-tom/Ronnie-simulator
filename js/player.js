@@ -464,6 +464,7 @@ export class Player {
   flatThrow(power = 7) {
     const f = this.flatHolder, it = f?.held;
     if (!it) return;
+    if (it.def.bat && this.room && this.room.pingpong) { this.room.pingpong.smash(); return; }     // THROW with the bat = smash / serve
     f.held = null; it.heldBy = null;
     it.vel.copy(this.fwd).multiplyScalar(power); it.vel.y += 1.6;
     // darts on a phone/PC: they go where the middle of the screen is pointing (give or take a wobble)

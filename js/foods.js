@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { FOODS, TUNING, pickJunk } from './config.js';
 import { part, merge, vcLambert, cyl, sph, box } from './geo.js';
 import { canLabelTex } from './textures.js';
+import { batMesh } from './pingpong.js';
 
 // ---------- geometry ----------
 function burgerGeo() {
@@ -215,6 +216,7 @@ function dartGeo() {
 const geoCache = {};
 function meshFor(type) {
   if (type === 'can') return canMeshes();
+  if (type === 'bat') return batMesh();
   if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo, poop: poopGeo,
     hotdog: hotdogGeo, fries: friesGeo, kebab: kebabGeo, chicken: chickenGeo, taco: tacoGeo, crisps: crispsGeo, choc: chocGeo, cookie: cookieGeo, icecream: icecreamGeo, sausageroll: sausageRollGeo,
     apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo, dart: dartGeo }[type]();
@@ -320,7 +322,7 @@ export class ItemManager {
     if (this.minFood && (this.topUpT = (this.topUpT || 0) - dt) <= 0) {
       this.topUpT = 1.0;
       let food = this.respawnQueue.length;
-      for (const it of this.items) if (!it.def.veg && !it.def.dart && !it.temp && !it.empty && !it.incoming) food++;
+      for (const it of this.items) if (!it.def.veg && !it.def.prop && !it.temp && !it.empty && !it.incoming) food++;
       if (food < this.minFood) { const t = pickJunk(); this.spawn(t, this.freeSpawn()); }
     }
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
@@ -384,6 +386,7 @@ export class ItemManager {
 function settle(it) {
   const r = it.obj.rotation;
   if (it.def.drink) { r.x = it.empty ? Math.PI / 2 : 0; r.z = 0; }
+  else if (it.def.bat) { r.x = -Math.PI / 2; r.z = 0; }
   else { r.x = 0; r.z = 0; }
 }
 

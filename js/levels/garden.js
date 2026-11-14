@@ -16,6 +16,7 @@
 import * as THREE from 'three';
 import { Kit, tileTex, canvasTex, brickTex, woodTex, carpetTex } from './kit.js';
 import { DartGame, dartboardTex, chalkCanvas } from '../darts.js';
+import { PingPong } from '../pingpong.js';
 import { part, sph, cyl } from '../geo.js';
 
 export const BBQ_SPOT = { x: -4.8, z: 0.35 };        // the grill (Ian stands behind it, his back to the house)
@@ -413,6 +414,24 @@ export function buildGarden(scene) {
       while (y > bottom) { const seg = 0.22 + rnd() * 0.1; k.box(0.05, seg, 0.012, x + sway * (top - y) * 0.15, y - seg / 2, z, col, { rot: [0, a, (rnd() - 0.5) * 0.3] }); y -= seg * 0.92; }
     }
   }
+  // the blue outdoor table tennis table on the lawn (Ronnie's end is the house... no: the left, -x)
+  const TT = { x: -2.2, z: -7.4, y: 0.76 }, TL = 2.74, TW = 1.525;
+  { const BLUE = 0x1f5fb8, top = TT.y;
+    k.box(TL, 0.03, TW, TT.x, top - 0.015, TT.z, BLUE, { collide: true, block: true });
+    for (const s of [-1, 1]) { k.box(TL, 0.004, 0.02, TT.x, top + 0.002, TT.z + s * (TW / 2 - 0.01), 0xffffff); k.box(0.02, 0.004, TW, TT.x + s * (TL / 2 - 0.01), top + 0.002, TT.z, 0xffffff); }
+    k.box(TL, 0.0035, 0.003, TT.x, top + 0.0018, TT.z, 0xffffff);                                    // centre line
+    k.box(TL + 0.02, 0.05, 0.03, TT.x, top - 0.045, TT.z + TW / 2, 0x1a1a1a); k.box(TL + 0.02, 0.05, 0.03, TT.x, top - 0.045, TT.z - TW / 2, 0x1a1a1a);   // frame
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) { k.box(0.04, top - 0.07, 0.04, TT.x + sx * (TL / 2 - 0.3), (top - 0.07) / 2, TT.z + sz * (TW / 2 - 0.15), 0x2a2a2a); k.cyl(0.05, 0.05, 0.03, TT.x + sx * (TL / 2 - 0.3), 0.04, TT.z + sz * (TW / 2 - 0.15), 0x111111, 10); }
+    for (const sx of [-1, 1]) k.box(0.03, 0.03, TW - 0.3, TT.x + sx * (TL / 2 - 0.3), 0.25, TT.z, 0x2a2a2a);
+    // the net
+    k.box(0.006, 0.1525, TW + 0.3, TT.x, top + 0.076, TT.z, 0xf4f4f4); k.box(0.012, 0.015, TW + 0.3, TT.x, top + 0.152, TT.z, 0xffffff);
+    for (const s of [-1, 1]) k.box(0.03, 0.17, 0.03, TT.x, top + 0.085, TT.z + s * (TW / 2 + 0.15), 0x111111);
+    // a little score flip on a stand, beside the net
+    const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.37), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    sc.position.set(TT.x, 1.25, TT.z - TW / 2 - 0.55); scene.add(sc); sc.userData.scoreboard = true;
+    k.box(0.74, 0.41, 0.03, TT.x, 1.25, TT.z - TW / 2 - 0.567, 0x222222); k.box(0.04, 1.05, 0.04, TT.x, 0.525, TT.z - TW / 2 - 0.58, 0x222222, { block: true });
+    var ppScore = sc;
+  }
   // sun loungers with towels, on the lawn
   for (const [x, col] of [[-4.6, 0x1e88e5], [-3.5, 0xff7043]]) {
     const z = -4.7;
@@ -429,8 +448,8 @@ export function buildGarden(scene) {
   k.parts.push(part(sph(0.04, 6, 4), 0x6a4a3a, [-2.12, 0.9, -9.0]), part(sph(0.025, 5, 4), 0x6a4a3a, [-2.08, 0.94, -9.0]));      // a little bird
   k.cyl(0.07, 0.09, 0.2, -5.95, 0.1, -7.7, 0x1e5aa8, 8); k.parts.push(part(sph(0.07, 6, 5), 0xf0c8a0, [-5.95, 0.26, -7.7]), part(sph(0.05, 6, 4), 0xffffff, [-5.95, 0.21, -7.64], [0, 0, 0], [1, 1.3, 0.7]));
   k.cyl(0.0, 0.08, 0.22, -5.95, 0.4, -7.7, 0xd32f2f, 8);                                                     // gnome
-  k.parts.push(part(sph(0.11, 10, 8), 0xffffff, [-1.6, 0.11, -7.6]));
-  for (let i = 0; i < 5; i++) k.parts.push(part(sph(0.035, 4, 3), 0x111111, [-1.6 + Math.cos(i * 1.26) * 0.09, 0.11 + Math.sin(i * 2.1) * 0.06, -7.6 + Math.sin(i * 1.26) * 0.09]));
+  k.parts.push(part(sph(0.11, 10, 8), 0xffffff, [-3.9, 0.11, -9.9]));
+  for (let i = 0; i < 5; i++) k.parts.push(part(sph(0.035, 4, 3), 0x111111, [-3.9 + Math.cos(i * 1.26) * 0.09, 0.11 + Math.sin(i * 2.1) * 0.06, -9.9 + Math.sin(i * 1.26) * 0.09]));
   // daisies and clover all over the lawn
   for (let i = 0; i < 260; i++) {
     const x = B.x0 + 0.9 + rnd() * 8.0, z = -10.6 + rnd() * 9.6;
@@ -528,6 +547,9 @@ export function buildGarden(scene) {
     if ((shT -= dt) <= 0) { shT = 1; scene.traverse(o => { if ((o.isSkinnedMesh || (o.isMesh && o.parent && o.parent.isBone)) && !o.userData.shad) { o.castShadow = true; o.userData.shad = true; } }); }
   };
   room.dartboard = new DartGame({ center: new THREE.Vector3(DB.x, DB.y, DB.z), normal: new THREE.Vector3(1, 0, 0), stand: DART_STAND, chalkL, chalkR });
+  room.pingpong = new PingPong(scene, { c: new THREE.Vector3(TT.x, TT.y, TT.z) });
+  ppScore.material.map = room.pingpong.board.tex; ppScore.material.needsUpdate = true;
+  room.games = [room.dartboard, room.pingpong];
   return room;
 }
 

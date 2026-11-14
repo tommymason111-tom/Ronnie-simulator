@@ -51,7 +51,7 @@ player.rig.position.set(room.start.x, 0, room.start.z);
 player.rig.rotation.y = room.start.yaw;
 const items = new ItemManager(scene, room);
 player.items = items;
-if (room.dartboard) room.dartboard.attach(items, null);       // darts in the cabin (words hooked up below)
+for (const gm of room.games || []) gm.attach(items, player);     // darts, table tennis... (words hooked up below)
 const physics = createPhysics(room);
 const tommy = new Tommy(scene, room, physics);
 tommy.load();
@@ -61,7 +61,7 @@ player.cast = cast;
 player.room = room;
 const crumbs = new Crumbs(scene);
 const words = new Words(scene);
-if (room.dartboard) room.dartboard.words = words;
+for (const gm of room.games || []) gm.words = words;
 const attackFx = new AttackFX(scene, camera, player);
 const tint = new Tint(camera);
 
@@ -165,7 +165,7 @@ function bite(it, hand) {
     return;
   }
   const fx = _a.copy(player.mouth).addScaledVector(player.fwd, 0.12 * player.scale);
-  if (it.def.dart) { words.show('THAT\'S A DART, RON', _b.copy(player.head).addScaledVector(player.fwd, 0.7 * player.scale), '#ff5252', 0.08 * player.scale, 1); return; }
+  if (it.def.prop) { words.show(it.def.dart ? 'THAT\'S A DART, RON' : 'THAT\'S A BAT, RON', _b.copy(player.head).addScaledVector(player.fwd, 0.7 * player.scale), '#ff5252', 0.08 * player.scale, 1); return; }
   if (it.def.veg) { gag(it); return; }
   if (it.def.poop) { poopOver(it); return; }
   it.bitesLeft--;
@@ -625,7 +625,7 @@ renderer.setAnimationLoop(() => {
     const it = h.held;
     if (!it || it.dead) continue;
     if (it.def.drink) { drinkUpdate(it, h, dt); continue; }
-    if (!it.def.dart && mouthGap(it) < TUNING.mouthRadius * player.scale) bite(it, h);
+    if (!it.def.prop && mouthGap(it) < TUNING.mouthRadius * player.scale) bite(it, h);
   }
 
   items.update(dt);
@@ -666,7 +666,7 @@ renderer.setAnimationLoop(() => {
   crumbs.update(dt);
   words.update(dt);
   room.update(dt);
-  if (room.dartboard) room.dartboard.update(dt);
+  for (const gm of room.games || []) gm.update(dt);
 
   if (bannerT > 0) {
     bannerT -= dt;
