@@ -231,18 +231,18 @@ export function buildGarden(scene) {
   // ======================================================== THE GARAGE + OUTDOOR TOILET (x 2.1..6.5, z -5.6..-0.3), the little green shed behind
   const GX0 = 2.1, GX1 = B.x1, GZ0 = -5.6, GZ1 = -0.3, GH = 2.5;
   k.floor(GX0, GZ0, GX1, -2.4, tileTex('#8a8a86', '#84847f', '#6a6a66', 128), 0.007, 2);
-  k.floor(GX0, -2.4, GX1, GZ1, tileTex('#e0e4e8', '#d4d8dc', '#a0a4a8', 48), 0.007, 0.6);
-  wallRun('z', GX0, GZ0, GZ1, GH, [[-4.2, -3.2, 0, 2.0], [-1.85, -0.95, 0, 2.0]], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
+  k.floor(GX0, -2.4, GX1, GZ1, tileTex('#5e5a54', '#57534d', '#3e3b37', 128), 0.007, 1.6);         // the outside loo: old stained concrete
+  wallRun('z', GX0, GZ0, GZ1, GH, [[-4.2, -3.2, 0, 2.0]], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
   wallRun('x', GZ0, GX0, GX1, GH, [[4.4, 5.6, 1.1, 1.9]], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
-  wallRun('x', GZ1, GX0, GX1, GH, [], { color: RENDER, inColor: 0xd8d4cc, inSign: -1 });
+  wallRun('x', GZ1, GX0, GX1, GH, [[5.45, 6.15, 1.3, 1.85]], { color: RENDER, inColor: 0xd8d4cc, inSign: -1 });
   wallRun('z', GX1 - 0.1, GZ0, GZ1, GH, [], { color: RENDER, inColor: 0xd8d4cc, inSign: -1 });
-  wallRun('x', -2.4, GX0, GX1, GH, [], { color: RENDER, t: 0.12 });                                   // garage | toilet
+  wallRun('x', -2.4, GX0, GX1, GH, [[2.6, 3.4, 0, 2.0]], { color: RENDER, t: 0.12 });                // garage | toilet (the loo's only door is in here)
   glaze('x', GZ0, 4.4, 5.6, 1.1, 1.9);
   R(GX0 - 0.15, GZ0 - 0.15, GX1 + 0.05, GZ1 + 0.15, 0.12, GH + 0.06, 0x3a3a3a);                         // flat felt roof
   { const gc = new THREE.Mesh(new THREE.PlaneGeometry(GX1 - GX0, GZ1 - GZ0), new THREE.MeshBasicMaterial({ color: 0xcfcac0 })); gc.rotation.x = Math.PI / 2; gc.position.set((GX0 + GX1) / 2, GH - 0.005, (GZ0 + GZ1) / 2); scene.add(gc); }
-  leaf('z', GX0, -4.2, -3.2, 1, 0x2e5a3a); leaf('z', GX0, -1.85, -0.95, 1, 0xf4f4f0);
+  leaf('z', GX0, -4.2, -3.2, 1, 0x2e5a3a); leaf('x', -2.4, 2.6, 3.4, 1, 0x5a4a3a);
   k.label('GARAGE', 0.6, 0.16, [GX0 - 0.11, 2.2, -3.7], [0, -Math.PI / 2, 0], { bg: '#2e5a3a', fg: '#fff', border: null, size: 44 });
-  k.label('BOG', 0.4, 0.16, [GX0 - 0.11, 2.2, -1.4], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: '#111', size: 44 });
+  k.label('BOG', 0.4, 0.16, [3.0, 2.2, -2.47], [0, Math.PI, 0], { bg: '#fff', fg: '#111', border: '#111', size: 44 });
   // the mess: workbench, boxes, tyres, a bike, paint tins, crates, an old telly
   R(5.8, -5.4, 6.35, -3.4, 0.9, 0.45, 0x7a5a3a, { block: true, collide: true });
   for (let i = 0; i < 6; i++) k.box(0.05 + rnd() * 0.1, 0.04, 0.2 + rnd() * 0.2, 6.0 + rnd() * 0.2, 0.93, -5.2 + i * 0.3, [0xd32f2f, 0x555555, 0xffd400, 0x1e5aa8][i % 4], { rot: [0, rnd() * 3, 0] });
@@ -278,12 +278,41 @@ export function buildGarden(scene) {
     k.box(0.75, 1.75, 0.02, SX0 + 0.75, 0.9, SZ0 - 0.01, 0x84a894); k.cyl(0.02, 0.02, 0.06, SX0 + 1.0, 0.95, SZ0 - 0.04, 0x222222, 6);
     for (const y of [0.35, 1.45]) k.box(0.7, 0.04, 0.02, SX0 + 0.75, y, SZ0 - 0.025, 0x333333);     // hinges
   }
-  // the toilet
-  R(5.6, -2.3, 6.35, -1.9, 0.75, 0.375, WHITE, { block: true }); k.cyl(0.2, 0.17, 0.42, 5.95, 0.21, -1.6, WHITE, 14, { block: true }); k.cyl(0.21, 0.21, 0.03, 5.95, 0.44, -1.6, 0xeeeeee, 14);
-  R(3.0, -2.3, 3.6, -1.95, 0.12, 0.85, WHITE); k.cyl(0.04, 0.05, 0.85, 3.3, 0.42, -2.12, WHITE, 8);   // little sink
-  for (let i = 0; i < 5; i++) k.cyl(0.055, 0.055, 0.1, 6.25, 0.05 + i * 0.1, -0.6, 0xffffff, 10);     // a tower of loo rolls
-  k.label('PLEASE DON\'T, RONNIE', 0.5, 0.18, [5.95, 1.6, -2.32], [0, 0, 0], { bg: '#fff', fg: '#c62828', border: '#c62828', size: 40 });
-  k.lamp(4.3, 2.42, -1.35, 0xffffff, 0.08);
+  // the outside toilet: grubby walls, a bare bulb, an old high-level cistern with a pull chain,
+  // a ladder stood behind the loo, and a frosted window opposite
+  { const GRIME = 0x77716a, DIRT = 0x5c5750;
+    k.box(GX1 - 0.1 - GX0 - 0.1, GH, 0.01, (GX0 + GX1 - 0.1 + 0.1) / 2, GH / 2, -2.4 + 0.067, GRIME);      // inner faces, dark
+    k.box(0.01, GH, 2.1, GX0 + 0.113, GH / 2, -1.35, GRIME); k.box(0.01, GH, 2.1, GX1 - 0.213, GH / 2, -1.35, GRIME);
+    for (const [a, b] of [[GX0 + 0.1, 5.45], [6.15, GX1 - 0.2]]) k.box(b - a, GH, 0.01, (a + b) / 2, GH / 2, GZ1 - 0.113, GRIME);
+    k.box(0.7, 1.3, 0.01, 5.8, 0.65, GZ1 - 0.113, GRIME); k.box(0.7, GH - 1.85, 0.01, 5.8, (GH + 1.85) / 2, GZ1 - 0.113, GRIME);
+    for (let i = 0; i < 26; i++) k.box(0.1 + rnd() * 0.4, 0.05 + rnd() * 0.3, 0.005, GX0 + 0.3 + rnd() * 3.8, 0.1 + rnd() * 2.2, -2.4 + 0.073, [DIRT, 0x6a5e48, 0x4e4a44][i % 3]);   // damp patches
+    const lc = new THREE.Mesh(new THREE.PlaneGeometry(GX1 - GX0 - 0.2, 2.1), new THREE.MeshBasicMaterial({ color: 0x4a4740 }));
+    lc.rotation.x = Math.PI / 2; lc.position.set((GX0 + GX1 - 0.1) / 2, GH - 0.012, -1.35); scene.add(lc);
+    // frosted window (you can't see through it), opposite the loo
+    const fw = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.55), new THREE.MeshBasicMaterial({ map: frostedTex(), color: 0xc8d0c8 })); fw.position.set(5.8, 1.575, GZ1 - 0.02); fw.rotation.y = Math.PI; scene.add(fw);
+    const fw2 = fw.clone(); fw2.rotation.y = 0; fw2.position.z = GZ1 + 0.02; scene.add(fw2);
+    for (const [w, h, x, y] of [[0.76, 0.05, 5.8, 1.85], [0.76, 0.05, 5.8, 1.3], [0.05, 0.6, 5.45, 1.575], [0.05, 0.6, 6.15, 1.575]]) for (const z of [GZ1 - 0.09, GZ1 + 0.09]) k.box(w, h, 0.04, x, y, z, 0xd8d0b8);
+    // the loo itself: yellowed bowl, wooden seat
+    k.cyl(0.2, 0.16, 0.42, 5.95, 0.21, -1.65, 0xd8d0b4, 14, { block: true }); k.cyl(0.22, 0.22, 0.035, 5.95, 0.445, -1.65, 0x6a4a2a, 14); k.cyl(0.13, 0.13, 0.04, 5.95, 0.45, -1.65, 0x2a2420, 12);
+    k.box(0.36, 0.5, 0.03, 5.95, 0.72, -1.88, 0x6a4a2a, { rot: [-0.18, 0, 0] });                               // seat lid, up
+    // high-level cistern on brackets with the long flush pipe and the pull chain
+    k.box(0.46, 0.24, 0.2, 5.95, 2.22, -2.21, 0x2a3a2e); k.box(0.48, 0.03, 0.22, 5.95, 2.35, -2.21, 0x1e2a22);
+    for (const x of [5.78, 6.12]) k.box(0.03, 0.03, 0.2, x, 2.08, -2.24, 0x222222);
+    k.cyl(0.022, 0.022, 1.7, 5.95, 1.23, -2.28, 0x3a3a36, 8); k.box(0.04, 0.04, 0.42, 5.95, 0.42, -2.07, 0x3a3a36);
+    k.box(0.22, 0.02, 0.02, 6.13, 2.13, -2.13, 0x222222);
+    for (let i = 0; i < 14; i++) k.box(0.008, 0.045, 0.008, 6.24, 2.1 - i * 0.05, -2.13, 0x8a8a80);         // chain
+    k.box(0.04, 0.1, 0.04, 6.24, 1.37, -2.13, 0xe8e0c8);                                                   // pull handle
+    // ladder stood up behind the loo, against the wall
+    for (const x of [5.62, 6.0]) k.box(0.05, 2.45, 0.04, x, 1.2, -2.18, 0x8a8a8a, { rot: [-0.12, 0, 0] });
+    for (let i = 0; i < 7; i++) k.box(0.38, 0.025, 0.03, 5.81, 0.25 + i * 0.3, -2.06 - i * 0.036, 0x7a7a7a);
+    // bits and bobs: loo rolls, a bucket, a broom, a cobweb
+    for (let i = 0; i < 2; i++) k.cyl(0.055, 0.055, 0.1, 6.25, 0.05 + i * 0.1, -0.6, 0xe8e4d8, 10);
+    k.cyl(0.055, 0.055, 0.1, 5.3, 0.055, -0.75, 0xe8e4d8, 10);
+    k.cyl(0.14, 0.11, 0.3, 2.5, 0.15, -0.7, 0x2a5a8a, 12); k.box(0.03, 1.3, 0.03, 2.3, 0.65, -0.55, 0x6a4a2a, { rot: [0.15, 0, 0.12] }); k.box(0.28, 0.08, 0.1, 2.31, 0.05, -0.47, 0x3a2a1a);
+    for (let i = 0; i < 6; i++) k.box(0.002, 0.002, 0.45, GX1 - 0.35, GH - 0.08 - i * 0.03, -2.15 + i * 0.03, 0xdddddd, { rot: [0, 0.8, 0] });
+    k.label('PLEASE DON\'T, RONNIE', 0.5, 0.18, [GX0 + 0.12, 1.6, -1.35], [0, Math.PI / 2, 0], { bg: '#e8e0c8', fg: '#8a1a1a', border: '#8a1a1a', size: 40 });
+    k.cyl(0.003, 0.003, 0.3, 4.2, GH - 0.16, -1.35, 0x111111, 4); k.lamp(4.2, GH - 0.34, -1.35, 0xffd890, 0.035);   // bare bulb
+  }
   // the wheelbarrow behind the garage
   { const wx = 4.7, wz = -9.3;
     k.box(0.75, 0.32, 1.0, wx, 0.55, wz, 0x2e7d32, { block: true }); k.box(0.65, 0.04, 0.9, wx, 0.7, wz, 0x5a3a20);
@@ -573,6 +602,12 @@ export function buildGarden(scene) {
   return room;
 }
 
+function frostedTex() {
+  return canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = '#dfe6df'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '150,165,150'},0.25)`; g.beginPath(); g.arc(Math.random() * w, Math.random() * h, 1 + Math.random() * 3, 0, 7); g.fill(); }
+  });
+}
 function sunGlowTex() {
   return canvasTex(256, 256, (g, w) => {
     const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
