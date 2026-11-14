@@ -154,11 +154,10 @@ export function buildGarden(scene) {
   R(3.95, 4.7, 4.35, 5.4, 0.03, 0.935, 0x9aa0a8); k.cyl(0.02, 0.02, 0.3, 4.35, 1.08, 5.05, 0xc8c8c8, 6);   // sink + tap
   R(-0.5, 5.7, 0.95, 6.33, 1.9, 0.95, 0xe8e8ea, { collide: true, block: true }); R(0.35, 5.68, 0.37, 5.7, 0.8, 1.2, 0x888888);   // big fridge
   k.label('LEWY\'S PROTEIN SHAKES. HANDS OFF.', 0.5, 0.22, [0.2, 1.5, 5.68], [0, Math.PI, 0], { bg: '#fffbe8', fg: '#c62828', border: null, size: 34 });
-  R(1.2, 3.35, 3.3, 4.1, 0.95, 0.475, 0x3a3a40, { block: true }); R(1.15, 3.3, 3.35, 4.15, 0.05, 0.975, 0xf0f0f0, { collide: true });   // island / bar
-  for (const x of [1.6, 2.3, 3.0]) k.stool(x, 4.55, 0x2a2a2a, 0x9a9a9a, 0.68);
+  R(1.0, 2.5, 3.3, 4.1, 0.9, 0.45, 0x3a3a40, { block: true }); R(0.98, 2.52, 3.32, 4.15, 0.05, 0.945, 0xf0f0f0, { collide: true });   // the island runs straight off the counter under the window (a peninsula), no stools
   R(1.0, 2.15, 3.8, 2.5, 0.9, 0.45, UNIT, { block: true }); R(0.98, 2.13, 3.82, 2.52, 0.04, 0.92, TOP_C, { collide: true });     // under the window
   k.cyl(0.13, 0.11, 0.25, 3.0, 1.06, 2.32, 0x8a8a8a, 12);                                                                         // kettle
-  for (const x of [1.6, 2.5, 3.1]) k.spawns.push(new THREE.Vector3(x, 1.08, 3.72));
+  for (const [x, z] of [[1.6, 3.7], [2.5, 3.2], [3.0, 3.8]]) k.spawns.push(new THREE.Vector3(x, 1.06, z));
   k.spawns.push(new THREE.Vector3(4.15, 1.0, 3.0), new THREE.Vector3(2.4, 1.0, 6.05));
   // --- dining room: long table with chairs all round
   const dx = -3.6, dz = 4.6;
