@@ -16,6 +16,7 @@
 import * as THREE from 'three';
 import { Kit, tileTex, canvasTex, brickTex, woodTex, carpetTex } from './kit.js';
 import { DartGame, dartboardTex, chalkCanvas } from '../darts.js';
+import { part, sph, cyl } from '../geo.js';
 
 export const BBQ_SPOT = { x: -4.8, z: 0.35 };        // the grill (Ian stands behind it, his back to the house)
 export const IAN_SPOT = { x: -4.8, z: 1.2 };
@@ -319,19 +320,138 @@ export function buildGarden(scene) {
   // mess in the garage too
   strewn(2.4, -7.6, 5.6, -3.0, 10); strewn(5.85, -7.8, 6.3, -5.3, 4, 0.9);
 
+  // ======================================================== SUMMER DETAILS
+  const FLOWERS = [0xff4f7b, 0xffd400, 0xffffff, 0x9a4aff, 0xff7a1a, 0xff2a2a, 0x4a8aff, 0xffa0d0];
+  const LEAF = [0x3f8a2e, 0x4a9a34, 0x356a26, 0x5aa83a];
+  const bloom = (x, z, h) => { k.cyl(0.006, 0.006, h, x, h / 2, z, 0x3f7a2e, 4); const c = FLOWERS[Math.floor(rnd() * FLOWERS.length)]; k.parts.push(part(sph(0.035 + rnd() * 0.02, 6, 4), c, [x, h + 0.01, z], [0, 0, 0], [1, 0.55, 1])); k.parts.push(part(sph(0.012, 4, 3), 0xffe066, [x, h + 0.03, z])); };
+  const bush = (x, z, r) => { for (let i = 0; i < 3; i++) k.parts.push(part(sph(r * (0.7 + rnd() * 0.4), 7, 5), LEAF[Math.floor(rnd() * 4)], [x + (rnd() - 0.5) * r, r * 0.7 + rnd() * r * 0.3, z + (rnd() - 0.5) * r])); };
+  const bed = (x0, z0, x1, z1, n) => {
+    R(x0, z0, x1, z1, 0.06, 0.03, 0x4a3020);                                          // dark soil
+    for (let i = 0; i < n; i++) { const x = x0 + 0.08 + rnd() * (x1 - x0 - 0.16), z = z0 + 0.08 + rnd() * (z1 - z0 - 0.16); if (i % 4 === 0) bush(x, z, 0.16 + rnd() * 0.12); else bloom(x, z, 0.25 + rnd() * 0.4); }
+  };
+  bed(B.x0 + 0.05, -10.9, B.x0 + 0.75, -2.9, 70);                                     // along the left fence
+  bed(6.0, -10.9, B.x1 - 0.05, -8.6, 18);                                              // behind the garage
+  bed(-4.4, -11.0 + 0.0, 4.9, -10.75, 0);                                             // soil strip in front of the cabin
+  for (let i = 0; i < 26; i++) bloom(-4.3 + i * 0.36, -10.86, 0.2 + rnd() * 0.15);
+  // climbing roses up the left fence
+  for (let i = 0; i < 90; i++) { const z = -10.8 + rnd() * 7.8, y = 0.3 + rnd() * 1.4; k.box(0.02, 0.07, 0.07, B.x0 + 0.06, y, z, rnd() < 0.7 ? LEAF[i % 4] : [0xff3a5a, 0xff8ab0, 0xffffff][i % 3]); }
+  // an apple tree in the back-left corner
+  { const tx = -5.1, tz = -9.6;
+    k.cyl(0.12, 0.17, 2.1, tx, 1.05, tz, 0x6a4a2a, 8, { block: true });
+    for (const [dx, dy, dz, r] of [[0, 2.6, 0, 1.0], [0.6, 2.3, 0.3, 0.75], [-0.55, 2.35, -0.3, 0.7], [0.1, 3.1, -0.2, 0.7], [-0.3, 2.2, 0.5, 0.6]]) k.parts.push(part(sph(r, 9, 7), LEAF[Math.floor(rnd() * 4)], [tx + dx, dy, tz + dz]));
+    for (let i = 0; i < 26; i++) { const a = rnd() * 6.28, e = rnd() * 1.2 - 0.3, r = 0.95; k.parts.push(part(sph(0.045, 6, 4), rnd() < 0.8 ? 0xd62828 : 0x9ccc3a, [tx + Math.cos(a) * Math.cos(e) * r, 2.6 + Math.sin(e) * r, tz + Math.sin(a) * Math.cos(e) * r])); }
+    for (let i = 0; i < 5; i++) k.parts.push(part(sph(0.045, 6, 4), 0xc62828, [tx + (rnd() - 0.5) * 1.6, 0.045, tz + (rnd() - 0.5) * 1.6]));   // windfalls
+  }
+  // sun loungers with towels, on the lawn
+  for (const [x, col] of [[-4.6, 0x1e88e5], [-3.5, 0xff7043]]) {
+    const z = -4.7;
+    R(x - 0.33, z - 0.95, x + 0.33, z + 0.95, 0.06, 0.32, WHITE, { block: true, collide: true });
+    k.box(0.62, 0.06, 0.7, x, 0.58, z - 0.82, WHITE, { rot: [0.9, 0, 0] });
+    for (const dz of [-0.85, 0.85]) for (const dx of [-0.28, 0.28]) k.box(0.04, 0.3, 0.04, x + dx, 0.15, z + dz, 0xdddddd);
+    for (let i = 0; i < 6; i++) R(x - 0.3, z - 0.6 + i * 0.25, x + 0.3, z - 0.48 + i * 0.25, 0.02, 0.36, i % 2 ? col : 0xffffff);
+    k.spawns.push(new THREE.Vector3(x, 0.45, z + 0.3));
+  }
+  k.cyl(0.033, 0.033, 0.12, -4.05, 0.06, -4.2, 0xd32f2f, 8);                                                 // a can between them
+  k.box(0.28, 0.02, 0.4, -4.05, 0.01, -5.4, 0xfff176, { rot: [0, 0.3, 0] });                                // a magazine
+  // bird bath + a gnome + a football
+  k.cyl(0.08, 0.12, 0.75, -2.3, 0.375, -9.0, 0xc8c2b4, 10, { block: true }); k.cyl(0.32, 0.22, 0.1, -2.3, 0.8, -9.0, 0xc8c2b4, 14); k.cyl(0.28, 0.28, 0.02, -2.3, 0.84, -9.0, 0x7ac8f0, 14);
+  k.parts.push(part(sph(0.04, 6, 4), 0x6a4a3a, [-2.12, 0.9, -9.0]), part(sph(0.025, 5, 4), 0x6a4a3a, [-2.08, 0.94, -9.0]));      // a little bird
+  k.cyl(0.07, 0.09, 0.2, -6.0, 0.1, -6.3, 0x1e5aa8, 8); k.parts.push(part(sph(0.07, 6, 5), 0xf0c8a0, [-6.0, 0.26, -6.3]), part(sph(0.05, 6, 4), 0xffffff, [-6.0, 0.21, -6.24], [0, 0, 0], [1, 1.3, 0.7]));
+  k.cyl(0.0, 0.08, 0.22, -6.0, 0.4, -6.3, 0xd32f2f, 8);                                                     // gnome
+  k.parts.push(part(sph(0.11, 10, 8), 0xffffff, [-1.6, 0.11, -7.6]));
+  for (let i = 0; i < 5; i++) k.parts.push(part(sph(0.035, 4, 3), 0x111111, [-1.6 + Math.cos(i * 1.26) * 0.09, 0.11 + Math.sin(i * 2.1) * 0.06, -7.6 + Math.sin(i * 1.26) * 0.09]));
+  // daisies and clover all over the lawn
+  for (let i = 0; i < 260; i++) {
+    const x = B.x0 + 0.9 + rnd() * 8.0, z = -10.6 + rnd() * 9.6;
+    if (x > 1.9 && z > -8.4) continue;
+    k.box(0.03, 0.006, 0.03, x, 0.012, z, rnd() < 0.75 ? 0xffffff : 0xd8c8ff); k.box(0.012, 0.008, 0.012, x, 0.016, z, 0xffd400);
+  }
+  for (let i = 0; i < 70; i++) { const x = B.x0 + 0.9 + rnd() * 8.0, z = -10.6 + rnd() * 9.6; if (x > 1.9 && z > -8.4) continue; k.cyl(0.0, 0.05, 0.1, x, 0.05, z, LEAF[i % 4], 5); }   // tufts
+  // solar lights along the stepping stones
+  for (const [x, z] of [[1.0, -3.9], [-0.3, -5.0], [-1.6, -6.3], [0.3, -7.9], [1.5, -9.0], [2.3, -10.2]]) { k.cyl(0.012, 0.012, 0.32, x, 0.16, z, 0x222222, 6); k.cyl(0.04, 0.05, 0.05, x, 0.34, z, 0x111111, 8); k.lamp(x, 0.39, z, 0xfff8e0, 0.03, false); }
+  // the back of the house: hanging baskets, outside light, drainpipe, chimney, step, hose reel
+  for (const x of [-0.6, 1.6]) {
+    k.box(0.03, 0.03, 0.3, x, 2.3, 1.75, 0x111111); k.cyl(0.005, 0.005, 0.25, x, 2.15, 1.62, 0x111111, 4);
+    k.parts.push(part(new THREE.SphereGeometry(0.2, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), 0x5a3a20, [x, 2.02, 1.62]));
+    for (let i = 0; i < 24; i++) { const a = rnd() * 6.28, r = rnd() * 0.22; k.parts.push(part(sph(0.03, 4, 3), i % 3 ? FLOWERS[i % FLOWERS.length] : LEAF[i % 4], [x + Math.cos(a) * r, 2.02 - rnd() * 0.25 + 0.03, 1.62 + Math.sin(a) * r])); }
+  }
+  k.box(0.18, 0.22, 0.1, 0.5, 2.3, 1.85, 0x222222); k.lamp(0.5, 2.28, 1.79, 0xfff4d0, 0.05, false);
+  k.cyl(0.04, 0.04, 5.3, -6.35, 2.65, 1.85, 0x2a2a2a, 8);
+  k.box(1.2, 0.12, 0.4, 0.5, 0.06, 1.7, 0xbab4a8, { collide: true });                                     // back step
+  k.box(0.7, 1.4, 0.7, -2.6, TOP + 2.0, 6.6, 0xa4583a); k.cyl(0.1, 0.1, 0.3, -2.75, TOP + 2.85, 6.6, 0xb0603a, 8); k.cyl(0.1, 0.1, 0.3, -2.45, TOP + 2.85, 6.6, 0xb0603a, 8);   // chimney
+  k.cyl(0.22, 0.22, 0.1, 3.95, 0.6, 1.8, 0x2e7d32, 14); k.cyl(0.06, 0.06, 0.12, 3.95, 0.6, 1.72, 0x1b5e20, 8);   // hose reel on the wall
+  // bunting along the back of the house, swagged between brackets
+  { const y0 = 2.62, zb = 1.72, cols = [0xd32f2f, 0xffffff, 0x1e5aa8, 0xffd400, 0x2e7d32, 0xff7a1a];
+    let ci = 0;
+    for (let x0 = -6.2; x0 < 4.2; x0 += 2.1) {
+      const x1 = x0 + 2.1;
+      for (let i = 0; i <= 10; i++) { const t = i / 10, x = x0 + (x1 - x0) * t, y = y0 - 0.35 * 4 * t * (1 - t);
+        if (i < 10) { const t2 = (i + 1) / 10, xb = x0 + (x1 - x0) * t2, yb = y0 - 0.35 * 4 * t2 * (1 - t2); k.box(Math.hypot(xb - x, yb - y), 0.006, 0.006, (x + xb) / 2, (y + yb) / 2, zb, 0xeeeeee, { rot: [0, 0, Math.atan2(yb - y, xb - x)] }); }
+        if (i > 0 && i < 10) k.parts.push(part(cyl(0.075, 0.075, 0.004, 3), cols[ci++ % cols.length], [x, y - 0.075, zb], [Math.PI / 2, 0, 0])); }
+      k.box(0.04, 0.04, 0.12, x0, y0, zb + 0.06, 0x333333);
+    }
+  }
+  // the cabin: decking in front, window boxes, fairy lights under the eaves
+  R(-4.5, -11.0, 5.0, -10.45, 0.1, 0.05, 0x8a6a4a, { collide: true });
+  for (let x = -4.4; x < 4.9; x += 0.3) k.box(0.01, 0.005, 0.55, x, 0.101, -10.72, 0x5a4030);
+  for (const [a, b] of [[-3.6, -1.6], [3.2, 4.5]]) { R(a, -10.98, b, -10.78, 0.18, 0.85, 0x6a4a2a); for (let i = 0; i < 12; i++) bloom(a + 0.08 + i * (b - a - 0.16) / 11, -10.88, 0.95 + rnd() * 0.08); }
+  for (let i = 0; i <= 40; i++) { const t = i / 40, x = -4.5 + 9.5 * t, y = 2.38 - 0.12 * Math.abs(Math.sin(t * Math.PI * 5)); k.lamp(x, y, -10.92, [0xfff0b0, 0xffd27a, 0xffb0d0][i % 3], 0.022, false); }
+  // a lawnmower and a watering can by the garage
+  k.box(0.5, 0.25, 0.6, 2.6, 0.2, -9.0, 0xd32f2f, { block: true }); for (const [dx, dz] of [[-0.24, -0.25], [0.24, -0.25], [-0.24, 0.25], [0.24, 0.25]]) k.cyl(0.08, 0.08, 0.04, 2.6 + dx, 0.08, -9.0 + dz, 0x111111, 10);
+  k.box(0.04, 0.04, 0.9, 2.6, 0.55, -8.6, 0x333333, { rot: [0.7, 0, 0] });
+  k.cyl(0.11, 0.12, 0.25, 1.85, 0.125, -8.0, 0x2e7d32, 10); k.box(0.03, 0.03, 0.3, 1.85, 0.22, -8.2, 0x2e7d32, { rot: [0.6, 0, 0] });
+  // a few butterflies (animated in room.update)
+  const flutter = [];
+  { const wingG = new THREE.PlaneGeometry(0.05, 0.04); wingG.translate(0.025, 0, 0);
+    for (let i = 0; i < 7; i++) {
+      const col = [0xffffff, 0xffd400, 0xff7a1a, 0x7ab0ff][i % 4], m = new THREE.MeshLambertMaterial({ color: col, side: THREE.DoubleSide });
+      const b = new THREE.Group(), w1 = new THREE.Mesh(wingG, m), w2 = new THREE.Mesh(wingG, m); w2.scale.x = -1; b.add(w1, w2);
+      b.userData = { w1, w2, cx: [-5.9, -5.9, -2.3, 6.2, -3.5, -5.9, 0.3][i], cz: [-8, -4.5, -9.0, -9.7, -10.9, -6.2, -10.9][i], ph: i * 1.7, sp: 0.5 + rnd() * 0.4 };
+      scene.add(b); flutter.push(b);
+    } }
+
   // ---------------- sunshine ----------------
   const room = k.finish({
     name: "Lewis's House",
-    sky: 0xbfe0ff, ground: 0x5f8f3a, hemiI: 2.4, sun: 0xfff2d6, sunI: 2.0, sunPos: [6, 12, -8], ambient: 0.45,
+    sky: 0xcfe8ff, ground: 0x6f8f45, hemiI: 1.5, sun: 0xffeccc, sunI: 3.0, sunPos: [8, 16, -5], ambient: 0.32,
     start: { x: 0.5, z: 1.1, yaw: 0.55 },
     board: { x: GX0 - 0.12, y: 1.38, z: -6.6, ry: -Math.PI / 2 },
     startFood: ['can', 'burger', 'hotdog', 'can', 'chicken', 'sausageroll', 'can', 'burger', 'crisps', 'cookie', 'pizza', 'can'],
     spotCount: 30,
   });
+  // a lovely summer's day: warm low-ish sun with real soft shadows, a light haze in the distance
+  room.shadows = true;
+  const sun = room.sun; sun.castShadow = true;
+  sun.target.position.set(0, 0, -2.5); scene.add(sun.target); sun.position.set(8, 16, -7.5);
+  Object.assign(sun.shadow.camera, { left: -17, right: 17, top: 17, bottom: -17, near: 2, far: 50 }); sun.shadow.camera.updateProjectionMatrix();
+  sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03; sun.shadow.radius = 3;
+  scene.traverse(o => { if (o.isMesh && o !== sky && o !== ground) { o.castShadow = !o.material.transparent; o.receiveShadow = true; } });
+  ground.receiveShadow = true; sky.material.fog = false;
+  scene.fog = new THREE.Fog(0xd8ecff, 28, 95);
+  // the sun itself, glowing in the sky
+  { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunGlowTex(), color: 0xfff6e0, transparent: true, depthWrite: false, fog: false }));
+    sp.position.set(8, 16, -5).normalize().multiplyScalar(60); sp.scale.setScalar(16); sp.renderOrder = -9; scene.add(sp); }
+  // butterflies flutter round the flowers; the squad cast shadows too
+  const baseUpdate = room.update.bind(room); let shT = 0;
+  room.update = (dt) => {
+    baseUpdate(dt);
+    const t = room.t;
+    for (const b of flutter) { const u = b.userData, a = t * u.sp + u.ph;
+      b.position.set(u.cx + Math.sin(a) * 0.7 + Math.sin(a * 2.3) * 0.2, 0.55 + Math.sin(a * 1.7) * 0.25 + Math.sin(a * 5) * 0.05, u.cz + Math.cos(a * 0.8) * 0.6);
+      b.rotation.y = -a * 0.8; const f = Math.sin(t * 22 + u.ph) * 0.9; u.w1.rotation.y = f; u.w2.rotation.y = -f; }
+    if ((shT -= dt) <= 0) { shT = 1; scene.traverse(o => { if ((o.isSkinnedMesh || (o.isMesh && o.parent && o.parent.isBone)) && !o.userData.shad) { o.castShadow = true; o.userData.shad = true; } }); }
+  };
   room.dartboard = new DartGame({ center: new THREE.Vector3(DB.x, DB.y, DB.z), normal: new THREE.Vector3(1, 0, 0), stand: DART_STAND, chalkL, chalkR });
   return room;
 }
 
+function sunGlowTex() {
+  return canvasTex(256, 256, (g, w) => {
+    const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+    gr.addColorStop(0, 'rgba(255,255,245,1)'); gr.addColorStop(0.12, 'rgba(255,250,220,1)'); gr.addColorStop(0.3, 'rgba(255,240,190,0.45)'); gr.addColorStop(1, 'rgba(255,240,190,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, w, w);
+  });
+}
 function skyTex() {
   return canvasTex(512, 256, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#2f7ad8'); gr.addColorStop(0.5, '#7ec0f0'); gr.addColorStop(0.62, '#d8eefc'); gr.addColorStop(1, '#bfe0f0');

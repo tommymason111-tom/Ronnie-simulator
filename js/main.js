@@ -41,6 +41,7 @@ camera.position.set(0, 1.6, 0);
 
 const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant, garden: buildGarden };
 const room = (BUILD[SEL.place] || buildRoom)(scene);
+if (room.shadows) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }     // sunny places get real sun shadows
 room.placeId = BUILD[SEL.place] ? SEL.place : 'bedroom';
 room.start = room.start || { x: 0.05, z: 0.45, yaw: 0 };
 // Tommy turns up a few metres from where you start
