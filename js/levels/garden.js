@@ -100,7 +100,7 @@ export function buildGarden(scene) {
   sky.onBeforeRender = (r, sc, cam) => { _skyV.setFromMatrixPosition(cam.matrixWorld); if (skyRig.position.distanceToSquared(_skyV) > 1e-6) { skyRig.position.copy(_skyV); skyRig.updateMatrixWorld(true); } };
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(140, 140), new THREE.MeshLambertMaterial({ color: 0x5f8f3a }));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.01; scene.add(ground);
-  for (const [x, z, w, h, c] of [[-6, -23, 10, 6.5, 0x9a5a3a], [6, -23, 9, 6, 0xa86a48], [-12.5, -9, 6, 6, 0x8a4a32], [12.5, -6, 6, 6.2, 0xb07a52], [-12.5, 6, 6, 6, 0x9a6a4a], [12.5, 7, 6, 5.8, 0xa45c3c]]) {
+  for (const [x, z, w, h, c] of [[-6, -23, 10, 6.5, 0x9a5a3a], [6, -23, 9, 6, 0xa86a48], [-12.5, -9, 6, 6, 0x8a4a32], [12.5, -6, 6, 6.2, 0xb07a52], [12.5, 7, 6, 5.8, 0xa45c3c]]) {
     R(x - w / 2, z - 2.5, x + w / 2, z + 2.5, h, h / 2, c);
     { const rise = 1.6, half = 2.5 + 0.25, ang = Math.atan2(rise, 2.5), sl = half / Math.cos(ang);       // a proper pitched roof sitting on the walls, gable ends filled in
       for (const sd of [-1, 1]) k.box(w + 0.3, 0.14, sl, x, h + rise / 2 - 0.05, z + sd * half / 2, 0x4a3a3a, { rot: [sd * ang, 0, 0] });
@@ -117,9 +117,8 @@ export function buildGarden(scene) {
   // ---------------- ground: lawn, grey concrete patio, stepping stones ----------------
   const CONCRETE = tileTex('#a7a7a3', '#a1a19d', '#84847f', 128);
   k.floor(B.x0, B.z0, B.x1, 2, grassTex(), 0.002, 2.5);
-  k.floor(B.x0, -0.5, B.x1, 2, CONCRETE, 0.006, 2.4);              // across the back of the house
-  k.floor(1.0, -4.3, 2.1, -0.5, CONCRETE, 0.0062, 2.4);             // the strip up to the garage door
-  k.floor(B.x0, -2.7, -3.5, -0.5, CONCRETE, 0.0064, 2.4);           // under the umbrella, by the barbecue
+  k.floor(B.x0, 0.55, B.x1, 2, CONCRETE, 0.006, 2.4);              // a strip of old concrete along the back of the house
+  k.floor(1.0, -4.3, 2.1, 0.55, CONCRETE, 0.0062, 2.4);             // the path down the side of the garage
   // stepping stones from the patio to the cabin door
   let sm = mark();
   for (const [x, z, r] of [[0.45, -3.45, 0.24], [0.05, -4.4, 0.22], [-0.85, -4.5, 0.2], [-0.6, -5.4, 0.23], [-1.2, -6.0, 0.2], [-0.3, -7.55, 0.24], [0.75, -8.3, 0.22], [1.0, -9.3, 0.23], [1.9, -9.8, 0.21], [1.6, -10.5, 0.22]]) {
@@ -128,10 +127,6 @@ export function buildGarden(scene) {
 
   // timber edging across the lawn (the line on the plan)
   R(B.x0, -6.66, 2.1, -6.54, 0.08, 0.04, 0x6a4a2a);
-  // the planted border between the lawn and the patio
-  for (const [a, b] of [[-3.5, -1.05], [0.25, 1.0]]) R(a, -0.75, b, -0.5, 0.25, 0.125, 0x5a3a20, { block: true });   // (a gap in the middle to walk through, lined up with the back door)
-  for (let i = 0; i < 16; i++) { const x = -3.35 + i * 0.28; if (x > -1.15 && x < 0.35) continue; k.cyl(0.04, 0.17 + rnd() * 0.05, 0.3 + rnd() * 0.2, x, 0.4, -0.63, [0x3f8a2e, 0x4a9a34, 0x356a26][i % 3], 8); if (i % 3 === 0) k.box(0.07, 0.06, 0.07, x, 0.62, -0.63, [0xff4f7b, 0xffd400, 0xffffff, 0x9a4aff][i % 4]); }
-
   // ---------------- fences + the side gate ----------------
   const fence = (x0, z0, x1, z1) => {
     const len = Math.hypot(x1 - x0, z1 - z0), along = Math.abs(x1 - x0) > Math.abs(z1 - z0);
@@ -269,24 +264,37 @@ export function buildGarden(scene) {
   k.floor(-0.6, HZ0, HX1, 6.4, tileTex('#e8e4dc', '#dcd8d0', '#b0aaa0', 64), 0.004, 0.8);
   k.floor(HX0, 7.2, -0.6, HZ1, carpetTex('#8a8070', '#9a9080', '#7a7060'), 0.004, 1.2);
   k.floor(-0.6, 6.4, HX1, HZ1, carpetTex('#8a8070', '#9a9080', '#7a7060'), 0.0041, 1.2);
-  // outer walls: brick outside, painted inside, two storeys tall
-  wallRun('x', HZ0, HX0 - 0.1, HX1 + 0.1, TOP, [[-4.9, -2.7, 0.9, 2.15], [0.0, 1.0, 0, 2.1], [1.9, 3.6, 1.0, 2.15], [-4.9, -2.7, 3.3, 4.5], [1.9, 3.6, 3.3, 4.5]], { tex: BRICK, inColor: PAINT, inSign: 1 });
-  wallRun('x', HZ1, HX0 - 0.1, HX1 + 0.1, TOP, [[-5.6, -3.4, 0.9, 2.15], [1.6, 2.6, 0, 2.1]], { tex: BRICK, inColor: PAINT, inSign: -1 });
-  wallRun('z', HX0, HZ0, HZ1, TOP, [[8.5, 10, 1.0, 2.1]], { tex: BRICK, inColor: PAINT, inSign: 1 });
-  wallRun('z', HX1, HZ0, HZ1, TOP, [], { tex: BRICK, inColor: PAINT, inSign: -1 });
+  // outer walls: cream painted render outside (like the photo), painted inside, two storeys tall
+  const RENDER_T = renderTex();
+  wallRun('x', HZ0, HX0 - 0.1, HX1 + 0.1, TOP, [[-4.9, -2.7, 0.9, 2.15], [0.0, 1.0, 0, 2.1], [1.9, 3.6, 1.0, 2.15], [-4.9, -2.7, 3.3, 4.5], [2.2, 3.1, 3.4, 4.4]], { tex: RENDER_T, inColor: PAINT, inSign: 1 });
+  wallRun('x', HZ1, HX0 - 0.1, HX1 + 0.1, TOP, [[-5.6, -3.4, 0.9, 2.15], [1.6, 2.6, 0, 2.1]], { tex: RENDER_T, inColor: PAINT, inSign: -1 });
+  wallRun('z', HX0, HZ0, HZ1, TOP, [[8.5, 10, 1.0, 2.1]], { tex: RENDER_T, inColor: PAINT, inSign: 1 });
+  wallRun('z', HX1, HZ0, HZ1, TOP, [], { tex: RENDER_T, inColor: PAINT, inSign: -1 });
   glaze('x', HZ0, -4.9, -2.7, 0.9, 2.15); glaze('x', HZ0, 1.9, 3.6, 1.0, 2.15);
   glaze('x', HZ1, -5.6, -3.4, 0.9, 2.15); glaze('z', HX0, 8.5, 10, 1.0, 2.1);
-  for (const [a, b] of [[-4.9, -2.7], [1.9, 3.6]]) { const g = new THREE.Mesh(new THREE.PlaneGeometry(b - a, 1.2), new THREE.MeshLambertMaterial({ color: 0x3a4a5a })); g.position.set((a + b) / 2, 3.9, HZ0 + 0.06); g.rotation.y = Math.PI; scene.add(g); glaze('x', HZ0 - 0.02, a, b, 3.3, 4.5); }   // upstairs windows (dark rooms)
+  // upstairs: a double window with top openers (left, over the dining room) and a single one (over the kitchen), net curtains behind
+  for (const [a, b, y0, y1] of [[-4.9, -2.7, 3.3, 4.5], [2.2, 3.1, 3.4, 4.4]]) { const g = new THREE.Mesh(new THREE.PlaneGeometry(b - a, y1 - y0), new THREE.MeshLambertMaterial({ map: laceTex(), color: 0xf0f0ea })); g.position.set((a + b) / 2, (y0 + y1) / 2, HZ0 + 0.06); g.rotation.y = Math.PI; scene.add(g); glaze('x', HZ0 - 0.02, a, b, y0, y1); k.box(b - a, 0.05, 0.08, (a + b) / 2, y1 - 0.3, HZ0 - 0.02, WHITE); }
   R(1.6, HZ1 - 0.06, 2.6, HZ1 + 0.06, 2.05, 1.025, 0x1e3a6a); k.cyl(0.03, 0.03, 0.06, 2.45, 1.0, HZ1 - 0.09, 0xd4af37, 8);   // front door (shut)
   k.label('47', 0.2, 0.12, [2.1, 1.8, HZ1 - 0.065], [0, Math.PI, 0], { bg: '#1e3a6a', fg: '#d4af37', border: null, size: 60 });
   // ceiling + roof
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(HX1 - HX0, HZ1 - HZ0), new THREE.MeshBasicMaterial({ color: 0xe6e2da }));
   ceil.rotation.x = Math.PI / 2; ceil.position.set((HX0 + HX1) / 2, CEIL, (HZ0 + HZ1) / 2); scene.add(ceil);
   const half = (HZ1 - HZ0) / 2 + 0.4, rise = 2.2, ang = Math.atan2(rise, half), slope = Math.hypot(half, rise);
-  for (const s of [-1, 1]) k.box(HX1 - HX0 + 0.6, 0.2, slope, (HX0 + HX1) / 2, TOP + rise / 2, (HZ0 + HZ1) / 2 + s * half / 2, 0x5a3a3a, { rot: [s * ang, 0, 0] });
-  const gable = new THREE.Shape([new THREE.Vector2(-half + 0.4, 0), new THREE.Vector2(half - 0.4, 0), new THREE.Vector2(0, rise - 0.1)]);
-  for (const x of [HX0, HX1]) { const m = new THREE.Mesh(new THREE.ShapeGeometry(gable), new THREE.MeshLambertMaterial({ color: 0xa4583a, side: THREE.DoubleSide })); m.rotation.y = Math.PI / 2; m.position.set(x, TOP, (HZ0 + HZ1) / 2); scene.add(m); }
-  R(HX0 - 0.1, HZ0 - 0.25, HX1 + 0.1, HZ0 - 0.05, 0.14, TOP - 0.05, 0x333333);                // gutter
+  { // a hipped roof running over Lewis's house AND next door (it's semi-detached): brown concrete tiles, deep overhang
+    const xa = -12.6 - 0.35, xb = HX1 + 0.35, za = HZ0 - 0.35, zb = HZ1 + 0.35, R2 = 4.2, hip = (zb - za) / 2, y0 = TOP, mz = (za + zb) / 2;
+    const P = [[xa, y0, za], [xb, y0, za], [xb - hip, y0 + R2, mz], [xa + hip, y0 + R2, mz], [xb, y0, zb], [xa, y0, zb]];
+    const tri = [[0, 1, 2], [0, 2, 3], [1, 4, 2], [5, 0, 3], [4, 5, 3], [4, 3, 2]], pos = [], uv = [];
+    for (const t of tri) for (const v of t) { pos.push(...P[v]); uv.push(P[v][0] / 1.2, (P[v][1] - y0) * 1.6 + Math.abs(P[v][2] - mz) * 0.6); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals();
+    const rt = roofTex(); rt.wrapS = rt.wrapT = THREE.RepeatWrapping;
+    const roof = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: rt, side: THREE.DoubleSide })); scene.add(roof);
+    k.box(xb - xa, 0.02, 0.36, (xa + xb) / 2, y0 - 0.01, za + 0.18, 0x2a2420); k.box(0.36, 0.02, zb - za, xb - 0.18, y0 - 0.01, mz, 0x2a2420);   // soffits
+    k.box(xb - xa, 0.18, 0.04, (xa + xb) / 2, y0 - 0.09, za, 0x2a2420); k.box(0.04, 0.18, zb - za, xb, y0 - 0.09, mz, 0x2a2420);           // fascias
+    k.box(xb - xa - hip * 2, 0.08, 0.1, (xa + xb) / 2, y0 + R2 + 0.02, mz, 0x6a4a3a);                                                    // ridge tiles
+    // TV aerials
+    for (const [x, h] of [[-1.0, 1.4], [-9.5, 1.2]]) { k.cyl(0.015, 0.015, h, x, y0 + R2 + h / 2, mz, 0x9a9a9a, 6); for (let i = 0; i < 6; i++) k.box(0.01, 0.01, 0.5 - i * 0.05, x - 0.15 + i * 0.07, y0 + R2 + h - 0.05, mz, 0x9a9a9a); k.box(0.45, 0.012, 0.012, x, y0 + R2 + h - 0.05, mz, 0x9a9a9a); }
+  }
+  R(-12.95, HZ0 - 0.48, HX1 + 0.4, HZ0 - 0.36, 0.12, TOP - 0.1, 0x1a1a1a);                    // black gutter along the eaves (both houses)
   // inside walls: dining | kitchen (door near the window), kitchen | living room
   wallRun('z', -0.6, HZ0, 6.4, CEIL, [[2.4, 3.4, 0, 2.05]], { color: PAINT, t: 0.12 });
   wallRun('x', 6.4, -0.6, 3.4, CEIL, [], { color: PAINT, t: 0.12 });
@@ -460,39 +468,76 @@ export function buildGarden(scene) {
     k.box(0.03, 0.08, 0.9, 1.23, 1.7, 11.3, OAKD);
     for (const [z, col] of [[10.95, 0x1a2a4a], [11.25, 0x2a2a2a], [11.55, 0x6a3a1a]]) { k.box(0.16, 0.85, 0.3, 1.32, 1.28, z, col); k.box(0.12, 0.12, 0.18, 1.32, 1.66, z, col); }
     R(1.25, 10.8, 1.55, 11.8, 0.3, 0.15, OAKD); for (let i = 0; i < 4; i++) k.box(0.22, 0.08, 0.1, 1.4, 0.34, 10.95 + i * 0.24, [0xffffff, 0x111111, 0xf5f5f5, 0x1e5aa8][i]);
-    // ---- outside: lintels and sills on every window, soffit, air bricks, an alarm box, a satellite dish, an outside tap ----
-    const BR2 = 0x8a3a24, STONE = 0xd8d0c0;
-    for (const [a, b, y0, y1] of [[-4.9, -2.7, 0.9, 2.15], [1.9, 3.6, 1.0, 2.15], [-4.9, -2.7, 3.3, 4.5], [1.9, 3.6, 3.3, 4.5], [0.0, 1.0, 0, 2.1]]) {
-      k.box(b - a + 0.3, 0.16, 0.05, (a + b) / 2, y1 + 0.08, HZ0 - 0.125, BR2);                               // soldier-course lintel
-      if (y0 > 0) k.box(b - a + 0.2, 0.06, 0.16, (a + b) / 2, y0 - 0.03, HZ0 - 0.17, STONE);                 // stone sill
-    }
-    k.box(HX1 - HX0 + 0.2, 0.18, 0.4, (HX0 + HX1) / 2, TOP - 0.15, HZ0 - 0.3, 0xf2f2ee);                      // white soffit / fascia
-    for (const x of [-5.6, -2.0, 1.4, 4.0]) { k.box(0.22, 0.07, 0.02, x, 0.18, HZ0 - 0.11, 0x6a6a66); for (let i = 0; i < 4; i++) k.box(0.03, 0.04, 0.005, x - 0.075 + i * 0.05, 0.18, HZ0 - 0.122, 0x222222); }
-    k.box(0.28, 0.36, 0.1, 3.9, 4.85, HZ0 - 0.15, 0xf4f4f4); k.box(0.2, 0.06, 0.02, 3.9, 4.95, HZ0 - 0.205, 0xd32f2f); k.label('SECURE', 0.18, 0.06, [3.9, 4.8, HZ0 - 0.205], [0, Math.PI, 0], { bg: '#fff', fg: '#1e3a8a', border: null, size: 40 });   // burglar alarm
-    k.cyl(0.25, 0.25, 0.04, -5.6, 4.95, HZ0 - 0.32, 0xdcdcdc, 18); k.box(0.03, 0.3, 0.03, -5.6, 4.95, HZ0 - 0.18, 0x888888); k.box(0.04, 0.04, 0.3, -5.6, 4.95, HZ0 - 0.45, 0x888888);   // satellite dish
-    k.box(0.08, 0.08, 0.06, -1.2, 0.6, HZ0 - 0.13, 0x9a9a9a); k.box(0.1, 0.03, 0.03, -1.2, 0.66, HZ0 - 0.15, 0x3a8a3a); k.cyl(0.012, 0.012, 0.08, -1.2, 0.54, HZ0 - 0.18, 0x9a9a9a, 6);   // outside tap
-    k.cyl(0.035, 0.035, TOP - 0.2, 4.35, (TOP - 0.2) / 2, HZ0 - 0.13, 0x2a2a2a, 8);                         // second downpipe
-    for (let i = 0; i < 40; i++) { const x = -6.4 + rnd() * 10.8, y = 0.3 + rnd() * 5; const holes = [[-4.9, -2.7, 0.8, 2.3], [1.9, 3.6, 0.9, 2.3], [-4.9, -2.7, 3.2, 4.65], [1.9, 3.6, 3.2, 4.65], [-0.15, 1.15, -1, 2.3]]; if (holes.some(([a, b, c, d]) => x > a - 0.12 && x < b + 0.12 && y > c && y < d)) continue; k.box(0.18, 0.06, 0.005, x, y, HZ0 - 0.103, [0x7a3220, 0x9a4a30, 0x6a2a1a][i % 3]); }   // weathered bricks
+    // ---- outside, from the photo: white uPVC sills and frames, black downpipes and soil pipes, a hipped roof (above) ----
+    for (const [a, b, y0] of [[-4.9, -2.7, 0.9], [1.9, 3.6, 1.0], [-4.9, -2.7, 3.3], [2.2, 3.1, 3.4]]) k.box(b - a + 0.12, 0.04, 0.12, (a + b) / 2, y0 - 0.03, HZ0 - 0.16, WHITE);
+    for (const [a, b, y1] of [[-4.9, -2.7, 2.15], [1.9, 3.6, 2.15]]) { k.box(b - a, 0.05, 0.08, (a + b) / 2, y1 - 0.35, HZ0 - 0.02, WHITE); for (const x of [a + (b - a) / 4, b - (b - a) / 4]) k.box(0.04, 0.33, 0.08, x, y1 - 0.17, HZ0 - 0.02, WHITE); }   // top-light openers
+    for (const [x, y] of [[-0.03, 1.05], [1.03, 1.05]]) k.box(0.08, 2.15, 0.12, x, y, HZ0 - 0.06, WHITE); k.box(1.14, 0.08, 0.12, 0.5, 2.12, HZ0 - 0.06, WHITE);   // back door frame
+    k.box(0.9, 0.012, 0.55, 0.5, 0.012, HZ0 - 0.4, 0x3a3a3a);                                                // doormat
+    const PIPE = 0x151515;
+    for (const x of [-1.25, -6.15]) { k.cyl(0.04, 0.04, TOP - 0.2, x, (TOP - 0.2) / 2, HZ0 - 0.14, PIPE, 8); k.box(0.12, 0.08, 0.18, x, TOP - 0.15, HZ0 - 0.3, PIPE); k.box(0.12, 0.05, 0.14, x, 0.04, HZ0 - 0.2, PIPE); for (const y of [0.9, 2.2, 3.6, 4.8]) k.box(0.11, 0.03, 0.05, x, y, HZ0 - 0.11, PIPE); }   // downpipes
+    k.box(2.25, 0.1, 0.1, -0.125, 2.75, HZ0 - 0.13, PIPE); k.box(0.1, 0.25, 0.1, 1.0, 2.62, HZ0 - 0.13, PIPE);                         // the waste pipe across to the downpipe, first floor
+    k.box(0.06, 0.06, 0.25, 4.1, 2.55, HZ0 - 0.15, 0xf4f4f4); k.box(0.3, 0.06, 0.06, 4.2, 2.55, HZ0 - 0.25, 0xf4f4f4);               // a white overflow pipe
+    k.box(0.08, 0.08, 0.06, 1.25, 0.6, HZ0 - 0.13, 0x9a9a9a); k.cyl(0.012, 0.012, 0.08, 1.25, 0.54, HZ0 - 0.18, 0x9a9a9a, 6);       // outside tap
+    for (let i = 0; i < 26; i++) { const x = -6.3 + rnd() * 10.6, y = rnd() < 0.6 ? 0.05 + rnd() * 0.5 : 2.4 + rnd() * 2.6;
+      const holes = [[-4.9, -2.7, 0.8, 2.3], [1.9, 3.6, 0.9, 2.3], [-4.9, -2.7, 3.2, 4.65], [2.2, 3.1, 3.3, 4.5], [-0.15, 1.15, -1, 2.3]];
+      if (holes.some(([a, b, c, d]) => x > a - 0.1 && x < b + 0.1 && y > c && y < d)) continue;
+      k.box(0.2 + rnd() * 0.5, 0.06 + rnd() * 0.25, 0.004, x, y, HZ0 - 0.104, [0xc8c2b0, 0xbcb6a4, 0xd2ccba][i % 3]); }      // weathering streaks
   }
+
+  // ======================================================== NEXT DOOR (the other half of the semi), joined on the barbecue side
+  { const NX0 = -12.6, NX1 = -6.62;
+    k.texBox(NX1 - NX0, TOP, HZ1 - HZ0, (NX0 + NX1) / 2, TOP / 2, (HZ0 + HZ1) / 2, renderTex(), { tile: 1.2, collide: true, block: true });
+    const win = (a, b, y0, y1, nets = true) => { const g = new THREE.Mesh(new THREE.PlaneGeometry(b - a, y1 - y0), new THREE.MeshLambertMaterial(nets ? { map: laceTex(), color: 0xe8e8e0 } : { color: 0x2a3440 }));
+      g.position.set((a + b) / 2, (y0 + y1) / 2, HZ0 - 0.012); g.rotation.y = Math.PI; scene.add(g); glaze('x', HZ0 - 0.03, a, b, y0, y1); k.box(b - a + 0.12, 0.04, 0.12, (a + b) / 2, y0 - 0.03, HZ0 - 0.07, WHITE); };
+    win(-9.9, -7.7, 0.9, 2.15, false); win(-11.9, -10.9, 0.0, 2.1, false); win(-10.4, -8.2, 3.3, 4.5); win(-12.2, -11.4, 3.4, 4.3);
+    k.box(1.0, 2.1, 0.03, -11.4, 1.05, HZ0 - 0.02, 0xf4f4f4);                                                   // their back door
+    for (const x of [-12.45, -9.0]) k.cyl(0.04, 0.04, TOP - 0.2, x, (TOP - 0.2) / 2, HZ0 - 0.14, 0x151515, 8);
+    k.box(2.6, 0.1, 0.1, -8.4, 2.75, HZ0 - 0.13, 0x151515);
+  }
+  // the fence between the two gardens gets a trellis top near the houses, like the photo
+  for (let z = -2.6; z < 1.9; z += 0.1) k.box(0.025, 0.42, 0.012, B.x0 + 0.02, 2.05, z, 0x8a6a48, { rot: [z % 0.2 < 0.1 ? 0.6 : -0.6, 0, 0] });
+  k.box(0.04, 0.04, 4.5, B.x0 + 0.02, 2.27, -0.35, 0x6a4a2a); k.box(0.04, 0.04, 4.5, B.x0 + 0.02, 1.84, -0.35, 0x6a4a2a);
+  for (const z of [-2.6, -0.8, 1.0]) k.box(0.1, 2.35, 0.1, B.x0 + 0.03, 1.175, z, 0x7a7a72);              // concrete posts
 
   // ======================================================== THE PATIO
   // the barbecue, under the big umbrella
   const bx = BBQ_SPOT.x, bz = BBQ_SPOT.z;
-  R(bx - 0.75, bz - 0.35, bx + 0.75, bz + 0.35, 0.82, 0.41, 0x2a2a2e, { collide: true, block: true });
-  R(bx - 0.62, bz - 0.3, bx + 0.62, bz + 0.3, 0.12, 0.88, 0x111111);
-  for (let i = 0; i < 9; i++) R(bx - 0.6, bz - 0.28 + i * 0.07, bx + 0.6, bz - 0.27 + i * 0.07, 0.015, 0.95, 0x8a8a8a, i === 0 ? { collide: true } : undefined);
-  k.box(1.24, 0.5, 0.03, bx, 1.12, bz + 0.42, 0x8a8a92, { rot: [0.5, 0, 0] });                       // the lid, flipped open (Ian's side)
-  R(bx - 1.15, bz - 0.3, bx - 0.75, bz + 0.3, 0.04, 0.84, 0x9a9aa0, { collide: true }); R(bx + 0.75, bz - 0.3, bx + 1.15, bz + 0.3, 0.04, 0.84, 0x9a9aa0, { collide: true });
-  k.lamp(bx, 0.9, bz, 0xff5a10, 0.0, false); k.halo(bx, 1.05, bz, 1.4, 0xff7a30); k.pool(bx, 0.955, bz, 1.2, 0xff6a20);
-  k.cyl(0.2, 0.2, 0.9, bx + 1.45, 0.45, bz + 0.1, 0x8a9aa8, 12);                                       // gas bottle
-  k.label('IAN\'S GRILL — HEALTHY OPTIONS ONLY (LIES)', 1.2, 0.25, [bx, 0.62, bz - 0.36], [0, Math.PI, 0], { bg: '#111', fg: '#ffd400', border: null, size: 40 });
-  for (const ddx of [-0.4, 0, 0.4]) k.spawns.push(new THREE.Vector3(bx + ddx, 1.02, bz));
-  k.spawns.push(new THREE.Vector3(bx - 0.95, 0.92, bz), new THREE.Vector3(bx + 0.95, 0.92, bz));
-  // the umbrella cover: a big cantilever parasol, pole in the corner
-  const ux = -4.4, uz = -1.0, px = -6.1, pz = -2.4;
-  k.cyl(0.05, 0.05, 2.9, px, 1.45, pz, 0x3a3a3a, 8); R(px - 0.4, pz - 0.4, px + 0.4, pz + 0.4, 0.12, 0.06, 0x555555, { block: true });
-  k.box(0.06, 0.06, Math.hypot(ux - px, uz - pz), (ux + px) / 2, 2.85, (uz + pz) / 2, 0x3a3a3a, { rot: [0, Math.atan2(ux - px, uz - pz), 0] });
-  k.cyl(0.06, 2.1, 0.55, ux, 2.75, uz, 0xd8cdb8, 16); k.cyl(2.1, 2.12, 0.08, ux, 2.47, uz, 0xb8ab94, 16);
+  { const BK = 0x1a1a1a, r = 0.28, L = 1.0, cy = 0.82;
+    k.parts.push(part(new THREE.CylinderGeometry(r, r, L, 22, 1, false, Math.PI / 2, Math.PI), BK, [bx, cy, bz], [0, 0, Math.PI / 2]));   // the barrel's bottom half
+    for (const sx of [-1, 1]) k.parts.push(part(new THREE.CircleGeometry(r, 22, Math.PI, Math.PI), BK, [bx + sx * L / 2, cy, bz], [0, sx * Math.PI / 2, 0]));
+    k.parts.push(part(new THREE.CylinderGeometry(r + 0.01, r + 0.01, L + 0.02, 22, 1, true, -Math.PI / 2 + 0.3, Math.PI), 0x222222, [bx, cy + 0.02, bz + 0.03], [0, 0, Math.PI / 2]));   // lid, tipped open back
+    for (let i = 0; i < 9; i++) R(bx - L / 2 + 0.02, bz - 0.24 + i * 0.06, bx + L / 2 - 0.02, bz - 0.235 + i * 0.06, 0.012, cy - 0.02, 0x6a6a6a, i === 0 ? { collide: true } : undefined);   // grate
+    k.cyl(0.11, 0.11, 0.42, bx - L / 2 - 0.18, cy - 0.1, bz, BK, 14); k.box(0.2, 0.2, 0.2, bx - L / 2 - 0.12, cy - 0.1, bz, BK);   // offset firebox
+    k.cyl(0.04, 0.04, 0.5, bx + L / 2 - 0.08, cy + 0.42, bz - 0.1, BK, 8); k.cyl(0.06, 0.06, 0.04, bx + L / 2 - 0.08, cy + 0.68, bz - 0.1, BK, 8);   // chimney
+    for (const sx of [-0.42, 0.42]) for (const sz of [-0.18, 0.18]) k.box(0.04, cy - 0.2, 0.04, bx + sx, (cy - 0.2) / 2, bz + sz, BK);
+    R(bx - 0.45, bz - 0.2, bx + 0.45, bz + 0.2, 0.02, 0.25, 0x2a2a2a); k.cyl(0.08, 0.08, 0.04, bx - 0.45, 0.08, bz - 0.2, 0x111111, 10); k.cyl(0.08, 0.08, 0.04, bx - 0.45, 0.08, bz + 0.2, 0x111111, 10);
+    R(bx + L / 2, bz - 0.2, bx + L / 2 + 0.35, bz + 0.2, 0.025, cy - 0.06, 0x3a2a1a, { collide: true });   // side shelf
+    k.blockers.push({ x0: bx - L / 2 - 0.3, x1: bx + L / 2 + 0.35, z0: bz - 0.3, z1: bz + 0.3, y1: 1.1 });
+    k.lamp(bx, cy - 0.05, bz, 0xff5a10, 0.0, false); k.halo(bx, cy + 0.1, bz, 1.2, 0xff7a30); k.pool(bx, cy - 0.01, bz, 1.0, 0xff6a20);
+    for (const ddx of [-0.3, 0, 0.3]) k.spawns.push(new THREE.Vector3(bx + ddx, cy + 0.06, bz));
+    k.spawns.push(new THREE.Vector3(bx + L / 2 + 0.17, cy + 0.02, bz)); }
+  // ---- the potted garden by the back door (pots everywhere: terracotta, green and blue glazed), a purple chair, a black plastic chair
+  { const POT = [0xb8603a, 0xa8552f, 0x8fb070, 0x3a6a9a, 0xc87a4a, 0xd0c8b8], LEAF = [0x3f8a2e, 0x4a9a34, 0x356a26, 0x5aa83a];
+    const pot = (x, z, s, col) => { k.cyl(0.16 * s, 0.11 * s, 0.26 * s, x, 0.13 * s, z, col, 12); k.cyl(0.17 * s, 0.17 * s, 0.03 * s, x, 0.26 * s, z, col, 12);
+      const kind = rnd(); if (kind < 0.45) { for (let i = 0; i < 5; i++) k.parts.push(part(sph(0.09 * s, 6, 4), LEAF[i % 4], [x + (rnd() - 0.5) * 0.14 * s, 0.32 * s + rnd() * 0.12 * s, z + (rnd() - 0.5) * 0.14 * s])); for (let i = 0; i < 6; i++) k.parts.push(part(sph(0.03 * s, 4, 3), [0xff6a3a, 0xff3a6a, 0xffffff, 0xb05aff, 0xffb03a][Math.floor(rnd() * 5)], [x + (rnd() - 0.5) * 0.2 * s, 0.4 * s + rnd() * 0.1 * s, z + (rnd() - 0.5) * 0.2 * s])); }
+      else if (kind < 0.75) { for (let i = 0; i < 9; i++) k.box(0.025 * s, 0.4 * s, 0.006, x, 0.45 * s, z, LEAF[i % 4], { rot: [(rnd() - 0.5) * 0.9, rnd() * 3, (rnd() - 0.5) * 0.9] }); }   // spiky
+      else { k.cyl(0.012 * s, 0.015 * s, 0.6 * s, x, 0.55 * s, z, 0x5a3a20, 5); for (let i = 0; i < 4; i++) k.parts.push(part(sph(0.13 * s, 6, 4), LEAF[i % 4], [x + (rnd() - 0.5) * 0.2 * s, 0.85 * s + rnd() * 0.25 * s, z + (rnd() - 0.5) * 0.2 * s])); } };   // a little shrub
+    for (const [x, z, sc] of [[-0.35, 1.0, 1.1], [-0.65, 0.7, 0.8], [-0.3, 0.45, 1.3], [-0.85, 1.2, 0.9], [-1.05, 0.55, 0.7], [1.3, 1.0, 1.0], [1.55, 0.6, 0.8], [1.35, 0.35, 1.2], [1.75, 1.2, 0.7],
+                             [-1.6, 1.5, 0.8], [-2.0, 1.55, 1.0], [-2.4, 1.5, 0.7], [-2.75, 1.55, 0.9], [-3.2, 1.0, 1.0], [-3.5, 0.6, 0.8], [-3.0, 0.3, 1.2], [-2.6, 0.1, 0.7], [-6.2, 1.4, 1.0], [-6.25, 0.6, 1.2], [-5.9, -0.2, 0.9]])
+      pot(x, z, sc, POT[Math.floor(rnd() * POT.length)]);
+    k.blockers.push({ x0: -1.2, x1: -0.15, z0: 0.3, z1: 1.35, y1: 0.5 }, { x0: 1.15, x1: 1.9, z0: 0.2, z1: 1.35, y1: 0.5 }, { x0: -3.7, x1: -1.4, z0: -0.1, z1: 1.7, y1: 0.5 });
+    k.chair(-2.4, -0.75, 0.25, 0x9a7ad8, 0xa88ae0);                                                        // the purple painted chair on the grass
+    { const cx = 0.35, cz = -1.4, ry = 0.5, c = Math.cos(ry), s2 = Math.sin(ry), BLK = 0x1e1e1e, at = (lx, lz) => [cx + lx * c + lz * s2, cz - lx * s2 + lz * c];
+      const pb = (w, h, d, lx, y, lz, rot = 0) => { const [px, pz] = at(lx, lz); k.box(w, h, d, px, y, pz, BLK, { rot: [rot, ry, 0] }); };
+      pb(0.48, 0.03, 0.46, 0, 0.42, 0); pb(0.48, 0.5, 0.03, 0, 0.7, 0.24, -0.15); for (const sx of [-1, 1]) { pb(0.03, 0.03, 0.42, sx * 0.24, 0.6, 0.02); for (const sz of [-1, 1]) pb(0.04, 0.42, 0.04, sx * 0.2, 0.21, sz * 0.19); }
+      k.blockers.push({ x0: cx - 0.3, x1: cx + 0.3, z0: cz - 0.3, z1: cz + 0.3, y1: 0.9 }); }   // a black plastic garden chair
+    // by the garage path: pallets against the wall, a hose reel, a traffic cone, a green plastic chair, bin bags
+    for (let i = 0; i < 2; i++) { for (let j = 0; j < 5; j++) k.box(0.025, 1.0, 0.1, 1.95 - i * 0.12, 0.5, -2.6 + j * 0.2, 0xa8865a, { rot: [0, 0, 0.12] }); k.box(0.05, 0.08, 1.0, 1.92 - i * 0.12, 0.15, -2.2, 0x9a7a4a, { rot: [0, 0, 0.12] }); k.box(0.05, 0.08, 1.0, 1.82 - i * 0.12, 0.85, -2.2, 0x9a7a4a, { rot: [0, 0, 0.12] }); }
+    k.cyl(0.2, 0.2, 0.06, 1.55, 0.35, -1.6, 0x2e7d32, 14); k.cyl(0.07, 0.07, 0.3, 1.55, 0.35, -1.6, 0x1b5e20, 10); for (let i = 0; i < 6; i++) k.cyl(0.21 - i * 0.012, 0.21 - i * 0.012, 0.015, 1.55, 0.25 + i * 0.03, -1.6, 0x3a8a3a, 14);
+    k.cyl(0.02, 0.15, 0.5, 1.5, 0.25, -0.9, 0xff5a1a, 12); for (const y of [0.22, 0.35]) k.cyl(0.11 - (y - 0.2) * 0.25, 0.12 - (y - 0.2) * 0.25, 0.05, 1.5, y, -0.9, 0xffffff, 12); k.box(0.32, 0.03, 0.32, 1.5, 0.015, -0.9, 0x111111);   // traffic cone
+    k.chair(1.45, -3.2, -Math.PI / 2, 0x2e6a3e, 0x3a7a4a);
+    for (const [x, z] of [[1.6, -3.9], [1.35, -4.1]]) k.parts.push(part(sph(0.24, 8, 6), 0x111111, [x, 0.22, z], [0, 0, 0], [1, 1.15, 1]));
+  }
   // patio table + chairs on the right, cool box
   // a tiny round bistro table against the house wall, one rusty black garden chair
   { const tx = 3.05, tz = 1.5, IRON = 0x1c1c1c, RUST = [0x6a3a1c, 0x7a4a24, 0x5a2e14];
@@ -890,27 +935,9 @@ export function buildGarden(scene) {
   for (const [x, z] of [[1.0, -3.9], [-0.3, -5.0], [-1.6, -6.3], [0.3, -7.9], [1.5, -9.0], [2.3, -10.2]]) { k.cyl(0.012, 0.012, 0.32, x, 0.16, z, 0x222222, 6); k.cyl(0.04, 0.05, 0.05, x, 0.34, z, 0x111111, 8); k.lamp(x, 0.39, z, 0xfff8e0, 0.03, false); }
   smooth.push([sm, mark()]);
   // the back of the house: hanging baskets, outside light, drainpipe, chimney, step, hose reel
-  for (const x of [-0.6, 1.6]) {
-    k.box(0.03, 0.03, 0.3, x, 2.3, 1.75, 0x111111); k.cyl(0.005, 0.005, 0.25, x, 2.15, 1.62, 0x111111, 4);
-    k.parts.push(part(new THREE.SphereGeometry(0.2, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), 0x5a3a20, [x, 2.02, 1.62]));
-    for (let i = 0; i < 24; i++) { const a = rnd() * 6.28, r = rnd() * 0.22; k.parts.push(part(sph(0.03, 4, 3), i % 3 ? FLOWERS[i % FLOWERS.length] : LEAF[i % 4], [x + Math.cos(a) * r, 2.02 - rnd() * 0.25 + 0.03, 1.62 + Math.sin(a) * r])); }
-  }
   k.box(0.18, 0.22, 0.1, 0.5, 2.3, 1.85, 0x222222); k.lamp(0.5, 2.28, 1.79, 0xfff4d0, 0.05, false);
-  k.cyl(0.04, 0.04, 5.3, -6.35, 2.65, 1.85, 0x2a2a2a, 8);
   k.box(1.2, 0.12, 0.4, 0.5, 0.06, 1.7, 0xbab4a8, { collide: true });                                     // back step
-  k.box(0.7, 1.4, 0.7, -2.6, TOP + 2.0, 6.6, 0xa4583a); k.cyl(0.1, 0.1, 0.3, -2.75, TOP + 2.85, 6.6, 0xb0603a, 8); k.cyl(0.1, 0.1, 0.3, -2.45, TOP + 2.85, 6.6, 0xb0603a, 8);   // chimney
   k.cyl(0.22, 0.22, 0.1, 3.95, 0.6, 1.8, 0x2e7d32, 14); k.cyl(0.06, 0.06, 0.12, 3.95, 0.6, 1.72, 0x1b5e20, 8);   // hose reel on the wall
-  // bunting along the back of the house, swagged between brackets
-  { const y0 = 2.62, zb = 1.72, cols = [0xd32f2f, 0xffffff, 0x1e5aa8, 0xffd400, 0x2e7d32, 0xff7a1a];
-    let ci = 0;
-    for (let x0 = -6.2; x0 < 4.2; x0 += 2.1) {
-      const x1 = x0 + 2.1;
-      for (let i = 0; i <= 10; i++) { const t = i / 10, x = x0 + (x1 - x0) * t, y = y0 - 0.35 * 4 * t * (1 - t);
-        if (i < 10) { const t2 = (i + 1) / 10, xb = x0 + (x1 - x0) * t2, yb = y0 - 0.35 * 4 * t2 * (1 - t2); k.box(Math.hypot(xb - x, yb - y), 0.006, 0.006, (x + xb) / 2, (y + yb) / 2, zb, 0xeeeeee, { rot: [0, 0, Math.atan2(yb - y, xb - x)] }); }
-        if (i > 0 && i < 10) k.parts.push(part(cyl(0.075, 0.075, 0.004, 3), cols[ci++ % cols.length], [x, y - 0.075, zb], [Math.PI / 2, 0, 0])); }
-      k.box(0.04, 0.04, 0.12, x0, y0, zb + 0.06, 0x333333);
-    }
-  }
   // the cabin: festoon lights swagged along the front under the roof, down the left corner, and across the lounge ceiling inside
   { const fz = -10.86, bulb = (x, y, z) => { k.lamp(x, y, z, 0xfff2c8, 0.02, false); k.box(0.004, 0.03, 0.004, x, y + 0.025, z, 0x222222); };
     const mid = 0.25, top = (x) => 2.4 + 0.85 * (1 - Math.abs(x - mid) / 4.75) - 0.18;
@@ -1115,6 +1142,21 @@ function lightboxTex() {
     const word = 'OI OI', cw = 30; g.font = '900 30px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
     [...word].forEach((ch, i) => { const x = w / 2 + (i - (word.length - 1) / 2) * cw; if (ch !== ' ') { g.fillStyle = '#e8e8e2'; g.fillRect(x - 13, 4, 26, 36); g.fillStyle = '#111'; g.fillText(ch, x, 23); } }); });
 }
+function renderTex() {
+  return canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#ece4cf'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 2500; i++) { const v = Math.random(); g.fillStyle = v < 0.5 ? 'rgba(160,150,120,0.08)' : 'rgba(255,255,255,0.18)'; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    g.strokeStyle = 'rgba(150,140,115,0.35)'; g.lineWidth = 1.5;                    // the faint panel joints you can see in the photo
+    for (let y = 0; y <= h; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+    for (let y = 0; y < h; y += 64) for (let x = (y / 64 % 2) * 64; x <= w; x += 128) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 64); g.stroke(); }
+  });
+}
+function roofTex() {
+  return canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#5a3a2e'; g.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 22) for (let x = -((y / 22) % 2) * 20; x < w; x += 40) { const v = Math.random() * 18 - 9; g.fillStyle = `rgb(${110 + v},${70 + v},${54 + v})`; g.fillRect(x + 1, y + 1, 38, 19); g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(x + 1, y + 17, 38, 3); }
+  });
+}
 function frostedTex() {
   return canvasTex(128, 128, (g, w, h) => {
     g.fillStyle = '#dfe6df'; g.fillRect(0, 0, w, h);
@@ -1163,8 +1205,8 @@ function skyTex() {
 }
 function grassTex() {
   return canvasTex(256, 256, (g, w, h) => {
-    g.fillStyle = '#5a9a36'; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 2600; i++) { g.fillStyle = ['#4e8a2e', '#66a83e', '#5a9a36', '#72b048'][i % 4]; g.fillRect(Math.random() * w, Math.random() * h, 2, 4); }
-    for (let x = 0; x < w; x += 64) { g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x, 0, 32, h); }   // mowing stripes
+    g.fillStyle = '#5e8e34'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 6; i++) { const x = Math.random() * w, y = Math.random() * h, r = 20 + Math.random() * 40, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(176,168,96,0.55)'); gr.addColorStop(1, 'rgba(176,168,96,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }   // dry patches
+    for (let i = 0; i < 3600; i++) { g.fillStyle = ['#4e7e2a', '#6a9a3c', '#58883a', '#7aa648', '#8a9a50'][i % 5]; g.fillRect(Math.random() * w, Math.random() * h, 1.5, 4 + Math.random() * 3); }
   });
 }

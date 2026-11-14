@@ -749,7 +749,7 @@ export class Director {
     b.grill = b.grill.filter(it => !it.dead && !it.heldBy);
     if (b.cookT <= 0 && b.grill.length < 4) {
       b.cookT = 3.5 + Math.random() * 2;
-      const spots = [[-0.4, 0], [0, 0], [0.4, 0], [-0.95, 0], [0.95, 0]].map(([dx, dz]) => new THREE.Vector3(BBQ_SPOT.x + dx, 1.05, BBQ_SPOT.z + dz));
+      const spots = [[-0.3, 0], [0, 0], [0.3, 0], [0.67, 0], [-0.15, 0.1]].map(([dx, dz]) => new THREE.Vector3(BBQ_SPOT.x + dx, 1.05, BBQ_SPOT.z + dz));
       const free = spots.find(p => b.grill.every(it => it.pos.distanceTo(p) > 0.15));
       if (free) {
         const t = ['burger', 'hotdog', 'chicken', 'sausageroll', 'burger', 'kebab'][Math.floor(Math.random() * 6)];
