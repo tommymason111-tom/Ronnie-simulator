@@ -292,7 +292,7 @@ export function buildPub(scene) {
   raise(() => {
     bench(true, X(195) + 0.08, Z(690), Z(945), 1);                                       // "Table with booth" along the wall
     for (const py of [745, 845, 930]) boothTable(X(195) + 0.95, Z(py), true, 1);
-    freeTable(X(300), Z(660));
+    smallTable(X(355) - 0.45, Z(655), false);                                          // a two-seater against the half wall
     freeTable(X(340), Z(752), true);
     freeTable(X(405), Z(818)); freeTable(X(405), Z(905));
   });
