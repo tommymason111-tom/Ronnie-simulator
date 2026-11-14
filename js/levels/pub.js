@@ -129,7 +129,7 @@ export function buildPub(scene) {
   const door = WD(775, 385, 835, 425, 0x3a2416, H, 0.1);
   WZ(835, 425, 505, [], WALL); WD(835, 505, 755, 605, WALL);
   // the bar: top wall, back wall of the back bar, the corridor behind
-  WX(605, 695, 855); WZ(855, 605, 925, [[765, 830]]); WX(925, 835, 855);      // (a doorway from the corridor in behind the bar)      // (a door from behind the bar into the staff room)
+  WX(605, 695, 855); WZ(855, 605, 925); WX(925, 835, 855);      // (a doorway from the corridor in behind the bar)      // (a door from behind the bar into the staff room)
   // staff room, back room, gambling room
   WX(690, 855, 1045, [], WALL); WZ(1045, 690, 1305, [], WALL); WX(975, 895, 1045); WX(975, 855, 895, [[858, 892]]);
   WZ(895, 975, 1305, [[1235, 1300]]);
@@ -432,7 +432,7 @@ export function buildPub(scene) {
       if (b > 0) k.texBox(0.06, 1.25, 0.3, W - 0.03, 2.12, z0, BRICK, { tile: 0.6 });
     }
   };
-  backBar(X(855) - 0.08, Z(612), Z(765) - 0.05, true); backBar(X(855) - 0.08, Z(830) + 0.05, Z(920), true);
+  backBar(X(855) - 0.08, Z(612), Z(920), true);                                    // one long back bar (the staff room's way in is from the far end)
   backBar(X(895) - 0.08, Z(1012), Z(1228), true, [[Z(1015) + 0.7, Z(1015) + 1.35]]);
   // ...and fitted out like a real bar: a double sink with a mixer tap, the glass washer, an ice well, a bottle bin,
   // mixers and cordials, racks of clean glasses, bar towels, the drip trays and the cash register
