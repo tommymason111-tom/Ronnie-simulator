@@ -130,8 +130,7 @@ export function buildPub(scene) {
   const door = WD(775, 385, 835, 425, 0x3a2416, H, 0.1);
   WZ(835, 425, 505, [], WALL); WD(835, 505, 755, 605, WALL);
   // the bar: top wall, back wall of the back bar, the corridor behind
-  WX(605, 695, 855); WZ(855, 605, 925); WX(925, 835, 855); WZ(835, 925, 1245);
-  WD(775, 905, 835, 925, PLASTER);
+  WX(605, 695, 855); WZ(855, 605, 925, [[765, 830]]); WX(925, 835, 855); WZ(835, 925, 1245);      // (a door from behind the bar into the staff room)
   // staff room, back room, gambling room
   WX(690, 855, 1045, [], WALL); WZ(1045, 690, 1305, [], WALL); WX(975, 895, 1045); WX(975, 855, 895, [[858, 892]]);
   WZ(895, 975, 1305, [[1235, 1300]]);
@@ -290,50 +289,122 @@ export function buildPub(scene) {
     k.spawns.push(new THREE.Vector3((X(495) + X(600)) / 2, 1.05, z0 + 0.65));
   }
 
-  // ================================================================ the bar (angled, stools all along it)
-  // counter along the customer side of the plan's bar line; back-bar shelving behind; brass rails
+  // ================================================================ the bar, from the photo of the real one
+  // oak counter with raised and fielded panels, a polished top with a rounded nosing, green drip mats, chrome
+  // fonts and hand pumps, a foot rail on little posts; one open space behind it (in at the right-hand end,
+  // through the flap), a tiled back bar with optics under cream arched panelling, globe lights on the canopy
+  const OAK1 = 0x8a5a30, OAK2 = 0x9a6a3a, OAKD = 0x5a3418, TOPC = 0x5a3216, CHROMEC = 0xd8dce0, RAILC = 0x6a5a3a;
   const counter = (ax, ay, bx, by, depth = 0.55, side = 1) => {
     const x0 = X(ax), z0 = Z(ay), x1 = X(bx), z1 = Z(by), dx = x1 - x0, dz = z1 - z0, L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L, ry = Math.atan2(-dz, dx);
     const nx = -uz * side, nz = ux * side;      // into the bar
-    const cx = (x0 + x1) / 2 + nx * depth / 2, cz = (z0 + z1) / 2 + nz * depth / 2;
-    k.box(L, 1.06, depth, cx, 0.53, cz, 0x7a4a24, { rot: [0, ry, 0] });
-    k.box(L + 0.02, 0.06, depth + 0.1, cx - nx * 0.05, 1.09, cz - nz * 0.05, 0x4a2a14, { rot: [0, ry, 0] });              // polished top
-    k.box(L, 0.05, 0.05, (x0 + x1) / 2 - nx * 0.1, 1.15, (z0 + z1) / 2 - nz * 0.1, BRASS, { rot: [0, ry, 0] });           // brass top rail
-    k.box(L, 0.04, 0.04, (x0 + x1) / 2 - nx * 0.17, 0.22, (z0 + z1) / 2 - nz * 0.17, BRASS, { rot: [0, ry, 0] });         // foot rail
-    for (let s = 0.4; s < L; s += 0.9) k.box(0.03, 0.03, 0.18, x0 + ux * s - nx * 0.09, 0.22, z0 + uz * s - nz * 0.09, BRASS, { rot: [0, ry, 0] });
-    for (let s = 0.4; s < L - 0.3; s += 0.8) for (const p of [0.25, 0.75]) k.box(0.36, 0.7, 0.02, x0 + ux * s - nx * 0.005, 0.55, z0 + uz * s - nz * 0.005, 0x6a3e1c, { rot: [0, ry, 0] });   // panels
-    for (let s = 0; s <= L; s += 0.18) { const x = x0 + ux * s + nx * depth / 2, z = z0 + uz * s + nz * depth / 2; blk(x - depth / 2, z - depth / 2, x + depth / 2, z + depth / 2, 1.1); k.colliders.push({ min: new THREE.Vector3(x - 0.15, 1.0, z - 0.15), max: new THREE.Vector3(x + 0.15, 1.12, z + 0.15) }); }
-    // food along the bar top, stools along the customer side (facing the bar)
-    for (let s = 0.6; s < L - 0.3; s += 1.3) k.spawns.push(new THREE.Vector3(x0 + ux * s + nx * 0.25, 1.2, z0 + uz * s + nz * 0.25));
-    for (let s = 0.45; s < L - 0.25; s += 0.85) k.stool(x0 + ux * s - nx * 0.45, z0 + uz * s - nz * 0.45, 0x8a1f2a, BRASS);
-    return { x0, z0, ux, uz, nx, nz, L, ry };
+    const at = (s2, o) => [x0 + ux * s2 + nx * o, z0 + uz * s2 + nz * o];
+    const bx2 = (w, h, d, s2, y, o, col) => { const [px, pz] = at(s2, o); k.box(w, h, d, px, y, pz, col, { rot: [0, ry, 0] }); };
+    bx2(L, 1.02, depth, L / 2, 0.51, depth / 2, OAK1);                                                         // the carcass
+    bx2(L, 0.1, 0.03, L / 2, 0.06, -0.005, OAKD);                                                              // plinth
+    // raised & fielded panels: stiles, rails, a bevelled field in each
+    const n = Math.max(1, Math.round(L / 0.62)), pw = L / n;
+    for (let i = 0; i <= n; i++) bx2(0.07, 0.86, 0.035, i * pw, 0.55, -0.012, OAK2);
+    for (const y of [0.15, 0.95]) bx2(L, 0.08, 0.035, L / 2, y, -0.012, OAK2);
+    for (let i = 0; i < n; i++) { bx2(pw - 0.16, 0.64, 0.02, (i + 0.5) * pw, 0.55, -0.02, OAK1); bx2(pw - 0.24, 0.54, 0.015, (i + 0.5) * pw, 0.55, -0.03, 0x93623a); }
+    // the top: polished, a rounded nosing along the front, a lip on the staff side
+    bx2(L + 0.02, 0.05, depth + 0.08, L / 2, 1.055, depth / 2 - 0.04, TOPC);
+    { const [px, pz] = at(L / 2, -0.07); const nose = new THREE.CylinderGeometry(0.03, 0.03, L + 0.02, 10); nose.rotateZ(Math.PI / 2); nose.rotateY(ry); k.parts.push(part(nose, TOPC, [px, 1.055, pz])); }
+    // green rubber drip mats along it
+    for (let s2 = 0.3; s2 < L - 0.5; s2 += 1.0) bx2(0.6, 0.008, 0.2, s2 + 0.3, 1.084, depth * 0.55, 0x1e5a32);
+    // foot rail on short posts with brackets
+    { const [px, pz] = at(L / 2, -0.2); const rail = new THREE.CylinderGeometry(0.022, 0.022, L, 10); rail.rotateZ(Math.PI / 2); rail.rotateY(ry); k.parts.push(part(rail, RAILC, [px, 0.14, pz])); }
+    for (let s2 = 0.3; s2 < L; s2 += 0.9) { const [px, pz] = at(s2, -0.2); k.cyl(0.012, 0.016, 0.13, px, 0.065, pz, RAILC, 8); bx2(0.025, 0.025, 0.2, s2, 0.14, -0.1, RAILC); }
+    for (let s2 = 0; s2 <= L; s2 += 0.18) { const [x, z] = at(s2, depth / 2); blk(x - depth / 2, z - depth / 2, x + depth / 2, z + depth / 2, 1.1); k.colliders.push({ min: new THREE.Vector3(x - 0.15, 1.0, z - 0.15), max: new THREE.Vector3(x + 0.15, 1.12, z + 0.15) }); }
+    for (let s2 = 0.6; s2 < L - 0.3; s2 += 1.3) { const [x, z] = at(s2, 0.25); k.spawns.push(new THREE.Vector3(x, 1.2, z)); }
+    // glass shelf, glasses and the glass washer under the bar on the staff side
+    bx2(L - 0.1, 0.03, 0.25, L / 2, 0.55, depth + 0.12, 0x6a4a2a);
+    for (let s2 = 0.15; s2 < L - 0.1; s2 += 0.09) { const [px, pz] = at(s2, depth + 0.12); k.cyl(0.032, 0.026, 0.14, px, 0.64, pz, 0xd8eef2, 8); }
+    return { x0, z0, ux, uz, nx, nz, L, ry, at };
   };
   const bar1 = counter(695, 605, 695, 845, 0.55, -1);
-  counter(695, 845, 735, 965, 0.55, -1);
+  const bar2 = counter(695, 845, 735, 965, 0.55, -1);
   counter(735, 965, 795, 985, 0.55, -1);
-  const bar4 = counter(795, 985, 795, 1245, 0.42, -1);
-  counter(795, 1245, 835, 1245, 0.42, -1);
-  // beer taps along the straight runs
-  for (const b of [bar1, bar4]) for (let s = 0.8; s < b.L - 0.6; s += 0.5) { const x = b.x0 + b.ux * s + b.nx * 0.32, z = b.z0 + b.uz * s + b.nz * 0.32; k.cyl(0.015, 0.015, 0.32, x, 1.3, z, 0xd4af37, 8); k.box(0.05, 0.12, 0.03, x, 1.5, z, [0xc8102e, 0x111111, 0x1f4fbf, 0xffd400][Math.round(s * 2) % 4], { rot: [0, b.ry, 0] }); }
-  // back-bar shelving along the inner line, bottles lit from behind
-  { const bt = bottleTex();
-    for (const [ax, ay, bx, by] of [[755, 650, 755, 830], [755, 830, 775, 905]]) { const s = WD(ax, ay, bx, by, 0x2a1a10, 1.35, 0.3); const mx = (s.x0 + s.x1) / 2 - s.uz * 0.16, mz = (s.z0 + s.z1) / 2 + s.ux * 0.16; k.label('bottles', s.L, 0.9, [mx, 0.85, mz], [0, s.ry, 0], { tex: bt, glow: true }); }
-    // the back room behind the bar: bottles along the wall, the MONSTOR fridge, glass washer
-    R(X(855) - 0.42, Z(615), X(855) - 0.08, Z(890), 2.2, 1.1, 0x2a1a10, { collide: true, block: true });
-    k.label('bottles', Z(890) - Z(615), 1.2, [X(855) - 0.43, 1.6, (Z(615) + Z(890)) / 2], [0, -Math.PI / 2, 0], { tex: bt, glow: true });
-    R(X(780), Z(610), X(850), Z(640), 1.9, 0.95, 0x111111, { block: true });
-    k.label('fridge', 1.4, 1.7, [X(815), 0.98, Z(640) + 0.01], [0, 0, 0], { tex: monstorFridgeTex(), glow: true });
-    for (let z = Z(660); z < Z(880); z += 0.8) k.lamp(X(855) - 0.5, 2.35, z, 0xffc070, 0.05);
-    k.label('THE OYSTERFLEET', 3.2, 0.7, [X(855) - 0.43, 2.62, (Z(615) + Z(890)) / 2], [0, -Math.PI / 2, 0], { tex: pubSignTex(), glow: true });
-    for (const z of [Z(700), Z(800)]) k.spawns.push(new THREE.Vector3(X(855) - 0.25, 2.25, z));
-  }
-  R(X(700) + 0.1, Z(770), X(700) + 0.4, Z(770) + 0.3, 0.25, 1.26, 0x222222); R(X(700) + 0.15, Z(770) + 0.05, X(700) + 0.3, Z(770) + 0.25, 0.2, 1.48, 0x4caf50);   // the till
-  // amber pendants over the bar, cream tongue-and-groove bulkhead along it
-  for (let py = 640; py < 1240; py += 75) { const px = py < 845 ? 710 : py < 965 ? 710 + (py - 845) / 3 : 812; k.cyl(0.006, 0.006, 0.9, X(px), H - 0.45, Z(py), 0x222222, 4); k.lamp(X(px), H - 1.0, Z(py), 0xffb050, 0.14); k.pool(X(px), 1.14, Z(py), 1.0, 0xffb050); k.pool(X(px) - 0.8, 0, Z(py), 1.6, 0xffa040); }
-  const fascia = (x0, z0, x1, z1) => { const w = Math.max(x1 - x0, 0.3), d = Math.max(z1 - z0, 0.3); k.texBox(w, 0.45, d, (x0 + x1) / 2, H - 0.225, (z0 + z1) / 2, TNG, { tile: 0.6 }); k.box(w + 0.02, 0.1, d + 0.02, (x0 + x1) / 2, H - 0.5, (z0 + z1) / 2, DARKWOOD); };
-  fascia(X(695) - 0.15, Z(605), X(695) + 0.15, Z(845)); fascia(X(795) - 0.15, Z(985), X(795) + 0.15, Z(1245));
-  fascia(X(195), Z(965) - 0.15, X(455), Z(965) + 0.15);
-  k.label("TIP JAR: RONNIE'S PASTY FUND", 0.4, 0.2, [X(695) - 0.02, 1.25, Z(770)], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', size: 40 });
+  const bar4 = counter(795, 985, 795, 1230, 0.36, -1);
+  // the lifting flap at the right-hand end: the way in behind the bar
+  { const x0 = X(795) + 0.02, x1 = X(835) - 0.1, z = Z(1235);
+    k.box(0.04, 0.6, 0.36, x1 - 0.02, 1.37, z - 0.02, TOPC); k.cyl(0.02, 0.02, 0.06, x1 - 0.02, 1.08, z - 0.15, 0x999999, 8);
+    k.label('STAFF ONLY BEHIND THE BAR (RONNIE: ESPECIALLY YOU)', 0.5, 0.18, [x1 - 0.045, 1.45, z - 0.02], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#c0392b', border: null, size: 30 }); }
+  // the fonts: chrome T-bars with round blue and white badges, and a few hand pumps with clips
+  const font = (b, s2) => { const [x, z] = b.at(s2, 0.3);
+    k.cyl(0.04, 0.045, 0.04, x, 1.1, z, CHROMEC, 12); k.cyl(0.022, 0.022, 0.32, x, 1.28, z, CHROMEC, 10);
+    const bar = new THREE.CylinderGeometry(0.02, 0.02, 0.26, 10); bar.rotateZ(Math.PI / 2); bar.rotateY(b.ry); k.parts.push(part(bar, CHROMEC, [x, 1.44, z]));
+    for (const o of [-0.1, 0, 0.1]) { const tx = x + b.ux * o - b.nx * 0.03, tz = z + b.uz * o - b.nz * 0.03; k.cyl(0.008, 0.008, 0.07, tx, 1.39, tz, CHROMEC, 6);
+      const badge = new THREE.CylinderGeometry(0.035, 0.035, 0.012, 16); badge.rotateX(Math.PI / 2); badge.rotateY(b.ry); k.parts.push(part(badge, [0x1f6fd0, 0xf2f2f2, 0x1f4fbf][Math.round(o * 10 + 1)], [x + b.ux * o - b.nx * 0.025, 1.5, z + b.uz * o - b.nz * 0.025])); } };
+  const pump = (b, s2, clip) => { const [x, z] = b.at(s2, 0.3);
+    k.cyl(0.035, 0.04, 0.04, x, 1.1, z, 0x2a1a10, 10); k.cyl(0.015, 0.02, 0.36, x, 1.3, z, 0x111111, 8); k.parts.push(part(new THREE.SphereGeometry(0.022, 8, 6), 0x111111, [x, 1.49, z]));
+    const c = new THREE.BoxGeometry(0.07, 0.09, 0.008); c.rotateY(b.ry); k.parts.push(part(c, clip, [x - b.nx * 0.025, 1.36, z - b.nz * 0.025])); k.cyl(0.006, 0.006, 0.06, x - b.nx * 0.04, 1.14, z - b.nz * 0.04, CHROMEC, 6); };
+  for (const s2 of [0.9, 2.1, 3.6, 4.8]) font(bar1, s2); for (const [s2, c] of [[1.5, 0xd4af37], [2.7, 0x2e7d32], [3.0, 0xc8102e]]) pump(bar1, s2, c);
+  for (const s2 of [0.8, 2.6, 4.4]) font(bar4, s2); pump(bar4, 1.7, 0xd4af37);
+  { const [x, z] = bar1.at(5.4, 0.3); R(x - 0.15, z - 0.12, x + 0.15, z + 0.12, 0.22, 1.19, 0x222222); R(x - 0.12, z - 0.1, x + 0.12, z + 0.1, 0.16, 1.4, 0x2a6ad8); }      // the till
+  // slate tiles on the floor in front of the bar
+  { const slate = tileTex('#3a3c3e', '#34363a', '#24262a', 72);
+    k.floor(X(695) - 1.4, Z(605), X(695), Z(845), slate, 0.006, 0.9); k.floor(X(695) - 1.3, Z(845), X(795), Z(1000), slate, 0.0065, 0.9); k.floor(X(795) - 1.4, Z(985), X(795), Z(1245), slate, 0.006, 0.9);
+    k.floor(X(795) - 0.4, Z(1245), X(895), Z(1305), slate, 0.006, 0.9); }
+  // the back bar: along the back wall (with the staff-room door in it) and the shallow run behind the long bit
+  const OPT = [0x6a1a1a, 0xd4a017, 0xe8e8e8, 0x2e5a2a, 0x8a4a1a, 0x1f3f8a, 0xc0c0c0, 0x7a2a5a, 0xf0d8a0];
+  const metro = canvasTex(128, 64, (g, w, h) => { g.fillStyle = '#c8ccc8'; g.fillRect(0, 0, w, h); for (let r = 0; r < 4; r++) for (let c = -1; c < 4; c++) { const x = c * 32 + (r % 2) * 16, y = r * 16; g.fillStyle = '#f6f7f4'; g.fillRect(x + 1, y + 1, 30, 14); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(x + 2, y + 2, 26, 3); } });
+  const fridgeDoor = canvasTex(128, 160, (g, w, h) => { g.fillStyle = '#0c0e10'; g.fillRect(0, 0, w, h); for (const y of [40, 95, 150]) { g.fillStyle = '#d8e8f0'; g.fillRect(4, y, w - 8, 3); for (let x = 8; x < w - 8; x += 11) { g.fillStyle = ['#3a7a2a', '#d4a017', '#8a2a1a', '#e8e8e8', '#2a4a8a'][(x / 11 | 0) % 5]; g.fillRect(x, y - 30, 8, 30); g.fillRect(x + 2, y - 38, 4, 8); } } g.fillStyle = 'rgba(200,230,255,0.12)'; g.fillRect(0, 0, w, h); g.strokeStyle = '#9aa0a6'; g.lineWidth = 6; g.strokeRect(0, 0, w, h); });
+  const bottle = (x, y, z, col, up = true) => {
+    const s2 = up ? 1 : -1;
+    k.cyl(0.035, 0.035, 0.2, x, y + s2 * 0.1, z, col, 8); k.cyl(0.012, 0.033, 0.06, x, y + s2 * 0.23, z, col, 8); k.cyl(0.012, 0.012, 0.06, x, y + s2 * 0.29, z, col, 6);
+    k.cyl(0.036, 0.036, 0.07, x, y + s2 * 0.1, z, 0xf0e8d0, 8);                                          // label
+    if (!up) { k.cyl(0.02, 0.02, 0.07, x, y + 0.36 * s2 - 0.0, z, 0xe8f4f8, 8); k.cyl(0.024, 0.024, 0.02, x, y + 0.405 * s2, z, CHROMEC, 8); }    // the optic
+  };
+  const backBar = (W, za, zb, deep) => {      // along z against a wall at x = W, facing -x
+    const zc = (za + zb) / 2, len = zb - za;
+    if (deep) {
+      R(W - 0.55, za, W, zb, 0.88, 0.44, 0x4a2c18, { collide: true, block: true });
+      for (let z = za + 0.05; z < zb - 0.6; z += 0.66) k.label('fridge', 0.6, 0.72, [W - 0.555, 0.44, z + 0.32], [0, -Math.PI / 2, 0], { tex: fridgeDoor, glow: true });
+      R(W - 0.6, za, W, zb, 0.04, 0.9, 0x6a4a2a, { collide: true });
+      for (let z = za + 0.2; z < zb - 0.1; z += 0.5) k.spawns.push(new THREE.Vector3(W - 0.3, 0.98, z));
+    }
+    k.texBox(0.02, 0.58, len, W - 0.01, 1.21, zc, metro, { tile: 0.3 });                                    // white metro tiles
+    R(W - 0.14, za, W, zb, 0.03, 1.52, 0x2a1a10);                                                            // the optics rail
+    for (let z = za + 0.08, i = 0; z < zb - 0.05; z += 0.13, i++) bottle(W - 0.08, 1.92, z, OPT[i % OPT.length], false);
+    // cream arched panelling above, a shelf of bottles in each arch, brick piers between
+    const bays = Math.max(1, Math.round(len / 1.3)), bw = len / bays;
+    for (let b = 0; b < bays; b++) {
+      const z0 = za + b * bw, z1 = z0 + bw, mz = (z0 + z1) / 2;
+      k.texBox(0.03, 0.75, bw - 0.3, W - 0.015, 2.32, mz, TNG, { tile: 0.4 });
+      const arch = new THREE.TorusGeometry((bw - 0.3) / 2, 0.025, 6, 16, Math.PI); arch.rotateY(Math.PI / 2); k.parts.push(part(arch, 0xf4efe2, [W - 0.04, 2.45, mz], [0, 0, 0], [1, 0.45, 1]));
+      R(W - 0.2, z0 + 0.15, W, z1 - 0.15, 0.03, 2.0, 0xf4efe2, { collide: true });
+      for (let z = z0 + 0.25, i = b; z < z1 - 0.2; z += 0.11, i++) bottle(W - 0.1, 2.015, z, OPT[(i * 3) % OPT.length]);
+      k.lamp(W - 0.1, 2.6, mz, 0xffe0b0, 0.05);
+      if (b > 0) k.texBox(0.06, 1.25, 0.3, W - 0.03, 2.12, z0, BRICK, { tile: 0.6 });
+    }
+  };
+  backBar(X(855) - 0.08, Z(612), Z(765) - 0.05, true); backBar(X(855) - 0.08, Z(830) + 0.05, Z(920), true);
+  backBar(X(835) - 0.08, Z(935), Z(1235), false);
+  // along the top wall: the MONSTOR fridge and the coffee machine, a chalkboard
+  R(X(760), Z(605) + 0.08, X(830), Z(605) + 0.62, 1.9, 0.95, 0x111111, { block: true });
+  k.label('fridge', 1.4, 1.7, [(X(760) + X(830)) / 2, 0.98, Z(605) + 0.63], [0, 0, 0], { tex: monstorFridgeTex(), glow: true });
+  R(X(700) + 0.65, Z(605) + 0.08, X(745), Z(605) + 0.62, 0.9, 0.45, 0x4a2c18, { collide: true, block: true });
+  R(X(700) + 0.8, Z(605) + 0.15, X(700) + 1.25, Z(605) + 0.5, 0.45, 1.13, 0x2a2a2a); k.cyl(0.02, 0.02, 0.1, X(700) + 0.95, 0.98, Z(605) + 0.5, CHROMEC, 6); k.cyl(0.02, 0.02, 0.1, X(700) + 1.1, 0.98, Z(605) + 0.5, CHROMEC, 6);   // coffee machine
+  k.label('COFFEES — CAPPUCCINO · LATTE · AMERICANO (RONNIE: ONE OF EACH)', 0.7, 0.45, [X(700) + 1.0, 1.75, Z(605) + 0.1], [0, 0, 0], { bg: '#1f3f8a', fg: '#fff', border: '#fff', size: 34 });
+  k.label("THE OYSTERFLEET", 2.6, 0.55, [X(855) - 0.11, 2.85, (Z(612) + Z(920)) / 2], [0, -Math.PI / 2, 0], { tex: pubSignTex(), glow: true });
+  { const [x, z] = bar1.at(5.0, -0.3); k.box(0.05, 1.6, 0.05, x, 0.8, z, 0x2a1a10); k.box(0.5, 0.7, 0.04, x, 1.55, z, 0x5a3a20, { rot: [0, bar1.ry, 0] });
+    k.label("TODAY'S ALES: OYSTER STOUT · RONNIE'S RUIN · PIE & PINT £9.99", 0.44, 0.62, [x - bar1.nx * 0.025, 1.55, z - bar1.nz * 0.025], [0, bar1.ry, 0], { bg: '#1a1a1a', fg: '#f5f0e6', border: null, size: 34 }); }
+  // the canopy over the bar: cream tongue-and-groove with a grey trim, ribbed glass globe lights hanging off it
+  const CY = 2.62;
+  for (const [x0, z0, x1, z1] of [[X(695) - 0.25, Z(605), X(855), Z(925)], [X(695) - 0.25, Z(845), X(835), Z(985) + 0.3], [X(795) - 0.25, Z(985), X(835), Z(1245)]]) R(x0, z0, x1, z1, 0.05, CY, 0xf4efe2);
+  for (const b of [bar1, bar2, bar4]) { const [px, pz] = b.at(b.L / 2, -0.12); k.texBox(b.L + 0.1, H - CY, 0.06, px, CY + (H - CY) / 2, pz, TNG, { tile: 0.5 }); k.box(b.L + 0.12, 0.06, 0.1, px, CY - 0.01, pz, 0x7a7e80, { rot: [0, b.ry, 0] }); }
+  { const [px, pz] = [X(765) - 0.12 * 0.32, Z(975) + 0.12]; const b3 = Math.hypot(X(795) - X(735), Z(985) - Z(965)); k.box(b3, H - CY, 0.06, (X(735) + X(795)) / 2 - 0.04, CY + (H - CY) / 2, (Z(965) + Z(985)) / 2 + 0.11, 0xf1e9d6, { rot: [0, Math.atan2(-(Z(985) - Z(965)), X(795) - X(735)), 0] }); }
+  const globe = (x, z) => {
+    k.cyl(0.004, 0.004, 0.42, x, CY - 0.21, z, 0x222222, 4); k.cyl(0.03, 0.045, 0.06, x, CY - 0.44, z, 0xb87333, 10);          // copper cap
+    for (let i = 0; i < 6; i++) { const r = new THREE.TorusGeometry(0.11, 0.004, 4, 16); r.rotateY(i / 6 * Math.PI); k.parts.push(part(r, 0xf0e6c8, [x, CY - 0.58, z])); }   // the ribs
+    k.lamp(x, CY - 0.58, z, 0xffe2a8, 0.1); k.pool(x, 1.1, z, 0.9, 0xffc070); k.pool(x, 0, z, 1.4, 0xffb060);
+  };
+  for (const b of [bar1, bar4]) for (let s2 = 0.6; s2 < b.L; s2 += 1.3) { const [x, z] = b.at(s2, 0.2); globe(x, z); }
+  { const [x, z] = bar2.at(bar2.L / 2, 0.2); globe(x, z); }
+  for (let z = Z(640); z < Z(920); z += 1.1) k.lamp(X(800), CY - 0.02, z, 0xfffbe8, 0.035);
+  // the cream bulkhead over the raised area's edge
+  k.texBox(X(455) - X(195), 0.45, 0.3, (X(195) + X(455)) / 2, H - 0.225, Z(965), TNG, { tile: 0.6 }); k.box(X(455) - X(195) + 0.02, 0.1, 0.32, (X(195) + X(455)) / 2, H - 0.5, Z(965), DARKWOOD);
+  k.label("TIP JAR: RONNIE'S PASTY FUND", 0.4, 0.2, [X(695) - 0.05, 0.85, Z(770)], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', size: 40 });
 
   // ================================================================ fruit machines (they WORK: tap one, it pays out in food)
   const machines = [];
@@ -568,10 +639,10 @@ export function buildPub(scene) {
     ['QUIZ NIGHT — Q1: How many pies did Ronnie eat last night? A: Yes.', 1.0, 0.7, [X(560), 2.15, Z(1305) - 0.12], [0, Math.PI, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 48 }],
     ['WE DO NOT SERVE SALAD ("YES YOU DO" — Chloe)', 1.0, 0.5, [X(600), 2.4, Z(1305) - 0.12], [0, Math.PI, 0], { bg: '#fff', fg: '#c0392b' }],
     ['OYSTERFLEET PIE-EATING CHAMPION — RONNIE (UNDEFEATED, UNCHALLENGED, UNWELL)', 1.2, 0.6, [X(195) + 0.12, 1.6, Z(1240)], [0, Math.PI / 2, 0], { bg: '#d4af37', fg: '#111', border: '#7a5a10', size: 48 }],
-    ['PLEASE DO NOT FEED THE BARMAN', 1.2, 0.45, [X(855) - 0.43, 0.75, Z(820)], [0, -Math.PI / 2, 0], { bg: '#fff8e7', fg: '#111' }],
-    ['LAST ORDERS — Ronnie: last orders means for the CUSTOMERS', 0.8, 0.4, [X(835) - 0.1, 1.9, Z(1100)], [0, -Math.PI / 2, 0], { bg: '#fff06a', fg: '#111', border: null, size: 40 }],
+    ['PLEASE DO NOT FEED THE BARMAN', 1.2, 0.45, [X(835) - 0.1, 2.3, Z(1100)], [0, -Math.PI / 2, 0], { bg: '#fff8e7', fg: '#111' }],
+    ['LAST ORDERS — Ronnie: last orders means for the CUSTOMERS', 0.8, 0.4, [X(835) - 0.1, 2.3, Z(1180)], [0, -Math.PI / 2, 0], { bg: '#fff06a', fg: '#111', border: null, size: 40 }],
     ['BARRED: RONNIE (FROM THE KITCHEN) (FROM THE CELLAR) (FROM THE CRISP CLIP)', 1.3, 0.6, [X(195) + 0.12, 1.6, Z(1065)], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c62828', border: '#c62828', size: 38 }],
-    ['HAPPY HOUR 5–7PM. RONNIE\'S HAPPY HOUR: 11AM–CLOSING', 1.2, 0.4, [X(855) - 0.43, 2.1, Z(700)], [0, -Math.PI / 2, 0], { bg: '#ffd400', fg: '#111', border: null, size: 40 }],
+    ['HAPPY HOUR 5–7PM. RONNIE\'S HAPPY HOUR: 11AM–CLOSING', 1.2, 0.4, [X(810), 2.3, Z(605) + 0.1], [0, 0, 0], { bg: '#ffd400', fg: '#111', border: null, size: 40 }],
     ['CARVERY SUNDAYS — RONNIE SIZE PORTION: THE WHOLE CARVERY', 1.3, 0.45, [X(400), 2.3, Z(1065) + 0.1], [0, 0, 0], { bg: '#5a2a14', fg: '#ffd400', border: '#ffd400', size: 40 }],
     ['IN CASE OF EMERGENCY: BREAK GLASS. IN CASE OF RONNIE: HIDE THE PIES.', 0.8, 0.4, [X(795) + 0.1, 1.7, Z(1500)], [0, Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: '#fff', size: 34 }],
     ['CAUTION: RONNIE SWEAT', 0.5, 0.6, [X(620), 0.33, Z(1270) - 0.6], [0, -Math.PI / 4, 0], { bg: '#ffd400', fg: '#111', border: '#111', size: 60 }],
