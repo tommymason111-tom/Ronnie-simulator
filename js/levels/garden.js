@@ -350,12 +350,46 @@ export function buildGarden(scene) {
     R(x0, z0, x1, z1, 0.06, 0.03, 0x4a3020);                                          // dark soil
     for (let i = 0; i < n; i++) { const x = x0 + 0.08 + rnd() * (x1 - x0 - 0.16), z = z0 + 0.08 + rnd() * (z1 - z0 - 0.16); if (i % 4 === 0) bush(x, z, 0.16 + rnd() * 0.12); else bloom(x, z, 0.25 + rnd() * 0.4); }
   };
-  bed(B.x0 + 0.05, -10.9, B.x0 + 0.75, -2.9, 70);                                     // along the left fence
+  // the left fence: shrubs, climbers and flowers growing up it the whole way along, never more than a foot out
+  for (const [z0, z1] of [[-16.35, -2.95], [-1.85, 1.3]]) {
+    R(B.x0 + 0.04, z0, B.x0 + 0.3, z1, 0.06, 0.03, 0x4a3020);                                     // narrow strip of soil
+    for (let z = z0 + 0.1; z < z1 - 0.05; z += 0.11) {
+      const n = 1 + Math.floor(rnd() * 3);
+      for (let j = 0; j < n; j++) { const r = 0.1 + rnd() * 0.12, y = 0.12 + rnd() * 1.65;
+        k.parts.push(part(sph(r, 7, 5), LEAF[Math.floor(rnd() * 4)], [B.x0 + 0.08 + r * 0.45, y, z + (rnd() - 0.5) * 0.08], [0, 0, 0], [0.55, 1, 1])); }
+      if (rnd() < 0.55) k.parts.push(part(sph(0.03 + rnd() * 0.025, 5, 4), [0xff4f7b, 0xffd400, 0xffffff, 0x9a4aff, 0xe86a90, 0x5a3a9a, 0x4a8aff][Math.floor(rnd() * 7)], [B.x0 + 0.2 + rnd() * 0.06, 0.2 + rnd() * 1.6, z]));
+      if (rnd() < 0.3) bloom(B.x0 + 0.24, z, 0.25 + rnd() * 0.35);
+    }
+  }
+  // halfway down, where the line crosses the lawn: a trellis on the fence, a grey post, a scroll bracket
+  // with a solar lantern and a hanging basket, clematis and roses climbing all over it
+  { const PZ = -6.6, TZ0 = -8.5, GREY = 0x8c8c82, IRON = 0x1a1a1a, px = B.x0 + 0.1;
+    k.box(0.1, 2.35, 0.1, px, 1.175, PZ, GREY, { block: true, collide: true }); k.box(0.12, 0.04, 0.12, px, 2.37, PZ, GREY);
+    k.box(0.1, 2.35, 0.1, px, 1.175, TZ0, GREY, { block: true }); k.box(0.12, 0.04, 0.12, px, 2.37, TZ0, GREY);
+    for (const y of [0.6, 2.28]) k.box(0.05, 0.05, PZ - TZ0, px, y, (PZ + TZ0) / 2, GREY);
+    for (let z = TZ0 + 0.15; z < PZ - 0.05; z += 0.15) k.box(0.02, 1.68, 0.025, px + 0.02, 1.44, z, 0x9a9a8e);                     // trellis uprights
+    for (let y = 0.75; y < 2.25; y += 0.15) k.box(0.025, 0.025, PZ - TZ0 - 0.1, px + 0.035, y, (PZ + TZ0) / 2, 0x9a9a8e);       // and rails
+    // the scroll bracket off the post, toward the house
+    k.box(0.02, 0.025, 0.5, px + 0.06, 2.12, PZ + 0.25, IRON);
+    k.parts.push(part(new THREE.TorusGeometry(0.1, 0.008, 4, 14, Math.PI * 1.4), IRON, [px + 0.06, 2.0, PZ + 0.2], [0, Math.PI / 2, 0]));
+    k.parts.push(part(new THREE.TorusGeometry(0.05, 0.007, 4, 10, Math.PI * 1.6), IRON, [px + 0.06, 2.14, PZ + 0.46], [0, Math.PI / 2, 2.5]));
+    // solar lantern hanging off the bracket
+    k.box(0.006, 0.12, 0.006, px + 0.06, 2.04, PZ + 0.22, IRON);
+    k.cyl(0.0, 0.07, 0.05, px + 0.06, 1.96, PZ + 0.22, 0x2a2a2a, 10); k.cyl(0.045, 0.04, 0.09, px + 0.06, 1.89, PZ + 0.22, 0xe8eef0, 10); k.lamp(px + 0.06, 1.88, PZ + 0.22, 0xfff6e0, 0.03, false);
+    // the hanging basket on the end of the bracket: chains, wicker, a spill of flowers
+    const bz = PZ + 0.45, bx = px + 0.12;
+    for (const [dx, dz] of [[-0.09, 0], [0.06, -0.07], [0.06, 0.07]]) k.box(0.005, 0.45, 0.005, bx + dx * 0.6, 1.88, bz + dz * 0.6, 0x333333, { rot: [dz * 1.5, 0, -dx * 1.5] });
+    k.parts.push(part(new THREE.SphereGeometry(0.16, 12, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), 0x8a7a5a, [bx, 1.66, bz]));
+    for (let i = 0; i < 40; i++) { const a = rnd() * 6.28, r = rnd() * 0.17, y = 1.66 + rnd() * 0.12 - (r > 0.12 ? rnd() * 0.25 : 0);
+      k.parts.push(part(sph(0.028 + rnd() * 0.02, 5, 4), i % 3 === 0 ? LEAF[i % 4] : [0xe86a90, 0xfff6b0, 0xffffff, 0x4a6aff, 0xffd400][i % 5], [bx + Math.cos(a) * r * 0.8, y, bz + Math.sin(a) * r])); }
+    // clematis and roses scrambling over the trellis and the post
+    for (let i = 0; i < 160; i++) { const z = TZ0 + rnd() * (PZ - TZ0 + 0.1), y = 0.3 + rnd() * 2.1, leaf = rnd() < 0.62;
+      k.parts.push(part(sph(leaf ? 0.05 + rnd() * 0.05 : 0.035 + rnd() * 0.02, 5, 4), leaf ? LEAF[i % 4] : [0x4a2a7a, 0x6a3a9a, 0x3a2a6a, 0xe86a90, 0xd8507a][i % 5], [px + 0.06 + rnd() * 0.05, y, z], [0, 0, 0], [0.6, 1, 1])); }
+    for (let i = 0; i < 18; i++) k.box(0.01, 0.01, 0.3 + rnd() * 0.3, px + 0.05, 2.3 + rnd() * 0.35, TZ0 + rnd() * 2, 0x6a5a3a, { rot: [0.6 + rnd(), 0, 0] });   // bare twiggy bits poking over the top
+  }
   bed(6.0, -10.9, B.x1 - 0.05, -8.6, 18);                                              // behind the garage
   bed(-4.4, -11.0 + 0.0, 4.9, -10.75, 0);                                             // soil strip in front of the cabin
   for (let i = 0; i < 26; i++) bloom(-4.3 + i * 0.36, -10.86, 0.2 + rnd() * 0.15);
-  // climbing roses up the left fence
-  for (let i = 0; i < 90; i++) { const z = -10.8 + rnd() * 7.8, y = 0.3 + rnd() * 1.4; k.box(0.02, 0.07, 0.07, B.x0 + 0.06, y, z, rnd() < 0.7 ? LEAF[i % 4] : [0xff3a5a, 0xff8ab0, 0xffffff][i % 3]); }
   // the neighbour's big weeping willow, hanging over the back-left corner by the cabin
   { const WIL = [0x7aa84a, 0x8ab85a, 0x6a9a3e, 0x95c060, 0x5f8f38];
     const wx = -8.4, wz = -14.6;                                                    // trunk is over the fence, next door
@@ -393,8 +427,8 @@ export function buildGarden(scene) {
   // bird bath + a gnome + a football
   k.cyl(0.08, 0.12, 0.75, -2.3, 0.375, -9.0, 0xc8c2b4, 10, { block: true }); k.cyl(0.32, 0.22, 0.1, -2.3, 0.8, -9.0, 0xc8c2b4, 14); k.cyl(0.28, 0.28, 0.02, -2.3, 0.84, -9.0, 0x7ac8f0, 14);
   k.parts.push(part(sph(0.04, 6, 4), 0x6a4a3a, [-2.12, 0.9, -9.0]), part(sph(0.025, 5, 4), 0x6a4a3a, [-2.08, 0.94, -9.0]));      // a little bird
-  k.cyl(0.07, 0.09, 0.2, -6.0, 0.1, -6.3, 0x1e5aa8, 8); k.parts.push(part(sph(0.07, 6, 5), 0xf0c8a0, [-6.0, 0.26, -6.3]), part(sph(0.05, 6, 4), 0xffffff, [-6.0, 0.21, -6.24], [0, 0, 0], [1, 1.3, 0.7]));
-  k.cyl(0.0, 0.08, 0.22, -6.0, 0.4, -6.3, 0xd32f2f, 8);                                                     // gnome
+  k.cyl(0.07, 0.09, 0.2, -5.95, 0.1, -7.7, 0x1e5aa8, 8); k.parts.push(part(sph(0.07, 6, 5), 0xf0c8a0, [-5.95, 0.26, -7.7]), part(sph(0.05, 6, 4), 0xffffff, [-5.95, 0.21, -7.64], [0, 0, 0], [1, 1.3, 0.7]));
+  k.cyl(0.0, 0.08, 0.22, -5.95, 0.4, -7.7, 0xd32f2f, 8);                                                     // gnome
   k.parts.push(part(sph(0.11, 10, 8), 0xffffff, [-1.6, 0.11, -7.6]));
   for (let i = 0; i < 5; i++) k.parts.push(part(sph(0.035, 4, 3), 0x111111, [-1.6 + Math.cos(i * 1.26) * 0.09, 0.11 + Math.sin(i * 2.1) * 0.06, -7.6 + Math.sin(i * 1.26) * 0.09]));
   // daisies and clover all over the lawn
