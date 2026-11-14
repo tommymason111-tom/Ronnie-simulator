@@ -466,6 +466,20 @@ export class Player {
     if (!it) return;
     f.held = null; it.heldBy = null;
     it.vel.copy(this.fwd).multiplyScalar(power); it.vel.y += 1.6;
+    // darts on a phone/PC: they go where the middle of the screen is pointing (give or take a wobble)
+    const db = this.room && this.room.dartboard;
+    if (it.def.dart && db) {
+      const o = this.camera.getWorldPosition(new THREE.Vector3()), dir = this.camera.getWorldDirection(new THREE.Vector3());
+      const den = dir.dot(db.n);
+      if (den < -0.2) {
+        const t = new THREE.Vector3().subVectors(db.c, o).dot(db.n) / den;
+        if (t > 0 && t < 4.5) {
+          const target = o.addScaledVector(dir, t).addScaledVector(db.right, (Math.random() - 0.5) * 0.035).addScaledVector(db.up, (Math.random() - 0.5) * 0.035);
+          const T = Math.max(0.12, it.pos.distanceTo(target) / 10), g = -9.81;
+          it.vel.subVectors(target, it.pos).multiplyScalar(1 / T); it.vel.y -= 0.5 * g * T - 0.08;     // (+ a touch for the frame-step drop)
+        }
+      }
+    }
     it.spin.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(30);
     it.thrownByPlayer = true;
     this.onRelease && this.onRelease(it, f, power);

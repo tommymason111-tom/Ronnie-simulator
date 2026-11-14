@@ -15,6 +15,7 @@
 //                  and the front door at the front
 import * as THREE from 'three';
 import { Kit, tileTex, canvasTex, brickTex, woodTex, carpetTex } from './kit.js';
+import { DartGame, dartboardTex, chalkCanvas } from '../darts.js';
 
 export const BBQ_SPOT = { x: -4.8, z: 0.35 };        // the grill (Ian stands behind it, his back to the house)
 export const IAN_SPOT = { x: -4.8, z: 1.2 };
@@ -267,7 +268,29 @@ export function buildGarden(scene) {
   k.table(-2.6, -12.9, 1.4, 0.8, { chairs: 1, top: 0x8a6a42, legs: 0x4a3420, chairColor: 0x4a3420, spots: 2 });
   R(-3.9, CZ0 + 0.08, -1.1, CZ0 + 0.7, 2.1, 1.05, 0xc8a878, { block: true, collide: true });
   for (const x of [-3.2, -1.8]) { k.box(1.3, 1.95, 0.02, x, 1.05, CZ0 + 0.71, 0xb89868); k.box(0.03, 0.2, 0.03, x + (x < -2.5 ? 0.55 : -0.55), 1.05, CZ0 + 0.73, 0x2a2a2a); }
-  R(PART - 0.12, -14.4, PART - 0.06, -13.6, 0.55, 0.45, 0xc62828); for (let i = 0; i < 5; i++) R(PART - 0.13, -14.35 + i * 0.16, PART - 0.12, -14.3 + i * 0.16, 0.45, 0.45, 0x8a1a1a);   // the red heater
+  // the dartboard cabinet on the partition (lounge side): red cabinet, doors open flat either side
+  // with chalkboards inside for the scores; the oche is the yellow line on the floor
+  const DB = { x: PART + 0.11, y: 1.73, z: -14.0 }, CAB = 0x8a1a1a, wx = PART + 0.05;
+  k.box(0.02, 0.64, 0.64, wx + 0.01, DB.y, DB.z, 0x2a1a10);                                         // cabinet back
+  for (const s of [-1, 1]) { k.box(0.1, 0.035, 0.66, wx + 0.05, DB.y + s * 0.31, DB.z, CAB); k.box(0.1, 0.62, 0.035, wx + 0.05, DB.y, DB.z + s * 0.31, CAB); }
+  const chalkL = chalkCanvas(), chalkR = chalkCanvas();
+  for (const [s, ch] of [[1, chalkL], [-1, chalkR]]) {                                               // doors: +z is the thrower's left
+    const dz = DB.z + s * (0.33 + 0.16);
+    k.box(0.025, 0.64, 0.32, wx + 0.0125, DB.y, dz, CAB);
+    k.box(0.006, 0.6, 0.3, wx + 0.027, DB.y, dz, 0x5a1010);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.27, 0.54), new THREE.MeshBasicMaterial({ map: ch.tex, color: 0xdddddd }));
+    m.rotation.y = Math.PI / 2; m.position.set(wx + 0.032, DB.y, dz); scene.add(m);
+    k.box(0.02, 0.012, 0.012, wx + 0.04, DB.y - 0.29, dz, 0xf4f4f0);                                // a stub of chalk
+  }
+  { const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.229, 0.229, 0.04, 48), new THREE.MeshLambertMaterial({ color: 0x151515 }));
+    ring.rotation.z = Math.PI / 2; ring.position.set(DB.x - 0.021, DB.y, DB.z); scene.add(ring);
+    const face = new THREE.Mesh(new THREE.CircleGeometry(0.225, 64), new THREE.MeshLambertMaterial({ map: dartboardTex() }));
+    face.rotation.y = Math.PI / 2; face.position.set(DB.x, DB.y, DB.z); scene.add(face); }
+  k.lamp(DB.x + 0.25, 2.2, DB.z, 0xfff2d0, 0.05); k.pool(DB.x + 0.02, 0, DB.z, 0.9, 0xffe0a0);
+  k.label('THE CABIN OPEN — 501', 0.6, 0.1, [wx + 0.11, DB.y + 0.4, DB.z], [0, Math.PI / 2, 0], { bg: '#8a1a1a', fg: '#ffd400', border: null, size: 40 });
+  R(DB.x + 2.37 - 0.03, -14.5, DB.x + 2.37 + 0.03, -13.5, 0.006, 0.011, 0xffd400);                   // the oche
+  k.table(DB.x + 2.75, -14.85, 0.5, 0.5, { round: true, h: 1.0, chairs: 0, spots: 0, top: 0x2a2a2a, legs: 0x9a9a9a });   // where the darts wait
+  const DART_STAND = [-0.1, 0, 0.1].map(dz => new THREE.Vector3(DB.x + 2.75 + dz * 0.5, 1.06, -14.85 + dz));
   // lounge: sofa along the back, round table, armchair, seats
   R(0.2, CZ0 + 0.1, 3.2, CZ0 + 0.95, 0.45, 0.225, 0x3a3a4a, { block: true }); R(0.2, CZ0 + 0.1, 3.2, CZ0 + 0.35, 0.9, 0.45, 0x3a3a4a);
   for (const s of [0.2, 3.0]) R(s, CZ0 + 0.1, s + 0.2, CZ0 + 0.95, 0.65, 0.325, 0x3a3a4a);
@@ -275,8 +298,8 @@ export function buildGarden(scene) {
   k.spawns.push(new THREE.Vector3(1.7, 0.62, CZ0 + 0.65));
   k.table(4.3, -15.2, 0.9, 0.9, { round: true, chairs: 0, top: 0x6a4a2a, legs: 0x3a2a1a, spots: 1 });
   R(3.75, -12.85, 4.65, -11.95, 0.45, 0.225, 0x7a2a2a, { block: true }); R(4.45, -12.85, 4.75, -11.95, 0.9, 0.45, 0x7a2a2a); for (const z of [-12.85, -11.95]) R(3.75, z - 0.08, 4.75, z + 0.08, 0.65, 0.325, 0x7a2a2a);   // armchair, facing the sofa
-  k.chair(-0.15, -13.7, Math.PI / 2 + 0.3, 0x2a2a2a, 0x4a4a4a); k.chair(0.05, -12.6, Math.PI / 2, 0x2a2a2a, 0x4a4a4a); k.chair(0.6, -11.7, Math.PI * 0.85, 0x2a2a2a, 0x4a4a4a); k.chair(4.3, -14.1, Math.PI, 0x2a2a2a, 0x4a4a4a);
-  R(1.0, -14.1, 2.4, -13.4, 0.42, 0.21, 0x5a3a22, { collide: true, block: true }); k.spawns.push(new THREE.Vector3(1.7, 0.5, -13.75));   // coffee table
+  k.chair(0.05, -12.6, Math.PI / 2, 0x2a2a2a, 0x4a4a4a); k.chair(0.6, -11.7, Math.PI * 0.85, 0x2a2a2a, 0x4a4a4a); k.chair(4.3, -14.1, Math.PI, 0x2a2a2a, 0x4a4a4a);
+  R(1.6, -12.95, 3.0, -12.35, 0.42, 0.21, 0x5a3a22, { collide: true, block: true }); k.spawns.push(new THREE.Vector3(2.3, 0.5, -12.65));   // coffee table
   // the mess: cans, bottles, pizza boxes, crisp packets everywhere
   const CANS = [0xd32f2f, 0x1e5aa8, 0xffd400, 0x2e7d32, 0x111111, 0xe0e0e0, 0x8a1a8a];
   const can = (x, y, z) => k.cyl(0.033, 0.033, 0.12, x, y + 0.06, z, CANS[Math.floor(rnd() * CANS.length)], 8);
@@ -286,7 +309,7 @@ export function buildGarden(scene) {
   const crisps = (x, y, z) => k.box(0.16, 0.03, 0.22, x, y + 0.015, z, [0xd32f2f, 0x1e5aa8, 0x2e7d32, 0xffd400][Math.floor(rnd() * 4)], { rot: [0, rnd() * 3, 0] });
   const strewn = (x0, z0, x1, z1, n, y = 0.01) => { for (let i = 0; i < n; i++) { const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0), t = rnd(); if (t < 0.45) lyingCan(x, y, z); else if (t < 0.65) can(x, y, z); else if (t < 0.8) crisps(x, y, z); else if (t < 0.9) bottle(x, y, z); else pizza(x, y, z, rnd() * 3); } };
   strewn(-0.5, -15.2, 4.8, -11.3, 34);                               // lounge floor
-  strewn(1.05, -14.05, 2.35, -13.45, 6, 0.42);                       // coffee table
+  strewn(1.65, -12.9, 2.95, -12.4, 6, 0.42);                         // coffee table
   strewn(3.95, -15.55, 4.65, -14.85, 4, 0.76);                       // round table
   strewn(-3.25, -13.2, -1.95, -12.6, 5, 0.76);                       // spare room table
   strewn(-4.3, -14.8, -0.9, -11.3, 12);                              // spare room floor
@@ -297,7 +320,7 @@ export function buildGarden(scene) {
   strewn(2.4, -7.6, 5.6, -3.0, 10); strewn(5.85, -7.8, 6.3, -5.3, 4, 0.9);
 
   // ---------------- sunshine ----------------
-  return k.finish({
+  const room = k.finish({
     name: "Lewis's House",
     sky: 0xbfe0ff, ground: 0x5f8f3a, hemiI: 2.4, sun: 0xfff2d6, sunI: 2.0, sunPos: [6, 12, -8], ambient: 0.45,
     start: { x: 0.5, z: 1.1, yaw: 0.55 },
@@ -305,6 +328,8 @@ export function buildGarden(scene) {
     startFood: ['can', 'burger', 'hotdog', 'can', 'chicken', 'sausageroll', 'can', 'burger', 'crisps', 'cookie', 'pizza', 'can'],
     spotCount: 30,
   });
+  room.dartboard = new DartGame({ center: new THREE.Vector3(DB.x, DB.y, DB.z), normal: new THREE.Vector3(1, 0, 0), stand: DART_STAND, chalkL, chalkR });
+  return room;
 }
 
 function skyTex() {

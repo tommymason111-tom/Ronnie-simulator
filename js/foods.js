@@ -201,12 +201,23 @@ function canMeshes() {
   return g;
 }
 
+// a dart: steel tip pointing along -z, tungsten barrel, shaft, flights
+function dartGeo() {
+  const R = [-Math.PI / 2, 0, 0], p = [];
+  p.push(part(cyl(0.0004, 0.0032, 0.03, 8), 0xd0d4da, [0, 0, -0.06], R));
+  p.push(part(cyl(0.0045, 0.0045, 0.05, 10), 0x6a6e78, [0, 0, -0.02], R));
+  for (let i = 0; i < 4; i++) p.push(part(cyl(0.0048, 0.0048, 0.004, 10), 0x3a3e48, [0, 0, -0.038 + i * 0.012], R));   // knurling
+  p.push(part(cyl(0.0025, 0.0025, 0.04, 6), 0x111111, [0, 0, 0.025], R));
+  p.push(part(box(0.04, 0.0015, 0.035), 0xd32f2f, [0, 0, 0.05])); p.push(part(box(0.0015, 0.04, 0.035), 0xd32f2f, [0, 0, 0.05]));
+  return merge(p);
+}
+
 const geoCache = {};
 function meshFor(type) {
   if (type === 'can') return canMeshes();
   if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo, poop: poopGeo,
     hotdog: hotdogGeo, fries: friesGeo, kebab: kebabGeo, chicken: chickenGeo, taco: tacoGeo, crisps: crispsGeo, choc: chocGeo, cookie: cookieGeo, icecream: icecreamGeo, sausageroll: sausageRollGeo,
-    apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo }[type]();
+    apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo, dart: dartGeo }[type]();
   return new THREE.Mesh(geoCache[type], vcLambert);
 }
 
@@ -309,7 +320,7 @@ export class ItemManager {
     if (this.minFood && (this.topUpT = (this.topUpT || 0) - dt) <= 0) {
       this.topUpT = 1.0;
       let food = this.respawnQueue.length;
-      for (const it of this.items) if (!it.def.veg && !it.temp && !it.empty && !it.incoming) food++;
+      for (const it of this.items) if (!it.def.veg && !it.def.dart && !it.temp && !it.empty && !it.incoming) food++;
       if (food < this.minFood) { const t = pickJunk(); this.spawn(t, this.freeSpawn()); }
     }
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
@@ -332,7 +343,10 @@ export class ItemManager {
       it.prev.copy(it.pos);
       it.vel.y += g * dt;
       it.pos.addScaledVector(it.vel, dt);
-      it.obj.rotation.x += it.spin.x * dt; it.obj.rotation.y += it.spin.y * dt; it.obj.rotation.z += it.spin.z * dt;
+      if (it.def.dart) {           // darts fly point first, and can stick in the board
+        if (it.vel.lengthSq() > 1) it.obj.quaternion.setFromUnitVectors(_c.set(0, 0, -1), _v.copy(it.vel).normalize());
+        if (this.room.dartboard && this.room.dartboard.hitTest(it)) continue;
+      } else { it.obj.rotation.x += it.spin.x * dt; it.obj.rotation.y += it.spin.y * dt; it.obj.rotation.z += it.spin.z * dt; }
       const r = it.radius;
       let hit = false, impact = 0;
       // room shell
