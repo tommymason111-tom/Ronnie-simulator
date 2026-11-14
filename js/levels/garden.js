@@ -203,7 +203,27 @@ export function buildGarden(scene) {
   k.box(0.06, 0.06, Math.hypot(ux - px, uz - pz), (ux + px) / 2, 2.85, (uz + pz) / 2, 0x3a3a3a, { rot: [0, Math.atan2(ux - px, uz - pz), 0] });
   k.cyl(0.06, 2.1, 0.55, ux, 2.75, uz, 0xd8cdb8, 16); k.cyl(2.1, 2.12, 0.08, ux, 2.47, uz, 0xb8ab94, 16);
   // patio table + chairs on the right, cool box
-  k.table(3.4, 0.9, 1.4, 0.8, { chairs: 1, top: 0xe8e8e8, legs: 0x9a9a9a, chairColor: 0x4a4a4a, spots: 2 });
+  // a tiny round bistro table against the house wall, one rusty black garden chair
+  { const tx = 3.05, tz = 1.5, IRON = 0x1c1c1c, RUST = [0x6a3a1c, 0x7a4a24, 0x5a2e14];
+    k.cyl(0.3, 0.3, 0.02, tx, 0.72, tz, IRON, 20, { collide: true }); k.cyl(0.31, 0.31, 0.015, tx, 0.705, tz, 0x2a2a2a, 20);
+    k.cyl(0.02, 0.025, 0.7, tx, 0.36, tz, IRON, 8);
+    for (let i = 0; i < 3; i++) { const a = i * 2.094; k.box(0.025, 0.02, 0.32, tx + Math.sin(a) * 0.14, 0.03, tz + Math.cos(a) * 0.14, IRON, { rot: [0, a, 0] }); }
+    for (let i = 0; i < 7; i++) { const a = rnd() * 6.28, r = rnd() * 0.27; k.cyl(0.02 + rnd() * 0.03, 0.02 + rnd() * 0.03, 0.003, tx + Math.cos(a) * r, 0.731, tz + Math.sin(a) * r, RUST[i % 3], 7); }
+    k.blockers.push({ x0: tx - 0.3, x1: tx + 0.3, z0: tz - 0.3, z1: tz + 0.3, y1: 0.73 });
+    k.spawns.push(new THREE.Vector3(tx, 0.8, tz));
+    // the chair, turned in to the table
+    const cx = tx - 0.62, cz = tz - 0.12, ry = -Math.PI / 2 - 0.25, c = Math.cos(ry), s = Math.sin(ry);
+    const at = (lx, lz) => [cx + lx * c + lz * s, cz - lx * s + lz * c];
+    const rb = (w, h, d, lx, y, lz, col) => { const [px, pz] = at(lx, lz); k.box(w, h, d, px, y, pz, col, { rot: [0, ry, 0] }); };
+    k.cyl(0.2, 0.2, 0.02, cx, 0.45, cz, IRON, 16);
+    for (let i = -3; i <= 3; i++) rb(0.012, 0.004, 0.36, i * 0.05, 0.462, 0, 0x2a2a2a);              // seat slats
+    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) rb(0.02, 0.45, 0.02, a * 0.15, 0.225, b * 0.15, IRON);
+    for (const lx of [-0.16, 0.16]) rb(0.02, 0.5, 0.02, lx, 0.7, 0.17, IRON);                        // back uprights
+    rb(0.34, 0.03, 0.02, 0, 0.94, 0.17, IRON); rb(0.34, 0.02, 0.02, 0, 0.6, 0.17, IRON);
+    for (let i = -2; i <= 2; i++) rb(0.012, 0.32, 0.012, i * 0.06, 0.77, 0.17, IRON);               // back bars
+    for (let i = 0; i < 12; i++) rb(0.014 + rnd() * 0.012, 0.012 + rnd() * 0.03, 0.014, [-0.16, 0.16, -0.06, 0, 0.06, 0.12][i % 6], 0.35 + rnd() * 0.58, 0.17, RUST[i % 3]);   // rust creeping up the bars
+    k.blockers.push({ x0: cx - 0.22, x1: cx + 0.22, z0: cz - 0.22, z1: cz + 0.22, y1: 0.95 });
+  }
   R(5.4, 1.2, 6.1, 1.7, 0.45, 0.225, 0x1e5aa8, { collide: true, block: true }); R(5.38, 1.18, 6.12, 1.72, 0.06, 0.48, WHITE);
   k.spawns.push(new THREE.Vector3(5.6, 0.6, 1.45), new THREE.Vector3(5.9, 0.6, 1.45));
   for (const x of [-6.1, -2.3, -0.4, 1.5]) { k.cyl(0.22, 0.16, 0.42, x, 0.21, 1.72, 0xb05a32, 12); k.cyl(0.05, 0.36, 0.55, x, 0.7, 1.72, 0x3f8a2e, 10); }
