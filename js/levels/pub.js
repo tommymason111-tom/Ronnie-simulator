@@ -370,11 +370,11 @@ export function buildPub(scene) {
     const bays = Math.max(1, Math.round(len / 1.3)), bw = len / bays;
     for (let b = 0; b < bays; b++) {
       const z0 = za + b * bw, z1 = z0 + bw, mz = (z0 + z1) / 2;
-      k.texBox(0.03, 0.75, bw - 0.3, W - 0.015, 2.32, mz, TNG, { tile: 0.4 });
-      const arch = new THREE.TorusGeometry((bw - 0.3) / 2, 0.025, 6, 16, Math.PI); arch.rotateY(Math.PI / 2); k.parts.push(part(arch, 0xf4efe2, [W - 0.04, 2.45, mz], [0, 0, 0], [1, 0.45, 1]));
+      k.texBox(0.03, 0.6, bw - 0.3, W - 0.015, 2.25, mz, TNG, { tile: 0.4 });
+      const arch = new THREE.TorusGeometry((bw - 0.3) / 2, 0.025, 6, 16, Math.PI); arch.rotateY(Math.PI / 2); k.parts.push(part(arch, 0xf4efe2, [W - 0.04, 2.38, mz], [0, 0, 0], [1, 0.4, 1]));
       R(W - 0.2, z0 + 0.15, W, z1 - 0.15, 0.03, 2.0, 0xf4efe2, { collide: true });
       for (let z = z0 + 0.25, i = b; z < z1 - 0.2; z += 0.11, i++) bottle(W - 0.1, 2.015, z, OPT[(i * 3) % OPT.length]);
-      k.lamp(W - 0.1, 2.6, mz, 0xffe0b0, 0.05);
+      k.lamp(W - 0.1, 2.5, mz, 0xffe0b0, 0.05);
       if (b > 0) k.texBox(0.06, 1.25, 0.3, W - 0.03, 2.12, z0, BRICK, { tile: 0.6 });
     }
   };
@@ -386,7 +386,7 @@ export function buildPub(scene) {
   R(X(700) + 0.65, Z(605) + 0.08, X(745), Z(605) + 0.62, 0.9, 0.45, 0x4a2c18, { collide: true, block: true });
   R(X(700) + 0.8, Z(605) + 0.15, X(700) + 1.25, Z(605) + 0.5, 0.45, 1.13, 0x2a2a2a); k.cyl(0.02, 0.02, 0.1, X(700) + 0.95, 0.98, Z(605) + 0.5, CHROMEC, 6); k.cyl(0.02, 0.02, 0.1, X(700) + 1.1, 0.98, Z(605) + 0.5, CHROMEC, 6);   // coffee machine
   k.label('COFFEES — CAPPUCCINO · LATTE · AMERICANO (RONNIE: ONE OF EACH)', 0.7, 0.45, [X(700) + 1.0, 1.75, Z(605) + 0.1], [0, 0, 0], { bg: '#1f3f8a', fg: '#fff', border: '#fff', size: 34 });
-  k.label("THE OYSTERFLEET", 2.6, 0.55, [X(855) - 0.11, 2.85, (Z(612) + Z(920)) / 2], [0, -Math.PI / 2, 0], { tex: pubSignTex(), glow: true });
+  k.label("THE OYSTERFLEET", 1.75, 0.36, [X(695) - 0.19, 2.81, (Z(605) + Z(845)) / 2], [0, -Math.PI / 2, 0], { tex: pubSignTex(), glow: true });   // on the canopy front, over the bar
   { const [x, z] = bar1.at(5.0, -0.3); k.box(0.05, 1.6, 0.05, x, 0.8, z, 0x2a1a10); k.box(0.5, 0.7, 0.04, x, 1.55, z, 0x5a3a20, { rot: [0, bar1.ry, 0] });
     k.label("TODAY'S ALES: OYSTER STOUT · RONNIE'S RUIN · PIE & PINT £9.99", 0.44, 0.62, [x - bar1.nx * 0.025, 1.55, z - bar1.nz * 0.025], [0, bar1.ry, 0], { bg: '#1a1a1a', fg: '#f5f0e6', border: null, size: 34 }); }
   // the canopy over the bar: cream tongue-and-groove with a grey trim, ribbed glass globe lights hanging off it
@@ -772,8 +772,11 @@ function pubSignTex() {
   return canvasTex(1024, 224, (g, w, h) => {
     g.fillStyle = '#1b3a2a'; g.fillRect(0, 0, w, h);
     g.strokeStyle = '#d4af37'; g.lineWidth = 12; g.strokeRect(8, 8, w - 16, h - 16);
-    g.fillStyle = '#d4af37'; g.font = `900 110px Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('THE OYSTERFLEET', w / 2, h / 2 + 6);
+    // shrink the lettering until it fits inside the gold border (it used to run off both ends)
+    let size = 110; g.textAlign = 'center'; g.textBaseline = 'middle';
+    do { g.font = `900 ${size}px Georgia, serif`; size -= 4; } while (g.measureText('THE OYSTERFLEET').width > w - 90 && size > 30);
+    g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillText('THE OYSTERFLEET', w / 2 + 4, h / 2 + 10);
+    g.fillStyle = '#d4af37'; g.fillText('THE OYSTERFLEET', w / 2, h / 2 + 6);
   });
 }
 function fireTex() {
