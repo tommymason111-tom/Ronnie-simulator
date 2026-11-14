@@ -145,7 +145,7 @@ export function buildGarden(scene) {
   R(HX0 - 0.1, HZ0 - 0.25, HX1 + 0.1, HZ0 - 0.05, 0.14, TOP - 0.05, 0x333333);                // gutter
   // inside walls: dining | kitchen (door near the window), kitchen | living room
   wallRun('z', -0.6, HZ0, 6.4, CEIL, [[2.4, 3.4, 0, 2.05]], { color: PAINT, t: 0.12 });
-  wallRun('x', 6.4, -0.6, 3.4, CEIL, [[0.4, 1.3, 0, 2.05]], { color: PAINT, t: 0.12 });
+  wallRun('x', 6.4, -0.6, 3.4, CEIL, [], { color: PAINT, t: 0.12 });                                // kitchen | living room: solid (into the kitchen via the dining room)
   // --- kitchen: worktops round the side and back, sink, fridge, island bar with stools
   const TOP_C = 0x2a2a2e, UNIT = 0xf2f2ee;
   R(3.9, 2.15, 4.4, 6.3, 0.9, 0.45, UNIT, { block: true }); R(3.86, 2.12, 4.42, 6.32, 0.04, 0.92, TOP_C, { collide: true });
