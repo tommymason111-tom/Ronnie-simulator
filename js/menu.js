@@ -21,11 +21,12 @@
     { id: 'bbq', ico: '🍖', name: "IAN'S BARBECUE", desc: "Round Lewis's house. Grab the food off the grill before Ian makes it healthy and throws it at you.", stars: 2, who: 'Ian, Lewis + the lads', place: 'garden' },
     { id: 'date', ico: '💜', name: 'DATE NIGHT', desc: "Eat when Chloe looks away. Three catches and it's salad.", stars: 2, who: 'Chloe + the lads', place: 'restaurant' },
     { id: 'eatoff', ico: '⏱️', name: 'EAT-OFF', desc: '60 seconds. Eat everything. On your own, or pass-and-play: who eats more?', stars: 1, who: '1 or 2 players' },
+    { id: 'roam', ico: '🚶', name: 'FREE ROAM', desc: 'Have a look round and explore. Everyone is here, but nobody attacks you. No timer.', stars: 0, who: 'Everyone (no attacks)' },
   ];
   // each place has its own games: Lidl is Supermarket Sweep, Lewis's is Ian's barbecue,
   // La Grande Portion is date night; the pub and the bedroom have the squad and the eat-off
-  const PLACE_MODES = { pub: ['everyone', 'eatoff'], bedroom: ['everyone', 'eatoff'], shop: ['sweep'], garden: ['bbq'], restaurant: ['date'] };
-  const GAME_IDS = ['everyone', 'sweep', 'bbq', 'date', 'chonkoff', 'chonkoff2'];
+  const PLACE_MODES = { pub: ['everyone', 'eatoff', 'roam'], bedroom: ['everyone', 'eatoff', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
+  const GAME_IDS = ['everyone', 'sweep', 'bbq', 'date', 'chonkoff', 'chonkoff2', 'roam'];
   const cardOf = (id) => id === 'chonkoff' || id === 'chonkoff2' ? 'eatoff' : id;      // the eat-off card covers 1P and 2P
   const modeInfo = (id) => { const m = MODES.find(x => x.id === cardOf(id)); return id === 'chonkoff' ? { ...m, ico: '⏱️', name: 'EAT-OFF · 1 PLAYER' } : id === 'chonkoff2' ? { ...m, ico: '🆚', name: 'EAT-OFF · 2 PLAYERS' } : m; };
   const gameChoices = (p) => PLACE_MODES[p].flatMap(c => c === 'eatoff' ? ['chonkoff', 'chonkoff2'] : [c]);
@@ -165,6 +166,7 @@
   }
   const stepPlace = (d) => { pi = (pi + d + PLACES.length) % PLACES.length; drawPlace(); blip(440 + pi * 60, 0.05); };
   $('#place-prev').addEventListener('click', () => stepPlace(-1));
+  $('#place-roam').addEventListener('click', () => { mode = 'roam'; blip(760, 0.08); show('ready'); });   // free roam straight from any place
   $('#place-next').addEventListener('click', () => stepPlace(1));
   $('#place-dots').innerHTML = PLACES.map(() => '<i></i>').join('');
   $$('#place-dots i').forEach((d, i) => d.addEventListener('click', () => { pi = i; drawPlace(); blip(500, 0.05); }));

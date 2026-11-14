@@ -106,6 +106,10 @@
     @keyframes pulse { 50% { transform: scale(1.06); } }
     .midbtn { font: 900 16px "Arial Black", Arial, sans-serif; padding: 12px 22px; border-radius: 16px; border: 3px solid #fff; background: rgba(28,44,140,0.94); color: #fff; cursor: pointer; min-width: 220px; }
     .playbtn { font-size: clamp(34px, 9vw, 46px); padding: 20px 0; width: min(420px, 88vw); border-radius: 24px; }
+    .placebtns { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .placebtns .bigbtn { margin: 0; }
+    .roambtn { display: block; margin: 0 auto; width: min(380px, 86vw); font-size: 14px; padding: 11px 6px; }
+    .roambtn small { font: 700 11px Arial, sans-serif; opacity: .8; }
     .vrbtn { width: min(420px, 88vw); font-size: 15px; padding: 12px 6px; background: linear-gradient(180deg, #7a5cff, #4b2fd0); color: #fff; }
     .vrbtn[hidden] { display: none; }
     .smallrow { display: flex; gap: 10px; width: min(420px, 88vw); }
@@ -295,7 +299,10 @@
         <button class="arrow" id="place-next">›</button>
       </div>
       <div id="place-dots"></div>
-      <button class="bigbtn stick" data-go="mode">NEXT ➜</button>
+      <div class="stick placebtns">
+        <button class="bigbtn" data-go="mode">NEXT ➜</button>
+        <button class="midbtn roambtn" id="place-roam">🚶 FREE ROAM HERE <small>· look round, no attacks</small></button>
+      </div>
     </section>
 
     <!-- MODE -->

@@ -28,11 +28,12 @@ export const MODES = {
   chonkoff2:    { name: 'EAT-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
   sweep:        { name: 'SUPERMARKET SWEEP', desc: '90 seconds, one trolley. Grab everything. Dodge Oliver.', time: 90, place: 'shop' },
   bbq:          { name: "IAN'S BARBECUE", desc: 'Round Lewis\'s house. Eat off the grill before Ian makes it healthy.', time: 150, place: 'garden' },
+  roam:         { name: 'FREE ROAM', desc: 'Have a look round. Everyone\'s here, nobody attacks.', time: 0 },
   date:         { name: 'DATE NIGHT', desc: 'Eat when Chloe looks away. 3 catches and it\'s salad.', time: 180, place: 'restaurant' },
 };
 // which modes each place offers (also used by the start screen)
 export function modesFor(place) {
-  const only = { shop: ['sweep'], garden: ['bbq'], restaurant: ['date'] }[place];     // these places have one game each
+  const only = { shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] }[place];     // these places have one game each (and free roam)
   if (only) return only;
   return Object.keys(MODES).filter(id => {
     const m = MODES[id];
@@ -193,6 +194,7 @@ export class Director {
     else if (id === 'catch') squad = ['harry'];
     else if (id === 'sweep') squad = ['oliver'];
     else if (id === 'bbq') squad = ['ian', 'lewis', ...shuffle(everyone.filter(s => s !== 'ian' && s !== 'lewis')).slice(0, 4)];
+    else if (id === 'roam') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 6);   // everyone about, nobody attacking
     else if (id === 'classic') squad = [];
     else squad = [];
     this.roster = squad;
@@ -206,7 +208,7 @@ export class Director {
       this.hook(c);
       g.cast.push(c);
     });
-    const SHORT = { sweep: 'FILL THE TROLLEY!', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
+    const SHORT = { sweep: 'FILL THE TROLLEY!', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
     g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
@@ -215,6 +217,7 @@ export class Director {
     if (id === 'bbq') this.startBbq();
     if (id !== 'sweep') this.removeTrolley();
     if (id === 'everyone') { this.nextChaos = 18; tommy.attacks = true; tommy.directed = true; }
+    if (id === 'roam') { tommy.attacks = false; tommy.directed = false; this.pending = null; if (g.fx) { g.fx.setCountdown(null); g.fx.hideCard && g.fx.hideCard(); } }
     this.nextAttackT = id === 'everyone' ? 12 : 15;
     if (g.fx) g.fx.setCountdown(null);
     tommy.say({
@@ -228,6 +231,7 @@ export class Director {
       chonkoff: 'Sixty seconds, Ron. Show me what you\'ve got. Actually, don\'t.',
       chonkoff2: this.player2 && this.player2.stage === 2 ? 'Player two! Beat that. Please don\'t.' : 'Eat-Off! Player one, sixty seconds. Go.',
       classic: 'Back to normal then. Normal for you.',
+      roam: 'Free roam, Ron. Have a wander. Nobody\'s attacking you. Today.',
     }[id], 5);
     sfx('fanfare', null, 1);
   }
