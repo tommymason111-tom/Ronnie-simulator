@@ -17,7 +17,7 @@
   ];
   const MODES = [
     { id: 'everyone', ico: '👥', name: 'THE WHOLE SQUAD', desc: 'The main game. Everyone is here, taking turns to attack you while you eat. A countdown shows the next one.', stars: 3, who: 'Everyone' },
-    { id: 'sweep', ico: '🛒', name: 'SUPERMARKET SWEEP', desc: '90 seconds and a trolley in Lidl. Grab everything you can. Oliver is on security.', stars: 2, who: 'Oliver', place: 'shop' },
+    { id: 'sweep', ico: '🛒', name: 'SUPERMARKET SWEEP', desc: '90 seconds and a trolley in Lidl. Grab everything you can. Oliver and Aidan W are on security (Aidan W is slow: knee).', stars: 2, who: 'Oliver, Aidan W', place: 'shop' },
     { id: 'bbq', ico: '🍖', name: "IAN'S BARBECUE", desc: "Round Lewis's house. Grab the food off the grill before Ian makes it healthy and throws it at you.", stars: 2, who: 'Ian, Lewis + the lads', place: 'garden' },
     { id: 'date', ico: '💜', name: 'DATE NIGHT', desc: "Eat when Chloe looks away. Three catches and it's salad.", stars: 2, who: 'Chloe + the lads', place: 'restaurant' },
     { id: 'eatoff', ico: '⏱️', name: 'EAT-OFF', desc: '60 seconds. Eat everything. On your own, or pass-and-play: who eats more?', stars: 1, who: '1 or 2 players' },

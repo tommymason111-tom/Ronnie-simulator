@@ -209,7 +209,7 @@ export class Director {
       this.hook(c);
       g.cast.push(c);
     });
-    const SHORT = { sweep: 'GRAB THE GREEN GLOWS!', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
+    const SHORT = { sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
     g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
@@ -591,6 +591,9 @@ export class Director {
     setTimeout(() => g.showBanner('GREEN GLOW = TROLLEY', 'FRUIT & VEG COST YOU (DON\'T TRUST THE GLOW)'), 3500);
     const oli = this.cast.find(c => c.id === 'oliver');
     if (oli) { oli.active = false; setTimeout(() => oli.say('Store security. Walk, don\'t run. And DEFINITELY don\'t eat the stock, Ron.', 5), 1800); }
+    const aw = this.cast.find(c => c.id === 'aidanw');
+    if (aw) { aw.active = false; setTimeout(() => aw.say('I\'m on shift too, Ron. I\'ll catch you. Slowly. It\'s the knee.', 5), 5200); }
+    this.sweep.awCool = 3;
   }
   removeTrolley() { if (this.trolley) { this.trolley.visible = false; this.g.scene.remove(this.trolley); } if (this.g.items) { this.g.items.minFood = this.g.room.big ? 44 : 0; this.g.items.topUpEvery = 1; this.g.items.vegShare = 0; } if (this.g.player) this.g.player.speedMul = 1; this.clearGlows(); }
   // the game calls this when Ronnie picks something up during the sweep
@@ -633,6 +636,21 @@ export class Director {
       const s = 1 / Math.max(0.3, it.obj.scale.x);
       if (it.def.veg) { const k = (Math.sin(t * 3.1 + it.pos.x * 7) + Math.sin(t * 5.3 + it.pos.z * 5)) > 0.2; it.glow.material.color.setHex(k ? 0x39ff14 : 0xff2a2a); it.glow.scale.setScalar(0.28 * s); }
       else { it.glow.material.color.setHex(0x39ff14); it.glow.scale.setScalar((0.27 + Math.sin(t * 4 + it.pos.x * 3) * 0.03) * s); }
+    }
+    // the countdown, big at the top of the screen (and what's in the trolley so far)
+    if (g.fx) { const tl = Math.max(0, Math.ceil(this.timeLeft)); g.fx.setCountdown(`⏱ ${Math.floor(tl / 60)}:${String(tl % 60).padStart(2, '0')}  ·  🛒 ${sw.items} ITEMS  ·  £${sw.total.toFixed(2)}${tl <= 10 ? '  ·  HURRY!' : ''}`); }
+    // Aidan W hobbles after you too (the knee: he's slow, but he never stops, and he moans the whole way)
+    const aw = this.cast.find(c => c.id === 'aidanw'); sw.awCool -= dt;
+    if (aw && !aw.down) {
+      if (aw.state === 'idle' || aw.state === 'walk') { aw.chaseT = (aw.chaseT || 0) - dt; if (aw.chaseT <= 0) { aw.chaseT = 1.4; aw.goTo(P.head.x, P.head.z, 0.75, 'idle'); } }
+      if (aw.speakT <= 0 && Math.random() < dt / 9) aw.say(['Ron. RON. Slow down, my knee!', 'I\'m gaining on you. Emotionally.', 'Stop, thief! ...ow. Ow ow ow.', 'This is a workplace injury waiting to happen. It\'s already happened. It\'s my knee.'][Math.floor(Math.random() * 4)], 2);
+      if (aw.distToPlayer < 0.85 && sw.awCool <= 0 && sw.items > 0) {
+        sw.awCool = 7; sw.caught++;
+        const lose = Math.min(2, sw.list.length);
+        for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; sw.total = Math.max(0, sw.total - 1.5); }
+        g.showBanner('CAUGHT BY AIDAN W!', `-${lose} ITEMS (HE'S SITTING DOWN NOW)`); sfx('whistle', null, 1);
+        aw.say(['Got you! Right, I need a sit down.', 'Caught you, Ron. Worth it. Not for my knee.', 'Spurs never win anything. I just did.'][sw.caught % 3], 4);
+      }
     }
     // Oliver chases you round the shop
     const oli = this.cast.find(c => c.id === 'oliver'); sw.cool -= dt;
