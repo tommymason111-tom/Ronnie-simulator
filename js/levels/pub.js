@@ -130,7 +130,7 @@ export function buildPub(scene) {
   const door = WD(775, 385, 835, 425, 0x3a2416, H, 0.1);
   WZ(835, 425, 505, [], WALL); WD(835, 505, 755, 605, WALL);
   // the bar: top wall, back wall of the back bar, the corridor behind
-  WX(605, 695, 855); WZ(855, 605, 925, [[765, 830]]); WX(925, 835, 855); WZ(835, 925, 1245);      // (a door from behind the bar into the staff room)
+  WX(605, 695, 855); WZ(855, 605, 925, [[765, 830]]); WX(925, 835, 855); WZ(835, 925, 1245, [[1160, 1240]]);      // (a doorway from the corridor in behind the bar)      // (a door from behind the bar into the staff room)
   // staff room, back room, gambling room
   WX(690, 855, 1045, [], WALL); WZ(1045, 690, 1305, [], WALL); WX(975, 895, 1045); WX(975, 855, 895, [[858, 892]]);
   WZ(895, 975, 1305, [[1235, 1300]]);
@@ -337,8 +337,8 @@ export function buildPub(scene) {
   const bar4 = counter(795, 985, 795, 1230, 0.36, -1);
   // the lifting flap at the right-hand end: the way in behind the bar
   { const x0 = X(795) + 0.02, x1 = X(835) - 0.1, z = Z(1235);
-    k.box(0.04, 0.6, 0.36, x1 - 0.02, 1.37, z - 0.02, TOPC); k.cyl(0.02, 0.02, 0.06, x1 - 0.02, 1.08, z - 0.15, 0x999999, 8);
-    k.label('STAFF ONLY BEHIND THE BAR (RONNIE: ESPECIALLY YOU)', 0.3, 0.3, [x1 - 0.045, 1.5, z - 0.02], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#c0392b', border: null, size: 30 }); }
+    k.box(0.04, 0.6, 0.36, x1 - 0.02, 1.37, z - 0.02, TOPC); k.cyl(0.02, 0.02, 0.06, x1 - 0.02, 1.08, z - 0.15, 0x999999, 8); }
+  k.label('BAR — STAFF ONLY ←', 0.7, 0.2, [X(835) + 0.095, 2.4, Z(1200)], [0, Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: null, size: 50 });
   // the fonts: chrome T-bars with round blue and white badges, and a few hand pumps with clips
   const font = (b, s2) => { const [x, z] = b.at(s2, 0.3);
     k.cyl(0.04, 0.045, 0.04, x, 1.1, z, CHROMEC, 12); k.cyl(0.022, 0.022, 0.32, x, 1.28, z, CHROMEC, 10);
@@ -389,7 +389,7 @@ export function buildPub(scene) {
     }
   };
   backBar(X(855) - 0.08, Z(612), Z(765) - 0.05, true); backBar(X(855) - 0.08, Z(830) + 0.05, Z(920), true);
-  backBar(X(835) - 0.08, Z(935), Z(1235), false);
+  backBar(X(835) - 0.08, Z(935), Z(1150), false);
   // along the top wall: the MONSTOR fridge and the coffee machine, a chalkboard
   R(X(760), Z(605) + 0.08, X(830), Z(605) + 0.62, 1.9, 0.95, 0x111111, { block: true });
   k.label('fridge', 1.4, 1.7, [(X(760) + X(830)) / 2, 0.98, Z(605) + 0.63], [0, 0, 0], { tex: monstorFridgeTex(), glow: true });
