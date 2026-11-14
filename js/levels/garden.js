@@ -32,7 +32,7 @@ export function buildGarden(scene) {
   const mark = () => k.parts.length;
   const R = (x0, z0, x1, z1, h, y, color, opts) => k.box(Math.abs(x1 - x0), h, Math.abs(z1 - z0), (x0 + x1) / 2, y ?? h / 2, (z0 + z1) / 2, color, opts);
   const WOOD = 0x8a5a32, DARKWOOD = 0x5a3a20, WHITE = 0xf4f4f0, PAINT = 0xefe8dc, RENDER = 0xe4ddd0;
-  const BRICK = brickTex(), CLAD = woodTex('#9a6a3a'), PINE = woodTex('#d8b07a');
+  const BRICK = brickTex(), CLAD = woodTex('#86482a'), PINE = woodTex('#d8b07a');
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const glassMat = new THREE.MeshBasicMaterial({ color: 0xbfe4ff, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide });
 
@@ -388,18 +388,62 @@ export function buildGarden(scene) {
   // ======================================================== THE CABIN (x -4.5..5, z -16.2..-11)
   const CX0 = -4.5, CX1 = 5.0, CZ0 = -16.2, CZ1 = -11, CH = 2.4, PART = -0.7;
   k.floor(CX0, CZ0, CX1, CZ1, woodTex('#b08a5a'), 0.008, 1.2);
-  R(CX0 - 0.1, CZ0 - 0.1, CX1 + 0.1, CZ1 + 0.1, 0.12, 0.06, 0x5a4a3a);                                    // decking base
-  wallRun('x', CZ1, CX0, CX1, CH, [[-3.6, -1.6, 0.9, 1.9], [1.6, 2.6, 0, 2.05], [3.2, 4.5, 0.9, 1.9]], { tex: CLAD, inColor: 0xe8d4b0, inSign: -1, t: 0.14 });
-  wallRun('x', CZ0, CX0, CX1, CH, [], { tex: CLAD, inColor: 0xe8d4b0, inSign: 1, t: 0.14 });
-  wallRun('z', CX0, CZ0, CZ1, CH, [[-14.6, -13.2, 0.9, 1.9]], { tex: CLAD, inColor: 0xe8d4b0, inSign: 1, t: 0.14 });
-  wallRun('z', CX1, CZ0, CZ1, CH, [], { tex: CLAD, inColor: 0xe8d4b0, inSign: -1, t: 0.14 });
+  // a grey concrete plinth all round the bottom, sticking out a touch
+  R(CX0 - 0.12, CZ0 - 0.12, CX1 + 0.12, CZ1 + 0.12, 0.2, 0.1, 0xb4b0a6, { collide: true }); R(CX0 - 0.13, CZ1 + 0.1, CX1 + 0.13, CZ1 + 0.13, 0.02, 0.2, 0xc8c4ba);
+  wallRun('x', CZ1, CX0, CX1, CH, [[-3.05, -2.0, 1.05, 1.9], [1.9, 3.5, 0, 2.05]], { tex: CLAD, inColor: 0xb87a50, inSign: -1, t: 0.14 });   // small window (spare room), double doors (lounge)
+  wallRun('x', CZ0, CX0, CX1, CH, [], { tex: CLAD, inColor: 0xb87a50, inSign: 1, t: 0.14 });
+  wallRun('z', CX0, CZ0, CZ1, CH, [[-14.6, -13.2, 0.9, 1.9]], { tex: CLAD, inColor: 0xb87a50, inSign: 1, t: 0.14 });
+  wallRun('z', CX1, CZ0, CZ1, CH, [], { tex: CLAD, inColor: 0xb87a50, inSign: -1, t: 0.14 });
   wallRun('z', PART, CZ0, CZ1, CH, [[-13.0, -12.1, 0, 2.0]], { color: 0xe8d4b0, t: 0.1 });         // spare room | lounge
-  glaze('x', CZ1, -3.6, -1.6, 0.9, 1.9, 0x3a2a1a); glaze('x', CZ1, 3.2, 4.5, 0.9, 1.9, 0x3a2a1a); glaze('z', CX0, -14.6, -13.2, 0.9, 1.9, 0x3a2a1a);
-  leaf('x', CZ1, 1.6, 2.6, -1, 0x6a4a2a);
+  glaze('z', CX0, -14.6, -13.2, 0.9, 1.9, 0x3a2a1a);
+  // --- the front, as in the photo ---
+  const FZ = CZ1 + 0.075, HONEY = 0xb8682a, DKFR = 0x4a2614;
+  // the small window: dark-stained frame, two panes (top and bottom), white lace nets behind, a sill
+  glaze('x', CZ1, -3.05, -2.0, 1.05, 1.9, DKFR);
+  k.box(1.05, 0.04, 0.05, -2.525, 1.475, FZ, DKFR);
+  { const lace = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.82), new THREE.MeshLambertMaterial({ map: laceTex(), transparent: true, side: THREE.DoubleSide }));
+    lace.position.set(-2.525, 1.47, CZ1 - 0.03); scene.add(lace); }
+  // the double doors, flung open flat against the front: honey-varnished, four panes up top, a panel below
+  for (const [hx, dir] of [[1.9, -1], [3.5, 1]]) {
+    const cx = hx + dir * 0.4, z = FZ + 0.05;
+    k.box(0.8, 2.0, 0.04, cx, 1.17, z, HONEY);                                                          // the leaf
+    k.box(0.66, 0.8, 0.01, cx, 0.62, z + 0.022, 0xa85a20);                                             // bottom panel
+    for (const [w, h, x, y] of [[0.8, 0.06, cx, 1.24], [0.8, 0.06, cx, 2.14], [0.06, 0.9, cx - 0.37, 1.69], [0.06, 0.9, cx + 0.37, 1.69], [0.04, 0.9, cx, 1.69], [0.74, 0.04, cx, 1.69]]) k.box(w, h, 0.03, x, y, z + 0.03, HONEY);
+    const gl = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.84), glassMat); gl.position.set(cx, 1.69, z + 0.025); scene.add(gl);
+    for (const y of [0.45, 1.85]) k.box(0.12, 0.03, 0.02, hx + dir * 0.06, y, z + 0.03, 0x222222);   // hinges
+  }
+  k.box(1.7, 0.08, 0.16, 2.7, 2.09, FZ, HONEY); for (const x of [1.87, 3.53]) k.box(0.06, 2.0, 0.16, x, 1.05, FZ, HONEY);   // door frame
+  k.box(1.6, 0.04, 0.3, 2.7, 0.21, CZ1 + 0.02, 0x8a6a4a);                                              // threshold
+  // white curtains tied back inside the doorway, a doormat
+  for (const x of [2.05, 3.35]) { k.box(0.26, 1.95, 0.08, x, 1.05, CZ1 - 0.2, 0xf4f0e6); k.box(0.18, 0.04, 0.1, x, 1.0, CZ1 - 0.2, 0xe8e0d0); }
+  k.box(1.1, 0.012, 0.6, 2.7, 0.015, CZ1 - 0.6, 0x9a8a70);
+  // paving slabs on the grass just outside the doors
+  for (const [x, z] of [[2.25, 0.5], [3.15, 0.5], [2.25, 1.15], [3.15, 1.15], [4.05, 0.5]]) k.box(0.62, 0.04, 0.6, x, 0.02, CZ1 + z, [0xc4bfb4, 0xb8b3a8, 0xcac5ba][Math.floor(rnd() * 3)], { collide: true });
+  // black security light up under the eaves, right of the doors
+  k.box(0.3, 0.16, 0.12, 4.15, 2.15, FZ + 0.06, 0x2a2a2a); k.box(0.24, 0.1, 0.02, 4.15, 2.13, FZ + 0.125, 0xd8d8c8);
+  // a trellis panel and a terracotta pot at the left corner
+  for (let i = 0; i < 6; i++) { k.box(0.02, 1.1, 0.02, CX0 - 0.25 - i * 0.1, 0.75, CZ1 + 0.25, 0xd8c8a8, { rot: [0, 0, 0.5] }); k.box(0.02, 1.1, 0.02, CX0 - 0.25 - i * 0.1, 0.75, CZ1 + 0.25, 0xd8c8a8, { rot: [0, 0, -0.5] }); }
+  k.cyl(0.18, 0.13, 0.28, CX0 - 0.3, 0.14, CZ1 + 0.55, 0xb05a32, 12); k.cyl(0.04, 0.16, 0.25, CX0 - 0.3, 0.38, CZ1 + 0.55, 0x4a8a34, 8);
   const cr = new THREE.Mesh(new THREE.PlaneGeometry(CX1 - CX0, CZ1 - CZ0), new THREE.MeshBasicMaterial({ color: 0xc8a878 }));
   cr.rotation.x = Math.PI / 2; cr.position.set((CX0 + CX1) / 2, CH, (CZ0 + CZ1) / 2); scene.add(cr);
-  k.box(CX1 - CX0 + 0.5, 0.12, CZ1 - CZ0 + 0.6, (CX0 + CX1) / 2, CH + 0.18, (CZ0 + CZ1) / 2, 0x2a2a2a, { rot: [-0.06, 0, 0] });   // felt roof
-  k.label('THE CABIN — LADS ONLY (AND RONNIE)', 1.4, 0.26, [2.1, 2.22, CZ1 + 0.08], [0, 0, 0], { bg: '#3a2a1a', fg: '#ffd400', border: null, size: 40 });
+  // the roof: a low triangle, ridge running front to back, gable end on the front with scalloped
+  // bargeboards, a pointed finial at the top and a trim board down the middle
+  { const mid = (CX0 + CX1) / 2, half = (CX1 - CX0) / 2 + 0.3, RISE = 0.85, ang = Math.atan2(RISE, (CX1 - CX0) / 2), sl = half / Math.cos(ang), L = CZ1 - CZ0 + 0.5;
+    for (const s of [-1, 1]) k.box(sl, 0.07, L, mid + s * half / 2, CH + RISE / 2 + 0.05, (CZ0 + CZ1) / 2, 0x3a3634, { rot: [0, 0, -s * ang] });
+    const gab = new THREE.Shape([new THREE.Vector2(-(CX1 - CX0) / 2, 0), new THREE.Vector2((CX1 - CX0) / 2, 0), new THREE.Vector2(0, RISE)]);
+    for (const z of [CZ1 + 0.07, CZ0 - 0.07]) { const t = CLAD.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set((CX1 - CX0) / 0.9, RISE / 0.9);
+      const gm = new THREE.Mesh(new THREE.ShapeGeometry(gab), new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide }));
+      const uv = gm.geometry.attributes.uv, pa = gm.geometry.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, (pa.getX(i) + (CX1 - CX0) / 2) / (CX1 - CX0), pa.getY(i) / RISE);
+      gm.position.set(mid, CH, z); scene.add(gm); }
+    // scalloped bargeboards along both slopes
+    for (const s of [-1, 1]) {
+      k.box(sl, 0.12, 0.05, mid + s * half / 2, CH + RISE / 2 + 0.0, CZ1 + 0.24, 0x5a3020, { rot: [0, 0, -s * ang] });
+      for (let d = 0.2; d < sl - 0.1; d += 0.34) { const x = mid + s * d * Math.cos(ang), y = CH + RISE - d * Math.sin(ang) - 0.07; k.parts.push(part(cyl(0.085, 0.085, 0.04, 10), 0x5a3020, [x, y, CZ1 + 0.24], [Math.PI / 2, 0, 0], [1, 1, 0.6])); }
+    }
+    k.box(0.1, 0.32, 0.06, mid, CH + RISE + 0.1, CZ1 + 0.26, 0x5a3020); k.parts.push(part(cyl(0.0, 0.07, 0.16, 4), 0x5a3020, [mid, CH + RISE + 0.33, CZ1 + 0.26], [0, Math.PI / 4, 0]));   // finial
+    k.box(0.12, RISE + 0.1, 0.04, mid, CH + RISE / 2 - 0.05, CZ1 + 0.1, 0x5a3020);                     // trim board up the middle
+    k.box(CX1 - CX0, 0.08, 0.06, mid, CH - 0.02, CZ1 + 0.1, 0x5a3020);                                  // fascia along the eaves line
+  }
   k.light(-2.6, 2.2, -13.6, 0xffe0b0, 2.5, 6); k.light(2.2, 2.2, -13.6, 0xffe0b0, 3, 7);
   k.lamp(-2.6, 2.3, -13.6, 0xfff0d0, 0.1); k.lamp(2.2, 2.3, -13.6, 0xfff0d0, 0.1);
   // spare room: the table, the big cupboard along the back
@@ -514,8 +558,6 @@ export function buildGarden(scene) {
     for (let i = 0; i < 18; i++) k.box(0.01, 0.01, 0.3 + rnd() * 0.3, px + 0.05, 2.3 + rnd() * 0.35, TZ0 + rnd() * 2, 0x6a5a3a, { rot: [0.6 + rnd(), 0, 0] });   // bare twiggy bits poking over the top
   }
   bed(6.0, -10.9, B.x1 - 0.05, -8.6, 18);                                              // behind the garage
-  bed(-4.4, -11.0 + 0.0, 4.9, -10.75, 0);                                             // soil strip in front of the cabin
-  for (let i = 0; i < 26; i++) bloom(-4.3 + i * 0.36, -10.86, 0.2 + rnd() * 0.15);
   // the neighbour's big weeping willow, hanging over the back-left corner by the cabin
   { const WIL = [0x7aa84a, 0x8ab85a, 0x6a9a3e, 0x95c060, 0x5f8f38];
     const wx = -8.4, wz = -14.6;                                                    // trunk is over the fence, next door
@@ -608,11 +650,14 @@ export function buildGarden(scene) {
       k.box(0.04, 0.04, 0.12, x0, y0, zb + 0.06, 0x333333);
     }
   }
-  // the cabin: decking in front, window boxes, fairy lights under the eaves
-  R(-4.5, -11.0, 5.0, -10.45, 0.1, 0.05, 0x8a6a4a, { collide: true });
-  for (let x = -4.4; x < 4.9; x += 0.3) k.box(0.01, 0.005, 0.55, x, 0.101, -10.72, 0x5a4030);
-  for (const [a, b] of [[-3.6, -1.6], [3.2, 4.5]]) { R(a, -10.98, b, -10.78, 0.18, 0.85, 0x6a4a2a); for (let i = 0; i < 12; i++) bloom(a + 0.08 + i * (b - a - 0.16) / 11, -10.88, 0.95 + rnd() * 0.08); }
-  for (let i = 0; i <= 40; i++) { const t = i / 40, x = -4.5 + 9.5 * t, y = 2.38 - 0.12 * Math.abs(Math.sin(t * Math.PI * 5)); k.lamp(x, y, -10.92, [0xfff0b0, 0xffd27a, 0xffb0d0][i % 3], 0.022, false); }
+  // the cabin: festoon lights swagged along the front under the roof, down the left corner, and across the lounge ceiling inside
+  { const fz = -10.86, bulb = (x, y, z) => { k.lamp(x, y, z, 0xfff2c8, 0.02, false); k.box(0.004, 0.03, 0.004, x, y + 0.025, z, 0x222222); };
+    const mid = 0.25, top = (x) => 2.4 + 0.85 * (1 - Math.abs(x - mid) / 4.75) - 0.18;
+    for (const [a, b] of [[-4.5, mid], [mid, 5.0]]) for (let sw = 0; sw < 4; sw++) { const x0 = a + (b - a) * sw / 4, x1 = a + (b - a) * (sw + 1) / 4;
+      for (let i = 0; i <= 6; i++) { const t = i / 6, x = x0 + (x1 - x0) * t; bulb(x, top(x) - 0.22 * 4 * t * (1 - t) - 0.05, fz); } }
+    for (let i = 0; i < 9; i++) bulb(-4.47, 2.2 - i * 0.2, -10.95 + Math.sin(i) * 0.02);                       // down the left corner
+    for (let i = 0; i <= 14; i++) { const t = i / 14; k.lamp(0.0 + 4.7 * t, 2.32 - 0.12 * Math.sin(t * Math.PI), -12.0 - 1.6 * t, 0xd8f0ff, 0.016, false); }   // inside, across the lounge
+  }
   // the rusty garden incinerator by the front-right corner of the cabin, straw poking out under the lid
   { const ix = 5.6, iz = -11.45, RUST = [0x8a4a22, 0x9a5a2a, 0x7a3e1c, 0xa8622e];
     k.cyl(0.26, 0.27, 0.62, ix, 0.31, iz, 0x8a4a22, 18, { block: true, collide: true });
@@ -685,6 +730,16 @@ export function buildGarden(scene) {
   return room;
 }
 
+// white lace net curtains: a lattice of loops and a scalloped hem
+function laceTex() {
+  return canvasTex(256, 256, (g, w, h) => {
+    g.clearRect(0, 0, w, h); g.fillStyle = 'rgba(248,246,240,0.55)'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 2;
+    for (let y = 8; y < h; y += 24) for (let x = (y / 24 % 2) * 12; x < w; x += 24) { g.beginPath(); g.arc(x, y, 7, 0, 7); g.stroke(); g.beginPath(); g.arc(x, y, 2, 0, 7); g.stroke(); }
+    for (let x = 0; x < w; x += 16) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 8, h); g.stroke(); }
+    for (let i = 0; i < 6; i++) { g.beginPath(); g.ellipse(w / 2, h * 0.45, 30 + i * 14, 50 + i * 16, 0, 0, 7); g.stroke(); }
+  });
+}
 function frostedTex() {
   return canvasTex(128, 128, (g, w, h) => {
     g.fillStyle = '#dfe6df'; g.fillRect(0, 0, w, h);
