@@ -154,7 +154,8 @@ export function buildGarden(scene) {
   function Gs(z) { return z >= -0.5 ? z : z >= -11 ? -0.5 + (z + 0.5) * (10.5 + 2 * GAP) / 10.5 : z - 2 * GAP; }
   function stretchGarden() {
     const box = new THREE.Box3(), crosses = (a, b) => (a < CUT1 && b > CUT1) || (a < CUT2 && b > CUT2);
-    const stretchy = (bb) => { const zx = bb.max.z - bb.min.z, xx = bb.max.x - bb.min.x, yy = bb.max.y - bb.min.y; return crosses(bb.min.z, bb.max.z) && (zx > 1.6 * xx || yy < 0.08 || xx < 0.35); };
+    const stretchy = (bb) => { if (bb.max.z - bb.min.z < 0.3) return false;      // (little things that happen to sit on a cut just move, they don't stretch)
+      const zx = bb.max.z - bb.min.z, xx = bb.max.x - bb.min.x, yy = bb.max.y - bb.min.y; return crosses(bb.min.z, bb.max.z) && (zx > 1.6 * xx || yy < 0.08 || xx < 0.35); };
     const warpGeo = (g) => { const pa = g.attributes.position; for (let i = 0; i < pa.count; i++) pa.setZ(i, F(pa.getZ(i))); pa.needsUpdate = true; g.computeBoundingBox(); g.computeBoundingSphere(); };
     const shiftGeo = (g, dz) => { if (dz) g.translate(0, 0, dz); };
     const inSmooth = (i) => smooth.some(([a, b]) => i >= a && i < b);
@@ -201,6 +202,8 @@ export function buildGarden(scene) {
         for (let c = 0; c < 3; c++) card(key, FX + 0.18, h / 2, z, 0.5 + rnd() * 0.15, h, Math.PI / 2 + c * 1.05 + rnd() * 0.3, 0, 0);
       }
     }
+    // --- ivy up the back corner of the garage, by the shed ---
+    for (let i = 0; i < 26; i++) { const z = -7.4 + rnd() * 1.6, y = 0.3 + rnd() * (2.2 - (z + 7.4) * 0.9); if (y < 0.25) continue; card(LEAFY, 1.975 - rnd() * 0.03, y, z, 0.45 + rnd() * 0.3, 0.45 + rnd() * 0.3, -Math.PI / 2, 0, rnd() * 3); }
     // --- the trellis at the halfway line: clematis and roses all over it ---
     const TZ0f = F(-8.5), PZf = F(-6.6);
     for (let i = 0; i < 26; i++) { const z = TZ0f + rnd() * (PZf - TZ0f), y = 0.6 + rnd() * 1.7; card(i % 3 === 0 ? ROSE : CLEM, B.x0 + 0.2 + rnd() * 0.04, y, z, 0.5 + rnd() * 0.3, 0.5 + rnd() * 0.3, Math.PI / 2, 0, rnd() * 3); }
@@ -536,6 +539,42 @@ export function buildGarden(scene) {
   leaf('z', GX0, -4.2, -3.2, 1, 0x2e5a3a); leaf('x', -2.4, 2.6, 3.4, 1, 0x5a4a3a);
   k.label('GARAGE', 0.6, 0.16, [GX0 - 0.11, 2.2, -3.7], [0, -Math.PI / 2, 0], { bg: '#2e5a3a', fg: '#fff', border: null, size: 44 });
   k.label('BOG', 0.4, 0.16, [3.0, 2.2, -2.47], [0, Math.PI, 0], { bg: '#fff', fg: '#111', border: '#111', size: 44 });
+  // ---- the garage outside: pebbledash render, a brick plinth course, fascia + gutter + downpipes, sills, a light, a meter box,
+  // air bricks, garden tools leant against it, an outside tap, a few hanging pots, stains and cracks ----
+  { const DASH = pebbleTex(), ZB = -5.95, BR = brickTex(), OX = GX0 - 0.105, OZ = GZ1 + 0.105;
+    // pebbledash panels on the lawn side (around the door and the toilet window) and the patio end
+    const sideX = (z0, z1, y0, y1) => k.texBox(0.012, y1 - y0, z1 - z0, OX, (y0 + y1) / 2, (z0 + z1) / 2, DASH, { tile: 0.8 });
+    sideX(ZB - 0.1, -4.2, 0.25, GH); sideX(-4.2, -3.2, 2.0, GH); sideX(-3.2, -1.75, 0.25, GH); sideX(-1.75, -1.05, 0.25, 1.3); sideX(-1.75, -1.05, 1.85, GH); sideX(-1.05, GZ1 + 0.1, 0.25, GH);
+    k.texBox(GX1 - GX0 + 0.2, GH - 0.25, 0.012, (GX0 + GX1) / 2, 0.25 + (GH - 0.25) / 2, OZ, DASH, { tile: 0.8 });
+    // brick plinth course along the bottom
+    for (const [z0, z1] of [[ZB - 0.1, -4.2], [-3.2, GZ1 + 0.1]]) k.texBox(0.03, 0.25, z1 - z0, OX - 0.01, 0.125, (z0 + z1) / 2, BR, { tile: 0.6 });
+    k.texBox(GX1 - GX0 + 0.2, 0.25, 0.03, (GX0 + GX1) / 2, 0.125, OZ + 0.01, BR, { tile: 0.6 });
+    // fascia board, gutter and two downpipes
+    k.box(0.03, 0.18, GZ1 - ZB + 0.3, GX0 - 0.17, GH - 0.03, (ZB + GZ1) / 2, 0x2a2a2a); k.box(0.1, 0.08, GZ1 - ZB + 0.3, GX0 - 0.23, GH - 0.1, (ZB + GZ1) / 2, 0x1e1e1e);
+    k.box(GX1 - GX0 + 0.35, 0.18, 0.03, (GX0 + GX1) / 2, GH - 0.03, GZ1 + 0.17, 0x2a2a2a);
+    for (const z of [ZB + 0.15, -2.6]) { k.cyl(0.035, 0.035, GH - 0.2, GX0 - 0.2, (GH - 0.2) / 2, z, 0x1e1e1e, 8); k.box(0.1, 0.04, 0.08, GX0 - 0.2, 0.05, z, 0x1e1e1e); for (const y of [0.6, 1.4, 2.1]) k.box(0.1, 0.03, 0.03, GX0 - 0.15, y, z, 0x1e1e1e); }
+    // the toilet's window sill outside, a door frame and threshold for the garage door
+    k.box(0.16, 0.05, 0.84, GX0 - 0.17, 1.27, -1.4, 0xbab4a8);
+    for (const z of [-4.24, -3.16]) k.box(0.06, 2.05, 0.08, GX0 - 0.12, 1.02, z, 0xf2f2ee); k.box(0.06, 0.08, 1.16, GX0 - 0.12, 2.04, -3.7, 0xf2f2ee); k.box(0.2, 0.04, 1.0, GX0 - 0.15, 0.02, -3.7, 0x8a8a8a);
+    // an outside light over the door (with a little glow), a meter box, air bricks, an outside tap
+    k.box(0.08, 0.2, 0.14, GX0 - 0.15, 2.25, -3.7, 0x1a1a1a); k.box(0.02, 0.14, 0.1, GX0 - 0.2, 2.24, -3.7, 0xf8f0d0); k.lamp(GX0 - 0.21, 2.24, -3.7, 0xfff4d0, 0.03, true);
+    k.box(0.12, 0.45, 0.32, GX0 - 0.16, 0.75, -5.1, 0xd8d4cc); k.box(0.01, 0.4, 0.27, GX0 - 0.225, 0.75, -5.1, 0xc8c4bc); k.box(0.02, 0.04, 0.04, GX0 - 0.23, 0.75, -4.97, 0x333333);
+    for (const z of [-5.5, -2.9, -0.8]) { k.box(0.02, 0.07, 0.22, GX0 - 0.115, 0.17, z, 0x6a6a66); for (let i = 0; i < 4; i++) k.box(0.005, 0.04, 0.03, GX0 - 0.127, 0.17, z - 0.075 + i * 0.05, 0x222222); }
+    k.box(0.06, 0.08, 0.08, GX0 - 0.14, 0.55, -2.25, 0x9a9a9a); k.box(0.03, 0.03, 0.1, GX0 - 0.17, 0.6, -2.25, 0x3a8a3a); k.cyl(0.012, 0.012, 0.08, GX0 - 0.19, 0.5, -2.25, 0x9a9a9a, 6);
+    // garden tools leant against the wall: a spade, a fork, a rake, a broom
+    const lean = (z, col, head, headCol) => { k.box(0.03, 1.3, 0.03, GX0 - 0.25, 0.68, z, col, { rot: [0, 0, -0.18] }); head(z, headCol); };
+    lean(-5.75, 0x6a4a2a, (z, c) => k.box(0.03, 0.26, 0.2, GX0 - 0.36, 0.13, z, c), 0x8a9098);                                                  // spade
+    lean(-5.55, 0x6a4a2a, (z, c) => { for (let i = 0; i < 4; i++) k.box(0.015, 0.26, 0.012, GX0 - 0.36, 0.13, z - 0.06 + i * 0.04, c); }, 0x8a9098);   // fork
+    lean(-5.3, 0x5a3a20, (z, c) => { k.box(0.03, 0.03, 0.4, GX0 - 0.37, 0.04, z, c); for (let i = 0; i < 10; i++) k.box(0.008, 0.06, 0.008, GX0 - 0.37, 0.02, z - 0.18 + i * 0.04, c); }, 0x3a3a3a);   // rake
+    // hanging baskets of trailing plants on brackets either side of the door
+    for (const z of [-5.75, -2.8]) { k.box(0.35, 0.02, 0.02, GX0 - 0.27, 1.9, z, 0x1a1a1a); k.cyl(0.003, 0.003, 0.25, GX0 - 0.42, 1.76, z, 0x333333, 4);
+      k.parts.push(part(new THREE.SphereGeometry(0.15, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), 0x5a3a20, [GX0 - 0.42, 1.62, z]));
+      for (let i = 0; i < 16; i++) { const a = rnd() * 6.28, r = rnd() * 0.16; k.parts.push(part(sph(0.03, 4, 3), i % 3 ? [0xff4f7b, 0xffffff, 0x9a4aff, 0xffd400][i % 4] : 0x3f8a2e, [GX0 - 0.42 + Math.cos(a) * r, 1.62 + 0.02 - rnd() * 0.18, z + Math.sin(a) * r])); } }
+    // weathering: rain stains under the gutter, a crack, a bit of moss on the plinth
+    for (let i = 0; i < 9; i++) { const z = ZB + 0.3 + rnd() * (GZ1 - ZB - 0.6); if (z > -4.3 && z < -3.1) continue; k.box(0.004, 0.3 + rnd() * 0.6, 0.06 + rnd() * 0.08, OX - 0.008, GH - 0.25 - rnd() * 0.2, z, 0x9a968a); }
+    for (let i = 0; i < 6; i++) k.box(0.004, 0.08, 0.02, OX - 0.009, 1.0 + i * 0.07, -2.0 + Math.sin(i * 1.7) * 0.03, 0x6a665e, { rot: [0.4 * Math.sin(i), 0, 0] });
+    for (let i = 0; i < 14; i++) k.box(0.012, 0.03 + rnd() * 0.06, 0.05 + rnd() * 0.15, OX - 0.02, 0.24 + rnd() * 0.04, ZB + rnd() * (GZ1 - ZB), [0x3f6a2e, 0x4a7a34][i % 2]);
+  }
   buildGarage(k, scene, R, rnd);                                                                // workbench + tools, shelving, freezer, Lewy's gym, Ian's fishing gear (garage.js)
   k.light(4.3, 2.3, -4.0, 0xf0f6ff, 3, 6);
   // the little green shed behind the garage: sage clapboard, apex felt roof, a dusty window
@@ -1028,6 +1067,14 @@ function harrySignTex() {
     g.fillStyle = '#111'; g.font = '900 52px Arial'; g.textAlign = 'center'; g.fillText('!', w / 2, 92);
     const lines = [['WARNING', '900 30px', '#b71c1c'], ['HARRY WAS SICK HERE', '900 19px', '#111'], ['(TWICE. SAME NIGHT.)', '700 15px', '#333'], ['AIM FOR THE BOWL, LADS', '900 17px', '#111'], ['— LEWY & IAN', '700 15px', '#555']];
     lines.forEach(([t, f, c], i) => { g.font = f + ' Arial'; g.fillStyle = c; g.fillText(t, w / 2, 130 + i * 25); });
+  });
+}
+function pebbleTex() {
+  return canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#d9d4c8'; g.fillRect(0, 0, w, h);
+    let seed = 99; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 2600; i++) { const v = 150 + Math.floor(r() * 90); g.fillStyle = `rgb(${v},${v - 6},${v - 18})`; const s = 1 + r() * 3; g.beginPath(); g.arc(r() * w, r() * h, s, 0, 7); g.fill(); }
+    for (let i = 0; i < 600; i++) { g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(r() * w, r() * h, 1.5, 1.5); }
   });
 }
 function frostedTex() {
