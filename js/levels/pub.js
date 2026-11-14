@@ -70,6 +70,7 @@ export function buildPub(scene) {
   wallZd(-6.5, 1, 5, [[1.6, 4.6]]);                            // lobby | pub (wide opening)
   wallZd(3, 6, 13.5, [[6.4, 8.0]]);                            // corridor | gambling room
   wallXd(6, 3, 11, [[8.8, 10.3]]);                             // pub | gambling room (second door)
+  wallZ(3, 5, 6);                                              // ...joined to the post at the corner of the bar walkway
   // pub-side finishes: library wallpaper and exposed brick, dark dado rail
   clad(-13.4, -1.9, -13.38, 3.5, BOOKS, H, 1.2); clad(-13.4, 5.3, -13.38, 10.9, BOOKS, H, 1.2);
   R(-13.42, -1.9, -13.36, 10.9, 0.06, 0.95, DARKWOOD);
