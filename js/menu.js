@@ -174,18 +174,27 @@
   $('#place-next').addEventListener('click', () => stepPlace(1));
   $('#place-dots').innerHTML = PLACES.map(() => '<i></i>').join('');
   $$('#place-dots i').forEach((d, i) => d.addEventListener('click', () => { pi = i; drawPlace(); blip(500, 0.05); }));
-  track.addEventListener('click', (e) => { const s = e.target.closest('.scene'); if (!s) return; const i = PLACES.findIndex(p => p.id === s.dataset.id); if (i !== pi) { pi = i; drawPlace(); blip(500, 0.05); } else { s.classList.remove('wiggle'); void s.offsetWidth; s.classList.add('wiggle'); blip(700, 0.06); } });
-  // swipe
-  let sx = null;
-  track.addEventListener('pointerdown', (e) => { sx = e.clientX; });
-  track.addEventListener('pointerup', (e) => { if (sx === null) return; const dx = e.clientX - sx; sx = null; if (Math.abs(dx) > 40) stepPlace(dx < 0 ? 1 : -1); });
-  // a gentle 3D tilt that follows your finger / mouse
+  let swiped = 0;
+  track.addEventListener('click', (e) => { if (performance.now() - swiped < 400) return;     // (that was the end of a swipe, not a tap)
+    const s = e.target.closest('.scene'); if (!s) return; const i = PLACES.findIndex(p => p.id === s.dataset.id); if (i !== pi) { pi = i; drawPlace(); blip(500, 0.05); } else { s.classList.remove('wiggle'); void s.offsetWidth; s.classList.add('wiggle'); blip(700, 0.06); } });
+  // swipe: the cards follow your finger (or mouse), let go past a quarter of a card (or flick) to change place
+  let sx = null, st = 0, drag = 0, pid = null;
+  const follow = (dx) => { const wPx = track.getBoundingClientRect().width || 300;
+    $$('.scene', track).forEach((el, i) => { const k = (i - pi) + dx / (wPx * 0.84); el.style.transition = 'none'; el.style.transform = `translateX(${k * 104}%) scale(${1 - Math.min(1, Math.abs(k)) * 0.14}) rotate(${k * 3}deg)`; el.style.opacity = Math.max(0, 1 - Math.abs(k) * 0.5); }); };
+  const release = (dx) => { $$('.scene', track).forEach(el => { el.style.transition = ''; }); const wPx = track.getBoundingClientRect().width || 300, fast = Math.abs(dx) / Math.max(1, performance.now() - st) > 0.45;
+    if (Math.abs(dx) > wPx * 0.25 || (fast && Math.abs(dx) > 25)) { swiped = performance.now(); stepPlace(dx < 0 ? 1 : -1); } else drawPlace(); };
+  track.addEventListener('pointerdown', (e) => { sx = e.clientX; st = performance.now(); drag = 0; pid = e.pointerId; });
   track.addEventListener('pointermove', (e) => {
-    const cur = $('.scene.cur', track); if (!cur) return; const r = cur.getBoundingClientRect();
+    if (sx !== null && e.pointerId === pid) { drag = e.clientX - sx; if (Math.abs(drag) > 8) { try { track.setPointerCapture(pid); } catch (er) {} follow(drag); return; } }
+    if (e.pointerType !== 'mouse' || sx !== null) return;
+    const cur = $('.scene.cur', track); if (!cur) return; const r = cur.getBoundingClientRect();          // a gentle 3D tilt that follows the mouse
     const tx = ((e.clientY - r.top) / r.height - 0.5) * -10, ty = ((e.clientX - r.left) / r.width - 0.5) * 12;
     cur.style.transform = `perspective(700px) rotateX(${tx}deg) rotateY(${ty}deg) scale(1.02)`;
   });
-  track.addEventListener('pointerleave', drawPlace);
+  const end = (e) => { if (sx === null || e.pointerId !== pid) return; const dx = e.clientX - sx; sx = null; if (Math.abs(dx) > 8) { release(dx); swiped = performance.now(); } };
+  track.addEventListener('pointerup', end);
+  track.addEventListener('pointercancel', () => { if (sx === null) return; sx = null; release(drag); });
+  track.addEventListener('pointerleave', (e) => { if (sx === null && e.pointerType === 'mouse') drawPlace(); });
   drawPlace();
 
   // ---------------------------------------------------------------- MODE: flip cards

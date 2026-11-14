@@ -566,10 +566,10 @@ export function buildGarden(scene) {
 
   // ======================================================== THE GARAGE + OUTDOOR TOILET (x 2.1..6.5, z -5.6..-0.3), the little green shed behind
   const GX0 = 2.1, GX1 = B.x1, GZ0 = -5.6, GZ1 = -0.3, GH = 2.5;
-  k.floor(GX0, GZ0, GX1, -2.4, tileTex('#8a8a86', '#84847f', '#6a6a66', 128), 0.007, 2);
+  k.floor(GX0, GZ0, GX1, -2.4, tileTex('#6c6b66', '#66655f', '#4e4d49', 128), 0.007, 2);
   k.floor(GX0, -2.4, GX1, GZ1, tileTex('#5e5a54', '#57534d', '#3e3b37', 128), 0.007, 1.6);         // the outside loo: old stained concrete
-  wallRun('z', GX0, GZ0, GZ1, GH, [[-4.2, -3.2, 0, 2.0], [-1.75, -1.05, 1.3, 1.85]], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
-  wallRun('x', GZ0, GX0, GX1, GH, [], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
+  wallRun('z', GX0, GZ0, GZ1, GH, [[-4.2, -3.2, 0, 2.0], [-1.75, -1.05, 1.3, 1.85]], { color: RENDER, inColor: 0x9a958b, inSign: 1 });
+  wallRun('x', GZ0, GX0, GX1, GH, [], { color: RENDER, inColor: 0x9a958b, inSign: 1 });
   // the garage runs on further back toward the shed (a store at the back, no way in): side walls, back wall with a window, roof
   { const ZB = -5.95;      // (past the stretch line, so it lands just short of the shed)
     k.box(0.2, GH, GZ0 - ZB, GX0, GH / 2, (GZ0 + ZB) / 2, RENDER, { collide: true, block: true }); k.box(0.2, GH, GZ0 - ZB, GX1 - 0.1, GH / 2, (GZ0 + ZB) / 2, RENDER, { collide: true, block: true });
@@ -577,11 +577,12 @@ export function buildGarden(scene) {
     glaze('x', ZB, 4.4, 5.6, 1.1, 1.9); k.box(1.2, 0.8, 0.02, 5.0, 1.5, ZB + 0.12, 0x2a2622);   // dusty dark store behind the glass
     k.box(GX1 - GX0 + 0.25, 0.07, GZ0 - ZB, (GX0 + GX1 - 0.05) / 2, GH + 0.04, (GZ0 + ZB) / 2, 0x3a3a3a);   // roof carries on
     k.box(GX1 - GX0 + 0.25, 0.07, 0.3, (GX0 + GX1 - 0.05) / 2, GH + 0.04, ZB - 0.05, 0x3a3a3a); }
-  wallRun('x', GZ1, GX0, GX1, GH, [], { color: RENDER, inColor: 0xd8d4cc, inSign: -1 });
-  wallRun('z', GX1 - 0.1, GZ0, GZ1, GH, [], { color: RENDER, inColor: 0xd8d4cc, inSign: -1 });
+  wallRun('x', GZ1, GX0, GX1, GH, [], { color: RENDER, inColor: 0x9a958b, inSign: -1 });
+  wallRun('z', GX1 - 0.1, GZ0, GZ1, GH, [], { color: RENDER, inColor: 0x9a958b, inSign: -1 });
   wallRun('x', -2.4, GX0, GX1, GH, [[2.6, 3.4, 0, 2.0]], { color: RENDER, t: 0.12 });                // garage | toilet (the loo's only door is in here)
+  for (const [a, b] of [[GX0 + 0.1, 2.6], [3.4, GX1 - 0.2]]) k.box(b - a, GH, 0.01, (a + b) / 2, GH / 2, -2.4 - 0.067, 0x9a958b); k.box(0.8, GH - 2.0, 0.01, 3.0, (GH + 2.0) / 2, -2.4 - 0.067, 0x9a958b);   // garage side of it, grubby too
   R(GX0 - 0.15, GZ0 - 0.15, GX1 + 0.05, GZ1 + 0.15, 0.12, GH + 0.06, 0x3a3a3a);                         // flat felt roof
-  { const gc = new THREE.Mesh(new THREE.PlaneGeometry(GX1 - GX0, GZ1 - GZ0), new THREE.MeshBasicMaterial({ color: 0xcfcac0 })); gc.rotation.x = Math.PI / 2; gc.position.set((GX0 + GX1) / 2, GH - 0.005, (GZ0 + GZ1) / 2); scene.add(gc); }
+  { const gc = new THREE.Mesh(new THREE.PlaneGeometry(GX1 - GX0, GZ1 - GZ0), new THREE.MeshBasicMaterial({ color: 0x8a867c })); gc.rotation.x = Math.PI / 2; gc.position.set((GX0 + GX1) / 2, GH - 0.005, (GZ0 + GZ1) / 2); scene.add(gc); }
   leaf('z', GX0, -4.2, -3.2, 1, 0x2e5a3a); leaf('x', -2.4, 2.6, 3.4, 1, 0x5a4a3a);
   k.label('GARAGE', 0.6, 0.16, [GX0 - 0.11, 2.2, -3.7], [0, -Math.PI / 2, 0], { bg: '#2e5a3a', fg: '#fff', border: null, size: 44 });
   k.label('BOG', 0.4, 0.16, [3.0, 2.2, -2.47], [0, Math.PI, 0], { bg: '#fff', fg: '#111', border: '#111', size: 44 });
@@ -622,7 +623,7 @@ export function buildGarden(scene) {
     for (let i = 0; i < 14; i++) k.box(0.012, 0.03 + rnd() * 0.06, 0.05 + rnd() * 0.15, OX - 0.02, 0.24 + rnd() * 0.04, ZB + rnd() * (GZ1 - ZB), [0x3f6a2e, 0x4a7a34][i % 2]);
   }
   buildGarage(k, scene, R, rnd);                                                                // workbench + tools, shelving, freezer, Lewy's gym, Ian's fishing gear (garage.js)
-  k.light(4.3, 2.3, -4.0, 0xf0f6ff, 3, 6);
+  k.light(4.3, 2.3, -4.0, 0xf0f2e8, 1.6, 5.5);   // a dimmer, grubbier garage (not as dark as the loo)
   // the little green shed behind the garage: sage clapboard, apex felt roof, a dusty window
   { const SX0 = 4.25, SX1 = 6.4, SZ0 = -8.25, SZ1 = -5.95, EAVE = 1.95, RIDGE = 2.45;
     const SHED = canvasTex(256, 256, (g, w, h) => {
