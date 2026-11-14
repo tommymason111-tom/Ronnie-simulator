@@ -247,6 +247,7 @@ export class Item {
     this.opened = false;
     this.chug = 0;
     this.thrownByPlayer = false;
+    this.shelf = false;
     this.incoming = false;      // thrown at Ronnie by a character
     this.foodPass = false;      // ...and it's food (Harry's passes), not veg
     this.thrower = null;
@@ -320,10 +321,10 @@ export class ItemManager {
   update(dt) {
     // big places never run dry: top up with random junk food every so often
     if (this.minFood && (this.topUpT = (this.topUpT || 0) - dt) <= 0) {
-      this.topUpT = 1.0;
+      this.topUpT = this.topUpEvery || 1.0;
       let food = this.respawnQueue.length;
       for (const it of this.items) if (!it.def.veg && !it.def.prop && !it.temp && !it.empty && !it.incoming) food++;
-      if (food < this.minFood) { const t = pickJunk(); this.spawn(t, this.freeSpawn()); }
+      if (food < this.minFood) { const veg = this.vegShare && Math.random() < this.vegShare; const it = this.spawn(veg ? ['apple', 'banana', 'orange', 'broccoli', 'carrot', 'pear', 'tomato'][Math.floor(Math.random() * 7)] : pickJunk(), this.freeSpawn()); if (veg) it.shelf = true; }
     }
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
       const r = this.respawnQueue[i];
@@ -338,7 +339,7 @@ export class ItemManager {
       if (it.heldBy) { it.resting = false; it.restTime = 0; continue; }
       if (it.resting) {
         it.restTime += dt;
-        if ((it.def.veg || it.empty || it.temp) && it.restTime > 6) this.remove(it);
+        if ((it.def.veg || it.empty || it.temp) && it.restTime > 6 && !it.shelf) this.remove(it);
         continue;
       }
       // integrate

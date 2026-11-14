@@ -43,6 +43,7 @@
     { n: 'Ethan', c: '#febe10', a: '🥤', t: 'Pepsi Max attack', l: 'My nose can smell a pasty from three postcodes away, Ron.' },
     { n: 'Ian', c: '#6b8e23', a: '🎣', t: 'Healthy BBQ / fishing rod', l: 'Canvey Lake, Ronnie. Disgrace. I pulled out a whole sofa once. Nice sofa, actually.' },
     { n: 'Alfie', c: '#034694', a: '🌀', t: 'The nutmeg', l: 'I started a back piece once. It\'s just a dragon\'s tail now. On its own.' },
+    { n: 'Aidan W', img: 'aidanw', c: '#132257', a: '🦵', t: 'Tells you about his knee', l: 'Spurs, Miles Morales and trading cards. And the knee. Mostly the knee.' },
     { n: 'Ben', c: '#2f6fd6', a: '✈️', t: 'Takes you to Turkey', l: 'Got my hairline done in Turkey, Ron. Let me take you.' },
   ];
   const RONNIE_LINES = ['Pass us that burger.', 'Mmm. MMMM.', 'Is there any more?', 'Go on then. One more.', 'Is that a burger?', 'One more. Just one.', "I'm not hungry. I'm BORED.", 'UNLEASH THE MONSTOR!', 'Who ate my pie? ...oh. Me.', 'Five a day? FIVE A DAY.', 'Chelsea, pies and MONSTOR.'];
@@ -225,7 +226,7 @@
   const roster = $('#roster');
   roster.innerHTML = SQUAD.map((s, i) => `
     <div class="mate" data-i="${i}" style="--c:${s.c};animation-delay:${i * 0.04}s">
-      <div class="face-badge"><img src="./assets/portraits/${s.n.toLowerCase()}.webp" alt="${s.n}" loading="lazy" draggable="false"></div><b>${s.n}</b>
+      <div class="face-badge"><img src="./assets/portraits/${s.img || s.n.toLowerCase()}.webp" alt="${s.n}" loading="lazy" draggable="false"></div><b>${s.n}</b>
       <div class="atk">${s.a} ${s.t}</div>
     </div>`).join('');
   const quote = $('#mate-quote');

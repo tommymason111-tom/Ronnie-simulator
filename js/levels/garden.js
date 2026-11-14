@@ -602,14 +602,14 @@ export function buildGarden(scene) {
 
   // ======================================================== THE CABIN (x -4.5..5, z -16.2..-11)
   const CX0 = -4.5, CX1 = 5.0, CZ0 = -16.2, CZ1 = -11, CH = 2.4, PART = -0.7;
-  const DARK = woodTex('#3a2214');
-  k.floor(CX0, CZ0, CX1, CZ1, woodTex('#4a2c1a'), 0.008, 1.2);
+  const DARK = woodTex('#5e3820');
+  k.floor(CX0, CZ0, CX1, CZ1, woodTex('#6a4024'), 0.008, 1.2);                                         // the same warm stained boards as the walls
   // a grey concrete plinth all round the bottom, sticking out a touch
   for (const [x0, z0, x1, z1] of [[CX0 - 0.12, CZ0 - 0.12, CX1 + 0.12, CZ0 + 0.1], [CX0 - 0.12, CZ1 - 0.1, CX1 + 0.12, CZ1 + 0.12], [CX0 - 0.12, CZ0, CX0 + 0.1, CZ1], [CX1 - 0.1, CZ0, CX1 + 0.12, CZ1]]) R(x0, z0, x1, z1, 0.2, 0.1, 0xb4b0a6, { collide: true });   // (a ring under the walls, so the floor inside stays wood) R(CX0 - 0.13, CZ1 + 0.1, CX1 + 0.13, CZ1 + 0.13, 0.02, 0.2, 0xc8c4ba);
-  wallRun('x', CZ1, CX0, CX1, CH, [[-3.05, -2.0, 1.05, 1.9], [1.9, 3.5, 0, 2.05]], { tex: CLAD, inTex: DARK, inColor: 0x3a2214, inSign: -1, t: 0.14 });   // small window (spare room), double doors (lounge)
-  wallRun('x', CZ0, CX0, CX1, CH, [], { tex: CLAD, inTex: DARK, inColor: 0x3a2214, inSign: 1, t: 0.14 });
-  wallRun('z', CX0, CZ0, CZ1, CH, [[-14.6, -13.2, 0.9, 1.9]], { tex: CLAD, inTex: DARK, inColor: 0x3a2214, inSign: 1, t: 0.14 });
-  wallRun('z', CX1, CZ0, CZ1, CH, [], { tex: CLAD, inTex: DARK, inColor: 0x3a2214, inSign: -1, t: 0.14 });
+  wallRun('x', CZ1, CX0, CX1, CH, [[-3.05, -2.0, 1.05, 1.9], [1.9, 3.5, 0, 2.05]], { tex: CLAD, inTex: DARK, inColor: 0x5e3820, inSign: -1, t: 0.14 });   // small window (spare room), double doors (lounge)
+  wallRun('x', CZ0, CX0, CX1, CH, [], { tex: CLAD, inTex: DARK, inColor: 0x5e3820, inSign: 1, t: 0.14 });
+  wallRun('z', CX0, CZ0, CZ1, CH, [[-14.6, -13.2, 0.9, 1.9]], { tex: CLAD, inTex: DARK, inColor: 0x5e3820, inSign: 1, t: 0.14 });
+  wallRun('z', CX1, CZ0, CZ1, CH, [], { tex: CLAD, inTex: DARK, inColor: 0x5e3820, inSign: -1, t: 0.14 });
   wallRun('z', PART, CZ0, CZ1, CH, [[-13.0, -12.1, 0, 2.0]], { tex: DARK, t: 0.1 });               // spare room | lounge (dark boards)
   glaze('z', CX0, -14.6, -13.2, 0.9, 1.9, 0x3a2a1a);
   // --- the front, as in the photo ---
@@ -674,7 +674,7 @@ export function buildGarden(scene) {
     k.box(0.12, RISE + 0.1, 0.04, mid, CH + RISE / 2 - 0.05, CZ1 + 0.1, 0x5a3020);                     // trim board up the middle
     k.box(CX1 - CX0, 0.08, 0.06, mid, CH - 0.02, CZ1 + 0.1, 0x5a3020);                                  // fascia along the eaves line
   }
-  k.light(-2.6, 2.2, -13.6, 0xffe0b0, 2.5, 6); k.light(2.2, 2.2, -13.6, 0xffe0b0, 3, 7);
+  k.light(-2.6, 2.6, -13.6, 0xffe4b8, 5, 7); k.light(1.2, 2.8, -14.6, 0xffe4b8, 5.5, 8); k.light(3.6, 2.8, -12.4, 0xffe4b8, 4.5, 7);   // warm and cosy, but you can see
   k.lamp(-2.6, 2.3, -13.6, 0xfff0d0, 0.1); k.lamp(2.2, 2.3, -13.6, 0xfff0d0, 0.1);
   // spare room: the table, the big cupboard along the back
   k.table(-2.6, -12.9, 1.4, 0.8, { chairs: 1, top: 0x8a6a42, legs: 0x4a3420, chairColor: 0x4a3420, spots: 2 });

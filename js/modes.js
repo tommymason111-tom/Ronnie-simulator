@@ -54,6 +54,7 @@ const ATTACKS = {
   ian:    [{ key: 'bbq', icon: '🌽', title: 'IAN FIRES UP THE HEALTHY BARBECUE!', sub: 'INCOMING GRILLED VEG!', sfx: 'sizzle' },
            { key: 'rod', icon: '🎣', title: 'IAN CATCHES YOU ON HIS FISHING ROD!', sub: 'HOOKED FOR 5 SECONDS' }],
   chloe:  [{ key: 'diet', icon: '🥗', title: 'CHLOE PUTS YOU ON A DIET!', sub: 'NO EATING!', sfx: 'ting' }],
+  aidanw: [{ key: 'knee', icon: '🦵', title: 'AIDAN W\'S KNEE IS PLAYING UP!', sub: 'YOU HAVE TO HEAR ALL ABOUT IT' }],
   oliver: [{ key: 'flash', icon: '📸', title: 'OLIVER BLINDS YOU WITH HIS CAMERA FLASH!', sub: 'GONE VIRAL!' }],
   dylan:  [{ key: 'oasis', icon: '🎸', title: 'DYLAN PLAYS YOU OASIS SONGS', sub: 'STUCK LISTENING!', sfx: 'ting' }],
   alfie:  [{ key: 'nutmeg', icon: '⚽', title: 'ALFIE NUTMEGS YOU!', sub: 'SPUN ROUND!' }],
@@ -147,7 +148,7 @@ const DATING = [
   'My longest relationship was eleven days. Twelve if you count the day she was telling everyone.',
   'Speed dating in Southend. Every single one of them asked if I knew you. Every single one.',
 ];
-const VEG_OF = { connor: 'sprout', ethan: 'broccoli', ian: 'pepper', alfie: 'apple', ben: 'carrot', tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', };
+const VEG_OF = { connor: 'sprout', ethan: 'broccoli', ian: 'pepper', alfie: 'apple', ben: 'carrot', tommy: 'broccoli', chloe: 'broccoli', lewis: 'broccoli', harry: 'sprout', noah: 'carrot', dylan: 'celery', oliver: 'sprout', aidan: 'carrot', aidanw: 'tomato', };
 const _v = new THREE.Vector3();
 
 export class Director {
@@ -192,7 +193,7 @@ export class Director {
     else if (id === 'date') squad = ['chloe', ...shuffle(everyone.filter(s => s !== 'chloe'))];   // the whole squad is out for dinner too
     else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan', 'ian', 'alfie', 'ben']).slice(0, big ? 6 : 3);
     else if (id === 'catch') squad = ['harry'];
-    else if (id === 'sweep') squad = ['oliver'];
+    else if (id === 'sweep') squad = ['oliver', 'aidanw'];        // both work at Lidl (Aidan W can't chase you: knee)
     else if (id === 'bbq') squad = ['ian', 'lewis', ...shuffle(everyone.filter(s => s !== 'ian' && s !== 'lewis')).slice(0, 4)];
     else if (id === 'roam') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 6);   // everyone about, nobody attacking
     else if (id === 'classic') squad = [];
@@ -208,7 +209,7 @@ export class Director {
       this.hook(c);
       g.cast.push(c);
     });
-    const SHORT = { sweep: 'FILL THE TROLLEY!', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
+    const SHORT = { sweep: 'GRAB THE GREEN GLOWS!', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
     g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
@@ -480,6 +481,7 @@ export class Director {
         fx.cutscene('flash', 3.2); setTimeout(() => { P.effect('slow', 3); }, 120);
         break;
       }
+      case 'knee': P.effect('frozen', 5.5); P.effect('noEat', 5.5); fx.cutscene('knee', 5.5); who.say('It\'s like a knife, Ron. A knife made of knee.', 5); break;
       case 'oasis': P.effect('frozen', 6.5); who.strumming = 6.5; playTune('oasis', 6.5); fx.cutscene('oasis', 6.5); break;
       case 'nutmeg': {        // the ball rolls through your legs; you spin round to look
         sfx('whistle', null, 0.8);
@@ -581,15 +583,28 @@ export class Director {
     if (!this.trolley) this.trolley = makeTrolley();
     this.trolley.visible = true; this.trolley.children.slice(TROLLEY_PARTS).forEach(m => this.trolley.remove(m));
     g.scene.add(this.trolley);
-    g.items.minFood = 64; g.items.respawnDelay = 1.2;
+    g.items.minFood = 140; g.items.respawnDelay = 0.5; g.items.topUpEvery = 0.25; g.items.vegShare = 0.2; this.clearGlows();
+    g.player.speedMul = 1.7;                                   // it's a SWEEP: you leg it round the shop
+    // fill the shelves straight away: food on every free spot, and some fruit and veg as traps
+    for (const sp of shuffle(g.room.spawns).slice(0, 170)) if (g.items.items.every(it => it.pos.distanceToSquared(sp) > 0.04))   // (not every spot: keeps it smooth on the headset)
+      { const veg = Math.random() < 0.22; const it = g.items.spawn(veg ? ['apple', 'banana', 'orange', 'broccoli', 'carrot', 'pear', 'tomato'][Math.floor(Math.random() * 7)] : pickJunk(), sp); if (veg) it.shelf = true; }
+    setTimeout(() => g.showBanner('GREEN GLOW = TROLLEY', 'FRUIT & VEG COST YOU (DON\'T TRUST THE GLOW)'), 3500);
     const oli = this.cast.find(c => c.id === 'oliver');
     if (oli) { oli.active = false; setTimeout(() => oli.say('Store security. Walk, don\'t run. And DEFINITELY don\'t eat the stock, Ron.', 5), 1800); }
   }
-  removeTrolley() { if (this.trolley) { this.trolley.visible = false; this.g.scene.remove(this.trolley); } if (this.g.items) { this.g.items.minFood = this.g.room.big ? 44 : 0; } }
+  removeTrolley() { if (this.trolley) { this.trolley.visible = false; this.g.scene.remove(this.trolley); } if (this.g.items) { this.g.items.minFood = this.g.room.big ? 44 : 0; this.g.items.topUpEvery = 1; this.g.items.vegShare = 0; } if (this.g.player) this.g.player.speedMul = 1; this.clearGlows(); }
   // the game calls this when Ronnie picks something up during the sweep
   sweepGrab(it) {
     if (!this.running || this.mode !== 'sweep') return false;
     const g = this.g, sw = this.sweep, price = PRICE[it.type] || 1.5;
+    if (it.def.veg) {           // fruit and veg: not what we're here for. It costs you.
+      const lose = Math.min(2, sw.list.length);
+      for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; }
+      sw.total = Math.max(0, sw.total - 2.5);
+      g.words.show('HEALTHY?! -£2.50', it.pos.clone().add(new THREE.Vector3(0, 0.2, 0)), '#ff5252', 0.16, 1.1);
+      sfx('bleurgh', it.pos, 0.8); g.items.remove(it); g.items.queueRespawn(it.type, 2);
+      return true;
+    }
     sw.items++; sw.total += price;
     g.words.show(`+£${price.toFixed(2)}`, it.pos.clone().add(new THREE.Vector3(0, 0.2, 0)), '#ffd400', 0.16, 0.9);
     sfx('ting', it.pos, 0.8);
@@ -609,10 +624,20 @@ export class Director {
     const want = P.head.clone().addScaledVector(f, 0.75); want.y = 0;
     this.trolley.position.lerp(want, Math.min(1, dt * 8));
     this.trolley.rotation.y = Math.atan2(f.x, f.z);
+    // glows: green on the food you want in the trolley; fruit and veg flicker red AND green (trust nothing)
+    const t = performance.now() / 1000;
+    for (const it of g.items.items) {
+      if (it.incoming || it.def.prop || it.heldBy) { if (it.glow) it.glow.visible = false; continue; }
+      if (!it.glow) { it.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0x39ff14, transparent: true, opacity: 0.85, depthWrite: false })); it.glow.scale.setScalar(0.3); it.glow.renderOrder = 4; it.obj.add(it.glow); this.glows.add(it); }
+      it.glow.visible = true;
+      const s = 1 / Math.max(0.3, it.obj.scale.x);
+      if (it.def.veg) { const k = (Math.sin(t * 3.1 + it.pos.x * 7) + Math.sin(t * 5.3 + it.pos.z * 5)) > 0.2; it.glow.material.color.setHex(k ? 0x39ff14 : 0xff2a2a); it.glow.scale.setScalar(0.28 * s); }
+      else { it.glow.material.color.setHex(0x39ff14); it.glow.scale.setScalar((0.27 + Math.sin(t * 4 + it.pos.x * 3) * 0.03) * s); }
+    }
     // Oliver chases you round the shop
     const oli = this.cast.find(c => c.id === 'oliver'); sw.cool -= dt;
     if (oli && !oli.down) {
-      if (oli.state === 'idle' || oli.state === 'walk') { oli.chaseT = (oli.chaseT || 0) - dt; if (oli.chaseT <= 0) { oli.chaseT = 1.2; oli.goTo(P.head.x, P.head.z, 1.25, 'idle'); } }
+      if (oli.state === 'idle' || oli.state === 'walk') { oli.chaseT = (oli.chaseT || 0) - dt; if (oli.chaseT <= 0) { oli.chaseT = 1.0; oli.goTo(P.head.x, P.head.z, 1.9, 'idle'); } }
       if (oli.distToPlayer < 0.85 && sw.cool <= 0 && sw.items > 0) {
         sw.cool = 6; sw.caught++;
         const lose = Math.min(3, sw.list.length);
@@ -622,6 +647,8 @@ export class Director {
       }
     }
   }
+
+  clearGlows() { if (!this.glows) { this.glows = new Set(); return; } for (const it of this.glows) if (it.glow) { it.obj.remove(it.glow); it.glow = null; } this.glows.clear(); }
 
   // ------------------------------------------------------------------ FREE ROAM
   // Everyone spread right round the place, each doing their own thing (on the sofa, at the darts,
@@ -664,6 +691,7 @@ export class Director {
       if (c.roamGoing || c.state !== 'idle') continue;
       // knocked out of their seat? back into it
       if (c.seated && Math.hypot(c.pos.x - c.roamAct.x, c.pos.z - c.roamAct.z) > 0.3) this.settleAct(c);
+      if (c.stayPut) continue;          // (the knee)
       if ((c.roamT -= dt) <= 0) {
         c.roamT = 30 + Math.random() * 45;
         const free = this.roamActs.filter(a => !a.who); if (!free.length) continue;
@@ -1025,6 +1053,13 @@ const SOLO_TALK = [
   'They\'ve all left me on my own again. Good. More bread for me.',
   'Is he eating off other people\'s tables? He is, isn\'t he. Classic Ron.',
 ];
+let _glowTex = null;
+function glowTex() {
+  if (_glowTex) return _glowTex;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.15)'); gr.addColorStop(0.62, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.75, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');   // a glowing ring round it
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); _glowTex = new THREE.CanvasTexture(c); return _glowTex;
+}
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }

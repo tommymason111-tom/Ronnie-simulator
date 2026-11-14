@@ -17,7 +17,7 @@ import { canvasTex, FONT } from './textures.js';
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4();
 // how long each signature move lasts (seconds)
 const ANNOUNCE_T = 2;   // how long the attack pop-up shows before the attack lands
-const SIGN_T = { beer: 1.9, dating: 5.5, pepsi: 1.6, jig: 6.5, yeet: 1.6, siu: 3.2, rod: 5.0, bbq: 1.8, diet: 1.8, flash: 1.3, oasis: 6.5, nutmeg: 1.3, turkey: 20.2 };
+const SIGN_T = { knee: 1.6, beer: 1.9, dating: 5.5, pepsi: 1.6, jig: 6.5, yeet: 1.6, siu: 3.2, rod: 5.0, bbq: 1.8, diet: 1.8, flash: 1.3, oasis: 6.5, nutmeg: 1.3, turkey: 20.2 };
 const OASIS_LINES = ['♪ Today is gonna be the day... that you put down the pie ♪', '♪ And all the roads we have to walk... lead to the chippy ♪', '♪ Don\'t look back in anger, Ronnie... look back at the buffet ♪', '♪ You\'re gonna be the one that eats me... ♪', '♪ Some might say... you\'ve had enough ♪', '♪ Cast no shadow... you cast a BIG shadow, Ron ♪', 'Right, B-side next. No, don\'t move. DON\'T MOVE.'];
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -248,6 +248,38 @@ export const SQUAD = {
       grabbed: ['Ronnie! I\'ve got football Sunday! Put me DOWN!', 'Careful! Mind the tattoos!'],
       launched: ['CAREFREEEEE, WHEREVER YOU MAY BEEEE—'],
       vegThrow: ['VOLLEY!', 'Off the laces!', 'Get your head on it, Ron!'],
+    },
+  },
+  aidanw: {
+    name: 'Aidan W', color: '#132257', voicePitch: 1.05, stayPut: true,
+    model: './assets/squad/aidanw.glb', modelBody: { h: 1.68, girth: 1.1, bind: { sh: [0.20, 1.36, 0], el: [0.48, 1.37, 0], ha: [0.78, 1.37, 0], hipX: 0.10, hipY: 0.85, kneeY: 0.47, neckY: 1.44, topY: 1.68, headZ: 0.03, chestW: 0.19, chestD: 0.14, pelvisW: 0.16, arm: 0.05, leg: 0.08 } },
+    body: { h: 1.68, sw: 0.95, girth: 1.05, limb: 0.9 },
+    look: { skin: SKIN.light, hair: { style: 'short', color: 0x3a2618 }, top: 0x132257, sleeves: 'short', bottom: 0x222222, legs: 'trousers', shoes: 0xf5f5f5 },
+    title: 'THE KNEE', fail: 'told Ronnie about his knee for so long Ronnie ate the physio\'s leaflet.',
+    banks: {
+      greet: ['Alright Ron. Don\'t ask me to get up. It\'s the knee.'],
+      chatter: [
+        'My knee\'s killing me, Ron. No, the other one. No, both now.',
+        'I\'d come over but, you know. The knee.',
+        'Physio says rest it. So I\'m resting it. Professionally.',
+        'I work at Lidl with Ollie. I do the tills. Sitting down. Because of the knee.',
+        'Spurs, mate. Spurs. Me and Ollie suffer together. It\'s basically a support group.',
+        'We\'re rebuilding, Ron. We\'ve been rebuilding since I was nine.',
+        'Miles Morales is the best Spider-Man and I will not be taking questions.',
+        'If I got bitten by a radioactive spider my first power would be a new knee.',
+        'I pulled a holo shiny out of a pack yesterday. Best day of my year. Spurs-wise it was a low bar.',
+        'Don\'t touch my binder, Ron. Those cards are sleeved. Your fingers are not sleeved.',
+        'Mint condition. Like my knee isn\'t.',
+        'Could someone bring that over? I can\'t walk. Knee.',
+        'I was going to go to the gym but my knee said no. My knee says no to most things.',
+        'Ollie says it\'s all in my head. It\'s in my KNEE, Ollie.',
+        'Spurs are one good season away from a good season.',
+      ],
+      intervene: ['RON. Ron. Come here. Have I told you about my knee?', 'Ronnie, stop. Sit. Listen. It started in 2019...'],
+      hit: ['Now you know how my knee feels. Every day.'],
+      slap: ['NOT THE KNEE! ...that was my face. Fine.'],
+      grabbed: ['Mind the knee! MIND THE KNEE!'],
+      launched: ['MY KNEEEEEE—'],
     },
   },
   ben: {
@@ -526,6 +558,7 @@ export class SquadMember extends Character {
       });
     } else this.rag.setMesh(buildBody(this.rag, def.look), new THREE.MeshLambertMaterial({ vertexColors: true }));
     if (def.look.prop) { this.prop = makeProp(def.look.prop, this.rag.height / 1.68); scene.add(this.prop); }
+    this.stayPut = !!def.stayPut;      // (Aidan W: the knee. He doesn't walk anywhere)
     this.ready = true;
   }
 
@@ -667,7 +700,7 @@ export class SquadMember extends Character {
     this.actStart && this.actStart();
     // first walk up to Ronnie and do their signature move on him (Noah charges;
     // Ian only needs to get within casting range, or barbecue-throwing range)
-    this.approach = { tackle: 0, rod: 2.4, bbq: 2.2, flash: 1.8, dating: 1.0, oasis: 1.4, turkey: 1.0 }[this.attack] ?? (this.id === 'noah' ? 0 : 0.9);
+    this.approach = { knee: 0, tackle: 0, rod: 2.4, bbq: 2.2, flash: 1.8, dating: 1.0, oasis: 1.4, turkey: 1.0 }[this.attack] ?? (this.id === 'noah' ? 0 : 0.9);
     if (this.attack === 'bbq') { this.passes = 4; }
     else if (['rod', 'oasis', 'turkey'].includes(this.attack)) { /* the attack is the whole move */ }
     else ({
@@ -683,7 +716,8 @@ export class SquadMember extends Character {
       ethan: () => { this.passes = 3; },
       ian: () => {},
       alfie: () => { this.passes = 4; },
-    })[this.id]();
+      aidanw: () => {},
+    })[this.id]?.();
     return true;
   }
 
@@ -765,6 +799,7 @@ export class SquadMember extends Character {
         r.aim('uArmR', -0.2, -0.3, 1); r.aim('lArmR', -0.05, -0.2 + s(t * 7) * 0.35, 1); r.aim('uArmL', 0.25, -0.5, 0.6); r.aim('lArmL', 0.1, 0.1, 1);
         if (fx && this.bbq && Math.random() < 0.25) fx.particle(fx.dotTex, this.bbq.position.clone().add({ x: (Math.random() - 0.5) * 0.3, y: 0.8, z: (Math.random() - 0.5) * 0.3 }), new THREE.Vector3((Math.random() - 0.5) * 0.1, 0.5, (Math.random() - 0.5) * 0.1), 1.6, 0.14, 0x9a9a9a, 0.1, true);
         break;
+      case 'knee': r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), 0.45); r.aim('uArmL', 0.1, -1, 0.5); r.aim('lArmL', 0.1, -0.6, 0.7); r.aim('uArmR', -0.1, -1, 0.5); r.aim('lArmR', -0.1, -0.6, 0.7); r.aim('uLegR', -0.05, -0.85, 0.5); r.bob = -0.06 + Math.sin(t * 9) * 0.01; break;   // bent over, clutching the knee
       case 'diet': r.aim('uArmL', 0.15, 0.25, 1); r.aim('uArmR', -0.15, 0.25, 1); r.aim('lArmL', -0.1, 0.3, 1); r.aim('lArmR', 0.1, 0.3, 1); break;      // holding the salad out
       case 'flash': r.aim('uArmR', -0.1, 0.35, 1); r.aim('lArmR', 0, 0.4, 1); r.aim('uArmL', 0.1, 0.3, 1); r.aim('lArmL', 0, 0.4, 1); break;            // phone up, both hands
       case 'oasis':                                                                                        // strumming, head nodding, notes flying

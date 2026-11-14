@@ -304,7 +304,7 @@ export class Character {
         this.idleTick && this.idleTick(dt, ctx);
         if (this.state !== 'idle') break;
         this.closeT = this.distToPlayer < 0.8 ? (this.closeT || 0) + dt : 0;
-        if (this.nextMove <= 0 || this.closeT > 3) { this.closeT = 0; this.pickSpot(playerHead, ctx.fwd); }
+        if ((this.nextMove <= 0 || this.closeT > 3) && !this.stayPut) { this.closeT = 0; this.pickSpot(playerHead, ctx.fwd); }
         if (this.quietT > (this.cfg.chatterEvery || 16) && this.speakT <= 0) this.say('chatter', 1);
         break;
       case 'walk': {

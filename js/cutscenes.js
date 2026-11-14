@@ -582,4 +582,24 @@ export function drawNutmeg(g, t, dur) {
   text(g, '"Olé!" — Alfie (Sunday League legend, 1 tattoo short of a back piece)', W / 2, H - 26, 24, '#fff', { lw: 6, maxW: W - 80 });
   g.restore();
 }
-export const OVERLAYS = { beer: drawBeer, dating: drawDating, diet: drawDiet, flash: drawFlash, oasis: drawOasis, rod: drawRod, tackle: drawTackle, trip: drawTrip, jig: drawJig, nutmeg: drawNutmeg, pepsi: drawPepsi, siu: drawSiu };
+// Aidan W: the knee. A physio-style chart of his knee, the pain scale going off the top
+export function drawKnee(g, t, dur) {
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur);
+  g.save(); g.globalAlpha = a;
+  vignette(g, 'rgba(19,34,87,ALPHA)', 0.6);
+  const cx = W - 300 + (1 - ease(t / 0.4)) * 400;
+  g.save(); g.translate(cx, 60); g.rotate(-0.04);
+  g.fillStyle = '#fffdf2'; rr(g, 0, 0, 270, 400, 14); g.fill();
+  text(g, 'KNEE UPDATE', 135, 40, 28, '#132257'); text(g, 'by Aidan W (patient)', 135, 66, 15, '#555', { weight: 700 });
+  // the pain scale
+  for (let i = 0; i < 10; i++) { const y = 340 - i * 24; g.fillStyle = `hsl(${120 - i * 12},80%,50%)`; rr(g, 30, y, 40, 20, 4); g.fill(); text(g, String(i + 1), 50, y + 15, 14, '#111'); }
+  const lvl = Math.min(13, 1 + t * 4), y = 360 - lvl * 24;
+  g.fillStyle = '#c62828'; g.beginPath(); g.moveTo(80, y); g.lineTo(100, y - 10); g.lineTo(100, y + 10); g.fill();
+  if (lvl > 10) text(g, Math.round(lvl) + '/10', 140, y + 6, 30, '#c62828');
+  const notes = ['Can\'t walk ✗', 'Can sit ✓', 'Can hold cards ✓', 'Can watch Spurs ✗ (emotional)'];
+  notes.forEach((n, i) => { if (t > 0.6 + i * 0.6) text(g, n, 112, 130 + i * 34, 16, '#111', { align: 'left', weight: 700 }); });
+  g.restore();
+  bigWord(g, 'MY KNEE!', 290, H / 2, 80, '#ffffff', '#132257', -0.08, 1 + Math.sin(t * 8) * 0.04);
+  g.restore();
+}
+export const OVERLAYS = { knee: drawKnee, beer: drawBeer, dating: drawDating, diet: drawDiet, flash: drawFlash, oasis: drawOasis, rod: drawRod, tackle: drawTackle, trip: drawTrip, jig: drawJig, nutmeg: drawNutmeg, pepsi: drawPepsi, siu: drawSiu };

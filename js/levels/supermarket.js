@@ -120,7 +120,7 @@ export function buildSupermarket(scene) {
     for (const side of [-1, 1]) {
       for (const y of [0.55, 1.05, 1.5]) k.box(0.28, 0.03, len, x + side * 0.62, y, zc, LEDGE, { collide: true });
       k.label('shelf', len, 1.6, [x + side * 0.505, 0.9, zc], [0, side * Math.PI / 2, 0], { tex: shelfTexes[(ti + (side > 0 ? 1 : 0)) % 4] });
-      for (let z = z0 + 0.8; z < z1 - 0.4; z += 1.6) k.spawns.push(new THREE.Vector3(x + side * 0.62, 1.12, z));
+      for (let z = z0 + 0.4; z < z1 - 0.3; z += 0.55) for (const y of [0.62, 1.12, 1.57]) k.spawns.push(new THREE.Vector3(x + side * 0.62, y, z + (y > 1 ? 0.2 : 0)));   // every shelf, all the way along
     }
     // end caps: offer bays facing the cross-aisle and the front
     for (const [ez, dir] of [[z0, -1], [z1, 1]]) { R(x - 0.5, ez + dir * 0.0, x + 0.5, ez + dir * 0.45, 1.2, 0.6, YEL, { collide: true, block: true }); k.spawns.push(new THREE.Vector3(x, 1.28, ez + dir * 0.22)); }

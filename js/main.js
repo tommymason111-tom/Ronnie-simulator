@@ -110,7 +110,7 @@ items.onLand = (it, speed) => {
 items.onSpawn = () => sfx('pop', null, 0.15);
 player.onGrab = (it) => {
   // Supermarket Sweep: straight into the trolley
-  if (director.running && director.mode === 'sweep' && !it.incoming && !it.def.veg) { const h = it.heldBy; if (h) h.held = null; it.heldBy = null; director.sweepGrab(it); return; }
+  if (director.running && director.mode === 'sweep' && !it.incoming && !it.def.prop) { const h = it.heldBy; if (h) h.held = null; it.heldBy = null; director.sweepGrab(it); return; }
   sfx('pop', it.pos, 0.3);
   if (it.incoming) {
     words.show('CAUGHT!', it.pos.clone().add(new THREE.Vector3(0, 0.15, 0)), '#7cff6a', 0.22);
