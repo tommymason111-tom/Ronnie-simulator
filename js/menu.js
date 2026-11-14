@@ -108,6 +108,10 @@
     return say.textContent;
   };
   window.ronnieSay = ronnieSay;
+  // the loading screen goes once 3D Ronnie is ready (or after 12s, or straight away when skipping the menu)
+  const boot = $('#boot');
+  window.bootDone = () => { if (boot && !boot.classList.contains('done')) { boot.classList.add('done'); setTimeout(() => boot.remove(), 400); } };
+  setTimeout(window.bootDone, 12000);
   // the 3D Ronnie never turned up (no WebGL, three.js didn't load)? show the drawing instead
   setTimeout(() => { const hb = $('.herobox'); if (hb && !hb.classList.contains('three')) hb.classList.add('nothree'); }, 15000);
   window.menuSfx = (n) => { if (n === 'chomp') chompSfx(); else if (n === 'gulp') blip(160, 0.18, 'sine', 0.09); else if (n === 'pop') blip(620, 0.06); };
@@ -166,7 +170,6 @@
   }
   const stepPlace = (d) => { pi = (pi + d + PLACES.length) % PLACES.length; drawPlace(); blip(440 + pi * 60, 0.05); };
   $('#place-prev').addEventListener('click', () => stepPlace(-1));
-  $('#place-roam').addEventListener('click', () => { mode = 'roam'; blip(760, 0.08); show('ready'); });   // free roam straight from any place
   $('#place-next').addEventListener('click', () => stepPlace(1));
   $('#place-dots').innerHTML = PLACES.map(() => '<i></i>').join('');
   $$('#place-dots i').forEach((d, i) => d.addEventListener('click', () => { pi = i; drawPlace(); blip(500, 0.05); }));
@@ -259,14 +262,8 @@
         const tag = document.getElementById('ready-tag'); if (tag) tag.textContent = `${p.name} · ${m.name}`;
         resolve({ place, mode });
       };
-      if (instant === true) return finish();
-      // a quick CHOMP! while the level starts loading straight away underneath,
-      // then the overlay always goes (it used to stay stuck over the screen)
-      const cd = $('#countdown'); cd.textContent = 'EAT!'; cd.classList.add('on', 'beat');
-      chompSfx(); blip(880, 0.25, 'square', 0.07);
-      const hide = () => cd.classList.remove('on', 'beat');
-      setTimeout(() => { finish(); setTimeout(hide, 450); }, 60);
-      setTimeout(hide, 2500);   // backstop
+      if (instant !== true) chompSfx();
+      finish();
     };
     $('#go').addEventListener('click', () => go());
     // the floating menu in VR (see ronnieHero.js) picks with these
@@ -288,7 +285,7 @@
         h.enterVR().catch(err => { tvr.textContent = 'VR FAILED: ' + err.message; });
       });
     }
-    if (q.get('go')) go(true);
+    if (q.get('go')) { window.bootDone(); go(true); }
     // coming back from a level ("Change place or mode"): jump straight to picking
     // otherwise always open on the title screen, and tidy the address bar
     else if (location.search) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }

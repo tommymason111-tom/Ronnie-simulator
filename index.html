@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>RONNIE SIMULATOR</title>
   <meta name="description" content="RONNIE SIMULATOR — a WebXR comedy eating game for Meta Quest 3.">
+  <!-- start fetching the 3D Ronnie straight away, alongside everything else -->
+  <link rel="preload" href="./assets/ronnie_head.glb" as="fetch" crossorigin>
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" crossorigin>
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/loaders/GLTFLoader.js" crossorigin>
   <style>
     /* phones: no double-tap zoom, no text selection or callout menus when you hold a finger down */
     html, body, button, #start, #ui, #touch { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
@@ -106,10 +110,14 @@
     @keyframes pulse { 50% { transform: scale(1.06); } }
     .midbtn { font: 900 16px "Arial Black", Arial, sans-serif; padding: 12px 22px; border-radius: 16px; border: 3px solid #fff; background: rgba(28,44,140,0.94); color: #fff; cursor: pointer; min-width: 220px; }
     .playbtn { font-size: clamp(34px, 9vw, 46px); padding: 20px 0; width: min(420px, 88vw); border-radius: 24px; }
-    .placebtns { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-    .placebtns .bigbtn { margin: 0; }
-    .roambtn { display: block; margin: 0 auto; width: min(380px, 86vw); font-size: 14px; padding: 11px 6px; }
-    .roambtn small { font: 700 11px Arial, sans-serif; opacity: .8; }
+    #boot { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: radial-gradient(circle at 50% 40%, #2a4ad8, #0b1020 75%); transition: opacity .35s; }
+    #boot.done { opacity: 0; pointer-events: none; }
+    #boot .bl { font: 900 clamp(40px, 13vw, 76px)/0.95 Impact, "Arial Black", sans-serif; color: #ffd400; text-align: center; text-shadow: 3px 3px 0 #ff7a00, 6px 6px 0 #7a2a00; }
+    #boot .bl span { font-size: 0.72em; }
+    #boot .bbar { width: min(260px, 70vw); height: 12px; border-radius: 8px; background: rgba(255,255,255,0.15); overflow: hidden; }
+    #boot .bbar i { display: block; height: 100%; width: 30%; background: #ffd400; border-radius: 8px; animation: bootbar 1.1s ease-in-out infinite; }
+    @keyframes bootbar { 0% { transform: translateX(-100%); } 100% { transform: translateX(340%); } }
+    #boot .bt { font: 700 14px Arial, sans-serif; color: #c9d3ff; }
     .vrbtn { width: min(420px, 88vw); font-size: 15px; padding: 12px 6px; background: linear-gradient(180deg, #7a5cff, #4b2fd0); color: #fff; }
     .vrbtn[hidden] { display: none; }
     .smallrow { display: flex; gap: 10px; width: min(420px, 88vw); }
@@ -242,6 +250,8 @@
   <div id="app"></div>
   <div id="start">
     <div id="rain"></div>
+    <!-- loading: the menu only shows once 3D Ronnie is ready, so he's there from the first frame -->
+    <div id="boot"><div class="bl">RONNIE<br><span>SIMULATOR</span></div><div class="bbar"><i></i></div><div class="bt">Loading Ronnie…</div></div>
 
     <!-- TITLE -->
     <section class="screen on" data-s="title">
@@ -299,10 +309,7 @@
         <button class="arrow" id="place-next">›</button>
       </div>
       <div id="place-dots"></div>
-      <div class="stick placebtns">
-        <button class="bigbtn" data-go="mode">NEXT ➜</button>
-        <button class="midbtn roambtn" id="place-roam">🚶 FREE ROAM HERE <small>· look round, no attacks</small></button>
-      </div>
+      <button class="bigbtn stick" data-go="mode">NEXT ➜</button>
     </section>
 
     <!-- MODE -->
@@ -437,12 +444,12 @@
       onEat: () => window.menuNom && window.menuNom(),
       sfx: (n) => window.menuSfx && window.menuSfx(n),
     }).then((h) => {
-      box.classList.add('three'); window.ronnieHero = h;
+      box.classList.add('three'); window.ronnieHero = h; window.bootDone && window.bootDone();
       if (document.getElementById('start').classList.contains('gone')) h.stop();
       // a headset? offer to see him in VR
       const tvr = document.getElementById('title-vr');
       if (navigator.xr && navigator.xr.isSessionSupported) navigator.xr.isSessionSupported('immersive-vr').then(v => { if (v) tvr.hidden = false; }).catch(() => {});
-    }).catch((e) => { console.warn('3D Ronnie unavailable, using the drawing', e); box.classList.add('nothree'); });
+    }).catch((e) => { console.warn('3D Ronnie unavailable, using the drawing', e); box.classList.add('nothree'); window.bootDone && window.bootDone(); });
   </script>
   <script type="module" src="./js/main.js"></script>
 </body>
