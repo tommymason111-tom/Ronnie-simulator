@@ -205,14 +205,14 @@ export function buildSupermarket(scene) {
     blk(x0, z0, x1, z1, 0.9);
   };
   // tall upright freezers with glass doors: shelves of frozen food lit inside, a frosty glow, handles, a header strip
-  const freezerBank = (x, z0, z1, dir) => {      // a bank against x (its back), doors facing dir (+1 / -1 along x)
+  const freezerBank = (x, z0, z1, dir, cats = ['froze', 'froze', 'froze', 'froze']) => {      // a bank against x (its back), doors facing dir (+1 / -1 along x)
     const D = 0.72, H2 = 2.15, len = z1 - z0, zc = (z0 + z1) / 2, fx = x + dir * D;
     R(Math.min(x, fx), z0, Math.max(x, fx), z1, 0.12, 0.06, BLACK);                                         // plinth
     R(Math.min(x, fx), z0, Math.max(x, fx), z1, 0.08, H2 + 0.04, WHITE);                                     // top
     R(Math.min(x, x + dir * 0.06), z0, Math.max(x, x + dir * 0.06), z1, H2, H2 / 2, 0xe8eef2);               // back
     for (const z of [z0, z1]) R(Math.min(x, fx), z - 0.03, Math.max(x, fx), z + 0.03, H2, H2 / 2, WHITE);   // ends
-    [0.35, 0.78, 1.21, 1.64].forEach(y => { R(Math.min(x, fx - dir * 0.08), z0 + 0.04, Math.max(x, fx - dir * 0.08), z1 - 0.04, 0.025, y, 0xd8e4ea, { collide: true });
-      stock.addRun('froze', x + dir * 0.35, y + 0.013, z0 + 0.08, z1 - 0.08, dir); stock.addRun('froze', x + dir * 0.18, y + 0.013, z0 + 0.08, z1 - 0.08, dir);
+    [0.35, 0.78, 1.21, 1.64].forEach((y, li) => { R(Math.min(x, fx - dir * 0.08), z0 + 0.04, Math.max(x, fx - dir * 0.08), z1 - 0.04, 0.025, y, 0xd8e4ea, { collide: true });
+      stock.addRun(cats[li], x + dir * 0.35, y + 0.013, z0 + 0.08, z1 - 0.08, dir); if (cats[li] !== 'milk') stock.addRun(cats[li], x + dir * 0.18, y + 0.013, z0 + 0.08, z1 - 0.08, dir);
       k.texBox(0.006, 0.035, len - 0.08, fx - dir * 0.08, y - 0.005, zc, PRICES, { tile: 0.5 });
       for (let z = z0 + 0.4; z < z1 - 0.3; z += 0.7) k.spawns.push(new THREE.Vector3(x + dir * 0.45, y + 0.08, z)); });
     // the glass doors: frames, mullions, handles, frosty glass
@@ -259,10 +259,9 @@ export function buildSupermarket(scene) {
   };
   baskets(BX, ZA0, ZA1); baskets(CX, ZA0, ZA1);
   // the meat: a low double-sided chiller island
-  chiller('z', 0.95, ZA0 + 0.3, ZA1 - 0.3, 1, ['meat', 'meat', 'meat'], null, { low: true });
-  chiller('z', 0.95, ZA0 + 0.3, ZA1 - 0.3, -1, ['meat', 'meat', 'meat'], null, { low: true });
+  freezerBank(0.85, ZA0 + 0.3, ZA1 - 0.3, -1, ['meat', 'meat', 'meat', 'meat']); freezerBank(0.85, ZA0 + 0.3, ZA1 - 0.3, 1, ['meat', 'yog', 'meat', 'jar']);   // tall glass-door fridges, both sides
   // the right-hand wall: dairy & salad fridges, the MONSTOR fridge
-  chiller('z', 3.32, -11.9, -6.0, -1, ['yog', 'milk', 'meat', 'jar'], 'DAIRY, SALADS & READY MEALS');
+  freezerBank(3.32, -11.9, -6.0, -1, ['yog', 'milk', 'meat', 'jar']);                   // dairy, salads & ready meals: glass-door fridges
   // the MONSTOR fridge: black cabinet, lit green inside, three shelves packed with real cans behind a glass door
   { const x1 = 3.32, x0 = 2.7, z0 = -14.0, z1 = -12.3, zc = (z0 + z1) / 2, FH = 2.0;
     R(x0, z0, x1, z1, 0.12, 0.06, BLACK); R(x0, z0, x1, z1, 0.1, FH - 0.05, BLACK);                                  // plinth, top
