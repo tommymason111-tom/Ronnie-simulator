@@ -109,9 +109,7 @@
   // raining food you can catch (tap it): a little score in the corner
   const rain = $('#rain'), FOOD = ['🍔', '🍕', '🍩', '🌭', '🍟', '🥤', '🍗', '🌮', '🍰', '🥦'];
   let caught = 0, best = 0; try { best = +localStorage.getItem('rs_snackbest') || 0; } catch (e) {}
-  const scoreEl = $('#snackscore');
-  const drawScore = () => { scoreEl.innerHTML = `🍔 ${caught}${best ? ` <small>BEST ${best}</small>` : ''}`; };
-  drawScore();
+  const drawScore = () => {};
   function drop() {
     if (start.classList.contains('gone')) return;
     const s = document.createElement('span'), f = FOOD[Math.floor(Math.random() * FOOD.length)];
@@ -121,7 +119,7 @@
       e.stopPropagation();
       if (f === '🥦') { caught = Math.max(0, caught - 3); pop(e.clientX, e.clientY, 'BLEURGH -3', '#7cff6a'); blip(110, 0.2, 'sawtooth', 0.06); }
       else { caught++; pop(e.clientX, e.clientY, '+1 NOM', '#ffd400'); chompSfx(); if (caught > best) { best = caught; try { localStorage.setItem('rs_snackbest', best); } catch (er) {} } }
-      drawScore(); scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump');
+      drawScore();
       s.remove();
     });
     rain.appendChild(s); setTimeout(() => s.remove(), dur * 1000);

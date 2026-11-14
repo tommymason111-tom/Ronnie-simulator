@@ -94,6 +94,9 @@
     .bigbtn:active { transform: translateY(5px); box-shadow: 0 2px 0 #1d8a0a; }
     @keyframes pulse { 50% { transform: scale(1.06); } }
     .midbtn { font: 900 16px "Arial Black", Arial, sans-serif; padding: 12px 22px; border-radius: 16px; border: 3px solid #fff; background: rgba(28,44,140,0.94); color: #fff; cursor: pointer; min-width: 220px; }
+    .playbtn { font-size: clamp(34px, 9vw, 46px); padding: 20px 0; width: min(420px, 88vw); border-radius: 24px; }
+    .smallrow { display: flex; gap: 10px; width: min(420px, 88vw); }
+    .smallrow .midbtn { flex: 1; min-width: 0; font-size: 13px; padding: 11px 6px; }
     .midbtn:hover { background: rgba(255,255,255,0.22); }
     .backbtn { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px; z-index: 3; font: 900 14px Arial, sans-serif; padding: 8px 14px; border-radius: 12px; border: 0; background: rgba(0,0,0,0.45); color: #fff; cursor: pointer; }
     .screen h2 { position: relative; font: 900 clamp(24px, 6vw, 40px) "Arial Black", Arial, sans-serif; color: #ffd400; -webkit-text-stroke: 1.5px #111; text-shadow: 0 4px 0 #b8860b; margin: 44px 0 6px; }
@@ -218,7 +221,6 @@
   <div id="app"></div>
   <div id="start">
     <div id="rain"></div>
-    <div id="snackscore"></div>
 
     <!-- TITLE -->
     <section class="screen on" data-s="title">
@@ -254,11 +256,12 @@
         <div id="ronnie-says"></div>
       </div>
       <p class="tagline">Eat everything. Grow enormous. Your mates are "just trying to help".</p>
-      <p class="hint-tap">Tap Ronnie · tap the falling food to catch it (not the broccoli!)</p>
       <div class="menu-btns">
-        <button class="bigbtn" data-go="place">PLAY ➜</button>
-        <button class="midbtn" data-go="squad">👥 MEET THE SQUAD</button>
-        <button class="midbtn" data-go="how">❓ HOW TO PLAY</button>
+        <button class="bigbtn playbtn" data-go="place">PLAY ➜</button>
+        <div class="smallrow">
+          <button class="midbtn" data-go="squad">👥 MEET THE SQUAD</button>
+          <button class="midbtn" data-go="how">❓ HOW TO PLAY</button>
+        </div>
       </div>
       <p class="tagline" style="font-size:12px;opacity:.7;margin-top:16px">Meta Quest 3 (hands or controllers) · phone · tablet · computer</p>
     </section>
