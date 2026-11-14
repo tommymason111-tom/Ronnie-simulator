@@ -335,12 +335,28 @@ export function buildGarden(scene) {
   for (let i = 0; i < 26; i++) bloom(-4.3 + i * 0.36, -10.86, 0.2 + rnd() * 0.15);
   // climbing roses up the left fence
   for (let i = 0; i < 90; i++) { const z = -10.8 + rnd() * 7.8, y = 0.3 + rnd() * 1.4; k.box(0.02, 0.07, 0.07, B.x0 + 0.06, y, z, rnd() < 0.7 ? LEAF[i % 4] : [0xff3a5a, 0xff8ab0, 0xffffff][i % 3]); }
-  // an apple tree in the back-left corner
-  { const tx = -5.1, tz = -9.6;
-    k.cyl(0.12, 0.17, 2.1, tx, 1.05, tz, 0x6a4a2a, 8, { block: true });
-    for (const [dx, dy, dz, r] of [[0, 2.6, 0, 1.0], [0.6, 2.3, 0.3, 0.75], [-0.55, 2.35, -0.3, 0.7], [0.1, 3.1, -0.2, 0.7], [-0.3, 2.2, 0.5, 0.6]]) k.parts.push(part(sph(r, 9, 7), LEAF[Math.floor(rnd() * 4)], [tx + dx, dy, tz + dz]));
-    for (let i = 0; i < 26; i++) { const a = rnd() * 6.28, e = rnd() * 1.2 - 0.3, r = 0.95; k.parts.push(part(sph(0.045, 6, 4), rnd() < 0.8 ? 0xd62828 : 0x9ccc3a, [tx + Math.cos(a) * Math.cos(e) * r, 2.6 + Math.sin(e) * r, tz + Math.sin(a) * Math.cos(e) * r])); }
-    for (let i = 0; i < 5; i++) k.parts.push(part(sph(0.045, 6, 4), 0xc62828, [tx + (rnd() - 0.5) * 1.6, 0.045, tz + (rnd() - 0.5) * 1.6]));   // windfalls
+  // the neighbour's big weeping willow, hanging over the back-left corner by the cabin
+  { const WIL = [0x7aa84a, 0x8ab85a, 0x6a9a3e, 0x95c060, 0x5f8f38];
+    const wx = -8.4, wz = -14.6;                                                    // trunk is over the fence, next door
+    k.cyl(0.32, 0.45, 5.0, wx, 2.5, wz, 0x5a4a3a, 9);
+    for (const [ex, ey, ez] of [[-5.6, 5.4, -12.6], [-6.2, 5.9, -15.4], [-4.6, 4.9, -10.8]]) {      // big limbs reaching over
+      const dx = ex - wx, dy = ey - 4.2, dz = ez - wz, L = Math.hypot(dx, dy, dz);
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx, dy, dz).normalize()), e = new THREE.Euler().setFromQuaternion(q);
+      k.parts.push(part(cyl(0.09, 0.18, L, 7), 0x5a4a3a, [wx + dx / 2, 4.2 + dy / 2, wz + dz / 2], [e.x, e.y, e.z]));
+    }
+    // the crown: soft heaps of willow
+    for (let i = 0; i < 16; i++) { const a = rnd() * 6.28, r = rnd(); const x = -6.2 + Math.cos(a) * 3.0 * r, z = -13.0 + Math.sin(a) * 3.4 * r;
+      k.parts.push(part(sph(1.2 + rnd() * 0.8, 9, 6), WIL[i % WIL.length], [x, 5.4 + rnd() * 1.1, z], [0, 0, 0], [1.25, 0.6, 1.25])); }
+    // long trailing strands hanging down over the garden (kept above head height, and above the cabin roof)
+    for (let i = 0; i < 420; i++) {
+      const a = rnd() * 6.28, r = Math.sqrt(rnd());
+      const x = -6.0 + Math.cos(a) * 3.6 * r, z = -12.9 + Math.sin(a) * 4.0 * r;
+      if (x < B.x0 - 1.5) continue;
+      const top = 5.0 - r * 0.9, floor = (x > -4.6 && z < -10.9 && z > -16.3) ? 2.75 : 2.15;
+      const bottom = Math.max(floor, top - 1.2 - rnd() * 2.2), col = WIL[Math.floor(rnd() * WIL.length)];
+      let y = top, sway = (rnd() - 0.5) * 0.3;
+      while (y > bottom) { const seg = 0.22 + rnd() * 0.1; k.box(0.05, seg, 0.012, x + sway * (top - y) * 0.15, y - seg / 2, z, col, { rot: [0, a, (rnd() - 0.5) * 0.3] }); y -= seg * 0.92; }
+    }
   }
   // sun loungers with towels, on the lawn
   for (const [x, col] of [[-4.6, 0x1e88e5], [-3.5, 0xff7043]]) {
