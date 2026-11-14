@@ -112,6 +112,16 @@
     @keyframes pulse { 50% { transform: scale(1.06); } }
     .midbtn { font: 900 16px "Arial Black", Arial, sans-serif; padding: 12px 22px; border-radius: 16px; border: 3px solid #fff; background: rgba(28,44,140,0.94); color: #fff; cursor: pointer; min-width: 220px; }
     .playbtn { font-size: clamp(34px, 9vw, 46px); padding: 20px 0; width: min(420px, 88vw); border-radius: 24px; }
+    #loadscreen { position: fixed; inset: 0; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(circle at 50% 40%, #2a4ad8, #0b1020 75%); opacity: 0; transition: opacity .3s; }
+    #loadscreen.on { display: flex; opacity: 1; } #loadscreen.fade { opacity: 0; }
+    #loadscreen .lsb { font-size: 84px; animation: lsbounce .6s ease-in-out infinite alternate; will-change: transform; }
+    @keyframes lsbounce { from { transform: translateY(0) rotate(-8deg) scale(1); } to { transform: translateY(-22px) rotate(8deg) scale(1.08); } }
+    #loadscreen .lst { font: 900 clamp(34px, 10vw, 54px) Impact, "Arial Black", sans-serif; color: #ffd400; text-shadow: 3px 3px 0 #ff7a00, 6px 6px 0 #7a2a00; letter-spacing: 2px; }
+    #loadscreen .lsp { font: 900 18px "Arial Black", Arial, sans-serif; color: #fff; text-align: center; padding: 0 20px; }
+    #loadscreen .lsbar { width: min(260px, 70vw); height: 12px; border-radius: 8px; background: rgba(255,255,255,0.15); overflow: hidden; }
+    #loadscreen .lsbar i { display: block; height: 100%; width: 30%; background: #39ff14; border-radius: 8px; animation: bootbar 1s ease-in-out infinite; will-change: transform; }
+    #loadscreen .lsh { font: 700 13px Arial, sans-serif; color: #c9d3ff; max-width: 300px; text-align: center; }
+    #go.pressed { transform: scale(0.92); filter: brightness(1.2); transition: transform .12s; }
     #boot { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: radial-gradient(circle at 50% 40%, #2a4ad8, #0b1020 75%); transition: opacity .35s; }
     #boot.done { opacity: 0; pointer-events: none; }
     #boot .bl { font: 900 clamp(40px, 13vw, 76px)/0.95 Impact, "Arial Black", sans-serif; color: #ffd400; text-align: center; text-shadow: 3px 3px 0 #ff7a00, 6px 6px 0 #7a2a00; }
@@ -250,6 +260,8 @@
 </head>
 <body>
   <div id="app"></div>
+  <!-- shown from the moment you press LET'S EAT until the level's built and the squad are in -->
+  <div id="loadscreen"><div class="lsb">🍔</div><div class="lst">LOADING</div><div class="lsp" id="ls-place"></div><div class="lsbar"><i></i></div><div class="lsh" id="ls-hint"></div></div>
   <div id="start">
     <div id="rain"></div>
     <!-- loading: the menu only shows once 3D Ronnie is ready, so he's there from the first frame -->

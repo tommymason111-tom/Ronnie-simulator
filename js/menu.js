@@ -264,7 +264,18 @@
         resolve({ place, mode });
       };
       if (instant !== true) chompSfx();
-      finish();
+      // straight away: the button squashes and a loading screen comes up (with its own animation), THEN the
+      // heavy level-building starts, so the screen never just freezes on you
+      const ls = document.getElementById('loadscreen');
+      if (ls) {
+        const p = PLACES.find(p => p.id === place), m = modeInfo(mode);
+        $('#ls-place').textContent = `${p.ico} ${p.name} · ${m.name}`;
+        const HINTS = ['Tip: tap the 🏃 SPRINT button to go faster', 'Tip: grab food and press EAT', 'Tip: THROW food at Tommy. He deserves it.', 'Tip: in VR, click the left stick to sprint', 'Ronnie is warming up his jaw…'];
+        $('#ls-hint').textContent = HINTS[Math.floor(Math.random() * HINTS.length)];
+        ls.classList.add('on');
+      }
+      $('#go').classList.add('pressed');
+      requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(finish, 60)));
     };
     $('#go').addEventListener('click', () => go());
     // the floating menu in VR (see ronnieHero.js) picks with these

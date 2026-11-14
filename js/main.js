@@ -619,11 +619,15 @@ document.getElementById('pause-ctrls-back').addEventListener('click', () => paus
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && player.flatMode) setPaused(!paused); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && player.flatMode && !paused) setPaused(true); });   // switching apps pauses
 
+// the loading screen goes once the first frame of the level has been drawn
+let loadShown = true;
+function hideLoading() { if (!loadShown) return; loadShown = false; const ls = document.getElementById('loadscreen'); if (ls && ls.classList.contains('on')) { ls.classList.add('fade'); setTimeout(() => ls.classList.remove('on', 'fade'), 320); } }
 renderer.setAnimationLoop(() => {
   if (paused) { clock.getDelta(); renderer.render(scene, camera); return; }    // frozen until RESUME
   const dt = Math.min(clock.getDelta(), 0.05);
   time += dt;
   const xr = renderer.xr.isPresenting;
+  if (loadShown && time > 0.15) hideLoading();      // a couple of frames in: the level's there
 
   if (!xr && !player.flatMode) { camera.position.set(0, 1.6, 0); camera.rotation.set(-0.3, time * 0.05, 0, 'YXZ'); }   // slow look-around behind the menu
 
