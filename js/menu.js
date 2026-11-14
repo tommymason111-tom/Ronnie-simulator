@@ -10,20 +10,25 @@
 (function () {
   const PLACES = [
     { id: 'pub', ico: '🍺', name: 'THE OYSTERFLEET', desc: "Ronnie's local and his work. The whole squad fits in.", bg: 'linear-gradient(160deg,#5a1a24,#2a1208)', props: ['🍺', '🎯', '📺', '🍟', '🎰'] },
-    { id: 'shop', ico: '🛒', name: 'LIDDLE-PRICE', desc: 'Aisles, the middle aisle, the bakery and a wall of MONSTOR.', bg: 'linear-gradient(160deg,#1e4ea8,#ffd400)', props: ['🛒', '🥐', '🥫', '🍩', '🧺'] },
+    { id: 'shop', ico: '🛒', name: 'LIDL', desc: 'Aisles, the middle aisle, the bakery and a wall of MONSTOR.', bg: 'linear-gradient(160deg,#1e4ea8,#ffd400)', props: ['🛒', '🥐', '🥫', '🍩', '🧺'] },
     { id: 'restaurant', ico: '🕯️', name: 'LA GRANDE PORTION', desc: 'Fancy dinner. Date night with Chloe (and the lads at the other tables).', bg: 'linear-gradient(160deg,#5a0f18,#1a0508)', props: ['🕯️', '🍷', '🦞', '🍰', '🎹'] },
     { id: 'garden', ico: '🏡', name: "LEWIS'S HOUSE", desc: 'A sunny back garden. Ian is on the barbecue. Lewy is fetching plates.', bg: 'linear-gradient(160deg,#4aa8f0,#5a9a36)', props: ['🍔', '🌭', '🍗', '⚽', '🌻'] },
     { id: 'bedroom', ico: '🛏️', name: "RONNIE'S BEDROOM", desc: 'Where it all begins. Small, cosy, full of cans.', bg: 'linear-gradient(160deg,#3a2a6a,#1f4fbf)', props: ['🛏️', '🥫', '🎮', '🍕', '🥫'] },
   ];
   const MODES = [
     { id: 'everyone', ico: '👥', name: 'THE WHOLE SQUAD', desc: 'The main game. Everyone is here, taking turns to attack you while you eat. A countdown shows the next one.', stars: 3, who: 'Everyone' },
-    { id: 'sweep', ico: '🛒', name: 'SUPERMARKET SWEEP', desc: '90 seconds and a trolley in Liddle-Price. Grab everything you can. Oliver is on security.', stars: 2, who: 'Oliver', place: 'shop' },
+    { id: 'sweep', ico: '🛒', name: 'SUPERMARKET SWEEP', desc: '90 seconds and a trolley in Lidl. Grab everything you can. Oliver is on security.', stars: 2, who: 'Oliver', place: 'shop' },
     { id: 'bbq', ico: '🍖', name: "IAN'S BARBECUE", desc: "Round Lewis's house. Grab the food off the grill before Ian makes it healthy and throws it at you.", stars: 2, who: 'Ian, Lewis + the lads', place: 'garden' },
     { id: 'date', ico: '💜', name: 'DATE NIGHT', desc: "Eat when Chloe looks away. Three catches and it's salad.", stars: 2, who: 'Chloe + the lads', place: 'restaurant' },
-    { id: 'catch', ico: '🏈', name: 'CATCH & EAT', desc: "Harry throws food. Catch it in your mouth.", stars: 1, who: 'Harry' },
-    { id: 'chonkoff', ico: '⏱️', name: 'EAT-OFF', desc: '60 seconds. Eat everything. Beat your best.', stars: 1, who: 'Just you' },
-    { id: 'chonkoff2', ico: '🆚', name: 'EAT-OFF 2P', desc: 'Pass-and-play: who eats more in 60 seconds?', stars: 1, who: '2 players' },
+    { id: 'eatoff', ico: '⏱️', name: 'EAT-OFF', desc: '60 seconds. Eat everything. On your own, or pass-and-play: who eats more?', stars: 1, who: '1 or 2 players' },
   ];
+  // each place has its own games: Lidl is Supermarket Sweep, Lewis's is Ian's barbecue,
+  // La Grande Portion is date night; the pub and the bedroom have the squad and the eat-off
+  const PLACE_MODES = { pub: ['everyone', 'eatoff'], bedroom: ['everyone', 'eatoff'], shop: ['sweep'], garden: ['bbq'], restaurant: ['date'] };
+  const GAME_IDS = ['everyone', 'sweep', 'bbq', 'date', 'chonkoff', 'chonkoff2'];
+  const cardOf = (id) => id === 'chonkoff' || id === 'chonkoff2' ? 'eatoff' : id;      // the eat-off card covers 1P and 2P
+  const modeInfo = (id) => { const m = MODES.find(x => x.id === cardOf(id)); return id === 'chonkoff' ? { ...m, ico: '⏱️', name: 'EAT-OFF · 1 PLAYER' } : id === 'chonkoff2' ? { ...m, ico: '🆚', name: 'EAT-OFF · 2 PLAYERS' } : m; };
+  const gameChoices = (p) => PLACE_MODES[p].flatMap(c => c === 'eatoff' ? ['chonkoff', 'chonkoff2'] : [c]);
   const SQUAD = [
     { n: 'Tommy', c: '#f0c040', a: '🦶', t: 'Trips you up', l: "I've been alive a WHOLE day longer than you, Ronnie." },
     { n: 'Chloe', c: '#c2185b', a: '🥗', t: 'Puts you on a diet', l: 'I made you a salad. You looked at it like it owed you money.' },
@@ -40,9 +45,8 @@
     { n: 'Ben', c: '#2f6fd6', a: '✈️', t: 'Takes you to Turkey', l: 'Got my hairline done in Turkey, Ron. Let me take you.' },
   ];
   const RONNIE_LINES = ['Pass us that burger.', 'Mmm. MMMM.', 'Is there any more?', 'Go on then. One more.', 'Is that a burger?', 'One more. Just one.', "I'm not hungry. I'm BORED.", 'UNLEASH THE MONSTOR!', 'Who ate my pie? ...oh. Me.', 'Five a day? FIVE A DAY.', 'Chelsea, pies and MONSTOR.'];
-  const ok = (m, p) => !(m.place && m.place !== p) && !(m.big && p === 'bedroom');
-  const PLACE_NAME = { restaurant: 'La Grande Portion', shop: 'Liddle-Price', garden: "Lewis's House", pub: 'the Oysterfleet', bedroom: "Ronnie's bedroom" };
-  const why = (m, p) => m.place && m.place !== p ? 'Only at ' + PLACE_NAME[m.place] : m.big && p === 'bedroom' ? 'Needs a bigger place' : '';
+  const ok = (m, p) => PLACE_MODES[p].includes(m.id);
+  const PLACE_NAME = { restaurant: 'La Grande Portion', shop: 'Lidl', garden: "Lewis's House", pub: 'the Oysterfleet', bedroom: "Ronnie's bedroom" };
 
   const q = new URLSearchParams(location.search);
   let saved = {}; try { saved = JSON.parse(localStorage.getItem('rs_menu') || '{}'); } catch (e) {}
@@ -50,7 +54,7 @@
   const quick = !!q.get('go');
   let place = (quick && q.get('place')) || 'pub', mode = (quick && q.get('mode')) || 'everyone';
   if (!PLACES.some(p => p.id === place)) place = 'pub';
-  if (!MODES.some(m => m.id === mode)) mode = 'everyone';      // old links to Classic / Squad Intervention
+  if (!GAME_IDS.includes(mode)) mode = 'everyone';      // old links to Classic / Squad Intervention / Catch
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const start = $('#start');
 
@@ -71,6 +75,7 @@
   // ---------------------------------------------------------------- screens
   let current = 'title';
   function show(id, dir = 1) {
+    if (id === 'mode' && PLACE_MODES[place].length === 1) { mode = gameChoices(place)[0]; id = dir > 0 ? 'ready' : 'place'; }   // only one game here
     const from = $(`.screen[data-s="${current}"]`), to = $(`.screen[data-s="${id}"]`);
     if (!to || id === current) return;
     from.classList.remove('on'); from.classList.add(dir > 0 ? 'out-left' : 'out-right');
@@ -156,8 +161,7 @@
     place = PLACES[pi].id;
     $$('.scene', track).forEach((el, i) => { el.classList.toggle('cur', i === pi); el.style.transform = `translateX(${(i - pi) * 104}%) scale(${i === pi ? 1 : 0.86}) rotate(${(i - pi) * 3}deg)`; el.style.opacity = Math.abs(i - pi) > 1 ? 0 : i === pi ? 1 : 0.5; });
     $$('#place-dots i').forEach((d, i) => d.classList.toggle('on', i === pi));
-    if (!MODES.some(m => m.id === mode) || !ok(MODES.find(m => m.id === mode), place)) mode = 'everyone';
-    if (place === 'garden' && mode === 'everyone') mode = 'bbq';   // the garden is for Ian's barbecue
+    if (!gameChoices(place).includes(mode)) mode = gameChoices(place)[0];
   }
   const stepPlace = (d) => { pi = (pi + d + PLACES.length) % PLACES.length; drawPlace(); blip(440 + pi * 60, 0.05); };
   $('#place-prev').addEventListener('click', () => stepPlace(-1));
@@ -181,25 +185,32 @@
   // ---------------------------------------------------------------- MODE: flip cards
   const grid = $('#mode-grid');
   function drawModes() {
-    grid.innerHTML = MODES.map((m, i) => {
-      const off = !ok(m, place);
-      return `<div class="flip${m.id === mode ? ' sel' : ''}${off ? ' off' : ''}" data-id="${m.id}" style="animation-delay:${i * 0.05}s">
-        <div class="face front"><span class="ico">${m.ico}</span><b>${m.name}</b>${off ? `<em>🔒 ${why(m, place)}</em>` : `<small>tap for details</small>`}</div>
-        <div class="face back"><b>${m.name}</b><p>${m.desc}</p><div class="meta"><span>${'🌶️'.repeat(m.stars)}</span><span>👤 ${m.who}</span></div><div class="pickit">${m.id === mode ? '✓ PICKED' : 'TAP TO PICK'}</div></div>
+    const pp = (m) => m.id !== 'eatoff' ? '' : `<div class="pp">${[1, 2].map(n => `<button data-pp="${n}" class="${cardOf(mode) === 'eatoff' && (mode === 'chonkoff2') === (n === 2) ? 'on' : ''}">${n === 1 ? '👤 1 PLAYER' : '👥 2 PLAYERS'}</button>`).join('')}</div>`;
+    grid.innerHTML = MODES.filter(m => ok(m, place)).map((m, i) => {
+      const sel = m.id === cardOf(mode);
+      return `<div class="flip${sel ? ' sel' : ''}" data-id="${m.id}" style="animation-delay:${i * 0.05}s">
+        <div class="face front"><span class="ico">${m.ico}</span><b>${m.name}</b>${pp(m) || '<small>tap for details</small>'}</div>
+        <div class="face back"><b>${m.name}</b><p>${m.desc}</p><div class="meta"><span>${'🌶️'.repeat(m.stars)}</span><span>👤 ${m.who}</span></div>${pp(m)}<div class="pickit">${sel ? '✓ PICKED' : 'TAP TO PICK'}</div></div>
       </div>`;
     }).join('');
   }
   grid.addEventListener('click', (e) => {
     const c = e.target.closest('.flip'); if (!c) return;
     const m = MODES.find(m => m.id === c.dataset.id);
-    if (c.classList.contains('off')) { c.classList.remove('nope'); void c.offsetWidth; c.classList.add('nope'); blip(120, 0.15, 'sawtooth'); return; }
+    const ppb = e.target.closest('[data-pp]');
+    if (ppb) {                 // 1 or 2 players: picks the eat-off straight away
+      const was = c.classList.contains('flipped');
+      mode = ppb.dataset.pp === '2' ? 'chonkoff2' : 'chonkoff'; blip(ppb.dataset.pp === '2' ? 990 : 880, 0.08); drawModes();
+      const nc = $(`.flip[data-id="eatoff"]`, grid); nc.classList.add('chosen'); if (was) nc.classList.add('flipped');
+      return;
+    }
     if (!c.classList.contains('flipped')) { $$('.flip.flipped', grid).forEach(f => f !== c && f.classList.remove('flipped')); c.classList.add('flipped'); blip(600, 0.05); return; }
-    mode = m.id; blip(880, 0.08); drawModes(); $(`.flip[data-id="${mode}"]`, grid).classList.add('flipped', 'chosen');
+    mode = m.id === 'eatoff' ? (mode === 'chonkoff2' ? 'chonkoff2' : 'chonkoff') : m.id; blip(880, 0.08); drawModes(); $(`.flip[data-id="${m.id}"]`, grid).classList.add('flipped', 'chosen');
   });
 
   // ---------------------------------------------------------------- READY: summary and the countdown
   function drawReady() {
-    const p = PLACES.find(x => x.id === place), m = MODES.find(x => x.id === mode);
+    const p = PLACES.find(x => x.id === place), m = modeInfo(mode);
     $('#ready-place').innerHTML = `<span class="lbl">📍 PLACE</span><span>${p.ico}</span><b>${p.name}</b>`;
     $('#ready-mode').innerHTML = `<span class="lbl">🎮 GAME MODE</span><span>${m.ico}</span><b>${m.name}</b>`;
     $('#ready-desc').textContent = m.desc;
@@ -242,7 +253,7 @@
         start.classList.add('gone');
         if (window.ronnieHero) window.ronnieHero.stop();
         document.body.classList.add('ready');
-        const p = PLACES.find(p => p.id === place), m = MODES.find(m => m.id === mode);
+        const p = PLACES.find(p => p.id === place), m = modeInfo(mode);
         const tag = document.getElementById('ready-tag'); if (tag) tag.textContent = `${p.name} · ${m.name}`;
         resolve({ place, mode });
       };
@@ -258,11 +269,11 @@
     $('#go').addEventListener('click', () => go());
     // the floating menu in VR (see ronnieHero.js) picks with these
     window.menuVR = {
-      info: () => ({ place: PLACES.find(p => p.id === place).name, mode: MODES.find(m => m.id === mode).name }),
+      info: () => ({ place: PLACES.find(p => p.id === place).name, mode: modeInfo(mode).name }),
       step(kind, d) {
         if (kind === 'place') { stepPlace(d); drawModes(); return; }
-        const list = MODES.filter(m => !m.hidden && ok(m, place)); let i = list.findIndex(m => m.id === mode);
-        mode = list[(i + d + list.length) % list.length].id; blip(880, 0.08); drawModes();
+        const list = gameChoices(place); const i = list.indexOf(mode);
+        mode = list[(i + d + list.length) % list.length]; blip(880, 0.08); drawModes();
       },
       play: () => go(),
     };

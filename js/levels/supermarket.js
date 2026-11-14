@@ -1,4 +1,4 @@
-// LIDDLE-PRICE: the discount supermarket where Oliver works (design doc 66.3).
+// LIDL: the discount supermarket where Oliver works (design doc 66.3).
 // Same 30m x 22m footprint, broken up into proper areas so it doesn't feel like
 // one big open hall:
 //   entrance + trolley bay + fruit & veg (the bit Ronnie walks straight past)
@@ -42,7 +42,7 @@ export function buildSupermarket(scene) {
   R(8.8, 10.82, 11.2, 10.9, 2.6, 1.3, 0x9ec9e0); R(9.98, 10.8, 10.02, 10.9, 2.6, 1.3, 0x666666);
   R(8.8, 10.78, 11.2, 10.92, 0.25, 2.75, BLUE);
   R(9.0, 9.4, 11.0, 10.7, 0.01, 0.006, 0x333333);
-  sign('WELCOME TO LIDDLE-PRICE', 2.3, 0.22, [10, 2.95, 10.76], [0, Math.PI, 0], { bg: '#1e4ea8', fg: '#ffd400', border: null, size: 60, glow: true });
+  sign('WELCOME TO LIDL', 2.3, 0.22, [10, 2.95, 10.76], [0, Math.PI, 0], { bg: '#1e4ea8', fg: '#ffd400', border: null, size: 60, glow: true });
   for (let i = 0; i < 6; i++) { const x = 12.2 + i * 0.36; R(x - 0.16, 9.2, x + 0.16, 10.6, 0.04, 0.95, 0x9aa0a8); R(x - 0.16, 9.2, x + 0.16, 9.25, 0.9, 0.5, 0x9aa0a8); R(x - 0.17, 9.2, x + 0.17, 9.3, 0.05, 1.0, BLUE); }
   R(12.0, 9.0, 14.3, 10.8, 1.1, 0.55, 0x9aa0a8, { block: true });
   sign('TROLLEYS (RONNIE: TWO)', 1.4, 0.3, [13.2, 1.6, 8.97], [0, Math.PI, 0], { bg: '#ffd400', fg: '#1e4ea8', border: null, size: 46 });
@@ -172,8 +172,8 @@ export function buildSupermarket(scene) {
   sign('EXIT — RECEIPTS ARE CHECKED. RONNIE\'S RECEIPT IS 4 METRES LONG.', 2.6, 0.35, [-4, 1.45, 9.72], [0, Math.PI, 0], { bg: '#fff', fg: '#111', border: '#1e4ea8', size: 36 });
 
   // ================================================================ branding + more jokes
-  sign('LIDDLE-PRICE', 6, 1.4, [-4, 3.35, 10.88], [0, Math.PI, 0], { tex: logoTex(), glow: true });
-  sign('LIDDLE-PRICE', 4, 0.95, [-14.88, 3.35, 0], [0, Math.PI / 2, 0], { tex: logoTex(), glow: true });
+  sign('LIDL', 6, 1.4, [-4, 3.35, 10.88], [0, Math.PI, 0], { tex: logoTex(), glow: true });
+  sign('LIDL', 4, 0.95, [-14.88, 3.35, 0], [0, Math.PI / 2, 0], { tex: logoTex(), glow: true });
   const jokes = [
     ['STAFF PICK: OLIVER RECOMMENDS... RUNNING', 2.4, 0.6, [14.88, 2.45, 6.0], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#1e4ea8', border: '#ffd400', size: 60 }],
     ['PRICE: PRICELESS (PLEASE LEAVE)', 1.6, 0.45, [-14.88, 2.0, 7.5], [0, Math.PI / 2, 0], { bg: '#000', fg: '#39ff14', border: null, size: 50, glow: true }],
@@ -194,7 +194,7 @@ export function buildSupermarket(scene) {
   for (let x = 10.2; x < 12.9; x += 0.8) k.pool(x, 1.0, -3.4, 0.7, 0xff8a40);
   k.pool(-3.0, 0, -9.2, 6, 0x9fffb0);     // the MONSTOR fridge glow on the floor
   return k.finish({
-    name: 'Liddle-Price',
+    name: 'Lidl',
     sky: 0xf4f8ff, ground: 0x9a9a9a, hemiI: 2.2, sun: 0xffffff, sunI: 0.9, sunPos: [3, 10, 6],
     start: { x: 10.0, z: 8.4, yaw: Math.PI * 0.15 },
     board: { x: 7.4, y: 1.38, z: 10.85, ry: Math.PI },
@@ -235,6 +235,6 @@ function logoTex() {
     g.fillStyle = '#1e4ea8'; g.fillRect(0, 0, w, h);
     g.fillStyle = '#ffd400'; g.beginPath(); g.arc(120, h / 2, 90, 0, 7); g.fill();
     g.fillStyle = '#e53935'; g.beginPath(); g.arc(120, h / 2, 60, 0, 7); g.fill();
-    g.fillStyle = '#fff'; g.font = `900 110px ${FONT}`; g.textBaseline = 'middle'; g.fillText('LIDDLE-PRICE', 240, h / 2 + 6);
+    g.fillStyle = '#fff'; g.font = `900 170px ${FONT}`; g.textBaseline = 'middle'; g.textAlign = 'center'; g.fillText('LIDL', (240 + w) / 2, h / 2 + 8);
   });
 }

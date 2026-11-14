@@ -150,6 +150,10 @@
     .flip.flipped .front { transform: rotateY(180deg); } .flip.flipped .back { transform: rotateY(360deg); }
     .flip.sel .front { border-color: #39ff14; box-shadow: 0 0 18px #39ff14; } .flip.sel .back { border-color: #39ff14; }
     .flip.chosen { animation: chosen .5s; } @keyframes chosen { 40% { transform: scale(1.1) rotate(-3deg); } }
+    .flip .pp { display: flex; gap: 6px; margin-top: 8px; width: 100%; }
+    .flip .pp button { flex: 1; min-width: 0; font: 900 11px Arial, sans-serif; padding: 8px 2px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.6); background: rgba(0,0,0,0.25); color: #fff; cursor: pointer; }
+    .flip .back .pp button { border-color: #111; color: #111; background: rgba(255,255,255,0.4); }
+    .flip .pp button.on { background: #39ff14; border-color: #39ff14; color: #111; }
     .flip.off .front { opacity: 0.45; } .flip.nope { animation: nope .4s; } @keyframes nope { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
     /* ready */
     .readycard { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 14px; width: min(420px, 100%); margin: 6px auto 16px; }

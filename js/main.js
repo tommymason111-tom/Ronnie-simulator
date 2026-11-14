@@ -475,7 +475,7 @@ function startFlat() {
   touch.show(true);
   director.start(chosenMode());
 }
-function chosenMode() { return ['classic', 'intervention', 'veggie'].includes(SEL.mode) || !SEL.mode ? 'everyone' : SEL.mode; }   // old links still work
+function chosenMode() { return ['classic', 'intervention', 'veggie', 'catch'].includes(SEL.mode) || !SEL.mode ? 'everyone' : SEL.mode; }   // old links still work
 document.getElementById('play-flat').addEventListener('click', startFlat);
 
 // ---------------- Enter VR ----------------

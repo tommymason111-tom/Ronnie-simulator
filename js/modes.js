@@ -23,7 +23,7 @@ export const MODES = {
   classic:      { name: 'CLASSIC', desc: 'Eat, grow, dodge Tommy\'s broccoli.', time: 0, hidden: true },
   intervention: { name: 'SQUAD INTERVENTION', desc: 'Everyone tries to stop you. Nobody can.', time: 240, hidden: true },
   veggie:       { name: 'VEGGIE WAR', desc: 'The squad attacks with veg. Survive 2½ minutes.', time: 150, hidden: true },
-  catch:        { name: 'CATCH & EAT', desc: 'Catch Harry\'s throws in your mouth.', time: 70 },
+  catch:        { name: 'CATCH & EAT', desc: 'Catch Harry\'s throws in your mouth.', time: 70, hidden: true },
   chonkoff:     { name: 'EAT-OFF', desc: '60 seconds. Eat everything.', time: 60 },
   chonkoff2:    { name: 'EAT-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
   sweep:        { name: 'SUPERMARKET SWEEP', desc: '90 seconds, one trolley. Grab everything. Dodge Oliver.', time: 90, place: 'shop' },
@@ -32,6 +32,8 @@ export const MODES = {
 };
 // which modes each place offers (also used by the start screen)
 export function modesFor(place) {
+  const only = { shop: ['sweep'], garden: ['bbq'], restaurant: ['date'] }[place];     // these places have one game each
+  if (only) return only;
   return Object.keys(MODES).filter(id => {
     const m = MODES[id];
     if (m.hidden) return false;
@@ -186,7 +188,7 @@ export class Director {
     const big = !!g.room.big, everyone = Object.keys(SQUAD);
     if (id === 'intervention') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 4);
     else if (id === 'everyone') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 5);
-    else if (id === 'date') squad = ['chloe', ...shuffle(everyone.filter(s => s !== 'chloe')).slice(0, 6 + Math.floor(Math.random() * 4))];   // the mates are out for dinner too
+    else if (id === 'date') squad = ['chloe', ...shuffle(everyone.filter(s => s !== 'chloe'))];   // the whole squad is out for dinner too
     else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan', 'ian', 'alfie', 'ben']).slice(0, big ? 6 : 3);
     else if (id === 'catch') squad = ['harry'];
     else if (id === 'sweep') squad = ['oliver'];
@@ -685,8 +687,11 @@ export class Director {
     const tables = shuffle(DINER_TABLES.map((t, i) => i));
     this.dinerGroups = [];
     let ti = 0;
+    // different every night: tables of 2-4, and now and then someone on their own
     while (diners.length && ti < tables.length) {
-      const n = Math.min(diners.length, diners.length <= 4 ? diners.length : 2 + Math.floor(Math.random() * 2));
+      const left = tables.length - ti, r = Math.random();
+      let n = r < 0.22 ? 1 : r < 0.6 ? 2 : r < 0.85 ? 3 : 4;
+      n = Math.min(4, diners.length, Math.max(n, Math.ceil(diners.length / left)));
       const [tx, tz] = DINER_TABLES[tables[ti++]];
       const seats = shuffle([0, 1, 2, 3]).slice(0, n), group = [];
       for (const si of seats) {
@@ -709,7 +714,13 @@ export class Director {
     }
     if ((this.chatT -= dt) > 0) return;
     this.chatT = 2.5 + Math.random() * 3;
-    const grp = this.dinerGroups[Math.floor(Math.random() * this.dinerGroups.length)].filter(c => !c.down && c.speakT <= 0);
+    const all = this.dinerGroups[Math.floor(Math.random() * this.dinerGroups.length)];
+    const grp = all.filter(c => !c.down && c.speakT <= 0);
+    if (all.length === 1 && grp.length === 1) {          // table for one: chatting away to themselves
+      grp[0].say(SOLO_TALK[Math.floor(Math.random() * SOLO_TALK.length)], 1);
+      grp[0].lookOverride = (Math.random() - 0.5) * 1.2; grp[0].lookT = 3;
+      return;
+    }
     if (grp.length < 2) return;
     const who = grp[Math.floor(Math.random() * grp.length)];
     const own = who.def.banks.chatter || [];
@@ -949,6 +960,16 @@ function bubbleWord(word) {
   const t = wordTexCache.get(word);
   return t;
 }
+const SOLO_TALK = [
+  'Table for one. Just me and the breadsticks. Lovely.',
+  'No, you\'re right. You\'re right. I said that. I did say that.',
+  '...and THEN I said to myself, I said, have the dessert. So I did.',
+  'Shall I have the soup? I shouldn\'t. I will. I won\'t. I will.',
+  'Me? I\'m fine. I\'m having a lovely time. On my own. By choice.',
+  'Right, who ordered the lasagne. Me. I did. Brilliant.',
+  'They\'ve all left me on my own again. Good. More bread for me.',
+  'Is he eating off other people\'s tables? He is, isn\'t he. Classic Ron.',
+];
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
