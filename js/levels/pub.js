@@ -298,7 +298,7 @@ export function buildPub(scene) {
   });
   // ================================================================ the main pub floor
   freeTable(X(515), Z(925), true); tallTable(X(605), Z(908));
-  smallTable(X(370), Z(1065) - 0.5, true); smallTable(X(445), Z(1065) - 0.5, true); freeTable(X(348), Z(1120), true); tallTable(X(573), Z(1090)); tallTable(X(520), Z(1000)); freeTable(X(612), Z(1162));
+  smallTable(X(370), Z(1065) - 0.5, true); smallTable(X(430), Z(1065) - 0.5, true); freeTable(X(348), Z(1120), true); tallTable(X(573), Z(1090)); tallTable(X(520), Z(1000)); freeTable(X(612), Z(1162));
   freeTable(X(370), Z(1250));
   bench(true, X(455) + 0.08, Z(1165) + 0.05, Z(1305) - 0.1, 1);                          // "Table booth" against the partition
   boothTable(X(455) + 0.95, Z(1200), true, 1);
@@ -313,6 +313,7 @@ export function buildPub(scene) {
   };
   const PX = X(540), PZ = Z(830);
   pillar(PX, PZ);
+  pillar(X(480), Z(1065));                                                                // a matching pillar at the end of the panelled half wall
   pillar(X(455), Z(1165) - 0.35); pillar(X(290) + 0.05, Z(1305) - 0.35);                  // the two along the walkway on the left (photo)
   // dark wood posts where the plan's walls end in the open room
   for (const [x, z] of [[X(355), Z(605)], [X(615), Z(710)], [X(735), Z(1305)], [X(790), Z(1305)]]) k.box(0.16, H - 0.5, 0.16, x, (H - 0.5) / 2, z, DARKWOOD, { block: true });
@@ -813,7 +814,7 @@ export function buildPub(scene) {
   };
   const chandelier = (x, z) => antler(x, z);
   const greenPendant = (x, z) => { k.cyl(0.004, 0.004, 0.9, x, H - 0.45, z, 0x111111, 4); k.parts.push(part(new THREE.CylinderGeometry(0.03, 0.17, 0.13, 16, 1, true), 0x1f7a3a, [x, H - 0.95, z])); k.cyl(0.03, 0.03, 0.04, x, H - 0.88, z, 0xc9a24a, 8); k.lamp(x, H - 1.0, z, 0xfff0c0, 0.05); k.pool(x, 0.76, z, 1.4, 0xffe0a0); };
-  for (const [x, z] of [[X(370), Z(1065) - 0.5], [X(445), Z(1065) - 0.5], [X(348), Z(1120)]]) greenPendant(x, z);
+  for (const [x, z] of [[X(370), Z(1065) - 0.5], [X(430), Z(1065) - 0.5], [X(348), Z(1120)]]) greenPendant(x, z);
   [[X(300), Z(760)], [X(400), Z(870)], [X(580), Z(1000)], [X(400), Z(1150)], [X(600), Z(1180)], [X(820), Z(780)]].forEach(([x, z], i) => i < 5 && chandelier(x, z));
   for (const [x, z, ry] of [[X(195) + 0.1, Z(1100) + 0.5, 1], [X(195) + 0.1, Z(1250), 1], [X(195) + 0.1, Z(700), 1]]) { k.lamp(x + 0.08, 2.05, z, 0xff5040, 0.07); k.box(0.12, 0.14, 0.12, x + 0.06, 2.05, z, 0x8a1a1a); }
   // warm candles and pools of light on every table
