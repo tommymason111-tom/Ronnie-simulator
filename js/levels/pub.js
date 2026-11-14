@@ -16,7 +16,7 @@
 //   ladies   x -3..1      z -11..-6.5    lobby  x 1..5    z -11..-6.5
 //   pub floor x -13.5..5 (z -2..11) + x -7..5 (z -6.5..-2)
 //   bar walkway x 5..7.5 z -11..3 · bar counter x 7.5..8.2 z -9.5..1
-//   staff area x 8.2..13.5 z -11..1 · corridor z 1..3 · gambling x 6..13.5 z 3..11
+//   staff area x 8.2..13.5 z -11..1 · corridor z 1..3 · gambling x 5..13.5 z 3..11
 import * as THREE from 'three';
 import { part } from '../geo.js';
 import { streetViewTex } from './kit.js';
@@ -50,8 +50,8 @@ export function buildPub(scene) {
   k.floor(-13.5, -2, 5, 11, carpet, 0.002, 1.2);
   k.floor(-7, -6.5, 5, -2, carpet, 0.002, 1.2);
   k.floor(5, -11, 13.5, 3, tiles, 0.002, 1.0);
-  k.floor(6, 3, 13.5, 11, carpetTex('#2a3a5a', '#1a2440', '#c9a24a'), 0.003, 1.2);
-  k.floor(4.9, 2.9, 6.05, 11, carpet, 0.0025, 1.2);
+  k.floor(5, 3, 13.5, 11, carpetTex('#2a3a5a', '#1a2440', '#c9a24a'), 0.003, 1.2);
+  k.floor(4.9, 2.9, 5.05, 11, carpet, 0.0025, 1.2);
   k.floor(-13.5, -11, -7, -2, tileTex('#c9c9c4', '#bdbdb7', '#8f8f8a', 48), 0.003, 0.8);
   k.floor(-7, -11, 1, -6.5, tileTex('#d8d8d8', '#cfcfcf', '#9a9a9a', 40), 0.003, 0.6);
   k.floor(1, -11, 5, -6.5, tiles, 0.003, 1.0);
@@ -68,9 +68,8 @@ export function buildPub(scene) {
   wallX(-3, -11, -6.5);                                        // Gents | Ladies
   wallX(1, -11, -6.5);                                         // Ladies | lobby
   wallZd(-6.5, 1, 5, [[1.6, 4.6]]);                            // lobby | pub (wide opening)
-  wallZd(3, 6, 13.5, [[6.4, 8.0]]);                            // corridor | gambling room
-  wallXd(6, 3, 11, [[8.8, 10.3]]);                             // pub | gambling room (second door)
-  wallZ(3, 5, 6);                                              // ...joined to the post at the corner of the bar walkway
+  wallZd(3, 5, 13.5, [[6.4, 8.0]]);                            // corridor | gambling room
+  wallXd(5, 3, 11, [[8.8, 10.3]]);                             // pub | gambling room: straight on from the post at the bar walkway to the brick
   // pub-side finishes: library wallpaper and exposed brick, dark dado rail
   clad(-13.4, -1.9, -13.38, 3.5, BOOKS, H, 1.2); clad(-13.4, 5.3, -13.38, 10.9, BOOKS, H, 1.2);
   R(-13.42, -1.9, -13.36, 10.9, 0.06, 0.95, DARKWOOD);
@@ -340,7 +339,7 @@ export function buildPub(scene) {
     ['THIS TABLE IS RESERVED FOR RONNIE\'S PLATE OVERFLOW', 0.8, 0.25, [-11.5, 0.93, 9.06], [-Math.PI / 2, 0, 0], { bg: '#fffdf2', fg: '#7a1f2a', border: null, size: 36 }],
     ['CHELSEA ON THE BIG SCREEN SUNDAY. RONNIE ON THE BIG SCREEN EVERY DAY (CCTV).', 1.4, 0.4, [-12.75, 3.0 - 0.25, 2.8], [0, Math.PI / 2, 0], { bg: '#034694', fg: '#fff', border: '#fff', size: 36 }],
     ['CARVERY SUNDAYS — RONNIE SIZE PORTION: THE WHOLE CARVERY', 1.3, 0.45, [-4.0, 1.9, 10.86], [0, Math.PI, 0], { bg: '#5a2a14', fg: '#ffd400', border: '#ffd400', size: 40 }],
-    ['IN CASE OF EMERGENCY: BREAK GLASS. IN CASE OF RONNIE: HIDE THE PIES.', 0.8, 0.4, [6.07, 1.7, 5.8], [0, Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: '#fff', size: 34 }],
+    ['IN CASE OF EMERGENCY: BREAK GLASS. IN CASE OF RONNIE: HIDE THE PIES.', 0.8, 0.4, [5.07, 1.7, 5.8], [0, Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: '#fff', size: 34 }],
     ['DOG WATER BOWL — NOT FOR RONNIE. WE CHECKED. TWICE.', 0.7, 0.2, [5.6, 0.12, -1.6], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: '#1f4fbf', size: 34 }],
     ['LAST PERSON TO TRY RONNIE\'S PIE CHALLENGE: RONNIE. HE WON. HE ALSO LOST.', 1.2, 0.45, [9.8, 1.5, 3.09], [0, Math.PI, 0], { bg: '#fffdf2', fg: '#111', border: '#c0392b', size: 36 }],
     ['FRUIT MACHINE PAYOUT: CHIPS. RONNIE HAS WON 900 TIMES. THE MACHINE IS EMPTY.', 1.0, 0.45, [12.93, 1.9, 8.8], [0, -Math.PI / 2, 0], { bg: '#1a1a3a', fg: '#ffd400', border: '#ffd400', size: 34 }],
@@ -374,7 +373,7 @@ export function buildPub(scene) {
   for (const z of [-0.5, 4.3, 9.0]) k.box(18.0, 0.16, 0.16, -4.25, H - 0.12, z, 0x3a2416);
   // skirting and a dado rail on the plain walls of the front bit and the gambling room
   for (const [x0, x1] of [[-7, -5.8], [-4.4, -1.6], [-0.2, 1]]) k.box(x1 - x0, 0.14, 0.04, (x0 + x1) / 2, 0.07, -6.4, 0x3a2416);
-  for (const [z0, z1] of [[3, 8.8], [10.3, 11]]) { k.box(0.04, 0.14, z1 - z0, 5.9, 0.07, (z0 + z1) / 2, 0x3a2416); k.box(0.04, 0.14, z1 - z0, 6.1, 0.07, (z0 + z1) / 2, 0x1a1a3a); }
+  for (const [z0, z1] of [[3, 8.8], [10.3, 11]]) { k.box(0.04, 0.14, z1 - z0, 4.9, 0.07, (z0 + z1) / 2, 0x3a2416); k.box(0.04, 0.14, z1 - z0, 5.1, 0.07, (z0 + z1) / 2, 0x1a1a3a); }
 
   const room = k.finish({
     name: 'The Oysterfleet',
