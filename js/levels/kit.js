@@ -3,7 +3,7 @@
 // same "room" object the game uses (bounds, colliders, blockers, spawns...).
 import * as THREE from 'three';
 import { part, merge, vcLambert, box, cyl } from '../geo.js';
-import { canvasTex, signTex, fitText, FONT } from '../textures.js';
+import { canvasTex, signTex, signFits, fitText, FONT } from '../textures.js';
 import { NavGrid } from '../nav.js';
 import { GlowBatch } from './glow.js';
 
@@ -65,12 +65,19 @@ export class Kit {
   }
   // a sign / poster (text, or a ready-made texture)
   label(text, w, h, pos, rot, opts = {}) {
-    const tex = opts.tex || signTex(text, { w: 512, h: Math.max(64, Math.min(1024, Math.round(512 * h / w / 32) * 32)), bg: opts.bg, fg: opts.fg, border: opts.border === undefined ? '#c0392b' : opts.border, size: opts.size || 64, title: opts.title });
+    // text signs: drawn sharp, and if the words won't fit at a readable size the sign grows taller (never cut off)
+    let tex = opts.tex;
+    if (!tex) {
+      const W = Math.max(512, Math.min(1024, Math.round(w * 420 / 64) * 64)), size = (opts.size || 64) * W / 512, minPx = Math.max(12, W / w * 0.035);   // ~420px a metre; letters at least 3.5cm tall
+      const px = (hh) => Math.max(64, Math.min(2048, Math.round(W * hh / w / 16) * 16));
+      const h0 = h; if (!opts.title) for (let i = 0; i < 4 && h < h0 * 1.3 && !signFits(text, W, px(h), size, minPx); i++) h = Math.min(h0 * 1.3, h * 1.1);   // a little taller if it helps
+      tex = signTex(text, { w: W, h: px(h), bg: opts.bg, fg: opts.fg, border: opts.border === undefined ? '#c0392b' : opts.border, size, title: opts.title, minSize: 6 });                       // ...then smaller letters: never cut off
+    }
     const key = w + 'x' + h;
     if (!this.geoCache.has(key)) this.geoCache.set(key, new THREE.PlaneGeometry(w, h));
     const mat = opts.glow ? new THREE.MeshBasicMaterial({ map: tex }) : new THREE.MeshLambertMaterial({ map: tex });
     const m = new THREE.Mesh(this.geoCache.get(key), mat);
-    m.position.set(...pos); m.rotation.set(...rot);
+    m.position.set(...pos); m.rotation.set(...rot); m.userData.sign = text; m.userData.size = [w, h];
     this.scene.add(m);
     return m;
   }

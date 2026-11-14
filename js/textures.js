@@ -18,9 +18,9 @@ export function canvasTex(w, h, draw, { repeat = null, mips = true } = {}) {
 export const FONT = '"Arial Black", "Impact", "Helvetica Neue", Arial, sans-serif';
 
 // Word-wrap text inside a box, shrinking the font until it fits.
-export function fitText(g, text, x, y, maxW, maxH, startSize, { color = '#111', font = FONT, lineGap = 1.12, align = 'center' } = {}) {
+export function fitText(g, text, x, y, maxW, maxH, startSize, { color = '#111', font = FONT, lineGap = 1.12, align = 'center', minSize = 10 } = {}) {
   let size = startSize, lines;
-  for (; size > 10; size -= 2) {
+  for (; size > minSize; size -= 2) {
     g.font = `900 ${size}px ${font}`;
     lines = wrap(g, text, maxW);
     if (lines.length * size * lineGap <= maxH && lines.every(l => g.measureText(l).width <= maxW)) break;
@@ -29,6 +29,14 @@ export function fitText(g, text, x, y, maxW, maxH, startSize, { color = '#111', 
   const total = lines.length * size * lineGap;
   const ax = align === 'center' ? x + maxW / 2 : x;
   lines.forEach((l, i) => g.fillText(l, ax, y + (maxH - total) / 2 + size * lineGap * (i + 0.5)));
+  return total <= maxH + 1 && lines.every(l => g.measureText(l).width <= maxW + 1);
+}
+// would this text fit a sign of this many pixels at a readable size? (no drawing)
+const _mc = document.createElement('canvas').getContext('2d');
+export function signFits(text, w, h, size, minSize) {
+  const padX = w * 0.06, padY = Math.min(h * 0.14, w * 0.06), maxW = w - padX * 2, maxH = h - padY * 2;
+  for (let s = size; s >= minSize; s -= 2) { _mc.font = `900 ${s}px ${FONT}`; const lines = wrap(_mc, text, maxW); if (lines.length * s * 1.12 <= maxH && lines.every(l => _mc.measureText(l).width <= maxW)) return true; }
+  return false;
 }
 
 function wrap(g, text, maxW) {
@@ -54,15 +62,15 @@ export function roundRect(g, x, y, w, h, r) {
 }
 
 // A simple sign/poster: background, optional border, wrapped text.
-export function signTex(text, { w = 512, h = 512, bg = '#fff8e7', fg = '#1a1a1a', border = '#c0392b', size = 72, title = null, titleColor = '#c0392b' } = {}) {
+export function signTex(text, { w = 512, h = 512, bg = '#fff8e7', fg = '#1a1a1a', border = '#c0392b', size = 72, title = null, titleColor = '#c0392b', minSize = 10 } = {}) {
   return canvasTex(w, h, (g) => {
     g.fillStyle = bg; g.fillRect(0, 0, w, h);
     if (border) { g.strokeStyle = border; g.lineWidth = Math.max(8, w * 0.03); g.strokeRect(g.lineWidth / 2, g.lineWidth / 2, w - g.lineWidth, h - g.lineWidth); }
-    const pad = w * 0.08;
+    const pad = w * 0.08, padX = w * 0.06, padY = Math.min(h * 0.14, w * 0.06);
     if (title) {
       fitText(g, title, pad, pad, w - pad * 2, h * 0.28, size * 1.4, { color: titleColor });
       fitText(g, text, pad, h * 0.32, w - pad * 2, h * 0.6, size, { color: fg });
-    } else fitText(g, text, pad, pad, w - pad * 2, h - pad * 2, size, { color: fg });
+    } else fitText(g, text, padX, padY, w - padX * 2, h - padY * 2, size, { color: fg, minSize });
   });
 }
 

@@ -184,7 +184,7 @@ export function buildPub(scene) {
     for (let x = X(195); x < X(455); x += 0.3) for (let z = Z(605); z < Z(965); z += 0.3) if (inPoly(RAISED, x + 0.15, z + 0.15)) k.colliders.push({ min: new THREE.Vector3(x, 0, z), max: new THREE.Vector3(x + 0.3, RAISE, z + 0.3) });
     R(X(195), Z(965) - 0.04, X(455), Z(965), RAISE, RAISE / 2, DARKWOOD);
     R(X(300), Z(965), X(370), Z(965) + 0.32, RAISE / 2, RAISE / 4, 0x5a3420, { collide: true }); R(X(300), Z(965), X(370), Z(965) + 0.03, 0.02, RAISE / 2, BRASS);
-    k.label('MIND THE STEP (RONNIE: THE STEP MINDS YOU)', 0.9, 0.2, [X(335), 1.3, Z(965) + 0.05], [0, 0, 0], { bg: '#ffd400', fg: '#111', border: null, size: 40 });
+    k.label('MIND THE STEP (RONNIE: THE STEP MINDS YOU)', 0.9, 0.2, [X(250), 0.72, Z(965) + 0.095], [0, 0, 0], { bg: '#ffd400', fg: '#111', border: null, size: 40 });   // on the half wall by the step
   }
   // ---- furniture, from the photo: honey-pine farmhouse chairs (turned legs, H stretchers, spindles or a carved
   // splat, a wide curved top rail) round dark oak tables with red beer mats, salt & pepper and a cutlery pot
@@ -216,7 +216,17 @@ export function buildPub(scene) {
     k.colliders.push({ min: new THREE.Vector3(x - w / 2, y - 0.05, z - d / 2), max: new THREE.Vector3(x + w / 2, y, z + d / 2) });
     k.blockers.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, y1: y });
     // a red beer mat or two, salt & pepper, a little cutlery pot
-    for (let i = 0; i < 2; i++) { const mx = x + (i ? -1 : 1) * w * 0.25, mz = z + (i ? 1 : -1) * d * 0.2; put(new THREE.BoxGeometry(0.095, 0.003, 0.095), 0xc8202a, mx, mz, 0.3 + i, 0, y + 0.002, 0); put(new THREE.BoxGeometry(0.05, 0.002, 0.03), 0xffffff, mx, mz, 0.3 + i, 0, y + 0.004, 0); }
+    // beer mats scattered about (2 to 5 of them, all different, some square, some round, a few hanging over the edge)
+    const MATS = [[0xc8202a, 0xffffff], [0x1e6a32, 0xffffff], [0x1f4fbf, 0xffd400], [0x111111, 0xd4af37], [0xf2e8d0, 0x7a1f24], [0xffd400, 0xc8202a]];
+    const nm = 2 + Math.floor(Math.random() * 4), used = [];
+    for (let i = 0; i < nm; i++) {
+      let mx, mz, tries = 0;
+      do { mx = x + (Math.random() - 0.5) * (w - 0.06); mz = z + (Math.random() - 0.5) * (d - 0.06); tries++; } while (tries < 20 && (Math.hypot(mx - x, mz - z) < 0.16 || used.some(([ux, uz]) => Math.hypot(mx - ux, mz - uz) < 0.08)));
+      used.push([mx, mz]);
+      const [c1, c2] = MATS[Math.floor(Math.random() * MATS.length)], a = Math.random() * Math.PI * 2, yy = y + 0.002 + i * 0.0012;
+      if (Math.random() < 0.3) { put(CYL(0.05, 0.05, 0.003, 16), c1, mx, mz, 0, 0, yy, 0); put(CYL(0.038, 0.038, 0.002, 16), c2, mx, mz, 0, 0, yy + 0.0015, 0); put(CYL(0.03, 0.03, 0.0025, 16), c1, mx, mz, 0, 0, yy + 0.002, 0); }
+      else { put(new THREE.BoxGeometry(0.095, 0.003, 0.095), c1, mx, mz, a, 0, yy, 0); put(new THREE.BoxGeometry(0.075, 0.002, 0.075), c2, mx, mz, a, 0, yy + 0.0015, 0); put(new THREE.BoxGeometry(0.06, 0.0025, 0.06), c1, mx, mz, a, 0, yy + 0.002, 0); put(new THREE.BoxGeometry(0.04, 0.003, 0.012), c2, mx, mz, a, 0, yy + 0.0025, 0); }
+    }
     for (const [dx, col] of [[-0.03, 0xf4f4f4], [0.03, 0x3a3a3a]]) { put(CYL(0.016, 0.018, 0.075, 8), 0xdfeff2, x + dx, z, 0, 0, y + 0.038, 0); put(CYL(0.017, 0.017, 0.02, 8), 0xc0c4c8, x + dx, z, 0, 0, y + 0.085, 0); put(CYL(0.012, 0.012, 0.04, 6), col, x + dx, z, 0, 0, y + 0.03, 0); }
     put(new RoundedBoxGeometry(0.1, 0.07, 0.06, 1, 0.006), 0x8a5a2a, x, z + 0.08, 0, 0, y + 0.035, 0); for (let i = 0; i < 4; i++) put(CYL(0.003, 0.003, 0.12, 4), 0xc8ccd0, x - 0.03 + i * 0.02, z + 0.08, 0, 0, y + 0.1, 0);
     k.spawns.push(new THREE.Vector3(x + w * 0.22, y + 0.08, z));
@@ -285,7 +295,7 @@ export function buildPub(scene) {
     for (const x of [X(482), x1 - 0.25]) { R(x - 0.2, z0 + 0.05, x + 0.2, z0 + 0.45, 1.3, 0.65, 0x111111, { block: true }); for (const y of [0.4, 0.95]) k.cyl(0.13, 0.13, 0.02, x, y, z0 + 0.46, 0x333333, 14); }
     for (let i = 0; i < 6; i++) k.lamp(x0 + 0.4 + i * 0.5, H - 0.25, z0 + 0.4, [0xff2a6a, 0x2a8aff, 0x39ff14, 0xffd400, 0xff2a6a, 0x2a8aff][i], 0.06);
     R(x0, z0 + 0.3, x1, z0 + 0.34, 0.06, H - 0.2, 0x111111);
-    k.label('DJ BOOTH — NO REQUESTS FOR "THE PIE SONG"', 1.4, 0.3, [(x0 + x1) / 2, 1.5, z0 + 0.03], [0, 0, 0], { bg: '#111', fg: '#ff4fa3', border: '#ff4fa3', size: 40, glow: true });
+    k.label('DJ BOOTH — NO REQUESTS FOR "THE PIE SONG"', 1.4, 0.3, [(X(495) + X(600)) / 2, 0.55, z0 + 0.756], [0, 0, 0], { bg: '#111', fg: '#ff4fa3', border: '#ff4fa3', size: 40, glow: true });   // on the front of the DJ desk
     k.spawns.push(new THREE.Vector3((X(495) + X(600)) / 2, 1.05, z0 + 0.65));
   }
 
@@ -328,7 +338,7 @@ export function buildPub(scene) {
   // the lifting flap at the right-hand end: the way in behind the bar
   { const x0 = X(795) + 0.02, x1 = X(835) - 0.1, z = Z(1235);
     k.box(0.04, 0.6, 0.36, x1 - 0.02, 1.37, z - 0.02, TOPC); k.cyl(0.02, 0.02, 0.06, x1 - 0.02, 1.08, z - 0.15, 0x999999, 8);
-    k.label('STAFF ONLY BEHIND THE BAR (RONNIE: ESPECIALLY YOU)', 0.5, 0.18, [x1 - 0.045, 1.45, z - 0.02], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#c0392b', border: null, size: 30 }); }
+    k.label('STAFF ONLY BEHIND THE BAR (RONNIE: ESPECIALLY YOU)', 0.3, 0.3, [x1 - 0.045, 1.5, z - 0.02], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#c0392b', border: null, size: 30 }); }
   // the fonts: chrome T-bars with round blue and white badges, and a few hand pumps with clips
   const font = (b, s2) => { const [x, z] = b.at(s2, 0.3);
     k.cyl(0.04, 0.045, 0.04, x, 1.1, z, CHROMEC, 12); k.cyl(0.022, 0.022, 0.32, x, 1.28, z, CHROMEC, 10);
@@ -386,13 +396,15 @@ export function buildPub(scene) {
   R(X(700) + 0.65, Z(605) + 0.08, X(745), Z(605) + 0.62, 0.9, 0.45, 0x4a2c18, { collide: true, block: true });
   R(X(700) + 0.8, Z(605) + 0.15, X(700) + 1.25, Z(605) + 0.5, 0.45, 1.13, 0x2a2a2a); k.cyl(0.02, 0.02, 0.1, X(700) + 0.95, 0.98, Z(605) + 0.5, CHROMEC, 6); k.cyl(0.02, 0.02, 0.1, X(700) + 1.1, 0.98, Z(605) + 0.5, CHROMEC, 6);   // coffee machine
   k.label('COFFEES — CAPPUCCINO · LATTE · AMERICANO (RONNIE: ONE OF EACH)', 0.7, 0.45, [X(700) + 1.0, 1.75, Z(605) + 0.1], [0, 0, 0], { bg: '#1f3f8a', fg: '#fff', border: '#fff', size: 34 });
-  k.label("THE OYSTERFLEET", 1.75, 0.36, [X(695) - 0.19, 2.81, (Z(605) + Z(845)) / 2], [0, -Math.PI / 2, 0], { tex: pubSignTex(), glow: true });   // on the canopy front, over the bar
-  { const [x, z] = bar1.at(5.0, -0.3); k.box(0.05, 1.6, 0.05, x, 0.8, z, 0x2a1a10); k.box(0.5, 0.7, 0.04, x, 1.55, z, 0x5a3a20, { rot: [0, bar1.ry, 0] });
+  k.label("THE OYSTERFLEET", 1.75, 0.36, [X(695) - 0.155, 2.81, (Z(605) + Z(845)) / 2], [0, -Math.PI / 2, 0], { tex: pubSignTex(), glow: true });   // on the canopy front, over the bar
+  { const [x, z] = bar1.at(5.0, -0.3); k.box(0.05, 1.6, 0.05, x, 0.8, z, 0x2a1a10); k.box(0.55, 0.95, 0.04, x, 1.55, z, 0x5a3a20, { rot: [0, bar1.ry, 0] });
     k.label("TODAY'S ALES: OYSTER STOUT · RONNIE'S RUIN · PIE & PINT £9.99", 0.44, 0.62, [x - bar1.nx * 0.025, 1.55, z - bar1.nz * 0.025], [0, bar1.ry, 0], { bg: '#1a1a1a', fg: '#f5f0e6', border: null, size: 34 }); }
   // the canopy over the bar: cream tongue-and-groove with a grey trim, ribbed glass globe lights hanging off it
   const CY = 2.62;
   for (const [x0, z0, x1, z1] of [[X(695) - 0.25, Z(605), X(855), Z(925)], [X(695) - 0.25, Z(845), X(835), Z(985) + 0.3], [X(795) - 0.25, Z(985), X(835), Z(1245)]]) R(x0, z0, x1, z1, 0.05, CY, 0xf4efe2);
-  for (const b of [bar1, bar2, bar4]) { const [px, pz] = b.at(b.L / 2, -0.12); k.texBox(b.L + 0.1, H - CY, 0.06, px, CY + (H - CY) / 2, pz, TNG, { tile: 0.5 }); k.box(b.L + 0.12, 0.06, 0.1, px, CY - 0.01, pz, 0x7a7e80, { rot: [0, b.ry, 0] }); }
+  for (const b of [bar1, bar2, bar4]) { const [px, pz] = b.at(b.L / 2, -0.12);
+    if (Math.abs(b.uz) > 0.95) k.texBox(0.06, H - CY, b.L + 0.1, px, CY + (H - CY) / 2, pz, TNG, { tile: 0.5 }); else k.box(b.L + 0.1, H - CY, 0.06, px, CY + (H - CY) / 2, pz, 0xf1e9d6, { rot: [0, b.ry, 0] });
+    k.box(b.L + 0.12, 0.06, 0.1, px, CY - 0.01, pz, 0x7a7e80, { rot: [0, b.ry, 0] }); }
   { const [px, pz] = [X(765) - 0.12 * 0.32, Z(975) + 0.12]; const b3 = Math.hypot(X(795) - X(735), Z(985) - Z(965)); k.box(b3, H - CY, 0.06, (X(735) + X(795)) / 2 - 0.04, CY + (H - CY) / 2, (Z(965) + Z(985)) / 2 + 0.11, 0xf1e9d6, { rot: [0, Math.atan2(-(Z(985) - Z(965)), X(795) - X(735)), 0] }); }
   const globe = (x, z) => {
     k.cyl(0.004, 0.004, 0.42, x, CY - 0.21, z, 0x222222, 4); k.cyl(0.03, 0.045, 0.06, x, CY - 0.44, z, 0xb87333, 10);          // copper cap
@@ -442,7 +454,7 @@ export function buildPub(scene) {
     R(x0 + 0.1, z0 + 0.08, x0 + 1.9, z0 + 0.6, 0.92, 0.46, 0xd8d8d8, { collide: true, block: true }); k.cyl(0.07, 0.08, 0.22, x0 + 0.5, 1.03, z0 + 0.3, 0xeeeeee, 10);   // kettle counter
     k.spawns.push(new THREE.Vector3(x0 + 1.2, 1.0, z0 + 0.35));
     R(x1 - 2.4, z1 - 0.9, x1 - 0.6, z1 - 0.1, 0.45, 0.225, 0x37474f, { block: true }); R(x1 - 2.4, z1 - 0.3, x1 - 0.6, z1 - 0.1, 0.9, 0.45, 0x37474f);   // battered sofa
-    k.label("STAFF FOOD ALLOWANCE: ONE (1) BAG OF CRISPS. RONNIE THIS MEANS YOU. — THE GAFFER", 1.3, 0.7, [x0 + 1.0, 1.6, z0 + 0.03], [0, 0, 0], { bg: '#fff', fg: '#111' });
+    k.label("STAFF FOOD ALLOWANCE: ONE (1) BAG OF CRISPS. RONNIE THIS MEANS YOU. — THE GAFFER", 1.3, 0.7, [x0 + 1.0, 1.6, z0 + 0.09], [0, 0, 0], { bg: '#fff', fg: '#111' });
     k.label('STAFF ROOM', 1.0, 0.25, [X(875), 2.4, z1 + 0.09], [0, 0, 0], { bg: '#1b3a2a', fg: '#d4af37', border: null, size: 60 });
     k.lamp((x0 + x1) / 2, H - 0.02, (z0 + z1) / 2, 0xffffff, 0.12);
   }
@@ -485,7 +497,7 @@ export function buildPub(scene) {
     k.window(x0 + 0.1, 1.15, zc, 1.3, 2.2, Math.PI / 2, streetViewTex(2), { frame: DARKWOOD, bars: 1 });
     R(x0 + 0.2, zc - 0.8, x0 + 1.4, zc + 0.8, 0.01, 0.006, 0x3a3a3a);
     k.label('ENTRANCE TO THE RESTAURANT — WAIT TO BE SEATED (RONNIE: WAIT TO BE STOPPED)', 1.6, 0.4, [x0 + 0.1, 2.55, zc], [0, Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 34 });
-    R(x1 - 0.7, z0 + 0.2, x1 - 0.2, z0 + 0.5, 1.4, 0.7, DARKWOOD, { block: true }); k.label('TODAY\'S MENU: PIE. PIE AND CHIPS. CHIPS. (RONNIE: ALL OF IT)', 0.45, 0.6, [x1 - 0.45, 1.05, z0 + 0.51], [0, 0, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 30 });
+    R(x1 - 0.7, z0 + 0.2, x1 - 0.2, z0 + 0.5, 1.6, 0.8, DARKWOOD, { block: true }); k.label('TODAY\'S MENU: PIE. PIE AND CHIPS. CHIPS. (RONNIE: ALL OF IT)', 0.45, 0.6, [x1 - 0.45, 1.05, z0 + 0.51], [0, 0, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 30 });
   }
   // the entrance booking area: front doors on the corner, the booking podium, coat hooks
   { const mx = (door.x0 + door.x1) / 2 - door.uz * 0.07, mz = (door.z0 + door.z1) / 2 + door.ux * 0.07;
@@ -493,7 +505,7 @@ export function buildPub(scene) {
     k.box(0.04, 2.2, 0.06, mx, 1.1, mz, DARKWOOD, { rot: [0, door.ry, 0] });
     k.label('EXIT', 0.4, 0.18, [mx, 2.5, mz], [0, door.ry, 0], { bg: '#1b8a3a', fg: '#fff', border: null, size: 90, glow: true });
     R(X(700), Z(440), X(760), Z(470), 1.15, 0.575, DARKWOOD, { block: true, collide: true }); R(X(700) - 0.05, Z(440) - 0.05, X(760) + 0.05, Z(470) + 0.05, 0.05, 1.18, 0x2a1a10);
-    k.label('PLEASE WAIT TO BE SEATED', 0.9, 0.3, [X(730), 1.45, Z(470) + 0.02], [0, 0, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 44 });
+    k.label('PLEASE WAIT TO BE SEATED', 0.9, 0.3, [X(730), 0.8, Z(470) + 0.006], [0, 0, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 44 });
     k.label('BOOKINGS: "RONNIE, TABLE FOR ONE, FOOD FOR TWELVE"', 0.5, 0.35, [X(730), 1.21, Z(455)], [-Math.PI / 2, 0, 0], { bg: '#fffdf2', fg: '#111', border: null, size: 30 });
     for (let x = X(625); x < X(670); x += 0.4) k.box(0.1, 0.04, 0.04, x, 1.7, Z(560), 0x3a2416);
     k.label('WELCOME TO THE OYSTERFLEET — PLEASE KEEP RONNIE AWAY FROM THE BAR SNACKS', 2.0, 0.5, [X(835) - 0.1, 1.8, Z(465)], [0, -Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 38 });
@@ -585,7 +597,7 @@ export function buildPub(scene) {
     for (const [i, z] of [z0 + 2.2, z0 + 4.6].entries()) k.window(x1 - 0.1, 1.6, z, 1.8, 1.7, -Math.PI / 2, streetViewTex(i + 2, true), { frame: WHITE, bars: 2 });
     k.light((x0 + x1) / 2, 2.5, (z0 + z1) / 2, 0xfff4e0, 4, 10);
     k.pool((x0 + x1) / 2, 0, (z0 + z1) / 2, 7, 0xfff8e8);
-    k.label('THE CONSERVATORY — PLEASE DO NOT TAP ON THE GLASS (RONNIE: OR LICK IT)', 2.2, 0.4, [x0 + 0.1, 2.3, z1 - 1.0], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#2e7d32', border: '#2e7d32', size: 36 });
+    k.label('THE CONSERVATORY — PLEASE DO NOT TAP ON THE GLASS (RONNIE: OR LICK IT)', 2.2, 0.4, [x0 + 0.12, 2.35, z1 - 1.8], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#2e7d32', border: '#2e7d32', size: 36 });
     // plants in the corners
     for (const [x, z] of [[x1 - 0.4, z1 - 0.4], [x0 + 0.4, z1 - 0.4]]) { k.cyl(0.22, 0.16, 0.45, x, 0.225, z, 0xb05a32, 12, { block: true }); for (let i = 0; i < 8; i++) k.box(0.03, 0.6, 0.12, x + Math.cos(i) * 0.08, 0.75, z + Math.sin(i) * 0.08, 0x3a7a2a, { rot: [Math.sin(i) * 0.4, i, Math.cos(i) * 0.4] }); }
   }
@@ -631,24 +643,25 @@ export function buildPub(scene) {
   tv(X(250), 2.25, Z(605) + 0.12, 0);
   tv(X(885), 2.2, Z(1305) + 0.12, 0);
   // street-view windows with burgundy curtains on the raised area's outside wall... (none: it's an inside wall) -> on the restaurant side
-  k.label('DARTS', 0.7, 0.7, [X(690) - 0.02, 1.7, Z(1300) - 0.1], [0, Math.PI, 0], { tex: dartTex() });
+  k.label('DARTS', 0.7, 0.7, [X(690) - 0.02, 1.7, Z(1305) - 0.112], [0, Math.PI, 0], { tex: dartTex() });
   const signs = [
     ['STAFF OF THE MONTH: RONNIE (ATE THE CERTIFICATE)', 0.9, 0.7, [X(195) + 0.12, 1.8, Z(650)], [0, Math.PI / 2, 0], {}],
     ["TODAY'S SPECIALS: WHATEVER RONNIE HASN'T EATEN", 0.8, 1.0, [X(195) + 0.12, 1.55, Z(1160)], [0, Math.PI / 2, 0], { bg: '#1b2a1b', fg: '#f5f0e6', border: '#8a6a3a', size: 56 }],
-    ['MAX OCCUPANCY: 120 (OR 3 RONNIES)', 1.1, 0.45, [X(650), 1.9, Z(605) + 0.1], [0, 0, 0], {}],
+    ['MAX OCCUPANCY: 120 (OR 3 RONNIES)', 1.1, 0.45, [X(615) + 0.09, 1.9, Z(660)], [0, Math.PI / 2, 0], {}],
     ['QUIZ NIGHT — Q1: How many pies did Ronnie eat last night? A: Yes.', 1.0, 0.7, [X(560), 2.15, Z(1305) - 0.12], [0, Math.PI, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 48 }],
     ['WE DO NOT SERVE SALAD ("YES YOU DO" — Chloe)', 1.0, 0.5, [X(600), 2.4, Z(1305) - 0.12], [0, Math.PI, 0], { bg: '#fff', fg: '#c0392b' }],
-    ['OYSTERFLEET PIE-EATING CHAMPION — RONNIE (UNDEFEATED, UNCHALLENGED, UNWELL)', 1.2, 0.6, [X(195) + 0.12, 1.6, Z(1240)], [0, Math.PI / 2, 0], { bg: '#d4af37', fg: '#111', border: '#7a5a10', size: 48 }],
-    ['PLEASE DO NOT FEED THE BARMAN', 1.2, 0.45, [X(835) - 0.1, 2.3, Z(1100)], [0, -Math.PI / 2, 0], { bg: '#fff8e7', fg: '#111' }],
-    ['LAST ORDERS — Ronnie: last orders means for the CUSTOMERS', 0.8, 0.4, [X(835) - 0.1, 2.3, Z(1180)], [0, -Math.PI / 2, 0], { bg: '#fff06a', fg: '#111', border: null, size: 40 }],
+    ['OYSTERFLEET PIE-EATING CHAMPION — RONNIE (UNDEFEATED, UNCHALLENGED, UNWELL)', 1.0, 0.5, [X(195) + 0.12, 2.62, Z(1252)], [0, Math.PI / 2, 0], { bg: '#d4af37', fg: '#111', border: '#7a5a10', size: 48 }],
+    ['PLEASE DO NOT FEED THE BARMAN', 1.6, 0.3, [X(795) - 0.155, 2.81, (Z(985) + Z(1230)) / 2], [0, -Math.PI / 2, 0], { bg: '#fff8e7', fg: '#111' }],
+    ['LAST ORDERS — Ronnie: last orders means for the CUSTOMERS', 2.4, 0.3, [bar2.at(bar2.L / 2, -0.155)[0], 2.81, bar2.at(bar2.L / 2, -0.155)[1]], [0, bar2.ry, 0], { bg: '#fff06a', fg: '#111', border: null, size: 40 }],
     ['BARRED: RONNIE (FROM THE KITCHEN) (FROM THE CELLAR) (FROM THE CRISP CLIP)', 1.3, 0.6, [X(195) + 0.12, 1.6, Z(1065)], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c62828', border: '#c62828', size: 38 }],
     ['HAPPY HOUR 5–7PM. RONNIE\'S HAPPY HOUR: 11AM–CLOSING', 1.2, 0.4, [X(810), 2.3, Z(605) + 0.1], [0, 0, 0], { bg: '#ffd400', fg: '#111', border: null, size: 40 }],
-    ['CARVERY SUNDAYS — RONNIE SIZE PORTION: THE WHOLE CARVERY', 1.3, 0.45, [X(400), 2.3, Z(1065) + 0.1], [0, 0, 0], { bg: '#5a2a14', fg: '#ffd400', border: '#ffd400', size: 40 }],
-    ['IN CASE OF EMERGENCY: BREAK GLASS. IN CASE OF RONNIE: HIDE THE PIES.', 0.8, 0.4, [X(795) + 0.1, 1.7, Z(1500)], [0, Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: '#fff', size: 34 }],
-    ['CAUTION: RONNIE SWEAT', 0.5, 0.6, [X(620), 0.33, Z(1270) - 0.6], [0, -Math.PI / 4, 0], { bg: '#ffd400', fg: '#111', border: '#111', size: 60 }],
+    ['CARVERY SUNDAYS — RONNIE SIZE PORTION: THE WHOLE CARVERY', 1.3, 0.45, [X(195) + 0.115, 2.45, Z(1178)], [0, Math.PI / 2, 0], { bg: '#5a2a14', fg: '#ffd400', border: '#ffd400', size: 40 }],
+    ['IN CASE OF EMERGENCY: BREAK GLASS. IN CASE OF RONNIE: HIDE THE PIES.', 0.8, 0.4, [X(795) + 0.1, 2.3, Z(1500)], [0, Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: '#fff', size: 34 }],
+    ['CAUTION: RONNIE SWEAT', 0.42, 0.5, [X(620) - Math.sin(Math.PI / 4) * 0.022, 0.38, Z(1270) - 0.6 + Math.cos(Math.PI / 4) * 0.022], [0, -Math.PI / 4, 0], { bg: '#ffd400', fg: '#111', border: '#111', size: 60 }],
     ['TOILET ATTENDANT: NONE. RONNIE, PLEASE STOP OFFERING.', 0.9, 0.3, [X(415) - 0.1, 2.2, Z(560)], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: '#1f4fbf', size: 34 }],
   ];
   for (const [t, w, h, pos, rot, o] of signs) k.label(t, w, h, pos, rot, o);
+  { const cx = X(620), cz = Z(1270) - 0.6; { const g = new THREE.BoxGeometry(0.46, 0.7, 0.03); g.translate(0, 0.35, 0); g.rotateY(-Math.PI / 4); g.translate(cx, 0, cz); k.parts.push(part(g, 0xffd400)); for (const sx of [-1, 1]) { const f = new THREE.BoxGeometry(0.03, 0.03, 0.4); f.translate(sx * 0.2, 0.015, 0); f.rotateY(-Math.PI / 4); f.translate(cx, 0, cz); k.parts.push(part(f, 0x222222)); } } }   // its A-frame stand
   // the white painted dresser and the console table (menus, hand gel) by the books wall, the telly above, a red glow
   { const x = X(195) + 0.08, z0 = Z(1200), z1 = Z(1290), zc = (z0 + z1) / 2, D = 0.45;
     R(x, z0, x + D, z1, 0.85, 0.425, 0xeeece6, { collide: true, block: true }); R(x - 0.01, z0 - 0.02, x + D + 0.03, z1 + 0.02, 0.04, 0.87, 0xd8d4ca);
@@ -659,7 +672,7 @@ export function buildPub(scene) {
     R(x + 0.12, zc + 0.05, x + 0.32, zc + 0.3, 0.16, 0.95, 0x8a5a2a); k.cyl(0.03, 0.03, 0.14, x + 0.25, 0.94, zc - 0.05, 0x2a7ac8, 8); k.cyl(0.012, 0.012, 0.04, x + 0.25, 1.03, zc - 0.05, 0xf4f4f4, 6);
     k.spawns.push(new THREE.Vector3(x + 0.3, 0.95, zc - 0.25));
     k.box(1.3, 0.76, 0.06, x + 0.05, 2.35, Z(1120), 0x111111, { rot: [0, Math.PI / 2, 0] }); k.label('tv', 1.22, 0.69, [x + 0.09, 2.35, Z(1120)], [0, Math.PI / 2, 0], { tex: tvTex(), glow: true });
-    k.light(x + 0.6, 2.5, zc, 0xff3a3a, 2.2, 4); k.lamp(x + 0.08, 2.75, zc, 0xff4040, 0.08);
+    k.light(x + 0.6, 2.5, zc, 0xff3a3a, 2.2, 4); k.lamp(x + 0.08, 2.92, Z(1215), 0xff4040, 0.06);
   }
   // real warm lights over the bar and the middle of the room
   k.light(X(720), 2.3, Z(900), 0xffb060, 7, 9);
