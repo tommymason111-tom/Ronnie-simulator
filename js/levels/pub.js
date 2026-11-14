@@ -534,30 +534,106 @@ export function buildPub(scene) {
     k.lamp((x0 + x1) / 2, H - 0.02, (z0 + z1) / 2, 0xffffff, 0.1);
   }
 
-  // ================================================================ kitchen
-  { const x0 = X(25), x1 = X(195), z0 = Z(605), z1 = Z(1060);
-    clad(x0 + 0.08, z0 + 0.08, x1 - 0.08, z0 + 0.1, KTILE, 1.8, 0.6); clad(x0 + 0.08, z0 + 0.08, x0 + 0.1, z1 - 0.08, KTILE, 1.8, 0.6);
-    // worktops down the outside wall: range with hobs and a hood, sink, deep fryer; fridges at the end
-    R(x0 + 0.08, z0 + 0.1, x0 + 0.75, z0 + 6.2, 0.92, 0.46, STEEL, { collide: true, block: true }); R(x0 + 0.08, z0 + 0.1, x0 + 0.75, z0 + 6.2, 0.03, 0.935, 0xd0d4da);
-    for (const z of [z0 + 0.6, z0 + 1.2]) for (const dx of [0.25, 0.55]) k.cyl(0.12, 0.12, 0.02, x0 + dx, 0.95, z, 0x222222, 12);
-    R(x0 + 0.08, z0 + 0.2, x0 + 0.8, z0 + 1.6, 0.5, 2.2, DSTEEL);
-    for (const [z, c] of [[z0 + 0.6, 0x9aa0a8], [z0 + 1.2, 0x9aa0a8]]) k.cyl(0.13, 0.13, 0.2, x0 + 0.4, 1.06, z, c, 14);
-    R(x0 + 0.15, z0 + 2.4, x0 + 0.65, z0 + 3.2, 0.05, 0.94, 0x9aa0a8); k.cyl(0.015, 0.015, 0.3, x0 + 0.12, 1.08, z0 + 2.8, 0xd0d0d0, 6);   // sink
-    R(x0 + 0.1, z0 + 3.8, x0 + 0.75, z0 + 4.7, 1.0, 0.5, DSTEEL, { block: true }); R(x0 + 0.18, z0 + 3.9, x0 + 0.68, z0 + 4.6, 0.04, 1.0, 0xe0b040);   // deep fryer
-    for (const z of [z1 - 1.9, z1 - 0.65]) { R(x0 + 0.08, z - 0.6, x0 + 0.85, z + 0.6, 2.1, 1.05, 0xd8dce2, { collide: true, block: true }); R(x0 + 0.85, z - 0.55, x0 + 0.88, z + 0.55, 0.04, 1.6, 0x888888); }
-    k.label('RONNIE\'S SHELF (EMPTY)', 0.9, 0.3, [x0 + 0.9, 1.95, z1 - 1.3], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c0392b', border: null, size: 40 });
-    // the pass in the middle with heat lamps, plates, boards
-    R(x0 + 1.9, z0 + 2.0, x1 - 0.55, z0 + 5.0, 0.92, 0.46, STEEL, { collide: true, block: true }); R(x0 + 1.9, z0 + 2.0, x1 - 0.55, z0 + 5.0, 0.03, 0.935, 0xd0d4da);
-    for (const z of [z0 + 2.5, z0 + 3.5, z0 + 4.5]) { k.cyl(0.006, 0.006, 0.8, (x0 + 1.9 + x1 - 0.55) / 2, H - 0.4, z, 0x222222, 4); k.lamp((x0 + 1.9 + x1 - 0.55) / 2, H - 0.9, z, 0xff6a20, 0.06); k.spawns.push(new THREE.Vector3((x0 + 1.9 + x1 - 0.55) / 2, 1.02, z)); }
-    for (let i = 0; i < 6; i++) k.cyl(0.11, 0.1, 0.012, x0 + 2.2, 0.96 + i * 0.014, z0 + 2.3, 0xffffff, 14);
-    R(x0 + 2.3, z0 + 3.0, x0 + 2.8, z0 + 3.4, 0.03, 0.95, 0xc89a5a);
-    for (const z of [z0 + 0.8, z0 + 2.0, z0 + 5.5]) k.spawns.push(new THREE.Vector3(x0 + 0.45, 1.02, z));
-    k.cyl(0.22, 0.2, 0.7, x1 - 0.4, 0.35, z0 + 0.5, 0x2e7d32, 12, { block: true });
-    k.label('clock', 0.35, 0.35, [(x0 + x1) / 2, 2.65, z0 + 0.1], [0, 0, 0], { tex: clockTex() });
-    k.label('PIE OF THE DAY: GONE (RONNIE)', 1.2, 0.6, [(x0 + x1) / 2, 2.0, z0 + 0.11], [0, 0, 0], { bg: '#222', fg: '#fff', border: '#ffd400', size: 50 });
-    k.box(0.32, 0.6, 0.02, x1 - 0.8, 0.3, z1 - 1.5, 0xffd400, { rot: [0.25, 0.6, 0] });
-    k.label('KITCHEN — STAFF ONLY (ESPECIALLY NOT RONNIE)', 1.1, 0.3, [x1 + 0.1, 2.45, Z(1012)], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c0392b', border: '#c0392b', size: 40 });
-    for (let z = z0 + 1; z < z1; z += 2.5) k.lamp((x0 + x1) / 2, H - 0.02, z, 0xffffff, 0.12);
+  // ================================================================ kitchen: a proper working pub kitchen
+  { const x0 = X(25) + 0.08, x1 = X(195) - 0.08, z0 = Z(605) + 0.08, z1 = Z(1060) - 0.08, SS = 0xc8ccd2, SSD = 0x9aa0a8, SSL = 0xdfe2e6;
+    const doorZ0 = Z(990), doorZ1 = Z(1035);
+    // red quarry tiles with a coved skirting, white tiles to 1.8m on every wall, steel kick strips, the strip lights
+    k.floor(x0 - 0.08, z0 - 0.08, x1 + 0.08, z1 + 0.08, tileTex('#a04a32', '#94442e', '#6a2e1e', 48), 0.004, 0.5);
+    clad(x0, z0, x1, z0 + 0.02, KTILE, 1.8, 0.3); clad(x0, z0, x0 + 0.02, z1, KTILE, 1.8, 0.3); clad(x0, z1 - 0.02, x1, z1, KTILE, 1.8, 0.3);
+    clad(x1 - 0.02, z0, x1, doorZ0 - 0.1, KTILE, 1.8, 0.3); clad(x1 - 0.02, doorZ1 + 0.1, x1, z1, KTILE, 1.8, 0.3);
+    for (const [a0, b0, a1, b1] of [[x0, z0, x1, z0 + 0.04], [x0, z0, x0 + 0.04, z1], [x0, z1 - 0.04, x1, z1]]) R(a0, b0, a1, b1, 0.1, 0.05, SSD);
+    for (let z = z0 + 1.2; z < z1; z += 2.4) { k.box(0.14, 0.06, 1.3, (x0 + x1) / 2, H - 0.04, z, 0xffffff); k.lamp((x0 + x1) / 2, H - 0.08, z, 0xf4fbff, 0.09, false); }
+    k.pool((x0 + x1) / 2, 0, (z0 + z1) / 2, 5, 0xf4fbff); k.light((x0 + x1) / 2, 2.6, (z0 + z1) / 2, 0xf8fbff, 3, 9);
+    // ---- the cook line down the outside wall, under a big steel canopy
+    const run = (za, zb, h = 0.9, d = 0.72, col = SS) => { R(x0, za, x0 + d, zb, h, h / 2, col, { collide: true, block: true }); R(x0, za, x0 + d + 0.02, zb, 0.03, h + 0.015, SSL, { collide: true }); R(x0 + d - 0.01, za, x0 + d + 0.01, zb, 0.1, 0.05, 0x333333); };
+    // 6-burner range with an oven under it: grates, burner caps, knobs, the oven door and its window
+    run(z0, z0 + 1.0); for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) { const bx = x0 + 0.2 + c * 0.32, bz = z0 + 0.18 + r * 0.32; k.cyl(0.1, 0.1, 0.02, bx, 0.93, bz, 0x1a1a1a, 14); k.cyl(0.04, 0.04, 0.025, bx, 0.94, bz, 0x333333, 10); for (let g = 0; g < 4; g++) k.box(0.22, 0.012, 0.012, bx, 0.955, bz, 0x111111, { rot: [0, g * Math.PI / 4, 0] }); }
+    for (let i = 0; i < 6; i++) k.cyl(0.018, 0.018, 0.03, x0 + 0.74, 0.8, z0 + 0.12 + i * 0.15, 0x111111, 8);
+    R(x0 + 0.725, z0 + 0.1, x0 + 0.735, z0 + 0.9, 0.5, 0.35, SSD); R(x0 + 0.73, z0 + 0.3, x0 + 0.74, z0 + 0.7, 0.2, 0.4, 0x222222); R(x0 + 0.74, z0 + 0.2, x0 + 0.76, z0 + 0.8, 0.03, 0.63, 0x111111);
+    // pots and pans on the hobs (gravy, chips water, beans)
+    for (const [c, r, col, hh] of [[0, 0, 0x9aa0a8, 0.22], [1, 1, 0x9aa0a8, 0.16], [0, 2, 0x2a2a2a, 0.06]]) { const bx = x0 + 0.2 + c * 0.32, bz = z0 + 0.18 + r * 0.32; k.cyl(0.13, 0.12, hh, bx, 0.97 + hh / 2, bz, col, 16); k.cyl(0.115, 0.115, 0.01, bx, 0.97 + hh - 0.02, bz, [0x6a3a1a, 0xe8e0c8, 0xd06a20][r], 14); }
+    { const g = new THREE.CylinderGeometry(0.015, 0.015, 0.25, 6); g.rotateZ(Math.PI / 2); k.parts.push(part(g, 0x222222, [x0 + 0.47, 1.0, z0 + 0.82])); }
+    // flat-top griddle and a chargrill, burgers sizzling
+    run(z0 + 1.0, z0 + 1.9); R(x0 + 0.08, z0 + 1.05, x0 + 0.66, z0 + 1.45, 0.02, 0.93, 0x2a2a2a); for (let i = 0; i < 6; i++) k.cyl(0.05, 0.05, 0.015, x0 + 0.2 + (i % 3) * 0.17, 0.95, z0 + 1.15 + Math.floor(i / 3) * 0.17, 0x5a2e14, 12);
+    for (let i = 0; i < 9; i++) R(x0 + 0.08, z0 + 1.5 + i * 0.04, x0 + 0.66, z0 + 1.52 + i * 0.04, 0.012, 0.935, 0x111111);
+    k.box(0.02, 0.04, 0.25, x0 + 0.5, 0.97, z0 + 1.6, 0x666666); k.box(0.12, 0.004, 0.09, x0 + 0.38, 0.95, z0 + 1.6, 0xb0b4b8);   // spatula
+    // twin deep fat fryers: oil, baskets (one up, one down), the fryer lids
+    run(z0 + 1.9, z0 + 2.75, 0.95); for (const dz of [0.2, 0.62]) { R(x0 + 0.12, z0 + 1.9 + dz - 0.15, x0 + 0.6, z0 + 1.9 + dz + 0.15, 0.02, 0.95, 0xd09a30); }
+    for (const [dz, up] of [[0.2, true], [0.62, false]]) { const bz = z0 + 1.9 + dz, by = up ? 1.12 : 0.98; R(x0 + 0.16, bz - 0.12, x0 + 0.5, bz + 0.12, 0.12, by, 0x777777); k.box(0.3, 0.015, 0.015, x0 + 0.66, by + 0.07, bz, 0x111111); if (up) for (let i = 0; i < 12; i++) k.box(0.012, 0.012, 0.08, x0 + 0.2 + (i % 4) * 0.08, by + 0.07, bz - 0.06 + Math.floor(i / 4) * 0.05, 0xffcf40, { rot: [0, i, 0] }); }
+    // bain-marie with sauces, then the canopy over the whole line with its filters and lights
+    run(z0 + 2.75, z0 + 3.6); for (let i = 0; i < 4; i++) { R(x0 + 0.12 + (i % 2) * 0.28, z0 + 2.82 + Math.floor(i / 2) * 0.36, x0 + 0.36 + (i % 2) * 0.28, z0 + 3.12 + Math.floor(i / 2) * 0.36, 0.01, 0.935, [0x6a3a1a, 0xd06a20, 0xf2e0b0, 0x3a7a2a][i]); k.box(0.012, 0.2, 0.012, x0 + 0.24 + (i % 2) * 0.28, 1.0, z0 + 2.97 + Math.floor(i / 2) * 0.36, 0x888888, { rot: [0.3, 0, 0] }); }
+    R(x0, z0, x0 + 1.0, z0 + 3.6, 0.5, 2.25, SS); R(x0 + 0.95, z0, x0 + 1.0, z0 + 3.6, 0.12, 2.0, SSD);
+    for (let z = z0 + 0.15; z < z0 + 3.5; z += 0.45) R(x0 + 0.1, z, x0 + 0.85, z + 0.4, 0.02, 1.995, 0x8a8e94);
+    for (let z = z0 + 0.6; z < z0 + 3.6; z += 1.0) { k.lamp(x0 + 0.5, 1.98, z, 0xfff4d8, 0.05, false); k.pool(x0 + 0.4, 0.94, z, 1.2, 0xfff0d0); }
+    R(x0 + 0.95, z0 + 0.1, x0 + 1.0, z0 + 0.35, 0.18, 1.6, 0xd32f2f); k.label('KITCHEN FIRE SUPPRESSION — PULL', 0.22, 0.14, [x0 + 1.005, 1.6, z0 + 0.225], [0, Math.PI / 2, 0], { bg: '#d32f2f', fg: '#fff', border: null, size: 40 });
+    // ---- the wash-up end: double sink with a pre-rinse spray arm, hand basin, a pass-through dishwasher with racks, tabling
+    run(z0 + 3.9, z0 + 6.0); for (const dz of [0.3, 0.85]) R(x0 + 0.12, z0 + 3.9 + dz - 0.22, x0 + 0.6, z0 + 3.9 + dz + 0.22, 0.012, 0.9, 0x8a9098);
+    k.cyl(0.015, 0.015, 0.75, x0 + 0.1, 1.3, z0 + 4.45, 0xd0d4d8, 8); { const sp = new THREE.TorusGeometry(0.18, 0.012, 6, 14, Math.PI); sp.rotateY(Math.PI / 2); k.parts.push(part(sp, 0xd0d4d8, [x0 + 0.1, 1.65, z0 + 4.28])); } k.cyl(0.03, 0.02, 0.12, x0 + 0.1, 1.42, z0 + 4.1, 0x333333, 8);
+    for (let i = 0; i < 5; i++) k.cyl(0.11, 0.1, 0.012, x0 + 0.38, 0.92 + i * 0.014, z0 + 5.5, 0xffffff, 14);                    // dirty plates waiting
+    R(x0, z0 + 6.0, x0 + 0.72, z0 + 6.8, 1.5, 0.75, SS, { block: true }); R(x0 + 0.05, z0 + 6.05, x0 + 0.67, z0 + 6.75, 0.02, 0.92, 0x666a70);   // dishwasher hood
+    R(x0 + 0.68, z0 + 6.05, x0 + 0.73, z0 + 6.75, 0.04, 1.35, 0x222222); k.box(0.02, 0.03, 0.03, x0 + 0.735, 1.2, z0 + 6.4, 0x4caf50);
+    for (let r = 0; r < 3; r++) { R(x0 + 0.05, z0 + 6.85 + r * 0.02, x0 + 0.55, z0 + 7.35, 0.06, 0.95 + r * 0.07, 0x3a6aa8); for (let i = 0; i < 6; i++) k.cyl(0.03, 0.025, 0.1, x0 + 0.1 + (i % 3) * 0.16, 1.03 + r * 0.07, z0 + 6.95 + Math.floor(i / 3) * 0.2, 0xd8eef2, 8); }
+    run(z0 + 6.8, z0 + 7.4);
+    // hand-wash basin with soap, paper towels, the sign
+    R(x0, z0 + 7.55, x0 + 0.4, z0 + 7.95, 0.1, 0.85, 0xf4f4f2); k.cyl(0.012, 0.012, 0.18, x0 + 0.06, 1.0, z0 + 7.75, 0xd0d0d0, 6);
+    R(x0, z0 + 7.6, x0 + 0.12, z0 + 7.72, 0.2, 1.25, 0xffffff); R(x0, z0 + 7.8, x0 + 0.15, z0 + 8.05, 0.32, 1.3, 0xe8e8e8);
+    k.label('NOW WASH YOUR HANDS (RONNIE: BEFORE, NOT AFTER)', 0.4, 0.22, [x0 + 0.03, 1.62, z0 + 7.85], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#1f4fbf', border: '#1f4fbf', size: 36 });
+    // two tall upright fridges and a chest freezer at the far end
+    for (const [z, lbl] of [[z1 - 1.9, 'MEAT'], [z1 - 1.15, 'DAIRY & VEG']]) { R(x0, z - 0.35, x0 + 0.72, z + 0.35, 2.0, 1.0, SSL, { collide: true, block: true }); R(x0 + 0.72, z - 0.33, x0 + 0.74, z + 0.33, 1.94, 1.0, SS); k.box(0.03, 0.7, 0.03, x0 + 0.77, 1.05, z + 0.25, 0x888888); k.box(0.02, 0.08, 0.3, x0 + 0.75, 1.75, z, 0x1a2a3a); k.label(lbl, 0.28, 0.07, [x0 + 0.745, 1.62, z], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: null, size: 50 }); }
+    R(x0, z1 - 0.72, x0 + 1.2, z1, 0.85, 0.425, 0xf4f4f4, { collide: true, block: true }); R(x0 - 0.01, z1 - 0.72, x0 + 1.21, z1, 0.04, 0.87, 0xd8d8d8);
+    k.label("RONNIE'S SHELF (EMPTY)", 0.9, 0.3, [x0 + 0.6, 1.3, z1 - 0.025], [0, Math.PI, 0], { bg: '#fff', fg: '#c0392b', border: null, size: 40 });
+    // ---- the far wall (by the pub): the pass, heat lamps, the ticket rail, plates, the bell
+    const px0 = x1 - 0.7;
+    R(px0, z0 + 0.6, x1, z0 + 3.8, 0.92, 0.46, SS, { collide: true, block: true }); R(px0 - 0.02, z0 + 0.6, x1, z0 + 3.8, 0.03, 0.935, SSL, { collide: true });
+    for (const z of [z0 + 1.0, z0 + 1.8, z0 + 2.6, z0 + 3.4]) { k.cyl(0.006, 0.006, 0.8, x1 - 0.35, H - 0.4, z, 0x222222, 4); R(x1 - 0.55, z - 0.18, x1 - 0.15, z + 0.18, 0.08, H - 0.85, 0x333333); k.lamp(x1 - 0.35, H - 0.9, z, 0xff6a20, 0.07); k.pool(x1 - 0.35, 0.94, z, 0.9, 0xff8a40); k.spawns.push(new THREE.Vector3(x1 - 0.35, 1.02, z)); }
+    R(x1 - 0.04, z0 + 0.7, x1, z0 + 3.7, 0.04, 1.6, SSD);                                                       // ticket rail
+    for (let z = z0 + 0.8; z < z0 + 3.6; z += 0.22) { R(x1 - 0.045, z - 0.06, x1 - 0.04, z + 0.06, 0.2, 1.48, 0xffffff); for (let l = 0; l < 4; l++) R(x1 - 0.046, z - 0.045, x1 - 0.045, z + 0.03, 0.006, 1.55 - l * 0.035, 0x555555); }
+    for (const z of [z0 + 0.8, z0 + 3.6]) for (let i = 0; i < 8; i++) k.cyl(0.13, 0.12, 0.014, px0 + 0.2, 0.95 + i * 0.016, z, 0xffffff, 16);   // stacks of plates
+    k.cyl(0.05, 0.06, 0.04, x1 - 0.15, 0.96, z0 + 2.2, 0xd4af37, 12); k.cyl(0.006, 0.006, 0.04, x1 - 0.15, 1.0, z0 + 2.2, 0x333333, 6);   // the bell
+    k.label('SERVICE! (RONNIE: THAT DOES NOT MEAN YOU)', 0.9, 0.22, [x1 - 0.025, 2.1, z0 + 2.2], [0, -Math.PI / 2, 0], { bg: '#222', fg: '#ffd400', border: null, size: 40 });
+    // shelving racks of dry stores: flour, tins, sauces, gastronorm tubs
+    { const rz0 = z0 + 4.2, rz1 = z0 + 6.4; for (const y of [0.25, 0.75, 1.25, 1.75]) R(x1 - 0.5, rz0, x1, rz1, 0.025, y, 0xb8bcc2, { collide: true });
+      for (const z of [rz0, rz1]) for (const x of [x1 - 0.48, x1 - 0.02]) k.box(0.025, 1.85, 0.025, x, 0.925, z, 0x9aa0a8);
+      blk(x1 - 0.52, rz0, x1, rz1, 1.9);
+      let i = 0; for (const y of [0.25, 0.75, 1.25, 1.75]) for (let z = rz0 + 0.15; z < rz1 - 0.1; z += 0.22, i++) {
+        const t = (i * 7) % 5;
+        if (t === 0) k.cyl(0.08, 0.08, 0.16, x1 - 0.25, y + 0.09, z, [0xc62828, 0x2e7d32, 0xf9a825][i % 3], 12);                 // catering tins
+        else if (t === 1) { R(x1 - 0.42, z - 0.1, x1 - 0.08, z + 0.1, 0.12, y + 0.07, 0xf0f0f0); R(x1 - 0.42, z - 0.1, x1 - 0.08, z + 0.1, 0.015, y + 0.14, [0x1e88e5, 0xd32f2f, 0xffd400][i % 3]); }   // tubs with lids
+        else if (t === 2) R(x1 - 0.42, z - 0.1, x1 - 0.1, z + 0.1, 0.35, y + 0.18, 0xe8dcc0);                               // sacks of flour
+        else if (t === 3) for (let b = 0; b < 3; b++) k.cyl(0.03, 0.03, 0.2, x1 - 0.35 + b * 0.09, y + 0.11, z, [0xd32f2f, 0x5d4037, 0xffd400][b], 8);   // ketchup, brown sauce, mustard
+        else { R(x1 - 0.42, z - 0.09, x1 - 0.12, z + 0.09, 0.18, y + 0.1, 0xb8905a); }                                      // boxes
+      } }
+    // microwave, spice rack, knife magnet, hanging utensils, a clock, chef whites on hooks, the rota board
+    R(x1 - 0.4, z0 + 4.25, x1 - 0.05, z0 + 4.75, 0.3, 2.07, 0x37474f); R(x1 - 0.41, z0 + 4.3, x1 - 0.4, z0 + 4.6, 0.22, 2.07, 0x111111);
+    R(x0 + 0.01, z0 + 4.0, x0 + 0.04, z0 + 4.6, 0.04, 1.55, 0x222222); for (let i = 0; i < 5; i++) k.box(0.01, 0.2, 0.03, x0 + 0.05, 1.45, z0 + 4.05 + i * 0.12, 0xd0d4d8);
+    for (let i = 0; i < 4; i++) { k.cyl(0.004, 0.004, 0.3, (x0 + x1) / 2 - 0.45 + i * 0.3, H - 0.5, z0 + 5.0, 0x222222, 4); }
+    k.label('clock', 0.35, 0.35, [(x0 + x1) / 2, 2.65, z0 + 0.025], [0, 0, 0], { tex: clockTex() });
+    k.label('PIE OF THE DAY: GONE (RONNIE)', 1.2, 0.6, [(x0 + x1) / 2, 2.05, z0 + 0.03], [0, 0, 0], { bg: '#222', fg: '#fff', border: '#ffd400', size: 50 });
+    for (let i = 0; i < 3; i++) { k.box(0.04, 0.04, 0.06, x1 - 0.03, 1.75, z1 - 0.35 - i * 0.3, 0x333333); R(x1 - 0.1, z1 - 0.47 - i * 0.3, x1 - 0.04, z1 - 0.23 - i * 0.3, 0.75, 1.35, 0xf6f6f2); }
+    k.label('FOOD HYGIENE RATING: 5 (BEFORE RONNIE STARTED WORKING HERE)', 0.5, 0.3, [x1 - 0.025, 2.3, z0 + 5.3], [0, -Math.PI / 2, 0], { bg: '#2e7d32', fg: '#fff', border: '#fff', size: 34 });
+    k.label('ALLERGENS: ASK STAFF. RONNIE IS ALLERGIC TO SALAD.', 0.5, 0.3, [x1 - 0.025, 1.9, z0 + 7.2], [0, -Math.PI / 2, 0], { bg: '#fff8e1', fg: '#c62828', border: '#c62828', size: 34 });
+    // ---- the island: steel prep table with an under-shelf of pans, boards, a knife block, food prepped, a pan rack over it
+    const ix0 = x0 + 1.75, ix1 = x1 - 1.1, iz0 = z0 + 1.6, iz1 = z0 + 5.4;
+    R(ix0, iz0, ix1, iz1, 0.04, 0.9, SSL, { collide: true }); R(ix0 + 0.05, iz0 + 0.05, ix1 - 0.05, iz1 - 0.05, 0.025, 0.3, SS);
+    for (const [x, z] of [[ix0 + 0.04, iz0 + 0.04], [ix1 - 0.04, iz0 + 0.04], [ix0 + 0.04, iz1 - 0.04], [ix1 - 0.04, iz1 - 0.04], [ix0 + 0.04, (iz0 + iz1) / 2], [ix1 - 0.04, (iz0 + iz1) / 2]]) k.box(0.04, 0.88, 0.04, x, 0.44, z, SSD);
+    blk(ix0, iz0, ix1, iz1, 0.92);
+    for (let i = 0; i < 4; i++) k.cyl(0.14, 0.13, 0.12, ix0 + 0.25 + (i % 2) * 0.35, 0.38, iz0 + 0.4 + Math.floor(i / 2) * 0.8, 0x9aa0a8, 14);   // pans under it
+    R(ix0 + 0.1, iz0 + 0.2, ix0 + 0.5, iz0 + 0.5, 0.025, 0.935, 0xc89a5a); R(ix0 + 0.1, iz0 + 0.7, ix0 + 0.5, iz0 + 1.0, 0.025, 0.935, 0x2e7d32); R(ix0 + 0.1, iz0 + 1.2, ix0 + 0.5, iz0 + 1.5, 0.025, 0.935, 0xd32f2f);   // colour-coded boards
+    R(ix1 - 0.2, iz0 + 0.2, ix1 - 0.05, iz0 + 0.35, 0.2, 1.02, 0x2a1a10); for (let i = 0; i < 4; i++) R(ix1 - 0.18 + i * 0.03, iz0 + 0.25, ix1 - 0.17 + i * 0.03, iz0 + 0.3, 0.12, 1.17, 0x222222);
+    for (let i = 0; i < 6; i++) k.cyl(0.05, 0.05, 0.02, ix0 + 0.3, 0.95, iz0 + 1.8 + i * 0.13, 0xb0303a, 12);                             // burgers ready to cook
+    for (let i = 0; i < 3; i++) R(ix0 + 0.6, iz0 + 2.6 + i * 0.35, ix1 - 0.1, iz0 + 2.9 + i * 0.35, 0.1, 0.97, 0xd8dce0);                 // gastronorm trays
+    for (let i = 0; i < 3; i++) R(ix0 + 0.62, iz0 + 2.62 + i * 0.35, ix1 - 0.12, iz0 + 2.88 + i * 0.35, 0.01, 1.02, [0xffcf40, 0xe8e0c8, 0x6a3a1a][i]);
+    for (const z of [iz0 + 1.8, iz0 + 3.2]) k.spawns.push(new THREE.Vector3((ix0 + ix1) / 2, 1.0, z));
+    R(ix0, (iz0 + iz1) / 2 - 1.2, ix1, (iz0 + iz1) / 2 + 1.2, 0.03, H - 0.75, 0x2a2a2a);                                                  // pan rack overhead
+    for (const z of [(iz0 + iz1) / 2 - 1.15, (iz0 + iz1) / 2 + 1.15]) for (const x of [ix0 + 0.05, ix1 - 0.05]) k.cyl(0.006, 0.006, 0.72, x, H - 0.37, z, 0x222222, 4);
+    for (let i = 0; i < 6; i++) { const z = (iz0 + iz1) / 2 - 1.0 + i * 0.4, x = i % 2 ? ix0 + 0.3 : ix1 - 0.3; k.cyl(0.004, 0.004, 0.15, x, H - 0.84, z, 0x222222, 4); k.cyl(0.13, 0.11, 0.08, x, H - 0.96, z, [0x9aa0a8, 0x2a2a2a, 0xb87333][i % 3], 14); }
+    // bins (food waste, general, recycling), a mop and bucket, fire extinguisher and blanket, first aid
+    for (const [x, col] of [[x1 - 0.3, 0x2e7d32], [x1 - 0.75, 0x37474f], [x1 - 1.2, 0x1565c0]]) { k.cyl(0.2, 0.18, 0.75, x, 0.375, z1 - 0.3, col, 12, { block: true }); k.cyl(0.21, 0.21, 0.04, x, 0.77, z1 - 0.3, col, 12); }
+    k.cyl(0.16, 0.14, 0.28, x1 - 0.35, 0.14, doorZ1 + 0.45, 0xffd400, 12); k.box(0.02, 1.2, 0.02, x1 - 0.3, 0.75, doorZ1 + 0.45, 0x8a5a2a, { rot: [0, 0, 0.15] });
+    k.cyl(0.07, 0.07, 0.5, x1 - 0.12, 0.45, doorZ0 - 0.35, 0xd32f2f, 10); k.label('FIRE', 0.12, 0.07, [x1 - 0.12, 0.45, doorZ0 - 0.279], [0, 0, 0], { bg: '#d32f2f', fg: '#fff', border: null, size: 60 });
+    R(x1 - 0.06, doorZ0 - 0.75, x1, doorZ0 - 0.5, 0.3, 1.5, 0xd32f2f); R(x1 - 0.06, z1 - 1.6, x1, z1 - 1.3, 0.25, 1.6, 0x2e7d32);
+    k.label('KITCHEN — STAFF ONLY (ESPECIALLY NOT RONNIE)', 1.1, 0.3, [X(195) + 0.1, 2.45, Z(1012)], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c0392b', border: '#c0392b', size: 40 });
+    k.box(0.32, 0.6, 0.02, (x0 + x1) / 2 + 0.6, 0.3, z1 - 1.6, 0xffd400, { rot: [0.25, 0.6, 0] });                                          // wet floor sign
   }
   // the restaurant entrance: outside door, mat, a menu board
   { const x0 = X(15), x1 = X(195), z0 = Z(1060), z1 = Z(1190), zc = (z0 + z1) / 2;
@@ -673,7 +749,7 @@ export function buildPub(scene) {
   // library wallpaper and exposed brick on the pub's walls, dark dado rail
   clad(X(195) + 0.08, Z(1035) + 0.1, X(195) + 0.1, Z(1090) - 0.1, BOOKS, H, 1.2); clad(X(195) + 0.08, Z(1145) + 0.1, X(195) + 0.1, Z(1300), BOOKS, H, 1.2);
   clad(X(195) + 0.08, Z(610), X(195) + 0.1, Z(960), BRICK, H - RAISE, 0.9, RAISE);
-  R(X(195) + 0.06, Z(1035), X(195) + 0.12, Z(1305), 0.06, 0.95, DARKWOOD);
+  for (const [za, zb] of [[Z(1035), Z(1090)], [Z(1145), Z(1305)]]) R(X(195) + 0.06, za, X(195) + 0.12, zb, 0.06, 0.95, DARKWOOD);   // dado rail (not across the restaurant doorway)
   // ceiling spotlights everywhere (in the rooms), iron chandeliers, red wall lights
   for (let x = B.x0 + 1; x < B.x1; x += 2) for (let z = B.z0 + 1; z < B.z1; z += 2) if (inside(x, z) && !(x > X(195) && x < X(715) && z > Z(1305))) k.lamp(x, H - 0.01, z, 0xfffbe8, 0.035);
   // antler chandeliers (black antlers, little black drum shades), as in the photo
