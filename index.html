@@ -84,7 +84,9 @@
     @keyframes glow { 50% { filter: drop-shadow(0 0 10px #39ff14); } }
     .herobox { position: relative; width: min(380px, 92vw); height: min(330px, 40vh); margin: 2px auto 0; }
     .herobox canvas { position: absolute; inset: 0; }
-    .herobox.three #hero { display: none; }
+    /* the cartoon drawing is only a fallback: hidden while the 3D Ronnie loads, shown only if he can't */
+    .herobox #hero { display: none; }
+    .herobox.nothree:not(.three) #hero { display: block; }
     .herobox #hero { position: absolute; left: 50%; top: 0; height: 100%; width: auto; transform: translateX(-50%); }
     #hero { cursor: pointer; animation: bob 1.2s ease-in-out infinite; }
     #hero.gobble { animation: gobble .45s; }
@@ -429,7 +431,7 @@
       // a headset? offer to see him in VR
       const tvr = document.getElementById('title-vr');
       if (navigator.xr && navigator.xr.isSessionSupported) navigator.xr.isSessionSupported('immersive-vr').then(v => { if (v) tvr.hidden = false; }).catch(() => {});
-    }).catch((e) => console.warn('3D Ronnie unavailable, using the drawing', e));
+    }).catch((e) => { console.warn('3D Ronnie unavailable, using the drawing', e); box.classList.add('nothree'); });
   </script>
   <script type="module" src="./js/main.js"></script>
 </body>

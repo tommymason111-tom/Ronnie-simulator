@@ -102,6 +102,8 @@
     return say.textContent;
   };
   window.ronnieSay = ronnieSay;
+  // the 3D Ronnie never turned up (no WebGL, three.js didn't load)? show the drawing instead
+  setTimeout(() => { const hb = $('.herobox'); if (hb && !hb.classList.contains('three')) hb.classList.add('nothree'); }, 15000);
   window.menuSfx = (n) => { if (n === 'chomp') chompSfx(); else if (n === 'gulp') blip(160, 0.18, 'sine', 0.09); else if (n === 'pop') blip(620, 0.06); };
   window.menuNom = () => { const r = $('.herobox').getBoundingClientRect(); pop(r.left + r.width / 2, r.top + r.height * 0.55, ['NOM!', 'MUNCH!', 'GULP!', 'YUM!'][Math.floor(Math.random() * 4)], '#ffd400'); };
   hero.addEventListener('click', () => {          // the drawing (fallback)
