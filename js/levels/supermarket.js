@@ -179,9 +179,31 @@ export function buildSupermarket(scene) {
     for (let z = z0 + 0.4; z < z1 - 0.3; z += 0.6) k.spawns.push(new THREE.Vector3(cx, 0.95, z));
     blk(x0, z0, x1, z1, 0.9);
   };
-  chest(-10.95, -10.0, -13.6, -10.0, 1); chest(-10.95, -10.0, -9.8, -6.2, 1);
+  // tall upright freezers with glass doors: shelves of frozen food lit inside, a frosty glow, handles, a header strip
+  const freezerBank = (x, z0, z1, dir) => {      // a bank against x (its back), doors facing dir (+1 / -1 along x)
+    const D = 0.72, H2 = 2.15, len = z1 - z0, zc = (z0 + z1) / 2, fx = x + dir * D;
+    R(Math.min(x, fx), z0, Math.max(x, fx), z1, 0.12, 0.06, BLACK);                                         // plinth
+    R(Math.min(x, fx), z0, Math.max(x, fx), z1, 0.08, H2 + 0.04, WHITE);                                     // top
+    R(Math.min(x, x + dir * 0.06), z0, Math.max(x, x + dir * 0.06), z1, H2, H2 / 2, 0xe8eef2);               // back
+    for (const z of [z0, z1]) R(Math.min(x, fx), z - 0.03, Math.max(x, fx), z + 0.03, H2, H2 / 2, WHITE);   // ends
+    [0.35, 0.78, 1.21, 1.64].forEach(y => { R(Math.min(x, fx - dir * 0.08), z0 + 0.04, Math.max(x, fx - dir * 0.08), z1 - 0.04, 0.025, y, 0xd8e4ea, { collide: true });
+      stock.addRun('froze', x + dir * 0.35, y + 0.013, z0 + 0.08, z1 - 0.08, dir); stock.addRun('froze', x + dir * 0.18, y + 0.013, z0 + 0.08, z1 - 0.08, dir);
+      k.texBox(0.006, 0.035, len - 0.08, fx - dir * 0.08, y - 0.005, zc, PRICES, { tile: 0.5 });
+      for (let z = z0 + 0.4; z < z1 - 0.3; z += 0.7) k.spawns.push(new THREE.Vector3(x + dir * 0.45, y + 0.08, z)); });
+    // the glass doors: frames, mullions, handles, frosty glass
+    const nd = Math.max(1, Math.round(len / 0.75)), dw = len / nd;
+    const g = new THREE.Mesh(new THREE.PlaneGeometry(len - 0.06, H2 - 0.18), glassMat); g.position.set(fx + dir * 0.005, 0.09 + (H2 - 0.18) / 2 + 0.03, zc); g.rotation.y = dir * Math.PI / 2; g.renderOrder = 3; scene.add(g);
+    for (let i = 0; i <= nd; i++) R(fx - 0.025, z0 + i * dw - 0.025, fx + 0.025, z0 + i * dw + 0.025, H2 - 0.1, H2 / 2 + 0.03, 0x2a2c30);
+    for (const y of [0.13, H2 - 0.03]) R(fx - 0.025, z0, fx + 0.025, z1, 0.05, y, 0x2a2c30);
+    for (let i = 0; i < nd; i++) k.box(0.03, 0.55, 0.025, fx + dir * 0.04, 1.1, z0 + i * dw + dw - 0.09, 0xc8ccd0);
+    for (let z = z0 + 0.4; z < z1; z += 0.9) k.lamp(fx - dir * 0.06, H2 - 0.12, z, 0xe0f4ff, 0.05, false);
+    k.pool(fx + dir * 0.8, 0, zc, Math.min(4, len), 0xdff2ff);
+    R(Math.min(fx, fx + dir * 0.02), z0, Math.max(fx, fx + dir * 0.02), z1, 0.18, H2 + 0.15, BLUE);           // header strip
+    blk(Math.min(x, fx) - 0.02, z0, Math.max(x, fx) + 0.02, z1, H2 + 0.1);
+  };
+  freezerBank(-10.95, -13.6, -6.2, 1);
   // the freezer island: chest freezers back to back
-  chest(AX - 0.6, AX, ZA0, ZA1, -1); chest(AX, AX + 0.6, ZA0, ZA1, 1); R(AX - 0.02, ZA0, AX + 0.02, ZA1, 0.12, 0.92, BLUE);
+  freezerBank(AX, ZA0, ZA1, -1); freezerBank(AX, ZA0, ZA1, 1);                          // the freezer aisle: tall, doors both sides
   // the MIDDLE AISLE: wire basket bins on a low plinth, special buys tipped in, price cards on sticks
   const CARDS = ['AIR FRYER £39.99', 'DRILL SET £24.99', 'SNORKEL SET £9.99', 'HEATED BLANKET £29.99', 'SLOW COOKER £19.99', 'SKI GOGGLES £12.99', 'WELDING MASK £14.99', 'PRESSURE WASHER £59.99', 'KITCHEN ROLL 4 £1.99', 'PADDLING POOL £7.99'];
   const cardTex = CARDS.map(t => canvasTex(256, 128, (g, w, h) => { g.fillStyle = '#ffd400'; g.fillRect(0, 0, w, h); g.fillStyle = '#1e4ea8'; g.fillRect(0, 0, w, 30); g.fillStyle = '#fff'; g.font = `900 20px ${FONT}`; g.textAlign = 'center'; g.fillText('MIDDLE OF LIDL', w / 2, 22); const [name, price] = [t.slice(0, t.lastIndexOf(' ')), t.slice(t.lastIndexOf(' ') + 1)]; g.fillStyle = '#1e4ea8'; g.font = `900 22px ${FONT}`; g.fillText(name, w / 2, 58, w - 12); g.fillStyle = '#e53935'; g.font = `900 40px ${FONT}`; g.fillText(price, w / 2, 106); }));
