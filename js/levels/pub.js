@@ -298,7 +298,7 @@ export function buildPub(scene) {
   });
   // ================================================================ the main pub floor
   freeTable(X(515), Z(925), true); tallTable(X(605), Z(908));
-  smallTable(X(370), Z(1065) - 0.5, true); smallTable(X(445), Z(1065) - 0.5, true); freeTable(X(348), Z(1120), true); tallTable(X(573), Z(1090)); tallTable(X(520), Z(1000)); freeTable(X(636), Z(1190));
+  smallTable(X(370), Z(1065) - 0.5, true); smallTable(X(445), Z(1065) - 0.5, true); freeTable(X(348), Z(1120), true); tallTable(X(573), Z(1090)); tallTable(X(520), Z(1000)); freeTable(X(612), Z(1162));
   freeTable(X(370), Z(1250));
   bench(true, X(455) + 0.08, Z(1165) + 0.05, Z(1305) - 0.1, 1);                          // "Table booth" against the partition
   boothTable(X(455) + 0.95, Z(1195), true, 1); boothTable(X(455) + 0.95, Z(1265), true, 1);
