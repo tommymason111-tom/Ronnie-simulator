@@ -96,7 +96,6 @@ export function buildPub(scene) {
   const carpet = weaveCarpetTex(), tiles = tileTex('#8f8574', '#837a69', '#5e574b', 85);
   k.floor(X(195), Z(605), X(855), Z(1305), carpet, 0.002, 1.2);                          // the pub floor
   k.floor(X(615), Z(385), X(835), Z(605), tiles, 0.003, 1.0);                            // entrance (tiled)
-  k.floor(X(695), Z(605), X(855), Z(1245), tiles, 0.004, 1.0);                           // behind the bar
   k.floor(X(855), Z(690), X(1045), Z(975), tileTex('#b8b4aa', '#aca89e', '#8a867c', 48), 0.004, 0.9);   // staff room
   k.floor(X(835), Z(925), X(1045), Z(1305), tileTex('#9a9a96', '#8e8e8a', '#6e6e6a', 64), 0.005, 1.5);  // corridor + back room (concrete)
   k.floor(X(195), Z(1305), X(795), Z(1645), tileTex('#d8c8a8', '#ccbc9c', '#a89878', 72), 0.003, 1.0);  // conservatory (stone tiles)
@@ -130,7 +129,7 @@ export function buildPub(scene) {
   const door = WD(775, 385, 835, 425, 0x3a2416, H, 0.1);
   WZ(835, 425, 505, [], WALL); WD(835, 505, 755, 605, WALL);
   // the bar: top wall, back wall of the back bar, the corridor behind
-  WX(605, 695, 855); WZ(855, 605, 925, [[765, 830]]); WX(925, 835, 855); WZ(835, 925, 1245, [[1160, 1240]]);      // (a doorway from the corridor in behind the bar)      // (a door from behind the bar into the staff room)
+  WX(605, 695, 855); WZ(855, 605, 925, [[765, 830]]); WX(925, 835, 855);      // (a doorway from the corridor in behind the bar)      // (a door from behind the bar into the staff room)
   // staff room, back room, gambling room
   WX(690, 855, 1045, [], WALL); WZ(1045, 690, 1305, [], WALL); WX(975, 895, 1045); WX(975, 855, 895, [[858, 892]]);
   WZ(895, 975, 1305, [[1235, 1300]]);
@@ -266,7 +265,7 @@ export function buildPub(scene) {
     put(new THREE.BoxGeometry(0.095, 0.003, 0.095), 0xc8202a, x, z, 0.4, 0.12, 1.062, -0.08); put(new THREE.BoxGeometry(0.07, 0.003, 0.07), 0xffffff, x, z, 0.4, 0.12, 1.064, -0.08);
     tentCard(x - 0.08, 1.06, z + 0.06, 0.5);
     k.spawns.push(new THREE.Vector3(x + 0.1, 1.14, z));
-    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + 0.4; barChair(x + Math.sin(a) * 0.62, z + Math.cos(a) * 0.62, a + Math.PI); }
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + 0.4; barChair(x + Math.sin(a) * 0.62, z + Math.cos(a) * 0.62, a); }      // (facing in)
     k.pool(x, 1.05, z, 1.0, 0xffd090);
   };
   // a small two-seater on a black pedestal (cross foot), as along the panelled wall in the photo
@@ -365,10 +364,6 @@ export function buildPub(scene) {
   const bar2 = counter(695, 845, 735, 965, 0.55, -1);
   counter(735, 965, 795, 985, 0.55, -1);
   const bar4 = counter(795, 985, 795, 1230, 0.36, -1);
-  // the lifting flap at the right-hand end: the way in behind the bar
-  { const x0 = X(795) + 0.02, x1 = X(835) - 0.1, z = Z(1235);
-    k.box(0.04, 0.6, 0.36, x1 - 0.02, 1.37, z - 0.02, TOPC); k.cyl(0.02, 0.02, 0.06, x1 - 0.02, 1.08, z - 0.15, 0x999999, 8); }
-  k.label('BAR — STAFF ONLY ←', 0.7, 0.2, [X(835) + 0.095, 2.4, Z(1200)], [0, Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: null, size: 50 });
   // the fonts: chrome T-bars with round blue and white badges, and a few hand pumps with clips
   const font = (b, s2) => { const [x, z] = b.at(s2, 0.3);
     k.cyl(0.04, 0.045, 0.04, x, 1.1, z, CHROMEC, 12); k.cyl(0.022, 0.022, 0.32, x, 1.28, z, CHROMEC, 10);
@@ -381,10 +376,26 @@ export function buildPub(scene) {
   for (const s2 of [0.9, 2.1, 3.6, 4.8]) font(bar1, s2); for (const [s2, c] of [[1.5, 0xd4af37], [2.7, 0x2e7d32], [3.0, 0xc8102e]]) pump(bar1, s2, c);
   for (const s2 of [0.8, 2.6, 4.4]) font(bar4, s2); pump(bar4, 1.7, 0xd4af37);
   { const [x, z] = bar1.at(5.4, 0.3); R(x - 0.15, z - 0.12, x + 0.15, z + 0.12, 0.22, 1.19, 0x222222); R(x - 0.12, z - 0.1, x + 0.12, z + 0.1, 0.16, 1.4, 0x2a6ad8); }      // the till
-  // slate tiles on the floor in front of the bar
-  { const slate = tileTex('#3a3c3e', '#34363a', '#24262a', 72);
-    k.floor(X(695) - 1.4, Z(605), X(695), Z(845), slate, 0.006, 0.9); k.floor(X(695) - 1.3, Z(845), X(795), Z(1000), slate, 0.0065, 0.9); k.floor(X(795) - 1.4, Z(985), X(795), Z(1245), slate, 0.006, 0.9);
-    k.floor(X(795) - 0.4, Z(1245), X(895), Z(1305), slate, 0.006, 0.9); }
+  // the floor at the bar: one smooth sweep of diagonal slate along the front (following the counter round its
+  // bends, curving out to meet the walkway), and terracotta quarry tiles all through the space behind the bar
+  { const flr = (pts, tex, scale, rot, order) => {
+      const g = new THREE.ShapeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, z))), 24); g.rotateX(Math.PI / 2);
+      const uv = g.attributes.uv, pa = g.attributes.position, c = Math.cos(rot), s2 = Math.sin(rot);
+      for (let i = 0; i < uv.count; i++) { const x = pa.getX(i), z = pa.getZ(i); uv.setXY(i, (x * c - z * s2) / scale, (x * s2 + z * c) / scale); }
+      const t = tex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -order, polygonOffsetUnits: -4 * order }));
+      m.position.y = 0.003; scene.add(m); };
+    // the counter's customer face, as a smooth curve
+    const path = new THREE.CatmullRomCurve3([[695, 605], [695, 800], [705, 880], [735, 955], [775, 982], [795, 1010], [795, 1245]].map(([x, z]) => new THREE.Vector3(X(x), 0, Z(z))), false, 'centripetal').getPoints(60);
+    // the outer edge: 1.5m out from the counter, with a gentle wave, sweeping round at the ends
+    const outer = path.map((p, i) => { const q = path[Math.min(path.length - 1, i + 1)], r = path[Math.max(0, i - 1)], dx = q.x - r.x, dz = q.z - r.z, L = Math.hypot(dx, dz) || 1;
+      const w = 1.5 + 0.18 * Math.sin(i * 0.35); return [p.x - (dz / L) * w, p.z + (dx / L) * w]; });
+    const front = path.map(p => [p.x, p.z]);
+    // (the walkway at the end of the bar is slate too)
+    flr([...front.slice().reverse(), ...outer.map(([x, z]) => [x, z])], tileTex('#3e3c3a', '#383634', '#262422', 72), 0.9, Math.PI / 4, 30);
+    flr([[X(795) - 1.6, Z(1245)], [X(895), Z(1245)], [X(895), Z(1305)], [X(735), Z(1305)], [X(735), Z(1290)]], tileTex('#3e3c3a', '#383634', '#262422', 72), 0.9, Math.PI / 4, 30);
+    flr([...front, [X(895), Z(1245)], [X(895), Z(925)], [X(855), Z(925)], [X(855), Z(605)]], tileTex('#a8583a', '#9c5034', '#6e3422', 56), 0.45, 0, 31);
+  }
   // the back bar: along the back wall (with the staff-room door in it) and the shallow run behind the long bit
   const OPT = [0x6a1a1a, 0xd4a017, 0xe8e8e8, 0x2e5a2a, 0x8a4a1a, 0x1f3f8a, 0xc0c0c0, 0x7a2a5a, 0xf0d8a0];
   const metro = canvasTex(128, 64, (g, w, h) => { g.fillStyle = '#c8ccc8'; g.fillRect(0, 0, w, h); for (let r = 0; r < 4; r++) for (let c = -1; c < 4; c++) { const x = c * 32 + (r % 2) * 16, y = r * 16; g.fillStyle = '#f6f7f4'; g.fillRect(x + 1, y + 1, 30, 14); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(x + 2, y + 2, 26, 3); } });
@@ -395,11 +406,11 @@ export function buildPub(scene) {
     k.cyl(0.036, 0.036, 0.07, x, y + s2 * 0.1, z, 0xf0e8d0, 8);                                          // label
     if (!up) { k.cyl(0.02, 0.02, 0.07, x, y + 0.36 * s2 - 0.0, z, 0xe8f4f8, 8); k.cyl(0.024, 0.024, 0.02, x, y + 0.405 * s2, z, CHROMEC, 8); }    // the optic
   };
-  const backBar = (W, za, zb, deep) => {      // along z against a wall at x = W, facing -x
+  const backBar = (W, za, zb, deep, skip = []) => {      // along z against a wall at x = W, facing -x (skip: spans with no fridge door)
     const zc = (za + zb) / 2, len = zb - za;
     if (deep) {
       R(W - 0.55, za, W, zb, 0.88, 0.44, 0x4a2c18, { collide: true, block: true });
-      for (let z = za + 0.05; z < zb - 0.6; z += 0.66) k.label('fridge', 0.6, 0.72, [W - 0.555, 0.44, z + 0.32], [0, -Math.PI / 2, 0], { tex: fridgeDoor, glow: true });
+      for (let z = za + 0.05; z < zb - 0.6; z += 0.66) if (!skip.some(([a, b]) => z + 0.62 > a && z < b)) k.label('fridge', 0.6, 0.72, [W - 0.555, 0.44, z + 0.32], [0, -Math.PI / 2, 0], { tex: fridgeDoor, glow: true });
       R(W - 0.6, za, W, zb, 0.04, 0.9, 0x6a4a2a, { collide: true });
       for (let z = za + 0.2; z < zb - 0.1; z += 0.5) k.spawns.push(new THREE.Vector3(W - 0.3, 0.98, z));
     }
@@ -419,7 +430,23 @@ export function buildPub(scene) {
     }
   };
   backBar(X(855) - 0.08, Z(612), Z(765) - 0.05, true); backBar(X(855) - 0.08, Z(830) + 0.05, Z(920), true);
-  backBar(X(835) - 0.08, Z(935), Z(1150), false);
+  backBar(X(895) - 0.08, Z(1012), Z(1228), true, [[Z(1015) + 0.7, Z(1015) + 1.35]]);
+  // ...and fitted out like a real bar: a double sink with a mixer tap, the glass washer, an ice well, a bottle bin,
+  // mixers and cordials, racks of clean glasses, bar towels, the drip trays and the cash register
+  { const W = X(895) - 0.08, z0 = Z(1015);
+    R(W - 0.56, z0 + 0.1, W - 0.06, z0 + 0.62, 0.02, 0.905, 0xc8ccd2); for (const dz of [0.24, 0.48]) R(W - 0.5, z0 + dz - 0.1, W - 0.12, z0 + dz + 0.08, 0.012, 0.89, 0x8a9098);   // double sink
+    k.cyl(0.015, 0.015, 0.28, W - 0.08, 1.05, z0 + 0.36, 0xd8dce0, 8); { const sp = new THREE.CylinderGeometry(0.012, 0.012, 0.18, 8); sp.rotateZ(Math.PI / 2); k.parts.push(part(sp, 0xd8dce0, [W - 0.16, 1.18, z0 + 0.36])); }
+    R(W - 0.575, z0 + 0.75, W - 0.55, z0 + 1.3, 0.62, 0.36, 0xb8bcc2); R(W - 0.585, z0 + 0.78, W - 0.575, z0 + 1.27, 0.12, 0.6, 0x2a2a2a); k.box(0.02, 0.03, 0.03, W - 0.59, 0.6, z0 + 1.02, 0x4caf50);   // glass washer (built in)
+    R(W - 0.56, z0 + 1.4, W - 0.06, z0 + 1.85, 0.03, 0.905, 0xc8ccd2); for (let i = 0; i < 40; i++) k.parts.push(part(new THREE.BoxGeometry(0.03, 0.03, 0.03), 0xe8f6fa, [W - 0.5 + (i % 8) * 0.055, 0.93, z0 + 1.45 + Math.floor(i / 8) * 0.075], [i, i * 2, 0]));   // ice well
+    k.cyl(0.16, 0.14, 0.48, W - 0.8, 0.24, z0 + 4.9, 0x1a4a8a, 10, { block: true }); for (let i = 0; i < 7; i++) k.cyl(0.025, 0.025, 0.22, W - 0.86 + (i % 3) * 0.06, 0.53, z0 + 4.85 + Math.floor(i / 3) * 0.05, 0x1e5a24, 8);   // bottle bin
+    for (let i = 0; i < 6; i++) { k.cyl(0.03, 0.03, 0.2, W - 0.3, 1.0, z0 + 2.6 + i * 0.09, [0xd32f2f, 0xffffff, 0x2e7d32, 0xff9800, 0x5d4037, 0xffeb3b][i], 8); k.cyl(0.012, 0.012, 0.05, W - 0.3, 1.12, z0 + 2.6 + i * 0.09, 0x222222, 6); }   // mixers & cordials
+    for (let r2 = 0; r2 < 3; r2++) for (let i = 0; i < 8; i++) k.cyl(0.03, 0.025, 0.12, W - 0.48 + r2 * 0.07, 0.98, z0 + 3.3 + i * 0.07, 0xd8eef2, 8);   // a rack of clean glasses
+    R(W - 0.06, z0 + 0.62, W - 0.04, z0 + 0.72, 0.3, 0.75, 0x2e6a9a); R(W - 0.06, z0 + 3.0, W - 0.04, z0 + 3.1, 0.3, 0.75, 0xffffff);   // bar towels
+    R(W - 0.38, z0 + 4.2, W - 0.06, z0 + 4.55, 0.2, 1.0, 0x222222); R(W - 0.35, z0 + 4.22, W - 0.09, z0 + 4.53, 0.12, 1.16, 0x2a6ad8);   // cash register
+    k.spawns.push(new THREE.Vector3(W - 0.3, 0.98, z0 + 2.9));
+  }
+  // under the counter on the staff side: drip trays, a second sink, a bin, more glasses
+  for (const b of [bar1, bar4]) { const [x, z] = b.at(b.L * 0.35, 0.62); k.cyl(0.16, 0.14, 0.5, x + b.nx * 0.2, 0.25, z + b.nz * 0.2, 0x2e2e2e, 10); }
   // along the top wall: the MONSTOR fridge and the coffee machine, a chalkboard
   R(X(760), Z(605) + 0.08, X(830), Z(605) + 0.62, 1.9, 0.95, 0x111111, { block: true });
   k.label('fridge', 1.4, 1.7, [(X(760) + X(830)) / 2, 0.98, Z(605) + 0.63], [0, 0, 0], { tex: monstorFridgeTex(), glow: true });
@@ -431,7 +458,7 @@ export function buildPub(scene) {
     k.label("TODAY'S ALES: OYSTER STOUT · RONNIE'S RUIN · PIE & PINT £9.99", 0.44, 0.62, [x - bar1.nx * 0.025, 1.55, z - bar1.nz * 0.025], [0, bar1.ry, 0], { bg: '#1a1a1a', fg: '#f5f0e6', border: null, size: 34 }); }
   // the canopy over the bar: cream tongue-and-groove with a grey trim, ribbed glass globe lights hanging off it
   const CY = 2.62;
-  for (const [x0, z0, x1, z1] of [[X(695) - 0.25, Z(605), X(855), Z(925)], [X(695) - 0.25, Z(845), X(835), Z(985) + 0.3], [X(795) - 0.25, Z(985), X(835), Z(1245)]]) R(x0, z0, x1, z1, 0.05, CY, 0xf4efe2);
+  for (const [x0, z0, x1, z1] of [[X(695) - 0.25, Z(605), X(855), Z(925)], [X(695) - 0.25, Z(845), X(835), Z(985) + 0.3], [X(795) - 0.25, Z(985), X(895), Z(1245)], [X(835), Z(925), X(895), Z(985)]]) R(x0, z0, x1, z1, 0.05, CY, 0xf4efe2);
   for (const b of [bar1, bar2, bar4]) { const [px, pz] = b.at(b.L / 2, -0.12);
     if (Math.abs(b.uz) > 0.95) k.texBox(0.06, H - CY, b.L + 0.1, px, CY + (H - CY) / 2, pz, TNG, { tile: 0.5 }); else k.box(b.L + 0.1, H - CY, 0.06, px, CY + (H - CY) / 2, pz, 0xf1e9d6, { rot: [0, b.ry, 0] });
     k.box(b.L + 0.12, 0.06, 0.1, px, CY - 0.01, pz, 0x7a7e80, { rot: [0, b.ry, 0] }); }

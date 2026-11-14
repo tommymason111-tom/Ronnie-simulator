@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.5.0', GAME_DATE = '14 Nov 2026';
+var GAME_VERSION = '1.5.1', GAME_DATE = '14 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['1.5.1', ['Oysterfleet: the corridor behind the bar is gone, so behind the bar is one big space you can walk straight into', 'Behind the bar: a double sink, glass washer, ice well, bottle fridges, mixers, glasses, a bottle bin and the till', 'Smooth flowing slate floor along the front of the bar, quarry tiles behind it', 'Every chair faces its table, the tall bar chairs too']],
   ['1.5.0', ['Lidl: self checkouts rebuilt (screens facing you, a shelf for your shopping, a bagging area)', 'Lidl: staff sit on the cashier side of the tills', 'Lidl: slimmer stacks at the aisle ends, a clear walkway round them', 'Lidl: bakery corners joined up, bag stands removed', 'Lidl: you start in the foyer by the flowers, facing the way in', 'Oysterfleet: a fig plant by the fruit machine', 'Dylan has black trainers on']],
   ['1.4.2', ['Oysterfleet: windows through to the conservatory, a brick cubby with a booth and TV', 'Tall tables with cream leather bar chairs, one at the fruit machine', 'Bar food menus on every table', 'Fixed walls that had gone missing at the conservatory and beer garden door']],
   ['1.4.1', ['Oysterfleet bar rebuilt from the real one: open behind, walk in from the end, into the staff room', 'No more flickering walls, floors or signs', 'Every sign fits its words and sits on a wall (nothing floating)', 'Beer mats on every table']],
