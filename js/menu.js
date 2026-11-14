@@ -1,3 +1,5 @@
+// the game's version (bump this with each release)
+var GAME_VERSION = '1.4.0', GAME_DATE = '14 Nov 2026';
 // RONNIE SIMULATOR — the start screen: a few animated screens you tap through.
 //   TITLE   bouncing logo, tap Ronnie (he chomps and talks), catch the falling food
 //   PLACE   swipe through the places, each with its own little animated scene
@@ -58,6 +60,11 @@
   if (!PLACES.some(p => p.id === place)) place = 'pub';
   if (!GAME_IDS.includes(mode)) mode = 'everyone';      // old links to Classic / Squad Intervention / Catch
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  // settings cog (top corner of the title screen): shows the version you're playing
+  $('#set-version').textContent = 'v' + GAME_VERSION; $('#set-date').textContent = GAME_DATE;
+  $('#cog').addEventListener('click', () => { $('#settings').hidden = false; });
+  $('#set-close').addEventListener('click', () => { $('#settings').hidden = true; });
+  $('#settings').addEventListener('click', (e) => { if (e.target.id === 'settings') $('#settings').hidden = true; });
   const start = $('#start');
 
   // ---------------------------------------------------------------- little sounds + buzz

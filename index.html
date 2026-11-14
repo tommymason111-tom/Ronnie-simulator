@@ -83,6 +83,16 @@
     .crumb { position: fixed; z-index: 60; width: 9px; height: 9px; border-radius: 3px; pointer-events: none; animation: crumb .7s ease-out forwards; }
     @keyframes crumb { to { transform: translate(var(--dx), calc(var(--dy) + 160px)) rotate(400deg); opacity: 0; } }
     .screen { position: absolute; inset: 0; padding: 18px 16px 40px; box-sizing: border-box; overflow-y: auto; opacity: 0; pointer-events: none; transform: translateX(0); transition: transform .42s cubic-bezier(.2,.9,.3,1.2), opacity .3s; }
+    #cog { position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.35); background: rgba(0,0,0,0.35); font-size: 22px; line-height: 40px; padding: 0; cursor: pointer; z-index: 5; transition: transform .4s; }
+    #cog:hover, #cog:active { transform: rotate(90deg); }
+    #settings { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 50; }
+    #settings[hidden] { display: none; }
+    #settings .setbox { background: #1b1f3a; border: 3px solid #ffd400; border-radius: 18px; padding: 18px 22px; min-width: 240px; color: #fff; box-shadow: 0 12px 40px rgba(0,0,0,0.6); animation: popIn .3s cubic-bezier(.2,1.6,.4,1); }
+    #settings h3 { margin: 0 0 12px; color: #ffd400; font: 900 22px "Arial Black", Impact, sans-serif; }
+    #settings .setrow { display: flex; justify-content: space-between; gap: 24px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.15); font: 700 15px Arial, sans-serif; }
+    #settings .setrow b { color: #7cff6a; }
+    #settings .midbtn { margin-top: 14px; }
+    @keyframes popIn { from { transform: scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
     .screen { z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; }
     .screen > * { max-width: 100%; }
     .carousel, #mode-grid, #roster, .howpane { width: 100%; }
@@ -285,6 +295,15 @@
 
     <!-- TITLE -->
     <section class="screen on" data-s="title">
+      <button id="cog" aria-label="Settings" title="Settings">⚙️</button>
+      <div id="settings" hidden>
+        <div class="setbox">
+          <h3>⚙️ SETTINGS</h3>
+          <div class="setrow"><span>Version</span><b id="set-version"></b></div>
+          <div class="setrow"><span>Released</span><b id="set-date"></b></div>
+          <button class="midbtn" id="set-close">CLOSE</button>
+        </div>
+      </div>
       <div id="logo"><span class="bounce l1">RONNIE</span><span class="bounce l2">SIMULATOR</span></div>
       <div class="herobox">
         <svg id="hero" viewBox="0 0 300 300" aria-label="Ronnie eating a burger">
