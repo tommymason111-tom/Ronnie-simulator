@@ -589,9 +589,24 @@ export class SquadMember extends Character {
     }
   }
 
+  // move a held glass/bottle out of the hand to sit against the palm: the scanned hands are open with the palm
+  // toward the thigh (the body's midline in the bind pose), so push the glass that way by its radius,
+  // a little up (fingers wrap round its lower half) and a touch forward of the knuckles
+  holdBeside(arm, pos, r) {
+    const hc = this.rag.handC && this.rag.handC[arm], s = this.rag.height / 1.68;
+    const bx = hc ? hc.x : this.rag.parts[arm].def.b.x;
+    const q = this.rag.partQuat(arm, _q);
+    const palm = _v2.set(-Math.sign(bx || 1), 0, 0.25).applyQuaternion(q);
+    if (palm.normalize().y > 0.6) { pos.y += 0.075 * s; return; }      // hand turned palm-up: the glass stands on the palm
+    palm.y = 0;
+    if (palm.lengthSq() < 1e-4) palm.set(Math.sin(this.rag.yaw), 0, Math.cos(this.rag.yaw));
+    palm.normalize();
+    pos.addScaledVector(palm, r + 0.022 * s); pos.y += 0.03 * s;
+  }
+
   afterUpdate(dt, ctx) {
     // props that follow the hands during an attack
-    if (this.handProp) { this.rag.grip('lArmR', this.handProp.position); this.handProp.rotation.set(0, this.rag.yaw, 0); if (this.attack === 'diet') this.handProp.position.y += 0.06; }
+    if (this.handProp) { this.rag.grip('lArmR', this.handProp.position); this.handProp.rotation.set(0, this.rag.yaw, 0); if (this.attack === 'diet') this.handProp.position.y += 0.06; if (this.attack === 'pepsi') this.holdBeside('lArmR', this.handProp.position, 0.045); }
     if (this.guitar) {
       this.rag.pos('chest', this.guitar.position); const yaw = this.rag.yaw;
       this.guitar.position.add(_v.set(Math.sin(yaw) * 0.2 - Math.cos(yaw) * 0.12, -0.18, Math.cos(yaw) * 0.2 + Math.sin(yaw) * 0.12));
@@ -621,9 +636,9 @@ export class SquadMember extends Character {
       } else if (this.def.look.prop === 'jug') { // held by the handle, the jug hanging on the outside
         const pel = this.rag.parts.pelvis.body.position;
         this.prop.rotation.set(0, Math.atan2(hand.x - pel.x, hand.z - pel.z) + Math.PI / 2, 0);
-      } else {                                   // pint: upright, fingers round the glass
+      } else {                                   // pint: upright, held round its side like a cup (palm on the glass, not through it)
         this.prop.quaternion.identity();
-        this.prop.position.y += 0.015;
+        this.holdBeside(arm, this.prop.position, 0.045);
       }
     }
     this.actAfter && this.actAfter(dt, ctx);
