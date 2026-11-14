@@ -19,7 +19,7 @@ import { buildSupermarket } from './levels/supermarket.js';
 import { buildRestaurant } from './levels/restaurant.js';
 
 // wait for the start screen: where are we playing, and what mode?
-const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'bedroom', mode: 'classic' }));
+const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'pub', mode: 'everyone' }));
 
 // ---------------- renderer / scene ----------------
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -472,7 +472,7 @@ function startFlat() {
   touch.show(true);
   director.start(chosenMode());
 }
-function chosenMode() { return SEL.mode || 'classic'; }
+function chosenMode() { return SEL.mode === 'classic' || SEL.mode === 'intervention' || !SEL.mode ? 'everyone' : SEL.mode; }   // old links still work
 document.getElementById('play-flat').addEventListener('click', startFlat);
 
 // ---------------- Enter VR ----------------

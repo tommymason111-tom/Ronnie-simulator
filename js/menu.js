@@ -15,9 +15,7 @@
     { id: 'bedroom', ico: '🛏️', name: "RONNIE'S BEDROOM", desc: 'Where it all begins. Small, cosy, full of cans.', bg: 'linear-gradient(160deg,#3a2a6a,#1f4fbf)', props: ['🛏️', '🥫', '🎮', '🍕', '🥫'] },
   ];
   const MODES = [
-    { id: 'classic', ico: '🍔', name: 'CLASSIC', desc: "Eat, grow, dodge Tommy's broccoli. Tommy trips you up now and then.", stars: 1, who: 'Tommy' },
-    { id: 'everyone', ico: '👥', name: 'THE WHOLE SQUAD', desc: 'Everyone at once, taking turns to attack you. A countdown shows the next one.', stars: 3, who: 'All 14', big: true },
-    { id: 'intervention', ico: '📣', name: 'SQUAD INTERVENTION', desc: 'They try to stop you, one by one. Eat faster and they come sooner.', stars: 2, who: 'The squad' },
+    { id: 'everyone', ico: '👥', name: 'THE WHOLE SQUAD', desc: 'The main game. Everyone is here, taking turns to attack you while you eat. A countdown shows the next one.', stars: 3, who: 'Everyone' },
     { id: 'veggie', ico: '🥦', name: 'VEGGIE WAR', desc: 'Waves of veg. Swat it, block it, survive 2½ minutes.', stars: 2, who: 'Up to 6' },
     { id: 'date', ico: '💜', name: 'DATE NIGHT', desc: "Eat when Chloe looks away. Three catches and it's salad.", stars: 2, who: 'Chloe + the lads', place: 'restaurant' },
     { id: 'catch', ico: '🏈', name: 'CATCH & EAT', desc: "Harry throws food. Catch it in your mouth.", stars: 1, who: 'Harry' },
@@ -49,6 +47,7 @@
   const quick = !!q.get('go');
   let place = (quick && q.get('place')) || 'pub', mode = (quick && q.get('mode')) || 'everyone';
   if (!PLACES.some(p => p.id === place)) place = 'pub';
+  if (!MODES.some(m => m.id === mode)) mode = 'everyone';      // old links to Classic / Squad Intervention
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const start = $('#start');
 
@@ -145,7 +144,7 @@
     place = PLACES[pi].id;
     $$('.scene', track).forEach((el, i) => { el.classList.toggle('cur', i === pi); el.style.transform = `translateX(${(i - pi) * 104}%) scale(${i === pi ? 1 : 0.86}) rotate(${(i - pi) * 3}deg)`; el.style.opacity = Math.abs(i - pi) > 1 ? 0 : i === pi ? 1 : 0.5; });
     $$('#place-dots i').forEach((d, i) => d.classList.toggle('on', i === pi));
-    if (!ok(MODES.find(m => m.id === mode), place)) mode = place === 'restaurant' ? 'date' : 'classic';
+    if (!MODES.some(m => m.id === mode) || !ok(MODES.find(m => m.id === mode), place)) mode = 'everyone';
   }
   const stepPlace = (d) => { pi = (pi + d + PLACES.length) % PLACES.length; drawPlace(); blip(440 + pi * 60, 0.05); };
   $('#place-prev').addEventListener('click', () => stepPlace(-1));

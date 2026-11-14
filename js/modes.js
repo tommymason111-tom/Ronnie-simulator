@@ -18,19 +18,20 @@ import { TURKEY_LEN } from './cutscenes.js';
 import { pickVeg, pickJunk } from './config.js';
 
 export const MODES = {
-  classic:      { name: 'CLASSIC', desc: 'Eat, grow, dodge Tommy\'s broccoli.', time: 0 },
-  intervention: { name: 'SQUAD INTERVENTION', desc: 'Everyone tries to stop you. Nobody can.', time: 240 },
+  everyone:     { name: 'THE WHOLE SQUAD', desc: 'Everyone\'s here. Eat while they take turns to stop you.', time: 0 },
+  classic:      { name: 'CLASSIC', desc: 'Eat, grow, dodge Tommy\'s broccoli.', time: 0, hidden: true },
+  intervention: { name: 'SQUAD INTERVENTION', desc: 'Everyone tries to stop you. Nobody can.', time: 240, hidden: true },
   veggie:       { name: 'VEGGIE WAR', desc: 'The squad attacks with veg. Survive 2½ minutes.', time: 150 },
   catch:        { name: 'CATCH & EAT', desc: 'Catch Harry\'s throws in your mouth.', time: 70 },
   chonkoff:     { name: 'EAT-OFF', desc: '60 seconds. Eat everything.', time: 60 },
   chonkoff2:    { name: 'EAT-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
-  everyone:     { name: 'THE WHOLE SQUAD', desc: 'Everyone\'s here. Eat while they try to stop you.', time: 0, big: true },
   date:         { name: 'DATE NIGHT', desc: 'Eat when Chloe looks away. 3 catches and it\'s salad.', time: 180, place: 'restaurant' },
 };
 // which modes each place offers (also used by the start screen)
 export function modesFor(place) {
   return Object.keys(MODES).filter(id => {
     const m = MODES[id];
+    if (m.hidden) return false;
     if (m.place && m.place !== place) return false;
     if (m.big && place === 'bedroom') return false;
     return true;
@@ -163,7 +164,7 @@ export class Director {
     let squad = [];
     const big = !!g.room.big, everyone = Object.keys(SQUAD);
     if (id === 'intervention') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 4);
-    else if (id === 'everyone') squad = shuffle(everyone);
+    else if (id === 'everyone') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 5);
     else if (id === 'date') squad = ['chloe', ...shuffle(everyone.filter(s => s !== 'chloe')).slice(0, 6 + Math.floor(Math.random() * 4))];   // the mates are out for dinner too
     else if (id === 'veggie') squad = shuffle(['chloe', 'lewis', 'harry', 'noah', 'dylan', 'oliver', 'connor', 'ethan', 'ian', 'alfie', 'ben']).slice(0, big ? 6 : 3);
     else if (id === 'catch') squad = ['harry'];
