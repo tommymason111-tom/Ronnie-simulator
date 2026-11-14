@@ -102,7 +102,11 @@ export function buildGarden(scene) {
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.01; scene.add(ground);
   for (const [x, z, w, h, c] of [[-6, -23, 10, 6.5, 0x9a5a3a], [6, -23, 9, 6, 0xa86a48], [-12.5, -9, 6, 6, 0x8a4a32], [12.5, -6, 6, 6.2, 0xb07a52], [-12.5, 6, 6, 6, 0x9a6a4a], [12.5, 7, 6, 5.8, 0xa45c3c]]) {
     R(x - w / 2, z - 2.5, x + w / 2, z + 2.5, h, h / 2, c);
-    k.box(w + 0.4, 0.25, 5.6, x, h + 0.9, z, 0x4a3a3a);
+    { const rise = 1.6, half = 2.5 + 0.25, ang = Math.atan2(rise, 2.5), sl = half / Math.cos(ang);       // a proper pitched roof sitting on the walls, gable ends filled in
+      for (const sd of [-1, 1]) k.box(w + 0.3, 0.14, sl, x, h + rise / 2 - 0.05, z + sd * half / 2, 0x4a3a3a, { rot: [sd * ang, 0, 0] });
+      const gs = new THREE.Shape([new THREE.Vector2(-2.5, 0), new THREE.Vector2(2.5, 0), new THREE.Vector2(0, rise)]);
+      for (const sx of [-1, 1]) { const m = new THREE.Mesh(new THREE.ShapeGeometry(gs), new THREE.MeshLambertMaterial({ color: c, side: THREE.DoubleSide })); m.rotation.y = Math.PI / 2; m.position.set(x + sx * w / 2, h, z); scene.add(m); }
+      k.box(0.6, 0.9, 0.6, x + w * 0.25, h + rise * 0.6, z, 0x7a4030); }                               // chimney
     for (let i = 0; i < Math.floor(w / 2.2); i++) for (const yy of [1.5, 3.6]) k.box(0.9, 1.0, 0.05, x - w / 2 + 1.2 + i * 2.2, yy, z + 2.52, 0xbfe0f0);
   }
   for (const [x, z, s] of [[-9.5, -19, 1.2], [3, -20, 1.5], [10, -15, 1.1], [-10, -3, 1.3], [10, 1, 1.2]]) {
@@ -353,11 +357,14 @@ export function buildGarden(scene) {
   k.blockers.push({ x0: 3.4, x1: HX1, z0: 6.4, z1: 10.8, y1: 2.6 });
   stairRunner(k, { x0: 3.62, x1: 4.23, zTop: 10.8 });
   // the banister follows the stairs up: newel post at the bottom, a sloped handrail, spindles off every step
-  { const bx = 3.37, rise = (z) => 0.2 * (10.8 - z) / 0.34, zTop = 10.8 - 2.6 * 0.34 / 0.2 * (1.55 / 2.6);
-    const y1 = rise(10.8) + 0.92, y2 = rise(zTop) + 0.92, dz = 10.8 - zTop, dy = y2 - y1;
-    k.box(0.07, 0.06, Math.hypot(dz, dy), bx, (y1 + y2) / 2, (10.8 + zTop) / 2, DARKWOOD, { rot: [Math.atan2(dy, dz), 0, 0] });   // handrail
-    k.box(0.1, 1.15, 0.1, bx, 0.575, 10.85, DARKWOOD, { block: true }); k.box(0.13, 0.06, 0.13, bx, 1.18, 10.85, DARKWOOD);
-    for (let z = 10.7; z > zTop + 0.05; z -= 0.17) { const yb = rise(z - 0.17) + 0.2, yt = rise(z) + 0.9; k.box(0.03, yt - yb, 0.03, bx, (yb + yt) / 2, z, 0xf0ece4); }
+  { // the handrail runs from the newel post straight up into the ceiling, spindles stand on every tread right up to it
+    const bx = 3.46, rail = (z) => 0.2 * (10.8 - z) / 0.34 + 0.9, zc = 10.8 - (CEIL - 0.9) * 0.34 / 0.2, za = 10.86;
+    const y1 = rail(za), y2 = CEIL + 0.02, dz = za - zc, dy = y2 - y1;
+    k.box(0.07, 0.06, Math.hypot(dz, dy), bx, (y1 + y2) / 2, (za + zc) / 2, DARKWOOD, { rot: [Math.atan2(dy, dz), 0, 0] });   // handrail
+    k.box(0.1, 1.15, 0.1, bx, 0.575, za, DARKWOOD, { block: true }); k.box(0.13, 0.06, 0.13, bx, 1.18, za, DARKWOOD);         // newel post
+    const stepTop = (z) => 0.2 * (Math.floor((10.8 - z) / 0.34) + 1);
+    for (let z = 10.8 - 0.085; z > zc; z -= 0.17) { const yb = stepTop(z) - 0.01, yt = Math.min(rail(z) - 0.02, CEIL); if (yt - yb > 0.05) k.box(0.03, yt - yb, 0.03, bx, (yb + yt) / 2, z, 0xf0ece4); }
+    k.box(0.06, 0.12, 0.06, bx, 0.06, za, DARKWOOD);
   }
   R(1.7, 11.3, 2.5, 11.9, 0.01, 0.006, 0x3a2a1a);                                                // doormat
   k.light(-3.2, 2.35, 5.2, 0xfff0d8, 3, 8); k.light(-1.9, 2.35, 9.4, 0xfff0d8, 3, 8);
