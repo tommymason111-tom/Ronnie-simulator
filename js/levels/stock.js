@@ -112,13 +112,13 @@ const frozeTex = ([name, bg]) => canvasTex(192, 128, (g, w, h) => { g.fillStyle 
 const lathe = (pts, seg = 14) => new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), seg);
 function shapes() {
   // boxes with properly rounded edges and corners (no hard-edged blocks on the shelves)
-  const box = (w, h, d, r = Math.min(w, h, d) * 0.12) => { const g = new RoundedBoxGeometry(w, h, d, 2, r); g.translate(0, h / 2, 0); return g; };
+  const box = (w, h, d, r = Math.min(w, h, d) * 0.12) => { const g = new RoundedBoxGeometry(w, h, d, 1, r); g.translate(0, h / 2, 0); return g; };
   // a pillow: a rounded box puffed out in the middle (packs in film, frozen bags, meat trays under film)
-  const pillow = (w, h, d, puff = 0.25, r = Math.min(w, h, d) * 0.2) => { const g = new RoundedBoxGeometry(w, h, d, 3, r), p = g.attributes.position;
+  const pillow = (w, h, d, puff = 0.25, r = Math.min(w, h, d) * 0.2) => { const g = new RoundedBoxGeometry(w, h, d, 2, r), p = g.attributes.position;
     for (let i = 0; i < p.count; i++) { const x = p.getX(i) / (w / 2), y = p.getY(i) / (h / 2), z = p.getZ(i) / (d / 2), k = 1 + puff * (1 - x * x) * (1 - z * z) * Math.sign(y) * Math.abs(y); p.setY(i, p.getY(i) * k); }
     g.computeVertexNormals(); g.translate(0, h / 2, 0); return g; };
   // a chocolate bar: thin and flat, crimped flat at both ends
-  const bar = (w, h, d) => { const g = new RoundedBoxGeometry(w, h, d, 3, Math.min(w, d) * 0.08), p = g.attributes.position;
+  const bar = (w, h, d) => { const g = new RoundedBoxGeometry(w, h, d, 1, Math.min(w, d) * 0.08), p = g.attributes.position;
     for (let i = 0; i < p.count; i++) { const y = p.getY(i) / (h / 2), e = Math.abs(y); if (e > 0.82) p.setZ(i, p.getZ(i) * 0.25); }
     g.computeVertexNormals(); g.translate(0, h / 2, 0); return g; };
   const bag = (w, h, d) => {            // a puffed bag standing up, crimped top and bottom
@@ -203,10 +203,13 @@ export class Stock {
       }
     }
     let n = 0;
+    // split each design into 5m patches of the shop, so the ones behind you or round the corner aren't drawn at all
     for (const key in list) {
-      const d = D[key], im = new THREE.InstancedMesh(d.geo, d.mat, list[key].length);
-      list[key].forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere();
-      im.receiveShadow = true; scene.add(im); n += list[key].length;
+      const d = D[key], cells = new Map();
+      for (const m of list[key]) { const c = Math.floor(m.elements[12] / 5) + ',' + Math.floor(m.elements[14] / 5); (cells.get(c) || cells.set(c, []).get(c)).push(m); }
+      for (const ms of cells.values()) { const im = new THREE.InstancedMesh(d.geo, d.mat, ms.length);
+        ms.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere();
+        im.receiveShadow = true; scene.add(im); n += ms.length; }
     }
     return n;
   }

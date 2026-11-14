@@ -13,12 +13,12 @@ export class Dormant {
   build(scene) {
     const groups = new Map();
     for (const e of this.entries) {
-      const key = e.type + ':' + (e.type === 'magazine' ? e.v : 0);
+      const key = e.type + ':' + (e.type === 'magazine' ? e.v : 0) + ':' + Math.floor(e.pos.x / 5) + ',' + Math.floor(e.pos.z / 5);   // (5m patches: off-screen ones aren't drawn)
       if (!groups.has(key)) groups.set(key, { parts: itemParts(e.type, e.v), list: [] });
       const g = groups.get(key); e.group = g; e.index = g.list.length; g.list.push(e);
     }
     for (const g of groups.values()) {
-      g.meshes = g.parts.map(([geo, mat]) => { const im = new THREE.InstancedMesh(geo, mat, g.list.length); im.frustumCulled = false; scene.add(im); return im; });
+      g.meshes = g.parts.map(([geo, mat]) => { const im = new THREE.InstancedMesh(geo, mat, g.list.length); scene.add(im); return im; });
       g.list.forEach((e, i) => { _m.compose(e.pos, _q.setFromEuler(_e.set(...e.rot)), _s); for (const im of g.meshes) im.setMatrixAt(i, _m); });
       for (const im of g.meshes) { im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); }
     }
