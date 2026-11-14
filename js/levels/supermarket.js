@@ -536,6 +536,33 @@ export function buildSupermarket(scene) {
   for (let i = 0; i < 4; i++) R(11.3, 14.1, 11.9, 14.5, 0.22, 0.12 + i * 0.22, i % 2 ? YEL : BLUE);
   blk(11.25, 14.05, 11.95, 14.55, 1);
 
+  // ---------------- the walls: a grey kick strip, a blue-and-grey bumper rail at trolley height, steel corner guards
+  // at the ends, Lidl posters in frames, and the safety kit (fire extinguishers on stands, fire point signs, CCTV)
+  { const signs = scene.children.filter(o => o.isMesh && o.userData.sign).map(o => o.position.clone());
+    const posters = [0, 1, 2, 3, 4].map(lidlPosterTex);
+    const faces = k.wallFaces({ colors: new Set([WALL]), minH: H - 0.05, inside: (x, z) => inside(x, z) && !(x > 11 && z > 9), skip: (f) => f.axis === 'z' && f.c > 14.4 });
+    let n = 0;
+    for (const f of faces) {
+      const box = (a, b, y0, h, depth, color) => { const cx = (a + b) / 2, L = b - a, o = f.c + f.dir * depth / 2; if (f.axis === 'x') k.box(depth, h, L, o, y0 + h / 2, cx, color); else k.box(L, h, depth, cx, y0 + h / 2, o, color); };
+      const at = (a, d) => f.axis === 'x' ? [f.c + f.dir * d, a] : [a, f.c + f.dir * d];
+      box(f.a0, f.a1, 0, 0.12, 0.02, 0x6a6e74);                                                       // kick strip
+      box(f.a0, f.a1, 0.82, 0.1, 0.045, 0xb8bcc2); box(f.a0, f.a1, 0.85, 0.035, 0.05, BLUE);           // bumper rail with a blue line
+      if (f.a1 - f.a0 > 1.2) for (const a of [f.a0 + 0.03, f.a1 - 0.03]) box(a - 0.03, a + 0.03, 0, 1.4, 0.03, 0xc8ccd0);   // steel corner guards
+      if (f.a1 - f.a0 < 2.5) continue;
+      for (let a = f.a0 + 1.4; a < f.a1 - 1.0; a += 4.2) {
+        const [x, z] = at(a, 0); if (signs.some(p => Math.hypot(p.x - x, p.z - z) < 1.1 && p.y > 1.0) || !k.clearInFront(f, a - 0.6, a + 0.6, 0.1, 2.6)) continue;
+        const ry = f.axis === 'x' ? (f.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : (f.dir > 0 ? 0 : Math.PI);
+        if (n % 3 === 2) {                       // the fire point: an extinguisher on a stand, its sign above
+          const [px, pz] = at(a, 0.18); k.box(0.3, 0.04, 0.3, px, 0.02, pz, 0x222222); k.cyl(0.065, 0.065, 0.5, px, 0.3, pz, 0xd32f2f, 12); k.cyl(0.03, 0.03, 0.06, px, 0.58, pz, 0x222222, 8);
+          box(a - 0.15, a + 0.15, 1.15, 0.3, 0.012, 0xffffff); const [sx, sz] = at(a, 0.0125); k.label('FIRE POINT', 0.28, 0.28, [sx, 1.3, sz], [0, ry, 0], { bg: '#c62828', fg: '#fff', border: null, size: 60 });
+        } else {                                  // a poster in a silver snap frame
+          box(a - 0.47, a + 0.47, 1.25, 1.26, 0.02, 0xc8ccd0); const [sx, sz] = at(a, 0.0205); k.label('poster', 0.88, 1.2, [sx, 1.88, sz], [0, ry, 0], { tex: posters[n % posters.length] });
+        }
+        if (n % 4 === 1) { const [cx, cz] = at(a + 1.6, 0.12); k.parts.push(part(new THREE.SphereGeometry(0.08, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0x222222, [cx, H - 0.02, cz], [Math.PI, 0, 0])); k.box(0.2, 0.02, 0.2, cx, H - 0.01, cz, 0xeeeeee); }   // CCTV dome
+        n++;
+      }
+    }
+  }
   widenAisles(k, scene, sceneStart, stock, dorm);
   stock.build(scene);
   dorm.build(scene);
@@ -657,4 +684,21 @@ function widenAisles(k, scene, sceneStart, stock, dorm) {
   for (const r of stock.runs) { if (r.alongX) { r.z0 = M(r.z0); r.z1 = M(r.z1); } else r.x = M(r.x); }
   for (const e of dorm.entries) e.pos.x = M(e.pos.x);
   k.bounds.x0 = M(k.bounds.x0);
+}
+
+// posters for the shop walls (Lidl-ish, all our own jokes)
+function lidlPosterTex(i) {
+  const P = [['LIDL PLUS', 'Scan the app. Save money. Ronnie: save nothing, eat everything.', '#1e4ea8', '#ffd400'],
+    ['FRESH EVERY DAY', 'Our fruit & veg: picked this morning. Ronnie: avoided this morning.', '#2e7d32', '#ffffff'],
+    ['MIDDLE OF LIDL', 'This week: air fryers, ski jackets and a canoe. Nobody knows why.', '#ffd400', '#1e4ea8'],
+    ['WE\'RE HIRING!', 'Join Oliver and Aidan W. Knees not required. Filming optional.', '#c62828', '#ffffff'],
+    ['BAKERY', 'Baked in store all day. Hands off the croissants, Ronnie.', '#8a4a10', '#fff3e0']][i % 5];
+  return canvasTex(352, 480, (g, w, h) => {
+    g.fillStyle = P[2]; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.arc(w * 0.8, h * 0.25, 120, 0, 7); g.fill();
+    g.fillStyle = '#ffd400'; g.beginPath(); g.arc(w / 2, 120, 70, 0, 7); g.fill(); g.strokeStyle = '#e53935'; g.lineWidth = 8; g.beginPath(); g.arc(w / 2, 120, 62, 0, 7); g.stroke();
+    g.fillStyle = '#1e4ea8'; g.font = `900 46px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Lidl', w / 2, 124);
+    g.fillStyle = P[3]; g.font = `900 40px ${FONT}`; g.fillText(P[0], w / 2, 250, w - 30);
+    g.font = `700 22px ${FONT}`; const words = P[1].split(' '); let line = '', y = 310; for (const wd of words) { const t = line ? line + ' ' + wd : wd; if (g.measureText(t).width > w - 50) { g.fillText(line, w / 2, y); y += 30; line = wd; } else line = t; } g.fillText(line, w / 2, y);
+  });
 }

@@ -21,9 +21,43 @@ export class Kit {
   box(w, h, d, x, y, z, color, { collide = false, block = false, rot = null } = {}) {
     const g = part(box(w, h, d), color, [x, y, z], rot || [0, 0, 0]);
     this.parts.push(g);
-    if (!rot || (!rot[0] && !rot[1] && !rot[2])) (this.boxRec = this.boxRec || []).push({ g, off: [0, 0, 0], min: [x - w / 2, y - h / 2, z - d / 2], max: [x + w / 2, y + h / 2, z + d / 2] });
+    if (!rot || (!rot[0] && !rot[1] && !rot[2])) (this.boxRec = this.boxRec || []).push({ g, color, off: [0, 0, 0], min: [x - w / 2, y - h / 2, z - d / 2], max: [x + w / 2, y + h / 2, z + d / 2] });
     if (collide) this.colliders.push({ min: new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2), max: new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2) });
     if (block) this.blockers.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, y1: y + h / 2 });
+  }
+  // The bare faces of the room's walls: every tall plain wall box (of these colours) gives its two faces, minus
+  // the bits already covered by something tall against them (cladding, shelving, another wall), and only the
+  // faces that look into a room. Each face: { axis: 'x' | 'z' (the normal), dir: +1 / -1, c: the face plane,
+  // a0, a1: its extent along the wall }.
+  wallFaces({ colors, minH = 2.5, inside = () => true, skip = () => false }) {
+    const L = this.boxRec || [], out = [];
+    for (const r of L) {
+      if (!colors.has(r.color) || r.max[1] - r.min[1] < minH || r.min[1] > 0.05) continue;
+      const dx = r.max[0] - r.min[0], dz = r.max[2] - r.min[2], alongZ = dz > dx, n = alongZ ? 0 : 2, al = alongZ ? 2 : 0;
+      if ((alongZ ? dx : dz) > 0.5 || (alongZ ? dz : dx) < 0.4) continue;
+      for (const dir of [-1, 1]) {
+        const c = dir > 0 ? r.max[n] : r.min[n], a0 = r.min[al], a1 = r.max[al], mid = (a0 + a1) / 2;
+        const px = alongZ ? c + dir * 0.25 : mid, pz = alongZ ? mid : c + dir * 0.25;
+        if (!inside(px, pz)) continue;
+        let free = [[a0, a1]];
+        for (const o of L) {
+          if (o === r || o.max[1] - o.min[1] < 1.2 || o.min[1] > 0.5) continue;
+          const touches = dir > 0 ? (o.min[n] > c - 0.03 && o.min[n] < c + 0.1 && o.max[n] > c + 0.004) : (o.max[n] < c + 0.03 && o.max[n] > c - 0.1 && o.min[n] < c - 0.004);
+          if (!touches) continue;
+          const b0 = o.min[al], b1 = o.max[al]; if (b1 <= a0 || b0 >= a1) continue;
+          free = free.flatMap(([u, v]) => (b1 <= u || b0 >= v) ? [[u, v]] : [[u, Math.max(u, b0)], [Math.min(v, b1), v]].filter(([p, q]) => q - p > 1e-3));
+        }
+        for (const [u, v] of free) if (v - u >= 0.3) { const f = { axis: alongZ ? 'x' : 'z', dir, c, a0: u, a1: v }; if (!skip(f)) out.push(f); }
+      }
+    }
+    return out;
+  }
+  // is the space in front of this bit of a wall face empty (nothing standing there that would hide a picture)?
+  clearInFront(f, a0, a1, y0, y1, depth = 0.6) {
+    const n = f.axis === 'x' ? 0 : 2, al = f.axis === 'x' ? 2 : 0, lo = f.dir > 0 ? f.c + 0.01 : f.c - depth, hi = f.dir > 0 ? f.c + depth : f.c - 0.01;
+    for (const o of this.boxRec || []) { if (o.max[n] <= lo || o.min[n] >= hi || o.max[al] <= a0 || o.min[al] >= a1 || o.max[1] <= y0 || o.min[1] >= y1) continue; return false; }
+    for (const b of this.blockers) { const bl = f.axis === 'x' ? [b.x0, b.x1, b.z0, b.z1] : [b.z0, b.z1, b.x0, b.x1]; if (bl[1] <= lo || bl[0] >= hi || bl[3] <= a0 || bl[2] >= a1 || (b.y1 ?? 2) <= y0) continue; return false; }
+    return true;
   }
   // Two boxes with a face in exactly the same place flicker ("z-fighting": the GPU can't tell which is in front).
   // Find every such pair (same plane, facing the same way, overlapping) and pull the later box's face in by 1.5mm.

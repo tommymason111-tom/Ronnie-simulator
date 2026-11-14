@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.5.5', GAME_DATE = '14 Nov 2026';
+var GAME_VERSION = '1.5.6', GAME_DATE = '14 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['1.5.6', ['Oysterfleet walls: burgundy anaglypta, a dark dado rail, cream damask paper, cornices and old framed pictures with picture lights', 'Lidl walls: kick strips, bumper rails, corner guards, posters, fire points and CCTV', 'Lewis\'s dining room: drawers and a tall cupboard']],
   ['1.5.5', ['Lidl: every aisle is twice as wide', 'Lidl: tall glass-door freezers and fridges (freezers, meat, dairy), a real MONSTOR fridge, a proper staff-only doorway', 'Lidl: magazines face the right way', 'Oysterfleet: a detailed kitchen']],
   ['1.5.4', ['Oysterfleet reception: a proper counter running to the wall, a waiting bench with old photos, coats, plants, a chalkboard, a mat at the door', 'Low wall beside the DJ booth', 'A two-seater by the raised area\'s half wall']],
   ['1.5.3', ['Oysterfleet kitchen rebuilt: range with pots on, griddle, chargrill, twin fryers, bain-marie, a big canopy, the pass with heat lamps and tickets, sinks, dishwasher, fridges, stores, a prep island under a pan rack', 'No rail across the restaurant doorway any more']],

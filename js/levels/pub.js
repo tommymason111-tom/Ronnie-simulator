@@ -906,6 +906,37 @@ export function buildPub(scene) {
   k.light(X(320), 2.4, Z(780), 0xffc884, 4, 7);
   k.pool(PX, 0, PZ, 2.2, 0xffe0b0);
 
+  // ---------------- the walls: dark wood skirting, embossed burgundy anaglypta to the dado, a dark dado rail,
+  // cream damask paper above, a moulded cornice, and old framed pictures here and there (never on top of a sign)
+  { const lower = anaglyptaTex(), upper = damaskTex(), signs = scene.children.filter(o => o.isMesh && o.userData.sign).map(o => o.position.clone());
+    const art = [0, 1, 2, 3, 4, 5].map(paintingTex);
+    const faces = k.wallFaces({ colors: new Set([WALL, PLASTER]), minH: H - 0.05, inside, skip: (f) => f.axis === 'z' && f.c < Z(470) && f.c > Z(300) && f.dir > 0 && f.a0 > X(160) && f.a1 < X(420) });
+    let n = 0;
+    for (const f of faces) {
+      const box = (a, b, y0, h, depth, color, tex, tile) => { const cx = (a + b) / 2, L = b - a, o = f.c + f.dir * depth / 2;
+        if (tex) { if (f.axis === 'x') k.texBox(depth, h, L, o, y0 + h / 2, cx, tex, { tile }); else k.texBox(L, h, depth, cx, y0 + h / 2, o, tex, { tile }); }
+        else if (f.axis === 'x') k.box(depth, h, L, o, y0 + h / 2, cx, color); else k.box(L, h, depth, cx, y0 + h / 2, o, color); };
+      const inPub = f.a1 - f.a0 > 0.6;
+      box(f.a0, f.a1, 0, 0.15, 0.03, 0x2a1a10);                                                  // skirting
+      box(f.a0, f.a1, 0.15, 0.75, 0.004, 0, lower, 0.5);                                          // anaglypta
+      box(f.a0, f.a1, 0.88, 0.05, 0.035, 0x3a2416); box(f.a0, f.a1, 0.93, 0.02, 0.02, 0x5a3a22);   // dado rail
+      box(f.a0, f.a1, 0.95, H - 1.1, 0.003, 0, upper, 0.6);                                       // damask paper
+      box(f.a0, f.a1, H - 0.15, 0.07, 0.05, 0xeee8da); box(f.a0, f.a1, H - 0.08, 0.08, 0.08, 0xf4f0e6);   // cornice
+      if (!inPub) continue;
+      for (let a = f.a0 + 1.1; a < f.a1 - 0.6; a += 2.4) {
+        const x = f.axis === 'x' ? f.c : a, z = f.axis === 'x' ? a : f.c;
+        const w = 0.42 + (n % 3) * 0.1, h2 = 0.34 + ((n + 1) % 3) * 0.08, y = 1.7;
+        if (signs.some(p => Math.hypot(p.x - x, p.z - z) < 0.9 && p.y > 0.8) || !k.clearInFront(f, a - w / 2 - 0.1, a + w / 2 + 0.1, 1.2, 2.3)) continue;
+        const ry = f.axis === 'x' ? (f.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : (f.dir > 0 ? 0 : Math.PI);
+        box(a - w / 2 - 0.05, a + w / 2 + 0.05, y - h2 / 2 - 0.05, h2 + 0.1, 0.035, 0xb8923a);                                   // gilt frame
+        const off = f.c + f.dir * 0.0365, pos = f.axis === 'x' ? [off, y, a] : [a, y, off];
+        k.label('painting', w, h2, pos, [0, ry, 0], { tex: art[n % art.length] });
+        k.lamp(f.axis === 'x' ? f.c + f.dir * 0.12 : a, y + h2 / 2 + 0.14, f.axis === 'x' ? a : f.c + f.dir * 0.12, 0xffe0a8, 0.025, false);   // a little picture light
+        box(a - 0.12, a + 0.12, y + h2 / 2 + 0.1, 0.025, 0.13, 0xc9a24a);
+        n++;
+      }
+    }
+  }
   const room = k.finish({
     name: 'The Oysterfleet',
     sky: 0xffe2c0, ground: 0x6a4a3a, hemiI: 1.55, sun: 0xfff0d8, sunI: 0.45, sunPos: [-6, 10, 5], ambient: 0.32,
@@ -1096,4 +1127,44 @@ function leadedTex() {
     g.fillStyle = '#7a2a3a'; g.beginPath(); g.arc(w / 2, h / 2, 12, 0, 7); g.fill(); g.strokeStyle = '#3a3a3a'; g.lineWidth = 2; g.stroke();
     g.strokeStyle = '#f4f2ec'; g.lineWidth = 6; g.strokeRect(0, 0, w, h);
   }));
+}
+
+// embossed anaglypta below the dado, painted deep burgundy
+function anaglyptaTex() {
+  return canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = '#5a1a22'; g.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 32) for (let x = 0; x < w; x += 32) {
+      const ox = x + 16, oy = y + 16;
+      g.strokeStyle = 'rgba(255,200,190,0.18)'; g.lineWidth = 3; g.beginPath(); g.arc(ox - 1, oy - 1, 10, 0, 7); g.stroke();
+      g.strokeStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(ox + 1, oy + 1, 10, 0, 7); g.stroke();
+      g.fillStyle = 'rgba(255,200,190,0.15)'; g.beginPath(); g.moveTo(ox, oy - 5); g.lineTo(ox + 5, oy); g.lineTo(ox, oy + 5); g.lineTo(ox - 5, oy); g.fill();
+    }
+  });
+}
+// cream damask wallpaper
+function damaskTex() {
+  return canvasTex(128, 192, (g, w, h) => {
+    g.fillStyle = '#efe4cc'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 600; i++) { g.fillStyle = `rgba(150,120,80,${Math.random() * 0.05})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    const motif = (cx, cy) => { g.fillStyle = 'rgba(180,150,100,0.32)'; g.beginPath(); g.ellipse(cx, cy, 14, 26, 0, 0, 7); g.fill();
+      g.fillStyle = '#efe4cc'; g.beginPath(); g.ellipse(cx, cy, 7, 16, 0, 0, 7); g.fill();
+      g.fillStyle = 'rgba(180,150,100,0.32)'; for (const s of [-1, 1]) { g.beginPath(); g.ellipse(cx + s * 16, cy - 10, 6, 12, s * 0.6, 0, 7); g.fill(); g.beginPath(); g.ellipse(cx + s * 14, cy + 16, 5, 9, -s * 0.5, 0, 7); g.fill(); }
+      g.beginPath(); g.arc(cx, cy - 32, 4, 0, 7); g.fill(); g.beginPath(); g.arc(cx, cy + 32, 4, 0, 7); g.fill(); };
+    motif(32, 48); motif(96, 48); motif(0, 144); motif(64, 144); motif(128, 144);
+  });
+}
+// old oil paintings and prints for the walls
+function paintingTex(i) {
+  return canvasTex(160, 128, (g, w, h) => {
+    const scenes = [
+      () => { const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#8aa0b0'); sky.addColorStop(1, '#d8c8a0'); g.fillStyle = sky; g.fillRect(0, 0, w, h); g.fillStyle = '#2a4a5a'; g.fillRect(0, h * 0.65, w, h); g.fillStyle = '#5a3a20'; g.beginPath(); g.moveTo(40, 80); g.lineTo(120, 80); g.lineTo(110, 92); g.lineTo(50, 92); g.fill(); g.fillStyle = '#f0e8d0'; g.beginPath(); g.moveTo(80, 30); g.lineTo(80, 78); g.lineTo(110, 78); g.fill(); g.beginPath(); g.moveTo(76, 36); g.lineTo(76, 78); g.lineTo(52, 78); g.fill(); },   // a sailing boat
+      () => { g.fillStyle = '#4a5a3a'; g.fillRect(0, 0, w, h); g.fillStyle = '#7a8a5a'; g.fillRect(0, h * 0.6, w, h); g.fillStyle = '#6a3a1a'; g.beginPath(); g.ellipse(70, 80, 28, 12, 0, 0, 7); g.fill(); g.fillRect(50, 85, 4, 18); g.fillRect(86, 85, 4, 18); g.beginPath(); g.ellipse(100, 70, 9, 8, 0, 0, 7); g.fill(); g.fillStyle = '#c84a2a'; g.fillRect(60, 56, 10, 18); g.beginPath(); g.arc(65, 52, 5, 0, 7); g.fill(); },   // a hunting scene
+      () => { g.fillStyle = '#d8c8a0'; g.fillRect(0, 0, w, h); g.fillStyle = '#7a3020'; g.fillRect(30, 40, 100, 70); g.fillStyle = '#3a2416'; g.beginPath(); g.moveTo(25, 40); g.lineTo(80, 14); g.lineTo(135, 40); g.fill(); g.fillStyle = '#f2d880'; for (const x of [42, 70, 98]) g.fillRect(x, 58, 16, 18); g.fillStyle = '#1b3a2a'; g.fillRect(60, 88, 40, 10); g.fillStyle = '#d4af37'; g.font = 'bold 8px Georgia'; g.textAlign = 'center'; g.fillText('OYSTERFLEET', 80, 96); },   // the pub, long ago
+      () => { const gr = g.createRadialGradient(80, 64, 10, 80, 64, 90); gr.addColorStop(0, '#6a4a3a'); gr.addColorStop(1, '#1a120c'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = '#e0b890'; g.beginPath(); g.ellipse(80, 56, 24, 30, 0, 0, 7); g.fill(); g.fillStyle = '#3a2416'; g.beginPath(); g.ellipse(80, 34, 24, 12, 0, 0, 7); g.fill(); g.fillStyle = '#2a2a3a'; g.beginPath(); g.ellipse(80, 128, 50, 40, 0, 0, 7); g.fill(); g.fillStyle = '#c9a24a'; g.font = 'italic 9px Georgia'; g.textAlign = 'center'; g.fillText('The Landlord, 1893', 80, 122); },   // a portrait
+      () => { g.fillStyle = '#e8dcc0'; g.fillRect(0, 0, w, h); g.fillStyle = '#2a1a10'; g.font = 'bold 16px Georgia'; g.textAlign = 'center'; g.fillText('OYSTER STOUT', 80, 40); g.font = 'italic 11px Georgia'; g.fillText('a meal in itself', 80, 60); g.fillStyle = '#1a1a1a'; g.fillRect(64, 70, 32, 46); g.fillStyle = '#f4ecd8'; g.fillRect(64, 70, 32, 8); },   // an old advert
+      () => { g.fillStyle = '#9ab0c0'; g.fillRect(0, 0, w, h); g.fillStyle = '#5a7a4a'; g.beginPath(); g.moveTo(0, 90); g.quadraticCurveTo(50, 60, 100, 85); g.quadraticCurveTo(130, 95, w, 80); g.lineTo(w, h); g.lineTo(0, h); g.fill(); g.fillStyle = '#e8e4d8'; g.fillRect(100, 60, 18, 26); g.fillStyle = '#5a2a1a'; g.beginPath(); g.moveTo(96, 60); g.lineTo(109, 50); g.lineTo(122, 60); g.fill(); },   // a cottage
+    ];
+    scenes[i % scenes.length]();
+    for (let k = 0; k < 300; k++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '255,240,200'},0.05)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }   // old varnish
+  });
 }
