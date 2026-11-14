@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { sfx } from './audio.js';
 import { canvasTex } from './textures.js';
+import { PlayButton } from './playbutton.js';
 
 const ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 // regulation sizes (metres, radius)
@@ -64,9 +65,39 @@ export class DartGame {
     this.collectT = 0; this.msg = '';
     this.draw();
   }
-  attach(items, words) {
-    this.items = items; this.words = words;
-    for (let i = 0; i < 3; i++) this.darts.push(this.spawn(i));
+  attach(items) {
+    this.items = items; this.playing = false;
+    const scene = items.scene;
+    this.button = new PlayButton(scene, this.stand[1].clone().add(new THREE.Vector3(0, 0.55, 0)), 'DARTS');
+    // where the dart you're holding is going: a red ring and dot on the board
+    this.marker = new THREE.Group();
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.014, 0.02, 24), new THREE.MeshBasicMaterial({ color: 0xff2020, transparent: true, opacity: 0.9, depthTest: false }));
+    const dot = new THREE.Mesh(new THREE.CircleGeometry(0.005, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }));
+    this.marker.add(ring, dot); this.marker.renderOrder = 6; ring.renderOrder = dot.renderOrder = 6;
+    this.marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), this.n); this.marker.visible = false; scene.add(this.marker);
+  }
+  toggle() { if (!this.button.press()) return; this.playing ? this.stop() : this.start(); }
+  start() {
+    this.playing = true; this.button.set(true);
+    this.left = 501; this.hist = []; this.visit = []; this.lastVisit = []; this.msg = 'GAME ON!'; this.collectT = 0;
+    for (const d of this.darts) if (!d.dead) this.items.remove(d);
+    this.darts = []; for (let i = 0; i < 3; i++) this.darts.push(this.spawn(i));
+    sfx('ting', this.c, 0.6); this.draw();
+  }
+  stop() {
+    this.playing = false; this.button.set(false); this.marker.visible = false;
+    for (const d of this.darts) { if (d.heldBy) { d.heldBy.held = null; d.heldBy = null; } if (!d.dead) this.items.remove(d); }
+    this.darts = []; this.msg = ''; this.draw();
+  }
+  // where would the dart in your hand land? phone/PC: where the middle of the screen points; headset: along the dart
+  aimPoint(it, player) {
+    let o, dir;
+    if (it.heldBy.isFlat) { o = player.camera.getWorldPosition(_a); dir = player.camera.getWorldDirection(_d); }
+    else { it.obj.updateMatrixWorld(true); o = _a.setFromMatrixPosition(it.obj.matrixWorld); dir = _d.set(0, 0, -1).applyQuaternion(it.obj.getWorldQuaternion(_q)); }
+    const den = dir.dot(this.n); if (den > -0.15) return null;
+    const t = _t.subVectors(this.c, o).dot(this.n) / den; if (t < 0 || t > 5) return null;
+    const p = o.addScaledVector(dir, t), r = _b.subVectors(p, this.c).length();
+    return r < RB.face + 0.12 ? p : null;
   }
   spawn(i) {
     const it = this.items.spawn('dart', this.stand[i]);
@@ -117,8 +148,13 @@ export class DartGame {
     this.collectT = 2.4;            // then the darts go back on the table
     this.draw();
   }
-  update(dt) {
+  update(dt, player) {
     if (!this.items) return;
+    this.button.tick(dt); this.button.visible = !!this.allowed;
+    if (!this.allowed && this.playing) this.stop();
+    if (!this.playing) return;
+    const held = this.darts.find(d => d.heldBy && !d.dead), p = held && player ? this.aimPoint(held, player) : null;
+    this.marker.visible = !!p; if (p) this.marker.position.copy(p).addScaledVector(this.n, 0.004);
     for (let i = 0; i < this.darts.length; i++) {
       const it = this.darts[i];
       if (it.dead) { if ((it.deadT = (it.deadT || 0) + dt) > 2) this.darts[i] = this.spawn(i); continue; }
@@ -162,4 +198,4 @@ export class DartGame {
   }
 }
 export function chalkCanvas() { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 512; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; return { g: cv.getContext('2d'), tex }; }
-const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _d = new THREE.Vector3(), _t = new THREE.Vector3(), _z = new THREE.Vector3();
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _d = new THREE.Vector3(), _t = new THREE.Vector3(), _z = new THREE.Vector3(), _q = new THREE.Quaternion();

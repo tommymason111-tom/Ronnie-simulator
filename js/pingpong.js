@@ -23,6 +23,7 @@ import { sfx } from './audio.js';
 import { canvasTex } from './textures.js';
 import { ControllerHand } from './hands.js';
 import { holdTransform } from './hold.js';
+import { PlayButton } from './playbutton.js';
 
 const R = 0.02, G = -9.81, KD = 0.13, KM = 0.0055;          // ball radius, gravity, drag, Magnus
 const STEP = 1 / 240;
@@ -52,7 +53,23 @@ export class PingPong {
     this.batPrev = null;
     this.resetServe();
   }
-  attach(items, player) { this.items = items; this.player = player; this.spawnBat(); }
+  attach(items, player) {
+    this.items = items; this.player = player; this.playing = false;
+    this.button = new PlayButton(this.scene, new THREE.Vector3(this.c.x, 1.72, this.c.z - this.W / 2 - 0.55), 'PING PONG');
+    this.mesh.visible = false; this.ai.grip.visible = false;
+  }
+  toggle() { if (!this.button.press()) return; this.playing ? this.stop() : this.start(); }
+  start() {
+    this.playing = true; this.button.set(true); this.mesh.visible = true; this.ai.grip.visible = true;
+    this.score = { P: 0, A: 0 }; this.server = 'P'; this.serves = 0; this.resetServe(); this.drawBoard();
+    if (!this.bat || this.bat.dead) this.spawnBat();
+    sfx('ting', this.c, 0.6);
+  }
+  stop() {
+    this.playing = false; this.button.set(false); this.mesh.visible = false; this.ai.grip.visible = false; this.ball.live = false;
+    if (this.bat && !this.bat.dead) { if (this.bat.heldBy) { this.bat.heldBy.held = null; this.bat.heldBy = null; } this.items.remove(this.bat); }
+    this.bat = null;
+  }
   spawnBat() { this.bat = this.items.spawn('bat', new THREE.Vector3(this.c.x - this.L / 2 + 0.25, this.top + 0.05, this.c.z + 0.45)); }
 
   // ------------------------------------------------------------ physics
@@ -158,6 +175,9 @@ export class PingPong {
   // ------------------------------------------------------------ the frame
   update(dt) {
     if (!this.items) return;
+    this.button.tick(dt); this.button.visible = !!this.allowed;
+    if (!this.allowed && this.playing) this.stop();
+    if (!this.playing) return;
     this.t += dt;
     const b = this.ball, c = this.c;
     if (!this.bat || this.bat.dead) this.spawnBat();

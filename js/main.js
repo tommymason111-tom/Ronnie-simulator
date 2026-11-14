@@ -426,6 +426,14 @@ const touch = setupTouch({
     raycaster.setFromCamera(ndc, camera);
     const ray = raycaster.ray, reach = 3 * player.scale;
     if (director.tapBoard(ray) || director.tapBubble(ray)) return;
+    // the PLAY / STOP signs over the little games
+    for (const gm of room.games || []) if (gm.button && gm.button.visible) {
+      const along = _a.subVectors(gm.button.position, ray.origin).dot(ray.direction);
+      if (along > 0 && ray.distanceSqToPoint(gm.button.position) < 0.16 * 0.16 * 4) {
+        if (along > reach + 1.5) { touch.hint('Walk up to it to play'); return; }
+        gm.toggle(); return;
+      }
+    }
     // tap a fruit machine to play it
     for (const m of room.machines || []) {
       const along = _a.subVectors(m.front, ray.origin).dot(ray.direction);
@@ -618,6 +626,8 @@ renderer.setAnimationLoop(() => {
 
   player.update(dt, time);
 
+  // press a game's PLAY sign by touching it (headset hands)
+  if (xr) for (const gm of room.games || []) if (gm.button && gm.button.visible) for (const h of player.hands) if (h.tracked && h.palm.distanceTo(gm.button.position) < 0.2) { gm.toggle(); h.pulse && h.pulse(0.6, 60); }
   // play a fruit machine by touching it (headset hands)
   if (room.machines && xr) for (const h of player.hands) if (h.tracked) for (const m of room.machines) if (h.palm.distanceTo(m.front) < 0.35 && m.spin()) { sfx('ting', m.front, 1); h.pulse && h.pulse(0.6, 80); }
   // eating & drinking held food (VR hands, or the on-screen hand)
@@ -666,7 +676,7 @@ renderer.setAnimationLoop(() => {
   crumbs.update(dt);
   words.update(dt);
   room.update(dt);
-  for (const gm of room.games || []) gm.update(dt);
+  for (const gm of room.games || []) { gm.allowed = director.mode === 'roam'; gm.update(dt, player); }     // darts / table tennis: Free Roam only
 
   if (bannerT > 0) {
     bannerT -= dt;
