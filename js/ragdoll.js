@@ -17,6 +17,25 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { characterGroup, GROUP } from './physics.js';
+
+// Every model is downloaded once (shared by every character that uses it), started as early as possible
+// (while you're still on the menu), and retried if the connection drops, so nobody turns up invisible.
+const MODELS = new Map();
+export function fetchModel(url) {
+  if (!MODELS.has(url)) {
+    const p = (async () => {
+      let err;
+      for (let i = 0; i < 4; i++) {
+        try { return await new GLTFLoader().loadAsync(url); }
+        catch (e) { err = e; await new Promise(r => setTimeout(r, 600 * (i + 1))); }
+      }
+      MODELS.delete(url); throw err;
+    })();
+    MODELS.set(url, p);
+  }
+  return MODELS.get(url);
+}
+export const preloadModels = (urls) => Promise.allSettled(urls.map(fetchModel));
 const legSide = (d) => d.name.includes('Leg') ? (d.name.endsWith('L') ? 1 : -1) : 0;
 
 // Bind pose (T-pose), measured from Tommy's model: metres, faces +Z, his left is +X.
@@ -234,7 +253,7 @@ export class Ragdoll {
   }
 
   async loadModel(url) {
-    const gltf = await new GLTFLoader().loadAsync(url);
+    const gltf = await fetchModel(url);
     let src = null;
     gltf.scene.traverse(o => { if (o.isMesh && !src) src = o; });
     src.updateWorldMatrix(true, false);

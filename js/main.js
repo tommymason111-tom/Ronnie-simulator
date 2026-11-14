@@ -17,10 +17,18 @@ import { Director, MODES } from './modes.js';
 import { buildPub } from './levels/pub.js';
 import { buildSupermarket } from './levels/supermarket.js';
 import { buildRestaurant } from './levels/restaurant.js';
+import { preloadModels } from './ragdoll.js';
+import { SQUAD } from './squad.js';
 import { buildGarden } from './levels/garden.js';
 
+// start downloading everyone's 3D model now, while the menu is still up
+const MODEL_LOAD = preloadModels(['./assets/tommy.glb', ...Object.values(SQUAD).map(d => d.model).filter(Boolean)]);
 // wait for the start screen: where are we playing, and what mode?
 const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'pub', mode: 'everyone' }));
+// ...and make sure everyone's actually arrived before the game starts (so nobody's invisible)
+{ const st = document.getElementById('status'); let done = false;
+  setTimeout(() => { if (!done && st) st.textContent = 'Getting the squad ready…'; }, 400);
+  await Promise.race([MODEL_LOAD, new Promise(r => setTimeout(r, 25000))]); done = true; }
 
 // ---------------- renderer / scene ----------------
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });

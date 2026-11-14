@@ -111,6 +111,7 @@ export class Character {
   say(bankOrText, priority = null) {
     const isBank = !!(this.banks[bankOrText] || (this.cfg.globalBanks && BANKS[bankOrText]));
     const pri = priority ?? (isBank && BANKS[bankOrText] ? BANKS[bankOrText].pri : 3);
+    if (!this.rag.mesh) return false;          // not here yet (still loading): no floating speech bubbles
     if (this.speakT > 0.6 && pri < this.speakPri) return false;
     const text = isBank ? this.line(bankOrText) : (BANKS[bankOrText] || this.banks[bankOrText] ? null : bankOrText);
     if (!text) return false;
