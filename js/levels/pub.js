@@ -290,8 +290,8 @@ export function buildPub(scene) {
   };
   const freeTable = (x, z, alongZ = false) => { if (alongZ) table(x, z, 0.8, 1.2, 2); else table(x, z, 1.2, 0.8, 2); candles.push([x, z]); };
   raise(() => {
-    bench(true, X(195) + 0.08, Z(690), Z(945), 1);                                       // "Table with booth" along the wall
-    for (const py of [745, 845, 930]) boothTable(X(195) + 0.95, Z(py), true, 1);
+    bench(true, X(195) + 0.08, Z(605) + 0.1, Z(945), 1);                                 // "Table with booth" along the wall, right up to the end wall
+    for (const py of [658, 745, 845, 930]) boothTable(X(195) + 0.95, Z(py), true, 1);
     smallTable(X(355) - 0.45, Z(655), false);                                          // a two-seater against the half wall
     smallTable(X(400) - 0.5, Z(760), false);                                         // a two-seater against the angled half wall
     freeTable(X(405), Z(818)); freeTable(X(405), Z(905));
