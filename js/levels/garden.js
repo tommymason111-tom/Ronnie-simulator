@@ -733,6 +733,13 @@ export function buildGarden(scene) {
       for (let i = 0; i <= 6; i++) { const t = i / 6, x = x0 + (x1 - x0) * t; bulb(x, top(x) - 0.22 * 4 * t * (1 - t) - 0.05, fz); } }
     for (let i = 0; i < 9; i++) bulb(-4.47, 2.2 - i * 0.2, -10.95 + Math.sin(i) * 0.02);                       // down the left corner
     for (let i = 0; i <= 14; i++) { const t = i / 14; k.lamp(0.0 + 4.7 * t, 2.32 - 0.12 * Math.sin(t * Math.PI), -12.0 - 1.6 * t, 0xd8f0ff, 0.016, false); }   // inside, across the lounge
+    // fairy lights all the way round the top of the inside walls (both rooms, both sides of the partition), gently swagged
+    { const y0 = 2.3, IN = 0.1, run = (x0, z0, x1, z1) => { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.max(2, Math.round(L / 0.22));
+        for (let i = 0; i <= n; i++) { const t = i / n, sag = 0.06 * Math.abs(Math.sin(t * L / 1.1 * Math.PI)); k.lamp(x0 + (x1 - x0) * t, y0 - sag, z0 + (z1 - z0) * t, [0xfff0c0, 0xffe0a0, 0xfff6dc][i % 3], 0.016, i % 4 === 0); } };
+      const X0 = -4.5 + IN, X1 = 5.0 - IN, Z0 = -16.2 + IN, Z1 = -11 + IN * -1, P = -0.7;
+      run(X0, Z0, P - 0.06, Z0); run(P - 0.06, Z0, P - 0.06, Z1); run(P - 0.06, Z1, X0, Z1); run(X0, Z1, X0, Z0);      // spare room
+      run(P + 0.06, Z0, X1, Z0); run(X1, Z0, X1, Z1); run(X1, Z1, P + 0.06, Z1); run(P + 0.06, Z1, P + 0.06, Z0);      // lounge
+    }
   }
   // the rusty garden incinerator by the front-right corner of the cabin, straw poking out under the lid
   { const ix = 5.6, iz = -11.45, RUST = [0x8a4a22, 0x9a5a2a, 0x7a3e1c, 0xa8622e];
