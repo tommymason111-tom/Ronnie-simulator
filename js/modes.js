@@ -15,7 +15,7 @@ import { canvasTex, fitText, roundRect, FONT } from './textures.js';
 import { sfx, playTune, shout } from './audio.js';
 import { Item } from './foods.js';
 import { TURKEY_LEN } from './cutscenes.js';
-import { BBQ_SPOT, IAN_SPOT } from './levels/garden.js';
+import { BBQ_SPOT, IAN_SPOT, IAN_YAW } from './levels/garden.js';
 import { pickVeg, pickJunk } from './config.js';
 
 export const MODES = {
@@ -627,7 +627,7 @@ export class Director {
     const ian = this.cast.find(c => c.id === 'ian');
     if (ian) {
       ian.active = false; ian.grilling = true;
-      ian.rag.placeAt(IAN_SPOT.x, IAN_SPOT.z, 0); ian.faceYaw = 0;
+      ian.rag.placeAt(IAN_SPOT.x, IAN_SPOT.z, IAN_YAW); ian.faceYaw = IAN_YAW;
       if (ian.prop) ian.prop.visible = false;
       setTimeout(() => ian.say('Right, Lewy, get the plates! Ronnie, wait your turn. RONNIE.', 5), 1500);
     }
@@ -637,7 +637,7 @@ export class Director {
     const g = this.g, b = this.bbq; if (!b) return;
     const ian = this.cast.find(c => c.id === 'ian');
     if (ian && !ian.down && ian.state === 'idle') {
-      ian.faceYaw = 0;
+      ian.faceYaw = IAN_YAW;
       // flipping burgers
       ian.rag.aim('uArmR', -0.2, -0.3, 1); ian.rag.aim('lArmR', -0.05, -0.2 + Math.sin(performance.now() / 140) * 0.35, 1);
       if (ian.prop) ian.prop.visible = false;
