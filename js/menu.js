@@ -187,8 +187,8 @@
   // ---------------------------------------------------------------- READY: summary and the countdown
   function drawReady() {
     const p = PLACES.find(x => x.id === place), m = MODES.find(x => x.id === mode);
-    $('#ready-place').innerHTML = `${p.ico}<b>${p.name}</b>`;
-    $('#ready-mode').innerHTML = `${m.ico}<b>${m.name}</b>`;
+    $('#ready-place').innerHTML = `<span class="lbl">📍 PLACE</span><span>${p.ico}</span><b>${p.name}</b>`;
+    $('#ready-mode').innerHTML = `<span class="lbl">🎮 GAME MODE</span><span>${m.ico}</span><b>${m.name}</b>`;
     $('#ready-desc').textContent = m.desc;
   }
 
