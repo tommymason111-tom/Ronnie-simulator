@@ -168,6 +168,85 @@ export function buildGarden(scene) {
     k.bounds.z0 = F(B.z0);
   }
 
+  // ---- real-looking plants: leafy cards (painted leaves with see-through gaps), two-sided, lit from above ----
+  function plantsAndWillow() {
+    const mats = {}, quads = {};
+    const mat = (key, tex) => { if (!mats[key]) { const m = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.45, side: THREE.FrontSide });
+      m.userData.depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: tex, alphaTest: 0.45 }); mats[key] = m; quads[key] = []; } return key; };
+    const LEAFY = mat('leafy', foliageTex(0)), BLOOM = mat('bloom', foliageTex(1)), CLEM = mat('clem', foliageTex(2)), ROSE = mat('rose', foliageTex(3)), WIL = mat('willow', foliageTex(4)), STR = mat('strand', strandTex());
+    // a card: centre, width, height, yaw (which way it faces), pitch, roll
+    const card = (key, x, y, z, w, h, yaw = 0, pitch = 0, roll = 0) => quads[key].push({ x, y, z, w, h, yaw, pitch, roll });
+    // --- the left fence: climbers flat up the fence, shrubs at the foot, never more than a foot out ---
+    const FX = B.x0 + 0.05;
+    for (const [z0, z1] of [[F(-16.35), -2.95], [-1.85, 1.3]]) {
+      for (let z = z0 + 0.15; z < z1 - 0.1; z += 0.22) {
+        const h = 0.6 + rnd() * 0.8, y = 0.25 + rnd() * (1.75 - h / 2);
+        card(rnd() < 0.3 ? BLOOM : LEAFY, FX + 0.02 + rnd() * 0.05, Math.min(1.85 - h / 2, y + h / 2), z, 0.55 + rnd() * 0.4, h, Math.PI / 2 + (rnd() - 0.5) * 0.4, 0, (rnd() - 0.5) * 0.5);
+        if (rnd() < 0.55) card(LEAFY, FX + 0.08 + rnd() * 0.06, 0.6 + rnd() * 1.1, z + 0.1, 0.45 + rnd() * 0.3, 0.5 + rnd() * 0.3, Math.PI / 2 + (rnd() - 0.5) * 0.7, 0, rnd() * 3);
+      }
+      for (let z = z0 + 0.3; z < z1 - 0.2; z += 0.55 + rnd() * 0.3) {          // low shrubs: three crossed cards each
+        const h = 0.45 + rnd() * 0.4, key = rnd() < 0.35 ? BLOOM : LEAFY;
+        for (let c = 0; c < 3; c++) card(key, FX + 0.18, h / 2, z, 0.5 + rnd() * 0.15, h, Math.PI / 2 + c * 1.05 + rnd() * 0.3, 0, 0);
+      }
+    }
+    // --- the trellis at the halfway line: clematis and roses all over it ---
+    const TZ0f = F(-8.5), PZf = F(-6.6);
+    for (let i = 0; i < 26; i++) { const z = TZ0f + rnd() * (PZf - TZ0f), y = 0.6 + rnd() * 1.7; card(i % 3 === 0 ? ROSE : CLEM, B.x0 + 0.2 + rnd() * 0.04, y, z, 0.5 + rnd() * 0.3, 0.5 + rnd() * 0.3, Math.PI / 2, 0, rnd() * 3); }
+    // --- the willow: one tree, trunk just over the fence, limbs arching into a crown that weeps over the corner ---
+    const T = { x: B.x0 - 0.7, z: F(-12.0) }, C = { x: B.x0 + 0.25, y: 4.5, z: F(-12.0) }, RX = 2.1, RY = 1.0, RZ = 2.5;
+    const BARK = 0x5e4a38;
+    const limb = (a, b, r0, r1) => { const d = new THREE.Vector3().subVectors(b, a), L = d.length(), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()), e = new THREE.Euler().setFromQuaternion(q);
+      k.parts.push(part(cyl(r1, r0, L, 8), BARK, [(a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2], [e.x, e.y, e.z])); };
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    limb(V(T.x, 0, T.z), V(T.x + 0.15, 2.6, T.z), 0.34, 0.26);                       // trunk (with a little lean toward the garden)
+    k.cyl(0.42, 0.5, 0.25, T.x, 0.12, T.z, BARK, 10);                               // root flare
+    const fork = V(T.x + 0.15, 2.6, T.z);
+    const tips = [];
+    for (let i = 0; i < 6; i++) {
+      const a = -0.9 + i * 0.36 + (rnd() - 0.5) * 0.2, reach = 1.6 + rnd() * 0.9;
+      const mid = V(fork.x + Math.cos(a) * reach * 0.5 + 0.3, 3.6 + rnd() * 0.4, fork.z + Math.sin(a) * reach * 0.8);
+      const tip = V(fork.x + Math.cos(a) * reach + 0.6, 4.3 + rnd() * 0.6, fork.z + Math.sin(a) * reach * 1.4);
+      limb(fork, mid, 0.17, 0.11); limb(mid, tip, 0.11, 0.05); tips.push(tip, mid);
+      for (let j = 0; j < 3; j++) { const tw = V(tip.x + (rnd() - 0.3) * 0.9, tip.y + 0.2 + rnd() * 0.5, tip.z + (rnd() - 0.5) * 0.9); limb(tip, tw, 0.05, 0.02); tips.push(tw); }
+    }
+    // crown: leafy cards on the dome, thickest round the branch tips
+    for (let i = 0; i < 170; i++) {
+      const th = rnd() * Math.PI * 2, ph = Math.acos(1 - rnd() * 1.15), r = 0.85 + rnd() * 0.2;
+      const x = C.x + Math.sin(ph) * Math.cos(th) * RX * r, y = C.y + Math.cos(ph) * RY * r, z = C.z + Math.sin(ph) * Math.sin(th) * RZ * r;
+      card(WIL, x, y, z, 0.9 + rnd() * 0.5, 0.8 + rnd() * 0.4, rnd() * 6.28, (rnd() - 0.5) * 1.2, rnd() * 6.28);
+    }
+    for (const t of tips) for (let j = 0; j < 3; j++) card(WIL, t.x + (rnd() - 0.5) * 0.5, t.y + (rnd() - 0.5) * 0.4, t.z + (rnd() - 0.5) * 0.5, 0.8, 0.7, rnd() * 6.28, (rnd() - 0.5), rnd() * 6.28);
+    // the weeping strands: long thin curtains hanging from the underside of the crown
+    const cabinZ0 = F(-16.2), cabinZ1 = F(-11), cabinX0 = -4.6;
+    for (let i = 0; i < 330; i++) {
+      const th = rnd() * Math.PI * 2, rr = Math.sqrt(rnd()) * 1.02;
+      const x = C.x + Math.cos(th) * RX * rr, z = C.z + Math.sin(th) * RZ * rr;
+      const top = C.y - RY * Math.sqrt(Math.max(0, 1 - rr * rr)) * 0.7 + 0.15;
+      const floor = x > cabinX0 && z > cabinZ0 && z < cabinZ1 ? 2.75 : 2.1;
+      const len = Math.min(top - floor, 1.3 + rnd() * 2.0); if (len < 0.4) continue;
+      card(STR, x, top - len / 2, z, 0.16 + rnd() * 0.08, len, rnd() * 6.28, 0, (rnd() - 0.5) * 0.08);
+    }
+    // build one mesh per leaf texture: each card two-sided (front and back triangles), normals lean up so the leaves catch the sky
+    const pos = [], nrm = [], uvs = [], m4 = new THREE.Matrix4(), e = new THREE.Euler(), q = new THREE.Quaternion(), vs = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
+    for (const key in quads) {
+      if (!quads[key].length) continue;
+      pos.length = nrm.length = uvs.length = 0;
+      for (const c of quads[key]) {
+        m4.compose(vs.set(c.x, c.y, c.z), q.setFromEuler(e.set(c.pitch, c.yaw, c.roll, 'YXZ')), one);
+        const P = [[-c.w / 2, -c.h / 2], [c.w / 2, -c.h / 2], [c.w / 2, c.h / 2], [-c.w / 2, c.h / 2]].map(([a, b]) => new THREE.Vector3(a, b, 0).applyMatrix4(m4));
+        const fn = new THREE.Vector3(0, 0, 1).applyQuaternion(q), up = new THREE.Vector3(0, 1, 0);
+        const UV = [[0, 0], [1, 0], [1, 1], [0, 1]];
+        for (const [tri, flip] of [[[0, 1, 2, 0, 2, 3], 1], [[0, 2, 1, 0, 3, 2], -1]]) {
+          const n = fn.clone().multiplyScalar(0.35 * flip).add(up).normalize();
+          for (const vi of tri) { pos.push(P[vi].x, P[vi].y, P[vi].z); nrm.push(n.x, n.y, n.z); uvs.push(UV[vi][0], UV[vi][1]); }
+        }
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      const mesh = new THREE.Mesh(g, mats[key]); mesh.customDepthMaterial = mats[key].userData.depth; mesh.userData.foliage = true; scene.add(mesh);
+    }
+  }
+
   // ======================================================== THE HOUSE (x -6.5..4.5, z 2..12)
   const HX0 = -6.5, HX1 = 4.5, HZ0 = 2, HZ1 = 12, CEIL = 2.6, TOP = 5.4;
   // floors: wood in the dining room, tiles in the kitchen, carpet in the living room / hall
@@ -521,16 +600,7 @@ export function buildGarden(scene) {
     for (let i = 0; i < n; i++) { const x = x0 + 0.08 + rnd() * (x1 - x0 - 0.16), z = z0 + 0.08 + rnd() * (z1 - z0 - 0.16); if (i % 4 === 0) bush(x, z, 0.16 + rnd() * 0.12); else bloom(x, z, 0.25 + rnd() * 0.4); }
   };
   // the left fence: shrubs, climbers and flowers growing up it the whole way along, never more than a foot out
-  for (const [z0, z1] of [[-16.35, -2.95], [-1.85, 1.3]]) {
-    R(B.x0 + 0.04, z0, B.x0 + 0.3, z1, 0.06, 0.03, 0x4a3020);                                     // narrow strip of soil
-    for (let z = z0 + 0.1; z < z1 - 0.05; z += 0.11) {
-      const n = 1 + Math.floor(rnd() * 3);
-      for (let j = 0; j < n; j++) { const r = 0.1 + rnd() * 0.12, y = 0.12 + rnd() * 1.65;
-        k.parts.push(part(sph(r, 7, 5), LEAF[Math.floor(rnd() * 4)], [B.x0 + 0.08 + r * 0.45, y, z + (rnd() - 0.5) * 0.08], [0, 0, 0], [0.55, 1, 1])); }
-      if (rnd() < 0.55) k.parts.push(part(sph(0.03 + rnd() * 0.025, 5, 4), [0xff4f7b, 0xffd400, 0xffffff, 0x9a4aff, 0xe86a90, 0x5a3a9a, 0x4a8aff][Math.floor(rnd() * 7)], [B.x0 + 0.2 + rnd() * 0.06, 0.2 + rnd() * 1.6, z]));
-      if (rnd() < 0.3) bloom(B.x0 + 0.24, z, 0.25 + rnd() * 0.35);
-    }
-  }
+  for (const [z0, z1] of [[-16.35, -2.95], [-1.85, 1.3]]) R(B.x0 + 0.04, z0, B.x0 + 0.3, z1, 0.06, 0.03, 0x4a3020);   // narrow strip of soil (the plants are leaf foliage, added at the end)
   // halfway down, where the line crosses the lawn: a trellis on the fence, a grey post, a scroll bracket
   // with a solar lantern and a hanging basket, clematis and roses climbing all over it
   { const PZ = -6.6, TZ0 = -8.5, GREY = 0x8c8c82, IRON = 0x1a1a1a, px = B.x0 + 0.1;
@@ -552,35 +622,9 @@ export function buildGarden(scene) {
     k.parts.push(part(new THREE.SphereGeometry(0.16, 12, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), 0x8a7a5a, [bx, 1.66, bz]));
     for (let i = 0; i < 40; i++) { const a = rnd() * 6.28, r = rnd() * 0.17, y = 1.66 + rnd() * 0.12 - (r > 0.12 ? rnd() * 0.25 : 0);
       k.parts.push(part(sph(0.028 + rnd() * 0.02, 5, 4), i % 3 === 0 ? LEAF[i % 4] : [0xe86a90, 0xfff6b0, 0xffffff, 0x4a6aff, 0xffd400][i % 5], [bx + Math.cos(a) * r * 0.8, y, bz + Math.sin(a) * r])); }
-    // clematis and roses scrambling over the trellis and the post
-    for (let i = 0; i < 160; i++) { const z = TZ0 + rnd() * (PZ - TZ0 + 0.1), y = 0.3 + rnd() * 2.1, leaf = rnd() < 0.62;
-      k.parts.push(part(sph(leaf ? 0.05 + rnd() * 0.05 : 0.035 + rnd() * 0.02, 5, 4), leaf ? LEAF[i % 4] : [0x4a2a7a, 0x6a3a9a, 0x3a2a6a, 0xe86a90, 0xd8507a][i % 5], [px + 0.06 + rnd() * 0.05, y, z], [0, 0, 0], [0.6, 1, 1])); }
     for (let i = 0; i < 18; i++) k.box(0.01, 0.01, 0.3 + rnd() * 0.3, px + 0.05, 2.3 + rnd() * 0.35, TZ0 + rnd() * 2, 0x6a5a3a, { rot: [0.6 + rnd(), 0, 0] });   // bare twiggy bits poking over the top
   }
   bed(6.0, -10.9, B.x1 - 0.05, -8.6, 18);                                              // behind the garage
-  // the neighbour's big weeping willow, hanging over the back-left corner by the cabin
-  { const WIL = [0x7aa84a, 0x8ab85a, 0x6a9a3e, 0x95c060, 0x5f8f38];
-    const wx = -8.4, wz = -14.6;                                                    // trunk is over the fence, next door
-    k.cyl(0.32, 0.45, 5.0, wx, 2.5, wz, 0x5a4a3a, 9);
-    for (const [ex, ey, ez] of [[-5.6, 5.4, -12.6], [-6.2, 5.9, -15.4], [-4.6, 4.9, -10.8]]) {      // big limbs reaching over
-      const dx = ex - wx, dy = ey - 4.2, dz = ez - wz, L = Math.hypot(dx, dy, dz);
-      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx, dy, dz).normalize()), e = new THREE.Euler().setFromQuaternion(q);
-      k.parts.push(part(cyl(0.09, 0.18, L, 7), 0x5a4a3a, [wx + dx / 2, 4.2 + dy / 2, wz + dz / 2], [e.x, e.y, e.z]));
-    }
-    // the crown: soft heaps of willow
-    for (let i = 0; i < 16; i++) { const a = rnd() * 6.28, r = rnd(); const x = -6.2 + Math.cos(a) * 3.0 * r, z = -13.0 + Math.sin(a) * 3.4 * r;
-      k.parts.push(part(sph(1.2 + rnd() * 0.8, 9, 6), WIL[i % WIL.length], [x, 5.4 + rnd() * 1.1, z], [0, 0, 0], [1.25, 0.6, 1.25])); }
-    // long trailing strands hanging down over the garden (kept above head height, and above the cabin roof)
-    for (let i = 0; i < 420; i++) {
-      const a = rnd() * 6.28, r = Math.sqrt(rnd());
-      const x = -6.0 + Math.cos(a) * 3.6 * r, z = -12.9 + Math.sin(a) * 4.0 * r;
-      if (x < B.x0 - 1.5) continue;
-      const top = 5.0 - r * 0.9, floor = (x > -4.6 && z < -10.9 && z > -16.3) ? 2.75 : 2.15;
-      const bottom = Math.max(floor, top - 1.2 - rnd() * 2.2), col = WIL[Math.floor(rnd() * WIL.length)];
-      let y = top, sway = (rnd() - 0.5) * 0.3;
-      while (y > bottom) { const seg = 0.22 + rnd() * 0.1; k.box(0.05, seg, 0.012, x + sway * (top - y) * 0.15, y - seg / 2, z, col, { rot: [0, a, (rnd() - 0.5) * 0.3] }); y -= seg * 0.92; }
-    }
-  }
   // the blue outdoor table tennis table on the lawn (Ronnie's end is the house... no: the left, -x)
   const TT = { x: -2.2, z: -7.4, y: 0.76 }, TL = 2.74, TW = 1.525;
   { const BLUE = 0x1f5fb8, top = TT.y;
@@ -693,6 +737,7 @@ export function buildGarden(scene) {
   // middle line. Things beyond each cut slide back; long things that cross a cut (fences, floors,
   // borders) stretch; the stepping stones, solar lights and daisies spread out evenly along the lawn.
   stretchGarden();
+  plantsAndWillow();
   const room = k.finish({
     name: "Lewis's House",
     sky: 0xcfe8ff, ground: 0x6f8f45, hemiI: 1.5, sun: 0xffeccc, sunI: 3.0, sunPos: [8, 16, -5], ambient: 0.32,
@@ -731,6 +776,46 @@ export function buildGarden(scene) {
 }
 
 // white lace net curtains: a lattice of loops and a scalloped hem
+// painted foliage with a transparent background: 0 leafy shrub, 1 shrub in flower, 2 clematis (purple),
+// 3 climbing rose (pink), 4 willow (long narrow leaves)
+function foliageTex(kind) {
+  return canvasTex(256, 256, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    let seed = 1000 + kind * 77; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const greens = kind === 4 ? ['#6f9a3a', '#86ad48', '#5d8a30', '#9bbd5a'] : ['#2f6a24', '#3f7f2c', '#4f9236', '#295c20', '#5fa040'];
+    const leaf = (x, y, len, wid, ang, col) => { g.save(); g.translate(x, y); g.rotate(ang); g.fillStyle = col; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(wid, len * 0.45, 0, len); g.quadraticCurveTo(-wid, len * 0.45, 0, 0); g.fill();
+      g.strokeStyle = 'rgba(20,50,10,0.45)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, 2); g.lineTo(0, len - 2); g.stroke(); g.restore(); };
+    const n = kind === 4 ? 220 : 170;
+    for (let i = 0; i < n; i++) {
+      const cx = w / 2 + (r() - 0.5) * w * 0.85, cy = h / 2 + (r() - 0.5) * h * 0.85;
+      if (Math.hypot((cx - w / 2) / w, (cy - h / 2) / h) > 0.46) continue;                 // keep a soft round outline
+      const len = kind === 4 ? 26 + r() * 18 : 16 + r() * 14, wid = kind === 4 ? 3 + r() * 2 : 7 + r() * 6;
+      leaf(cx, cy, len, wid, r() * 6.28, greens[Math.floor(r() * greens.length)]);
+    }
+    if (kind >= 1 && kind <= 3) {
+      const cols = kind === 1 ? ['#ffffff', '#ffd400', '#ff6fa0', '#b08aff'] : kind === 2 ? ['#5a2a8a', '#6a3aa0', '#4a2a7a'] : ['#e86a90', '#f08aa8', '#d8507a'];
+      for (let i = 0; i < (kind === 1 ? 26 : 14); i++) {
+        const cx = w / 2 + (r() - 0.5) * w * 0.7, cy = h / 2 + (r() - 0.5) * h * 0.7, col = cols[Math.floor(r() * cols.length)], pr = kind === 1 ? 6 : 13;
+        const petals = kind === 2 ? 6 : 5;
+        for (let p = 0; p < petals; p++) { const a = p / petals * 6.28 + r(); g.fillStyle = col; g.beginPath(); g.ellipse(cx + Math.cos(a) * pr * 0.55, cy + Math.sin(a) * pr * 0.55, pr * 0.6, pr * 0.35, a, 0, 7); g.fill(); }
+        g.fillStyle = kind === 3 ? '#c03a60' : '#ffe680'; g.beginPath(); g.arc(cx, cy, pr * 0.28, 0, 7); g.fill();
+      }
+    }
+  });
+}
+// one weeping willow strand: a thin stem with long narrow leaves hanging off it all the way down
+function strandTex() {
+  return canvasTex(64, 512, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    let seed = 4242; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    g.strokeStyle = '#6a7a3a'; g.lineWidth = 2; g.beginPath(); g.moveTo(w / 2, 0); g.bezierCurveTo(w / 2 + 6, h * 0.3, w / 2 - 6, h * 0.7, w / 2, h); g.stroke();
+    for (let y = 4; y < h - 6; y += 7) {
+      const side = (y / 7) % 2 ? 1 : -1, len = 18 + r() * 12, col = ['#7fa840', '#8fb850', '#6e9a34', '#a0c460'][Math.floor(r() * 4)];
+      g.save(); g.translate(w / 2 + Math.sin(y / 60) * 4, y); g.rotate(side * (0.35 + r() * 0.3)); g.fillStyle = col;
+      g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(side * 4, len * 0.5, 0, len); g.quadraticCurveTo(-side * 1, len * 0.5, 0, 0); g.fill(); g.restore();
+    }
+  });
+}
 function laceTex() {
   return canvasTex(256, 256, (g, w, h) => {
     g.clearRect(0, 0, w, h); g.fillStyle = 'rgba(248,246,240,0.55)'; g.fillRect(0, 0, w, h);
