@@ -740,7 +740,23 @@ export function buildGarden(scene) {
   // black security light up under the eaves, right of the doors
   k.box(0.3, 0.16, 0.12, 4.15, 2.15, FZ + 0.06, 0x2a2a2a); k.box(0.24, 0.1, 0.02, 4.15, 2.13, FZ + 0.125, 0xd8d8c8);
   // a trellis panel and a terracotta pot at the left corner
-  for (let i = 0; i < 6; i++) { k.box(0.02, 1.1, 0.02, CX0 - 0.25 - i * 0.1, 0.75, CZ1 + 0.25, 0xd8c8a8, { rot: [0, 0, 0.5] }); k.box(0.02, 1.1, 0.02, CX0 - 0.25 - i * 0.1, 0.75, CZ1 + 0.25, 0xd8c8a8, { rot: [0, 0, -0.5] }); }
+  // (a diamond lattice fence filling the whole gap between the cabin and the left fence, on two posts)
+  { const X0 = B.x0 + 0.04, X1 = CX0 - 0.04, Y0 = 0.15, Y1 = 1.55, Z = CZ1 + 0.25, ST = 0xd8c8a8, A = 0.6, dx = 1 / Math.tan(A);
+    for (const x of [X0 + 0.04, X1 - 0.04]) k.box(0.07, Y1 + 0.05, 0.07, x, (Y1 + 0.05) / 2, Z, 0xbcae90);
+    k.box(X1 - X0, 0.04, 0.04, (X0 + X1) / 2, Y1, Z, ST); k.box(X1 - X0, 0.04, 0.04, (X0 + X1) / 2, Y0, Z, ST);
+    // slats at +/- angle A, clipped to the rectangle
+    for (const sgn of [1, -1]) for (let c = X0 - (Y1 - Y0) * dx; c < X1; c += 0.22) {
+      // line: x = c + (y - Y0) * dx * sgn' (sgn picks the lean); clip to [X0, X1] x [Y0, Y1]
+      const xa = sgn > 0 ? c : X1 - (c - X0) - 0, xAt = (y) => sgn > 0 ? xa + (y - Y0) * dx : xa - (y - Y0) * dx;
+      let ya = Y0, yb = Y1;
+      const yForX = (x) => Y0 + (sgn > 0 ? (x - xa) : (xa - x)) / dx;
+      if (sgn > 0) { ya = Math.max(ya, yForX(X0)); yb = Math.min(yb, yForX(X1)); } else { ya = Math.max(ya, yForX(X1)); yb = Math.min(yb, yForX(X0)); }
+      if (yb - ya < 0.05) continue;
+      const pa = [xAt(ya), ya], pb = [xAt(yb), yb], L = Math.hypot(pb[0] - pa[0], pb[1] - pa[1]);
+      k.box(L, 0.022, 0.015, (pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, Z + sgn * 0.012, ST, { rot: [0, 0, Math.atan2(pb[1] - pa[1], pb[0] - pa[0])] });
+    }
+    k.blockers.push({ x0: X0, x1: X1, z0: Z - 0.05, z1: Z + 0.05, y1: Y1 });
+  }
   k.cyl(0.18, 0.13, 0.28, CX0 - 0.3, 0.14, CZ1 + 0.55, 0xb05a32, 12); k.cyl(0.04, 0.16, 0.25, CX0 - 0.3, 0.38, CZ1 + 0.55, 0x4a8a34, 8);
   // inside, the ceiling follows the roof: two sloping boarded halves up to the ridge, dark wood gable ends,
   // and the partition carried up to the slope; a ridge beam and two cross ties
