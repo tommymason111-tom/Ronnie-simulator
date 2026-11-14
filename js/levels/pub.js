@@ -316,7 +316,7 @@ export function buildPub(scene) {
   pillar(X(480), Z(1065));                                                                // a matching pillar at the end of the panelled half wall
   pillar(X(455), Z(1165) - 0.35); pillar(X(290) + 0.05, Z(1305) - 0.35);                  // the two along the walkway on the left (photo)
   // dark wood posts where the plan's walls end in the open room
-  for (const [x, z] of [[X(355), Z(605)], [X(735), Z(1305)], [X(790), Z(1305)]]) k.box(0.16, H - 0.5, 0.16, x, (H - 0.5) / 2, z, DARKWOOD, { block: true });
+  for (const [x, z] of [[X(355), Z(605)], [X(715), Z(1305)], [X(790), Z(1305)]]) k.box(0.16, H - 0.5, 0.16, x, (H - 0.5) / 2, z, DARKWOOD, { block: true });
   // dark posts at every corner of the DJ booth's half walls, floor to ceiling
   for (const [x, z] of [[X(615), Z(710)], [X(475), Z(605)], [X(475), Z(665)], [X(515), Z(705)], [X(535), Z(705)]]) { k.box(0.16, H, 0.16, x, H / 2, z, DARKWOOD, { block: true }); k.box(0.2, 0.06, 0.2, x, 1.13, z, 0x2a1a10); }
   // DJ booth: decks, mixer, speakers, a light bar
@@ -822,7 +822,7 @@ export function buildPub(scene) {
   for (const [x, z] of candles) { const y = pubFloorAt(x, z); k.cyl(0.025, 0.025, 0.1, x + 0.2, 0.83 + y, z, 0xf5f0dc, 8); k.lamp(x + 0.2, 0.9 + y, z, 0xffb050, 0.018); k.pool(x, 0.76 + y, z, 1.3, 0xffd090); }
   // dark oak beams across the main room
   // cream tongue-and-groove bulkheads on dark beams round the room (instead of a grid of beams; the photo's ceiling is plain cream)
-  for (const [x0, z0, x1, z1] of [[X(195), Z(1305) - 0.12, X(735), Z(1305) + 0.1], [X(455) - 0.1, Z(965), X(455) + 0.1, Z(1165)]]) {
+  for (const [x0, z0, x1, z1] of [[X(195), Z(1305) - 0.12, X(715) + 0.08, Z(1305) + 0.1], [X(455) - 0.1, Z(965), X(455) + 0.1, Z(1165)]]) {
     k.texBox(x1 - x0, 0.42, z1 - z0, (x0 + x1) / 2, H - 0.21, (z0 + z1) / 2, TNG, { tile: 0.5 }); k.box(x1 - x0 + 0.02, 0.08, z1 - z0 + 0.02, (x0 + x1) / 2, H - 0.45, (z0 + z1) / 2, 0x2a1a10); }
   k.box(0.08, 0.06, Z(1305) - Z(605), X(195) + 0.04, H - 0.05, (Z(605) + Z(1305)) / 2, 0xeeeae0);                          // cornice
   // big screens: the football is on
@@ -865,7 +865,7 @@ export function buildPub(scene) {
         for (const s4 of [-1, 1]) R(mx + s4 * bw * 0.21 - 0.008, zc - 0.03, mx + s4 * bw * 0.21 + 0.008, zc + 0.03, top - 2.05, (top + 2.05) / 2, FRAME); }
       blk(x0, zc - 0.1, x1, zc + 0.1, H);
     };
-    winWall(X(330), X(452)); winWall(X(565), X(735));
+    winWall(X(330), X(452)); winWall(X(565), X(715));
     // the cubby: brick on three sides, set back into the conservatory side
     // the brick corner (from the photo): a brick wall in line with the windows, its booth meeting the partition's
     // booth in an L, the old beer mirror under a brick arch and the telly above, lights either side, a brick pier
