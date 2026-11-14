@@ -235,7 +235,7 @@
       if (instant === true) return finish();
       // a quick CHOMP! while the level starts loading straight away underneath,
       // then the overlay always goes (it used to stay stuck over the screen)
-      const cd = $('#countdown'); cd.textContent = 'CHOMP!'; cd.classList.add('on', 'beat');
+      const cd = $('#countdown'); cd.textContent = 'EAT!'; cd.classList.add('on', 'beat');
       chompSfx(); blip(880, 0.25, 'square', 0.07);
       const hide = () => cd.classList.remove('on', 'beat');
       setTimeout(() => { finish(); setTimeout(hide, 450); }, 60);
