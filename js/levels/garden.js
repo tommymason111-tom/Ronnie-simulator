@@ -348,7 +348,8 @@ export function buildGarden(scene) {
   sofa(k, { x: 0.52, z: 10.16, len: 1.9, depth: 0.76, ry: Math.PI / 2, color: SOFA, seats: 2, armR: false, pillows: 1 });   // the L, up the side
   k.spawns.push(new THREE.Vector3(-1.6, 0.62, 11.4));
   // a short wall off the end of the dining/kitchen wall into the room, with the armchair backed against it, facing the TV
-  wallRun('x', 7.2, -2.2, -0.54, CEIL, [], { color: PAINT, t: 0.12 });                               // dining | living: a short wall out from the kitchen corner (the rest stays open)
+  wallRun('x', 7.2, -2.2, -0.54, CEIL, [], { color: PAINT, t: 0.12 });
+  wallRun('z', -0.6, 6.34, 7.26, CEIL, [], { color: PAINT, t: 0.12 });                               // ...joined to the kitchen wall (no gap at the corner)                               // dining | living: a short wall out from the kitchen corner (the rest stays open)
   { const ax = -1.35, az = 7.78, ry = Math.atan2(-(-5.9 - ax), -(11.4 - az));
     sofa(k, { x: ax, z: az, len: 0.95, depth: 0.85, ry, color: 0x6a3a2a, seats: 1, pillows: 1 }); k.spawns.push(new THREE.Vector3(ax, 0.6, az)); }
   R(-6.4, 8.2, -5.8, 9.0, 0.6, 0.3, 0x5a3a22, { block: true, collide: true }); k.spawns.push(new THREE.Vector3(-6.1, 0.66, 8.6));   // side table
