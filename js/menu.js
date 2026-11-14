@@ -99,9 +99,10 @@
     clearTimeout(sayT); sayT = setTimeout(() => say.classList.remove('on'), 2200);
     blip(300 + Math.random() * 120, 0.08, 'triangle', 0.07);
     if (window.ronnieHero) window.ronnieHero.talk(1.6);
+    return say.textContent;
   };
   window.ronnieSay = ronnieSay;
-  window.menuSfx = (n) => { if (n === 'chomp') chompSfx(); else if (n === 'gulp') blip(160, 0.18, 'sine', 0.09); };
+  window.menuSfx = (n) => { if (n === 'chomp') chompSfx(); else if (n === 'gulp') blip(160, 0.18, 'sine', 0.09); else if (n === 'pop') blip(620, 0.06); };
   window.menuNom = () => { const r = $('.herobox').getBoundingClientRect(); pop(r.left + r.width / 2, r.top + r.height * 0.55, ['NOM!', 'MUNCH!', 'GULP!', 'YUM!'][Math.floor(Math.random() * 4)], '#ffd400'); };
   hero.addEventListener('click', () => {          // the drawing (fallback)
     hero.classList.remove('gobble'); void hero.getBoundingClientRect(); hero.classList.add('gobble');
@@ -253,6 +254,25 @@
       setTimeout(hide, 2500);   // backstop
     };
     $('#go').addEventListener('click', () => go());
+    // the floating menu in VR (see ronnieHero.js) picks with these
+    window.menuVR = {
+      info: () => ({ place: PLACES.find(p => p.id === place).name, mode: MODES.find(m => m.id === mode).name }),
+      step(kind, d) {
+        if (kind === 'place') { stepPlace(d); drawModes(); return; }
+        const list = MODES.filter(m => !m.hidden && ok(m, place)); let i = list.findIndex(m => m.id === mode);
+        mode = list[(i + d + list.length) % list.length].id; blip(880, 0.08); drawModes();
+      },
+      play: () => go(),
+    };
+    // see him in VR before you play
+    const tvr = $('#title-vr');
+    if (tvr) {
+      tvr.addEventListener('click', () => {
+        const h = window.ronnieHero;
+        if (!h || !h.enterVR) { tvr.textContent = 'LOADING RONNIE…'; return; }
+        h.enterVR().catch(err => { tvr.textContent = 'VR FAILED: ' + err.message; });
+      });
+    }
     if (q.get('go')) go(true);
     // coming back from a level ("Change place or mode"): jump straight to picking
     // otherwise always open on the title screen, and tidy the address bar

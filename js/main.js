@@ -488,19 +488,28 @@ async function setupVR() {
   vrBtn.disabled = false; vrBtn.textContent = 'ENTER VR';
   status.textContent = 'Ready! Put the headset on and press ENTER VR.';
   let session = null;
-  vrBtn.addEventListener('click', async () => {
+  const begin = async (handed) => {
     initAudio();
     if (session) { session.end(); return; }
     try {
-      session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] });
+      if (handed) { session = handed; if (window.__menuVRRelease) window.__menuVRRelease(); }     // already in the headset from the menu
+      else session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] });
       session.addEventListener('end', () => { session = null; vrBtn.textContent = 'ENTER VR'; document.body.classList.remove('in-vr'); camera.position.set(0, 1.6, 0); });
       await renderer.xr.setSession(session);
       if (player.flatMode) { player.flatDrop(); player.flatMode = false; if (player.flatGrip) player.flatGrip.visible = false; touch.show(false); document.body.classList.remove('flat'); }
       vrBtn.textContent = 'EXIT VR';
       document.body.classList.add('in-vr');
       director.start(chosenMode());
-    } catch (err) { status.textContent = 'Could not start VR: ' + err.message; session = null; }
-  });
+    } catch (err) {
+      status.textContent = 'Could not start VR: ' + err.message;
+      if (handed) { try { handed.end(); } catch (e) {} status.textContent = 'Press ENTER VR to carry on in the headset.'; }
+      session = null;
+    }
+  };
+  vrBtn.addEventListener('click', () => begin());
+  // pressed PLAY on the floating menu in VR: carry straight on in the same session
+  const handed = window.__menuVRSession; window.__menuVRSession = null;
+  if (handed) begin(handed);
 }
 setupVR();
 document.getElementById('sound').addEventListener('click', () => { initAudio(); sfx('chomp'); });

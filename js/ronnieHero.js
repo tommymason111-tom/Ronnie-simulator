@@ -15,6 +15,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Item } from './foods.js';
+import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 
 const LIP_Y = 0.4595, MOUTH_HW = 0.066, PIVOT = new THREE.Vector3(0, 0.50, 0.09);
 const lipY = (x) => LIP_Y - 0.003 * Math.min(1, (x / MOUTH_HW) ** 2);
@@ -28,12 +30,15 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.setSize(W(), H(), false);
+  renderer.xr.enabled = true;
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
   const canvas = renderer.domElement; canvas.style.cssText = 'width:100%;height:100%;display:block;touch-action:none;cursor:grab';
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xfff4e8, 0x6a7aa8, 1.9));
   const key = new THREE.DirectionalLight(0xffffff, 2.4); key.position.set(0.8, 1.6, 2.2); scene.add(key);
   const rim = new THREE.DirectionalLight(0x9ab8ff, 1.6); rim.position.set(-1.6, 1.2, -1); scene.add(rim);
+  // everything of his lives in `world`: identity on the menu, shrunk to life size in VR
+  const world = new THREE.Group(); scene.add(world);
   const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 20);
   camera.position.set(0, 0.6, 2.05); camera.lookAt(0, 0.56, 0);
 
@@ -61,7 +66,8 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   const head = new THREE.SkinnedMesh(geo, mat);
   head.add(rootBone); head.bind(new THREE.Skeleton([rootBone, jaw]));
   head.frustumCulled = false;
-  const bust = new THREE.Group(); bust.add(head); scene.add(bust);
+  const bust = new THREE.Group(); bust.add(head); world.add(bust);
+  geo.computeBoundingBox(); const BOTTOM_Y = geo.boundingBox.min.y;
 
   // ---- inside the mouth ----
   const dark = new THREE.MeshBasicMaterial({ color: 0x2a0606, side: THREE.BackSide });
@@ -85,7 +91,7 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   const SPOTS = [new THREE.Vector3(-0.31, 0.27, 0.32), new THREE.Vector3(0.31, 0.29, 0.32), new THREE.Vector3(0.34, 0.74, 0.2)];
   let fi = Math.floor(Math.random() * FOODS.length);
   const nextType = () => FOODS[fi++ % FOODS.length];
-  const makeFood = (type) => { const it = new Item(type); const o = it.obj; o.scale.setScalar(TRAY_SCALE); o.userData.type = type; o.userData.bites = type === 'can' ? 1 : 3; scene.add(o); return o; };
+  const makeFood = (type) => { const it = new Item(type); const o = it.obj; o.scale.setScalar(TRAY_SCALE); o.userData.type = type; o.userData.bites = type === 'can' ? 1 : 3; world.add(o); return o; };
   const tray = SPOTS.map((p, i) => { const o = makeFood(nextType()); o.position.copy(p); o.userData.home = p; o.userData.pop = 1; return o; });
 
   // ---- animation state ----
@@ -129,14 +135,14 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
       if (e.t > 1.1) {
         grind = 0;
         if (e.bites > 0) { e.phase = 'open'; e.t = 0; }
-        else { e.phase = 'swallow'; e.t = 0; sfx && sfx('gulp'); onEat && onEat(e.o.userData.type); }
+        else { e.phase = 'swallow'; e.t = 0; sfx && sfx('gulp'); onEat && onEat(e.o.userData.type); if (renderer.xr.isPresenting) say(['NOM!', 'MUNCH!', 'GULP!', 'YUM!'][Math.floor(Math.random() * 4)], 1.2); }
       }
     } else if (e.phase === 'swallow') {         // gulp: a little nod
       jawTarget = 0; nod = 0.05 * Math.sin(Math.min(1, e.t / 0.4) * Math.PI);
       if (e.t > 0.5) {
         const o = e.o, home = o.userData.home;
-        if (home) { scene.remove(o); const n = makeFood(nextType()); n.userData.home = home; n.position.copy(home); n.scale.setScalar(0.01); n.userData.pop = 0; tray[tray.indexOf(o)] = n; }
-        else scene.remove(o);
+        if (home) { world.remove(o); const n = makeFood(nextType()); n.userData.home = home; n.position.copy(home); n.scale.setScalar(0.01); n.userData.pop = 0; tray[tray.indexOf(o)] = n; }
+        else world.remove(o);
         eating = null; idleT = 3 + Math.random() * 2;
       }
     }
@@ -147,7 +153,7 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     for (let i = 0; i < 9; i++) {
       const m = new THREE.Mesh(crumbGeo, new THREE.MeshLambertMaterial({ color: [0xd9933f, 0x5a2e14, 0x4caf3c, 0xffc21a][i % 4] }));
       m.position.copy(at); m.userData.v = new THREE.Vector3((Math.random() - 0.5) * 0.4, Math.random() * 0.25, 0.1 + Math.random() * 0.25); m.userData.life = 0.9;
-      scene.add(m); crumbList.push(m);
+      world.add(m); crumbList.push(m);
     }
   }
 
@@ -182,20 +188,211 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', () => { dragging = null; downAt = null; });
   holder.appendChild(canvas);
 
+  // ======================= VR: meet him in the headset =======================
+  // His head is ~2.4x life size, so in VR `world` shrinks to S and floats ~0.75m
+  // in front of you at eye height. A floating panel next to him picks the place
+  // and mode, and PLAY hands the same headset session over to the game.
+  const S = 0.42;
+  const vrRoom = new THREE.Group(); vrRoom.visible = false; scene.add(vrRoom);
+  {
+    const sky = new THREE.SphereGeometry(15, 32, 16), col = [], c = new THREE.Color(), top = new THREE.Color(0x1f4fbf), bot = new THREE.Color(0x3a2a6a);
+    const pa = sky.attributes.position; for (let i = 0; i < pa.count; i++) { c.lerpColors(bot, top, THREE.MathUtils.clamp(pa.getY(i) / 15 + 0.35, 0, 1)); col.push(c.r, c.g, c.b); }
+    sky.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    vrRoom.add(new THREE.Mesh(sky, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, depthWrite: false })));
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(8, 48), new THREE.MeshStandardMaterial({ color: 0x2a2050, roughness: 0.9 }));
+    floor.rotation.x = -Math.PI / 2; vrRoom.add(floor);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 48), new THREE.MeshBasicMaterial({ color: 0xffd400 }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.005; ring.name = 'ring'; vrRoom.add(ring);
+    // the big logo behind him
+    const lc = document.createElement('canvas'); lc.width = 1024; lc.height = 300; const lg = lc.getContext('2d');
+    lg.textAlign = 'center'; lg.font = '900 150px Impact, "Arial Black", sans-serif';
+    for (const [txt, y] of [['RONNIE', 135], ['SIMULATOR', 280]]) {
+      lg.font = (y > 200 ? '900 120px' : '900 150px') + ' Impact, "Arial Black", sans-serif';
+      for (let k = 8; k > 0; k--) { lg.fillStyle = k > 4 ? '#7a2a00' : '#ff7a00'; lg.fillText(txt, 512 + k, y + k); }
+      lg.fillStyle = '#ffd400'; lg.fillText(txt, 512, y);
+    }
+    const lt = new THREE.CanvasTexture(lc); lt.colorSpace = THREE.SRGBColorSpace;
+    const logo = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 1.4), new THREE.MeshBasicMaterial({ map: lt, transparent: true }));
+    logo.name = 'logo'; vrRoom.add(logo);
+  }
+  // the menu panel
+  const PW = 512, PH = 640;
+  const pc = document.createElement('canvas'); pc.width = PW; pc.height = PH; const pg = pc.getContext('2d');
+  const ptex = new THREE.CanvasTexture(pc); ptex.colorSpace = THREE.SRGBColorSpace;
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5), new THREE.MeshBasicMaterial({ map: ptex, transparent: true }));
+  panel.visible = false; scene.add(panel);
+  const BTN = { pp: [16, 128, 96, 82], pn: [400, 128, 96, 82], mp: [16, 262, 96, 82], mn: [400, 262, 96, 82], play: [40, 384, 432, 110], exit: [136, 528, 240, 76] };
+  let hover = null, drawnKey = '';
+  function drawPanel() {
+    const info = (window.menuVR && window.menuVR.info()) || { place: 'THE OYSTERFLEET', mode: 'THE WHOLE SQUAD' };
+    const key = info.place + '|' + info.mode + '|' + hover; if (key === drawnKey) return; drawnKey = key;
+    const g = pg; g.clearRect(0, 0, PW, PH);
+    const rr = (x, y, w, h, r, fill, stroke) => { g.beginPath(); g.roundRect(x, y, w, h, r); g.fillStyle = fill; g.fill(); if (stroke) { g.lineWidth = 6; g.strokeStyle = stroke; g.stroke(); } };
+    rr(4, 4, PW - 8, PH - 8, 34, 'rgba(20,14,48,0.92)', '#ffd400');
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    const fit = (txt, max, size) => { let f = size; do { g.font = `900 ${f}px "Arial Black", Impact, sans-serif`; f -= 2; } while (g.measureText(txt).width > max && f > 12); };
+    const row = (label, y, val, a, b) => {
+      g.fillStyle = '#9fb4ff'; fit(label, 400, 24); g.fillText(label, PW / 2, y - 22);
+      for (const id of [a, b]) { const [x, yy, w, h] = BTN[id]; rr(x, yy, w, h, 18, hover === id ? '#ffd400' : '#3b2f7a'); g.fillStyle = hover === id ? '#2a1208' : '#fff'; fit(id.endsWith('p') ? '◀' : '▶', 80, 44); g.fillText(id.endsWith('p') ? '◀' : '▶', x + w / 2, yy + h / 2 + 2); }
+      g.fillStyle = '#fff'; fit(val, 270, 34); g.fillText(val, PW / 2, y + 41);
+    };
+    g.fillStyle = '#ffd400'; fit('PICK AND PLAY', 440, 40); g.fillText('PICK AND PLAY', PW / 2, 50);
+    row('PLACE', 128, info.place, 'pp', 'pn');
+    row('MODE', 262, info.mode, 'mp', 'mn');
+    { const [x, y, w, h] = BTN.play; rr(x, y, w, h, 26, hover === 'play' ? '#ffe866' : '#ffd400', '#ff7a00'); g.fillStyle = '#2a1208'; fit('PLAY ➜', 380, 64); g.fillText('PLAY ➜', x + w / 2, y + h / 2 + 3); }
+    { const [x, y, w, h] = BTN.exit; rr(x, y, w, h, 20, hover === 'exit' ? '#ff6a6a' : '#5a2030'); g.fillStyle = '#fff'; fit('EXIT VR', 200, 30); g.fillText('EXIT VR', x + w / 2, y + h / 2 + 2); }
+    g.fillStyle = '#9fb4ff'; fit('grab the food and feed him!', 440, 22); g.fillText('grab the food and feed him!', PW / 2, PH - 14 - 2);
+    ptex.needsUpdate = true;
+  }
+  const btnAt = (uv) => { const x = uv.x * PW, y = (1 - uv.y) * PH; for (const id in BTN) { const [bx, by, w, h] = BTN[id]; if (x >= bx && x <= bx + w && y >= by && y <= by + h) return id; } return null; };
+  // something to point at for "tap him to talk" (cheaper than raycasting the skinned scan)
+  const headProxy = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 8), new THREE.MeshBasicMaterial({ visible: false }));
+  headProxy.position.set(0, 0.52, 0.06); bust.add(headProxy);
+
+  const xray = new THREE.Raycaster(), v1 = new THREE.Vector3(), v2 = new THREE.Vector3();
+  const ctrls = [];
+  const cmf = new XRControllerModelFactory(), hmf = new XRHandModelFactory();
+  for (let i = 0; i < 2; i++) {
+    const c = renderer.xr.getController(i);
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0xffd400, transparent: true, opacity: 0.8 }));
+    line.scale.z = 2; c.add(line); c.userData.line = line;
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.008, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd400 })); dot.visible = false; scene.add(dot); c.userData.dot = dot;
+    c.addEventListener('selectstart', () => press(c, true));
+    c.addEventListener('selectend', () => release(c));
+    c.addEventListener('squeezestart', () => press(c, false));
+    c.addEventListener('squeezeend', () => release(c));
+    c.addEventListener('disconnected', () => release(c));
+    scene.add(c); ctrls.push(c);
+    const grip = renderer.xr.getControllerGrip(i); grip.add(cmf.createControllerModel(grip)); scene.add(grip);
+    const hand = renderer.xr.getHand(i); hand.add(hmf.createHandModel(hand, 'mesh')); scene.add(hand);
+  }
+  const freeFood = () => tray.filter(o => o.visible && !o.userData.held && !(eating && eating.o === o) && o.userData.pop >= 1);
+  const foodOf = (obj) => { while (obj) { if (tray.includes(obj)) return obj; obj = obj.parent; } return null; };
+  function press(c, select) {
+    if (!running || !renderer.xr.isPresenting || c.userData.held) return;
+    c.updateMatrixWorld(); v1.setFromMatrixPosition(c.matrixWorld);
+    // reach out and grab food that's right there...
+    let best = null, bd = 0.13;
+    for (const o of freeFood()) { const d = o.getWorldPosition(v2).distanceTo(v1); if (d < bd) { bd = d; best = o; } }
+    // ...or point at it, at the panel, or at him
+    if (!best) {
+      xray.setFromXRController(c);
+      const hits = xray.intersectObjects([...(select ? [panel] : []), ...freeFood(), headProxy], true);
+      const h = hits[0];
+      if (h && h.object === panel) { const id = btnAt(h.uv); if (id) panelPress(id); return; }
+      if (h && h.object === headProxy) { talkT = 1.4; say(onTap && onTap()); return; }
+      if (h) best = foodOf(h.object);
+    }
+    if (best) { best.userData.held = c; c.userData.held = best; c.attach(best); sfx && sfx('pop'); }
+  }
+  function release(c) {
+    const o = c.userData.held; if (!o) return;
+    c.userData.held = null; o.userData.held = null; world.attach(o);
+  }
+  function panelPress(id) {
+    const m = window.menuVR; if (!m) return;
+    if (id === 'pp') m.step('place', -1); else if (id === 'pn') m.step('place', 1);
+    else if (id === 'mp') m.step('mode', -1); else if (id === 'mn') m.step('mode', 1);
+    else if (id === 'play') { handing = true; window.__menuVRSession = renderer.xr.getSession(); m.play(); }
+    else if (id === 'exit') renderer.xr.getSession() && renderer.xr.getSession().end();
+    drawnKey = ''; drawPanel();
+  }
+  let vrPlace = false, handing = false, vrSession = null;
+  function placeVR() {
+    const cam = renderer.xr.getCamera(); cam.updateMatrixWorld();
+    const p = new THREE.Vector3().setFromMatrixPosition(cam.matrixWorld);
+    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion); dir.y = 0; if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1); dir.normalize();
+    const right = new THREE.Vector3(-dir.z, 0, dir.x);
+    const floorY = p.y > 0.6 ? 0 : p.y - 1.5;      // no floor tracking: assume ~1.5m eyes
+    world.scale.setScalar(S);
+    world.position.copy(p).addScaledVector(dir, 0.75); world.position.y = p.y - 0.56 * S;
+    world.rotation.set(0, Math.atan2(-dir.x, -dir.z), 0);
+    vrRoom.position.set(p.x, floorY, p.z);
+    const ring = vrRoom.getObjectByName('ring'); ring.position.set(world.position.x - p.x, 0.005, world.position.z - p.z);
+    const logo = vrRoom.getObjectByName('logo'); logo.position.set(dir.x * 5, (p.y - floorY) + 1.5, dir.z * 5); logo.lookAt(0, logo.position.y, 0);
+    panel.position.copy(p).addScaledVector(dir, 0.62).addScaledVector(right, 0.42); panel.position.y = p.y - 0.12;
+    panel.lookAt(p.x, panel.position.y, p.z); panel.rotateX(-0.15);
+    vrPlace = false;
+  }
+  function vrFrame(dt) {
+    if (vrPlace) placeVR();
+    // he looks at you
+    const cam = renderer.xr.getCamera(); v1.setFromMatrixPosition(cam.matrixWorld); world.worldToLocal(v1);
+    lookX = THREE.MathUtils.clamp(Math.atan2(v1.x, v1.z) / 0.35, -1.5, 1.5);
+    lookY = THREE.MathUtils.clamp(0.1 + Math.atan2(v1.y - 0.56, v1.z) / 0.15, -1, 1);
+    const mouthW = world.localToWorld(MOUTH.clone());
+    let hv = null;
+    for (const c of ctrls) {
+      const o = c.userData.held, line = c.userData.line, dot = c.userData.dot;
+      dot.visible = false; line.scale.z = 2;
+      if (o) {
+        line.visible = false;
+        o.position.lerp(v2.set(0, -0.01, -0.06), Math.min(1, dt * 10));     // pulls in to your hand
+        const d = o.getWorldPosition(v2).distanceTo(mouthW);
+        jawTarget = Math.max(jawTarget, 0.25 * smooth(0.16, 0.05, d));
+        if (d < 0.07 && !eating) { release(c); eat(o); }
+        continue;
+      }
+      line.visible = true;
+      xray.setFromXRController(c);
+      const h = xray.intersectObject(panel)[0];
+      if (h) { line.scale.z = h.distance; dot.position.copy(h.point); dot.visible = true; hv = hv || btnAt(h.uv); }
+    }
+    if (hv !== hover) { hover = hv; drawPanel(); }
+  }
+  async function enterVR() {
+    if (!navigator.xr || renderer.xr.isPresenting) return;
+    const s = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] });
+    vrSession = s;
+    s.addEventListener('end', () => {
+      vrSession = null;
+      if (handing) return;                     // the game has it now
+      for (const c of ctrls) release(c);
+      world.position.set(0, 0, 0); world.rotation.set(0, 0, 0); world.scale.setScalar(1);
+      vrRoom.visible = false; panel.visible = false; lookX = lookY = 0;
+      fadeU.value.set(-1, -0.9);                // re-fit the flat fade next frame
+      document.body.classList.remove('hero-vr');
+      if (!holderVisible()) pause();
+    });
+    renderer.xr.setReferenceSpaceType('local-floor');
+    await renderer.xr.setSession(s);
+    vrRoom.visible = true; panel.visible = true; vrPlace = true; drawnKey = ''; drawPanel();
+    fadeU.value.set(BOTTOM_Y, BOTTOM_Y + 0.12);
+    document.body.classList.add('hero-vr');
+    running = true; renderer.setAnimationLoop(frame);
+  }
+  const holderVisible = () => !!holder.offsetParent;
+  // a speech bubble over his head (VR only: the page's bubble is behind the headset)
+  const bc = document.createElement('canvas'); bc.width = 512; bc.height = 160; const bg = bc.getContext('2d');
+  const btex = new THREE.CanvasTexture(bc); btex.colorSpace = THREE.SRGBColorSpace;
+  const bubble = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.1125), new THREE.MeshBasicMaterial({ map: btex, transparent: true, depthTest: false }));
+  bubble.visible = false; bubble.userData.t = 0; bubble.renderOrder = 5; scene.add(bubble);
+  function say(txt, sec = 2.2) {
+    if (!txt) return;
+    bg.clearRect(0, 0, 512, 160); bg.beginPath(); bg.roundRect(6, 6, 500, 120, 40); bg.moveTo(230, 124); bg.lineTo(256, 156); bg.lineTo(282, 124);
+    bg.fillStyle = '#fff'; bg.fill(); bg.lineWidth = 6; bg.strokeStyle = '#2a1208'; bg.stroke();
+    bg.fillStyle = '#2a1208'; bg.textAlign = 'center'; bg.textBaseline = 'middle';
+    let f = 46; do { bg.font = `900 ${f}px "Arial Black", Impact, sans-serif`; f -= 2; } while (bg.measureText(txt).width > 470 && f > 14);
+    bg.fillText(txt, 256, 68); btex.needsUpdate = true;
+    world.localToWorld(bubble.position.set(0, 0.98, 0.1)); bubble.userData.t = sec;
+  }
+
   // ---- the loop ----
   let running = true, last = performance.now();
-  const _q = new THREE.Quaternion(), _e = new THREE.Euler();
   function frame(now) {
     if (!running) return;
-    const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
-    if (renderer.domElement.width !== Math.round(W() * renderer.getPixelRatio()) || fadeU.value.x < -0.5) {
+    const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;     // (XR frame times can run on a different clock) t += dt;
+    const inVR = renderer.xr.isPresenting;
+    if (!inVR && (renderer.domElement.width !== Math.round(W() * renderer.getPixelRatio()) || fadeU.value.x < -0.5)) {
       renderer.setSize(W(), H(), false); camera.aspect = W() / H(); camera.updateProjectionMatrix();
       const rb = new THREE.Raycaster(); rb.setFromCamera(new THREE.Vector2(0, -1), camera); const hb = new THREE.Vector3();
       if (rb.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.1), hb)) fadeU.value.set(hb.y + 0.004, hb.y + 0.055);
     }
     // auto-eat when nobody's playing with him
-    if (!eating && !dragging) { idleT -= dt; if (idleT <= 0) { const o = tray[Math.floor(Math.random() * tray.length)]; if (o.userData.pop >= 1) eat(o); else idleT = 0.5; } }
+    if (!eating && !dragging) { idleT -= dt; if (idleT <= 0) { const o = tray[Math.floor(Math.random() * tray.length)]; if (o.userData.pop >= 1 && !o.userData.held) eat(o); else idleT = 0.5; } }
     if (!eating && !dragging && talkT <= 0) jawTarget = 0;
+    if (inVR) vrFrame(dt);
+    if (bubble.userData.t > 0) { bubble.userData.t -= dt; bubble.visible = inVR && bubble.userData.t > 0; if (bubble.visible) { const cp = renderer.xr.getCamera(); bubble.lookAt(v1.setFromMatrixPosition(cp.matrixWorld)); } }
     if (talkT > 0) { talkT -= dt; jawTarget = 0.06 + 0.06 * Math.abs(Math.sin(t * 13)); if (talkT <= 0) jawTarget = 0; }
     updateEat(dt);
     // jaw follows its target quickly but not instantly (muscle), slides forward a touch as it opens
@@ -209,26 +406,35 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     bust.position.y = Math.sin(t * 1.6) * 0.004;
     // tray food bobs and spins; new food pops in
     for (const o of tray) {
-      if (o === dragging || (eating && eating.o === o)) continue;
+      if (o === dragging || o.userData.held || (eating && eating.o === o)) continue;
       if (o.userData.pop < 1) { o.userData.pop = Math.min(1, o.userData.pop + dt * 3); o.scale.setScalar(TRAY_SCALE * (1 - Math.pow(1 - o.userData.pop, 3))); }
       const h = o.userData.home; o.position.lerp(new THREE.Vector3(h.x, h.y + Math.sin(t * 2 + h.x * 9) * 0.015, h.z), Math.min(1, dt * 6));
       o.userData.spin = (o.userData.spin || Math.random() * 6) + dt * 0.7;
       o.rotation.set(o.userData.type === 'can' ? 0.15 : 0.85, o.userData.spin, 0, 'YXZ');
     }
-    for (let i = crumbList.length - 1; i >= 0; i--) { const c = crumbList[i]; c.userData.life -= dt; c.userData.v.y -= 1.4 * dt; c.position.addScaledVector(c.userData.v, dt); c.rotation.x += dt * 9; if (c.userData.life <= 0) { scene.remove(c); crumbList.splice(i, 1); } }
+    for (let i = crumbList.length - 1; i >= 0; i--) { const c = crumbList[i]; c.userData.life -= dt; c.userData.v.y -= 1.4 * dt; c.position.addScaledVector(c.userData.v, dt); c.rotation.x += dt * 9; if (c.userData.life <= 0) { world.remove(c); crumbList.splice(i, 1); } }
     renderer.render(scene, camera);
-    requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  renderer.setAnimationLoop(frame);
+  function pause() { if (renderer.xr.isPresenting) return; if (running) { running = false; renderer.setAnimationLoop(null); } }
+  function resume() { if (!running) { running = true; last = performance.now(); renderer.setAnimationLoop(frame); } }
+  // PLAY in VR: keep drawing him in the headset while the level loads, until the
+  // game takes the session over (window.__menuVRRelease, called by main.js)
+  window.__menuVRRelease = () => { if (!handing) return; running = false; renderer.setAnimationLoop(null); window.__menuVRRelease = null; };
   return {
     ready: true,
     canvas,
-    stop() { running = false; renderer.dispose(); renderer.forceContextLoss && renderer.forceContextLoss(); canvas.remove(); },
-    pause() { if (running) { running = false; } },
-    resume() { if (!running) { running = true; last = performance.now(); requestAnimationFrame(frame); } },
+    stop() {
+      canvas.remove();
+      if (handing && renderer.xr.isPresenting) { panel.visible = false; say('LOADING…', 30); return; }
+      running = false; renderer.setAnimationLoop(null); renderer.dispose(); renderer.forceContextLoss && renderer.forceContextLoss();
+    },
+    pause, resume,
+    enterVR,
+    get inVR() { return renderer.xr.isPresenting; },
     talk(sec = 1.4) { talkT = sec; },
     eatNow() { if (!eating) eat(tray[0]); },
-    _debug: { set open(v) { jawTarget = v; talkT = 99; jawOpen = v; }, camera, tray, bust },
+    _debug: { set open(v) { jawTarget = v; talkT = 99; jawOpen = v; }, camera, tray, bust, world, panel, renderer, MOUTH },
   };
 }
 

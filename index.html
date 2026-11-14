@@ -104,6 +104,8 @@
     @keyframes pulse { 50% { transform: scale(1.06); } }
     .midbtn { font: 900 16px "Arial Black", Arial, sans-serif; padding: 12px 22px; border-radius: 16px; border: 3px solid #fff; background: rgba(28,44,140,0.94); color: #fff; cursor: pointer; min-width: 220px; }
     .playbtn { font-size: clamp(34px, 9vw, 46px); padding: 20px 0; width: min(420px, 88vw); border-radius: 24px; }
+    .vrbtn { width: min(420px, 88vw); font-size: 15px; padding: 12px 6px; background: linear-gradient(180deg, #7a5cff, #4b2fd0); color: #fff; }
+    .vrbtn[hidden] { display: none; }
     .smallrow { display: flex; gap: 10px; width: min(420px, 88vw); }
     .smallrow .midbtn { flex: 1; min-width: 0; font-size: 13px; padding: 11px 6px; }
     .midbtn:hover { background: rgba(255,255,255,0.22); }
@@ -267,6 +269,7 @@
       <p class="tagline">Eat everything. Grow enormous. Your mates are "just trying to help".</p>
       <div class="menu-btns">
         <button class="bigbtn playbtn" data-go="place">PLAY ➜</button>
+        <button class="midbtn vrbtn" id="title-vr" hidden>🥽 SEE RONNIE IN VR</button>
         <div class="smallrow">
           <button class="midbtn" data-go="squad">👥 MEET THE SQUAD</button>
           <button class="midbtn" data-go="how">❓ HOW TO PLAY</button>
@@ -423,6 +426,9 @@
     }).then((h) => {
       box.classList.add('three'); window.ronnieHero = h;
       if (document.getElementById('start').classList.contains('gone')) h.stop();
+      // a headset? offer to see him in VR
+      const tvr = document.getElementById('title-vr');
+      if (navigator.xr && navigator.xr.isSessionSupported) navigator.xr.isSessionSupported('immersive-vr').then(v => { if (v) tvr.hidden = false; }).catch(() => {});
     }).catch((e) => console.warn('3D Ronnie unavailable, using the drawing', e));
   </script>
   <script type="module" src="./js/main.js"></script>
