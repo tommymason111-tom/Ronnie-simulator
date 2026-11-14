@@ -207,8 +207,8 @@ export function buildGarden(scene) {
   k.spawns.push(new THREE.Vector3(5.6, 0.6, 1.45), new THREE.Vector3(5.9, 0.6, 1.45));
   for (const x of [-6.1, -2.3, -0.4, 1.5]) { k.cyl(0.22, 0.16, 0.42, x, 0.21, 1.72, 0xb05a32, 12); k.cyl(0.05, 0.36, 0.55, x, 0.7, 1.72, 0x3f8a2e, 10); }
 
-  // ======================================================== THE GARAGE + OUTDOOR TOILET (x 2.1..6.5, z -8.3..-0.3)
-  const GX0 = 2.1, GX1 = B.x1, GZ0 = -8.3, GZ1 = -0.3, GH = 2.5;
+  // ======================================================== THE GARAGE + OUTDOOR TOILET (x 2.1..6.5, z -5.6..-0.3), the little green shed behind
+  const GX0 = 2.1, GX1 = B.x1, GZ0 = -5.6, GZ1 = -0.3, GH = 2.5;
   k.floor(GX0, GZ0, GX1, -2.4, tileTex('#8a8a86', '#84847f', '#6a6a66', 128), 0.007, 2);
   k.floor(GX0, -2.4, GX1, GZ1, tileTex('#e0e4e8', '#d4d8dc', '#a0a4a8', 48), 0.007, 0.6);
   wallRun('z', GX0, GZ0, GZ1, GH, [[-4.2, -3.2, 0, 2.0], [-1.85, -0.95, 0, 2.0]], { color: RENDER, inColor: 0xd8d4cc, inSign: 1 });
@@ -223,19 +223,40 @@ export function buildGarden(scene) {
   k.label('GARAGE', 0.6, 0.16, [GX0 - 0.11, 2.2, -3.7], [0, -Math.PI / 2, 0], { bg: '#2e5a3a', fg: '#fff', border: null, size: 44 });
   k.label('BOG', 0.4, 0.16, [GX0 - 0.11, 2.2, -1.4], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: '#111', size: 44 });
   // the mess: workbench, boxes, tyres, a bike, paint tins, crates, an old telly
-  R(5.8, -7.9, 6.35, -5.2, 0.9, 0.45, 0x7a5a3a, { block: true, collide: true });
-  for (let i = 0; i < 8; i++) k.box(0.05 + rnd() * 0.1, 0.04, 0.2 + rnd() * 0.2, 6.0 + rnd() * 0.2, 0.93, -7.7 + i * 0.3, [0xd32f2f, 0x555555, 0xffd400, 0x1e5aa8][i % 4], { rot: [0, rnd() * 3, 0] });
-  k.box(0.04, 0.9, 2.4, 6.36, 1.6, -6.6, 0x9a7a5a);                                                   // pegboard
-  k.spawns.push(new THREE.Vector3(6.0, 1.0, -6.0), new THREE.Vector3(6.05, 1.0, -7.3));
-  for (const [x, z, n] of [[2.7, -7.7, 3], [3.4, -7.8, 2], [2.6, -6.9, 2], [4.2, -7.9, 1]]) for (let i = 0; i < n; i++) k.box(0.55 + rnd() * 0.2, 0.42, 0.5 + rnd() * 0.15, x + (rnd() - 0.5) * 0.08, 0.21 + i * 0.42, z, [0xb8925a, 0xa8844e, 0xc8a26a][i % 3], { block: i === 0, collide: i === n - 1, rot: [0, (rnd() - 0.5) * 0.3, 0] });
-  for (let i = 0; i < 4; i++) { k.cyl(0.32, 0.32, 0.2, 5.3, 0.1 + i * 0.2, -4.6, 0x1a1a1a, 14, { block: i === 0 }); k.cyl(0.18, 0.18, 0.21, 5.3, 0.1 + i * 0.2, -4.6, 0x3a3a3a, 10); }
-  for (const z of [-5.9, -4.9]) k.box(0.04, 0.66, 0.66, 2.55, 0.36, z, 0x111111, { rot: [0, 0, 0.1] });   // bike wheels against the wall
-  k.box(0.04, 0.05, 1.0, 2.58, 0.68, -5.4, 0xd32f2f); k.box(0.04, 0.4, 0.05, 2.58, 0.86, -5.75, 0xd32f2f);
-  for (let i = 0; i < 6; i++) k.cyl(0.11, 0.11, 0.22, 3.0 + (i % 3) * 0.25, 0.11 + Math.floor(i / 3) * 0.22, -5.2 + (i % 2) * 0.05, [0xffffff, 0x2a8ae0, 0xd32f2f][i % 3], 10);   // paint tins
+  R(5.8, -5.4, 6.35, -3.4, 0.9, 0.45, 0x7a5a3a, { block: true, collide: true });
+  for (let i = 0; i < 6; i++) k.box(0.05 + rnd() * 0.1, 0.04, 0.2 + rnd() * 0.2, 6.0 + rnd() * 0.2, 0.93, -5.2 + i * 0.3, [0xd32f2f, 0x555555, 0xffd400, 0x1e5aa8][i % 4], { rot: [0, rnd() * 3, 0] });
+  k.box(0.04, 0.9, 1.8, 6.36, 1.6, -4.4, 0x9a7a5a);                                                   // pegboard
+  k.spawns.push(new THREE.Vector3(6.0, 1.0, -3.8), new THREE.Vector3(6.05, 1.0, -4.9));
+  for (const [x, z, n] of [[2.65, -5.2, 3], [4.15, -5.25, 1]]) for (let i = 0; i < n; i++) k.box(0.55 + rnd() * 0.2, 0.42, 0.5 + rnd() * 0.15, x + (rnd() - 0.5) * 0.08, 0.21 + i * 0.42, z, [0xb8925a, 0xa8844e, 0xc8a26a][i % 3], { block: i === 0, collide: i === n - 1, rot: [0, (rnd() - 0.5) * 0.3, 0] });
+  for (let i = 0; i < 3; i++) { k.cyl(0.32, 0.32, 0.2, 5.25, 0.1 + i * 0.2, -2.95, 0x1a1a1a, 14, { block: i === 0 }); k.cyl(0.18, 0.18, 0.21, 5.25, 0.1 + i * 0.2, -2.95, 0x3a3a3a, 10); }
+  k.box(0.04, 0.66, 0.66, 2.55, 0.36, -4.85, 0x111111, { rot: [0, 0, 0.1] }); k.box(0.05, 0.05, 0.6, 2.58, 0.68, -4.55, 0xd32f2f);   // a bike wheel and frame by the door
+  for (let i = 0; i < 6; i++) k.cyl(0.11, 0.11, 0.22, 3.3 + (i % 3) * 0.25, 0.11 + Math.floor(i / 3) * 0.22, -5.25 + (i % 2) * 0.05, [0xffffff, 0x2a8ae0, 0xd32f2f][i % 3], 10);   // paint tins
   for (let i = 0; i < 3; i++) R(4.0 + i * 0.05, -3.1, 4.5 + i * 0.05, -2.7, 0.28, 0.14 + i * 0.28, [0xffd400, 0x1e5aa8, 0xd32f2f][i]);   // beer crates
-  R(3.6, -6.4, 4.4, -5.8, 0.55, 0.275, 0x2a2a2a, { block: true }); k.box(0.7, 0.42, 0.02, 4.0, 0.3, -5.79, 0x3a4a5a);   // an old telly on the floor
-  k.box(0.9, 0.12, 1.9, 4.6, 0.06, -3.6, 0x8a9aa8, { rot: [0, 0.4, 0] });                            // a deflated airbed
-  k.light(4.2, 2.3, -5.3, 0xfff0d0, 2.5, 6); k.lamp(4.2, 2.42, -5.3, 0xffffff, 0.1);
+  R(4.7, -5.5, 5.5, -4.95, 0.55, 0.275, 0x2a2a2a, { block: true }); k.box(0.7, 0.42, 0.02, 5.1, 0.3, -4.94, 0x3a4a5a);   // an old telly on the floor
+  k.light(4.2, 2.3, -4.0, 0xfff0d0, 2.5, 6); k.lamp(4.2, 2.42, -4.0, 0xffffff, 0.1);
+  // the little green shed behind the garage: sage clapboard, apex felt roof, a dusty window
+  { const SX0 = 4.25, SX1 = 6.4, SZ0 = -8.25, SZ1 = -5.95, EAVE = 1.95, RIDGE = 2.45;
+    const SHED = canvasTex(256, 256, (g, w, h) => {
+      g.fillStyle = '#8fb3a0'; g.fillRect(0, 0, w, h);
+      for (let y = 0; y < h; y += 32) { g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(0, y + 28, w, 4); g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, y, w, 3); }
+      for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '255,255,255'},0.04)`; g.fillRect(Math.random() * w, Math.random() * h, 6, 2); }
+    });
+    k.texBox(SX1 - SX0, EAVE, SZ1 - SZ0, (SX0 + SX1) / 2, EAVE / 2, (SZ0 + SZ1) / 2, SHED, { tile: 1.6, collide: true, block: true });
+    k.box(SX1 - SX0 + 0.04, 0.12, SZ1 - SZ0 + 0.04, (SX0 + SX1) / 2, 0.06, (SZ0 + SZ1) / 2, 0x6a7a6a);   // weathered bottom board
+    // gable ends
+    const gs = new THREE.Shape([new THREE.Vector2(-(SX1 - SX0) / 2, 0), new THREE.Vector2((SX1 - SX0) / 2, 0), new THREE.Vector2(0, RIDGE - EAVE)]);
+    for (const z of [SZ0, SZ1]) { const m = new THREE.Mesh(new THREE.ShapeGeometry(gs), new THREE.MeshLambertMaterial({ color: 0x8fb3a0, side: THREE.DoubleSide })); m.position.set((SX0 + SX1) / 2, EAVE, z); scene.add(m); m.castShadow = m.receiveShadow = true; }
+    // the roof: grey-green felt, overhanging, with a fascia board
+    const half = (SX1 - SX0) / 2 + 0.15, ang = Math.atan2(RIDGE - EAVE, (SX1 - SX0) / 2), sl = Math.hypot(half, (RIDGE - EAVE) * half / ((SX1 - SX0) / 2));
+    for (const s of [-1, 1]) k.box(sl, 0.06, SZ1 - SZ0 + 0.3, (SX0 + SX1) / 2 + s * sl / 2 * Math.cos(ang), (EAVE + RIDGE) / 2 + 0.02, (SZ0 + SZ1) / 2, 0x55605a, { rot: [0, 0, -s * ang] });
+    for (const z of [SZ0 - 0.15, SZ1 + 0.15]) for (const s of [-1, 1]) k.box(sl, 0.12, 0.03, (SX0 + SX1) / 2 + s * sl / 2 * Math.cos(ang), (EAVE + RIDGE) / 2 - 0.04, z, 0x7fa390, { rot: [0, 0, -s * ang] });
+    // window on the garden side (brown frame, dark dusty glass) and a door on the back gable
+    k.box(0.02, 0.72, 1.22, SX0 - 0.01, 1.45, (SZ0 + SZ1) / 2 + 0.25, 0x8a5a32);
+    k.box(0.02, 0.62, 1.1, SX0 - 0.02, 1.45, (SZ0 + SZ1) / 2 + 0.25, 0x2a2420);
+    k.box(0.04, 0.03, 1.25, SX0 - 0.03, 1.08, (SZ0 + SZ1) / 2 + 0.25, 0x8fb3a0);
+    k.box(0.75, 1.75, 0.02, SX0 + 0.75, 0.9, SZ0 - 0.01, 0x84a894); k.cyl(0.02, 0.02, 0.06, SX0 + 1.0, 0.95, SZ0 - 0.04, 0x222222, 6);
+    for (const y of [0.35, 1.45]) k.box(0.7, 0.04, 0.02, SX0 + 0.75, y, SZ0 - 0.025, 0x333333);     // hinges
+  }
   // the toilet
   R(5.6, -2.3, 6.35, -1.9, 0.75, 0.375, WHITE, { block: true }); k.cyl(0.2, 0.17, 0.42, 5.95, 0.21, -1.6, WHITE, 14, { block: true }); k.cyl(0.21, 0.21, 0.03, 5.95, 0.44, -1.6, 0xeeeeee, 14);
   R(3.0, -2.3, 3.6, -1.95, 0.12, 0.85, WHITE); k.cyl(0.04, 0.05, 0.85, 3.3, 0.42, -2.12, WHITE, 8);   // little sink
@@ -379,10 +400,10 @@ export function buildGarden(scene) {
   // daisies and clover all over the lawn
   for (let i = 0; i < 260; i++) {
     const x = B.x0 + 0.9 + rnd() * 8.0, z = -10.6 + rnd() * 9.6;
-    if (x > 1.9 && z > -8.4) continue;
+    if ((x > 1.9 && z > -5.75) || (x > 4.0 && z > -8.45 && z < -5.8)) continue;
     k.box(0.03, 0.006, 0.03, x, 0.012, z, rnd() < 0.75 ? 0xffffff : 0xd8c8ff); k.box(0.012, 0.008, 0.012, x, 0.016, z, 0xffd400);
   }
-  for (let i = 0; i < 70; i++) { const x = B.x0 + 0.9 + rnd() * 8.0, z = -10.6 + rnd() * 9.6; if (x > 1.9 && z > -8.4) continue; k.cyl(0.0, 0.05, 0.1, x, 0.05, z, LEAF[i % 4], 5); }   // tufts
+  for (let i = 0; i < 70; i++) { const x = B.x0 + 0.9 + rnd() * 8.0, z = -10.6 + rnd() * 9.6; if ((x > 1.9 && z > -5.75) || (x > 4.0 && z > -8.45 && z < -5.8)) continue; k.cyl(0.0, 0.05, 0.1, x, 0.05, z, LEAF[i % 4], 5); }   // tufts
   // solar lights along the stepping stones
   for (const [x, z] of [[1.0, -3.9], [-0.3, -5.0], [-1.6, -6.3], [0.3, -7.9], [1.5, -9.0], [2.3, -10.2]]) { k.cyl(0.012, 0.012, 0.32, x, 0.16, z, 0x222222, 6); k.cyl(0.04, 0.05, 0.05, x, 0.34, z, 0x111111, 8); k.lamp(x, 0.39, z, 0xfff8e0, 0.03, false); }
   // the back of the house: hanging baskets, outside light, drainpipe, chimney, step, hose reel
@@ -431,7 +452,7 @@ export function buildGarden(scene) {
     name: "Lewis's House",
     sky: 0xcfe8ff, ground: 0x6f8f45, hemiI: 1.5, sun: 0xffeccc, sunI: 3.0, sunPos: [8, 16, -5], ambient: 0.32,
     start: { x: 0.5, z: 1.1, yaw: 0.55 },
-    board: { x: GX0 - 0.12, y: 1.38, z: -6.6, ry: -Math.PI / 2 },
+    board: { x: GX0 - 0.12, y: 1.38, z: -4.95, ry: -Math.PI / 2 },
     startFood: ['can', 'burger', 'hotdog', 'can', 'chicken', 'sausageroll', 'can', 'burger', 'crisps', 'cookie', 'pizza', 'can'],
     spotCount: 30,
   });
