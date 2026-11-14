@@ -433,6 +433,21 @@ export function buildGarden(scene) {
   for (let x = -4.4; x < 4.9; x += 0.3) k.box(0.01, 0.005, 0.55, x, 0.101, -10.72, 0x5a4030);
   for (const [a, b] of [[-3.6, -1.6], [3.2, 4.5]]) { R(a, -10.98, b, -10.78, 0.18, 0.85, 0x6a4a2a); for (let i = 0; i < 12; i++) bloom(a + 0.08 + i * (b - a - 0.16) / 11, -10.88, 0.95 + rnd() * 0.08); }
   for (let i = 0; i <= 40; i++) { const t = i / 40, x = -4.5 + 9.5 * t, y = 2.38 - 0.12 * Math.abs(Math.sin(t * Math.PI * 5)); k.lamp(x, y, -10.92, [0xfff0b0, 0xffd27a, 0xffb0d0][i % 3], 0.022, false); }
+  // the rusty garden incinerator by the front-right corner of the cabin, straw poking out under the lid
+  { const ix = 5.6, iz = -11.45, RUST = [0x8a4a22, 0x9a5a2a, 0x7a3e1c, 0xa8622e];
+    k.cyl(0.26, 0.27, 0.62, ix, 0.31, iz, 0x8a4a22, 18, { block: true, collide: true });
+    for (let i = 0; i < 30; i++) { const a = rnd() * 6.28, y = 0.05 + rnd() * 0.55; k.box(0.06 + rnd() * 0.08, 0.04 + rnd() * 0.08, 0.006, ix + Math.sin(a) * 0.268, y, iz + Math.cos(a) * 0.268, RUST[i % 4], { rot: [0, a, 0] }); }   // rust patches
+    for (let row = 0; row < 3; row++) for (let j = 0; j < 9; j++) { const a = j / 9 * 6.28 + row * 0.35; k.cyl(0.018, 0.018, 0.01, ix + Math.sin(a) * 0.271, 0.15 + row * 0.15, iz + Math.cos(a) * 0.271, 0x1a0e08, 8); }   // air holes
+    for (let j = 0; j < 9; j++) { const a = j / 9 * 6.28 + 0.2; R(ix + Math.sin(a) * 0.27 - 0.02, iz + Math.cos(a) * 0.27 - 0.02, ix + Math.sin(a) * 0.27 + 0.02, iz + Math.cos(a) * 0.27 + 0.02, 0.012, 0.0, 0x1a0e08); }
+    k.cyl(0.29, 0.29, 0.03, ix, 0.66, iz, 0x7a3e1c, 18);                                            // rim
+    k.cyl(0.08, 0.32, 0.14, ix + 0.02, 0.76, iz, 0x8f4e26, 18);                                     // lid, sat a bit crooked
+    k.cyl(0.07, 0.08, 0.12, ix + 0.02, 0.88, iz, 0x7a3e1c, 12); k.cyl(0.09, 0.09, 0.015, ix + 0.02, 0.945, iz, 0x6a3418, 12);   // chimney + cap
+    for (let i = 0; i < 70; i++) {                                                                  // dry straw and twigs sticking out everywhere
+      const a = rnd() * 6.28, len = 0.15 + rnd() * 0.3, out = 0.22 + rnd() * 0.12;
+      k.box(0.008, 0.008, len, ix + Math.sin(a) * out, 0.66 + (rnd() - 0.4) * 0.08, iz + Math.cos(a) * out, [0xd8c07a, 0xc8aa5a, 0xb89a4a, 0xe0cc8a][i % 4], { rot: [(rnd() - 0.5) * 0.9, a + (rnd() - 0.5) * 1.2, 0] });
+    }
+    for (let i = 0; i < 14; i++) { const a = rnd() * 6.28, r = 0.3 + rnd() * 0.25; k.cyl(0.0, 0.04, 0.12 + rnd() * 0.18, ix + Math.sin(a) * r, 0.08, iz + Math.cos(a) * r, LEAF[i % 4], 5); }   // long grass round its feet
+  }
   // a lawnmower and a watering can by the garage
   k.box(0.5, 0.25, 0.6, 2.6, 0.2, -9.0, 0xd32f2f, { block: true }); for (const [dx, dz] of [[-0.24, -0.25], [0.24, -0.25], [-0.24, 0.25], [0.24, 0.25]]) k.cyl(0.08, 0.08, 0.04, 2.6 + dx, 0.08, -9.0 + dz, 0x111111, 10);
   k.box(0.04, 0.04, 0.9, 2.6, 0.55, -8.6, 0x333333, { rot: [0.7, 0, 0] });
