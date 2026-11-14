@@ -120,8 +120,8 @@ export function buildGarden(scene) {
   // timber edging across the lawn (the line on the plan)
   R(B.x0, -6.66, 2.1, -6.54, 0.08, 0.04, 0x6a4a2a);
   // the planted border between the lawn and the patio
-  R(-3.5, -0.75, 1.0, -0.5, 0.25, 0.125, 0x5a3a20, { block: true });
-  for (let i = 0; i < 16; i++) { const x = -3.35 + i * 0.28; k.cyl(0.04, 0.17 + rnd() * 0.05, 0.3 + rnd() * 0.2, x, 0.4, -0.63, [0x3f8a2e, 0x4a9a34, 0x356a26][i % 3], 8); if (i % 3 === 0) k.box(0.07, 0.06, 0.07, x, 0.62, -0.63, [0xff4f7b, 0xffd400, 0xffffff, 0x9a4aff][i % 4]); }
+  for (const [a, b] of [[-3.5, -1.05], [0.25, 1.0]]) R(a, -0.75, b, -0.5, 0.25, 0.125, 0x5a3a20, { block: true });   // (a gap in the middle to walk through, lined up with the back door)
+  for (let i = 0; i < 16; i++) { const x = -3.35 + i * 0.28; if (x > -1.15 && x < 0.35) continue; k.cyl(0.04, 0.17 + rnd() * 0.05, 0.3 + rnd() * 0.2, x, 0.4, -0.63, [0x3f8a2e, 0x4a9a34, 0x356a26][i % 3], 8); if (i % 3 === 0) k.box(0.07, 0.06, 0.07, x, 0.62, -0.63, [0xff4f7b, 0xffd400, 0xffffff, 0x9a4aff][i % 4]); }
 
   // ---------------- fences + the side gate ----------------
   const fence = (x0, z0, x1, z1) => {
