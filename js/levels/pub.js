@@ -141,7 +141,7 @@ export function buildPub(scene) {
   // kitchen + restaurant entrance
   WX(605, 25, 195, [], WALL); WZ(25, 605, 1060, [], WALL); WX(1060, 15, 195); WZ(15, 1060, 1190, [], WALL); WX(1190, 15, 195, [], WALL);
   // conservatory + the passage to the beer garden
-  WX(1305, 290, 735); WZ(715, 1305, 1645); WX(1645, 195, 715, [], WALL); WX(1645, 715, 795, [[722, 793]], WALL);
+  WX(1305, 290, 330); WZ(715, 1305, 1645); WX(1645, 195, 715, [], WALL); WX(1645, 715, 795, [[722, 793]], WALL);   // (the rest of the conservatory wall: windows and the brick cubby, further down)
   // DJ booth (half walls) and the raised area's edge (half walls with a brass rail on top)
   const HALF = 1.1;
   WZ(475, 605, 665, [], DARKWOOD, HALF); WD(475, 665, 515, 705, DARKWOOD, HALF); WX(705, 515, 535, [], DARKWOOD, HALF);
@@ -228,6 +228,7 @@ export function buildPub(scene) {
       else { put(new THREE.BoxGeometry(0.095, 0.003, 0.095), c1, mx, mz, a, 0, yy, 0); put(new THREE.BoxGeometry(0.075, 0.002, 0.075), c2, mx, mz, a, 0, yy + 0.0015, 0); put(new THREE.BoxGeometry(0.06, 0.0025, 0.06), c1, mx, mz, a, 0, yy + 0.002, 0); put(new THREE.BoxGeometry(0.04, 0.003, 0.012), c2, mx, mz, a, 0, yy + 0.0025, 0); }
     }
     for (const [dx, col] of [[-0.03, 0xf4f4f4], [0.03, 0x3a3a3a]]) { put(CYL(0.016, 0.018, 0.075, 8), 0xdfeff2, x + dx, z, 0, 0, y + 0.038, 0); put(CYL(0.017, 0.017, 0.02, 8), 0xc0c4c8, x + dx, z, 0, 0, y + 0.085, 0); put(CYL(0.012, 0.012, 0.04, 6), col, x + dx, z, 0, 0, y + 0.03, 0); }
+    tentCard(x - 0.12, y, z - 0.06, 0.3 + (x * 7) % 1);
     put(new RoundedBoxGeometry(0.1, 0.07, 0.06, 1, 0.006), 0x8a5a2a, x, z + 0.08, 0, 0, y + 0.035, 0); for (let i = 0; i < 4; i++) put(CYL(0.003, 0.003, 0.12, 4), 0xc8ccd0, x - 0.03 + i * 0.02, z + 0.08, 0, 0, y + 0.1, 0);
     k.spawns.push(new THREE.Vector3(x + w * 0.22, y + 0.08, z));
   };
@@ -238,6 +239,35 @@ export function buildPub(scene) {
     const alongX = w >= d, len = alongX ? w : d;
     for (let i = 0; i < chairs; i++) for (const side of [-1, 1]) { const t = (i + 0.5) / chairs - 0.5;
       pubChair(alongX ? x + t * len : x + side * (w / 2 + 0.3), alongX ? z + side * (d / 2 + 0.3) : z + t * len, alongX ? (side > 0 ? 0 : Math.PI) : (side > 0 ? Math.PI / 2 : -Math.PI / 2)); }
+  };
+  // tall poseur tables (dark round top on a black turned pedestal) with cream leather button-back bar chairs (photo)
+  const LEATHER = 0xd8b07a, LEATHER_D = 0xb88e5a, BLACKW = 0x1a1410;
+  const barChair = (x, z, ry) => {
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const g = new THREE.CylinderGeometry(0.018, 0.024, 0.74, 8); g.translate(0, 0.37, 0); put(g, BLACKW, x, z, ry, sx * 0.19, 0, sz * 0.19, sz * 0.05, -sx * 0.05); }
+    for (const [w, d, lx, lz] of [[0.42, 0.025, 0, -0.2], [0.42, 0.025, 0, 0.2], [0.025, 0.42, -0.2, 0], [0.025, 0.42, 0.2, 0]]) put(new THREE.BoxGeometry(w, 0.025, d), 0x2a2420, x, z, ry, lx, 0.3, lz);   // the footrest
+    put(new RoundedBoxGeometry(0.5, 0.11, 0.48, 3, 0.04), LEATHER, x, z, ry, 0, 0.79, -0.01);                                     // padded seat
+    put(new THREE.BoxGeometry(0.46, 0.03, 0.44), BLACKW, x, z, ry, 0, 0.73, 0);
+    const back = new RoundedBoxGeometry(0.5, 0.48, 0.09, 3, 0.035), bp = back.attributes.position;                              // curved, button-tufted back
+    for (let i = 0; i < bp.count; i++) { const xx = bp.getX(i) / 0.25; bp.setZ(i, bp.getZ(i) + 0.05 * xx * xx); } back.computeVertexNormals();
+    put(back, LEATHER, x, z, ry, 0, 1.12, 0.22, -0.12);
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) { const bx = -0.165 + c * 0.11 + (r % 2) * 0.055; if (Math.abs(bx) > 0.2) continue; put(new THREE.SphereGeometry(0.009, 6, 4), LEATHER_D, x, z, ry, bx, 1.0 + r * 0.12, 0.17 + 0.05 * (bx / 0.25) ** 2 - (1.0 + r * 0.12 - 1.12) * 0.12); }
+    k.blockers.push({ x0: x - 0.27, x1: x + 0.27, z0: z - 0.27, z1: z + 0.27, y1: 0.85 });
+  };
+  const menuCard = (() => { const t = canvasTex(128, 192, (g, w, h) => { g.fillStyle = '#141414'; g.fillRect(0, 0, w, h); g.strokeStyle = '#c9a24a'; g.lineWidth = 3; g.strokeRect(6, 6, w - 12, h - 12); g.fillStyle = '#e8d8b0'; g.font = '700 30px Georgia, serif'; g.textAlign = 'center'; g.fillText('BAR', w / 2, 70); g.fillText('FOOD', w / 2, 104); g.font = '400 14px Georgia, serif'; g.fillText('MENU', w / 2, 130); g.font = '400 11px Georgia, serif'; g.fillText('ask about pies', w / 2, 168); }); return t; })();
+  const tentCard = (x, y, z, ry) => { const c = Math.cos(ry), s3 = Math.sin(ry);
+    put(new THREE.BoxGeometry(0.12, 0.17, 0.004), 0x141414, x, z, ry, 0, y + 0.085, 0);
+    for (const sd of [1, -1]) k.label('menu', 0.11, 0.16, [x + s3 * sd * 0.003, y + 0.085, z + c * sd * 0.003], [0, ry + (sd < 0 ? Math.PI : 0), 0], { tex: menuCard }); };
+  const tallTable = (x, z) => {
+    put(CYL(0.32, 0.32, 0.04, 24), 0x2a1810, x, z, 0, 0, 1.04, 0); put(CYL(0.325, 0.31, 0.03, 24), 0x1a0e08, x, z, 0, 0, 1.005, 0);
+    const col = new THREE.LatheGeometry([[0, 0.06], [0.05, 0.06], [0.045, 0.12], [0.06, 0.18], [0.04, 0.26], [0.045, 0.6], [0.06, 0.66], [0.04, 0.72], [0.045, 0.94], [0.07, 0.97], [0.07, 0.99], [0, 0.99]].map(([a, b]) => new THREE.Vector2(a, b)), 12);
+    put(col, 0x161616, x, z, 0, 0, 0, 0); put(CYL(0.26, 0.28, 0.06, 20), 0x161616, x, z, 0, 0, 0.03, 0);
+    k.colliders.push({ min: new THREE.Vector3(x - 0.3, 1.0, z - 0.3), max: new THREE.Vector3(x + 0.3, 1.06, z + 0.3) });
+    k.blockers.push({ x0: x - 0.3, x1: x + 0.3, z0: z - 0.3, z1: z + 0.3, y1: 1.06 });
+    put(new THREE.BoxGeometry(0.095, 0.003, 0.095), 0xc8202a, x, z, 0.4, 0.12, 1.062, -0.08); put(new THREE.BoxGeometry(0.07, 0.003, 0.07), 0xffffff, x, z, 0.4, 0.12, 1.064, -0.08);
+    tentCard(x - 0.08, 1.06, z + 0.06, 0.5);
+    k.spawns.push(new THREE.Vector3(x + 0.1, 1.14, z));
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + 0.4; barChair(x + Math.sin(a) * 0.62, z + Math.cos(a) * 0.62, a + Math.PI); }
+    k.pool(x, 1.05, z, 1.0, 0xffd090);
   };
   // a small two-seater on a black pedestal (cross foot), as along the panelled wall in the photo
   const smallTable = (x, z, alongX) => {
@@ -268,13 +298,13 @@ export function buildPub(scene) {
     freeTable(X(405), Z(818)); freeTable(X(405), Z(905));
   });
   // ================================================================ the main pub floor
-  freeTable(X(515), Z(925), true); freeTable(X(605), Z(908));
-  smallTable(X(370), Z(1065) - 0.5, true); smallTable(X(445), Z(1065) - 0.5, true); freeTable(X(348), Z(1120), true); freeTable(X(573), Z(1090)); freeTable(X(636), Z(1190));
+  freeTable(X(515), Z(925), true); tallTable(X(605), Z(908));
+  smallTable(X(370), Z(1065) - 0.5, true); smallTable(X(445), Z(1065) - 0.5, true); freeTable(X(348), Z(1120), true); tallTable(X(573), Z(1090)); tallTable(X(520), Z(1000)); freeTable(X(636), Z(1190));
   freeTable(X(370), Z(1250));
   bench(true, X(455) + 0.08, Z(1165) + 0.05, Z(1305) - 0.1, 1);                          // "Table booth" against the partition
   boothTable(X(455) + 0.95, Z(1195), true, 1); boothTable(X(455) + 0.95, Z(1265), true, 1);
-  bench(false, Z(1305) - 0.08, X(530), X(700), -1);                                      // "Table booth" along the conservatory wall
-  boothTable(X(565), Z(1305) - 0.95, false, -1); boothTable(X(655), Z(1305) - 0.95, false, -1);
+  bench(false, Z(1305) - 0.1, X(575), X(712), -1);                                      // "Table booth" under the windows into the conservatory
+  boothTable(X(612), Z(1305) - 0.95, false, -1); boothTable(X(680), Z(1305) - 0.95, false, -1);
   // the pillar in the middle, opposite the bar, with a fruit machine on its right
   const pillar = (x, z) => {
     k.texBox(0.56, H - 0.42, 0.56, x, (H - 0.42) / 2, z, BRICK, { tile: 0.75, collide: true, block: true });       // old red brick, floor to the capital
@@ -436,6 +466,7 @@ export function buildPub(scene) {
     blk(cx - 0.4, cz - 0.4, cx + 0.4, cz + 0.4, 1.8);
   };
   machine(PX + 0.31 + 0.5, PZ, Math.PI / 2);                                              // by the pillar, facing the bar
+  barChair(PX + 0.81 + 0.72, PZ, Math.PI / 2);                                            // a tall chair to sit at it
   // the gambling room: machines down both walls and along the end, stools in front
   for (let z = Z(1430); z < Z(1600); z += 0.9) machine(X(795) + 0.08 + 0.5, z, Math.PI / 2);
   for (let z = Z(1330); z < Z(1600); z += 0.9) machine(X(975) - 0.08 - 0.5, z, -Math.PI / 2);
@@ -513,7 +544,7 @@ export function buildPub(scene) {
   }
   // the beer garden door at the end of the passage
   { const xc = (X(722) + X(793)) / 2; k.window(xc, 1.15, Z(1645) - 0.1, X(793) - X(722) - 0.2, 2.2, Math.PI, streetViewTex(5, true), { frame: DARKWOOD, bars: 1 });
-    k.label('BEER GARDEN →', 1.2, 0.3, [xc, 2.55, Z(1645) - 0.1], [0, Math.PI, 0], { bg: '#2e7d32', fg: '#fff', border: null, size: 60 }); }
+    k.label('BEER GARDEN →', 1.2, 0.3, [xc, 2.55, Z(1645) - 0.115], [0, Math.PI, 0], { bg: '#2e7d32', fg: '#fff', border: null, size: 60 }); }
 
   // ================================================================ toilets
   const cubicles = (x0, n, w, zBack, zFront, flip) => {
@@ -582,8 +613,8 @@ export function buildPub(scene) {
   k.label('TOILETS →', 0.7, 0.22, [X(385), 2.5, Z(605) + 0.09], [0, 0, 0], { bg: '#1b3a2a', fg: '#d4af37', border: null, size: 60 });
 
   // ================================================================ the conservatory: booths, tables, a glass roof
-  bench(false, Z(1305) + 0.08, X(300), X(690), 1);                                       // "Tables with booth" along the partition
-  boothTable(X(390), Z(1305) + 0.95, false, 1); boothTable(X(590), Z(1305) + 0.95, false, 1);
+  bench(false, Z(1305) + 0.1, X(300), X(410), 1); bench(false, Z(1305) + 0.1, X(570), X(700), 1);   // "Tables with booth" either side of the cubby
+  boothTable(X(355), Z(1305) + 0.95, false, 1); boothTable(X(635), Z(1305) + 0.95, false, 1);
   bench(true, X(195) + 0.08, Z(1390), Z(1530), 1);                                       // "Table booth" on the left wall
   boothTable(X(195) + 0.95, Z(1420), true, 1); boothTable(X(195) + 0.95, Z(1500), true, 1);
   freeTable(X(655), Z(1465), true);
@@ -607,7 +638,6 @@ export function buildPub(scene) {
   clad(X(195) + 0.08, Z(1035) + 0.1, X(195) + 0.1, Z(1090) - 0.1, BOOKS, H, 1.2); clad(X(195) + 0.08, Z(1145) + 0.1, X(195) + 0.1, Z(1300), BOOKS, H, 1.2);
   clad(X(195) + 0.08, Z(610), X(195) + 0.1, Z(960), BRICK, H - RAISE, 0.9, RAISE);
   R(X(195) + 0.06, Z(1035), X(195) + 0.12, Z(1305), 0.06, 0.95, DARKWOOD);
-  clad(X(290), Z(1305) - 0.1, X(735), Z(1305) - 0.08, BRICK, H, 0.9);
   // ceiling spotlights everywhere (in the rooms), iron chandeliers, red wall lights
   for (let x = B.x0 + 1; x < B.x1; x += 2) for (let z = B.z0 + 1; z < B.z1; z += 2) if (inside(x, z) && !(x > X(195) && x < X(715) && z > Z(1305))) k.lamp(x, H - 0.01, z, 0xfffbe8, 0.035);
   // antler chandeliers (black antlers, little black drum shades), as in the photo
@@ -643,17 +673,16 @@ export function buildPub(scene) {
   tv(X(250), 2.25, Z(605) + 0.12, 0);
   tv(X(885), 2.2, Z(1305) + 0.12, 0);
   // street-view windows with burgundy curtains on the raised area's outside wall... (none: it's an inside wall) -> on the restaurant side
-  k.label('DARTS', 0.7, 0.7, [X(690) - 0.02, 1.7, Z(1305) - 0.112], [0, Math.PI, 0], { tex: dartTex() });
   const signs = [
     ['STAFF OF THE MONTH: RONNIE (ATE THE CERTIFICATE)', 0.9, 0.7, [X(195) + 0.12, 1.8, Z(650)], [0, Math.PI / 2, 0], {}],
     ["TODAY'S SPECIALS: WHATEVER RONNIE HASN'T EATEN", 0.8, 1.0, [X(195) + 0.12, 1.55, Z(1160)], [0, Math.PI / 2, 0], { bg: '#1b2a1b', fg: '#f5f0e6', border: '#8a6a3a', size: 56 }],
     ['MAX OCCUPANCY: 120 (OR 3 RONNIES)', 1.1, 0.45, [X(615) + 0.09, 1.9, Z(660)], [0, Math.PI / 2, 0], {}],
-    ['QUIZ NIGHT — Q1: How many pies did Ronnie eat last night? A: Yes.', 1.0, 0.7, [X(560), 2.15, Z(1305) - 0.12], [0, Math.PI, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 48 }],
-    ['WE DO NOT SERVE SALAD ("YES YOU DO" — Chloe)', 1.0, 0.5, [X(600), 2.4, Z(1305) - 0.12], [0, Math.PI, 0], { bg: '#fff', fg: '#c0392b' }],
+    ['QUIZ NIGHT — Q1: How many pies did Ronnie eat last night? A: Yes.', 1.0, 0.7, [X(513), 1.75, Z(1305) + 1.29], [0, 0, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 48 }],
+    ['WE DO NOT SERVE SALAD ("YES YOU DO" — Chloe)', 1.0, 0.5, [X(513), 2.45, Z(1305) + 1.29], [0, 0, 0], { bg: '#fff', fg: '#c0392b' }],
     ['OYSTERFLEET PIE-EATING CHAMPION — RONNIE (UNDEFEATED, UNCHALLENGED, UNWELL)', 1.0, 0.5, [X(195) + 0.12, 2.62, Z(1252)], [0, Math.PI / 2, 0], { bg: '#d4af37', fg: '#111', border: '#7a5a10', size: 48 }],
     ['PLEASE DO NOT FEED THE BARMAN', 1.6, 0.3, [X(795) - 0.155, 2.81, (Z(985) + Z(1230)) / 2], [0, -Math.PI / 2, 0], { bg: '#fff8e7', fg: '#111' }],
     ['LAST ORDERS — Ronnie: last orders means for the CUSTOMERS', 2.4, 0.3, [bar2.at(bar2.L / 2, -0.155)[0], 2.81, bar2.at(bar2.L / 2, -0.155)[1]], [0, bar2.ry, 0], { bg: '#fff06a', fg: '#111', border: null, size: 40 }],
-    ['BARRED: RONNIE (FROM THE KITCHEN) (FROM THE CELLAR) (FROM THE CRISP CLIP)', 1.3, 0.6, [X(195) + 0.12, 1.6, Z(1065)], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c62828', border: '#c62828', size: 38 }],
+    ['BARRED: RONNIE (FROM THE KITCHEN) (FROM THE CELLAR) (FROM THE CRISP CLIP)', 1.3, 0.6, [X(195) + 0.12, 2.45, Z(1062)], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c62828', border: '#c62828', size: 38 }],
     ['HAPPY HOUR 5–7PM. RONNIE\'S HAPPY HOUR: 11AM–CLOSING', 1.2, 0.4, [X(810), 2.3, Z(605) + 0.1], [0, 0, 0], { bg: '#ffd400', fg: '#111', border: null, size: 40 }],
     ['CARVERY SUNDAYS — RONNIE SIZE PORTION: THE WHOLE CARVERY', 1.3, 0.45, [X(195) + 0.115, 2.45, Z(1178)], [0, Math.PI / 2, 0], { bg: '#5a2a14', fg: '#ffd400', border: '#ffd400', size: 40 }],
     ['IN CASE OF EMERGENCY: BREAK GLASS. IN CASE OF RONNIE: HIDE THE PIES.', 0.8, 0.4, [X(795) + 0.1, 2.3, Z(1500)], [0, Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: '#fff', size: 34 }],
@@ -662,6 +691,50 @@ export function buildPub(scene) {
   ];
   for (const [t, w, h, pos, rot, o] of signs) k.label(t, w, h, pos, rot, o);
   { const cx = X(620), cz = Z(1270) - 0.6; { const g = new THREE.BoxGeometry(0.46, 0.7, 0.03); g.translate(0, 0.35, 0); g.rotateY(-Math.PI / 4); g.translate(cx, 0, cz); k.parts.push(part(g, 0xffd400)); for (const sx of [-1, 1]) { const f = new THREE.BoxGeometry(0.03, 0.03, 0.4); f.translate(sx * 0.2, 0.015, 0); f.rotateY(-Math.PI / 4); f.translate(cx, 0, cz); k.parts.push(part(f, 0x222222)); } } }   // its A-frame stand
+  // ---- the wall between the main room and the conservatory, from the photo
+  { const zc = Z(1305), PANEL = 0x4a2e1a, FRAME = 0xf4f2ec, glassM = new THREE.MeshLambertMaterial({ color: 0xdff0f4, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
+    const winWall = (x0, x1) => {
+      const L = x1 - x0, cx = (x0 + x1) / 2, top = 2.55, sill = 0.98;
+      R(x0, zc - 0.08, x1, zc + 0.08, sill, sill / 2, PANEL, { collide: true });                                                       // dark panelled half wall
+      for (let x = x0 + 0.3; x < x1 - 0.1; x += 0.6) for (const sd of [-1, 1]) R(x - 0.24, zc + sd * 0.08, x + 0.24, zc + sd * 0.095, 0.62, 0.52, 0x5a3a22);   // raised panels both faces
+      R(x0 - 0.02, zc - 0.13, x1 + 0.02, zc + 0.13, 0.05, sill + 0.025, FRAME);                                                       // sill
+      R(x0, zc - 0.08, x1, zc + 0.08, H - top, top + (H - top) / 2, PLASTER);                                                          // wall over the window
+      const gl = new THREE.Mesh(new THREE.PlaneGeometry(L, top - sill - 0.05), glassM); gl.position.set(cx, (sill + 0.05 + top) / 2, zc); gl.renderOrder = 3; scene.add(gl);
+      const n = Math.max(1, Math.round(L / 1.1)), bw = L / n;
+      for (let i = 0; i <= n; i++) R(x0 + i * bw - 0.04, zc - 0.05, x0 + i * bw + 0.04, zc + 0.05, top - sill, (top + sill) / 2, FRAME);         // mullions
+      for (const y of [top - 0.02, 2.0]) R(x0, zc - 0.05, x1, zc + 0.05, 0.05, y, FRAME);                                              // transom and head
+      for (let i = 0; i < n; i++) { const mx = x0 + (i + 0.5) * bw;
+        R(mx - 0.012, zc - 0.03, mx + 0.012, zc + 0.03, 2.0 - sill - 0.05, (2.0 + sill) / 2, FRAME);                                    // a glazing bar down the middle
+        for (const r of [bw * 0.42, bw * 0.3]) { const a = new THREE.TorusGeometry(r, 0.01, 4, 18, Math.PI); k.parts.push(part(a, FRAME, [mx, 2.02, zc], [0, 0, 0], [1, (top - 2.05) / r * 0.95, 1])); }   // leaded arches in the top lights
+        for (const s4 of [-1, 1]) R(mx + s4 * bw * 0.21 - 0.008, zc - 0.03, mx + s4 * bw * 0.21 + 0.008, zc + 0.03, top - 2.05, (top + 2.05) / 2, FRAME); }
+      blk(x0, zc - 0.1, x1, zc + 0.1, H);
+    };
+    winWall(X(330), X(452)); winWall(X(565), X(735));
+    // the cubby: brick on three sides, set back into the conservatory side
+    const cx0 = X(462), cx1 = X(565), cz = zc + 1.2;
+    R(cx0 - 0.08, zc - 0.08, cx0 + 0.08, cz + 0.08, H, H / 2, PLASTER, { collide: true, block: true }); R(cx1 - 0.08, zc - 0.08, cx1 + 0.08, cz + 0.08, H, H / 2, PLASTER, { collide: true, block: true });
+    R(cx0, cz - 0.08, cx1, cz + 0.08, H, H / 2, PLASTER, { collide: true, block: true });
+    clad(cx0 + 0.08, zc - 0.1, cx0 + 0.1, cz - 0.08, BRICK, H, 0.75); clad(cx1 - 0.1, zc - 0.1, cx1 - 0.08, cz - 0.08, BRICK, H, 0.75); clad(cx0 + 0.08, cz - 0.1, cx1 - 0.08, cz - 0.08, BRICK, H, 0.75);
+    clad(X(290), zc - 0.1, X(330), zc - 0.08, BRICK, H, 0.75);
+    R(X(452), zc - 0.08, cx0, zc + 0.08, H, H / 2, PLASTER, { collide: true, block: true });
+    for (const x of [cx0, cx1]) k.texBox(0.24, H, 0.24, x, H / 2, zc - 0.04, BRICK, { tile: 0.75 });                                // brick piers at the mouth
+    bench(false, cz - 0.08, cx0 + 0.1, cx1 - 0.1, -1);                                                                               // the booth in the cubby
+    for (const x of [X(490), X(540)]) { const tz = zc + 0.3; put(CYL(0.28, 0.28, 0.035, 20), 0x2a1810, x, tz, 0, 0, 0.74, 0); put(CYL(0.035, 0.035, 0.7, 8), 0x161616, x, tz, 0, 0, 0.36, 0); put(CYL(0.22, 0.24, 0.04, 16), 0x161616, x, tz, 0, 0, 0.02, 0);
+      k.colliders.push({ min: new THREE.Vector3(x - 0.26, 0.72, tz - 0.26), max: new THREE.Vector3(x + 0.26, 0.76, tz + 0.26) }); k.blockers.push({ x0: x - 0.28, x1: x + 0.28, z0: tz - 0.28, z1: tz + 0.28, y1: 0.76 }); tentCard(x - 0.1, 0.757, tz, 0);
+      k.spawns.push(new THREE.Vector3(x + 0.12, 0.84, tz)); }
+    // the old brass-framed beer mirror under a brick arch, the telly above, lights either side
+    const mir = canvasTex(256, 160, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#9aa4a8'); gr.addColorStop(0.5, '#d8e0e2'); gr.addColorStop(1, '#8a9498'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = '#c9a24a'; g.font = '700 25px Georgia, serif'; g.textAlign = 'center'; g.fillText('OYSTER STOUT', w / 2, 62, w - 40); g.font = 'italic 17px Georgia, serif'; g.fillText('is good for Ronnie', w / 2, 96, w - 40); g.strokeStyle = '#c9a24a'; g.lineWidth = 3; g.strokeRect(14, 14, w - 28, h - 28); });
+    const mc = (cx0 + cx1) / 2;
+    R(mc - 0.55, cz - 0.11, mc + 0.55, cz - 0.1, 0.7, 1.45, 0x2a1a10); k.label('mirror', 1.0, 0.6, [mc, 1.45, cz - 0.117], [0, Math.PI, 0], { tex: mir });
+    const arch = new THREE.TorusGeometry(0.6, 0.05, 6, 18, Math.PI); k.parts.push(part(arch, 0x7a3020, [mc, 1.8, cz - 0.1], [0, 0, 0], [1, 0.35, 1]));
+    k.box(1.3, 0.76, 0.06, mc, 2.4, cz - 0.14, 0x111111); k.label('tv', 1.22, 0.69, [mc, 2.4, cz - 0.175], [0, Math.PI, 0], { tex: tvTex(), glow: true }); k.box(0.3, 0.1, 0.05, mc, 2.0, cz - 0.13, 0x111111);
+    for (const x of [cx0 + 0.11, cx1 - 0.11]) { k.box(0.05, 0.16, 0.1, x, 2.0, zc + 0.6, 0x1a1a1a); k.lamp(x + (x < mc ? 0.06 : -0.06), 2.08, zc + 0.6, 0xffd8a0, 0.05); sconceGlow(k, x + (x < mc ? 0.08 : -0.08), 2.0, zc + 0.6, x - (x < mc ? 1 : -1), zc + 0.6); }
+    k.lamp(mc, H - 0.01, zc + 0.6, 0xfffbe8, 0.04); k.light(mc, 2.2, zc - 0.4, 0xffc884, 2.5, 4);
+    // a fern in a pot by the window and the pillar, like the photo
+    { const fx = X(345), fz = zc - 0.45; k.cyl(0.2, 0.15, 0.4, fx, 0.2, fz, 0x5a3a22, 12, { block: true }); for (let i = 0; i < 16; i++) { const a = i * 2.4; k.parts.push(part(new THREE.ConeGeometry(0.05, 0.6, 4), 0x2e6a2a, [fx + Math.cos(a) * 0.12, 0.65 + (i % 3) * 0.12, fz + Math.sin(a) * 0.12], [Math.sin(a) * 0.7, 0, Math.cos(a) * 0.7])); } }
+    // posters on the pillar and brick
+    k.label('MATCH NIGHT — ALL GAMES SHOWN (RONNIE: ALL PIES EATEN)', 0.42, 0.6, [X(290) + 0.05 + 0.29, 1.6, zc - 0.35], [0, Math.PI / 2, 0], { bg: '#1a1a3a', fg: '#ffd400', border: '#c9a24a', size: 36 });
+  }
   // the white painted dresser and the console table (menus, hand gel) by the books wall, the telly above, a red glow
   { const x = X(195) + 0.08, z0 = Z(1200), z1 = Z(1290), zc = (z0 + z1) / 2, D = 0.45;
     R(x, z0, x + D, z1, 0.85, 0.425, 0xeeece6, { collide: true, block: true }); R(x - 0.01, z0 - 0.02, x + D + 0.03, z1 + 0.02, 0.04, 0.87, 0xd8d4ca);
@@ -684,7 +757,7 @@ export function buildPub(scene) {
     name: 'The Oysterfleet',
     sky: 0xffe2c0, ground: 0x6a4a3a, hemiI: 1.55, sun: 0xfff0d8, sunI: 0.45, sunPos: [-6, 10, 5], ambient: 0.32,
     start: { x: X(655), z: Z(560), yaw: Math.PI },
-    board: { x: X(420), y: 1.75, z: Z(1305) - 0.11, ry: Math.PI },
+    board: { x: X(195) + 0.11, y: 1.45, z: Z(1062), ry: Math.PI / 2 },
     startFood: ['can', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza', 'doughnut', 'burger', 'pizza', 'can', 'doughnut', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza'],
     spotCount: 40,
   });

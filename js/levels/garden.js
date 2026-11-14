@@ -707,7 +707,7 @@ export function buildGarden(scene) {
   const DARK = woodTex('#b8682e');                                              // honey-orange pine boards, like the real cabin
   k.floor(CX0, CZ0, CX1, CZ1, woodTex('#a65a2c'), 0.008, 1.0);                                         // orange-brown floorboards
   // a grey concrete plinth all round the bottom, sticking out a touch
-  for (const [x0, z0, x1, z1] of [[CX0 - 0.12, CZ0 - 0.12, CX1 + 0.12, CZ0 + 0.1], [CX0 - 0.12, CZ1 - 0.1, CX1 + 0.12, CZ1 + 0.12], [CX0 - 0.12, CZ0, CX0 + 0.1, CZ1], [CX1 - 0.1, CZ0, CX1 + 0.12, CZ1]]) R(x0, z0, x1, z1, 0.2, 0.1, 0xb4b0a6, { collide: true });   // (a ring under the walls, so the floor inside stays wood) R(CX0 - 0.13, CZ1 + 0.1, CX1 + 0.13, CZ1 + 0.13, 0.02, 0.2, 0xc8c4ba);
+  for (const [x0, z0, x1, z1] of [[CX0 - 0.12, CZ0 - 0.12, CX1 + 0.12, CZ0 + 0.1], [CX0 - 0.12, CZ1 - 0.1, CX1 + 0.12, CZ1 + 0.12], [CX0 - 0.12, CZ0, CX0 + 0.1, CZ1], [CX1 - 0.1, CZ0, CX1 + 0.12, CZ1]]) R(x0, z0, x1, z1, 0.2, 0.1, 0xb4b0a6, { collide: true }); R(CX0 - 0.13, CZ1 + 0.1, CX1 + 0.13, CZ1 + 0.13, 0.02, 0.2, 0xc8c4ba);   // (a ring under the walls, so the floor inside stays wood)
   wallRun('x', CZ1, CX0, CX1, CH, [[-3.05, -2.0, 1.05, 1.9], [1.9, 3.5, 0, 2.05]], { tex: CLAD, inTex: DARK, inColor: 0xb8682e, inSign: -1, t: 0.14 });   // small window (spare room), double doors (lounge)
   wallRun('x', CZ0, CX0, CX1, CH, [], { tex: CLAD, inTex: DARK, inColor: 0xb8682e, inSign: 1, t: 0.14 });
   wallRun('z', CX0, CZ0, CZ1, CH, [[-14.6, -13.2, 0.9, 1.9]], { tex: CLAD, inTex: DARK, inColor: 0xb8682e, inSign: 1, t: 0.14 });
