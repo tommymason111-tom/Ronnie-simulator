@@ -484,8 +484,9 @@ export class ItemManager {
   }
 
   update(dt) {
+    if (this.clientMode) { for (const it of this.items) { it.age += dt; if (it.spawnScale < 1) { it.spawnScale = Math.min(1, it.spawnScale + dt * 4); } if (it.netMirror && !it.heldBy) it.prev.copy(it.pos); else if (!it.netMirror) {} } this.items.filter(it => !it.netMirror && !it.heldBy).forEach(() => {}); }
     // big places never run dry: top up with random junk food every so often
-    if (this.minFood && (this.topUpT = (this.topUpT || 0) - dt) <= 0) {
+    if (!this.clientMode && this.minFood && (this.topUpT = (this.topUpT || 0) - dt) <= 0) {
       this.topUpT = this.topUpEvery || 1.0;
       let food = this.respawnQueue.length;
       for (const it of this.items) if (!it.def.veg && !it.def.prop && !it.temp && !it.empty && !it.incoming) food++;
@@ -494,6 +495,7 @@ export class ItemManager {
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
       const r = this.respawnQueue[i];
       r.t -= dt;
+      if (r.t <= 0 && this.clientMode) { this.respawnQueue.splice(i, 1); continue; }
       if (r.t <= 0) { this.respawnQueue.splice(i, 1); this.spawn(r.type, this.freeSpawn()); this.onSpawn && this.onSpawn(r.type); }
     }
     const b = this.room.bounds, g = TUNING.gravity;
@@ -502,6 +504,7 @@ export class ItemManager {
       it.age += dt;
       if (it.spawnScale < 1) { it.spawnScale = Math.min(1, it.spawnScale + dt * 4); it.obj.scale.setScalar(easeOutBack(it.spawnScale) * (0.55 + 0.45 * it.eatFraction)); }
       if (it.heldBy) { it.resting = false; it.restTime = 0; continue; }
+      if (it.netMirror) continue;                    // (multiplayer: the host's game moves this one)
       if (it.resting) {
         it.restTime += dt;
         if ((it.def.veg || it.empty || it.temp) && it.restTime > 6 && !it.shelf) this.remove(it);

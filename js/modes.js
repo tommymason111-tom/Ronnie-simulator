@@ -190,7 +190,7 @@ export class Director {
     tommy.directed = false; tommy.tripping = 0;
     tommy.active = true; tommy.attacks = tommy.attacks && id !== 'bbq';
     let squad = [];
-    const big = !!g.room.big, everyone = Object.keys(SQUAD);
+    const big = !!g.room.big, everyone = Object.keys(SQUAD).filter(s => !/^p\d+$/.test(s) && !(this.mp && this.mp.takenChars().has(s)));   // (anyone a player is playing as stays out)
     if (id === 'intervention') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 4);
     else if (id === 'everyone') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 5);
     else if (id === 'date') squad = ['chloe', ...shuffle(everyone.filter(s => s !== 'chloe'))];   // the whole squad is out for dinner too
@@ -202,6 +202,7 @@ export class Director {
     else if (id === 'runpub') squad = ['lewis', 'ben', 'aidan', 'connor', 'chloe'];      // the staff (punters and drop-ins come later)
     else if (id === 'classic') squad = [];
     else squad = [];
+    if (this.remote) squad = [];                   // (multiplayer: the host's game brings the people)
     this.roster = squad;
     // spawn spots: the nearest free hang-out spots around Ronnie (not on top of him)
     const head = g.player.head;
@@ -218,6 +219,7 @@ export class Director {
     g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
+    if (this.remote) { tommy.attacks = false; tommy.directed = false; if (g.fx) g.fx.setCountdown(null); return; }
     if (id === 'date') this.startDate();
     if (g.room.name === 'Lidl' && (id === 'sweep' || id === 'roam')) this.setupLidlStaff(id);    // uniforms, and people on the tills
     if (id === 'sweep') this.startSweep();
@@ -309,6 +311,7 @@ export class Director {
       }
     }
     this.showReceipt(lines);
+    if (this.mp && this.mp.on && this.mp.host) this.mp.net.send({ t: 'end', lines });
     g.tommy.say({
       intervention: 'Another intervention, another failure. I\'ll tell your mum you were good. I\'ll lie.',
       veggie: 'Well done, Ron. You ate the level. The WHOLE level.',
@@ -328,6 +331,7 @@ export class Director {
   // ------------------------------------------------------------------ per frame
   update(dt, ctx) {
     const g = this.g;
+    if (this.remote) { this.updateBoard(dt, ctx); this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
     if (this.pending) {                       // an announced attack that hasn't landed yet
       const pd = this.pending, P = g.player;
       pd.t -= dt;
@@ -430,17 +434,27 @@ export class Director {
     const g = this.g, fx = g.fx;
     key = LEGACY_KEY[key] || key || (ATTACKS[who.id] || [])[0]?.key;
     const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
-    if (fx) fx.showCard({ name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
-    else g.showBanner(A.title, A.sub);
+    const vs = who.mpTarget && who.mpTarget.id ? who.mpTarget.name : (this.mp && this.mp.on ? (this.mp.net.name || 'the host') : null);
+    if (this.mp && this.mp.on && this.mp.host) this.mp.net.send({ t: 'announce', who: who.id, key, target: vs, targetId: who.mpTarget && who.mpTarget.id });
+    this.showAnnounce(who, key, who.mpTarget && who.mpTarget.id ? vs : null);
     sfx('trumpet', null, 0.7);
     this.markUsed(who, key);
     // the attack WILL happen once the pop-up has been up for ANNOUNCE_T seconds. Noah's
     // tackle and Tommy's trip land when they reach you, with this as a backstop.
     this.pending = { who, key, t: ANNOUNCE_T + (key === 'tackle' || key === 'trip' ? 4 : 0), wait: 0 };
   }
+  // the attack card (on everyone's screen in multiplayer: "LEWIS IS ATTACKING JAKE")
+  showAnnounce(who, key, vsName = null) {
+    const g = this.g, fx = g.fx;
+    const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
+    if (fx) fx.showCard({ vs: vsName, name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
+    else g.showBanner(A.title, A.sub);
+    if (this.remote) { sfx('trumpet', null, 0.7); setTimeout(() => fx && fx.hideCard(), (ANNOUNCE_T + 0.3) * 1000); }
+  }
   // 2) the attack itself: the pop-up goes, and the effects and animation play
-  stun(who, key) {
+  stun(who, key, fromNet = false) {
     const g = this.g, P = g.player, G = g.G, fx = g.fx;
+    if (!fromNet && this.mp && this.mp.on && this.mp.host && this.mp.sendStun(who, key)) { this.pending = null; if (fx) fx.hideCard(); return; }   // (aimed at another player: it lands on their game)
     key = LEGACY_KEY[key] || key || (ATTACKS[who.id] || [])[0]?.key;
     const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
     const prev = this.pending && this.pending.key === key ? this.pending : null;
@@ -549,7 +563,7 @@ export class Director {
   launch(pick) {
     const { c, attack } = pick;
     const ok = c === this.g.tommy ? c.startTrip() : c.intervene(attack.key);
-    if (ok && this.g.fx && this.g.fx.coming && c !== this.g.tommy) this.g.fx.coming(c);
+    if (ok && c !== this.g.tommy) { if (this.mp && this.mp.on && this.mp.host) this.mp.pickTarget(c); else if (this.g.fx && this.g.fx.coming) this.g.fx.coming(c); }
     if (ok) this.markUsed(c, attack.key);      // counts as their go from the moment they're picked
     return ok;
   }
@@ -1111,6 +1125,7 @@ export class Director {
   }
 
   hud() {
+    if (this.remote) return this.hostHud || null;
     if (!this.running || this.mode === 'classic') return null;
     const t = this.timeLeft, mm = Math.floor(t / 60), ss = String(Math.floor(t % 60)).padStart(2, '0');
     const name = MODES[this.mode].name;

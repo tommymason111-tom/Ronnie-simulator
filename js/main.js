@@ -21,6 +21,8 @@ import { preloadModels, FLOOR } from './ragdoll.js';
 import { SQUAD } from './squad.js';
 import { buildGarden } from './levels/garden.js';
 import { Net, newCode } from './net.js';
+import { MPSync } from './mpsync.js';
+import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
 
 // start downloading everyone's 3D model now, while the menu is still up
 const MODEL_LOAD = preloadModels(['./assets/tommy.glb', ...Object.values(SQUAD).map(d => d.model).filter(Boolean)]);
@@ -226,6 +228,7 @@ function bite(it, hand) {
   if (it.def.veg) { gag(it); return; }
   if (it.def.poop) { poopOver(it); return; }
   it.bitesLeft--;
+  if (it.nid && mp.on && !mp.host && it.bitesLeft > 0) net.send({ t: 'bite', nid: it.nid, left: it.bitesLeft });
   sfx(SNACK_SFX[it.type], fx, 1);
   crumbs.burst(fx, CRUMB_COLORS[it.type], 26, 1.5, player.fwd);
   const w = SNACK_WORD[it.type];
@@ -528,6 +531,10 @@ const touch = setupTouch({
       const along = _a.subVectors(_b, ray.origin).dot(ray.direction);
       if (along > 0 && along < bd && ray.distanceSqToPoint(_b) < (p.radius + 0.04) ** 2) { bd = along; part = p; who = c; best = null; }
     }
+    // tap another player = punch them (players can't be picked up or thrown)
+    for (const p of net.players.values()) { const av = p.avatar; if (!av) continue; const hd = av.headPos();
+      for (const pt of [hd, hd.clone().add({ x: 0, y: -0.45, z: 0 })]) { const along = _a.subVectors(pt, ray.origin).dot(ray.direction);
+        if (along > 0 && along < bd && ray.distanceSqToPoint(pt) < 0.3 * 0.3) { if (along > reach) { touch.hint(`Get closer to punch ${p.name}!`); return; } mp.punch(p, _a.copy(ray.direction).multiplyScalar(4.5), pt.clone()); return; } } }
     if (part) {                         // tap someone = slap them
       if (bd > reach && who.state !== 'clinging') { touch.hint(`Get closer to slap ${who.name}!`); return; }
       const pos = part.body.position; _b.set(pos.x, pos.y, pos.z);
@@ -560,12 +567,13 @@ function updateTouchUI() {
   touch.setEatLabel(held && held.def.drink ? 'DRINK' : 'EAT', !!held && !held.empty);
   touch.setThrowEnabled(!!held);
 }
+function mpAfterStart() { if (director.remote) mp.becomeClient(); }
 function startFlat() {
   initAudio();
   player.enterFlat();
   document.body.classList.add('flat');
   touch.show(true);
-  director.start(chosenMode());
+  director.start(chosenMode()); mpAfterStart();
 }
 function chosenMode() { return ['classic', 'intervention', 'veggie', 'catch'].includes(SEL.mode) || !SEL.mode ? 'everyone' : SEL.mode; }   // old links still work
 document.getElementById('play-flat').addEventListener('click', startFlat);
@@ -591,7 +599,7 @@ async function setupVR() {
       if (player.flatMode) { player.flatDrop(); player.flatMode = false; if (player.flatGrip) player.flatGrip.visible = false; touch.show(false); document.body.classList.remove('flat'); }
       vrBtn.textContent = 'EXIT VR';
       document.body.classList.add('in-vr');
-      director.start(chosenMode());
+      director.start(chosenMode()); mpAfterStart();
     } catch (err) {
       status.textContent = 'Could not start VR: ' + err.message;
       if (handed) { try { handed.end(); } catch (e) {} status.textContent = 'Press ENTER VR to carry on in the headset.'; }
@@ -858,7 +866,8 @@ function frame(simDt) {
   vegAndHits(dt);
   if (xr) slaps();
   physics.step(dt);
-  for (const c of cast) c.update(dt, ctx);
+  for (const c of cast) c.update(dt, mp.ctxFor(c, ctx));
+  mp.update(dt);
   // people don't walk through each other (or through Ronnie)
   for (let i = 0; i < cast.length; i++) {
     const a = cast[i].rag; if (a.mode === 'ragdoll') continue;
@@ -942,4 +951,35 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
   net.on.setup = () => {};
   if (net.connected) chip();
 }
-window.RS = { net, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+// the shared game (food and people): see mpsync.js
+const mp = new MPSync({ net, scene, room, physics, player, items, cast, director, words, fx: attackFx, G, tommy });
+mp.start();
+if (window.ronnieMP && window.ronnieMP.role === 'join') director.remote = true;
+// someone playing as a squad member: their own body, moved by where their head and hands are
+net.makeAvatar = (p) => { if (!p.char || p.char === 'ronnie' || !SQUAD_MP[p.char]) return null; return new SquadPuppet(p); };
+class SquadPuppet {
+  constructor(p) { this.c = new SquadMemberMP(scene, room, physics, p.char, [0, 0, 0], director); this.c.mpPuppet = true; this.c.active = false; this.pos = new THREE.Vector3(); this.yaw = 0; this.rh = new THREE.Vector3(); this.lh = new THREE.Vector3(); this.first = true; this.c.name = p.name || this.c.name; }
+  update(dt, pose) {
+    const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * 12);
+    const prev = this.pos.clone(); this.pos.lerp(_a.set(...pose.h), k); this.rh.lerp(_b.set(...pose.rh), k); this.lh.lerp(_b.set(...pose.l), k);
+    const q = new THREE.Quaternion(...pose.q), f = new THREE.Vector3(0, 0, -1).applyQuaternion(q); const yaw = Math.atan2(f.x, f.z);
+    let dy = yaw - this.yaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; this.yaw = this.first ? yaw : this.yaw + dy * Math.min(1, dt * 6);
+    const eye = r.height * 0.93, speed = Math.hypot(this.pos.x - prev.x, this.pos.z - prev.z) / Math.max(dt, 1e-3);
+    if (this.first) { r.placeAt(this.pos.x, this.pos.z, this.yaw); this.first = false; }
+    r.root.x = this.pos.x; r.root.z = this.pos.z; r.yaw = this.yaw;
+    if (speed > 0.25) c.walkPose(dt, Math.min(speed, 3)); else c.setIdlePose(c.t += dt);
+    // arms reach for where their hands are
+    for (const [side, h] of [['R', this.rh], ['L', this.lh]]) { if (pose.flat && side === 'L') continue;
+      const d = h.clone().sub(r.pos('chest', new THREE.Vector3())).applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.yaw); if (d.length() > 1.2) continue; d.normalize();
+      r.aim('uArm' + side, d.x, d.y, d.z); r.aim('lArm' + side, d.x, d.y, d.z); }
+    r.pose.head.setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.clamp(-Math.asin(f.y), -0.6, 0.6));
+    r.animate(dt); r.sync(); c.fx.position.set(this.pos.x, 0, this.pos.z);
+    void eye;
+  }
+  headPos() { return this.c.headPos(new THREE.Vector3()); }
+  fwd() { return new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
+  handPos() { return this.rh.clone(); }
+  flinch(v) { this.c.flinch(v.clone ? v.clone() : new THREE.Vector3(v.x, 0, v.z), 1); }
+  dispose() { this.c.dispose(); }
+}
+window.RS = { net, mp, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)

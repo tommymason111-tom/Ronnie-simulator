@@ -341,6 +341,7 @@ export class Character {
   update(dt, ctx) {
     const r = this.rag;
     this.t += dt; this.stateT += dt;
+    if (this.netDriven) { this.netUpdate(dt); return; }
     if (this.slapCool > 0) this.slapCool -= dt;
     if (this.speakT > 0) { this.speakT -= dt; if (this.speakT <= 0) { this.bubble.visible = false; this.onSpeechEnd && this.onSpeechEnd(); } }
     else this.quietT += dt;
@@ -490,6 +491,23 @@ export class Character {
     // stuck on something? a sidestep and a fresh plan
     c.probeT += dt; if (c.probeT > 0.8) { const moved = Math.hypot(pos.x - c.px, pos.z - c.pz); if (moved < 0.15) { c.stuck++; c.t = 0; const a = Math.random() * 6.28; r.root.x += Math.cos(a) * 0.12; r.root.z += Math.sin(a) * 0.12; } else c.stuck = 0; c.probeT = 0; c.px = pos.x; c.pz = pos.z; }
     return dist;
+  }
+  // multiplayer (someone else is the host): every body part follows where the host says it is
+  netUpdate(dt) {
+    const r = this.rag, tg = this.netTarget;
+    if (this.speakT > 0) { this.speakT -= dt; if (this.speakT <= 0) this.bubble.visible = false; }
+    if (tg && r.list) { const k = Math.min(1, dt * 14);
+      if (r.mode !== 'anim') r.setMode('anim', 0);
+      r.list.forEach((p, i) => { const a = tg[i]; if (!a) return; const b = p.body;
+        if (!p.netInit) { b.position.set(a[0], a[1], a[2]); b.quaternion.set(a[3], a[4], a[5], a[6]); p.netInit = true; }
+        b.position.x += (a[0] - b.position.x) * k; b.position.y += (a[1] - b.position.y) * k; b.position.z += (a[2] - b.position.z) * k;
+        _q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w).slerp(_q2.set(a[3], a[4], a[5], a[6]).normalize(), k);
+        b.quaternion.set(_q.x, _q.y, _q.z, _q.w); b.velocity.set(0, 0, 0); b.angularVelocity.set(0, 0, 0); });
+      const pv = r.parts.pelvis.body.position; r.root.x = pv.x; r.root.z = pv.z; }
+    r.sync();
+    const pos = this.pos; this.fx.position.set(pos.x, 0, pos.z);
+    const head = this.headPos(_v); this.bubble.position.set(head.x, Math.max(head.y, 0.7) + 0.55, head.z);
+    this.updateStars(this.netRag === 1, head);
   }
   turnTo(yaw, dt, speed) { this.rag.yaw += wrapAngle(yaw - this.rag.yaw) * Math.min(1, dt * speed); }
 

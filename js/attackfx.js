@@ -30,7 +30,7 @@ export class AttackFX {
   }
 
   // ---------------------------------------------------------------- the attack card
-  showCard({ name, title, sub, icon, color = '#c62828', style = null }) {
+  showCard({ name, title, sub, icon, color = '#c62828', style = null, vs = null }) {
     const g = this.cardCanvas.getContext('2d'), w = 1024, h = 420;
     g.clearRect(0, 0, w, h);
     // drop shadow + panel in the person's colour with a yellow comic border
@@ -50,7 +50,7 @@ export class AttackFX {
     g.restore();
     // name tag, title, effect
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-    g.font = `900 44px ${FONT}`; g.fillStyle = '#ffd400'; g.fillText(`${name.toUpperCase()} ATTACKS!`, 330, 92);
+    g.font = `900 44px ${FONT}`; g.fillStyle = '#ffd400'; { const top = vs ? `${name.toUpperCase()} IS ATTACKING ${vs.toUpperCase()}!` : `${name.toUpperCase()} ATTACKS!`; let f = 44; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(top).width > w - 380 && f > 20); g.fillText(top, 330, 92); }
     let size = 64; const words = title.split(' '), maxW = w - 380;
     let lines;
     for (; size > 30; size -= 4) {
@@ -172,7 +172,7 @@ export class AttackFX {
   get vr() { return !!(this.player.renderer && this.player.renderer.xr.isPresenting); }
   // "LEWIS IS COMING FOR YOU!": the moment the countdown runs out, a tag says who it is, and an arrow points to
   // where they are when they're not in front of you. Goes when their attack card comes up.
-  coming(who) {
+  coming(who, targetName = null) {
     if (!this.comeMesh) {
       const cv = document.createElement('canvas'); cv.width = 768; cv.height = 128; this.comeCv = cv;
       this.comeTex = new THREE.CanvasTexture(cv); this.comeTex.colorSpace = THREE.SRGBColorSpace;
@@ -186,14 +186,15 @@ export class AttackFX {
     }
     const g = this.comeCv.getContext('2d'); g.clearRect(0, 0, 768, 128);
     g.fillStyle = 'rgba(160,20,20,0.9)'; roundRect(g, 6, 6, 756, 116, 40); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ffd400'; roundRect(g, 6, 6, 756, 116, 40); g.stroke();
-    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; let f = 60; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(`⚠ ${who.name.toUpperCase()} IS COMING FOR YOU!`).width > 720);
-    g.fillText(`⚠ ${who.name.toUpperCase()} IS COMING FOR YOU!`, 384, 68); this.comeTex.needsUpdate = true;
+    const msg = targetName ? `⚠ ${who.name.toUpperCase()} IS GOING FOR ${targetName.toUpperCase()}!` : `⚠ ${who.name.toUpperCase()} IS COMING FOR YOU!`;
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; let f = 60; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(msg).width > 720);
+    g.fillText(msg, 384, 68); this.comeTex.needsUpdate = true;
     this.comeWho = who; this.comeT = 0;
   }
   updateComing(dt) {
     if (!this.comeWho) { if (this.comeMesh) this.comeMesh.visible = this.comeArrow.visible = false; return; }
     const w = this.comeWho; this.comeT += dt;
-    if (this.cardShowing || w.down || w.disposed || this.comeT > 12 || !(w.state === 'act' && w.approach)) { this.comeWho = null; return; }
+    if (this.cardShowing || w.down || w.disposed || this.comeT > 12 || (!w.netDriven && !(w.state === 'act' && w.approach))) { this.comeWho = null; return; }
     const u = Math.min(1, this.comeT / 0.25);
     this.comeMesh.visible = true; this.comeMesh.material.opacity = u; this.comeMesh.position.set(0, this.vr ? 0.12 : 0.16, -0.8); this.comeMesh.scale.setScalar((this.vr ? 0.75 : 1) * (0.9 + 0.1 * u));
     // the arrow: towards them, round the edge of a small circle in the middle of your view (hidden when they're in front)

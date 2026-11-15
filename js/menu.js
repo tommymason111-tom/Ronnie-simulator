@@ -1,5 +1,5 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '2.1.0', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '2.2.0', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
   ['2.1.0', ['PLAY now asks SOLO or MULTIPLAYER. Multiplayer: type your name and pick who you are from the squad, then HOST (you choose the place and game for everyone) or JOIN with a code', 'A room screen shows everyone in the room, their name and who they are playing as', 'Meet the Squad: picking someone else no longer makes the last one vanish for a moment', 'VR: holding the controllers, your hands point forward instead of down']],

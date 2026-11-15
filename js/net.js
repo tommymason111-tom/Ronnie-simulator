@@ -11,6 +11,7 @@ const SEND_HZ = 15;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const newCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
 
+export { RemoteRonnie };
 export class Net {
   constructor() { this.ws = null; this.id = null; this.host = false; this.players = new Map(); this.on = {}; this.code = null; this.sendT = 0; this.status = 'off'; }
   get connected() { return this.ws && this.ws.readyState === 1; }
@@ -45,11 +46,12 @@ export class Net {
       this.sendT = 1 / SEND_HZ;
       const P = player, q = P.camera.getWorldQuaternion(new THREE.Quaternion()), r = (v) => Math.round(v * 1000) / 1000;
       const hands = P.flatMode ? [P.flatAnchorPos(), P.head] : P.hands.map(h => h.palm);
-      this.send({ t: 'p', h: [r(P.head.x), r(P.head.y), r(P.head.z)], q: [r(q.x), r(q.y), r(q.z), r(q.w)], l: [r(hands[1].x), r(hands[1].y), r(hands[1].z)], rh: [r(hands[0].x), r(hands[0].y), r(hands[0].z)], s: r(P.scale), st: G.stage, flat: P.flatMode ? 1 : 0 });
+      this.send({ t: 'p', c: this.char || 'ronnie', h: [r(P.head.x), r(P.head.y), r(P.head.z)], q: [r(q.x), r(q.y), r(q.z), r(q.w)], l: [r(hands[1].x), r(hands[1].y), r(hands[1].z)], rh: [r(hands[0].x), r(hands[0].y), r(hands[0].z)], s: r(P.scale), st: G.stage, flat: P.flatMode ? 1 : 0 });
     }
     for (const p of this.players.values()) {
       if (!p.pose) continue;
-      if (!p.avatar) p.avatar = new RemoteRonnie(scene, p.name);
+      if (p.pose.c && !p.char) p.char = p.pose.c;
+      if (!p.avatar) p.avatar = (this.makeAvatar && this.makeAvatar(p)) || new RemoteRonnie(scene, p.name);
       p.avatar.update(dt, p.pose);
     }
   }
@@ -122,4 +124,8 @@ class RemoteRonnie {
     void floor;
   }
   dispose() { this.gone = true; this.scene.remove(this.g); }
+  headPos() { return this.pos.clone(); }
+  fwd() { return new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
+  handPos() { return this.rh.clone(); }
+  flinch() { this.g.position.x += 0; }
 }
