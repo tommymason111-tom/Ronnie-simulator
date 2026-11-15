@@ -10,7 +10,8 @@ const NOISE = `
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float noise(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
     return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
-  float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }`;
+  float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
+  float fbm3(vec2 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 3; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }`;
 const SKY_FS = `uniform float uTime; uniform vec3 uSun; uniform sampler2D uPano; varying vec3 vDir;` + NOISE + `
   void main() {
     vec3 d = normalize(vDir); float h = max(d.y, 0.0);
@@ -36,7 +37,7 @@ export const HAZE = new THREE.Color().setRGB(0.74, 0.86, 0.97, THREE.LinearSRGBC
 export function skyDome(scene, sunDir = [-0.4, 0.55, 0.7]) {
   const mat = new THREE.ShaderMaterial({ uniforms: { uTime: { value: 0 }, uSun: { value: new THREE.Vector3(...sunDir) }, uPano: { value: panoramaTex() } }, vertexShader: SKY_VS, fragmentShader: SKY_FS, side: THREE.BackSide, depthWrite: false });
   const m = new THREE.Mesh(new THREE.SphereGeometry(400, 48, 24), mat);
-  m.frustumCulled = false; m.renderOrder = -10; m.matrixAutoUpdate = false;
+  m.frustumCulled = false; m.renderOrder = 1000; m.matrixAutoUpdate = false;   // drawn after the solid things, so only the sky you can actually see is worked out
   const v = new THREE.Vector3();
   m.onBeforeRender = (r, sc, cam) => { v.setFromMatrixPosition(cam.matrixWorld); m.position.copy(v); m.updateMatrix(); m.updateMatrixWorld(true); };
   m.userData.keep = true; scene.add(m);
@@ -56,9 +57,10 @@ const WATER_FS = `uniform float uTime; uniform vec3 uDeep, uShallow, uSun; unifo
     vec2 p = vW.xz * uScale; float t = uTime;
     vec2 q = p + vec2(t * uFlow, t * 0.07);
     float e = 0.06;
-    float h0 = fbm(q * 1.7) + 0.5 * fbm(q * 4.1 - t * 0.2);
-    float hx = fbm((q + vec2(e, 0.0)) * 1.7) + 0.5 * fbm((q + vec2(e, 0.0)) * 4.1 - t * 0.2);
-    float hz = fbm((q + vec2(0.0, e)) * 1.7) + 0.5 * fbm((q + vec2(0.0, e)) * 4.1 - t * 0.2);
+    vec2 q2 = q * 1.7 + vec2(-t * 0.13, t * 0.05);                     // two layers of ripples drifting across each other
+    float h0 = fbm3(q * 1.7) + 0.5 * fbm3(q2 * 2.4);
+    float hx = fbm3((q + vec2(e, 0.0)) * 1.7) + 0.5 * fbm3((q2 + vec2(e, 0.0)) * 2.4);
+    float hz = fbm3((q + vec2(0.0, e)) * 1.7) + 0.5 * fbm3((q2 + vec2(0.0, e)) * 2.4);
     vec3 n = normalize(vec3((h0 - hx) * 1.6, 1.0, (h0 - hz) * 1.6));
     vec3 v = normalize(cameraPosition - vW);
     float fres = 0.04 + 0.96 * pow(1.0 - max(dot(n, v), 0.0), 5.0);

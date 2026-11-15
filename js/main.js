@@ -54,6 +54,7 @@ FLOOR.at = room.floorAt || null;
 if (room.familyPhotos) setTimeout(() => import('./portraits.js').then(m => m.paintPhotos(renderer, room.familyPhotos)).catch(e => console.warn('photos', e)), 400);   // family photos from the models            // (raised floors: the ragdolls stand on them)
 if (room.shadows) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }     // sunny places get real sun shadows
 room.placeId = BUILD[SEL.place] ? SEL.place : 'bedroom';
+room.camera = camera;              // (the level's light pool follows whoever's looking)
 room.start = room.start || { x: 0.05, z: 0.45, yaw: 0 };
 // Tommy turns up a few metres from where you start
 if (room.big) room.tommySpots.sort((a, b) => Math.abs(Math.hypot(a.x - room.start.x, a.y - room.start.z) - 3) - Math.abs(Math.hypot(b.x - room.start.x, b.y - room.start.z) - 3));
@@ -719,6 +720,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && pla
 // the loading screen goes once the first frame of the level has been drawn
 let loadShown = true;
 function hideLoading() { if (!loadShown) return; loadShown = false; const ls = document.getElementById('loadscreen'); if (ls && ls.classList.contains('on')) { ls.classList.add('fade'); setTimeout(() => ls.classList.remove('on', 'fade'), 320); } }
+const menuCam = new THREE.PerspectiveCamera(70, 1, 0.05, 40), menuShot = { t: 0, yaw: 0, dir: 1 };
 function frame(simDt) {
   if (paused && simDt == null) { clock.getDelta(); renderer.render(scene, camera); return; }    // frozen until RESUME
   const dt = simDt ?? Math.min(clock.getDelta(), 0.05);
@@ -727,7 +729,29 @@ function frame(simDt) {
   if (loadShown && time > 0.15) hideLoading();
   if (!xr) updateZoom();      // a couple of frames in: the level's there
 
-  if (!xr && !player.flatMode) { camera.position.set(0, 1.6, 0); camera.rotation.set(-0.3, time * 0.05, 0, 'YXZ'); }   // slow look-around behind the menu
+  // WAITING (before PLAY): nothing runs, no people, no physics, no food. Just a slow turn round one spot in the map,
+  // cutting to a different part of it every few seconds.
+  if (!xr && !player.flatMode && simDt == null) {
+    if ((menuShot.t -= dt) <= 0) {
+      const spots = room.tommySpots || [];
+      let s = { x: room.start.x, y: room.start.z };
+      // a spot with a clear view (nothing right in front of the lens: a bush, a pillar)
+      const meshes = scene.children.filter(o => o.isMesh && !o.isInstancedMesh && o.visible && o.material && !o.material.transparent), rc = new THREE.Raycaster();
+      for (let tries = 0; tries < 6 && spots.length; tries++) {
+        const c = spots[Math.floor(Math.random() * spots.length)], y = (room.floorAt ? room.floorAt(c.x, c.y) : 0) + 1.65; let ok = true;
+        for (let a = 0; a < 6 && ok; a++) { rc.set(_b.set(c.x, y, c.y), new THREE.Vector3(Math.sin(a * 1.047), 0, Math.cos(a * 1.047))); rc.far = 1.0; if (rc.intersectObjects(meshes, false).length) ok = false; }
+        s = c; if (ok) break;
+      }
+      menuShot.t = 6.5; menuShot.yaw = Math.random() * Math.PI * 2; menuShot.dir = Math.random() < 0.5 ? -1 : 1;
+      menuCam.position.set(s.x, (room.floorAt ? room.floorAt(s.x, s.y) : 0) + 1.65, s.y);
+    }
+    menuShot.yaw += dt * 0.09 * menuShot.dir;
+    menuCam.rotation.set(-0.12, menuShot.yaw, 0, 'YXZ');
+    if (menuCam.aspect !== camera.aspect) { menuCam.aspect = camera.aspect; menuCam.fov = camera.fov; menuCam.updateProjectionMatrix(); }
+    room.camera = menuCam; room.update(dt); room.camera = camera;
+    renderer.render(scene, menuCam);
+    return;
+  }
 
   // growth tween (0.6s elastic "boing")
   if (G.scaleT < 1) {

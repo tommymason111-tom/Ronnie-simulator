@@ -220,7 +220,7 @@ export class Kit {
   pool(x, y, z, size, color = 0xffc070) { (this.pools = this.pools || new GlowBatch(true, 0.42, 1.6)).add(x, y + 0.004, z, size, color); }
   // a real (per-pixel) light: use sparingly, a handful per level
   light(x, y, z, color = 0xffb060, intensity = 4, distance = 7, flicker = 0) {
-    const l = new THREE.PointLight(color, intensity, distance, 1.6); l.position.set(x, y, z); this.scene.add(l);
+    const l = new THREE.PointLight(color, intensity, distance, 1.6); l.position.set(x, y, z);     // (a 'virtual' light: the pool in finish() lights the nearest few for real)
     (this.lights = this.lights || []).push({ l, base: intensity, flicker });
     return l;
   }
@@ -290,8 +290,29 @@ export class Kit {
       update(dt) {          // flickering lights (fires, candles)
         this.t = (this.t || 0) + dt;
         for (const L of lights) if (L.flicker) L.l.intensity = L.base * (1 - L.flicker * 0.5 + L.flicker * 0.5 * (Math.sin(this.t * 13) * 0.3 + Math.sin(this.t * 7.3) * 0.4 + Math.sin(this.t * 23) * 0.3));
+        this.updateLightPool && this.updateLightPool(dt);
       },
     };
+    // LIGHT POOL: a big place has a dozen or more warm lights, and every lit pixel on screen pays for every one of
+    // them (twice in a headset). Each light only reaches a few metres, so only the ones near you matter: a fixed
+    // handful of real lights is moved to the nearest of them, fading in and out as you walk, and the rest cost nothing.
+    if (lights.length) {
+      const N = Math.min(lights.length, 5), pool = [], cam = new THREE.Vector3();
+      for (let i = 0; i < N; i++) { const p = new THREE.PointLight(0xffffff, 0, 1, 1.6); p.userData.src = null; p.userData.w = 0; this.scene.add(p); pool.push(p); }
+      let t = 0, want = [];
+      room.updateLightPool = (dt) => {
+        const c = room.camera; if (!c) return;
+        c.getWorldPosition(cam);
+        if ((t -= dt) <= 0) { t = 0.2;
+          want = lights.map(L => ({ L, d: Math.max(0, L.l.position.distanceTo(cam) - L.l.distance * 0.75) })).sort((a, b) => a.d - b.d).slice(0, N).map(o => o.L); }
+        for (const p of pool) if (p.userData.src && !want.includes(p.userData.src)) p.userData.leaving = true;
+        for (const L of want) if (!pool.some(p => p.userData.src === L)) { const free = pool.find(p => !p.userData.src) || pool.find(p => p.userData.leaving && p.userData.w < 0.05); if (free) { free.userData.src = L; free.userData.leaving = false; free.userData.w = 0; } }
+        for (const p of pool) { const L = p.userData.src; if (!L) { p.intensity = 0; continue; }
+          p.userData.w = THREE.MathUtils.clamp(p.userData.w + (p.userData.leaving ? -dt : dt) * 3, 0, 1);
+          if (p.userData.leaving && p.userData.w <= 0) { p.userData.src = null; p.intensity = 0; continue; }
+          p.position.copy(L.l.position); p.color.copy(L.l.color); p.distance = L.l.distance; p.intensity = L.l.intensity * p.userData.w; }
+      };
+    }
     room.nav = new NavGrid(room);
     room.tommySpots = room.nav.sampleSpots(spotCount);
     room.zfixed = this.zfixed;
