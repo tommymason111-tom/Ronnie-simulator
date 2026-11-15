@@ -860,20 +860,50 @@ export function buildPub(scene) {
     k.label('mirror', z1 - z0 - 0.1, 0.9, [xWall + dir * 0.03, 1.55, (z0 + z1) / 2], [0, dir > 0 ? Math.PI / 2 : -Math.PI / 2, 0], { tex: mirrorTex(), glow: true });
   };
   const dryer = (x, z, ry) => { k.box(0.28, 0.32, 0.18, x, 1.25, z, 0xeceff1, { rot: [0, ry, 0] }); };
-  // Men's
-  { const x0 = X(175), x1 = X(415), z0 = Z(305), z1 = Z(465);
-    clad(x0 + 0.08, z0 + 0.08, x1 - 0.08, z0 + 0.1, WTILE, 2.0, 0.5); clad(x0 + 0.08, z0 + 0.08, x0 + 0.1, z1 - 0.08, WTILE, 2.0, 0.5);
-    cubicles(x0 + 0.08, 2, 1.0, z0 + 0.08, z0 + 1.6, false);
-    for (const x of [x0 + 2.6, x0 + 3.3, x0 + 4.0]) { R(x - 0.2, z0 + 0.08, x + 0.2, z0 + 0.4, 0.7, 0.85, PORCELAIN, { block: true }); R(x - 0.15, z0 + 0.38, x + 0.15, z0 + 0.45, 0.05, 0.55, 0xd0e8ff); }
-    sinks(x0 + 0.08, z1 - 1.9, z1 - 0.4, 1); dryer(x1 - 0.17, z1 - 1.0, -Math.PI / 2);
+  // a wall urinal: porcelain bowl, chrome flush pipe, a blue cake; (px, pz) on the wall face, (nx, nz) into the room
+  const urinal = (px, pz, nx, nz) => {
+    const ry = Math.atan2(nx, nz), at = (t, d) => [px + nz * t + nx * d, pz - nx * t + nz * d];
+    const P = (geo, col, t, y, d, rot = [0, 0, 0]) => { const [x, z] = at(t, d); k.parts.push(part(geo, col, [x, y, z], [rot[0], ry + rot[1], rot[2]])); };
+    P(new RoundedBoxGeometry(0.4, 0.66, 0.32, 3, 0.07), PORCELAIN, 0, 0.84, 0.16);                                   // the bowl
+    P(new THREE.BoxGeometry(0.29, 0.44, 0.02), 0xe2e8ec, 0, 0.82, 0.315);                                              // the opening
+    P(new THREE.BoxGeometry(0.27, 0.05, 0.12), 0xd8e2e8, 0, 0.6, 0.26);                                                // the trough
+    P(new THREE.BoxGeometry(0.06, 0.03, 0.04), 0x3a7bd5, 0.05, 0.635, 0.25);                                           // urinal cake
+    P(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 8), 0xd0d4d8, 0, 1.36, 0.05);                                      // flush pipe
+    P(new THREE.CylinderGeometry(0.035, 0.035, 0.08, 10), 0xd0d4d8, 0, 1.58, 0.05); P(new THREE.CylinderGeometry(0.012, 0.012, 0.06, 6), 0xd0d4d8, 0, 1.58, 0.1, [Math.PI / 2, 0, 0]);
+    P(new THREE.CylinderGeometry(0.02, 0.02, 0.1, 8), 0xd0d4d8, 0, 0.47, 0.1);                                          // waste
+    const [bx, bz] = at(0, 0.18); k.blockers.push({ x0: bx - 0.22, x1: bx + 0.22, z0: bz - 0.22, z1: bz + 0.22, y1: 1.1 });
+  };
+  const divider = (px, pz, nx, nz) => { const ry = Math.atan2(nx, nz); k.box(0.03, 0.8, 0.45, px + nx * 0.25, 1.05, pz + nz * 0.25, 0xb0bec5, { rot: [0, ry, 0] }); };
+  // a row of urinals along a wall, with privacy screens between them
+  const urinalRow = (ax, az, bx, bz, nx, nz, gap = 0.72) => {
+    const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.floor(L / gap)), step = L / n, ux = (bx - ax) / L, uz = (bz - az) / L;
+    for (let i = 0; i < n; i++) urinal(ax + ux * step * (i + 0.5), az + uz * step * (i + 0.5), nx, nz);
+    for (let i = 1; i < n; i++) divider(ax + ux * step * i, az + uz * step * i, nx, nz);
+  };
+  // Men's: urinals on three walls (no cubicles), the sinks and a hand dryer on the right-hand wall, a frosted window up high
+  { const x0 = X(175), x1 = X(415), z0 = Z(305), z1 = Z(465), wi = 0.08, dz0 = Z(465) - 0.08, doorX = X(365);
+    clad(x0 + wi, z0 + wi, x1 - wi, z0 + 0.1, WTILE, 2.0, 0.5); clad(x0 + wi, z0 + wi, x0 + 0.1, z1 - wi, WTILE, 2.0, 0.5);
+    clad(x0 + wi, z1 - 0.1, doorX - 0.1, z1 - wi, WTILE, 2.0, 0.5); clad(x1 - 0.1, z0 + wi, x1 - wi, z1 - wi, WTILE, 2.0, 0.5);
+    urinalRow(x0 + 0.55, z0 + 0.1, x1 - 0.5, z0 + 0.1, 0, 1);                       // the back wall
+    urinalRow(x0 + 0.1, z0 + 0.65, x0 + 0.1, z1 - 0.5, 1, 0);                      // the left wall
+    urinalRow(x0 + 0.65, dz0 - 0.02, doorX - 0.35, dz0 - 0.02, 0, -1);             // the wall with the door
+    sinks(x1 - 0.1, z1 - 2.85, z1 - 1.1, -1); dryer(x1 - 0.19, z1 - 0.55, -Math.PI / 2);
+    k.box(0.2, 0.06, 0.06, x1 - 0.2, 1.06, z1 - 0.55, 0xb0b8c0); k.box(0.12, 0.04, 0.02, x1 - 0.105, 1.3, z1 - 0.55, 0x37474f, { rot: [0, -Math.PI / 2, 0] });   // its nozzle and badge
+    k.box(0.12, 0.2, 0.1, x1 - 0.15, 1.2, z1 - 2.98, 0xeceff1);                                                   // soap dispenser
+    k.cyl(0.17, 0.14, 0.55, x1 - 0.28, 0.275, z1 - 0.5, 0x9aa4ac, 12, { block: true });                           // paper towel bin
+    { const wx = x0 + 1.6, wy = 2.45, wz = z0 + wi;                                                               // the frosted window, high on the back wall
+      R(wx - 0.5, wz, wx + 0.5, wz + 0.06, 0.5, wy, 0xf4f4f2); R(wx - 0.44, wz + 0.06, wx + 0.44, wz + 0.07, 0.4, wy, 0xdfe7ea);
+      const fr = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 0.38), new THREE.MeshBasicMaterial({ color: 0xe9f0f2 })); fr.position.set(wx, wy, wz + 0.072); scene.add(fr);
+      R(wx - 0.44, wz + 0.07, wx + 0.44, wz + 0.09, 0.03, wy + 0.02, 0xf4f4f2); R(wx - 0.5, wz, wx + 0.5, wz + 0.12, 0.03, wy - 0.27, 0xf4f4f2);
+      k.box(0.1, 0.02, 0.03, wx, wy + 0.1, wz + 0.1, 0xc0c0c0); }
     k.label('MEN', 0.7, 0.25, [(X(365) + X(410)) / 2, 2.4, z1 + 0.09], [0, 0, 0], { bg: '#1f4fbf', fg: '#fff', border: null, size: 90 });
-    k.label('NOW WASH YOUR HANDS (RONNIE: THAT INCLUDES THE GRAVY)', 0.8, 0.4, [x1 - 0.1, 1.6, z1 - 2.2], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: '#1f4fbf', size: 36 });
+    k.label('NOW WASH YOUR HANDS (RONNIE: THAT INCLUDES THE GRAVY)', 0.6, 0.4, [x1 - 0.105, 1.6, z1 - 3.35], [0, -Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: '#1f4fbf', size: 36 });
     k.lamp((x0 + x1) / 2, H - 0.01, (z0 + z1) / 2, 0xffffff, 0.12);
   }
-  // ...and someone didn't flush (first cubicle in the Men's). Don't eat it, Ronnie.
-  const poopAt = new THREE.Vector3(X(175) + 0.58, 0.4, Z(305) + 0.08 + 0.47);
+  // ...and someone didn't flush (in the accessible toilet). Don't eat it, Ronnie.
+  const poopAt = new THREE.Vector3(X(215) + 0.7, 0.4, Z(465) + 0.08 + 0.47);
   k.colliders.push({ min: new THREE.Vector3(poopAt.x - 0.12, 0, poopAt.z - 0.14), max: new THREE.Vector3(poopAt.x + 0.12, 0.31, poopAt.z + 0.14) });
-  k.label("SOMEONE DIDN'T FLUSH", 0.5, 0.15, [poopAt.x, 1.4, Z(305) + 0.1], [0, 0, 0], { bg: '#fff', fg: '#5a3418', border: '#5a3418', size: 40 });
+  k.label("SOMEONE DIDN'T FLUSH", 0.5, 0.15, [poopAt.x, 1.4, Z(465) + 0.1], [0, 0, 0], { bg: '#fff', fg: '#5a3418', border: '#5a3418', size: 40 });
   // Disabled toilet: toilet with grab rails, a low sink, the red pull cord
   { const x0 = X(215), x1 = X(355), z0 = Z(465), z1 = Z(605);
     clad(x0 + 0.08, z0 + 0.08, x1 - 0.08, z0 + 0.1, WTILE, 2.0, 0.5);
