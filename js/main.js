@@ -107,13 +107,15 @@ room.onPayout = (m) => {
 };
 // big places: loads more food, every kind, and it keeps topping up
 if (room.big) {
-  for (let i = 0; i < 26; i++) items.spawn(JUNK_TYPES[i % JUNK_TYPES.length], items.freeSpawn());
+  // spread round every table, counter and bench in the place (each spot used once before any doubles up)
+  const spots = room.spawns.slice().sort(() => Math.random() - 0.5);
+  for (let i = 0; i < 56; i++) items.spawn(JUNK_TYPES[i % JUNK_TYPES.length], i < spots.length && items.items.every(it => it.pos.distanceToSquared(spots[i]) > 0.15 * 0.15) ? spots[i] : items.freeSpawn());
   items.respawnDelay = 1.5;
-  items.minFood = 44;
+  items.minFood = 78;
 }
 else {
   [['burger', 0], ['pizza', 1], ['doughnut', 2], ['can', 3]].forEach(([t, i]) => items.spawn(t, room.spawns[i]));
-  ['burger', 'pizza', 'doughnut', 'can', 'burger', 'doughnut'].forEach(t => items.spawn(t, items.freeSpawn()));
+  ['burger', 'pizza', 'doughnut', 'can', 'burger', 'doughnut', 'hotdog', 'fries', 'chicken', 'kebab', 'cookie', 'taco', 'pizza', 'burger'].forEach(t => items.spawn(t, items.freeSpawn()));
 }
 
 // ---------------- events ----------------

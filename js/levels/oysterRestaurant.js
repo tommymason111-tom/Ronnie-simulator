@@ -541,7 +541,7 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
   for (let x = -28.5; x < -14; x += 2.4) for (let z = -13.5; z < 10; z += 2.4) if (inPoly(REST.main, x, z) && x < -18.2) k.lamp(x, RH - 0.01, z, 0xfffbe8, 0.035);
   for (let x = -38.4; x < -29.5; x += 2.4) for (const z of [-7.8, 2.6]) k.lamp(x, H - 0.01, z, 0xfffbe8, 0.03);
   k.light(-23.0, 3.3, -2.0, 0xffd8a8, 3.6, 16); k.light(-34.1, 2.6, -2.4, 0xffd8a8, 2.6, 11);
-  spawnsOn.forEach(([x, z], i) => { if (i % 2 === 0) k.spawns.push(new THREE.Vector3(x + 0.1, TY + 0.08, z + 0.05)); });
+  spawnsOn.forEach(([x, z]) => { k.spawns.push(new THREE.Vector3(x + 0.2, TY + 0.08, z + 0.08), new THREE.Vector3(x - 0.22, TY + 0.08, z - 0.06), new THREE.Vector3(x + 0.02, TY + 0.08, z - 0.2), new THREE.Vector3(x - 0.05, TY + 0.08, z + 0.2)); });
 
   // all the glassware in one see-through mesh
   const gmat = new THREE.MeshLambertMaterial({ color: 0xe6f2f4, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide }), gcells = new Map(), gc = new THREE.Vector3();

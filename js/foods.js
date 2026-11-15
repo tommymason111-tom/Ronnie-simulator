@@ -386,14 +386,18 @@ export function itemParts(type, v = 0) {
 // ---------- items ----------
 const _v = new THREE.Vector3(), _c = new THREE.Vector3();
 
+// food comes bigger than life (easier to see, grab and throw); drinks and props stay their real size
+export const FOOD_BIG = 1.3;
+const bigFor = (def) => (def.prop || def.drink || def.poop) ? 1 : FOOD_BIG;
+const sizedMesh = (type, v) => { const m = meshFor(type, v), k = bigFor(FOODS[type]); if (k !== 1) m.scale.multiplyScalar(k); return m; };
 export class Item {
   constructor(type, v = 0) {
     this.type = type;
     this.def = FOODS[type];
     this.variant = v;
     this.obj = new THREE.Group();
-    this.obj.add(meshFor(type, v));
-    this.radius = this.def.radius;
+    this.obj.add(sizedMesh(type, v));
+    this.radius = this.def.radius * bigFor(this.def);
     this.vel = new THREE.Vector3();
     this.prev = new THREE.Vector3();   // position last frame (for swept hit tests)
     this.spin = new THREE.Vector3();
@@ -421,7 +425,7 @@ export class Item {
     this.vel.set(0, 0, 0); this.spin.set(0, 0, 0);
     this.obj.visible = true;
   }
-  setVariant(v) { if (this.variant === v) return; this.variant = v; const s = this.obj.scale.x; this.obj.clear(); this.obj.add(meshFor(this.type, v)); this.obj.scale.setScalar(s); }
+  setVariant(v) { if (this.variant === v) return; this.variant = v; const s = this.obj.scale.x; this.obj.clear(); this.obj.add(sizedMesh(this.type, v)); this.obj.scale.setScalar(s); }
   get pos() { return this.obj.position; }
   get eatFraction() { return this.bitesLeft / this.def.bites; }
 }

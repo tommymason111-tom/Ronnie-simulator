@@ -255,7 +255,7 @@ export function buildPub(scene) {
     { const r3 = Math.random(); if (r3 < 0.6) dorm.add('condiment', x + 0.09, y + 0.035, z - 0.06, Math.random() * 6.28, r3 < 0.3 ? 0 : r3 < 0.45 ? 1 : 2, 0, 0, { r: 0.08 }); }   // ketchup, brown sauce or vinegar
     tentCard(x - 0.12, y, z - 0.06, 0.3 + (x * 7) % 1);
     put(new RoundedBoxGeometry(0.1, 0.07, 0.06, 1, 0.006), 0x8a5a2a, x, z + 0.08, 0, 0, y + 0.035, 0); for (let i = 0; i < 4; i++) put(CYL(0.003, 0.003, 0.12, 4), 0xc8ccd0, x - 0.03 + i * 0.02, z + 0.08, 0, 0, y + 0.1, 0);
-    k.spawns.push(new THREE.Vector3(x + w * 0.22, y + 0.08, z));
+    k.spawns.push(new THREE.Vector3(x + w * 0.22, y + 0.08, z), new THREE.Vector3(x - w * 0.24, y + 0.08, z + 0.04));
   };
   const table = (x, z, w = 1.2, d = 0.8, chairs = 1) => {
     tableTop(x, z, w, d);
@@ -1262,7 +1262,7 @@ export function buildPub(scene) {
       if (r > 0.6) { put(new THREE.BoxGeometry(0.16, 0.07, 0.1), 0x2a2a2a, x, z, ry, 0.0, 0.805 + y0, 0.0); for (const [dx, c] of [[-0.05, 0xc8202a], [0, 0xf4c020], [0.05, 0x6a3a1a]]) put(CYL(0.018, 0.02, 0.13, 8), c, x, z, ry, dx, 0.875 + y0, 0.0); }
       const c = Math.abs(Math.cos(ry)), sx = c > 0.5 ? 0.95 : 0.8, sz = c > 0.5 ? 0.8 : 0.95;
       k.colliders.push({ min: new THREE.Vector3(x - (c > 0.5 ? 0.9 : 0.36), 0.72 + y0, z - (c > 0.5 ? 0.36 : 0.9)), max: new THREE.Vector3(x + (c > 0.5 ? 0.9 : 0.36), 0.77 + y0, z + (c > 0.5 ? 0.9 : 0.36)) });
-      blk(x - sx, z - sz, x + sx, z + sz, 0.77 + y0); k.spawns.push(new THREE.Vector3(x + (c > 0.5 ? 0.3 : 0.05), 0.85 + y0, z + (c > 0.5 ? 0.05 : 0.3)));
+      blk(x - sx, z - sz, x + sx, z + sz, 0.77 + y0); k.spawns.push(new THREE.Vector3(x + (c > 0.5 ? 0.3 : 0.05), 0.85 + y0, z + (c > 0.5 ? 0.05 : 0.3)), new THREE.Vector3(x - (c > 0.5 ? 0.45 : 0.0), 0.85 + y0, z - (c > 0.5 ? 0.0 : 0.45)));
       if (umb !== null) parasol(x, z, y0, umb);
     };
     // a round picnic table: a planked top cut to a circle, a ring of four curved two-board seats, a cross frame
@@ -1277,7 +1277,7 @@ export function buildPub(scene) {
         put(new THREE.BoxGeometry(0.06, 0.42, 0.06), 0x4a3020, x, z, -am, 1.0, 0.21 + y0, 0); put(CYL(0.014, 0.014, 0.012, 8), BOLT, x, z, -am, 1.0, 0.4 + y0, 0.035, Math.PI / 2); }
       put(CYL(0.06, 0.06, 0.72, 10), 0x4a3020, x, z, 0, 0, 0.36 + y0, 0); for (const a of [0.3, 0.3 + Math.PI / 2]) put(new THREE.BoxGeometry(1.4, 0.06, 0.08), 0x4a3020, x, z, a, 0, 0.03 + y0, 0);
       for (let i = 0; i < 4; i++) put(new THREE.BoxGeometry(0.5, 0.05, 0.045), 0x5a3e28, x, z, i * Math.PI / 2 + 0.3, 0.2, 0.5 + y0, 0, 0, 0.75);
-      k.colliders.push({ min: new THREE.Vector3(x - 0.55, 0.72 + y0, z - 0.55), max: new THREE.Vector3(x + 0.55, 0.77 + y0, z + 0.55) }); blk(x - 1.0, z - 1.0, x + 1.0, z + 1.0, 0.77 + y0); k.spawns.push(new THREE.Vector3(x + 0.25, 0.85 + y0, z));
+      k.colliders.push({ min: new THREE.Vector3(x - 0.55, 0.72 + y0, z - 0.55), max: new THREE.Vector3(x + 0.55, 0.77 + y0, z + 0.55) }); blk(x - 1.0, z - 1.0, x + 1.0, z + 1.0, 0.77 + y0); k.spawns.push(new THREE.Vector3(x + 0.25, 0.85 + y0, z), new THREE.Vector3(x - 0.22, 0.85 + y0, z + 0.15));
       if (umb !== null) parasol(x, z, y0, umb);
     };
     const barrel = (x, z) => { const g = new THREE.LatheGeometry([[0, 0], [0.26, 0], [0.31, 0.25], [0.32, 0.45], [0.31, 0.65], [0.26, 0.9], [0, 0.9]].map(([a, b]) => new THREE.Vector2(a, b)), 14); k.parts.push(part(g, 0x6a4024, [x, 0, z])); for (const y of [0.1, 0.32, 0.58, 0.8]) put(CYL(0.315, 0.315, 0.035, 14), 0x2a2a2a, x, z, 0, 0, y, 0); put(CYL(0.36, 0.36, 0.04, 14), 0x5a3a20, x, z, 0, 0, 0.92, 0); k.colliders.push({ min: new THREE.Vector3(x - 0.3, 0.88, z - 0.3), max: new THREE.Vector3(x + 0.3, 0.94, z + 0.3) }); blk(x - 0.33, z - 0.33, x + 0.33, z + 0.33, 0.94); k.spawns.push(new THREE.Vector3(x, 1.0, z)); };
