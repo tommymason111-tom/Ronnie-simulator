@@ -17,6 +17,7 @@ import { Item } from './foods.js';
 import { TURKEY_LEN } from './cutscenes.js';
 import { BBQ_SPOT, IAN_SPOT, IAN_YAW } from './levels/garden.js';
 import { pickVeg, pickJunk } from './config.js';
+import { RunPub } from './runpub.js';
 
 export const MODES = {
   everyone:     { name: 'THE WHOLE SQUAD', desc: 'Everyone\'s here. Eat while they take turns to stop you.', time: 0 },
@@ -29,6 +30,7 @@ export const MODES = {
   sweep:        { name: 'SUPERMARKET SWEEP', desc: '90 seconds, one trolley. Grab the most calories. Dodge Oliver.', time: 90, place: 'shop' },
   bbq:          { name: "IAN'S BARBECUE", desc: 'Round Lewis\'s house. Eat off the grill before Ian makes it healthy.', time: 150, place: 'garden' },
   roam:         { name: 'FREE ROAM', desc: 'Have a look round. Everyone\'s here, nobody attacks.', time: 0 },
+  runpub:       { name: 'RUN THE PUB', desc: 'Behind the bar at the Oysterfleet. Serve the punters, break up the fights, don\'t drink the stock.', time: 360, place: 'pub' },
   date:         { name: 'DATE NIGHT', desc: 'Eat when Chloe looks away. 3 catches and it\'s salad.', time: 180, place: 'restaurant' },
 };
 // which modes each place offers (also used by the start screen)
@@ -197,6 +199,7 @@ export class Director {
     else if (id === 'sweep') squad = ['oliver', 'aidanw'];        // both work at Lidl (Aidan W can't chase you: knee)
     else if (id === 'bbq') squad = ['ian', 'lewis', ...shuffle(everyone.filter(s => s !== 'ian' && s !== 'lewis')).slice(0, 4)];
     else if (id === 'roam') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 6);   // everyone about, nobody attacking
+    else if (id === 'runpub') squad = ['lewis', 'ben', 'aidan', 'connor', 'chloe'];      // the staff (punters and drop-ins come later)
     else if (id === 'classic') squad = [];
     else squad = [];
     this.roster = squad;
@@ -210,7 +213,8 @@ export class Director {
       this.hook(c);
       g.cast.push(c);
     });
-    const SHORT = { sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
+    if (this.runpub) { this.runpub.cleanup(); this.runpub = null; }
+    const SHORT = { runpub: 'SERVE THE PUNTERS', sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
     g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
@@ -220,10 +224,12 @@ export class Director {
     if (id === 'bbq') this.startBbq();
     if (id !== 'sweep') this.removeTrolley();
     if (id === 'everyone') { this.nextChaos = 18; tommy.attacks = true; tommy.directed = true; }
+    if (id === 'runpub') { tommy.attacks = false; tommy.directed = false; this.pending = null; this.runpub = new RunPub(this); this.runpub.start(); }
     if (id === 'roam') { tommy.attacks = false; tommy.directed = false; this.pending = null; if (g.fx) { g.fx.setCountdown(null); g.fx.hideCard && g.fx.hideCard(); } this.startRoam(); }
     this.nextAttackT = id === 'everyone' ? 12 : 15;
     if (g.fx) g.fx.setCountdown(null);
     tommy.say({
+      runpub: 'You\'re behind the bar tonight, Ron. Serve the punters. Do NOT drink the stock.',
       everyone: 'The whole squad\'s out tonight, Ron. Everyone\'s watching what you eat. I\'m just trying to help.',
       sweep: 'Supermarket Sweep! Ninety seconds, Ron. Oliver\'s on security. He takes it VERY seriously.',
       bbq: 'Ian\'s barbecue, Ron. He says it\'s healthy. It\'s not healthy. Be quick.',
@@ -282,6 +288,8 @@ export class Director {
       lines.push(['OFF THE GRILL', this.bbq.ate]);
       lines.push(['GRILLED VEG EATEN', st.veg]);
       lines.push([st.veg === 0 ? 'Ian: "You didn\'t touch my peppers."' : 'Ian: "See? HEALTHY. Lewy, he loved it."', '']);
+    } else if (this.mode === 'runpub' && this.runpub) {
+      lines.length = 1; lines.push(...this.runpub.summary());
     } else if (this.mode === 'catch') {
       lines.push(['CATCHES', `${st.caught} / ${st.thrown}`]);
       lines.push(['Harry: "Terrible decision."', '']);
@@ -308,6 +316,7 @@ export class Director {
       bbq: 'Ian says you\'re not invited next year. He says that every year.',
       catch: 'Harry\'s retiring. From throwing. And dating, hopefully.',
       date: 'Romance isn\'t dead, Ron. You ate it.',
+      runpub: 'Last orders! ...Ron, last orders means for THEM, not you.',
       chonkoff: 'Time! ...the scales have left the building.',
       chonkoff2: 'Time! ...both of you are a disgrace. I\'m very proud.',
     }[this.mode], 5);
@@ -342,6 +351,7 @@ export class Director {
     switch (this.mode) {
       case 'date': this.updateDate(dt, ctx); break;
       case 'roam': this.updateRoam(dt); break;
+      case 'runpub': this.runpub && this.runpub.update(dt); break;
       case 'sweep': this.updateSweep(dt, ctx); break;
       case 'bbq': this.updateBbq(dt, ctx); this.updateAttacks(dt); break;
       case 'everyone':
@@ -1109,6 +1119,7 @@ export class Director {
     else if (this.mode === 'catch') extra = `Caught ${this.stats.caught}/${this.stats.thrown}`;
     else if (this.mode === 'sweep' && this.sweep) extra = `Trolley ${this.sweep.items} · ${kc(this.sweep.total)}`;
     else if (this.mode === 'bbq' && this.bbq) extra = `Off the grill ${this.bbq.ate} · ${this.attackClock()}`;
+    else if (this.mode === 'runpub' && this.runpub) extra = this.runpub.hud();
     else if (this.mode === 'date') extra = `Busted ${this.date.catches}/3 · ${this.date.look ? 'SHE\'S LOOKING!' : 'EAT NOW!'}`;
     else if (this.mode === 'everyone') return `THE WHOLE SQUAD · ${this.attackClock()}`;
     else extra = `Eat ${Math.round(this.stats.chonk)}`;

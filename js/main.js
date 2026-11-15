@@ -693,8 +693,9 @@ const PAUSE_MODES = {
   bbq: ['🍖', "IAN'S BARBECUE", 'Eat off the grill before Ian makes it healthy'],
   date: ['💜', 'DATE NIGHT', 'Eat when Chloe looks away'],
   roam: ['🚶', 'FREE ROAM', 'Have a look round. Nobody attacks'],
+  runpub: ['🍺', 'RUN THE PUB', 'Behind the bar: serve the punters, sort out the trouble'],
 };
-const PLACE_GAMES = { pub: ['everyone', 'chonkoff', 'chonkoff2', 'roam'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
+const PLACE_GAMES = { pub: ['everyone', 'runpub', 'chonkoff', 'chonkoff2', 'roam'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
 function showPauseModes() {
   const list = document.getElementById('pause-mode-list'), cur = director.mode;
   list.innerHTML = (PLACE_GAMES[room.placeId] || PLACE_GAMES.bedroom).map(id => { const [ico, name, desc] = PAUSE_MODES[id];

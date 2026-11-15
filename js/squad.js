@@ -426,13 +426,17 @@ function buildBody(rag, look) {
     add(new THREE.SphereGeometry(R * 0.16, 8, 6), new THREE.Color(skin).multiplyScalar(0.92).getHex(), 'head', at(c.x, c.y - R * 0.08, fz + R * 0.06, 0.8, 1.1, 1));
     const bearded = look.beard && (look.beard.style === 'full' || look.beard.style === 'short');
     add(new THREE.BoxGeometry(R * 0.4, R * 0.07, R * 0.06), bearded ? 0xb5655a : look.lips ?? 0x8a4a40, 'head', at(c.x, c.y - R * 0.42, fz + (bearded ? R * 0.16 : -R * 0.06)));
-    hair(add, look.hair, c, R, k);
+    if (look.hair) hair(add, look.hair, c, R, k);
     if (look.beard) beard(add, look.beard, c, R);
     if (look.glasses) for (const s of [-1, 1]) add(new THREE.TorusGeometry(R * 0.2, R * 0.03, 6, 16), 0x111111, 'head', at(c.x + s * R * 0.33, c.y + R * 0.12, fz + R * 0.05));
     if (look.glasses) add(new THREE.BoxGeometry(R * 0.26, R * 0.04, R * 0.04), 0x111111, 'head', at(c.x, c.y + R * 0.14, fz + R * 0.08));
     if (look.cap) {   // backwards cap
       add(new THREE.SphereGeometry(R * 1.04, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.42), look.cap, 'head', at(c.x, c.y + R * 0.06, c.z));
       add(new THREE.BoxGeometry(R * 0.9, R * 0.06, R * 0.6), look.cap, 'head', at(c.x, c.y + R * 0.33, c.z - R * 1.05, 1, 1, 1, -0.25));
+    }
+    if (look.flatcap) {     // an old boy's flat cap: a flattened crown, the peak out over the forehead
+      add(new THREE.SphereGeometry(R * 1.08, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), look.flatcap, 'head', at(c.x, c.y + R * 0.2, c.z - R * 0.05, 1, 0.55, 1.05, -0.12));
+      add(new THREE.CylinderGeometry(R * 0.85, R * 0.9, R * 0.08, 16, 1, false, -Math.PI / 2, Math.PI), look.flatcap, 'head', at(c.x, c.y + R * 0.32, c.z + R * 0.75, 1, 1, 0.6, 0.12));
     }
     if (look.shades) for (const s of [-1, 1]) add(new THREE.CylinderGeometry(R * 0.2, R * 0.2, R * 0.04, 12), 0x111111, 'head', at(c.x + s * R * 0.3, c.y + R * 0.78, c.z + R * 0.45, 1, 1, 1, 1.1));
     if (look.flower) for (let i = 0; i < 5; i++) { const a = i * 1.256; add(new THREE.SphereGeometry(R * 0.09, 6, 4), 0xff5fa2, 'head', at(c.x + R * 0.8 + Math.cos(a) * R * 0.1, c.y + R * 0.55 + Math.sin(a) * R * 0.1, c.z + R * 0.3)); }
@@ -502,7 +506,7 @@ function beard(add, b, c, R) {
 // ---------------------------------------------------------------------------
 // Props held in a hand (kept upright, like Aidan's never-spilt pint)
 // ---------------------------------------------------------------------------
-function makeProp(type, k) {
+export function makeProp(type, k) {
   let mesh;
   if (type === 'pint') { mesh = new Item('pint').obj; mesh.scale.setScalar(1); }
   else if (type === 'phone') {
@@ -565,6 +569,7 @@ export class SquadMember extends Character {
   }
 
   dispose() {
+    this.disposed = true;
     Character.ALL.delete(this);
     this.rag.dispose();
     for (const o of [this.fx, this.bubble, this.prop, this.heldItem, ...this.stars]) if (o) this.scene.remove(o);
@@ -613,6 +618,26 @@ export class SquadMember extends Character {
       case 'chat': { const s = Math.sin((t + ph) * 2.2); r.aim('uArmR', -0.3, -0.7, 0.6); r.aim('lArmR', -0.3 + s * 0.4, 0.4, 1); r.aim('uArmL', 0.25, -0.9, 0.3); r.aim('lArmL', 0.2, 0.1 + s * 0.2, 1); return; }
       case 'darts': { const k = ((t + ph) % 4) / 4, wind = k < 0.25 ? k / 0.25 : k < 0.32 ? 1 - (k - 0.25) / 0.07 : 0;
         r.aim('uArmR', -0.1, 0.05, 1); r.aim('lArmR', 0, 0.2 + wind * 0.9, 1 - wind * 0.9); return; }
+      case 'fight': {   // squaring up and swinging: guard up, bobbing, jabs and haymakers with the weight behind them
+        const k2 = (t * 2.6 + ph) % 2, jab = k2 < 0.25 ? Math.sin(k2 / 0.25 * Math.PI) : 0, hook = k2 > 1 && k2 < 1.3 ? Math.sin((k2 - 1) / 0.3 * Math.PI) : 0, bob = Math.sin(t * 6 + ph);
+        r.aim('uArmL', 0.25, -0.1 + jab * 0.2, 0.8 + jab * 0.4); r.aim('lArmL', -0.2, 0.6 - jab * 0.6, 0.6 + jab * 0.6);
+        r.aim('uArmR', -0.45 + hook * 0.5, 0.1 + hook * 0.1, 0.7); r.aim('lArmR', 0.2 + hook * 0.4, 0.6 - hook * 0.5, 0.5 + hook * 0.4);
+        r.aim('uLegL', 0.2, -1, 0.25); r.aim('lLegL', 0, -1, 0.05); r.aim('uLegR', -0.2, -1, -0.2); r.aim('lLegR', 0, -1, -0.3);
+        r.pose.chest.setFromAxisAngle(_v.set(0, 1, 0), -hook * 0.6 + jab * 0.2).premultiply(_lq.setFromAxisAngle(_lx, 0.18 + bob * 0.04)); r.bob = -0.05 - Math.abs(bob) * 0.02; return; }
+      case 'sing': {    // arms out wide, swaying, head back, belting it out
+        const sw = Math.sin(t * 2.2 + ph);
+        r.aim('uArmL', 1, 0.35 + sw * 0.2, 0.2); r.aim('lArmL', 1, 0.5, 0.1); r.aim('uArmR', -1, 0.35 - sw * 0.2, 0.2); r.aim('lArmR', -1, 0.5, 0.1);
+        r.pose.chest.setFromAxisAngle(_v.set(0, 0, 1), sw * 0.12).premultiply(_lq.setFromAxisAngle(_lx, -0.15)); r.yaw += Math.sin(t * 1.1) * 0.01; return; }
+      case 'waiter':    // a plate held up on the flat of the hand
+        r.aim('uArmR', -0.25, -0.5, 0.8); r.aim('lArmR', -0.05, 0.05, 1); r.aim('uArmL', 0.2, -1, 0.1); r.aim('lArmL', 0.05, -1, 0.3); return;
+      case 'cook': {    // stirring a pan, the other hand on the handle
+        const st = Math.sin(t * 5); r.aim('uArmR', -0.2, -0.6, 0.8); r.aim('lArmR', -0.3 + st * 0.3, -0.35, 1); r.aim('uArmL', 0.25, -0.6, 0.8); r.aim('lArmL', 0.2, -0.3, 1);
+        r.pose.chest.setFromAxisAngle(_lx, 0.25); return; }
+      case 'pour': {    // pulling a pint: one hand on the pump, the glass tilted under it, then a polish of a glass
+        const k2 = (t + ph) % 6; if (k2 < 3.5) { const pull = Math.min(1, k2 / 0.6); r.aim('uArmR', -0.15, -0.3, 1); r.aim('lArmR', -0.05, 0.4 - pull * 0.5, 1); r.aim('uArmL', 0.25, -0.75, 0.6); r.aim('lArmL', -0.4, -0.2, 1); }
+        else { const w = Math.sin(t * 9); r.aim('uArmL', 0.2, -0.7, 0.6); r.aim('lArmL', -0.6, 0.0, 0.8); r.aim('uArmR', -0.2, -0.7, 0.6); r.aim('lArmR', 0.6 + w * 0.2, 0.05, 0.8); }
+        r.pose.chest.setFromAxisAngle(_lx, 0.12); return; }
+      case 'tantrum': { const s2 = Math.sin(t * 14); r.aim('uArmL', 0.6, 0.6 * s2, 0.3); r.aim('uArmR', -0.6, -0.6 * s2, 0.3); r.aim('uLegL', 0.1, -1, 0.3 * s2); r.aim('uLegR', -0.1, -1, -0.3 * s2); r.bob = Math.abs(s2) * 0.04; return; }
       case 'bat': r.aim('uArmR', -0.4, -0.5, 0.7); r.aim('lArmR', -0.2, 0.3 + Math.sin((t + ph) * 3) * 0.3, 1); r.aim('uLegL', 0.2, -1, 0.05); r.aim('uLegR', -0.2, -1, 0.05); return;
     }
     switch (this.id) {

@@ -243,6 +243,8 @@ export class Character {
     r.pose.pelvis.setFromAxisAngle(_v.set(0, 0, 1), -shift * 0.045);                       // the hip drops on the relaxed side
     _q.setFromAxisAngle(_v.set(0, 0, 1), shift * 0.035); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), breathe).premultiply(_q);
     r.bob = -0.008 * Math.abs(shift);
+    if (this.drunk) { const sw = Math.sin(t * 1.3 + ph) * 0.09 * this.drunk, sw2 = Math.sin(t * 0.83 + ph) * 0.07 * this.drunk;   // swaying where they stand
+      r.pose.chest.premultiply(_q.setFromAxisAngle(_v.set(0, 0, 1), sw)).premultiply(_q.setFromAxisAngle(_v.set(1, 0, 0), sw2 + 0.06 * this.drunk)); r.pose.pelvis.premultiply(_q.setFromAxisAngle(_v.set(0, 0, 1), -sw * 0.5)); }
     if (this.state === 'idle' && !(this.speakT > 0)) this.fidget(t);
   }
   // Little things people do while they wait: look round the room, scratch their head, check the time, stretch,
@@ -388,6 +390,7 @@ export class Character {
           this.walkProbe = { t: this.walkT, x: pos.x, z: pos.z, tries: 0 };
         }
         _v2.normalize(); this.steer(_v2, pos);                                           // edge round anyone in the way
+        if (this.drunk) { const w = Math.sin(this.t * 1.7) * 0.45 * this.drunk; const c2 = Math.cos(w), s2 = Math.sin(w), x = _v2.x; _v2.x = x * c2 + _v2.z * s2; _v2.z = -x * s2 + _v2.z * c2; }   // a stagger
         this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 6);
         const sp = (this.walkSpeed || 0.9) * 1.15;   // a touch brisker than a stroll
         r.moveVel.copy(_v2).multiplyScalar(Math.min(sp, d * 2.5));

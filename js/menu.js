@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.8.6', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '1.9.0', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['1.9.0', ['NEW GAME: RUN THE PUB at the Oysterfleet. You\'re behind the bar with Aidan, Connor and Chloe; Lewis waits tables in the restaurant and Ben runs the kitchen. Locals (lots of drunk old boys), families and lads come in and order at the bar: hand them the right drink for tips. Fights, singing drunks and runaway kids to sort out. Takings and a star rating at the end', 'Everyone moves far more naturally: weight shifts, fidgets, proper walk and run cycles, stepping round on the spot, talking with their hands, wind-ups and follow-throughs', 'Free roam: everyone gets on with their own night (sitting at tables, propping up the bar, wandering, stopping to chat to each other)', 'Attackers sprint over on a proper route round the furniture, square up to you and turn you to face them', 'People steer round each other and furniture instead of getting stuck', 'Pick up the pub chairs, bottles off the back bar, sauces, salt and pepper, and beer mats', 'Throw something at a telly and the screen smashes', 'The river out the back is now a lake, with a jetty, a rowing boat, lily pads, ducks and swans']],
   ['1.8.6', ['Fixed the river bank, a big tree and bushes poking up inside the restaurant: they now stop behind the building']],
   ['1.8.5', ['A corridor down the left of the conservatory to a new back door out on to the beer garden deck (EXIT and BEER GARDEN signs, a door hooked open, a lantern and a step outside)', 'The way into the conservatory and the table by the pillar have moved over to make room; the conservatory windows moved along with them']],
   ['1.8.4', ['The Please Wait To Be Seated sign has moved aside by the wall, out of the way in', 'The plant by the fruit machine is now a full fig tree: braided trunks, arching branches and hundreds of glossy leaves']],
@@ -58,12 +59,13 @@ var GAME_UPDATES = [
     { id: 'bbq', ico: '🍖', name: "IAN'S BARBECUE", desc: "Round Lewis's house. Grab the food off the grill before Ian makes it healthy and throws it at you.", stars: 2, who: 'Ian, Lewis + the lads', place: 'garden' },
     { id: 'date', ico: '💜', name: 'DATE NIGHT', desc: "Eat when Chloe looks away. Three catches and it's salad.", stars: 2, who: 'Chloe + the lads', place: 'restaurant' },
     { id: 'eatoff', ico: '⏱️', name: 'EAT-OFF', desc: '60 seconds. Eat everything. On your own, or pass-and-play: who eats more?', stars: 1, who: '1 or 2 players' },
+    { id: 'runpub', ico: '🍺', name: 'RUN THE PUB', desc: 'Work behind the bar at the Oysterfleet with Aidan, Connor and Chloe (Lewis is on the restaurant, Ben\'s in the kitchen). Serve the punters the right drinks, break up fights, catch runaway kids. Six-minute shift.', stars: 3, who: 'The staff, the locals, whoever turns up', place: 'pub' },
     { id: 'roam', ico: '🚶', name: 'FREE ROAM', desc: 'Have a look round and explore. Everyone is here, but nobody attacks you. No timer.', stars: 0, who: 'Everyone (no attacks)' },
   ];
   // each place has its own games: Lidl is Supermarket Sweep, Lewis's is Ian's barbecue,
   // La Grande Portion is date night; the pub and the bedroom have the squad and the eat-off
-  const PLACE_MODES = { pub: ['everyone', 'eatoff', 'roam'], bedroom: ['everyone', 'eatoff', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
-  const GAME_IDS = ['everyone', 'sweep', 'bbq', 'date', 'chonkoff', 'chonkoff2', 'roam'];
+  const PLACE_MODES = { pub: ['everyone', 'runpub', 'eatoff', 'roam'], bedroom: ['everyone', 'eatoff', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
+  const GAME_IDS = ['everyone', 'runpub', 'sweep', 'bbq', 'date', 'chonkoff', 'chonkoff2', 'roam'];
   const cardOf = (id) => id === 'chonkoff' || id === 'chonkoff2' ? 'eatoff' : id;      // the eat-off card covers 1P and 2P
   const modeInfo = (id) => { const m = MODES.find(x => x.id === cardOf(id)); return id === 'chonkoff' ? { ...m, ico: '⏱️', name: 'EAT-OFF · 1 PLAYER' } : id === 'chonkoff2' ? { ...m, ico: '🆚', name: 'EAT-OFF · 2 PLAYERS' } : m; };
   const gameChoices = (p) => PLACE_MODES[p].flatMap(c => c === 'eatoff' ? ['chonkoff', 'chonkoff2'] : [c]);
