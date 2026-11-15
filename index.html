@@ -32,6 +32,15 @@
     details { margin-top: 8px; text-align: left; font: 500 13px/1.45 Arial, sans-serif; color: #d1d5db; }
     summary { cursor: pointer; color: #ffd400; font-weight: 700; }
     body.in-vr #ui { opacity: 0.25; }
+    #mp-btn { margin-top: 10px; }
+    #mp-panel { display: none; margin: 10px auto 0; max-width: 360px; background: rgba(10,14,40,0.85); border: 3px solid #ffd400; border-radius: 16px; padding: 12px; color: #fff; font: 700 14px Arial, sans-serif; }
+    #mp-panel.on { display: block; }
+    #mp-panel input { font: 900 16px Arial, sans-serif; padding: 6px 8px; border-radius: 8px; border: 0; width: 120px; text-transform: uppercase; }
+    #mp-panel button { font: 900 15px "Arial Black", Arial, sans-serif; padding: 8px 14px; border-radius: 10px; border: 0; background: #ffd400; color: #111; cursor: pointer; margin: 6px 0; }
+    #mp-status { color: #9fe; min-height: 1.2em; margin: 6px 0 0; }
+    #mp-status b { color: #ffd400; font-size: 22px; letter-spacing: 3px; }
+    #mp-chip { display: none; position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 20; font: 900 12px Arial, sans-serif; padding: 6px 12px; border-radius: 10px; background: rgba(0,0,0,0.6); color: #ffd400; pointer-events: none; }
+    #mp-chip.on { display: block; }
     #play-flat { margin-top: 10px; font: 900 16px "Arial Black", Arial, sans-serif; padding: 12px 22px; border-radius: 14px; border: 0; background: #ffd400; color: #111; cursor: pointer; box-shadow: 0 4px 0 #a88a00; }
     body.flat #ui { display: none; }
     /* on-screen controls (phone / tablet / desktop) */
@@ -435,6 +444,7 @@
   </div>
   <div id="countdown"></div>
   <button id="menu-btn">⏸ PAUSE</button>
+  <div id="mp-chip"></div>
   <div id="pause">
     <div class="box">
       <h2>PAUSED</h2>
@@ -482,7 +492,14 @@
     <button id="back-menu" class="ghost">⬅ Change place or mode</button>
     <button id="enter-vr" disabled>CHECKING VR…</button>
     <button id="sound">🔊 Test sound</button><br>
-    <button id="play-flat">📱 PLAY ON THIS SCREEN</button>
+    <button id="play-flat">📱 PLAY ON THIS SCREEN</button><br>
+    <button id="mp-btn" class="ghost">👥 PLAY WITH FRIENDS</button>
+    <div id="mp-panel">
+      <p class="mp-row">Your name <input id="mp-name" maxlength="14" placeholder="Ronnie"></p>
+      <button id="mp-host">⭐ HOST A GAME</button>
+      <p class="mp-row">or join a mate's game <input id="mp-code" maxlength="4" placeholder="CODE"> <button id="mp-join">JOIN</button></p>
+      <p id="mp-status"></p>
+    </div>
     <p id="status">Loading…</p>
     <details>
       <summary>How to play</summary>

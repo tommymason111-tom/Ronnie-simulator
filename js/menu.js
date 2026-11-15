@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.9.1', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '2.0.0', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['2.0.0', ['MULTIPLAYER (first step): press PLAY WITH FRIENDS, HOST A GAME and share the 4-letter code. Your mates type it in and land in the same place and game as you. You can see each other walking round as Ronnies (with name tags, arms following your hands, getting fatter as you eat). Up to 6 per room, on phones, computers and Quest']],
   ['1.9.1', ['Removed the stray brick across the way into the conservatory (the brick pillar stays)']],
   ['1.9.0', ['NEW GAME: RUN THE PUB at the Oysterfleet. You\'re behind the bar with Aidan, Connor and Chloe; Lewis waits tables in the restaurant and Ben runs the kitchen. Locals (lots of drunk old boys), families and lads come in and order at the bar: hand them the right drink for tips. Fights, singing drunks and runaway kids to sort out. Takings and a star rating at the end', 'Everyone moves far more naturally: weight shifts, fidgets, proper walk and run cycles, stepping round on the spot, talking with their hands, wind-ups and follow-throughs', 'Free roam: everyone gets on with their own night (sitting at tables, propping up the bar, wandering, stopping to chat to each other)', 'Attackers sprint over on a proper route round the furniture, square up to you and turn you to face them', 'People steer round each other and furniture instead of getting stuck', 'Pick up the pub chairs, bottles off the back bar, sauces, salt and pepper, and beer mats', 'Throw something at a telly and the screen smashes', 'The river out the back is now a lake, with a jetty, a rowing boat, lily pads, ducks and swans']],
   ['1.8.6', ['Fixed the river bank, a big tree and bushes poking up inside the restaurant: they now stop behind the building']],
