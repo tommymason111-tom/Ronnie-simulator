@@ -85,8 +85,10 @@ export class MPSync {
   setChar(c) { if (!this.net.connected) return; this.net.char = c; this.net.send({ t: 'char', c }); }
   on_char(m, p) { if (!p || !m.c) return; p.char = String(m.c).slice(0, 20); if (p.avatar) { p.avatar.dispose(); p.avatar = null; } this.words.show(`${p.name || 'A mate'} IS NOW ${(SQUAD[p.char] || { name: p.char === 'tommy' ? 'Tommy' : 'Ronnie' }).name.toUpperCase()}`, this.player.head.clone().addScaledVector(this.player.fwd, 1.2), '#ffd400', 0.1, 1.6); }
   // chat (multiplayer): a message to everyone; it shows over your character's head and in everyone's chat log
-  chat(text) { if (!this.net.connected) return false; text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 90); if (!text) return false; this.net.send({ t: 'chat', s: text }); this.onChat && this.onChat(text, null); return true; }
-  on_chat(m, p) { const s = String(m.s || '').slice(0, 90); if (!s) return; if (p && p.avatar && p.avatar.chat) p.avatar.chat(s); this.onChat && this.onChat(s, p); }
+  chat(text) { if (!this.net.connected) return false; text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 90); if (!text) return false;
+    const gate = this.chatGate ? this.chatGate() : { ok: true }; if (!gate.ok) { this.onChatBlocked && this.onChatBlocked(gate.why); return false; }     // (Imposter: only in meetings; ghosts only to ghosts)
+    this.net.send(gate.ghost ? { t: 'chat', s: text, g: 1 } : { t: 'chat', s: text }); this.onChat && this.onChat((gate.ghost ? '👻 ' : '') + text, null); return true; }
+  on_chat(m, p) { const s0 = String(m.s || '').slice(0, 90); if (!s0) return; if (this.chatRecvGate && !this.chatRecvGate(m, p)) return; const s = m.g ? '👻 ' + s0 : s0; if (p && p.avatar && p.avatar.chat) p.avatar.chat(s); this.onChat && this.onChat(s, p); }
   // you swung at something (slap, punch, throw): your character's arm goes for everyone else too
   swing(side = 'R') { if (!this.net.connected) return; const n = performance.now(); if (n - (this.swingAt || 0) < 150) return; this.swingAt = n; this.net.send({ t: 'swing', s: side }); }
   on_swing(m, p) { p && p.avatar && p.avatar.swing && p.avatar.swing(m.s || 'R'); }
@@ -302,13 +304,14 @@ export class MPSync {
   }
   // VR: a fast swing into someone's head or body; phone: a tap on them (see main.js) — you can't grab or throw players
   punches() {
-    if (this.punchCool > 0) return;
+    if (this.punchCool > 0 || this.noPunch) return;
     const P = this.player;
     for (const h of P.hands || []) { if (!h.tracked || h.held || h.speed < 1.8) continue;
       for (const p of this.net.players.values()) { const av = p.avatar; if (!av) continue; const hd = av.headPos();
         if (h.palm.distanceTo(hd) < 0.22 || h.palm.distanceTo(_v.copy(hd).add({ x: 0, y: -0.45, z: 0 })) < 0.32) { this.punch(p, h.vel, h.palm); return; } } }
   }
   punch(p, vel, at) {
+    if (this.noPunch) return;
     this.punchCool = 0.5;
     // (sent to everyone: the one who got hit falls over on their own screen, everyone else sees them go flying)
     this.net.send({ t: 'punch', side: vel.side || 'R', target: p.id, v: [q2(vel.x), q2(vel.z)], s: q2(vel.length()), at: [q2(at.x), q2(at.y), q2(at.z)] });

@@ -25,6 +25,8 @@ import { MPSync } from './mpsync.js';
 import { foodGlow } from './foods.js';
 import { EMOTES, CHAR_EMOTES, EmotePlayer } from './emotes.js';
 import { Music } from './music.js';
+import { PowerUps } from './powerups.js';
+import { Imposter } from './imposter.js';
 import { TVs } from './tv.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
 
@@ -270,7 +272,22 @@ function bite(it, hand) {
   }
 }
 
-function chonkMul() { return (G.locoT > 0 ? TUNING.locoMultiplier : 1) * (G.stoutT > 0 ? 2 : 1); }
+function chonkMul() { return (G.locoT > 0 ? TUNING.locoMultiplier : 1) * (G.stoutT > 0 ? 2 : 1) * (powerups ? powerups.mul() : 1); }
+
+// HOOVER MODE: a bit of food sucked into the mouth, all of it in one go
+function hooverEat(it) {
+  if (it.dead) return;
+  const amount = it.def.chonk * chonkMul();
+  addChonk(amount); director.onAte(it, amount);
+  const fx = _a.copy(player.mouth).addScaledVector(player.fwd, 0.12 * player.scale);
+  sfx(SNACK_SFX[it.type] || 'chomp', fx, 0.8); sfx('pop', fx, 0.5);
+  crumbs.burst(fx, CRUMB_COLORS[it.type] || CRUMB_COLORS.burger, 18, 1.4, player.fwd);
+  words.show('SHLUUURP!', _b.copy(player.head).addScaledVector(player.fwd, 0.7 * player.scale).add({ x: (Math.random() - 0.5) * 0.3, y: 0.1, z: 0 }), '#00e5ff', 0.09 * player.scale, 0.7);
+  for (const h of player.hands) if (h.held === it) h.held = null; if (player.flatHolder && player.flatHolder.held === it) player.flatHolder.held = null;
+  items.remove(it);
+  if (!it.foodPass && !it.fromClutter && !it.temp && !room.big) items.queueRespawn(it.type);
+  G.eaten++; director.onFinished(it);
+}
 
 // Harry's pass lands in Ronnie's mouth: the whole thing goes down in one, +50%
 function eatWhole(it) {
@@ -602,6 +619,26 @@ function updateTouchUI() {
   touch.setEmoteAvailable(!!net.connected);
 }
 function mpAfterStart() { if (director.remote) mp.becomeClient(); }
+// back to the start of the map (in multiplayer, spread out a little so nobody spawns inside anyone else)
+function respawnPlayer() {
+  const s = room.start, ids = [net.id, ...net.players.keys()].filter(Boolean).sort(), i = net.connected ? Math.max(0, ids.indexOf(net.id)) : 0;
+  const a = s.yaw + Math.PI / 2, off = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.75;
+  player.flatDrop && player.flatDrop(); for (const h of player.hands) if (h.held) { h.held.heldBy = null; h.held = null; }
+  player.rig.position.set(s.x + Math.sin(a) * off, 0, s.z + Math.cos(a) * off); player.rig.rotation.y = s.yaw;
+  if (player.flatMode) { player.flatYaw = 0; player.flatPitch = -0.22; }
+  player.resetHandHistory && player.resetHandHistory();
+}
+// a new game, for this player: off the end screen / pause menu, the mode started fresh, back at the start
+function newGame(id, why) {
+  if (G.over) { G.over = false; player.menuLock = false; player.noTurn = false; document.body.classList.remove('gameover'); pauseEl.classList.remove('show-end'); if (player.flatMode) touch.show(true); if (player.wrist) player.wrist.visible = true;
+    const rc = director.receipt; if (rc && rc.parent === camera) { camera.remove(rc); rc.visible = false; } }
+  setPaused(false); attackFx.removeAll(); SEL.mode = id;
+  const tag = document.getElementById('ready-tag'); if (tag && PAUSE_MODES[id]) tag.textContent = tag.textContent.replace(/·.*$/, '· ' + PAUSE_MODES[id][1]);
+  director.start(id); mpAfterStart(); respawnPlayer();
+  if (why) showBanner(why, (PAUSE_MODES[id] ? PAUSE_MODES[id][1] : id.toUpperCase()));
+}
+// the host changes the game (or restarts it): everyone in the room starts the new one together, from the start
+function hostNewGame(id) { newGame(id); if (net.connected && net.host) net.send({ t: 'restart', mode: id }); }
 function startFlat() {
   initAudio();
   player.enterFlat();
@@ -609,7 +646,7 @@ function startFlat() {
   touch.show(true);
   director.start(chosenMode()); mpAfterStart();
 }
-function chosenMode() { return ['classic', 'intervention', 'veggie', 'catch'].includes(SEL.mode) || !SEL.mode ? 'everyone' : SEL.mode; }   // old links still work
+function chosenMode() { const m = ['classic', 'intervention', 'veggie', 'catch'].includes(SEL.mode) || !SEL.mode ? 'everyone' : SEL.mode; return m.startsWith('imposter') && !(window.ronnieMP && window.ronnieMP.role) ? 'everyone' : m; }   // old links still work
 document.getElementById('play-flat').addEventListener('click', startFlat);
 
 // ---------------- Enter VR ----------------
@@ -665,7 +702,7 @@ window.addEventListener('resize', fitCamera);
 
 // ---------------- modes ----------------
 function resetRonnie() {
-  player.clearEffects(); G.fxTintT = 0; attackFx.removeAll();
+  player.clearEffects(); G.fxTintT = 0; attackFx.removeAll(); powerups && powerups.reset();
   G.chonk = 0; G.stage = 0; G.eaten = 0; G.swats = 0; G.locoT = 0; G.stoutT = 0; G.gagT = 0;
   G.scaleFrom = player.scale; G.scaleTo = 1; G.scaleT = player.scale === 1 ? 1 : 0;
   player.setBelly(STAGES[0].belly); setPitchScale(1); stopLocoMusic(); room.hemi.color.set(0xc9d6ff);
@@ -677,6 +714,9 @@ const director = new Director({
   scene, room, physics, player, items, words, G, tommy, cast, onThrow, addChonk, resetRonnie, fx: attackFx, crumbs,
   showBanner: (a, b) => showBanner(a, b),
   onGameOver: (lines) => gameOver(lines),
+  // IMPOSTER (multiplayer): the whole game lives in imposter.js
+  makeImposter: (n) => new Imposter({ scene, room, player, net, mp, words, renderer, camera, items, tommy, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b),
+    restart: () => hostNewGame(director.mode), leave: () => leaveGame() }, n),
   hint: (t) => touch.hint(t),
   stageName: () => stageNameOf(G.stage),
   // points that pop bubbles / press board buttons: palms, fingertips and held food
@@ -779,7 +819,7 @@ function setPaused(on) {
 let soundOff = false;
 document.getElementById('menu-btn').addEventListener('click', () => setPaused(true));
 document.getElementById('pause-resume').addEventListener('click', () => { initAudio(); setPaused(false); });
-document.getElementById('pause-restart').addEventListener('click', () => { setPaused(false); director.start(chosenMode()); });
+document.getElementById('pause-restart').addEventListener('click', () => { hostNewGame(director.mode || chosenMode()); });
 document.getElementById('pause-sound').addEventListener('click', (e) => { soundOff = !soundOff; e.currentTarget.textContent = soundOff ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'; });
 document.getElementById('pause-quit').addEventListener('click', () => {
   if (net.connected && !renderer.xr.isPresenting && !window.confirm('Leave the game? You\'ll drop out of the room.')) return;     // (multiplayer: no leaving by accident)
@@ -801,19 +841,19 @@ const PAUSE_MODES = {
   date: ['💜', 'DATE NIGHT', 'Eat when Chloe looks away'],
   roam: ['🚶', 'FREE ROAM', 'Have a look round. Nobody attacks'],
   runpub: ['🍺', 'RUN THE PUB', 'Behind the bar: serve the punters, sort out the trouble'],
+  imposter: ['🔪', 'IMPOSTER · 1 IMPOSTER', 'Multiplayer: do your jobs, find the imposter, vote them out'],
+  imposter2: ['🔪', 'IMPOSTER · 2 IMPOSTERS', 'Multiplayer: two imposters among you (5+ players)'],
 };
-const PLACE_GAMES = { pub: ['everyone', 'runpub', 'chonkoff', 'chonkoff2', 'roam'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
+const PLACE_GAMES = { pub: ['everyone', 'runpub', 'imposter', 'imposter2', 'chonkoff', 'chonkoff2', 'roam'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
 const modeTitle = () => { const m = director.mode; return (PAUSE_MODES[m] && PAUSE_MODES[m][1]) || (m === 'classic' ? 'CLASSIC' : m === 'intervention' ? 'THE SQUAD' : (m || '').toUpperCase()); };
 function showPauseModes() {
   const list = document.getElementById('pause-mode-list'), cur = director.mode;
-  list.innerHTML = (PLACE_GAMES[room.placeId] || PLACE_GAMES.bedroom).map(id => { const [ico, name, desc] = PAUSE_MODES[id];
+  list.innerHTML = (PLACE_GAMES[room.placeId] || PLACE_GAMES.bedroom).filter(id => net.connected || !PAUSE_MODES[id] || !id.startsWith('imposter')).map(id => { const [ico, name, desc] = PAUSE_MODES[id];
     return `<button class="alt mode-opt${id === cur ? ' cur' : ''}" data-id="${id}">${ico} ${name}<small>${id === cur ? 'Playing now · tap to restart' : desc}</small></button>`; }).join('');
   list.querySelectorAll('.mode-opt').forEach(b => b.addEventListener('click', () => {
     const id = b.dataset.id; SEL.mode = id;
     try { const st = JSON.parse(localStorage.getItem('rs_menu') || '{}'); st.mode = id; localStorage.setItem('rs_menu', JSON.stringify(st)); } catch (e) {}
-    const tag = document.getElementById('ready-tag'); if (tag) tag.textContent = tag.textContent.replace(/·.*$/, '· ' + PAUSE_MODES[id][1]);
-    attackFx.removeAll();
-    initAudio(); setPaused(false); director.start(id);
+    initAudio(); hostNewGame(id);
   }));
   pauseEl.classList.add('show-modes');
 }
@@ -982,6 +1022,7 @@ function selfBodyUpdate(dt) {
   const R0 = side('right'), L0 = side('left'), rh = player.flatMode ? player.flatAnchorPos() : (R0 ? R0.palm : player.head), lh = player.flatMode ? player.head : (L0 ? L0.palm : player.head);
   selfBody.update(dt, { h: [player.head.x, player.head.y, player.head.z], q: [q.x, q.y, q.z, q.w], rh: [rh.x, rh.y, rh.z], l: [lh.x, lh.y, lh.z], flat: player.flatMode ? 1 : 0, st: G.stage });
 }
+let powerups = null;
 function frame(simDt) {
   foodGlow(performance.now() / 1000);
   chatUI.update(); music.update(Math.min(0.05, 1 / 60)); tvs.update(1 / 60); try { selfBodyUpdate(Math.min(0.05, 1 / 60)); } catch (e) {} pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
@@ -1059,6 +1100,7 @@ function frame(simDt) {
     }
   }
   director.update(dt, ctx);
+  try { powerups && powerups.update(dt, time); } catch (e) { console.error('powerups', e); }
   attackFx.update(dt);
   if (player.flatMode) { updateTouchUI(); touch.busy(!!(attackFx.cut && !attackFx.cut.overlay)); }
 
@@ -1099,7 +1141,7 @@ function frame(simDt) {
 }
   G.wristT -= dt;
   if (director.running && director.mode !== 'classic' && Math.floor(director.timeLeft) !== G.lastHudSec) { G.lastHudSec = Math.floor(director.timeLeft); G.wristDirty = true; }
-  { const hl = director.hud(); if (hl !== G.lastHudLine) { G.lastHudLine = hl; G.wristDirty = true; } }   // e.g. the attack countdown ticking
+  { const hl = director.hud(); if (hl !== G.lastHudLine) { G.lastHudLine = hl; G.wristDirty = true; } if (director.imposter && (G.impHudT = (G.impHudT || 0) - dt) <= 0) { G.impHudT = 0.25; G.wristDirty = true; } }   // e.g. the attack countdown ticking
   if (G.wristDirty && G.wristT <= 0) {
     G.wristDirty = false; G.wristT = 0.1;
     const max = G.stage === STAGES.length - 1;
@@ -1109,6 +1151,7 @@ function frame(simDt) {
       fill: max ? 1 : (G.chonk - cur) / (next - cur), loco: G.locoT, stout: G.stoutT, eaten: G.eaten, swats: G.swats, fps: G.fps,
       modeLine: director.hud(), title: modeTitle(),
       pub: director.runpub ? director.runpub.hudState(director.timeLeft) : null,
+      imp: director.imposter ? director.imposter.hudState() : null,
     });
   }
 
@@ -1143,12 +1186,19 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
     $('mp-chip').addEventListener('click', (e) => { e.stopPropagation(); draw(); pop.classList.toggle('on'); });
     document.addEventListener('pointerdown', (e) => { if (pop.classList.contains('on') && !pop.contains(e.target) && e.target.id !== 'mp-chip') pop.classList.remove('on'); }, true); }
   net.on.setup = () => {};
+  // the host started a new game (changed the mode, or restarted): everyone starts it, back at the start of the map
+  net.on.restart = (m) => { if (net.host || !m.mode) return; newGame(m.mode, 'NEW GAME'); };
   if (net.connected) chip();
 }
 // the shared game (food and people): see mpsync.js
 const mp = new MPSync({ net, scene, room, physics, player, items, cast, director, words, fx: attackFx, G, tommy });
+director.startRemote = (id) => { if (!net.host && director.mode && (PAUSE_MODES[id] || id === 'imposter')) newGame(id, 'NEW GAME'); };
+// power-ups turn up in the eating games (not Run the Pub, the Sweep or Imposter)
+powerups = new PowerUps({ scene, room, items, player, sfx, words, net, mp, eatWhole: (it) => hooverEat(it),
+  enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter'].includes(director.mode) });
 mp.selfBody = () => selfBody;      // (your emotes play on your own body too)
 mp.onChat = (text, p) => chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text);
+mp.onChatBlocked = (why) => words.show(why || 'NOT NOW', player.head.clone().addScaledVector(player.fwd, 0.8), '#ff5252', 0.07, 1.4);
 // music from the speakers (the DJ booth, the hi-fi, the tannoy): only the host picks, everyone hears it
 // (switched off for now, with the TVs: MEDIA_ON brings both back. The speakers and tellies stay as scenery.)
 const music = new Music({ scene, room, net, player, words, hint: (t) => touch.hint(t), ui: {
@@ -1187,10 +1237,19 @@ class SquadPuppet {
     const q = new THREE.Quaternion(...A.q).slerp(new THREE.Quaternion(...B.q), k);
     return { ...B, h: L(A.h, B.h), rh: L(A.rh, B.rh), l: L(A.l, B.l), q: [q.x, q.y, q.z, q.w] };
   }
+  // Imposter: a body (flat out where they were killed), hidden (a ghost, or down a trapdoor), or an imposter's mate (red tag)
+  impVis(v) { const r = this.c.rag; if (r.group) r.group.visible = v; if (this.c.fx) this.c.fx.visible = v; if (this.c.prop) this.c.prop.visible = v && !this.emote.active; this.tag.visible = v && !this.p.self; if (!v) { if (this.chatS) this.chatS.visible = false; this.emote.active && this.emote.stop && this.emote.stop(); } }
   update(dt, pose) {
+    if (this.impRed !== this.tagRed) { this.tagRed = this.impRed; this.drawTag(); }
+    if (this.impHidden) { if (!this.impOff) { this.impOff = true; this.impVis(false); } return; }
+    if (this.impOff) { this.impOff = false; this.impVis(true); }
+    if (this.impBody) { this.c.rag.sync(); this.tag.visible = false; return; }
     pose = this.smoothPose(pose);
     // fatter every stage they go up (seen by everyone)
-    { const want = Math.min(1, (pose.st || 0) / 5); this.fatNow = (this.fatNow || 0) + (want - (this.fatNow || 0)) * Math.min(1, dt * 3); this.c.rag.fat = this.fatNow; }
+    { const want = Math.min(1, (pose.st || 0) / (STAGES.length - 1)); this.fatNow = (this.fatNow || 0) + (want - (this.fatNow || 0)) * Math.min(1, dt * 3); this.c.rag.fat = Math.min(1, this.fatNow * 1.3);
+      // ...and drawn bigger: as tall as they've grown (their head is up there) and wider still, up to nearly twice as wide
+      const sNow = this.sNow = (this.sNow || 1) + ((pose.s || 1) - (this.sNow || 1)) * Math.min(1, dt * 3), f = this.fatNow;
+      this.c.rag.bulk = (sNow > 1.001 || f > 0.001) ? { h: sNow, w: sNow * (1 + 0.55 * f) } : null; }
     const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * 25);
     const prev = this.pos.clone(); this.pos.lerp(_a.set(...pose.h), k); this.rh.lerp(_b.set(...pose.rh), k); this.lh.lerp(_b.set(...pose.l), k);
     // knocked flat: a limp ragdoll (like the NPCs), then up again where they landed
@@ -1256,9 +1315,9 @@ class SquadPuppet {
   }
   swing(side = 'R') { this.swingT = 0.38; this.swingSide = side; }
   drawTag() { const x = this.tagC.getContext('2d'), nm = (this.p.name || 'PLAYER').toUpperCase(); this.tagName = this.p.name; x.clearRect(0, 0, 320, 96);
-    x.fillStyle = 'rgba(10,14,30,0.85)'; x.beginPath(); x.roundRect(4, 4, 312, 88, 22); x.fill(); x.lineWidth = 5; x.strokeStyle = '#39ff14'; x.stroke();
+    x.fillStyle = 'rgba(10,14,30,0.85)'; x.beginPath(); x.roundRect(4, 4, 312, 88, 22); x.fill(); x.lineWidth = 5; x.strokeStyle = this.tagRed ? '#ff3b3b' : '#39ff14'; x.stroke();
     x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; let f = 40; do { x.font = `900 ${f}px Arial`; f -= 2; } while (x.measureText(nm).width > 290 && f > 16); x.fillText(nm, 160, 38);
-    x.fillStyle = '#c9d3ff'; x.font = '700 20px Arial'; x.fillText('👤 PLAYER · as ' + (this.p.char === 'tommy' ? 'Tommy' : SQUAD_MP[this.p.char]?.name || this.c.name), 160, 74); this.tagTex.needsUpdate = true; }
+    x.fillStyle = this.tagRed ? '#ff6b6b' : '#c9d3ff'; x.font = '700 20px Arial'; x.fillText((this.tagRed ? '🔪 IMPOSTER · ' : '👤 PLAYER · ') + 'as ' + (this.p.char === 'tommy' ? 'Tommy' : SQUAD_MP[this.p.char]?.name || this.c.name), 160, 74); this.tagTex.needsUpdate = true; }
   // a chat message: a black speech bubble over their head (black, so you can tell it from the squad's white ones)
   chat(text) {
     if (!this.chatS) { const c = document.createElement('canvas'); c.width = 512; c.height = 200; this.chatC = c; this.chatT = new THREE.CanvasTexture(c); this.chatT.colorSpace = THREE.SRGBColorSpace;
@@ -1271,8 +1330,8 @@ class SquadPuppet {
     g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; lines.forEach((l, i) => g.fillText(l, 256, 6 + 15 + lh / 2 + i * lh));
     this.chatT.needsUpdate = true; this.chatS.scale.set(0.9, 0.9 * 200 / 512, 1); this.chatS.visible = true; this.chatUntil = performance.now() + 2500 + text.length * 70;
   }
-  placeTag() { if (this.chatS) { const on = performance.now() < this.chatUntil; this.chatS.visible = on; if (on) { const h = this.c.headPos(new THREE.Vector3()); this.chatS.position.set(h.x, h.y + (this.p.self ? 0.4 : 0.6), h.z); } }
-    if (this.p.self) return; if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.headPos(new THREE.Vector3()); this.tag.position.set(h.x, h.y + 0.36, h.z); }
+  placeTag() { if (this.chatS) { const on = performance.now() < this.chatUntil; this.chatS.visible = on; if (on) { const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())); this.chatS.position.set(h.x, h.y + (this.p.self ? 0.4 : 0.6), h.z); } }
+    if (this.p.self) return; if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())); this.tag.position.set(h.x, h.y + 0.36, h.z); }
   flinch(v) { this.c.flinch(v.clone ? v.clone() : new THREE.Vector3(v.x, 0, v.z), 1); }
   // a proper hit: go limp and fly, same as the NPCs (a light one is just a flinch)
   knock(v, s, at) {
@@ -1286,4 +1345,4 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)

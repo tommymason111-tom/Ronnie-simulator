@@ -448,7 +448,7 @@ export class Player {
     if (Math.abs(mx) > 0.15 || Math.abs(mz) > 0.15) {
       _v.set(this.fwd.x, 0, this.fwd.z).normalize();
       _v2.crossVectors(_v, UP);       // right
-      const sp = TUNING.moveSpeed * dt * mul * (this.speedMul || 1) * (this.sprint ? 2.1 : 1);
+      const sp = TUNING.moveSpeed * dt * mul * (this.speedMul || 1) * (this.puSpeed || 1) * (this.sprint ? 2.1 : 1);
       this.rig.position.addScaledVector(_v, -mz * sp).addScaledVector(_v2, mx * sp);
     }
     if (this.snapReady && Math.abs(turn) > 0.7) {
@@ -545,7 +545,7 @@ export class Player {
     if (this.zoomLean > 0.001) { const f = new THREE.Vector3(0, 0, -1).applyEuler(this.camera.rotation); this.camera.position.addScaledVector(f, this.zoomLean); }
     const mx = this.flatMove.x, mz = this.flatMove.z;
     if (Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05) {
-      const sp = TUNING.moveSpeed * dt * 0.9 * (this.speedMul || 1) * (this.sprint ? 2.1 : 1);
+      const sp = TUNING.moveSpeed * dt * 0.9 * (this.speedMul || 1) * (this.puSpeed || 1) * (this.sprint ? 2.1 : 1);
       const yw = this.flatYaw + this.rig.rotation.y, sy = Math.sin(yw), cy = Math.cos(yw);
       this.rig.position.x += (-sy * -mz + cy * mx) * sp;
       this.rig.position.z += (-cy * -mz - sy * mx) * sp;
@@ -630,6 +630,7 @@ export class Player {
       g.lineWidth = 9; g.strokeStyle = '#111'; g.lineJoin = 'round'; g.strokeText(t, 14, 32); g.fillStyle = '#ffd400'; g.fillText(t, 14, 32); }
     g.save(); g.translate(0, 64);
     if (state.pub) { this.drawPubBox(g, w, h, state); g.restore(); this.wristTex.needsUpdate = true; return; }
+    if (state.imp) { this.drawImpBox(g, w, h, state.imp); g.restore(); this.wristTex.needsUpdate = true; return; }
     g.fillStyle = '#111827'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill();
     g.lineWidth = 8; g.strokeStyle = state.loco > 0 ? '#ff9a1f' : '#39ff14'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();
     g.textAlign = 'left'; g.textBaseline = 'middle';
@@ -675,6 +676,22 @@ export class Player {
     g.fillText(`${state.fps} fps`, w - 30, 296);
     g.restore();
     this.wristTex.needsUpdate = true;
+  }
+  // IMPOSTER: who you are, the task bar, your jobs (ticked off), the kill cooldown, any sabotage
+  drawImpBox(g, w, h, st) {
+    const col = st.role === 'IMPOSTER' ? '#ff3b3b' : st.role === 'GHOST' ? '#9fb3d9' : '#4fc3ff';
+    g.fillStyle = '#0d1020'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill(); g.lineWidth = 8; g.strokeStyle = st.sab ? '#ff3b3b' : col; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();
+    g.textBaseline = 'middle'; g.textAlign = 'left';
+    if (!st.role) { g.fillStyle = '#ffd400'; g.font = `900 30px ${FONT}`; g.fillText('🔪 IMPOSTER', 30, 50); g.fillStyle = '#fff'; g.font = `900 22px ${FONT}`;
+      const words = (st.msg || 'GETTING READY...').split(' '); let line = '', y = 110; for (const wd of words) { if (g.measureText(line + wd).width > w - 60) { g.fillText(line, 30, y); y += 32; line = ''; } line += wd + ' '; } g.fillText(line, 30, y); return; }
+    g.fillStyle = col; g.font = `900 30px ${FONT}`; g.fillText(st.role === 'GHOST' ? '👻 GHOST' : st.role === 'IMPOSTER' ? '🔪 IMPOSTER' : '😇 THE FAITHFUL', 30, 40);
+    g.textAlign = 'right'; g.fillStyle = '#c9d3ff'; g.font = `900 22px ${FONT}`; g.fillText(st.meeting !== null ? `🗳 MEETING ${st.meeting}s` : st.kill !== null ? (st.kill > 0 ? `🍳 KILL IN ${st.kill}s` : '🍳 KILL READY') : `${st.alive}/${st.total} ALIVE`, w - 28, 40); g.textAlign = 'left';
+    // the task bar (everyone's jobs, all together)
+    const k = Math.min(1, st.bar.done / Math.max(1, st.bar.total)); g.fillStyle = '#2b3350'; roundRect(g, 26, 66, w - 52, 30, 15); g.fill(); g.fillStyle = '#39ff14'; if (k > 0.01) { roundRect(g, 26, 66, (w - 52) * k, 30, 15); g.fill(); }
+    g.fillStyle = '#fff'; g.font = `900 18px ${FONT}`; g.textAlign = 'center'; g.fillText(`TOTAL JOBS DONE ${st.bar.done}/${st.bar.total}`, w / 2, 82); g.textAlign = 'left';
+    let y = 120; if (st.imp) { g.fillStyle = '#ff6b6b'; g.font = `900 19px ${FONT}`; g.fillText('Kill the faithful. Fake jobs to look busy:', 30, y); y += 30; }
+    for (const t of st.tasks) { g.fillStyle = t.done ? '#39ff14' : st.imp ? '#ffb4b4' : '#ffffff'; let f = 21; g.font = `900 ${f}px ${FONT}`; const s = `${t.done ? '✓' : '•'} ${t.room}: ${t.name}`; while (g.measureText(s).width > w - 56 && f > 13) { f--; g.font = `900 ${f}px ${FONT}`; } g.fillText(s, 30, y); y += 29; if (y > h - 34) break; }
+    if (st.sab) { g.fillStyle = 'rgba(200,0,0,0.85)'; roundRect(g, 20, h - 52, w - 40, 40, 14); g.fill(); g.fillStyle = '#fff'; g.font = `900 22px ${FONT}`; g.textAlign = 'center'; g.fillText('⚠ ' + st.sab + ' ⚠', w / 2, h - 32); }
   }
   // Run the Pub: no eat meter, just the shift: time left, takings, how many you've served, the star rating
   drawPubBox(g, w, h, st) {

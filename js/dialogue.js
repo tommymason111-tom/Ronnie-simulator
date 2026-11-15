@@ -110,6 +110,10 @@ export const STAGE_LINES = {
   4: 'Ronnie... I\'m not saying you\'re big, but your chins have started a group chat.',
   5: 'That\'s FIVE now, Ron. I\'m calling your mum.',
   6: 'Where\'s your neck gone? Has anyone seen Ronnie\'s neck? Reward offered.',
+  7: 'Ron, you\'ve got your own postcode now. And weather.',
+  8: 'MASSIVE. The floor\'s filing a complaint, Ronnie.',
+  9: 'I can see you from SPACE, Ron. NASA rang. They\'re worried.',
+  10: 'RONNIE XXXL. There\'s nothing left to eat. There\'s nothing left of ME. I\'m proud of you. Disgusted. But proud.',
 };
 
 export class Dialogue {

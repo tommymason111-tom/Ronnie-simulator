@@ -92,6 +92,6 @@ export class Belly {
     const c = this.cache[st] || (this.cache[st] = { skin: build(st, false), tee: build(st, true) });
     this.skin.geometry = c.skin; this.tee.geometry = c.tee;
   }
-  // which stage a belly size means (the stages' belly values: 1, 1.25, 1.55, 1.9, 2.3, 2.8)
-  static stageFor(b) { return [1.12, 1.4, 1.72, 2.1, 2.55].filter(x => b >= x).length; }
+  // which of the belly model's six looks a belly size means (ten stages' belly values: 1 ... 3)
+  static stageFor(b) { return [1.15, 1.5, 1.9, 2.3, 2.7].filter(x => b >= x).length; }
 }

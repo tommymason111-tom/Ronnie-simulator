@@ -32,6 +32,8 @@ export const MODES = {
   roam:         { name: 'FREE ROAM', desc: 'Have a look round. Everyone\'s here, nobody attacks.', time: 0 },
   runpub:       { name: 'RUN THE PUB', desc: 'Behind the bar at the Oysterfleet. Serve the punters, break up the fights, don\'t drink the stock.', time: 360, place: 'pub' },
   date:         { name: 'DATE NIGHT', desc: 'Eat when Chloe looks away. 3 catches and it\'s salad.', time: 180, place: 'restaurant' },
+  imposter:     { name: 'IMPOSTER', desc: 'Multiplayer at the Oysterfleet. Do your jobs, find the imposter, vote them out.', time: 0, place: 'pub', mp: true, hidden: true },
+  imposter2:    { name: 'IMPOSTER', desc: 'Multiplayer at the Oysterfleet, with two imposters.', time: 0, place: 'pub', mp: true, hidden: true },
 };
 // which modes each place offers (also used by the start screen)
 export function modesFor(place) {
@@ -174,6 +176,8 @@ export class Director {
   start(id) {
     const g = this.g, m = MODES[id];
     if (!m) return;
+    if (this.imposter) { this.imposter.dispose(); this.imposter = null; }
+    this.hideTommy(false);
     this.mode = id; this.running = true; this.used.clear(); this.pending = null;
     this.timeLeft = m.time;
     this.stats = { chonk: 0, veg: 0, swats: 0, popped: 0, roasted: 0, caught: 0, thrown: 0, attempts: 0, fails: [] };
@@ -215,10 +219,13 @@ export class Director {
       g.cast.push(c);
     });
     if (this.runpub) { this.runpub.cleanup(); this.runpub = null; }
-    const SHORT = { runpub: 'SERVE THE PUNTERS', sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
+    const SHORT = { imposter: 'THERE IS AN IMPOSTER AMONG US', imposter2: 'THERE ARE TWO IMPOSTERS AMONG US', runpub: 'SERVE THE PUNTERS', sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
     g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
+    // IMPOSTER (multiplayer, the Oysterfleet): no food, no squad, no Tommy: see imposter.js
+    if (id === 'imposter' || id === 'imposter2') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null);
+      this.imposter = g.makeImposter ? g.makeImposter(id === 'imposter2' ? 2 : 1) : null; sfx('fanfare', null, 1); return; }
     if (this.remote) { tommy.attacks = false; tommy.directed = false; if (g.fx) g.fx.setCountdown(null); return; }
     if (id === 'date') this.startDate();
     if (g.room.name === 'Lidl' && (id === 'sweep' || id === 'roam')) this.setupLidlStaff(id);    // uniforms, and people on the tills
@@ -246,6 +253,10 @@ export class Director {
     }[id], 5);
     sfx('fanfare', null, 1);
   }
+
+  // Tommy sits Imposter out (out of sight, out of the way)
+  hideTommy(on) { const t = this.g.tommy; if (!t || !t.rag) return; if (on && !this.tommyAway) { this.tommyAway = { x: t.pos.x, z: t.pos.z, yaw: t.rag.yaw }; t.rag.placeAt(-40, 40, 0); if (t.rag.group) t.rag.group.visible = false; if (t.fx) t.fx.visible = false; }
+    else if (!on && this.tommyAway) { const a = this.tommyAway; this.tommyAway = null; if (t.rag.group) t.rag.group.visible = true; if (t.fx) t.fx.visible = true; t.rag.placeAt(a.x, a.z, a.yaw); t.active = true; } }
 
   hook(c) {
     c.onThrow = this.g.onThrow;
@@ -332,6 +343,7 @@ export class Director {
   // ------------------------------------------------------------------ per frame
   update(dt, ctx) {
     const g = this.g;
+    if (this.imposter) { this.imposter.update(dt); return; }
     if (this.remote) { this.updateBoard(dt, ctx); this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
     if (this.pending) {                       // an announced attack that hasn't landed yet
       const pd = this.pending, P = g.player;
@@ -1132,6 +1144,7 @@ export class Director {
   }
 
   hud() {
+    if (this.imposter) return null;
     if (this.remote) return this.hostHud || null;
     if (!this.running || this.mode === 'classic') return null;
     const t = this.timeLeft, mm = Math.floor(t / 60), ss = String(Math.floor(t % 60)).padStart(2, '0');

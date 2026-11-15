@@ -4,13 +4,17 @@
 // Phase 1 so you can reach Ronnie XL in a few minutes of eating —
 // change CHONK_THRESHOLDS to the doc's 0/100/250/450/700/1000 for the full grind.
 
-export const STAGES = [
-  { name: 'Little Ronnie',   chonk: 0,   scale: 1.00, belly: 1.00 },
-  { name: 'Snacky Ronnie',   chonk: 40,  scale: 1.05, belly: 1.25 },
-  { name: 'Chunky Ronnie',   chonk: 100, scale: 1.10, belly: 1.55 },
-  { name: 'Big Ronnie',      chonk: 180, scale: 1.18, belly: 1.90 },
-  { name: 'Very Big Ronnie', chonk: 280, scale: 1.28, belly: 2.30 },
-  { name: 'Ronnie XL',       chonk: 400, scale: 1.40, belly: 2.80 },
+export const STAGES = [            // ten stages: the top one takes the food the old sixth stage did, and is MUCH bigger
+  { name: 'Little Ronnie',    chonk: 0,   scale: 1.00, belly: 1.00 },
+  { name: 'Snacky Ronnie',    chonk: 25,  scale: 1.06, belly: 1.20 },
+  { name: 'Chunky Ronnie',    chonk: 55,  scale: 1.12, belly: 1.45 },
+  { name: 'Big Ronnie',       chonk: 90,  scale: 1.19, belly: 1.70 },
+  { name: 'Very Big Ronnie',  chonk: 130, scale: 1.27, belly: 1.95 },
+  { name: 'Huge Ronnie',      chonk: 175, scale: 1.35, belly: 2.20 },
+  { name: 'Massive Ronnie',   chonk: 225, scale: 1.44, belly: 2.45 },
+  { name: 'Colossal Ronnie',  chonk: 280, scale: 1.53, belly: 2.65 },
+  { name: 'Mega Ronnie',      chonk: 340, scale: 1.63, belly: 2.85 },
+  { name: 'Ronnie XXXL',      chonk: 400, scale: 1.75, belly: 3.00 },
 ];
 
 export const FOODS = {

@@ -124,7 +124,7 @@ export class EmotePlayer {
   hide() { this.hideHands(); const r = this.c.rag; if (r.handHide) r.handHide.lArmL = r.handHide.lArmR = false; if (r.handPose) for (const k in r.handPose) { r.handPose[k].curl = 0; r.handPose[k].mid = 0; r.handPose[k].q.identity(); } }
   dispose() { this.stop(); if (this.mh) { this.mh.L.dispose(); this.mh.R.dispose(); this.mh = null; } }
   clearProps() { this.holding = null; for (const k in this.props) { const p = this.props[k]; this.scene.remove(p); p.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } this.props = {}; }
-  unstretch() { const g = this.c.rag.group; if (g && (g.scale.x !== 1 || g.scale.y !== 1)) { g.scale.set(1, 1, 1); g.position.set(0, 0, 0); } }
+  unstretch() { const r = this.c.rag; r.stretchS = null; r.applyScale && r.applyScale(); }
   // once per emote: fire a word / sound at a moment
   at(t, when, key, fn) { if (t >= when && !this.marks[key]) { this.marks[key] = true; fn(); } }
   say(txt, where, snd) { this.onWord && this.onWord(txt, where || this.c.headPos(new THREE.Vector3()).add({ x: 0, y: 0.25, z: 0 }), snd); }
@@ -145,6 +145,7 @@ export class EmotePlayer {
     if (!this.id) return 0;
     this.t += dt; const t = this.t, D = this.dur;
     if (t >= D) { this.stop(); return 0; }
+    for (const k in this.props) { const p = this.props[k], u = p.userData; if (u.rawP) { p.position.copy(u.rawP); p.scale.copy(u.rawS); u.rawP = null; } }   // (undo last frame's drawn-bigger move: see drawProps)
     const w = ramp(t, 0, 0.22) * (1 - ramp(t, D - 0.35, D)); this.w = w;
     const r = this.c.rag, base = {};
     for (const k in r.pose) base[k] = r.pose[k].clone();
@@ -155,14 +156,17 @@ export class EmotePlayer {
     if (out.flip) { _q.setFromAxisAngle(X, out.flip * (out.flipNoBlend ? 1 : w)); for (const k in r.pose) r.pose[k].premultiply(_q); }      // ...or over (round the hips)
     r.bob = bob0 + (out.bob || 0) * w;
     // stretched tall (and thin), from the floor up
-    const g = r.group; if (out.stretch && g) { const sy = 1 + (out.stretch[0] - 1) * w, sx = 1 + (out.stretch[1] - 1) * w; g.scale.set(sx, sy, sx); g.position.set(r.root.x * (1 - sx), 0, r.root.z * (1 - sx)); } else this.unstretch();
+    if (out.stretch) { r.stretchS = [1 + (out.stretch[1] - 1) * w, 1 + (out.stretch[0] - 1) * w]; r.applyScale(); } else this.unstretch();
     this.out = out;
     return w;
   }
   // after the body has moved this frame: the hands (the model's own fingers), and any props
   place() { if (this.id && this.c.prop && this.c.prop.visible) { const pr = this.c.prop; pr.visible = false; this.onStop(() => { pr.visible = true; }); }      // (their usual pint / phone / rod is put away for the emote)
     if (this.id && this.c.reelLine) this.c.reelLine.visible = false;
-    if (this.id && this.out) { this.gestures(this.out, this.w); if (this.holding) for (const [p, [S, off, rot]] of this.holding) if (p.visible && p.parent) this.placeInHand(p, S, off, rot); } }      // (held things follow the hand after it's moved: no lagging behind)
+    if (this.id && this.out) { this.gestures(this.out, this.w); if (this.holding) for (const [p, [S, off, rot]] of this.holding) if (p.visible && p.parent) this.placeInHand(p, S, off, rot); this.drawProps(); } }
+  // a body drawn bigger (a player's stage, a stretch): the props move out with it and grow to match (undone next frame)
+  drawProps() { const r = this.c.rag, g = r.group; if (!g || (g.scale.x === 1 && g.scale.y === 1)) return; const k = (g.scale.x + g.scale.y) / 2;
+    for (const key in this.props) { const p = this.props[key], u = p.userData; u.rawP = p.position.clone(); u.rawS = p.scale.clone(); r.drawn(p.position); p.scale.multiplyScalar(k); } }      // (held things follow the hand after it's moved: no lagging behind)
   gestures(out, w) {
     const r = this.c.rag; if (!r.handPose) return;
     if (!this.mh) { const col = skinColour(r); this.mh = { L: new ModelHand('left', col, this.scene), R: new ModelHand('right', col, this.scene) }; }
@@ -175,7 +179,8 @@ export class EmotePlayer {
       const wr = new THREE.Vector3(), dir = new THREE.Vector3(); r.wrist(name, wr, dir);
       const fq = r.partQuat(name, new THREE.Quaternion());
       const want = out.back && out.back[S], back = want ? new THREE.Vector3(...want).applyAxisAngle(Y, r.yaw) : ax.palm.clone().negate().applyQuaternion(fq);
-      mh.pose(CURLS[kind] || CURLS.open); mh.place(wr, dir, back, this.kH * 1.02);
+      const g = r.group, gk = g ? (g.scale.x + g.scale.y) / 2 : 1; r.drawn(wr);
+      mh.pose(CURLS[kind] || CURLS.open); mh.place(wr, dir, back, this.kH * 1.02 * gk);
     }
   }
   hideHands() { if (this.mh) for (const S of ['L', 'R']) this.mh[S].root.visible = false; }
@@ -525,17 +530,19 @@ export class EmotePlayer {
     P.head.setFromAxisAngle(Y, 0.6);
     const van = this.prop('van', vanMesh);
     // the van comes in from behind him, pulls up alongside (back doors next to him), then drives away forwards
-    const side = 2.0, along = (-12 * (1 - ss(arrive))) + 14 * leave * leave;
-    this.L(side, 0, along + 1.6, van.position); van.rotation.y = r.yaw; van.scale.setScalar(1);
+    // (it comes from in front of him, facing him, and parks beside him with its back doors just in front: whichever way
+    // he's facing you see the kids climb in the back; then it drives off behind him)
+    const side = 2.0, along = -1.2 + 12 * (1 - ss(arrive)) - 14 * leave * leave;
+    this.L(side, 0, along, van.position); van.rotation.y = r.yaw + Math.PI; van.scale.setScalar(1);
     for (const w of van.userData.wheels) w.rotation.x += ((arrive < 1 ? 1 - arrive : 0) * 0.6 + leave * 0.8);
     const blink = arrive >= 1 && leave === 0 && Math.sin(t * 9) > 0; for (const m of van.userData.hazards) m.visible = blink;
     for (const sx of [-1, 1]) van.getObjectByName('door' + sx).rotation.y = sx * -doors * 1.9;
     // the five kids: they come out from behind Harry, run to the back of the van and hop in, one by one
     const cols = [0xff6fa8, 0x3fa3ff, 0x7cff6a, 0xffd400, 0xff7a1a], hair = [0x6a3a1a, 0xe8c070, 0x1a1210, 0xa0522d, 0x3a2416];
-    const backDoor = this.L(side, 0, -1.05 + along), inVan = this.L(side, 0, -0.2 + along);
+    const backDoor = this.L(side, 0, along + 2.65), inVan = this.L(side, 0, along + 1.8);
     for (let i = 0; i < 5; i++) {
       const k = this.prop('kid' + i, () => kidMesh(cols[i], hair[i], i % 2 === 0)), start = 2.2 + i * 0.85, kt = clamp01((t - start) / 0.8);
-      const from = this.L(-0.6 + i * 0.3, 0, -0.8 - (i % 2) * 0.3), to = backDoor.clone();
+      const from = this.L(-0.5 + i * 0.25, 0, -0.5 - (i % 2) * 0.3), to = backDoor.clone();
       const hop = clamp01((kt - 0.7) / 0.3); k.visible = t < start + 0.85;
       k.position.copy(from).lerp(to, ss(Math.min(1, kt / 0.7))).lerp(inVan, hop); k.position.y = hop > 0 ? Math.sin(hop * Math.PI) * 0.25 + hop * 0.42 : Math.abs(Math.sin(t * 9)) * 0.03 * (kt > 0 ? 1 : 0);
       k.rotation.y = kt > 0 ? Math.atan2(to.x - from.x, to.z - from.z) : r.yaw; k.scale.setScalar(0.85 + (i % 3) * 0.08); walkKid(k, t * 9 + i);
@@ -1009,14 +1016,20 @@ function vanMesh() {
   // inside: a dark load bay with a floor and two benches (for the kids)
   add(new THREE.BoxGeometry(1.76, 1.5, 0.02), lam(0x26282b), 0, 1.22, -0.2); add(new THREE.BoxGeometry(1.76, 0.03, 2.0), lam(0x5a5048), 0, 0.5, -1.2);
   for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.3, 0.3, 1.8), lam(0x3a4a6a), sx * 0.7, 0.66, -1.2);
-  add(new THREE.BoxGeometry(1.76, 1.5, 0.02), lam(0x2e3034), 0, 1.25, -2.12).visible = false;
+  // the open doorway: a dark load bay (with the floor and a bench end) seen when the back doors swing open; the kids
+  // climbing in vanish into it. It sits just inside the closed doors, so they hide it.
+  const bay = new THREE.Group(); bay.position.set(0, 1.22, -2.262); bay.rotation.y = Math.PI; g.add(bay);
+  add(new THREE.PlaneGeometry(1.74, 1.5), new THREE.MeshBasicMaterial({ color: 0x15171a }), 0, 0, 0, 0, 0, 0, bay);
+  add(new THREE.PlaneGeometry(1.74, 0.25), new THREE.MeshBasicMaterial({ color: 0x3a342e }), 0, -0.62, 0.001, 0, 0, 0, bay);
+  for (const sx of [-1, 1]) add(new THREE.PlaneGeometry(0.3, 0.3), new THREE.MeshBasicMaterial({ color: 0x2a3550 }), sx * 0.7, -0.45, 0.002, 0, 0, 0, bay);
+  add(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ color: 0x3a3f44 }), 0.1, 0.45, 0.002, 0, 0, 0, bay);   // the little window into the cab
   // the back doors: hinged at the outer edges, with windows, handles and a hinge each
   for (const sx of [-1, 1]) { const piv = new THREE.Group(); piv.position.set(sx * 0.95, 1.22, -2.26); piv.name = 'door' + sx; g.add(piv);
     add(new THREE.BoxGeometry(0.94, 1.56, 0.05), white, -sx * 0.475, 0, 0, 0, 0, 0, piv);
     add(new THREE.PlaneGeometry(0.62, 0.42), glass, -sx * 0.47, 0.38, -0.028, 0, Math.PI, 0, piv);
     add(new THREE.BoxGeometry(0.03, 0.18, 0.04), grey, -sx * 0.85, -0.05, -0.04, 0, 0, 0, piv);
     for (const y of [0.55, -0.55]) add(new THREE.BoxGeometry(0.06, 0.1, 0.06), blk, -sx * 0.02, y, -0.02, 0, 0, 0, piv);
-    if (sx > 0) add(new THREE.PlaneGeometry(0.8, 0.14), new THREE.MeshBasicMaterial({ map: labelTex('HOW\'S MY PARENTING?', '#ffffff', '#1f4fbf') }), -0.47, -0.25, -0.028, 0, Math.PI, 0, piv); }
+  }
   // roof rack with a ladder on it
   for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.04, 0.04, 3.0), silver, sx * 0.82, 2.2, -0.6);
   for (let i = 0; i < 5; i++) add(new THREE.BoxGeometry(1.68, 0.03, 0.04), silver, 0, 2.2, -2.0 + i * 0.7);

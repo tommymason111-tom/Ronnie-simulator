@@ -114,7 +114,7 @@ function meter(g, W, H) {
   names.forEach((n, i) => { const x = 30 + i * (W - 60) / 6, w = (W - 60) / 6 - 8, h = 30 + i * 18;
     g.fillStyle = `hsl(${60 - i * 12},90%,${55 - i * 3}%)`; rr(g, x, H - 50 - h, w, h, 8); g.fill();
     emoji(g, '🍔', x + w / 2, H - 62 - h, 18 + i * 3); g.fillStyle = '#fff'; g.font = `900 ${Math.max(9, w / 8)}px ${FONT}`; g.textAlign = 'center'; g.fillText(n, x + w / 2, H - 30); });
-  label(g, 'EVERY BITE FILLS THE EAT METER · 6 STAGES', W / 2, 24, { size: 17 });
+  label(g, 'EVERY BITE FILLS THE EAT METER · 10 STAGES', W / 2, 24, { size: 17 });
 }
 
 // ---------------------------------------------------------------- the places, from above

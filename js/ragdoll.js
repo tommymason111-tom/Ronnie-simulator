@@ -929,7 +929,17 @@ export class Ragdoll {
       if (this.handHide[eb.name]) { const w = ax ? ax.wrist : this.parts[eb.name].def.b; _hm.multiply(_hm3.makeTranslation(w.x, w.y, w.z).multiply(_pmR.makeScale(0.001, 0.001, 0.001)).multiply(_pmT.makeTranslation(-w.x, -w.y, -w.z))); }
       _hm.multiply(_hm2.makeTranslation(c.x, c.y, c.z)); _hm.decompose(bone.position, bone.quaternion, bone.scale);
     });
+    this.applyScale();
   }
+  // how big the body is drawn, around where it stands: bulk (a player's stage in multiplayer: taller and much wider)
+  // times an emote's stretch (tall and thin...)
+  applyScale() {
+    const g = this.group; if (!g) return; const B = this.bulk, S = this.stretchS, W = (B ? B.w : 1) * (S ? S[0] : 1), H = (B ? B.h : 1) * (S ? S[1] : 1);
+    if (W === 1 && H === 1) { if (g.scale.x !== 1 || g.scale.y !== 1) { g.scale.set(1, 1, 1); g.position.set(0, 0, 0); } return; }
+    g.scale.set(W, H, W); g.position.set(this.root.x * (1 - W), 0, this.root.z * (1 - W));
+  }
+  // a world point on the body (from the physics) moved to where it's drawn when the body is drawn bigger
+  drawn(v) { const g = this.group; if (!g || (g.scale.x === 1 && g.scale.y === 1)) return v; v.x = this.root.x + (v.x - this.root.x) * g.scale.x; v.y *= g.scale.y; v.z = this.root.z + (v.z - this.root.z) * g.scale.z; return v; }
   // the wrist (where the hand starts) and the way the forearm points, in the world
   wrist(name, out, dirOut) {
     const p = this.parts[name], d = p.def, b = p.body; _q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
