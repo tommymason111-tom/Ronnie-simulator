@@ -1371,13 +1371,13 @@ export function buildPub(scene) {
     for (const z of [23.0, 29.0, 35.0]) lampPost(10.55, z, 0.3);
     // ---- the river beyond the railing: reeds on the bank, the water, the far bank
     { const wt = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#5a8a8a'; g.fillRect(0, 0, w, h); for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '220,240,240' : '30,60,60'},0.18)`; g.fillRect(Math.random() * w, Math.random() * h, 8 + Math.random() * 20, 1.5); } }); wt.wrapS = wt.wrapT = THREE.RepeatWrapping; wt.repeat.set(3, 10);
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(18, 70), waterMaterial({ deep: 0x16302e, shallow: 0x4a706a, flow: 0.04, scale: 0.4 })); m.rotation.x = -Math.PI / 2; m.position.set(GX1 + 10.5, -0.25, 30); scene.add(m);
-      const bank = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 40), new THREE.MeshLambertMaterial({ map: LEAFT })); bank.rotation.x = -Math.PI / 2; bank.position.set(GX1 + 1.1, 0.0, 28); scene.add(bank);
-      for (let i = 0; i < 160; i++) { const x = GX1 + 0.2 + Math.random() * 1.9, z = 14 + Math.random() * 30, h = 0.8 + Math.random() * 0.9; k.box(0.025, h, 0.06, x, h / 2, z, [0x6a9a3a, 0x8aa84a, 0x5a8a2a, 0xa8b860][i % 4], { rot: [(Math.random() - 0.5) * 0.4, Math.random() * 3, (Math.random() - 0.5) * 0.4] }); }
-      const far = new THREE.Mesh(new THREE.PlaneGeometry(10, 70), new THREE.MeshLambertMaterial({ map: LEAFT })); far.rotation.x = -Math.PI / 2; far.position.set(GX1 + 24.5, 0.15, 30); scene.add(far);
-      R(GX1 + 19.4, -5, GX1 + 19.6, 65, 0.5, -0.05, 0x5a5040);                                             // the far bank's edge
-      for (let z = 0; z < 62; z += 2.6) { const x = GX1 + 20.5 + ((z * 7) % 3); leafyBall(k, x, 0.5, z, 0.9 + ((z * 3) % 5) * 0.12); }   // bushes along the far bank
-      for (const [x, z, r] of [[GX1 + 23, 8, 2.2], [GX1 + 25, 20, 2.8], [GX1 + 23.5, 33, 2.4], [GX1 + 26, 45, 3.0], [GX1 + 24, 56, 2.2]]) { k.cyl(0.2, 0.3, 3.6, x, 1.8, z, 0x5a4030, 8); leafyBall(k, x, 4.2, z, r); } }
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(18, 48.5), waterMaterial({ deep: 0x16302e, shallow: 0x4a706a, flow: 0.04, scale: 0.4 })); m.rotation.x = -Math.PI / 2; m.position.set(GX1 + 10.5, -0.25, 40.75); scene.add(m);   // (only behind the building: the restaurant is alongside further up)
+      const bank = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 31.5), new THREE.MeshLambertMaterial({ map: LEAFT })); bank.rotation.x = -Math.PI / 2; bank.position.set(GX1 + 1.1, 0.0, 32.25); scene.add(bank);
+      for (let i = 0; i < 160; i++) { const x = GX1 + 0.2 + Math.random() * 1.9, z = 16.6 + Math.random() * 30, h = 0.8 + Math.random() * 0.9; k.box(0.025, h, 0.06, x, h / 2, z, [0x6a9a3a, 0x8aa84a, 0x5a8a2a, 0xa8b860][i % 4], { rot: [(Math.random() - 0.5) * 0.4, Math.random() * 3, (Math.random() - 0.5) * 0.4] }); }
+      const far = new THREE.Mesh(new THREE.PlaneGeometry(10, 48.5), new THREE.MeshLambertMaterial({ map: LEAFT })); far.rotation.x = -Math.PI / 2; far.position.set(GX1 + 24.5, 0.15, 40.75); scene.add(far);
+      R(GX1 + 19.4, 16.5, GX1 + 19.6, 65, 0.5, -0.05, 0x5a5040);                                             // the far bank's edge
+      for (let z = 18.2; z < 62; z += 2.6) { const x = GX1 + 20.5 + ((z * 7) % 3); leafyBall(k, x, 0.5, z, 0.9 + ((z * 3) % 5) * 0.12); }   // bushes along the far bank
+      for (const [x, z, r] of [[GX1 + 25, 20, 2.8], [GX1 + 23.5, 33, 2.4], [GX1 + 26, 45, 3.0], [GX1 + 24, 56, 2.2]]) { k.cyl(0.2, 0.3, 3.6, x, 1.8, z, 0x5a4030, 8); leafyBall(k, x, 4.2, z, r); } }
     // ---- the far end: hedges and a fence, the houses beyond, trees
     hedge(GX0 + 0.1, GZ1 - 0.9, 7.6, GZ1 - 0.1, 1.7); railX(GX0, GX1, GZ1 - 0.05, 1.8);
     // the houses round the garden: a terrace across the end (their back gardens run up to the pub's fence), another down the left
