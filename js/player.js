@@ -5,6 +5,7 @@
 // the wrist Chonk Meter, Ronnie's ever-growing belly, and a first-person hand
 // for playing on a phone / tablet.
 import * as THREE from 'three';
+import { Belly } from './belly.js';
 import * as CANNON from 'cannon-es';
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 import { TUNING, ROOM } from './config.js';
@@ -664,19 +665,16 @@ export class Player {
 
   // ---------------- the belly ----------------
   buildBelly() {
-    const shirt = new THREE.MeshLambertMaterial({ color: 0x1f4fbf });
+    // a real belly under his T-shirt (belly.js): bigger, saggier and more on show every stage
+    this.bellyModel = new Belly();
     this.belly = new THREE.Group();
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.17, 20, 14), shirt);
-    ball.scale.set(1.1, 1, 0.9);
-    this.bellyBall = ball;
-    const button = new THREE.Mesh(new THREE.CircleGeometry(0.01, 10), new THREE.MeshBasicMaterial({ color: 0x0d2a70 }));
-    this.bellyButton = button;
-    this.belly.add(ball, button);
+    this.bellyBall = this.bellyModel.group;
+    this.belly.add(this.bellyBall);
     this.rig.add(this.belly);
     this.bellyTarget = 1; this.bellyNow = 1; this.bellyVel = 0;
   }
 
-  setBelly(b) { this.bellyTarget = b; }
+  setBelly(b) { this.bellyTarget = b; this.bellyModel && this.bellyModel.setStage(Belly.stageFor(b)); }
 
   updateBelly(dt, t) {
     // springy wobble toward the target size
@@ -685,7 +683,7 @@ export class Player {
     this.bellyNow += this.bellyVel * dt;
     const b = Math.max(0.5, this.bellyNow);
     const R = 0.17 * Math.pow(b, 0.75);
-    this.bellyBall.scale.set(1.1 * R / 0.17, R / 0.17, 0.9 * R / 0.17);
+    this.bellyBall.scale.setScalar(R);
     // in rig space, under the head, following head yaw only
     const cp = this.camera.position, cq = this.camera.quaternion;
     _v.set(0, 0, -1).applyQuaternion(cq); _v.y = 0;
@@ -693,8 +691,6 @@ export class Player {
     const drop = 0.58 + (R - 0.17) * 0.4;
     this.belly.position.set(cp.x + _v.x * (R * 0.5), Math.max(R, cp.y - drop), cp.z + _v.z * (R * 0.5));
     this.belly.rotation.y = Math.atan2(-_v.x, -_v.z);
-    this.bellyButton.position.set(0, -R * 0.1, -R * 0.9 - 0.002);
-    this.bellyButton.rotation.y = Math.PI;
-    this.belly.visible = true;
+    this.belly.visible = !this.hideBelly;     // (playing as someone else in multiplayer: you see their body instead)
   }
 }

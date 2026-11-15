@@ -76,6 +76,7 @@ export class MPSync {
     if (!this.net.connected) return; const e = EMOTES.find(x => x.id === id); if (!e) return;
     if ((this.emoteCool || 0) > performance.now()) return; this.emoteCool = performance.now() + 600;
     this.net.send({ t: 'emote', e: id });
+    if (this.selfBody && this.selfBody()) this.selfBody().doEmote(id);
     const P = this.player; this.words.show(e.icon + ' ' + e.name, P.head.clone().addScaledVector(P.fwd, 1.1).add({ x: 0, y: -0.1, z: 0 }), '#ff4fa3', 0.1, 1.6);
   }
   on_emote(m, p) { const e = EMOTES.find(x => x.id === m.e); if (!e || !p || !p.avatar) return;

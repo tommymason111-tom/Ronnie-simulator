@@ -352,7 +352,7 @@
   <script>
     // Always run the newest version: if this page is an old cached copy, reload it once (the import map below loads
     // every script with the version on it, so old and new files can never get mixed up on a phone)
-    window.GAME_BUILD = '2.8.0';
+    window.GAME_BUILD = '2.9.0';
     (() => { try { fetch('./version.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json()).then(j => {
       if (!j || !j.v || j.v === window.GAME_BUILD) return; const k = 'rs_reload_' + j.v; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1');
       const u = new URL(location.href); u.searchParams.set('v', j.v); location.replace(u.toString()); }).catch(() => {}); } catch (e) {} })();
@@ -363,54 +363,55 @@
     "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
     "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
     "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
-    "./js/attackfx.js": "./js/attackfx.js?v=2.8.0",
-    "./js/audio.js": "./js/audio.js?v=2.8.0",
-    "./js/character.js": "./js/character.js?v=2.8.0",
-    "./js/config.js": "./js/config.js?v=2.8.0",
-    "./js/cutscenes.js": "./js/cutscenes.js?v=2.8.0",
-    "./js/darts.js": "./js/darts.js?v=2.8.0",
-    "./js/dialogue.js": "./js/dialogue.js?v=2.8.0",
-    "./js/emotes.js": "./js/emotes.js?v=2.8.0",
-    "./js/foodmodels.js": "./js/foodmodels.js?v=2.8.0",
-    "./js/foods.js": "./js/foods.js?v=2.8.0",
-    "./js/fx.js": "./js/fx.js?v=2.8.0",
-    "./js/geo.js": "./js/geo.js?v=2.8.0",
-    "./js/hands.js": "./js/hands.js?v=2.8.0",
-    "./js/hold.js": "./js/hold.js?v=2.8.0",
-    "./js/levels/clutter.js": "./js/levels/clutter.js?v=2.8.0",
-    "./js/levels/dormant.js": "./js/levels/dormant.js?v=2.8.0",
-    "./js/levels/furniture.js": "./js/levels/furniture.js?v=2.8.0",
-    "./js/levels/garage.js": "./js/levels/garage.js?v=2.8.0",
-    "./js/levels/garden.js": "./js/levels/garden.js?v=2.8.0",
-    "./js/levels/glow.js": "./js/levels/glow.js?v=2.8.0",
-    "./js/levels/kit.js": "./js/levels/kit.js?v=2.8.0",
-    "./js/levels/outdoor.js": "./js/levels/outdoor.js?v=2.8.0",
-    "./js/levels/oysterRestaurant.js": "./js/levels/oysterRestaurant.js?v=2.8.0",
-    "./js/levels/pub.js": "./js/levels/pub.js?v=2.8.0",
-    "./js/levels/restaurant.js": "./js/levels/restaurant.js?v=2.8.0",
-    "./js/levels/stock.js": "./js/levels/stock.js?v=2.8.0",
-    "./js/levels/supermarket.js": "./js/levels/supermarket.js?v=2.8.0",
-    "./js/main.js": "./js/main.js?v=2.8.0",
-    "./js/menu.js": "./js/menu.js?v=2.8.0",
-    "./js/modes.js": "./js/modes.js?v=2.8.0",
-    "./js/mpsync.js": "./js/mpsync.js?v=2.8.0",
-    "./js/music.js": "./js/music.js?v=2.8.0",
-    "./js/nav.js": "./js/nav.js?v=2.8.0",
-    "./js/net.js": "./js/net.js?v=2.8.0",
-    "./js/physics.js": "./js/physics.js?v=2.8.0",
-    "./js/pingpong.js": "./js/pingpong.js?v=2.8.0",
-    "./js/playbutton.js": "./js/playbutton.js?v=2.8.0",
-    "./js/player.js": "./js/player.js?v=2.8.0",
-    "./js/portraits.js": "./js/portraits.js?v=2.8.0",
-    "./js/ragdoll.js": "./js/ragdoll.js?v=2.8.0",
-    "./js/ronnieHero.js": "./js/ronnieHero.js?v=2.8.0",
-    "./js/room.js": "./js/room.js?v=2.8.0",
-    "./js/runpub.js": "./js/runpub.js?v=2.8.0",
-    "./js/squad.js": "./js/squad.js?v=2.8.0",
-    "./js/textures.js": "./js/textures.js?v=2.8.0",
-    "./js/tommy.js": "./js/tommy.js?v=2.8.0",
-    "./js/touch.js": "./js/touch.js?v=2.8.0",
-    "./js/tv.js": "./js/tv.js?v=2.8.0"
+    "./js/attackfx.js": "./js/attackfx.js?v=2.9.0",
+    "./js/audio.js": "./js/audio.js?v=2.9.0",
+    "./js/belly.js": "./js/belly.js?v=2.9.0",
+    "./js/character.js": "./js/character.js?v=2.9.0",
+    "./js/config.js": "./js/config.js?v=2.9.0",
+    "./js/cutscenes.js": "./js/cutscenes.js?v=2.9.0",
+    "./js/darts.js": "./js/darts.js?v=2.9.0",
+    "./js/dialogue.js": "./js/dialogue.js?v=2.9.0",
+    "./js/emotes.js": "./js/emotes.js?v=2.9.0",
+    "./js/foodmodels.js": "./js/foodmodels.js?v=2.9.0",
+    "./js/foods.js": "./js/foods.js?v=2.9.0",
+    "./js/fx.js": "./js/fx.js?v=2.9.0",
+    "./js/geo.js": "./js/geo.js?v=2.9.0",
+    "./js/hands.js": "./js/hands.js?v=2.9.0",
+    "./js/hold.js": "./js/hold.js?v=2.9.0",
+    "./js/levels/clutter.js": "./js/levels/clutter.js?v=2.9.0",
+    "./js/levels/dormant.js": "./js/levels/dormant.js?v=2.9.0",
+    "./js/levels/furniture.js": "./js/levels/furniture.js?v=2.9.0",
+    "./js/levels/garage.js": "./js/levels/garage.js?v=2.9.0",
+    "./js/levels/garden.js": "./js/levels/garden.js?v=2.9.0",
+    "./js/levels/glow.js": "./js/levels/glow.js?v=2.9.0",
+    "./js/levels/kit.js": "./js/levels/kit.js?v=2.9.0",
+    "./js/levels/outdoor.js": "./js/levels/outdoor.js?v=2.9.0",
+    "./js/levels/oysterRestaurant.js": "./js/levels/oysterRestaurant.js?v=2.9.0",
+    "./js/levels/pub.js": "./js/levels/pub.js?v=2.9.0",
+    "./js/levels/restaurant.js": "./js/levels/restaurant.js?v=2.9.0",
+    "./js/levels/stock.js": "./js/levels/stock.js?v=2.9.0",
+    "./js/levels/supermarket.js": "./js/levels/supermarket.js?v=2.9.0",
+    "./js/main.js": "./js/main.js?v=2.9.0",
+    "./js/menu.js": "./js/menu.js?v=2.9.0",
+    "./js/modes.js": "./js/modes.js?v=2.9.0",
+    "./js/mpsync.js": "./js/mpsync.js?v=2.9.0",
+    "./js/music.js": "./js/music.js?v=2.9.0",
+    "./js/nav.js": "./js/nav.js?v=2.9.0",
+    "./js/net.js": "./js/net.js?v=2.9.0",
+    "./js/physics.js": "./js/physics.js?v=2.9.0",
+    "./js/pingpong.js": "./js/pingpong.js?v=2.9.0",
+    "./js/playbutton.js": "./js/playbutton.js?v=2.9.0",
+    "./js/player.js": "./js/player.js?v=2.9.0",
+    "./js/portraits.js": "./js/portraits.js?v=2.9.0",
+    "./js/ragdoll.js": "./js/ragdoll.js?v=2.9.0",
+    "./js/ronnieHero.js": "./js/ronnieHero.js?v=2.9.0",
+    "./js/room.js": "./js/room.js?v=2.9.0",
+    "./js/runpub.js": "./js/runpub.js?v=2.9.0",
+    "./js/squad.js": "./js/squad.js?v=2.9.0",
+    "./js/textures.js": "./js/textures.js?v=2.9.0",
+    "./js/tommy.js": "./js/tommy.js?v=2.9.0",
+    "./js/touch.js": "./js/touch.js?v=2.9.0",
+    "./js/tv.js": "./js/tv.js?v=2.9.0"
   }
 }
   </script>
@@ -730,7 +731,7 @@
     window.addEventListener('error', (e) => { const s = document.getElementById('status'); if (s) s.textContent = 'Error: ' + e.message; });
     window.addEventListener('unhandledrejection', (e) => { const s = document.getElementById('status'); if (s) s.textContent = 'Error: ' + (e.reason && e.reason.message || e.reason); });
   </script>
-  <script src="./js/menu.js?v=2.8.0"></script>
+  <script src="./js/menu.js?v=2.9.0"></script>
   <script type="module">
     // the 3D Ronnie on the title screen (falls back to the drawing if it can't load)
     import { startHero } from './js/ronnieHero.js';   // (through the import map, so it's the stamped version)

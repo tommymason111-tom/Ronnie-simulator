@@ -402,11 +402,13 @@ export class Ragdoll {
     // ---- one bone per body, all siblings, bind = T-pose ----
     this.bones = this.defs.map(d => { const b = new THREE.Bone(); b.position.copy(d.center); this.group.add(b); return b; });
     for (const name of Object.keys(this.handBone || {})) { const b = new THREE.Bone(); b.position.copy(this.parts[name].def.center); this.group.add(b); this.bones.push(b); }
+    this.addBellyMorph(geo);
     this.mesh = new THREE.SkinnedMesh(geo, mat);
     this.mesh.frustumCulled = false;
     this.group.add(this.mesh);
     this.group.updateMatrixWorld(true);
     this.mesh.bind(new THREE.Skeleton(this.bones), this.mesh.matrixWorld);
+    if (geo.morphAttributes.position) { this.mesh.updateMorphTargets(); this.mesh.morphTargetInfluences[0] = 0; }
     this.ready = true;
     this.modelLoaded = true;
     this.sync();
@@ -544,6 +546,24 @@ export class Ragdoll {
       }
       if (n > 20) this.handC[name] = sum.multiplyScalar(1 / n);
     }
+  }
+  // A "fat" shape for the scanned model (used for players getting bigger in multiplayer): the lower front of the
+  // torso swells into a round belly that pushes out and sags a little, the waist and hips widen, love handles at the
+  // sides. Stored as a morph (0 = as scanned, 1 = the biggest) so it rides along with the skinning.
+  addBellyMorph(geo) {
+    const ch = this.parts.chest && this.parts.chest.def, pe = this.parts.pelvis && this.parts.pelvis.def; if (!ch || !pe) return;
+    const pos = geo.attributes.position, d = new Float32Array(pos.count * 3), v = new THREE.Vector3(), kH = this.height / 1.68;
+    const y0 = pe.a.y, y1 = ch.b.y, bellyY = y0 + (y1 - y0) * 0.36, zc = ch.center.z, W = (ch.half ? ch.half[0] : 0.17) * 1.25, D = ch.half ? ch.half[2] : 0.12;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i); if (v.y < y0 - 0.12 * kH || v.y > y1 - 0.05 * kH) continue;
+      const fy = Math.exp(-(((v.y - bellyY) / (0.2 * kH)) ** 2)), fx = Math.exp(-((v.x / (W * 1.4)) ** 2)), front = THREE.MathUtils.smoothstep(v.z - zc, -D * 0.6, D * 0.9);
+      if (Math.abs(v.x) > W * 2.2) continue;                                               // (not the arms hanging by the sides)
+      const belly = fy * fx * front, waist = Math.exp(-(((v.y - (y0 + (y1 - y0) * 0.22)) / (0.22 * kH)) ** 2));
+      d[i * 3] = v.x * 0.38 * waist;                                                        // wider at the waist and hips
+      d[i * 3 + 1] = -0.035 * kH * belly;                                                   // the belly hangs a bit
+      d[i * 3 + 2] = 0.2 * kH * belly + (v.z - zc) * 0.25 * waist;                          // out the front (and a bit deeper all round)
+    }
+    geo.morphAttributes.position = [new THREE.BufferAttribute(d, 3)]; geo.morphTargetsRelative = true;
   }
   // Give each scanned hand (wrist to fingertips) its own bone that normally just follows the forearm, so a hand
   // can be tucked away inside the forearm (scaled to nothing) while a posed gesture hand stands in for it (emotes).
@@ -742,7 +762,13 @@ export class Ragdoll {
       const b = p.body, bone = this.bones[i];
       bone.position.set(b.position.x, b.position.y, b.position.z);
       bone.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
+      bone.scale.setScalar(1);
     });
+    // getting fatter (players in multiplayer, as they go up the stages): the belly and waist swell, mostly forwards,
+    // the hips and thighs thicken; 0 = as they are, 1 = the biggest
+    if (this.mesh && this.mesh.morphTargetInfluences) this.mesh.morphTargetInfluences[0] = Math.max(0, this.fat || 0);     // (the belly: see addBellyMorph)
+    if (this.fat > 0.001) for (const name of ['uLegL', 'uLegR']) { const part = this.parts[name]; if (!part) continue; const k = 1 + 0.22 * this.fat; this.bones[this.list.indexOf(part)].scale.set(k, 1, k); }   // thicker thighs
+    if (this.hideHead) { const hb = this.bones[this.list.indexOf(this.parts.head)]; hb && hb.scale.setScalar(0.001); }   // (your own body, seen from inside your head)
     if (this.handBone) for (const name in this.handBone) { const b = this.parts[name].body, bone = this.bones[this.handBone[name]]; if (!bone) continue;
       bone.position.set(b.position.x, b.position.y, b.position.z); bone.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w); bone.scale.setScalar(this.handHide[name] ? 0.001 : 1); }
   }

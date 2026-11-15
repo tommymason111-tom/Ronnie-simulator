@@ -861,9 +861,19 @@ const vrEmote = (() => {
     } else if (held) { held = false; mesh.visible = false; player.noTurn = false; if (sel >= 0) mp.emote(EMOTES[sel].id); }
   }, get open() { return held; } };
 })();
+// multiplayer as one of the squad (or Tommy): you see your own character's body when you look down, not Ronnie's belly
+let selfBody = null;
+function selfBodyUpdate(dt) {
+  const want = net.connected && net.char && net.char !== 'ronnie';
+  if (!want) { if (selfBody) { selfBody.dispose(); selfBody = null; player.hideBelly = false; } return; }
+  if (!selfBody) { selfBody = net.makeAvatar({ char: net.char, name: '', self: true }); player.hideBelly = !!selfBody; if (!selfBody) return; }
+  const q = camera.getWorldQuaternion(new THREE.Quaternion()), side = (k) => player.hands.find(h => h.handedness === k && h.tracked);
+  const R0 = side('right'), L0 = side('left'), rh = player.flatMode ? player.flatAnchorPos() : (R0 ? R0.palm : player.head), lh = player.flatMode ? player.head : (L0 ? L0.palm : player.head);
+  selfBody.update(dt, { h: [player.head.x, player.head.y, player.head.z], q: [q.x, q.y, q.z, q.w], rh: [rh.x, rh.y, rh.z], l: [lh.x, lh.y, lh.z], flat: player.flatMode ? 1 : 0, st: G.stage });
+}
 function frame(simDt) {
   foodGlow(performance.now() / 1000);
-  music.update(Math.min(0.05, 1 / 60)); tvs.update(1 / 60); pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
+  music.update(Math.min(0.05, 1 / 60)); tvs.update(1 / 60); try { selfBodyUpdate(Math.min(0.05, 1 / 60)); } catch (e) {} pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
   if (renderer.xr.isPresenting && simDt == null) { vrMenuButtons(); vrEmote.update(); }
   if (paused && simDt == null && net.connected) { if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } }
   else if (paused && simDt == null) { clock.getDelta(); if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } renderer.render(scene, camera); return; }    // frozen until RESUME
@@ -1011,6 +1021,7 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
 }
 // the shared game (food and people): see mpsync.js
 const mp = new MPSync({ net, scene, room, physics, player, items, cast, director, words, fx: attackFx, G, tommy });
+mp.selfBody = () => selfBody;      // (your emotes play on your own body too)
 // music from the speakers (the DJ booth, the hi-fi, the tannoy): only the host picks, everyone hears it
 const music = new Music({ scene, room, net, player, words, hint: (t) => touch.hint(t), ui: {
   open() { window.__menuOpenAt = performance.now(); initAudio(); setPaused(true); pauseEl.classList.add('show-music'); setMuted(soundOff); music.render(); },
@@ -1033,6 +1044,8 @@ class SquadPuppet {
     this.p = p; this.tagC = document.createElement('canvas'); this.tagC.width = 320; this.tagC.height = 96; this.tagTex = new THREE.CanvasTexture(this.tagC); this.tagTex.colorSpace = THREE.SRGBColorSpace;
     this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; scene.add(this.tag); this.drawTag();
     this.down = 0; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0;
+    if (p.self) {               // your own body (seen from inside it): no head in the way, no name tag, no bumping into it
+      this.tag.visible = false; this.c.rag.hideHead = true; for (const pt of this.c.rag.list) { pt.body.collisionResponse = false; } }
     this.emote = new EmotePlayer(this.c, scene, (txt, at, snd) => { if (snd) sfx(snd, this.c.headPos(new THREE.Vector3()), 0.8); if (txt && at) words.show(txt, at.clone().add({ x: 0, y: 0.15, z: 0 }), '#ffd400', 0.22, 0.8); }); }
   // where they were ~0.11s ago, blended between the two updates either side of then (updates come in a few
   // times a second, unevenly: following the latest one made hands and heads jump about)
@@ -1047,6 +1060,8 @@ class SquadPuppet {
   }
   update(dt, pose) {
     pose = this.smoothPose(pose);
+    // fatter every stage they go up (seen by everyone)
+    { const want = Math.min(1, (pose.st || 0) / 5); this.fatNow = (this.fatNow || 0) + (want - (this.fatNow || 0)) * Math.min(1, dt * 3); this.c.rag.fat = this.fatNow; }
     const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * 25);
     const prev = this.pos.clone(); this.pos.lerp(_a.set(...pose.h), k); this.rh.lerp(_b.set(...pose.rh), k); this.lh.lerp(_b.set(...pose.l), k);
     // knocked flat: a limp ragdoll (like the NPCs), then up again where they landed
@@ -1058,6 +1073,7 @@ class SquadPuppet {
     const speed = Math.hypot(this.pos.x - prev.x, this.pos.z - prev.z) / Math.max(dt, 1e-3);
     if (this.first) { r.placeAt(this.pos.x, this.pos.z, this.yaw); this.first = false; this.prevH.R.copy(this.rh); this.prevH.L.copy(this.lh); }
     r.root.x = this.pos.x; r.root.z = this.pos.z; r.yaw = this.yaw;
+    if (this.p.self) { r.root.x -= Math.sin(this.yaw) * 0.2; r.root.z -= Math.cos(this.yaw) * 0.2; }      // (just behind your eyes, so looking down you see your chest, belly and legs)
     if (speed > 0.25) c.walkPose(dt, Math.min(speed, 3)); else c.setIdlePose(c.t += dt);
     // an emote off the wheel: the whole body does it (a VR player's arms stay their own real arms)
     const vr = !pose.flat, em = this.emote.active ? this.emote.update(dt, vr) : 0;
@@ -1114,7 +1130,7 @@ class SquadPuppet {
     x.fillStyle = 'rgba(10,14,30,0.85)'; x.beginPath(); x.roundRect(4, 4, 312, 88, 22); x.fill(); x.lineWidth = 5; x.strokeStyle = '#39ff14'; x.stroke();
     x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; let f = 40; do { x.font = `900 ${f}px Arial`; f -= 2; } while (x.measureText(nm).width > 290 && f > 16); x.fillText(nm, 160, 38);
     x.fillStyle = '#c9d3ff'; x.font = '700 20px Arial'; x.fillText('👤 PLAYER · as ' + (this.p.char === 'tommy' ? 'Tommy' : SQUAD_MP[this.p.char]?.name || this.c.name), 160, 74); this.tagTex.needsUpdate = true; }
-  placeTag() { if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.headPos(new THREE.Vector3()); this.tag.position.set(h.x, h.y + 0.36, h.z); }
+  placeTag() { if (this.p.self) return; if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.headPos(new THREE.Vector3()); this.tag.position.set(h.x, h.y + 0.36, h.z); }
   flinch(v) { this.c.flinch(v.clone ? v.clone() : new THREE.Vector3(v.x, 0, v.z), 1); }
   // a proper hit: go limp and fly, same as the NPCs (a light one is just a flinch)
   knock(v, s, at) {
