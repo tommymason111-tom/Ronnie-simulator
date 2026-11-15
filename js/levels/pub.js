@@ -753,15 +753,13 @@ export function buildPub(scene) {
       [[bz0 + 0.5, 1.6, 0], [bz0 + 1.25, 1.75, 1], [bz0 + 2.0, 1.6, 2]].forEach(([z, y, sd]) => { R(bx, z - 0.3, bx + 0.04, z + 0.3, 0.46, y, 0x2a1a10); k.label('photo', 0.52, 0.38, [bx + 0.042, y, z], [0, Math.PI / 2, 0], { tex: photo(sd) }); });
       k.label('WELCOME TO THE OYSTERFLEET — PLEASE KEEP RONNIE AWAY FROM THE BAR SNACKS', 2.2, 0.45, [bx + 0.004, 2.35, (bz0 + bz1) / 2], [0, Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 38 });
       blk(bx, bz0 - 0.05, bx + 0.52, bz1 + 0.05, 0.95); }
-    // coat hooks with coats on the back wall, an umbrella stand by the door, two big plants, a chalkboard
+    // coat hooks with coats on the back wall, an umbrella stand by the door, two big plants
     { const hz = Z(385) + 0.09; for (let i = 0; i < 5; i++) { const x = X(705) + i * 0.35; k.box(0.03, 0.03, 0.08, x, 1.75, hz + 0.02, 0xc9a24a);
         if (i % 2 === 0) { R(x - 0.2, hz + 0.02, x + 0.2, hz + 0.18, 0.85, 1.28, [0x2a3a5a, 0x5a3a2a, 0x2a2a2a][i / 2]); R(x - 0.12, hz + 0.03, x + 0.12, hz + 0.16, 0.1, 1.72, [0x2a3a5a, 0x5a3a2a, 0x2a2a2a][i / 2]); } }
       R(X(705) - 0.12, Z(385) + 0.08, X(705) + 1.55, Z(385) + 0.1, 0.12, 1.75, 0x3a2416);
       const ux = X(775) - 0.4, uz = Z(385) + 0.35; k.cyl(0.13, 0.12, 0.5, ux, 0.25, uz, 0x2a2a2a, 12, { block: true }); for (let i = 0; i < 3; i++) { k.cyl(0.01, 0.01, 0.85, ux - 0.04 + i * 0.04, 0.6, uz + (i - 1) * 0.03, 0x111111, 6); k.cyl(0.03, 0.045, 0.3, ux - 0.04 + i * 0.04, 0.85, uz + (i - 1) * 0.03, [0x1e4ea8, 0xc62828, 0x111111][i], 8); }
       for (const [px, pz] of [[X(625) + 0.3, Z(470) - 0.35], [X(820) - 0.35, Z(520) + 0.2]]) { k.cyl(0.24, 0.18, 0.5, px, 0.25, pz, 0x2a2420, 14, { block: true }); for (let i = 0; i < 80; i++) { const a = i * 2.4, r = 0.08 + (i % 5) * 0.06, h = 0.65 + (i % 7) * 0.13; const leaf = new THREE.SphereGeometry(0.06, 6, 4); leaf.scale(1, 0.3, 0.5); leaf.rotateY(a); k.parts.push(part(leaf, [0x2e6a2a, 0x3a7a32, 0x24561f][i % 3], [px + Math.cos(a) * r, h, pz + Math.sin(a) * r])); } }
-      const cbx = X(722), cbz = Z(585) - 0.15; for (const sd of [-1, 1]) k.box(0.58, 1.06, 0.03, cbx, 0.53, cbz + sd * 0.12, 0x3a2416);
-      k.label("TODAY'S SPECIALS: PIE & MASH · STEAK PIE · RONNIE'S PLATTER", 0.5, 0.72, [cbx, 0.55, cbz - 0.12 - 0.017], [0, Math.PI, 0], { bg: '#1a1a1a', fg: '#f5f0e6', border: '#8a6a3a', size: 32 });
-      blk(cbx - 0.3, cbz - 0.25, cbx + 0.3, cbz + 0.25, 0.9); }
+    }
     // lights: two glass globes over the counter, downlights, a wall lamp by the door
     for (const x of [cx0 + 0.8, cx0 + 2.2]) { k.cyl(0.004, 0.004, 0.6, x, H - 0.3, cz0 + 0.3, 0x222222, 4); k.cyl(0.03, 0.045, 0.06, x, H - 0.63, cz0 + 0.3, 0xb87333, 10); for (let i = 0; i < 6; i++) { const r = new THREE.TorusGeometry(0.11, 0.004, 4, 16); r.rotateY(i / 6 * Math.PI); k.parts.push(part(r, 0xf0e6c8, [x, H - 0.77, cz0 + 0.3])); } k.lamp(x, H - 0.77, cz0 + 0.3, 0xffe2a8, 0.1); k.pool(x, 1.15, cz0 + 0.1, 0.9, 0xffc070); }
     for (const [x, z] of [[X(660), Z(520)], [X(740), Z(560)], [X(760), Z(420)]]) { k.lamp(x, H - 0.01, z, 0xfffbe8, 0.04); k.pool(x, 0, z, 1.8, 0xfff0d0); }
