@@ -565,6 +565,7 @@ export class SquadMember extends Character {
   }
 
   dispose() {
+    Character.ALL.delete(this);
     this.rag.dispose();
     for (const o of [this.fx, this.bubble, this.prop, this.heldItem, ...this.stars]) if (o) this.scene.remove(o);
     if (this.extra) this.extra.forEach(o => this.scene.remove(o));
@@ -841,11 +842,11 @@ export class SquadMember extends Character {
     this.setIdlePose(this.t);
     const done = () => { this.state = 'idle'; this.stateT = 0; this.nextMove = 3; this.onEvent && this.onEvent('acted', this); };
     if (this.approach) {
-      _v2.set(ctx.head.x - this.pos.x, 0, ctx.head.z - this.pos.z);
-      const d = _v2.length();
-      this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 7);
-      if (d > this.approach && this.stateT < 7) { r.moveVel.copy(_v2.normalize()).multiplyScalar(1.4); this.walkPose(dt, 1.4); return; }
-      this.approach = 0; this.stateT = 0;
+      // run over to Ronnie along a proper path round the furniture (re-planned as he moves), then square up
+      const d = this.chaseTo(ctx.head.x, ctx.head.z, dt, 3.3, this.approach);
+      if (d > this.approach && this.stateT < 14) { if (Math.random() < dt * 0.25 && this.speakT <= 0) this.say(['RONNIE!', 'Oi! Ron!', 'Don\'t you move!', 'Stay there, Ronnie!', 'Right, you!'][Math.floor(Math.random() * 5)], 3); return; }
+      this.chase = null; this.approach = 0; this.stateT = 0; this.arriveT = 0.35;
+      g.g && g.g.player && g.g.player.faceToward && g.g.player.faceToward(this.pos.x, this.pos.z, 0.45);   // he turns round to face them
       this.announceT = ANNOUNCE_T;                         // the pop-up first...
       g.announce && g.announce(this, this.attack);
       if (this.attack === 'bbq') this.startAttackProps();  // (Ian gets the barbecue going while you read it)
@@ -853,7 +854,20 @@ export class SquadMember extends Character {
     if (this.announceT > 0) {                              // ...squaring up to Ronnie while it's on screen
       this.announceT -= dt;
       this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 7);
-      r.aim('uArmR', -0.15, 0.25, 1); r.aim('lArmR', -0.05, 0.3, 1);                         // pointing at you
+      const at = ANNOUNCE_T - this.announceT;
+      if (this.arriveT > 0) {                              // skidding to a stop: leaning back, arms out for balance
+        this.arriveT -= dt; const k = this.arriveT / 0.35;
+        r.aim('uLegL', 0.05, -1, 0.45 * k); r.aim('lLegL', 0, -1, 0.5 * k); r.aim('uLegR', -0.05, -1, -0.2 * k); r.aim('lLegR', 0, -1, -0.4 * k);
+        r.aim('uArmL', 0.9, -0.2, 0.2); r.aim('uArmR', -0.9, -0.2, 0.2); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), -0.25 * k); r.bob = -0.05 * k;
+      } else {
+        // squaring up: feet apart, a bounce on the toes, chest out, pointing at him, then beckoning "come on then"
+        const bounce = Math.abs(Math.sin(at * 7)), beck = at > ANNOUNCE_T * 0.55;
+        r.aim('uLegL', 0.16, -1, 0.12); r.aim('lLegL', 0.02, -1, -0.05 + bounce * 0.12); r.aim('uLegR', -0.16, -1, -0.08); r.aim('lLegR', -0.02, -1, -0.15 + bounce * 0.1);
+        r.bob = -0.02 - bounce * 0.025;
+        if (!beck) { r.aim('uArmR', -0.15, 0.25, 1); r.aim('lArmR', -0.05, 0.3, 1); r.aim('uArmL', 0.45, -0.7, 0.3); r.aim('lArmL', -0.4, -0.3, 0.6); }           // pointing at you, other hand on the hip
+        else { const b = Math.sin(at * 10); r.aim('uArmR', -0.3, 0.0, 1); r.aim('lArmR', -0.1, 0.55 + b * 0.35, 0.6 - b * 0.4); r.aim('uArmL', 0.3, 0.0, 1); r.aim('lArmL', 0.1, 0.55 - b * 0.35, 0.6 + b * 0.4); }   // beckoning with both hands
+        r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), -0.12 + Math.sin(at * 7) * 0.03);
+      }
       r.pose.head.setFromAxisAngle(_v.set(1, 0, 0), Math.sin(this.t * 4) * 0.08);
       if (this.attack === 'bbq') this.signPose(this.t, ctx);
       if (this.announceT <= 0) {                           // ...then the attack itself

@@ -41,14 +41,24 @@ export class NavGrid {
     if (s < 0 || t < 0) return null;
     if (s === t) return [new THREE.Vector2(x1, z1)];
     const n = this.nx * this.nz, g = new Float32Array(n).fill(Infinity), came = new Int32Array(n).fill(-1), closed = new Uint8Array(n);
-    const open = [s]; g[s] = 0;
+    // a binary heap of cells ordered by f (fast even across a whole pub)
+    const heap = [], push = (k) => { heap.push(k); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (f[heap[p]] <= f[k]) break; heap[i] = heap[p]; i = p; } heap[i] = k; };
+    const pop = () => {
+      const top = heap[0], last = heap.pop();
+      if (heap.length) { let i = 0; const fl = f[last];
+        for (;;) { const l = 2 * i + 1, r = l + 1; let m = -1, fm = fl;
+          if (l < heap.length && f[heap[l]] < fm) { m = l; fm = f[heap[l]]; }
+          if (r < heap.length && f[heap[r]] < fm) { m = r; }
+          if (m < 0) break; heap[i] = heap[m]; i = m; }
+        heap[i] = last; }
+      return top; };
+    g[s] = 0;
     const tx = t % this.nx, tz = Math.floor(t / this.nx);
     const h = (k) => { const dx = Math.abs(k % this.nx - tx), dz = Math.abs(Math.floor(k / this.nx) - tz); return Math.max(dx, dz) + 0.414 * Math.min(dx, dz); };
-    const f = new Float32Array(n); f[s] = h(s);
+    const f = new Float32Array(n); f[s] = h(s); push(s);
     let found = false, iter = 0;
-    while (open.length && iter++ < 20000) {
-      let bi = 0; for (let i = 1; i < open.length; i++) if (f[open[i]] < f[open[bi]]) bi = i;
-      const k = open[bi]; open[bi] = open[open.length - 1]; open.pop();
+    while (heap.length && iter++ < 40000) {
+      const k = pop();
       if (k === t) { found = true; break; }
       if (closed[k]) continue; closed[k] = 1;
       const ki = k % this.nx, kj = Math.floor(k / this.nx);
@@ -60,7 +70,7 @@ export class NavGrid {
         if (!this.free[m] || closed[m]) continue;
         if (di && dj && (!this.free[kj * this.nx + i] || !this.free[j * this.nx + ki])) continue;   // no corner cutting
         const ng = g[k] + (di && dj ? 1.414 : 1);
-        if (ng < g[m]) { g[m] = ng; came[m] = k; f[m] = ng + h(m); open.push(m); }
+        if (ng < g[m]) { g[m] = ng; came[m] = k; f[m] = ng + h(m); push(m); }
       }
     }
     if (!found) return null;
@@ -74,7 +84,7 @@ export class NavGrid {
       while (b > a + 1 && !this.clear(pts[a], pts[b])) b--;
       out.push(pts[b]); a = b;
     }
-    out[out.length - 1] = new THREE.Vector2(x1, z1);
+    { const tk = this.idx(x1, z1); if (tk >= 0 && this.free[tk]) out[out.length - 1] = new THREE.Vector2(x1, z1); }   // (a goal inside furniture: stop at the nearest free spot instead)
     return out;
   }
   clear(a, b) {

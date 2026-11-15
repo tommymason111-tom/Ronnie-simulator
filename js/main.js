@@ -695,9 +695,9 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && pla
 // the loading screen goes once the first frame of the level has been drawn
 let loadShown = true;
 function hideLoading() { if (!loadShown) return; loadShown = false; const ls = document.getElementById('loadscreen'); if (ls && ls.classList.contains('on')) { ls.classList.add('fade'); setTimeout(() => ls.classList.remove('on', 'fade'), 320); } }
-renderer.setAnimationLoop(() => {
-  if (paused) { clock.getDelta(); renderer.render(scene, camera); return; }    // frozen until RESUME
-  const dt = Math.min(clock.getDelta(), 0.05);
+function frame(simDt) {
+  if (paused && simDt == null) { clock.getDelta(); renderer.render(scene, camera); return; }    // frozen until RESUME
+  const dt = simDt ?? Math.min(clock.getDelta(), 0.05);
   time += dt;
   const xr = renderer.xr.isPresenting;
   if (loadShown && time > 0.15) hideLoading();
@@ -711,7 +711,7 @@ renderer.setAnimationLoop(() => {
     player.setScale(G.scaleFrom + (G.scaleTo - G.scaleFrom) * elasticOut(G.scaleT));
   }
 
-  player.update(dt, time);
+  player.update(dt, time); player.updateFace(dt);
 
   // touch the cabin lightbox in VR to flick to the next message
   if (xr && room.lightbox) { const lp = room.lightbox.mesh.getWorldPosition(_b); for (const h of player.hands) if (h.tracked && h.palm.distanceTo(lp) < 0.14) { if (!room.lightbox.cool) { room.lightbox.next(); sfx('ting', lp, 0.6); h.pulse && h.pulse(0.5, 50); } room.lightbox.cool = 1; } if (room.lightbox.cool) room.lightbox.cool = Math.max(0, room.lightbox.cool - dt) || 0; }
@@ -798,8 +798,9 @@ renderer.setAnimationLoop(() => {
   _b.set(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(_q));
   setListener(player.head, player.fwd, _b);
 
-  renderer.render(scene, camera);
-});
+  if (simDt == null) renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(() => frame());
 
 // Debug handle for testing in a desktop browser console.
-window.RS = { G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat };
+window.RS = { G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)

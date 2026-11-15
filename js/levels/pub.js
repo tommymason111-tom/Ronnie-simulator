@@ -223,7 +223,7 @@ export function buildPub(scene) {
   const put = (geo, color, x, z, ry, lx, y, lz, rx = 0, rz = 0, ry0 = 0) => { geo.rotateZ(rz); geo.rotateX(rx); geo.rotateY(ry0); geo.translate(lx, y, lz); geo.rotateY(ry); geo.translate(x, 0, z); k.parts.push(part(geo, color)); };
   const turned = (h, r) => new THREE.LatheGeometry([[0, 0], [r * 0.8, 0], [r * 0.9, h * 0.06], [r * 0.8, h * 0.14], [r * 1.1, h * 0.2], [r * 0.85, h * 0.27], [r * 0.95, h * 0.45], [r * 1.12, h * 0.52], [r * 0.9, h * 0.58], [r * 0.95, h * 0.9], [r * 1.0, h], [0, h]].map(([a, b]) => new THREE.Vector2(a, b)), 7);
   const bent = (w, h, d, bend) => { const g = new THREE.BoxGeometry(w, h, d, 6, 1, 1), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i) / (w / 2); p.setZ(i, p.getZ(i) + bend * x * x); } g.computeVertexNormals(); return g; };
-  let chairN = 0; const chairsAt = [];
+  let chairN = 0; const chairsAt = [], barSpots = [];
   const pubChair = (x, z, ry) => {
     const C = PINE[chairN % 3], splat = chairN % 3 === 1; chairN++;
     put(new RoundedBoxGeometry(0.44, 0.045, 0.42, 2, 0.015), C, x, z, ry, 0, 0.455, -0.01);                                 // the seat (dished a little)
@@ -427,6 +427,9 @@ export function buildPub(scene) {
     const outer = path.map((p, i) => { const q = path[Math.min(path.length - 1, i + 1)], r = path[Math.max(0, i - 1)], dx = q.x - r.x, dz = q.z - r.z, L = Math.hypot(dx, dz) || 1;
       const w = 1.5 + 0.18 * Math.sin(i * 0.35); return [p.x - (dz / L) * w, p.z + (dx / L) * w]; });
     const front = path.map(p => [p.x, p.z]);
+    // places to stand at the bar (customers' side, facing the counter): for free roam and the punters
+    for (let i = 2; i < path.length - 2; i += 6) { const p = path[i], q = path[i + 1], r2 = path[i - 1], dx = q.x - r2.x, dz = q.z - r2.z, L = Math.hypot(dx, dz) || 1, nx = -dz / L, nz = dx / L;
+      barSpots.push({ x: p.x + nx * 0.62, z: p.z + nz * 0.62, yaw: Math.atan2(-nx, -nz) }); }
     // (the walkway at the end of the bar is slate too)
     flr([...front.slice().reverse(), ...outer.map(([x, z]) => [x, z])], tileTex('#3e3c3a', '#383634', '#262422', 72), 0.9, Math.PI / 4, 30);
     flr([[X(795) - 1.6, Z(1245)], [X(895), Z(1245)], [X(895), Z(1305)], [X(735), Z(1305)], [X(735), Z(1290)]], tileTex('#3e3c3a', '#383634', '#262422', 72), 0.9, Math.PI / 4, 30);
@@ -1462,6 +1465,7 @@ export function buildPub(scene) {
   room.floorAt = pubFloorAt;
   for (const o of scene.children.slice(sceneStart)) if (o.isMesh || o.isInstancedMesh) { o.updateMatrix(); o.updateMatrixWorld(true); o.matrixAutoUpdate = false; }   // (static: no per-frame matrix work)
   room.chairsAt = chairsAt;
+  room.barSpots = barSpots.concat([-6.4, -4.6, -2.8, -1.0, 0.8].map(z => ({ x: -18.1, z, yaw: Math.PI / 2 })));   // (the pub bar, and the restaurant's)
   // From the pub you can only see the restaurant down the corridor, through its doorway in the pub's left wall:
   // anything of the restaurant's outside that line of sight is behind walls, so it isn't drawn.
   { const west = [], bx = new THREE.Box3(), DX = X(195), DZ0 = Z(1090), DZ1 = Z(1145), cam = new THREE.Vector3();

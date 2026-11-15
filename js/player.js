@@ -534,6 +534,19 @@ export class Player {
     for (const h of this.hands) { for (const e of h.hist) e.t = -10; h.vel.set(0, 0, 0); h.speed = 0; }
   }
 
+  // Turn Ronnie round to face someone (an attacker): a quick eased turn of the whole view, in VR or on a phone
+  faceToward(x, z, dur = 0.45) { this.faceGoal = { x, z, t: 0, dur }; }
+  updateFace(dt) {
+    const f = this.faceGoal; if (!f) return;
+    f.t += dt;
+    this.rig.updateMatrixWorld(true); this.camera.getWorldPosition(_v); this.camera.getWorldDirection(_v2);
+    const want = Math.atan2(-(f.x - _v.x), -(f.z - _v.z)), have = Math.atan2(-_v2.x, -_v2.z);
+    let d = want - have; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+    const step = d * Math.min(1, dt * 9 / Math.max(0.2, f.dur));
+    if (this.flatMode) { this.flatYaw += step; this.flatPitch += (-0.12 - this.flatPitch) * Math.min(1, dt * 6); } else this.rotateAroundHead(step);
+    if (Math.abs(d) < 0.02 || f.t > f.dur + 0.6) this.faceGoal = null;
+  }
+
   rotateAroundHead(angle) {
     this.resetHandHistory();
     this.rig.updateMatrixWorld(true);

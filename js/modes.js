@@ -676,13 +676,17 @@ export class Director {
   // Everyone spread right round the place, each doing their own thing (on the sofa, at the darts,
   // by the barbecue, on their phone, having a drink, chatting), and every so often someone gets up
   // and wanders off to do something else.
+  // FREE ROAM: everyone's off doing their own thing. Each of them keeps a loose routine: sit down at a table for a
+  // bit, prop up the bar, wander off somewhere, go and chat to someone else (they face each other and natter),
+  // play darts or table tennis where there is one. They walk everywhere on proper paths, and change what they're
+  // doing every so often, so the place always feels alive.
   startRoam() {
     const g = this.g, room = g.room, squad = this.cast.filter(c => c !== g.tommy && !c.tillJob);
     let acts = (room.activities || []).map(a => ({ ...a }));
+    const pool = room.nav ? room.nav.sampleSpots(70, 1.2) : room.tommySpots.slice();
     if (acts.length < squad.length + 3) {
       // spread spots right across the map (farthest-point sampling over the free hang-out spots)
-      const pool = room.nav ? room.nav.sampleSpots(60, 1.2) : room.tommySpots.slice(), picked = [];
-      const head = g.player.head;
+      const picked = [], head = g.player.head;
       let cur = pool.reduce((b, s) => Math.hypot(s.x - head.x, s.y - head.z) > Math.hypot(b.x - head.x, b.y - head.z) ? s : b, pool[0]);
       while (cur && picked.length < squad.length + 4 - acts.length) {
         picked.push(cur);
@@ -692,34 +696,65 @@ export class Director {
       const POSES = ['phone', 'drink', 'watch', 'chat', 'stand', 'phone', 'drink'];
       picked.forEach((s, i) => acts.push({ x: s.x, z: s.y, yaw: Math.random() * 6.28, pose: POSES[i % POSES.length] }));
     }
+    // seats at the tables, and places at the bar
+    const chairs = shuffle((room.chairsAt || []).slice()).slice(0, 36);
+    for (const [x, z, ry] of chairs) acts.push({ x, z, yaw: ry + Math.PI, pose: 'sit', seat: true });
+    for (const b of room.barSpots || []) acts.push({ x: b.x, z: b.z, yaw: b.yaw, pose: 'drink', bar: true });
+    this.roamPool = pool;
     this.roamActs = shuffle(acts);
-    for (const c of squad) { const a = this.roamActs.find(a => !a.who); if (!a) break; this.takeAct(c, a, true); c.roamT = 25 + Math.random() * 40; }
+    for (const c of squad) { const a = this.roamActs.find(a => !a.who && !a.seat); if (!a) break; this.takeAct(c, a, true); c.roamT = 8 + Math.random() * 20; }
   }
   takeAct(c, a, now) {
     for (const o of this.roamActs) if (o.who === c) o.who = null;
-    a.who = c; c.roamAct = a; c.active = false; c.lookOverride = null; c.seated = false; c.activity = null;
-    if (now) this.settleAct(c); else { c.roamGoing = true; c.goTo(a.x, a.z, 0.8); }
+    if (c.chatWith) { const o = c.chatWith; c.chatWith = null; if (o.chatWith === c) { o.chatWith = null; o.roamT = Math.min(o.roamT, 2 + Math.random() * 3); } }
+    a.who = c; c.roamAct = a; c.active = false; c.lookOverride = null; c.seated = false; c.activity = null; c.faceYaw = null;
+    if (now) this.settleAct(c); else { c.roamGoing = true; c.goTo(a.x, a.z, a.pace || (0.85 + Math.random() * 0.3)); }
   }
   settleAct(c) {
     const a = c.roamAct; c.roamGoing = false;
-    c.state = 'idle'; c.stateT = 0; c.rag.placeAt(a.x, a.z, a.yaw); c.faceYaw = a.yaw;
-    c.seated = a.pose === 'sit' || a.pose === 'lounge'; c.activity = a.pose;
+    c.state = 'idle'; c.stateT = 0;
+    if (a.seat || a.pose === 'lounge' || Math.hypot(c.pos.x - a.x, c.pos.z - a.z) > 0.5) c.rag.placeAt(a.x, a.z, a.yaw);   // (into the chair; or they couldn't quite get there)
+    c.faceYaw = a.yaw;
+    c.seated = a.pose === 'sit' || a.pose === 'lounge'; c.activity = a.pose === 'stand' || a.pose === 'wander' ? null : a.pose;
+    if (a.partner) { const o = a.partner; c.faceYaw = Math.atan2(o.pos.x - c.pos.x, o.pos.z - c.pos.z); }
+  }
+  // what next? (sometimes a chat with someone, sometimes a wander, otherwise somewhere new to sit or stand)
+  nextRoam(c) {
+    const others = this.cast.filter(o => o !== c && o !== this.g.tommy && o.roamAct && !o.roamGoing && !o.down && !o.chatWith && !o.seated && !o.stayPut && o.state === 'idle' && Math.hypot(o.pos.x - c.pos.x, o.pos.z - c.pos.z) < 14);
+    const r = Math.random();
+    if (r < 0.3 && others.length) {                         // go and talk to someone: stand in front of them, both turn to face
+      const o = others[Math.floor(Math.random() * others.length)], op = o.pos;
+      const a0 = Math.random() * 6.28; let spot = null;
+      for (let k = 0; k < 8 && !spot; k++) { const a = a0 + k * 0.785, x = op.x + Math.sin(a) * 0.95, z = op.z + Math.cos(a) * 0.95, nav = this.g.room.nav; if (!nav || nav.free[nav.idx(x, z)]) spot = { x, z }; }
+      if (spot) {
+        const act = { x: spot.x, z: spot.z, yaw: Math.atan2(op.x - spot.x, op.z - spot.z), pose: 'chat', partner: o, temp: true };
+        this.roamActs.push(act); this.takeAct(c, act, false);
+        c.chatWith = o; o.chatWith = c; o.faceYaw = Math.atan2(spot.x - op.x, spot.z - op.z); o.activity = 'chat'; o.roamT = Math.max(o.roamT, 14);
+        c.roamT = 12 + Math.random() * 10; return; }
+    }
+    if (r < 0.5 && this.roamPool && this.roamPool.length) {   // a wander: off somewhere else for a look round
+      const s = this.roamPool[Math.floor(Math.random() * this.roamPool.length)];
+      const act = { x: s.x, z: s.y, yaw: Math.random() * 6.28, pose: Math.random() < 0.5 ? 'wander' : 'phone', temp: true };
+      this.roamActs.push(act); this.takeAct(c, act, false); c.roamT = 7 + Math.random() * 8; return;
+    }
+    const free = this.roamActs.filter(a => !a.who && !a.temp); if (!free.length) return;
+    free.sort((p, q) => Math.hypot(p.x - c.pos.x, p.z - c.pos.z) - Math.hypot(q.x - c.pos.x, q.z - c.pos.z));
+    const a = free[Math.floor(Math.random() * Math.min(8, free.length))];
+    this.takeAct(c, a, false); c.roamT = (a.seat ? 25 : 15) + Math.random() * 20;
   }
   updateRoam(dt) {
     if (!this.roamActs) return;
+    this.roamActs = this.roamActs.filter(a => !a.temp || a.who);           // (one-off spots go once nobody's using them)
     for (const c of this.cast) {
       if (!c.roamAct || c.down) continue;
       if (c.roamGoing && c.state === 'idle') this.settleAct(c);
       if (c.roamGoing || c.state !== 'idle') continue;
       // knocked out of their seat? back into it
       if (c.seated && Math.hypot(c.pos.x - c.roamAct.x, c.pos.z - c.roamAct.z) > 0.3) this.settleAct(c);
+      if (c.chatWith && c.chatWith.chatWith === c) { const o = c.chatWith; c.faceYaw = Math.atan2(o.pos.x - c.pos.x, o.pos.z - c.pos.z); c.activity = 'chat';
+        if ((c.chatTalkT = (c.chatTalkT || 3 + Math.random() * 4) - dt) <= 0) { c.chatTalkT = 5 + Math.random() * 6; if (o.speakT <= 0 && Math.hypot(c.pos.x - this.g.player.head.x, c.pos.z - this.g.player.head.z) < 9) c.say('chatter', 1); } }
       if (c.stayPut) continue;          // (the knee)
-      if ((c.roamT -= dt) <= 0) {
-        c.roamT = 30 + Math.random() * 45;
-        const free = this.roamActs.filter(a => !a.who); if (!free.length) continue;
-        free.sort((p, q) => Math.hypot(p.x - c.pos.x, p.z - c.pos.z) - Math.hypot(q.x - c.pos.x, q.z - c.pos.z));
-        this.takeAct(c, free[Math.floor(Math.random() * Math.min(4, free.length))], false);
-      }
+      if ((c.roamT -= dt) <= 0) this.nextRoam(c);
     }
   }
 

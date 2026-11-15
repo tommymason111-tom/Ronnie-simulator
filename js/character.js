@@ -10,12 +10,13 @@ import { sfx, babble } from './audio.js';
 import { TUNING } from './config.js';
 import { Item } from './foods.js';
 
-const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion();
+const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
 export const KO_IMPULSE = 6;          // N·s — anything harder than this knocks someone out
 
 let starTex = null;
 
 export class Character {
+  static ALL = new Set();          // everyone currently in the level (for steering round each other)
   // cfg: { id, name, color, body: {h, sw, girth, limb}, banks: { bank: [lines] }, spawn: [x, z, yaw] }
   constructor(scene, room, physics, cfg) {
     this.scene = scene;
@@ -28,6 +29,7 @@ export class Character {
     this.dialogue = new Dialogue();
     this.banks = cfg.banks || {};
     this.rag = new Ragdoll(scene, physics, cfg.body || {});
+    Character.ALL.add(this);
     this.koMul = cfg.koMul || 1;
 
     this.fx = new THREE.Group(); scene.add(this.fx);
@@ -227,34 +229,84 @@ export class Character {
   }
 
   // ---------------- poses (target directions in their own frame, +Z = forward) ----------------
+  // Standing about: breathing, the weight slowly shifting from one leg to the other (hip drops, the other knee
+  // softens), arms hanging and swaying with it, and every so often a little fidget of their own.
   setIdlePose(t) {
-    const r = this.rag, breathe = Math.sin(t * 1.6) * 0.012, sway = Math.sin(t * 0.7) * 0.02;
-    r.aim('uArmL', 0.1, -1, 0.0 + sway); r.aim('lArmL', 0.05, -1, 0.14);
-    r.aim('uArmR', -0.1, -1, 0.0 - sway); r.aim('lArmR', -0.05, -1, 0.14);
-    r.aim('uLegL', 0.015, -1, 0); r.aim('lLegL', 0.0, -1, 0.02);
-    r.aim('uLegR', -0.015, -1, 0); r.aim('lLegR', 0.0, -1, 0.02);
-    r.pose.pelvis.identity(); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), breathe);
-    r.bob = 0;
+    const r = this.rag, ph = this.idPhase ?? (this.idPhase = ((this.id || 'x').charCodeAt(0) * 0.37) % 6.28);
+    const breathe = Math.sin(t * 1.55 + ph) * 0.016, sway = Math.sin(t * 0.7 + ph) * 0.025;
+    const w = Math.sin(t * 0.33 + ph) , shift = Math.sign(w) * Math.min(1, Math.abs(w) * 2.2);     // which leg the weight's on (-1..1), held, then swapped
+    const kL = shift > 0 ? 0.18 * shift : 0, kR = shift < 0 ? -0.18 * shift : 0;
+    r.aim('uArmL', 0.1 + shift * 0.02, -1, 0.02 + sway); r.aim('lArmL', 0.05, -1, 0.16 + sway * 0.6);
+    r.aim('uArmR', -0.1 + shift * 0.02, -1, 0.02 - sway); r.aim('lArmR', -0.05, -1, 0.16 - sway * 0.6);
+    r.aim('uLegL', 0.02 - shift * 0.035, -1, kL * 0.5); r.aim('lLegL', 0.0, -1, -kL * 0.6 + 0.02);
+    r.aim('uLegR', -0.02 - shift * 0.035, -1, kR * 0.5); r.aim('lLegR', 0.0, -1, -kR * 0.6 + 0.02);
+    r.pose.pelvis.setFromAxisAngle(_v.set(0, 0, 1), -shift * 0.045);                       // the hip drops on the relaxed side
+    _q.setFromAxisAngle(_v.set(0, 0, 1), shift * 0.035); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), breathe).premultiply(_q);
+    r.bob = -0.008 * Math.abs(shift);
+    if (this.state === 'idle' && !(this.speakT > 0)) this.fidget(t);
+  }
+  // Little things people do while they wait: look round the room, scratch their head, check the time, stretch,
+  // rub their hands, put their hands on their hips, fold their arms. One at a time, eased in and out.
+  fidget(t) {
+    const r = this.rag;
+    if (this.fidgetT == null) { this.fidgetT = 3 + Math.random() * 6; this.fidgetK = null; }
+    if (!this.fidgetK) { if (t > (this.fidgetAt ?? (this.fidgetAt = t + this.fidgetT))) { this.fidgetK = ['look', 'scratch', 'watch', 'stretch', 'rub', 'hips', 'fold', 'look', 'nod'][Math.floor(Math.random() * 9)]; this.fidgetS = t; this.fidgetD = 1.8 + Math.random() * 2.2; this.fidgetSide = Math.random() < 0.5 ? -1 : 1; } return; }
+    const u = (t - this.fidgetS) / this.fidgetD;
+    if (u >= 1) { this.fidgetK = null; this.fidgetAt = t + 4 + Math.random() * 8; this.headExtra = null; return; }
+    const e = Math.min(1, u / 0.18, (1 - u) / 0.18), s = this.fidgetSide;
+    const mixAim = (n, x, y, z) => { const p = r.target ? null : null; r.aim(n, x, y, z); };
+    switch (this.fidgetK) {
+      case 'look': this.headExtra = { yaw: s * 0.9 * e * Math.sin(Math.min(1, u * 1.4) * Math.PI), pitch: -0.05 * e }; break;
+      case 'nod': this.headExtra = { yaw: 0, pitch: Math.sin(u * 18) * 0.12 * e }; break;
+      case 'scratch': if (e > 0.3) { mixAim('uArmR', -0.55, 0.55, 0.3); mixAim('lArmR', 0.6, 0.5 + Math.sin(t * 22) * 0.12, -0.3); this.headExtra = { yaw: 0.1, pitch: 0.12 }; } break;
+      case 'watch': if (e > 0.3) { mixAim('uArmL', 0.25, -0.75, 0.55); mixAim('lArmL', -0.75, 0.35, 0.5); this.headExtra = { yaw: 0.35, pitch: 0.42 }; } break;
+      case 'stretch': if (e > 0.3) { mixAim('uArmL', 0.35, 1, -0.1); mixAim('lArmL', -0.1, 1, 0); mixAim('uArmR', -0.35, 1, -0.1); mixAim('lArmR', 0.1, 1, 0); r.pose.chest.premultiply(_q.setFromAxisAngle(_v.set(1, 0, 0), -0.18 * e)); this.headExtra = { yaw: 0, pitch: -0.3 * e }; } break;
+      case 'rub': if (e > 0.3) { const k = Math.sin(t * 16) * 0.08; mixAim('uArmL', 0.15, -0.75, 0.55); mixAim('lArmL', -0.9, 0.05 + k, 0.45); mixAim('uArmR', -0.15, -0.75, 0.55); mixAim('lArmR', 0.9, 0.05 - k, 0.45); } break;
+      case 'hips': if (e > 0.3) { mixAim('uArmL', 0.8, -0.6, -0.1); mixAim('lArmL', -0.7, -0.6, 0.1); mixAim('uArmR', -0.8, -0.6, -0.1); mixAim('lArmR', 0.7, -0.6, 0.1); } break;
+      case 'fold': if (e > 0.3) { mixAim('uArmL', 0.2, -1, 0.35); mixAim('lArmL', -1, 0.15, 0.3); mixAim('uArmR', -0.2, -1, 0.35); mixAim('lArmR', 1, 0.2, 0.3); } break;
+    }
+  }
+  // stepping round on the spot when they turn a long way (not sliding round on their heels)
+  turnSteps(dt, dyaw) {
+    const r = this.rag; this.turnPh = (this.turnPh || 0) + dt * 11 * Math.min(1, Math.abs(dyaw) * 1.5);
+    const sL = Math.max(0, Math.sin(this.turnPh)), sR = Math.max(0, -Math.sin(this.turnPh));
+    r.aim('uLegL', 0.03, -1, 0.35 * sL); r.aim('lLegL', 0, -1, -0.25 * sL); r.aim('uLegR', -0.03, -1, 0.35 * sR); r.aim('lLegR', 0, -1, -0.25 * sR);
+    r.bob = -0.012 * (sL + sR);
   }
   // each character can override this for their own idle (flexing, filming, holding a pint...)
   personalityPose(t) {}
+  // talking with their hands: both hands go, palms out on the big words, a nod or a head tilt now and then
   talkPose(t) {
-    const g = Math.sin(t * 5);
-    this.rag.aim('uArmL', 0.55, -0.55, 0.45); this.rag.aim('lArmL', 0.2, 0.15 + g * 0.25, 1);
+    const g = Math.sin(t * 5), g2 = Math.sin(t * 3.7 + 1), beat = Math.max(0, Math.sin(t * 2.3));
+    this.rag.aim('uArmL', 0.5 + g2 * 0.1, -0.55, 0.45); this.rag.aim('lArmL', 0.25 + beat * 0.3, 0.15 + g * 0.25, 1);
+    if (Math.sin(t * 0.9) > -0.2) { this.rag.aim('uArmR', -0.45 - g * 0.08, -0.6, 0.4); this.rag.aim('lArmR', -0.3 - beat * 0.25, 0.1 + g2 * 0.25, 1); }
+    this.rag.pose.chest.premultiply(_q.setFromAxisAngle(_v.set(0, 1, 0), g2 * 0.06));
+    this.headExtra = { yaw: Math.sin(t * 1.3) * 0.12, pitch: Math.sin(t * 6.1) * 0.05 + beat * 0.05 };
   }
   // phase advances with distance walked, so feet don't slide
+  // The walk, blending into a run with speed: stride length and knee lift grow, the swing knee folds on the way
+  // through and straightens to strike the heel, the stance knee gives a little on landing, the hips sway and
+  // twist against the shoulders, arms swing from the shoulder with the elbows bending more as they go faster,
+  // the body leans into it and bobs twice a stride, and the head steadies itself.
   walkPose(dt, speed = 0.9) {
-    const r = this.rag, legLen = r.height * 0.5, A = 0.38;
-    this.walkPhase = (this.walkPhase || 0) + dt * speed * Math.PI / (2 * legLen * Math.sin(A));
+    const r = this.rag, legLen = r.height * 0.5, run = THREE.MathUtils.clamp((speed - 1.6) / 1.4, 0, 1);
+    const A = 0.36 + run * 0.16;
+    this.walkPhase = (this.walkPhase || 0) + dt * speed * Math.PI / (2 * legLen * Math.sin(A) * (1 + run * 0.35));
     const ph = this.walkPhase, s = Math.sin(ph), c = Math.cos(ph);
-    const kneeL = Math.max(0, -c) * 0.55, kneeR = Math.max(0, c) * 0.55;   // swing leg bends its knee
-    r.aim('uLegL', 0.015, -1, Math.tan(A * s)); r.aim('lLegL', 0, -1, Math.tan(A * s) - kneeL);
-    r.aim('uLegR', -0.015, -1, -Math.tan(A * s)); r.aim('lLegR', 0, -1, -Math.tan(A * s) - kneeR);
-    r.aim('uArmL', 0.1, -1, -0.35 * s); r.aim('lArmL', 0.05, -1, 0.2 - 0.25 * s);
-    r.aim('uArmR', -0.1, -1, 0.35 * s); r.aim('lArmR', -0.05, -1, 0.2 + 0.25 * s);
-    r.pose.chest.setFromAxisAngle(_v.set(0, 1, 0), s * 0.08);
-    r.pose.pelvis.setFromAxisAngle(_v.set(0, 1, 0), -s * 0.06);
-    r.bob = -Math.abs(s) * 0.025 * r.height / 1.68 + 0.01;
+    const lift = 0.55 + run * 0.9;
+    const swingL = Math.max(0, -c), swingR = Math.max(0, c);                        // which leg is swinging through
+    const kneeL = swingL * lift + Math.max(0, s) * 0.08 * (1 - run), kneeR = swingR * lift + Math.max(0, -s) * 0.08 * (1 - run);
+    const hipL = Math.tan(A * s) + swingL * run * 0.35, hipR = -Math.tan(A * s) + swingR * run * 0.35;
+    r.aim('uLegL', 0.02, -1, hipL); r.aim('lLegL', 0, -1, hipL - kneeL);
+    r.aim('uLegR', -0.02, -1, hipR); r.aim('lLegR', 0, -1, hipR - kneeR);
+    const arm = 0.38 + run * 0.45, elbow = 0.22 + run * 0.95;
+    r.aim('uArmL', 0.12 + run * 0.05, -1, -arm * s); r.aim('lArmL', 0.05, -1 + elbow * 0.6, elbow - 0.3 * s);
+    r.aim('uArmR', -0.12 - run * 0.05, -1, arm * s); r.aim('lArmR', -0.05, -1 + elbow * 0.6, elbow + 0.3 * s);
+    _q.setFromAxisAngle(_v.set(1, 0, 0), 0.04 + run * 0.2);                           // lean into it
+    r.pose.chest.setFromAxisAngle(_v.set(0, 1, 0), s * (0.09 + run * 0.06)).premultiply(_q);
+    r.pose.pelvis.setFromAxisAngle(_v.set(0, 1, 0), -s * (0.07 + run * 0.04)).premultiply(_q2.setFromAxisAngle(_v.set(0, 0, 1), s * 0.04 * (1 - run)));
+    r.bob = (-Math.abs(s) * (0.028 + run * 0.03) + 0.012 + run * 0.025 * Math.abs(c)) * r.height / 1.68;
+    this.headExtra = { yaw: -s * 0.05, pitch: -0.03 - run * 0.12 };                  // head stays level and looks ahead
   }
   flailPose(t) {
     const r = this.rag;
@@ -263,15 +315,23 @@ export class Character {
     r.aim('uLegL', 0.1, -1, Math.sin(t * 12) * 0.9); r.aim('uLegR', -0.1, -1, -Math.sin(t * 12) * 0.9);
     r.aim('lLegL', 0, -1, Math.sin(t * 12 + 1) * 0.6); r.aim('lLegR', 0, -1, -Math.sin(t * 12 + 1) * 0.6);
   }
+  // winding up: weight back on the rear leg, the chest turned away, the throwing arm cocked back, the other arm out front aiming
   windupPose() {
-    const r = this.rag;
-    r.aim('uArmR', -0.25, 0.75, -0.6); r.aim('lArmR', -0.1, 0.6, -0.8);
-    r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), -0.15);
+    const r = this.rag, k = Math.min(1, this.stateT / 0.35);
+    r.aim('uArmR', -0.3, 0.7, -0.7 * k); r.aim('lArmR', -0.1, 0.75, -0.85 * k);
+    r.aim('uArmL', 0.25, 0.05, 1); r.aim('lArmL', 0.1, 0.1, 1);
+    r.aim('uLegL', 0.05, -1, 0.3 * k); r.aim('lLegL', 0, -1, 0.25 * k); r.aim('uLegR', -0.03, -1, -0.15 * k); r.aim('lLegR', 0, -1, -0.32 * k);
+    r.pose.chest.setFromAxisAngle(_v.set(0, 1, 0), 0.45 * k).premultiply(_q.setFromAxisAngle(_v.set(1, 0, 0), -0.18 * k));
+    r.pose.pelvis.setFromAxisAngle(_v.set(0, 1, 0), 0.2 * k); r.bob = -0.03 * k;
   }
+  // the throw: stepping into it, hips and chest whipping round, the arm coming through and following through low
   throwPose() {
-    const r = this.rag;
-    r.aim('uArmR', -0.15, 0.1, 1); r.aim('lArmR', -0.1, -0.2, 1);
-    r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), 0.2);
+    const r = this.rag, k = Math.min(1, this.stateT / 0.18);
+    r.aim('uArmR', -0.15 + 0.3 * k, 0.1 - 0.5 * k, 1); r.aim('lArmR', -0.1 + 0.35 * k, -0.2 - 0.5 * k, 1);
+    r.aim('uArmL', 0.4, -0.8, -0.2); r.aim('lArmL', 0.2, -0.6, 0.3);
+    r.aim('uLegL', 0.05, -1, 0.45); r.aim('lLegL', 0, -1, 0.3); r.aim('uLegR', -0.03, -1, -0.35); r.aim('lLegR', 0, -1, -0.55);
+    r.pose.chest.setFromAxisAngle(_v.set(0, 1, 0), -0.4 * k).premultiply(_q.setFromAxisAngle(_v.set(1, 0, 0), 0.32 * k));
+    r.pose.pelvis.setFromAxisAngle(_v.set(0, 1, 0), -0.22 * k); r.bob = -0.04;
   }
 
   // ---------------- behaviour ----------------
@@ -296,10 +356,11 @@ export class Character {
         if (this.stateT > 1.0 + (this.cfg.enterDelay || 0)) { this.say('greet'); this.state = 'idle'; this.stateT = 0; }
         break;
       case 'idle':
+        if (this.headExtra && !this.fidgetK && !(this.speakT > 0)) this.headExtra = null;
         this.setIdlePose(this.t);
         this.personalityPose(this.t);
         if (this.speakT > 0 && !this.cfg.noTalkPose) this.talkPose(this.t);
-        this.turnTo(this.faceYaw ?? toPlayerYaw, dt, 3);
+        { const want = this.faceYaw ?? toPlayerYaw, dy = wrapAngle(want - r.yaw); if (Math.abs(dy) > 0.35 && !this.seated && !this.activity) this.turnSteps(dt, dy); this.turnTo(want, dt, 3); }
         if (!this.active) break;
         this.nextMove -= dt;
         this.idleTick && this.idleTick(dt, ctx);
@@ -326,9 +387,10 @@ export class Character {
           }
           this.walkProbe = { t: this.walkT, x: pos.x, z: pos.z, tries: 0 };
         }
+        _v2.normalize(); this.steer(_v2, pos);                                           // edge round anyone in the way
         this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 6);
         const sp = (this.walkSpeed || 0.9) * 1.15;   // a touch brisker than a stroll
-        r.moveVel.copy(_v2.normalize()).multiplyScalar(Math.min(sp, d * 2.5));
+        r.moveVel.copy(_v2).multiplyScalar(Math.min(sp, d * 2.5));
         this.walkPose(dt, r.moveVel.length());
         break;
       }
@@ -372,8 +434,11 @@ export class Character {
     // head turns smoothly to look at the player (within reason)
     if (!this.down) {
       const rel = this.lookOverride != null ? this.lookOverride : THREE.MathUtils.clamp(wrapAngle(toPlayerYaw - r.yaw), -0.8, 0.8);
-      this.headYaw = (this.headYaw || 0) + (rel - (this.headYaw || 0)) * Math.min(1, dt * 5);
-      r.pose.head.setFromAxisAngle(_v.set(0, 1, 0), this.headYaw);
+      const hx = this.headExtra || { yaw: 0, pitch: 0 };
+      this.headYaw = (this.headYaw || 0) + (rel + hx.yaw - (this.headYaw || 0)) * Math.min(1, dt * 5);
+      this.headPitch = (this.headPitch || 0) + ((hx.pitch || 0) - (this.headPitch || 0)) * Math.min(1, dt * 6);
+      r.pose.head.setFromAxisAngle(_v.set(0, 1, 0), this.headYaw).multiply(_q.setFromAxisAngle(_v.set(1, 0, 0), this.headPitch));
+      if (this.state !== 'idle' && this.state !== 'walk') this.headExtra = null;
       this.applyFlinch(dt);
     }
     // animated characters walk by moving their feet (root); ragdolls are left to physics
@@ -391,6 +456,38 @@ export class Character {
     if (this.heldItem && this.heldItem.visible) r.grip('lArmR', this.heldItem.position);
   }
 
+  // Local avoidance: people (and Ronnie) just ahead push the walking direction sideways, so two people meeting in a
+  // gap pass each other instead of walking into one another. dir is a unit vector, changed in place.
+  steer(dir, pos, extra = null) {
+    let sx = 0, sz = 0;
+    const consider = (ox, oz, rad) => { const dx = ox - pos.x, dz = oz - pos.z, d = Math.hypot(dx, dz); if (d < 0.05 || d > rad) return;
+      const ahead = (dx * dir.x + dz * dir.z) / d; if (ahead < 0.2) return;
+      const side = Math.sign(dx * dir.z - dz * dir.x) || 1, w = (1 - d / rad) * ahead;          // step to whichever side they're not on
+      sx += -dir.z * side * w; sz += dir.x * side * w; };
+    for (const o of Character.ALL) { if (o === this || o.down || !o.rag.mesh) continue; const p = o.pos; consider(p.x, p.z, 1.1); }
+    if (extra) consider(extra.x, extra.z, 1.0);
+    if (sx || sz) { dir.x -= sx * 0.9; dir.z -= sz * 0.9; const l = Math.hypot(dir.x, dir.z) || 1; dir.x /= l; dir.z /= l; }
+    return dir;
+  }
+  // Follow a nav path toward a moving goal (Ronnie), re-planning a few times a second; returns the distance left.
+  chaseTo(gx, gz, dt, speed, stopAt) {
+    const pos = this.pos, nav = this.room.nav, r = this.rag;
+    const c = this.chase || (this.chase = { t: 0, path: null, probeT: 0, px: pos.x, pz: pos.z, stuck: 0 });
+    const dist = Math.hypot(gx - pos.x, gz - pos.z);
+    if (dist <= stopAt) { this.chase = null; return dist; }
+    c.t -= dt;
+    if (c.t <= 0 || !c.path || !c.path.length) { c.t = 0.45; c.path = nav ? nav.path(pos.x, pos.z, gx, gz) : null; if (!c.path || !c.path.length) c.path = [new THREE.Vector2(gx, gz)]; }
+    let wp = c.path[0]; while (c.path.length > 1 && Math.hypot(wp.x - pos.x, wp.y - pos.z) < 0.25) { c.path.shift(); wp = c.path[0]; }
+    _v2.set(wp.x - pos.x, 0, wp.y - pos.z); if (_v2.lengthSq() < 1e-6) _v2.set(gx - pos.x, 0, gz - pos.z);
+    _v2.normalize(); this.steer(_v2, pos);
+    this.turnTo(Math.atan2(_v2.x, _v2.z), dt, 9);
+    const sp = Math.min(speed, Math.max(1.0, (dist - stopAt) * 3));                       // slow up as they arrive
+    r.moveVel.copy(_v2).multiplyScalar(sp);
+    this.walkPose(dt, sp);
+    // stuck on something? a sidestep and a fresh plan
+    c.probeT += dt; if (c.probeT > 0.8) { const moved = Math.hypot(pos.x - c.px, pos.z - c.pz); if (moved < 0.15) { c.stuck++; c.t = 0; const a = Math.random() * 6.28; r.root.x += Math.cos(a) * 0.12; r.root.z += Math.sin(a) * 0.12; } else c.stuck = 0; c.probeT = 0; c.px = pos.x; c.pz = pos.z; }
+    return dist;
+  }
   turnTo(yaw, dt, speed) { this.rag.yaw += wrapAngle(yaw - this.rag.yaw) * Math.min(1, dt * speed); }
 
   yawFromBody() {
