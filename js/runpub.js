@@ -16,12 +16,12 @@ const RONNIE_SPOT = { x: 3.6, z: -6.45 };
 // what people order: where it comes from (the station), what counts, and what it costs
 const ORDERS = {
   guinness: { name: 'GUINNESS', icon: '🍺', guin: true, price: 5.8, booze: true, lines: ['Pint of the black stuff.', 'A GUINNESS, please. Let it settle.', 'Stout, landlord. Proper pour.'], ok: (it) => it.type === 'pint', from: 'glasses', make: 'tap', vessel: 'glass', how: 'pint glass → hold it under the GUINNESS tap' },
-  lager: { name: 'LAGER', icon: '🍺', price: 4.8, booze: true, lines: ['Bottle of lager please, son.', 'Lager. A cold one.', 'Lager, landlord.'], ok: (it) => it.type === 'beer', from: 'lager', how: 'take a bottle from the LAGER fridge' },
-  cider: { name: 'CIDER', icon: '🍏', price: 5.0, booze: true, lines: ['Cider please. Over ice if you\'ve got it.', 'Bottle of cider, mate.', 'Cider. It\'s basically fruit.'], ok: (it) => it.type === 'cider', from: 'cider', how: 'take a bottle from the CIDER fridge' },
+  lager: { name: 'LAGER', icon: '🍺', price: 4.8, booze: true, lines: ['Bottle of lager please, son.', 'Lager. A cold one.', 'Lager, landlord.'], ok: (it) => it.type === 'beer', from: 'lager', how: 'a bottle from the LAGER ice bucket on the back counter' },
+  cider: { name: 'CIDER', icon: '🍏', price: 5.0, booze: true, lines: ['Cider please. Over ice if you\'ve got it.', 'Bottle of cider, mate.', 'Cider. It\'s basically fruit.'], ok: (it) => it.type === 'cider', from: 'cider', how: 'a bottle from the CIDER ice bucket on the back counter' },
   wine: { name: 'WINE', icon: '🍷', price: 6.5, booze: true, lines: ['Large glass of wine please, love.', 'Glass of red, please.', 'White wine. Large. It\'s been a week.'], ok: (it) => it.type === 'wine', from: 'wine', how: 'grab a glass off the back counter' },
   coffee: { name: 'COFFEE', icon: '☕', price: 3.2, lines: ['A coffee, please. Driving.', 'Flat white? Just coffee then.', 'Coffee, strong as you like.'], ok: (it) => it.type === 'coffee', from: 'mugs', make: 'coffee', vessel: 'mug', how: 'a mug → hold it under the COFFEE MACHINE' },
-  cola: { name: 'COKE', icon: '🥤', price: 2.8, soft: true, lines: ['A Coke, please!', 'Can I have a Coke?', 'Coke. With ice!'], ok: (it) => it.type === 'soft' && it.variant === 0, from: 'cups', make: 'gun', vessel: 'cup', how: 'a cup → hold the soft-drink gun over it, on COKE' },
-  fanta: { name: 'FANTA', icon: '🍊', price: 2.8, soft: true, lines: ['Fanta please!', 'Orange Fanta!', 'Can I have a Fanta? Please?'], ok: (it) => it.type === 'soft' && it.variant === 1, from: 'cups', make: 'gun', vessel: 'cup', how: 'a cup → hold the soft-drink gun over it, on FANTA' },
+  cola: { name: 'COKE', icon: '🥤', price: 2.8, soft: true, lines: ['A Coke, please!', 'Can I have a Coke?', 'Coke. With ice!'], ok: (it) => it.type === 'soft' && it.variant === 0, from: 'cups', make: 'gun', vessel: 'cup', how: 'hold a cup, tap the soft-drink gun, pick up your Coke' },
+  fanta: { name: 'FANTA', icon: '🍊', price: 2.8, soft: true, lines: ['Fanta please!', 'Orange Fanta!', 'Can I have a Fanta? Please?'], ok: (it) => it.type === 'soft' && it.variant === 1, from: 'cups', make: 'gun', vessel: 'cup', how: 'hold a cup, tap the soft-drink gun, pick up your Fanta' },
   monstor: { name: 'MONSTOR', icon: '⚡', price: 3.5, lines: ['MONSTOR. The green one.', 'Got any MONSTOR?', 'A MONSTOR, I\'ve got work tomorrow.'], ok: (it) => it.type === 'can', from: 'monstor', how: 'take a can from the MONSTOR fridge' },
 };
 const MENU = { old: ['guinness', 'guinness', 'lager', 'lager', 'cider', 'coffee'], dad: ['lager', 'guinness', 'cider', 'coffee'], mum: ['wine', 'wine', 'coffee', 'cider'], lad: ['lager', 'cider', 'monstor', 'guinness'], kid: ['cola', 'fanta'], hool: ['lager'] };
@@ -144,6 +144,12 @@ export class RunPub {
     g.showBanner('RUN THE PUB', 'SERVE THE PUNTERS');
   }
 
+  // how many of you are running the pub (multiplayer: busier, less patient punters, more going on)
+  np() { const n = window.ronnieMP && window.ronnieMP.net; return n && n.connected ? 1 + n.players.size : 1; }
+  // phone / computer: holding a drink, tap the person to hand it over
+  tapGive(ray) { const P = this.g.player, it = P.flatHolder && P.flatHolder.held; if (!it || !isDrink(it)) return false;
+    let best = null, bd = 0.45; for (const c of this.waiting()) { for (const p of [c.rag.pos('chest', new THREE.Vector3()), c.headPos(new THREE.Vector3())]) { const along = p.clone().sub(ray.origin).dot(ray.direction); if (along < 0 || along > 5) continue; const d = Math.sqrt(ray.distanceSqToPoint(p)); if (d < bd) { bd = d; best = c; } } }
+    if (!best) return false; this.giveTo = best; this.giveIt = it; setTimeout(() => { this.giveTo = null; }, 300); return true; }
   // ------------------------------------------------------------------ helpers
   plate() { const g = new THREE.Group(); g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.015, 18), new THREE.MeshLambertMaterial({ color: 0xffffff })));
     const food = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 6), new THREE.MeshLambertMaterial({ color: 0xc8863a })); food.scale.set(1.2, 0.5, 1); food.position.y = 0.03; g.add(food);
@@ -193,9 +199,9 @@ export class RunPub {
     }
     this.bar.update(dt); this.guide(); this.drawOrders(dt);
     // new punters: fill up to 6 early on, then keep it busy (up to 10)
-    const elapsed = 360 - (this.d.timeLeft || 0), cap = Math.min(10, 4 + Math.floor(elapsed / 30));
+    const np = this.np(), elapsed = 360 - (this.d.timeLeft || 0), cap = Math.min(10 + 4 * (np - 1), 4 + Math.floor(elapsed / 30) + 2 * (np - 1));
     if ((this.spawnT -= dt) <= 0) {
-      this.spawnT = 5 + Math.random() * 7;
+      this.spawnT = (5 + Math.random() * 7) / Math.pow(np, 0.7);
       const n = this.punters.filter(p => p.rp.kind !== 'hool').length;
       if (n < cap) { const r = Math.random(); if (r < 0.55) this.arrive('old'); else if (r < 0.78 && n < cap - 2) this.arriveFamily(); else this.arriveLads(); }
     }
@@ -210,7 +216,7 @@ export class RunPub {
       if (st) st.say(R([`Ron! ${wait.name}'s been waiting AGES!`, 'Ronnie, customers! CUSTOMERS!', 'Don\'t look at me, Ron, I\'m on my break.', 'Chop chop, Ronnie!']), 3); }
     if (this.jobs) this.jobs.update(dt);
     // events
-    if (!this.event && (this.eventT -= dt) <= 0) { this.eventT = 55 + Math.random() * 35; this.startEvent(); }
+    if (!this.event && (this.eventT -= dt) <= 0) { this.eventT = (45 + Math.random() * 30) / Math.sqrt(this.np()); this.startEvent(); }
     if (this.event) this.eventTick(dt);
     this.rating = THREE.MathUtils.clamp(this.rating, 0, 5);
   }
@@ -268,10 +274,10 @@ export class RunPub {
         const chest = c.rag.pos('chest', new THREE.Vector3());
         for (const it of held) {
           let ok;
-          if (P.flatMode) { const dx = chest.x - P.head.x, dz = chest.z - P.head.z, d = Math.hypot(dx, dz); ok = d < 2.5 && (dx * P.fwd.x + dz * P.fwd.z) / (d * Math.hypot(P.fwd.x, P.fwd.z) || 1) > 0.55; }   // across the bar, looking at them
+          if (P.flatMode) ok = this.giveTo === c && it === this.giveIt;                                                  // (phone: you tapped them)
           else ok = it.pos.distanceTo(chest) < 0.6;                                                                     // VR: hold it out to them
           if (ok) { this.deliver(c, it, null, false); return; } }
-        for (const it of this.g.items.items) if (isDrink(it) && !it.heldBy && !it.shelf && it.pos.distanceTo(chest) < 0.55) { this.deliver(c, it, null, true); return; }      // (thrown at them)
+        { const head = c.headPos(new THREE.Vector3()); for (const it of this.g.items.items) if (isDrink(it) && !it.heldBy && !it.shelf && (it.pos.distanceTo(chest) < 0.8 || it.pos.distanceTo(head) < 0.6)) { this.deliver(c, it, null, true); return; } }      // (thrown at them)
         // out of patience: they don't leave, they just get angrier and angrier (and louder), right there at the bar
         if (rp.wait >= rp.patience) { if (!rp.fuming) { rp.fuming = true; this.walkouts++; this.rating -= 0.25; sfx('sadviolin', c.pos, 0.5); c.say('angry', 4); }
           this.rating -= dt * 0.006; if ((rp.moanT = (rp.moanT || 6) - dt) <= 0) { rp.moanT = 7 + Math.random() * 5; c.say(R(['STILL WAITING, RONNIE!', 'Any time TONIGHT, mate!', 'I\'ve grown a beard waiting here!', 'Is anyone actually WORKING?', 'I could\'ve brewed it myself by now!']), 3); } }
@@ -291,7 +297,7 @@ export class RunPub {
     let key = R(MENU[rp.kind] || MENU.old); rp.kidBooze = false;
     if (kid && Math.random() < 0.3) { key = R(['lager', 'cider', 'guinness']); rp.kidBooze = true; }       // a kid trying their luck
     const o = ORDERS[key];
-    rp.order = o; rp.orderKey = key; rp.wait = 0; rp.patience = rp.kind === 'old' ? 46 : 56; rp.moaned = false; rp.phase = 'waiting';
+    rp.order = o; rp.orderKey = key; rp.wait = 0; rp.patience = (rp.kind === 'old' ? 46 : 56) / (1 + 0.12 * (this.np() - 1)); rp.moaned = false; rp.phase = 'waiting';
     c.state = 'idle'; c.faceYaw = rp.spot.yaw; c.say(rp.kidBooze ? R(['Pint of lager please. I\'m eighteen. Honest.', 'A cider. For my... dad.', 'Can I get a GUINNESS? I\'ve got ID. At home.']) : R(o.lines), 4);
     let tag = this.tags.get(c); if (!tag) { tag = orderTag(); this.tags.set(c, tag); this.g.scene.add(tag); } tag.visible = true; rp.tagT = 0;
   }
@@ -321,13 +327,14 @@ export class RunPub {
   // ------------------------------------------------------------------ what to do next: the arrow and the orders list
   waiting() { return this.punters.filter(c => c.rp.phase === 'waiting').sort((a, b) => (b.rp.wait / b.rp.patience) - (a.rp.wait / a.rp.patience)); }
   guide() {
-    const next = this.waiting()[0], bar = this.bar; if (!next) { bar.arrowAt = null; return; }
-    const o = next.rp.kidBooze ? ORDERS.cola : next.rp.order, held = bar.held();
+    const bar = this.bar, held = bar.held(), want = {}, LOGO = { guinness: '🍺', lager: '🍻', cider: '🍏', wine: '🍷', coffee: '☕', cola: '🥤', fanta: '🍊', monstor: '⚡' };
+    for (const c of this.waiting()) { const key = c.rp.kidBooze ? 'cola' : c.rp.orderKey, o = ORDERS[key]; if (!o) continue;
+      if (held.some(i => o.ok(i))) continue; let st = o.from; if (o.make && held.some(i => i.type === o.vessel)) st = o.make === 'gun' ? 'gun' : o.make; want[st] = want[st] || LOGO[key]; }
+    bar.setMarks(want);
+    const next = this.waiting().find(c => held.some(i => (c.rp.kidBooze ? ORDERS.cola : c.rp.order).ok(i) || (c.rp.kidBooze && i.def.drink && !i.def.booze))) || this.waiting()[0]; if (!next) { bar.arrowAt = null; return; }
+    const o = next.rp.kidBooze ? ORDERS.cola : next.rp.order;
     if (held.some(i => o.ok(i) || (next.rp.kidBooze && i.def.drink && !i.def.booze))) { bar.arrowAt = next.headPos(new THREE.Vector3()).add({ x: 0, y: 0.25, z: 0 }); return; }   // got it: take it to them
-    let st = o.from;
-    if (o.make && held.some(i => i.type === o.vessel)) st = o.make;                // got the glass / mug / cup: now go and fill it
-    if (o.make === 'gun' && held.some(i => i.type === 'sodagun')) st = 'cups';
-    bar.arrowAt = bar.st[st] && bar.st[st].at;
+    bar.arrowAt = null;                 // (the stations have their own markers: make them in any order you like)
   }
   buildOrdersUI() {
     // phone / PC: a little table of orders under the HUD
@@ -363,7 +370,6 @@ export class RunPub {
     this.d.hook(c); g.cast.push(c); c.dropIn = { t: 60 + Math.random() * 60, phase: 'in' }; c.active = false;
     const b = this.freeBarSpot(c.pos); if (b) { this.barTaken.set(b, c); c.dropIn.spot = b; c.goTo(b.x, b.z, 1.0); }
     setTimeout(() => c.say(R(['Alright Ronnie! Didn\'t know you worked here!', 'RONNIE! Pint please, mate. On the house?', 'Ron! Look at you, behind a bar. Brave.', 'Heard you were working. Had to see it.']), 4), 1200);
-    g.showBanner(c.name.toUpperCase() + ' HAS POPPED IN', 'SERVE HIM FIRST?');
   }
   dropInTick(c, dt) {
     const d = c.dropIn; d.t -= dt; if (c.down) return;
@@ -388,7 +394,10 @@ export class RunPub {
 
   // ------------------------------------------------------------------ it's kicking off
   startEvent() {
-    const g = this.g, r = Math.random(); this.events++;
+    const g = this.g, r0 = Math.random(); this.events++;
+    // the newer trouble: a spilt pint, blocked loos, the fuse going, a hen party
+    if (r0 < 0.45) { const k = R(['spill', 'loo', 'power', 'hen']); if (this.startEvent2(k)) return; }
+    const r = Math.random();
     if (r < 0.45) {                                   // a fight: three lads squaring up in the middle of the pub
       const spot = { x: -1.8 + Math.random() * 2.5, z: -1.5 + Math.random() * 3 }, hs = [this.add('hool'), this.add('hool'), this.add('hool')];
       hs.forEach((c, i) => { c.rp.phase = 'brawl'; const a = i / 3 * Math.PI * 2; c.rp.brawlAt = { x: spot.x + Math.sin(a) * 0.75, z: spot.z + Math.cos(a) * 0.75 }; c.goTo(c.rp.brawlAt.x, c.rp.brawlAt.z, 1.6); });
@@ -409,9 +418,38 @@ export class RunPub {
       g.showBanner(k2.name.toUpperCase() + ' IS RUNNING RIOT', 'CATCH THE KID');
     }
   }
+  startEvent2(kind) {
+    const g = this.g, V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    if (kind === 'spill') { const sp = R(this.g.room.tommySpots.filter(s => s.x > -9.5 && s.x < 2 && s.y < 7.8 && s.y > -8.8)); if (!sp) return false;
+      const grp = new THREE.Group(); const pud = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshLambertMaterial({ color: 0x8a5a1a, transparent: true, opacity: 0.8, depthWrite: false })); pud.rotation.x = -Math.PI / 2; pud.position.y = 0.02; pud.scale.set(1, 0.7, 1); grp.add(pud);
+      const sign = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.55, 4, 1, true), new THREE.MeshLambertMaterial({ color: 0xffd400, side: THREE.DoubleSide })); sign.position.set(0.5, 0.28, 0); sign.rotation.y = Math.PI / 4; grp.add(sign);
+      const gl = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.032, 0.15, 12), new THREE.MeshLambertMaterial({ color: 0xdfe8ee, transparent: true, opacity: 0.6 })); gl.rotation.z = Math.PI / 2; gl.position.set(-0.2, 0.05, 0.1); grp.add(gl);
+      grp.position.set(sp.x, 0, sp.y); g.scene.add(grp);
+      this.event = { kind, t: 0, at: V3(sp.x, 0, sp.y), need: 2.5, hold: 0, limit: 45, grp, who: [] }; g.showBanner('A PINT\'S GONE OVER!', 'MOP IT UP BEFORE SOMEONE SLIPS'); sfx('smash', this.event.at, 0.7); return true; }
+    if (kind === 'loo') { this.event = { kind, t: 0, at: V3(-7.97, 0, -11.8), need: 3, hold: 0, limit: 50, who: [] }; g.showBanner('THE TOILETS ARE BLOCKED!', 'GET IN THERE WITH THE PLUNGER'); sfx('bleurgh', null, 0.6); return true; }
+    if (kind === 'power') { const hemi = g.room.hemi; this.event = { kind, t: 0, at: V3(6.8, 0, -2.0), need: 2, hold: 0, limit: 40, who: [], hemi0: hemi ? hemi.intensity : null };
+      if (hemi) hemi.intensity *= 0.3; const fb = new THREE.Group(); const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.12), new THREE.MeshLambertMaterial({ color: 0x7a7f87 })); box.position.y = 1.45; fb.add(box);
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.06), new THREE.MeshLambertMaterial({ color: 0x222222 })); post.position.y = 0.65; fb.add(post); const front = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.42), new THREE.MeshBasicMaterial({ color: 0xffd400 })); front.position.set(0, 1.45, 0.061); fb.add(front);
+      fb.position.set(6.8 + 0.6, 0, -2.0); g.scene.add(fb); this.event.grp = fb; g.showBanner('THE FUSE HAS GONE!', 'RESET IT IN THE STAFF ROOM'); sfx('thud', null, 1); return true; }
+    if (kind === 'hen') { const who = []; for (let i = 0; i < 4; i++) setTimeout(() => { const c = this.arrive('mum'); c.rp.thirst = 1 + i * 0.6; c.hen = true; who.push(c); if (i === 0) c.say('WOOOO! HEN DO! FOUR PROSECCOS!', 4); }, i * 500);
+      this.event = { kind, t: 0, who, limit: 80 }; g.showBanner('HEN PARTY!', 'FOUR OF THEM. ALL WANT SERVING NOW.'); sfx('fanfare', null, 0.7); return true; }
+    return false;
+  }
+  // the ones you sort out by going there and staying put for a moment (mop / plunger / reset the fuse)
+  holdEvent(dt) { const e = this.event, g = this.g, P = g.player, d = Math.hypot(P.head.x - e.at.x, P.head.z - e.at.z);
+    if (d < 1.3) { e.hold += dt; if (Math.floor(e.hold * 3) !== Math.floor((e.hold - dt) * 3)) { sfx(e.kind === 'power' ? 'clink' : 'squish', e.at, 0.5); g.words.show(e.kind === 'spill' ? '*MOP MOP*' : e.kind === 'loo' ? '*PLUNGE*' : '*CLICK*', e.at.clone().setY(1.4), '#29b6ff', 0.07, 0.5); } }
+    else e.hold = Math.max(0, e.hold - dt);
+    if (e.hold >= e.need) { const at = P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 });
+      this.pay(e.kind === 'spill' ? 4 : 6, at, e.kind === 'spill' ? 'MOPPED! +£4' : e.kind === 'loo' ? 'UNBLOCKED! +£6' : 'LIGHTS BACK ON! +£6'); this.rating += 0.25; this.endEvent2(); return; }
+    this.rating -= dt * (e.kind === 'power' ? 0.03 : 0.015);
+    if (e.t > e.limit) { this.rating -= 0.4; g.showBanner(e.kind === 'spill' ? 'SOMEONE SLIPPED IN IT' : e.kind === 'loo' ? 'THE TOILETS FLOODED' : 'THEY DRANK IN THE DARK', 'THE PUNTERS ARE NOT HAPPY'); this.endEvent2(); } }
+  endEvent2() { const e = this.event; if (e.grp) this.g.scene.remove(e.grp); if (e.hemi0 !== null && e.hemi0 !== undefined && this.g.room.hemi) this.g.room.hemi.intensity = e.hemi0; this.event = null; }
   arriveFamilyKid() { this.arriveFamily(); return this.punters.find(p => p.rp.kind === 'kid'); }
   eventTick(dt) {
     const e = this.event, g = this.g, P = g.player; e.t += dt;
+    if (e.kind === 'spill' || e.kind === 'loo' || e.kind === 'power') return this.holdEvent(dt);
+    if (e.kind === 'hen') { const live = e.who.filter(c => !c.disposed); if (e.who.length === 4 && live.every(c => c.rp.drinks > 0)) { this.pay(12, P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 }), 'HEN PARTY SORTED! +£12'); this.rating += 0.4; this.event = null; }
+      else if (e.t > e.limit) { this.rating -= 0.3; this.event = null; } return; }
     if (e.kind === 'fight') {
       const live = e.who.filter(c => !c.disposed && !e.knocked.has(c));
       for (const c of live) { if (c.down) continue;
@@ -467,6 +505,6 @@ export class RunPub {
       [stars >= 4 ? 'Lewis: "Bro. Landlord of the year, bro."' : stars >= 2.5 ? 'Aidan: "Not bad. Let it settle next time."' : 'Chloe: "Babe. You ate the profits."', ''],
     ];
   }
-  cleanup() { if (this.jobs) { this.jobs.dispose(); this.jobs = null; } const its = this.g.items; if (its) { its.drinksOnly = false; its.minFood = this.g.room.big ? 150 : 0; }
+  cleanup() { if (this.event && this.endEvent2 && this.event.hemi0 !== undefined) this.endEvent2(); if (this.jobs) { this.jobs.dispose(); this.jobs = null; } const its = this.g.items; if (its) { its.drinksOnly = false; its.minFood = this.g.room.big ? 150 : 0; }
     if (this.bar) this.bar.dispose(); if (this.ordersEl) this.ordersEl.remove(); if (this.wrist) this.g.scene.remove(this.wrist); for (const id of Object.keys(SQUAD)) if (/^p\d+$/.test(id)) delete SQUAD[id]; for (const t of this.tags.values()) this.g.scene.remove(t); this.tags.clear(); for (const c of this.cast) if (c.plate) { this.g.scene.remove(c.plate); c.plate = null; } }
 }

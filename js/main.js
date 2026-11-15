@@ -533,6 +533,7 @@ const touch = setupTouch({
     const ray = raycaster.ray, reach = 3 * player.scale;
     if (director.tapBoard(ray) || director.tapBubble(ray)) return;
     if (MEDIA_ON && music.tap(ray, reach)) return;                       // the music button on the speakers / DJ deck
+    if (director.runpub && director.runpub.tapGive && director.runpub.tapGive(ray)) return;   // Run the Pub: holding a drink, tap someone to give it to them
     if (director.runpub && director.runpub.bar && director.runpub.bar.tap(ray)) return;   // Run the Pub: the tap, the coffee machine, the soft-drink gun
     if (MEDIA_ON && tvs.hitTV(ray, reach)) return;                        // a telly: put a video on it
     // the lightbox sign in Lewis's cabin: tap it to write your own message

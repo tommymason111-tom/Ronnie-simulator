@@ -363,6 +363,7 @@ export function buildPub(scene) {
   // fonts and hand pumps, a foot rail on little posts; one open space behind it (in at the right-hand end,
   // through the flap), a tiled back bar with optics under cream arched panelling, globe lights on the canopy
   const OAK1 = 0x8a5a30, OAK2 = 0x9a6a3a, OAKD = 0x5a3418, TOPC = 0x5a3216, CHROMEC = 0xd8dce0, RAILC = 0x6a5a3a;
+  const underBottles = [];          // every bottle in the underbar (speed rail, fridges): drawn together at the end
   const counter = (ax, ay, bx, by, depth = 0.55, side = 1) => {
     const x0 = X(ax), z0 = Z(ay), x1 = X(bx), z1 = Z(by), dx = x1 - x0, dz = z1 - z0, L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L, ry = Math.atan2(-dz, dx);
     const nx = -uz * side, nz = ux * side;      // into the bar
@@ -385,15 +386,58 @@ export function buildPub(scene) {
     for (let s2 = 0.3; s2 < L; s2 += 0.9) { const [px, pz] = at(s2, -0.2); k.cyl(0.012, 0.016, 0.13, px, 0.065, pz, RAILC, 8); bx2(0.025, 0.025, 0.2, s2, 0.14, -0.1, RAILC); }
     for (let s2 = 0; s2 <= L; s2 += 0.18) { const [x, z] = at(s2, depth / 2); blk(x - depth / 2, z - depth / 2, x + depth / 2, z + depth / 2, 1.1); k.colliders.push({ min: new THREE.Vector3(x - 0.15, 1.0, z - 0.15), max: new THREE.Vector3(x + 0.15, 1.12, z + 0.15) }); }
     for (let s2 = 0.6; s2 < L - 0.3; s2 += 1.3) { const [x, z] = at(s2, 0.25); k.spawns.push(new THREE.Vector3(x, 1.2, z)); }
-    // glass shelf, glasses and the glass washer under the bar on the staff side
-    bx2(L - 0.1, 0.03, 0.25, L / 2, 0.55, depth + 0.12, 0x6a4a2a);
-    for (let s2 = 0.15; s2 < L - 0.1; s2 += 0.09) { const [px, pz] = at(s2, depth + 0.12); k.cyl(0.032, 0.026, 0.14, px, 0.64, pz, 0xd8eef2, 8); }
+    // the UNDERBAR: the staff side of the counter fitted out like a real one (nothing loose, nothing floating): a dark
+    // carcass with a stainless top, glass-door fridges with real bottles in, open bays with the beer kegs (their lines
+    // running up into the counter), a sink with a mixer tap, an ice well, a speed rail of spirits and racks of glasses
+    { const U0 = depth, UD = 0.42, uc = U0 + UD / 2, UT = 0.92, face = U0 + UD;
+      const glass = new THREE.MeshLambertMaterial({ color: 0xdff0f4, transparent: true, opacity: 0.16, depthWrite: false }), steel = 0xc8ccd2;
+      bx2(L - 0.16, 0.06, UD, L / 2, 0.03, uc, 0x2e2018); bx2(L - 0.16, UT - 0.02, 0.03, L / 2, (UT - 0.02) / 2, U0 + 0.015, 0x2e2018);      // floor and back (bays are built one by one)
+      bx2(L - 0.12, 0.03, UD + 0.05, L / 2, UT, uc + 0.01, steel);
+      bx2(L - 0.16, 0.08, 0.02, L / 2, 0.04, face + 0.005, 0x161616);
+      for (let s2 = 0.08; s2 <= L - 0.08; s2 += 0.18) { const [x, z] = at(s2, uc); blk(x - UD / 2, z - UD / 2, x + UD / 2, z + UD / 2, 0.96); }
+      const bays = Math.max(1, Math.floor((L - 0.2) / 0.62)), bw = (L - 0.2) / bays, KINDS = ['fridge', 'kegs', 'sink', 'fridge', 'cupboard', 'ice', 'kegs', 'fridge'];
+      for (let i = 0; i < bays; i++) {
+        const sc = 0.1 + (i + 0.5) * bw, kind = KINDS[(i + (L > 4 ? 0 : 3)) % KINDS.length], dw = bw - 0.06;
+        bx2(0.03, UT - 0.06, UD, sc - bw / 2 + 0.015, (UT - 0.06) / 2 + 0.04, uc, 0x1a120c);                                   // the uprights between bays
+        if (kind !== 'fridge' && kind !== 'kegs') bx2(bw - 0.03, UT - 0.08, UD - 0.02, sc, (UT - 0.08) / 2 + 0.05, uc, 0x2e2018);   // a solid cupboard
+        if (kind === 'fridge') {
+          bx2(dw, 0.62, 0.012, sc, 0.43, U0 + 0.04, 0xcfe6ff); bx2(dw, 0.02, UD - 0.04, sc, 0.76, uc, 0x0c0e10);           // the lit back of it, the top inside
+          for (const y of [0.17, 0.45]) bx2(dw, 0.012, 0.11, sc, y, face - 0.06, 0xd8e8f0);                             // shelves
+          for (const y of [0.17, 0.45]) for (let s3 = sc - dw / 2 + 0.05; s3 < sc + dw / 2 - 0.03; s3 += 0.072) { const [x, z] = at(s3, face - 0.06); underBottles.push([x, y + 0.006, z, [0x2e6a1a, 0x6a3a12, 0xe8e0c8, 0x1a4a2a, 0xc87a1a][Math.floor(s3 * 37) % 5]]); }
+          const [gx, gz] = at(sc, face + 0.008); const gd = new THREE.Mesh(new THREE.BoxGeometry(dw, 0.64, 0.008), glass); gd.position.set(gx, 0.43, gz); gd.rotation.y = ry; gd.renderOrder = 3; scene.add(gd);
+          for (const y of [0.11, 0.75]) bx2(dw, 0.03, 0.02, sc, y, face + 0.01, 0x111111); bx2(0.28, 0.02, 0.02, sc, 0.7, face + 0.025, CHROMEC);
+        } else if (kind === 'kegs') {
+          bx2(dw, 0.8, 0.012, sc, 0.42, U0 + 0.02, 0x181210);                                                             // open bay: dark inside
+          for (const o of dw > 0.5 ? [-0.14, 0.14] : [0]) { const [x, z] = at(sc + o, uc + 0.02); k.cyl(0.12, 0.12, 0.56, x, 0.31, z, 0xb8bcc2, 18);
+            for (const y of [0.07, 0.56]) k.cyl(0.124, 0.124, 0.02, x, y, z, 0x9aa0a6, 18); k.cyl(0.035, 0.035, 0.05, x, 0.615, z, 0x1f4fbf, 10);
+            k.cyl(0.008, 0.008, 0.26, x, 0.77, z, 0x222222, 6); }
+        } else if (kind === 'sink') {
+          const [x, z] = at(sc, uc); k.box(dw - 0.1, 0.012, UD - 0.12, x, UT + 0.012, z, 0x7a8088, { rot: [0, ry, 0] });            // the basin, set in the top
+          const [tx, tz] = at(sc, U0 + 0.06); k.cyl(0.012, 0.012, 0.26, tx, UT + 0.14, tz, CHROMEC, 8); { const sp = new THREE.CylinderGeometry(0.01, 0.01, 0.14, 8); sp.rotateX(Math.PI / 2); sp.rotateY(ry); const [sx2, sz2] = at(sc, U0 + 0.12); k.parts.push(part(sp, CHROMEC, [sx2, UT + 0.27, sz2])); }
+          bx2(dw, 0.72, 0.02, sc, 0.45, face + 0.008, 0x4a3020); bx2(0.12, 0.02, 0.02, sc, 0.72, face + 0.022, CHROMEC);
+        } else if (kind === 'ice') {
+          const [x, z] = at(sc, uc); k.box(dw - 0.1, 0.02, UD - 0.12, x, UT + 0.02, z, 0xf4fbff, { rot: [0, ry, 0] }); for (let n = 0; n < 14; n++) { const [ix, iz] = at(sc - dw / 2 + 0.1 + (n % 7) * (dw - 0.2) / 6, uc - 0.06 + Math.floor(n / 7) * 0.12); k.box(0.03, 0.03, 0.03, ix, UT + 0.04, iz, 0xe8f6fa); }
+          bx2(dw, 0.72, 0.02, sc, 0.45, face + 0.008, 0x4a3020); bx2(0.12, 0.02, 0.02, sc, 0.72, face + 0.022, CHROMEC);
+        } else { bx2(dw, 0.72, 0.02, sc, 0.45, face + 0.008, 0x4a3020); bx2(dw - 0.08, 0.6, 0.012, sc, 0.45, face + 0.02, 0x5a3a26); bx2(0.12, 0.02, 0.02, sc, 0.72, face + 0.03, CHROMEC); }
+      }
+      // the speed rail (spirits, standing in a steel trough on the front, on the first stretch), glasses racked on the top
+      const r0 = 0.2, r1 = Math.min(L - 0.2, 0.2 + Math.max(0.6, L * 0.3));
+      bx2(r1 - r0, 0.05, 0.07, (r0 + r1) / 2, 0.63, face + 0.045, 0xb8bcc2);
+      for (let s2 = r0 + 0.04; s2 < r1 - 0.03; s2 += 0.075) { const [x, z] = at(s2, face + 0.045); underBottles.push([x, 0.6, z, [0x6a1a1a, 0xd4a017, 0xe8e8e8, 0x2e5a2a, 0x8a4a1a, 0x1f3f8a][Math.floor(s2 * 13.3) % 6]]); }
+      for (let s2 = Math.max(r1 + 0.2, L * 0.55); s2 < L - 0.2; s2 += 0.09) for (const o of [uc - 0.09, uc + 0.09]) { const [px, pz] = at(s2, o); k.cyl(0.032, 0.026, 0.14, px, UT + 0.085, pz, 0xd8eef2, 8); }
+      { const s0 = Math.max(r1 + 0.15, L * 0.55) - 0.06, s1 = L - 0.15; if (s1 > s0) bx2(s1 - s0, 0.008, 0.36, (s0 + s1) / 2, UT + 0.019, uc, 0x1e5a32); }
+    }
     return { x0, z0, ux, uz, nx, nz, L, ry, at };
   };
   const bar1 = counter(695, 605, 695, 845, 0.55, -1);
   const bar2 = counter(695, 845, 735, 965, 0.55, -1);
   counter(735, 965, 795, 985, 0.55, -1);
   const bar4 = counter(795, 985, 795, 1230, 0.36, -1);
+  // (all the underbar's bottles, and the back-bar fridges' too: one instanced body, shoulder and neck each, standing upright)
+  const drawBottles = (list) => { if (!list.length) return; const m4 = new THREE.Matrix4(), col = new THREE.Color();
+    for (const [geo, y0] of [[new THREE.CylinderGeometry(0.03, 0.03, 0.17, 10), 0.085], [new THREE.CylinderGeometry(0.012, 0.03, 0.05, 10), 0.195], [new THREE.CylinderGeometry(0.012, 0.012, 0.05, 8), 0.245]]) {
+      const im = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial(), list.length);
+      list.forEach(([x, y, z, c], i) => { m4.makeTranslation(x, y + y0, z); im.setMatrixAt(i, m4); im.setColorAt(i, col.setHex(c)); }); im.instanceMatrix.needsUpdate = true; scene.add(im); } };
   // the fonts: chrome T-bars with round blue and white badges, and a few hand pumps with clips
   const font = (b, s2) => { const [x, z] = b.at(s2, 0.3);
     k.cyl(0.04, 0.045, 0.04, x, 1.1, z, CHROMEC, 12); k.cyl(0.022, 0.022, 0.32, x, 1.28, z, CHROMEC, 10);
@@ -443,7 +487,16 @@ export function buildPub(scene) {
     const zc = (za + zb) / 2, len = zb - za;
     if (deep) {
       R(W - 0.55, za, W, zb, 0.88, 0.44, 0x4a2c18, { collide: true, block: true });
-      for (let z = za + 0.05; z < zb - 0.6; z += 0.66) if (!skip.some(([a, b]) => z + 0.62 > a && z < b)) k.label('fridge', 0.6, 0.72, [W - 0.555, 0.44, z + 0.32], [0, -Math.PI / 2, 0], { tex: fridgeDoor, glow: true });
+      // the bottle fridges along the bottom: proud of the counter a little, lit inside, two shelves of real bottles behind a
+      // glass door (frame, handle)
+      const fglass = new THREE.MeshLambertMaterial({ color: 0xdff0f4, transparent: true, opacity: 0.14, depthWrite: false });
+      for (let z = za + 0.05; z < zb - 0.6; z += 0.66) if (!skip.some(([a, b]) => z + 0.62 > a && z < b)) {
+        const zc2 = z + 0.32; R(W - 0.68, zc2 - 0.3, W - 0.55, zc2 + 0.3, 0.02, 0.07, 0x0c0e10); R(W - 0.68, zc2 - 0.3, W - 0.55, zc2 + 0.3, 0.02, 0.79, 0x0c0e10);   // the cabinet (floor, top)
+        R(W - 0.559, zc2 - 0.27, W - 0.555, zc2 + 0.27, 0.62, 0.43, 0xcfe6ff);                                                  // lit back
+        for (const y of [0.15, 0.45]) { R(W - 0.68, zc2 - 0.27, W - 0.56, zc2 + 0.27, 0.012, y, 0xd8e8f0); for (let dz = -0.22; dz <= 0.23; dz += 0.074) underBottles.push([W - 0.62, y + 0.006, zc2 + dz, [0x2e6a1a, 0x6a3a12, 0xe8e0c8, 0xc87a1a, 0x1a4a2a][Math.floor((dz + 1) * 31 + y * 7) % 5]]); }
+        const gd = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.66), fglass); gd.position.set(W - 0.684, 0.43, zc2); gd.rotation.y = -Math.PI / 2; gd.renderOrder = 3; scene.add(gd);
+        for (const y of [0.08, 0.78]) R(W - 0.69, zc2 - 0.3, W - 0.68, zc2 + 0.3, 0.03, y, 0x111111); for (const dz of [-0.29, 0.29]) R(W - 0.69, zc2 + dz - 0.01, W - 0.68, zc2 + dz + 0.01, 0.72, 0.43, 0x111111);
+        R(W - 0.71, zc2 + 0.2, W - 0.69, zc2 + 0.23, 0.32, 0.45, CHROMEC); }
       R(W - 0.6, za, W, zb, 0.04, 0.9, 0x6a4a2a, { collide: true });
       for (let z = za + 0.2; z < zb - 0.1; z += 0.5) k.spawns.push(new THREE.Vector3(W - 0.3, 0.98, z));
     }
@@ -480,9 +533,25 @@ export function buildPub(scene) {
   }
   // the working side of the counter: a speed rail of spirits, shakers, a garnish tray (lemons, limes), a stack of trays,
   // boxes of crisps and nuts, a glass-washer basket, bar blades, a radio, a pint glass tower, under-counter fridges
+  // ---- the GLASS WASHER, in the back room: a stainless worktop against the wall with the washer built in under it
+  // (a door with a window onto a rack of glasses, a green display, steam), dirty-glass trays on one side, clean
+  // racks on the other, and a big sign so you can't miss it
+  { const wx = X(1045) - 0.33, wz = 3.5, WL = 1.6;
+    R(wx - 0.33, wz - WL / 2, wx + 0.33, wz + WL / 2, 0.88, 0.44, 0x9aa0a6, { collide: true, block: true }); R(wx - 0.35, wz - WL / 2 - 0.02, wx + 0.35, wz + WL / 2 + 0.02, 0.04, 0.9, 0xd0d4da);
+    R(wx - 0.345, wz - 0.32, wx - 0.335, wz + 0.32, 0.7, 0.42, 0x6a7078); R(wx - 0.35, wz - 0.24, wx - 0.344, wz + 0.24, 0.34, 0.5, 0x1c2a36);      // the washer door and its window
+    for (let i = 0; i < 6; i++) k.cyl(0.03, 0.025, 0.1, wx - 0.2, 0.5, wz - 0.2 + i * 0.08, 0xdfeef4, 8);                                    // glasses inside
+    R(wx - 0.355, wz - 0.3, wx - 0.345, wz - 0.12, 0.06, 0.8, 0x111111); k.box(0.006, 0.03, 0.12, wx - 0.358, 0.8, wz - 0.21, 0x39ff14);    // the display: WASHING
+    R(wx - 0.37, wz - 0.25, wx - 0.35, wz + 0.25, 0.03, 0.12, 0xc8ccd0);                                                                    // the handle
+    for (let i = 0; i < 12; i++) k.cyl(0.032, 0.026, 0.14, wx - 0.15 + (i % 3) * 0.09, 0.99, wz + 0.42 + Math.floor(i / 3) * 0.09, 0xd8eef2, 8);   // clean, racked
+    R(wx - 0.3, wz - 0.75, wx + 0.1, wz - 0.4, 0.02, 0.93, 0x2a2a2a); for (let i = 0; i < 5; i++) k.cyl(0.03, 0.025, 0.14, wx - 0.2 + (i % 3) * 0.08, 1.0, wz - 0.65 + Math.floor(i / 3) * 0.12, 0xc9b890, 8);   // dirty ones waiting
+    for (let i = 0; i < 4; i++) { const st = new THREE.Mesh(new THREE.SphereGeometry(0.05 + i * 0.015, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, depthWrite: false })); st.position.set(wx - 0.3, 1.0 + i * 0.12, wz - 0.02 * i); scene.add(st); }
+    const c = document.createElement('canvas'); c.width = 512; c.height = 160; const g = c.getContext('2d'); g.fillStyle = '#0b2a4a'; g.beginPath(); g.roundRect(6, 6, 500, 148, 24); g.fill(); g.lineWidth = 8; g.strokeStyle = '#7fd3ff'; g.stroke();
+    g.font = '900 64px Arial Black, Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText('🫧 GLASS WASHER', 256, 72); g.font = '700 26px Arial'; g.fillStyle = '#9fe0ff'; g.fillText('EMPTIES IN HERE · 65°C', 256, 128);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.44), new THREE.MeshBasicMaterial({ map: t })); sg.position.set(X(1045) - 0.02, 1.75, wz); sg.rotation.y = -Math.PI / 2; scene.add(sg);
+    k.room_glassWasher = new THREE.Vector3(wx - 0.85, 0, wz); }
+  drawBottles(underBottles);
   for (const b of [bar1, bar4]) {
-    for (let s2 = 0.4; s2 < b.L - 0.3; s2 += 0.07) { const [x, z] = b.at(s2, 0.68); k.cyl(0.03, 0.03, 0.22, x, 0.82, z, [0x6a1a1a, 0xd4a017, 0xe8e8e8, 0x2e5a2a, 0x8a4a1a, 0x1f3f8a][Math.round(s2 * 14) % 6], 8); k.cyl(0.011, 0.011, 0.05, x, 0.955, z, 0x333333, 6); }
-    { const [x, z] = b.at(b.L * 0.6, 0.66); R(x - 0.06, z - 0.06, x + 0.06, z + 0.06, 0.4, 0.5, 0x3a3e44); }
+    // (the speed rail is part of the underbar now)
     for (let s2 = 0.9; s2 < b.L - 0.6; s2 += 1.6) { const [x, z] = b.at(s2, 0.43);
       R(x - 0.15, z - 0.08, x + 0.15, z + 0.08, 0.03, 1.1, 0x1a1a1a); for (let i = 0; i < 6; i++) k.cyl(0.025, 0.025, 0.006, x - 0.12 + i * 0.045, 1.12, z + (i % 2 ? 0.03 : -0.03), i % 3 ? 0xf2e050 : 0x7ac83a, 10);   // garnish tray
       k.cyl(0.045, 0.04, 0.2, x + 0.25, 1.18, z, 0xc8ccd0, 10); k.cyl(0.03, 0.045, 0.08, x + 0.25, 1.32, z, 0xc8ccd0, 10); }                                                                                   // shaker
@@ -494,7 +563,6 @@ export function buildPub(scene) {
     R(W2 - 0.25, Z(720) - 0.1, W2 - 0.05, Z(720) + 0.1, 0.12, 0.98, 0x8a1a1a); k.cyl(0.03, 0.03, 0.01, W2 - 0.15, 1.04, Z(720) - 0.1, 0xc8c8c8, 8);   // a radio
   }
   // under the counter on the staff side: drip trays, a second sink, a bin, more glasses
-  for (const b of [bar1, bar4]) { const [x, z] = b.at(b.L * 0.35, 0.62); k.cyl(0.16, 0.14, 0.5, x + b.nx * 0.2, 0.25, z + b.nz * 0.2, 0x2e2e2e, 10); }
   // along the top wall: the MONSTOR fridge and the coffee machine, a chalkboard
   // the MONSTOR fridge behind the bar: black cabinet glowing green inside, four shelves packed with cans behind two
   // glass doors (chrome handles), a lit MONSTOR header, a drip tray of empties and a promo sticker
@@ -1476,7 +1544,7 @@ export function buildPub(scene) {
     };
   }
   room.extraItems = [{ type: 'poop', pos: poopAt }];
-  room.machines = machines;
+  room.machines = machines; room.glassWasher = k.room_glassWasher;
   const baseUpdate = room.update.bind(room);
   let outT = 0;
   room.update = (dt) => {
