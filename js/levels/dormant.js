@@ -9,11 +9,11 @@ const _zero = new THREE.Matrix4().makeScale(0, 0, 0), _m = new THREE.Matrix4(), 
 export class Dormant {
   constructor() { this.entries = []; }
   // an item of `type` (variant v) resting at (x, y, z) turned by yaw, optionally tipped (rx, rz)
-  add(type, x, y, z, yaw = 0, v = 0, rx = 0, rz = 0) { this.entries.push({ type, v, pos: new THREE.Vector3(x, y, z), rot: [rx, yaw, rz], woken: false }); }
+  add(type, x, y, z, yaw = 0, v = 0, rx = 0, rz = 0, extra = null) { const e = { type, v, pos: new THREE.Vector3(x, y, z), rot: [rx, yaw, rz], woken: false, r: 0.12 }; if (extra) Object.assign(e, extra); this.entries.push(e); return e; }
   build(scene) {
     const groups = new Map();
     for (const e of this.entries) {
-      const key = e.type + ':' + (e.type === 'magazine' ? e.v : 0) + ':' + Math.floor(e.pos.x / 5) + ',' + Math.floor(e.pos.z / 5);   // (5m patches: off-screen ones aren't drawn)
+      const key = e.type + ':' + (['magazine', 'spirit', 'condiment', 'beermat', 'chair'].includes(e.type) ? e.v : 0) + ':' + Math.floor(e.pos.x / 5) + ',' + Math.floor(e.pos.z / 5);   // (5m patches: off-screen ones aren't drawn)
       if (!groups.has(key)) groups.set(key, { parts: itemParts(e.type, e.v), list: [] });
       const g = groups.get(key); e.group = g; e.index = g.list.length; g.list.push(e);
     }
@@ -29,12 +29,13 @@ export class Dormant {
     const it = items.spawn(e.type, e.pos, null, e.v);
     it.spawnScale = 1; it.obj.scale.setScalar(1); it.resting = true; it.shelf = true; it.fromClutter = true;
     it.obj.rotation.set(...e.rot);
+    e.onWake && e.onWake(it, e);
     return it;
   }
-  wakeNear(items, p, r) { for (const e of this.entries) if (!e.woken && e.pos.distanceToSquared(p) < r * r) this.wake(items, e); }
+  wakeNear(items, p, r) { for (const e of this.entries) if (!e.woken && e.pos.distanceToSquared(p) < (r + e.r - 0.12) * (r + e.r - 0.12)) this.wake(items, e); }
   wakeRay(items, ray, reach) {
     for (const e of this.entries) { if (e.woken) continue;
       const along = _w.subVectors(e.pos, ray.origin).dot(ray.direction);
-      if (along > 0 && along < reach && ray.distanceSqToPoint(e.pos) < 0.12 * 0.12) this.wake(items, e); }
+      if (along > 0 && along < reach && ray.distanceSqToPoint(e.pos) < e.r * e.r) this.wake(items, e); }
   }
 }

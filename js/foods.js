@@ -317,11 +317,58 @@ export function bagParts() {
   return bagCache;
 }
 
+// ---------- the pub's loose things ----------
+// back-bar bottles: vodka, whisky, gin, rum, red wine, white wine (stand on y = -0.12, like the lager)
+const SPIRITS = [[0xdfeef2, 0xf4f4f4, 0xc0c0c0], [0xb8741a, 0xf4e6c8, 0x2a1a0a], [0x2e7d4a, 0xe8f0e8, 0xd4af37], [0x3a1a0a, 0xf2d24a, 0x1a1a1a], [0x3a0a14, 0xf4ecd8, 0x7a1a24], [0xc8d898, 0xf4ecd8, 0xd4af37]];
+const spiritGeos = [];
+function spiritGeo(v) {
+  if (spiritGeos[v]) return spiritGeos[v];
+  const [glass, label, cap] = SPIRITS[v % SPIRITS.length], wine = v >= 4, p = [];
+  if (wine) { p.push(part(cyl(0.036, 0.036, 0.19, 14), glass, [0, -0.025, 0])); p.push(part(cyl(0.013, 0.036, 0.05, 14), glass, [0, 0.095, 0])); p.push(part(cyl(0.013, 0.013, 0.08, 10), glass, [0, 0.16, 0])); p.push(part(cyl(0.015, 0.015, 0.04, 10), cap, [0, 0.19, 0])); p.push(part(cyl(0.037, 0.037, 0.08, 14), label, [0, -0.04, 0])); }
+  else { p.push(part(box(0.075, 0.18, 0.05), glass, [0, -0.03, 0])); p.push(part(cyl(0.014, 0.03, 0.04, 10), glass, [0, 0.08, 0])); p.push(part(cyl(0.013, 0.013, 0.05, 10), glass, [0, 0.12, 0])); p.push(part(cyl(0.016, 0.016, 0.03, 10), cap, [0, 0.155, 0])); p.push(part(box(0.077, 0.08, 0.052), label, [0, -0.04, 0])); p.push(part(box(0.06, 0.012, 0.053), cap, [0, 0.01, 0])); }
+  return (spiritGeos[v] = merge(p));
+}
+// condiments: ketchup, brown sauce, malt vinegar, salt, pepper (stand on y = -0.035)
+const condGeos = [];
+function condimentGeo(v) {
+  if (condGeos[v]) return condGeos[v];
+  const p = [];
+  if (v === 0 || v === 1) { const c = v ? 0x5a2a14 : 0xc8102e; p.push(part(cyl(0.028, 0.03, 0.13, 12), c, [0, 0.03, 0])); p.push(part(cyl(0.029, 0.029, 0.06, 12), v ? 0xd4af37 : 0xf4f4f0, [0, 0.03, 0])); p.push(part(cyl(0.012, 0.022, 0.03, 10), c, [0, 0.11, 0])); p.push(part(cyl(0.014, 0.014, 0.02, 8), 0xf4f4f0, [0, 0.13, 0])); }
+  else if (v === 2) { p.push(part(cyl(0.024, 0.026, 0.12, 12), 0x6a3a14, [0, 0.025, 0])); p.push(part(cyl(0.025, 0.025, 0.05, 12), 0xf0e0b0, [0, 0.02, 0])); p.push(part(cyl(0.01, 0.018, 0.03, 8), 0x6a3a14, [0, 0.1, 0])); p.push(part(cyl(0.011, 0.011, 0.02, 8), 0x222222, [0, 0.12, 0])); }
+  else { const c = v === 3 ? 0xf4f4f4 : 0x3a3a3a; p.push(part(cyl(0.016, 0.018, 0.075, 10), 0xdfeff2, [0, 0.0, 0])); p.push(part(cyl(0.015, 0.015, 0.05, 10), c, [0, -0.008, 0])); p.push(part(cyl(0.017, 0.017, 0.02, 10), 0xc0c4c8, [0, 0.045, 0])); }
+  return (condGeos[v] = merge(p));
+}
+// beer mats: square coasters in the brewery colours (lie flat, centred)
+const MATC = [[0xc8202a, 0xffffff], [0x1e6a32, 0xffffff], [0x1f4fbf, 0xffd400], [0x111111, 0xd4af37], [0xf2e8d0, 0x7a1f24], [0xffd400, 0xc8202a]];
+const matGeos = [];
+function beermatGeo(v) {
+  if (matGeos[v]) return matGeos[v];
+  const [a, b] = MATC[v % MATC.length];
+  return (matGeos[v] = merge([part(box(0.095, 0.003, 0.095), a), part(box(0.075, 0.002, 0.075), b, [0, 0.0015, 0]), part(box(0.06, 0.0025, 0.06), a, [0, 0.002, 0]), part(cyl(0.012, 0.012, 0.003, 10), b, [0, 0.0025, 0])]));
+}
+// the pub's honey-pine wheelback chair (stands on y = -0.3: the item is a 0.3 ball for physics), facing -z
+const PINEC = [0xd49a52, 0xcc9048, 0xd8a25c];
+const chairGeos = [];
+function chairGeo(v) {
+  if (chairGeos[v]) return chairGeos[v];
+  const C = PINEC[v % 3], D = 0xb07a38, y0 = -0.3, p = [];
+  p.push(part(box(0.44, 0.045, 0.42), C, [0, y0 + 0.455, -0.01])); p.push(part(box(0.36, 0.01, 0.3), D, [0, y0 + 0.476, 0]));
+  for (const sx of [-1, 1]) { p.push(part(cyl(0.018, 0.022, 0.46, 8), C, [sx * 0.18, y0 + 0.23, -0.17])); p.push(part(cyl(0.019, 0.023, 0.98, 8), C, [sx * 0.18, y0 + 0.49, 0.17 + 0.03], [0.06, 0, 0])); p.push(part(cyl(0.011, 0.011, 0.34, 6), C, [sx * 0.18, y0 + 0.16, 0], [Math.PI / 2, 0, 0])); }
+  p.push(part(cyl(0.011, 0.011, 0.36, 6), C, [0, y0 + 0.16, 0], [0, 0, Math.PI / 2])); p.push(part(cyl(0.01, 0.01, 0.36, 6), C, [0, y0 + 0.26, -0.17], [0, 0, Math.PI / 2]));
+  p.push(part(box(0.44, 0.1, 0.03), C, [0, y0 + 0.93, 0.255], [0.1, 0, 0])); p.push(part(box(0.4, 0.035, 0.022), C, [0, y0 + 0.66, 0.22], [0.1, 0, 0]));
+  for (const t of [-0.15, -0.075, 0, 0.075, 0.15]) p.push(part(cyl(0.007, 0.0105, 0.28, 6), C, [t, y0 + 0.8, 0.235], [0.1, 0, 0]));
+  return (chairGeos[v] = merge(p));
+}
+
 const geoCache = {};
 function meshFor(type, v = 0) {
   if (type === 'can') return canMeshes();
   if (type === 'magazine' || type === 'lidlbag') { const g = new THREE.Group(); for (const [geo, mat] of (type === 'magazine' ? magazineParts(v) : bagParts())) g.add(new THREE.Mesh(geo, mat)); return g; }
   if (type === 'bat') return batMesh();
+  if (type === 'spirit') return new THREE.Mesh(spiritGeo(v), vcLambert);
+  if (type === 'condiment') return new THREE.Mesh(condimentGeo(v), vcLambert);
+  if (type === 'beermat') return new THREE.Mesh(beermatGeo(v), vcLambert);
+  if (type === 'chair') return new THREE.Mesh(chairGeo(v), vcLambert);
   if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo, poop: poopGeo,
     hotdog: hotdogGeo, fries: friesGeo, kebab: kebabGeo, chicken: chickenGeo, taco: tacoGeo, crisps: crispsGeo, choc: chocGeo, cookie: cookieGeo, icecream: icecreamGeo, sausageroll: sausageRollGeo,
     croissant: croissantGeo, baguette: baguetteGeo, muffin: muffinGeo, painchoc: painchocGeo, swirl: swirlGeo, icedbun: icedbunGeo, pretzel: pretzelGeo,
@@ -333,7 +380,7 @@ function meshFor(type, v = 0) {
 export function itemParts(type, v = 0) {
   if (type === 'magazine') return magazineParts(v);
   if (type === 'lidlbag') return bagParts();
-  const m = meshFor(type); const out = []; m.traverse(o => { if (o.isMesh) out.push([o.geometry, o.material]); }); return out;
+  const m = meshFor(type, v); const out = []; m.traverse(o => { if (o.isMesh) out.push([o.geometry, o.material]); }); return out;
 }
 
 // ---------- items ----------
@@ -468,6 +515,15 @@ export class ItemManager {
         if (it.vel.lengthSq() > 1) it.obj.quaternion.setFromUnitVectors(_c.set(0, 0, -1), _v.copy(it.vel).normalize());
         if (this.room.dartboard && this.room.dartboard.hitTest(it)) continue;
       } else { it.obj.rotation.x += it.spin.x * dt; it.obj.rotation.y += it.spin.y * dt; it.obj.rotation.z += it.spin.z * dt; }
+      // tellies: anything thrown hard at the screen smashes it
+      if (this.room.tvs && it.vel.lengthSq() > 6) for (const tv of this.room.tvs) { if (tv.broken) continue;
+        const d0 = _v.subVectors(it.prev, tv.c).dot(tv.n), d1 = _c.subVectors(it.pos, tv.c).dot(tv.n);
+        if (d0 > -0.02 && d1 < it.radius + 0.02 && d0 - d1 > 1e-4) {
+          const k = THREE.MathUtils.clamp((d0 - it.radius) / (d0 - d1), 0, 1), hp = it.prev.clone().lerp(it.pos, k), off = hp.clone().sub(tv.c);
+          const u = off.dot(tv.u), w = off.y;
+          if (Math.abs(u) < tv.w / 2 + it.radius && Math.abs(w) < tv.h / 2 + it.radius) {
+            tv.broken = true; this.onTvSmash && this.onTvSmash(tv, hp, u / tv.w + 0.5, w / tv.h + 0.5);
+            it.pos.copy(hp).addScaledVector(tv.n, it.radius + 0.01); const vn = it.vel.dot(tv.n); it.vel.addScaledVector(tv.n, -vn * 1.4).multiplyScalar(0.4); } } }
       const r = it.radius;
       let hit = false, impact = 0;
       // room shell
@@ -507,6 +563,7 @@ function settle(it) {
   if (it.def.drink) { r.x = it.empty ? Math.PI / 2 : 0; r.z = 0; }
   else if (it.def.mag) { r.x = 0; r.z = 0; }
   else if (it.def.bat) { r.x = -Math.PI / 2; r.z = 0; }
+  else if (it.def.flat) { r.x = 0; r.z = 0; }
   else { r.x = 0; r.z = 0; }
 }
 

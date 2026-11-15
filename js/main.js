@@ -112,6 +112,28 @@ else {
 }
 
 // ---------------- events ----------------
+// a chair picked up: the space it stood in is free again
+room.takenBlocker = (b) => { physics.removeBox(b.x0, b.x1, b.z0, b.z1); const i = room.blockers.indexOf(b); if (i >= 0) room.blockers.splice(i, 1); };
+// a telly hit by something thrown: the screen cracks and goes dark, glass sprays out, a shower of sparks
+items.onTvSmash = (tv, p, u, v) => {
+  sfx('smash', p, 1);
+  const c = document.createElement('canvas'); c.width = 256; c.height = 144; const g = c.getContext('2d');
+  g.fillStyle = '#060708'; g.fillRect(0, 0, 256, 144);
+  for (let i = 0; i < 7; i++) { g.fillStyle = ['#ff2a6a', '#2affd4', '#ffd400', '#3a6aff'][i % 4]; g.globalAlpha = 0.5; g.fillRect(Math.random() * 256, 0, 2 + Math.random() * 4, 144); }   // dead pixel lines
+  g.globalAlpha = 1;
+  const hx = THREE.MathUtils.clamp(u, 0.05, 0.95) * 256, hy = (1 - THREE.MathUtils.clamp(v, 0.05, 0.95)) * 144;
+  g.strokeStyle = 'rgba(230,240,255,0.85)'; g.lineWidth = 1.4;
+  for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2 + Math.random() * 0.3; let x = hx, y = hy; g.beginPath(); g.moveTo(x, y);
+    for (let s2 = 0; s2 < 6; s2++) { x += Math.cos(a + (Math.random() - 0.5) * 0.6) * (14 + Math.random() * 20); y += Math.sin(a + (Math.random() - 0.5) * 0.6) * (14 + Math.random() * 20); g.lineTo(x, y); } g.stroke(); }
+  for (let r = 8; r < 70; r += 14 + Math.random() * 10) { g.beginPath(); for (let i = 0; i <= 16; i++) { const a = i / 16 * Math.PI * 2, rr = r * (0.8 + Math.random() * 0.4); i ? g.lineTo(hx + Math.cos(a) * rr, hy + Math.sin(a) * rr) : g.moveTo(hx + Math.cos(a) * rr, hy + Math.sin(a) * rr); } g.stroke(); }
+  g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); g.arc(hx, hy, 5, 0, 7); g.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  tv.label.material.map = t; tv.label.material.needsUpdate = true;
+  const out = p.clone().addScaledVector(tv.n, 1.2); out.y -= 0.6;
+  attackFx.spray(p, out, 0xdfeff8, 14); attackFx.spray(p, p.clone().addScaledVector(tv.n, 0.8).setY(p.y + 0.3), 0xffd060, 10);
+  words.show('SMASH!', p.clone().addScaledVector(tv.n, 0.3), '#ffffff', 0.12, 1.4);
+  G.tvsSmashed = (G.tvsSmashed || 0) + 1; director.onTvSmash && director.onTvSmash(tv);
+};
 items.onLand = (it, speed) => {
   if (time - G.lastLand < 0.08) return;
   G.lastLand = time;

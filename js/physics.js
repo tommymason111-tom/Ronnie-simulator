@@ -66,8 +66,14 @@ export function createPhysics(room) {
 
   let acc = 0;
   const STEP = 1 / 90;
+  // something that was solid has gone (a chair picked up): drop its block from the world
+  const removeBox = (x0, x1, z0, z1) => {
+    for (let i = lazy.length - 1; i >= 0; i--) { const e = lazy[i]; if (Math.abs(e.x0 - x0) < 1e-3 && Math.abs(e.x1 - x1) < 1e-3 && Math.abs(e.z0 - z0) < 1e-3 && Math.abs(e.z1 - z1) < 1e-3) {
+      if (live.has(e)) { world.removeBody(e.b); live.delete(e); } lazy.splice(i, 1);
+      for (const list of grid.values()) { const j = list.indexOf(e); if (j >= 0) list.splice(j, 1); } } }
+  };
   return {
-    world,
+    world, removeBox,
     step(dt) {
       // fixed timestep so the ragdoll behaves the same at 72fps, 90fps or on a phone
       acc += Math.min(dt, 0.05);

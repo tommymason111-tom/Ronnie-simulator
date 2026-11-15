@@ -57,6 +57,11 @@ export const FOODS = {
   // things to throw
   magazine:  { label: 'Magazine', chonk: 0, bites: 1, radius: 0.06, mass: 0.2, prop: true, mag: true },
   lidlbag:   { label: 'Lidl bag', chonk: 0, bites: 1, radius: 0.09, mass: 0.4, prop: true, bag: true },
+  // the pub: bottles off the back bar, condiments and beer mats off the tables, the chairs themselves
+  spirit:    { label: 'Bottle off the back bar', chonk: 18, bites: 1, radius: 0.04, mass: 0.8, drink: true, spirit: true },
+  condiment: { label: 'Condiment', chonk: 0, bites: 1, radius: 0.035, mass: 0.3, prop: true, condiment: true },
+  beermat:   { label: 'Beer mat', chonk: 0, bites: 1, radius: 0.03, mass: 0.01, prop: true, mat: true, flat: true },
+  chair:     { label: 'Pub chair', chonk: 0, bites: 1, radius: 0.3, mass: 5.0, prop: true, chair: true, big: true },
 };
 
 export const TUNING = {

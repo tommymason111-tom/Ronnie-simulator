@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { part, cyl as CYL } from '../geo.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { streetViewTex } from './kit.js';
+import { Dormant } from './dormant.js';
 import { skyDome, waterMaterial, updateOutdoor, leafyHedge, leafyBall, pottedPlant, figTree, terrace, HAZE } from './outdoor.js';
 import { REST, REST_BOUNDS, REST_H, inRestaurant, inNewArea, buildRestaurant } from './oysterRestaurant.js';
 import { Kit, carpetTex, tileTex, canvasTex, FONT, brickTex, booksWallTex, tngTex, oakPanelTex, woodTex } from './kit.js';
@@ -99,9 +100,12 @@ export function buildPub(scene) {
   };
   const clad = (x0, z0, x1, z1, tex, h = H, tile = 1, y0 = 0) => k.texBox(Math.max(Math.abs(x1 - x0), 0.02), h, Math.max(Math.abs(z1 - z0), 0.02), (x0 + x1) / 2, y0 + h / 2, (z0 + z1) / 2, tex, { tile });
   // anything built inside raise() sits on the raised floor
+  const tvs = [], regTV = (label, w, h) => { const ry = label.rotation.y; tvs.push({ label, c: label.position.clone(), n: new THREE.Vector3(Math.sin(ry), 0, Math.cos(ry)), u: new THREE.Vector3(Math.cos(ry), 0, -Math.sin(ry)), w, h }); return label; };
+  const dorm = new Dormant();          // things that look built-in but can be picked up (chairs, bottles, sauces, beer mats)
   const raise = (fn) => {
-    const p0 = k.parts.length, c0 = k.colliders.length, s0 = k.spawns.length, o0 = scene.children.length;
+    const p0 = k.parts.length, c0 = k.colliders.length, s0 = k.spawns.length, o0 = scene.children.length, d0 = dorm.entries.length;
     fn();
+    for (let i = d0; i < dorm.entries.length; i++) dorm.entries[i].pos.y += RAISE;
     for (let i = p0; i < k.parts.length; i++) k.parts[i].translate(0, RAISE, 0);
     for (let i = c0; i < k.colliders.length; i++) { k.colliders[i].min.y += RAISE; k.colliders[i].max.y += RAISE; }
     for (let i = s0; i < k.spawns.length; i++) k.spawns[i].y += RAISE;
@@ -224,22 +228,11 @@ export function buildPub(scene) {
   const turned = (h, r) => new THREE.LatheGeometry([[0, 0], [r * 0.8, 0], [r * 0.9, h * 0.06], [r * 0.8, h * 0.14], [r * 1.1, h * 0.2], [r * 0.85, h * 0.27], [r * 0.95, h * 0.45], [r * 1.12, h * 0.52], [r * 0.9, h * 0.58], [r * 0.95, h * 0.9], [r * 1.0, h], [0, h]].map(([a, b]) => new THREE.Vector2(a, b)), 7);
   const bent = (w, h, d, bend) => { const g = new THREE.BoxGeometry(w, h, d, 6, 1, 1), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i) / (w / 2); p.setZ(i, p.getZ(i) + bend * x * x); } g.computeVertexNormals(); return g; };
   let chairN = 0; const chairsAt = [], barSpots = [];
+  // the honey-pine wheelback chairs: real things you can pick up and throw (drawn as one batch until you do)
   const pubChair = (x, z, ry) => {
-    const C = PINE[chairN % 3], splat = chairN % 3 === 1; chairN++;
-    put(new RoundedBoxGeometry(0.44, 0.045, 0.42, 2, 0.015), C, x, z, ry, 0, 0.455, -0.01);                                 // the seat (dished a little)
-    put(new RoundedBoxGeometry(0.36, 0.01, 0.3, 1, 0.004), PINE_D, x, z, ry, 0, 0.476, 0.0);
-    for (const sx of [-1, 1]) put(turned(0.44, 0.02), C, x, z, ry, sx * 0.18, 0, -0.17, -0.06);                          // front legs, splayed
-    for (const sx of [-1, 1]) put(turned(0.98, 0.021), C, x, z, ry, sx * 0.18, 0, 0.17, 0.1);                            // back legs up into the back posts
-    for (const sx of [-1, 1]) put(CYL(0.011, 0.011, 0.34, 6), C, x, z, ry, sx * 0.18, 0.16, 0.0, Math.PI / 2);          // side stretchers
-    put(CYL(0.011, 0.011, 0.36, 6), C, x, z, ry, 0, 0.16, 0.0, 0, Math.PI / 2);                                          // middle stretcher (the H)
-    put(CYL(0.01, 0.01, 0.36, 6), C, x, z, ry, 0, 0.26, -0.17, 0, Math.PI / 2);                                          // front rung
-    put(bent(0.44, 0.1, 0.03, 0.035), C, x, z, ry, 0, 0.93, 0.255, 0.1);                                                // wide curved top rail
-    put(bent(0.4, 0.035, 0.022, 0.03), C, x, z, ry, 0, 0.66, 0.22, 0.1);                                                 // lower back rail
-    if (splat) { const sh = new THREE.Shape(); sh.moveTo(-0.03, 0); sh.bezierCurveTo(-0.07, 0.08, -0.02, 0.12, -0.05, 0.2); sh.bezierCurveTo(-0.07, 0.3, -0.03, 0.36, -0.06, 0.42); sh.lineTo(0.06, 0.42); sh.bezierCurveTo(0.03, 0.36, 0.07, 0.3, 0.05, 0.2); sh.bezierCurveTo(0.02, 0.12, 0.07, 0.08, 0.03, 0); sh.closePath();
-      const hole = new THREE.Path(); hole.absellipse(0, 0.27, 0.018, 0.04, 0, Math.PI * 2); sh.holes.push(hole);
-      put(new THREE.ExtrudeGeometry(sh, { depth: 0.016, bevelEnabled: false, curveSegments: 6 }), C, x, z, ry, 0, 0.48, 0.2, 0.1); }
-    for (const t of splat ? [-0.15, -0.09, 0.09, 0.15] : [-0.15, -0.075, 0, 0.075, 0.15]) { const sp = new THREE.CylinderGeometry(0.007, 0.0105, 0.4, 6); sp.translate(0, 0.2, 0); put(sp, C, x, z, ry, t, 0.475, 0.2 + 0.01, 0.1); }   // spindles
-    k.blockers.push({ x0: x - 0.24, x1: x + 0.24, z0: z - 0.24, z1: z + 0.24, y1: 0.5 }); chairsAt.push([x, z, ry]);
+    const v = chairN % 3; chairN++;
+    const blk2 = { x0: x - 0.24, x1: x + 0.24, z0: z - 0.24, z1: z + 0.24, y1: 0.5 }; k.blockers.push(blk2); const seat = [x, z, ry]; chairsAt.push(seat);
+    dorm.add('chair', x, 0.3, z, ry, v, 0, 0, { r: 0.38, onWake: () => { const i = chairsAt.indexOf(seat); if (i >= 0) chairsAt.splice(i, 1); k.room && k.room.takenBlocker && k.room.takenBlocker(blk2); } });
   };
   const tableTop = (x, z, w, d, y = 0.76) => {
     put(new RoundedBoxGeometry(w, 0.045, d, 2, 0.012), OAKTOP, x, z, 0, 0, y - 0.022, 0);
@@ -256,9 +249,10 @@ export function buildPub(scene) {
       used.push([mx, mz]);
       const [c1, c2] = MATS[Math.floor(Math.random() * MATS.length)], a = Math.random() * Math.PI * 2, yy = y + 0.002 + i * 0.0012;
       if (Math.random() < 0.3) { put(CYL(0.05, 0.05, 0.003, 16), c1, mx, mz, 0, 0, yy, 0); put(CYL(0.038, 0.038, 0.002, 16), c2, mx, mz, 0, 0, yy + 0.0015, 0); put(CYL(0.03, 0.03, 0.0025, 16), c1, mx, mz, 0, 0, yy + 0.002, 0); }
-      else { put(new THREE.BoxGeometry(0.095, 0.003, 0.095), c1, mx, mz, a, 0, yy, 0); put(new THREE.BoxGeometry(0.075, 0.002, 0.075), c2, mx, mz, a, 0, yy + 0.0015, 0); put(new THREE.BoxGeometry(0.06, 0.0025, 0.06), c1, mx, mz, a, 0, yy + 0.002, 0); put(new THREE.BoxGeometry(0.04, 0.003, 0.012), c2, mx, mz, a, 0, yy + 0.0025, 0); }
+      else dorm.add('beermat', mx, yy + 0.0015, mz, a, MATS.findIndex(m => m[0] === c1 && m[1] === c2), 0, 0, { r: 0.08 });
     }
-    for (const [dx, col] of [[-0.03, 0xf4f4f4], [0.03, 0x3a3a3a]]) { put(CYL(0.016, 0.018, 0.075, 8), 0xdfeff2, x + dx, z, 0, 0, y + 0.038, 0); put(CYL(0.017, 0.017, 0.02, 8), 0xc0c4c8, x + dx, z, 0, 0, y + 0.085, 0); put(CYL(0.012, 0.012, 0.04, 6), col, x + dx, z, 0, 0, y + 0.03, 0); }
+    dorm.add('condiment', x - 0.03, y + 0.0375, z, 0, 3, 0, 0, { r: 0.07 }); dorm.add('condiment', x + 0.03, y + 0.0375, z, 0, 4, 0, 0, { r: 0.07 });       // salt and pepper
+    { const r3 = Math.random(); if (r3 < 0.6) dorm.add('condiment', x + 0.09, y + 0.035, z - 0.06, Math.random() * 6.28, r3 < 0.3 ? 0 : r3 < 0.45 ? 1 : 2, 0, 0, { r: 0.08 }); }   // ketchup, brown sauce or vinegar
     tentCard(x - 0.12, y, z - 0.06, 0.3 + (x * 7) % 1);
     put(new RoundedBoxGeometry(0.1, 0.07, 0.06, 1, 0.006), 0x8a5a2a, x, z + 0.08, 0, 0, y + 0.035, 0); for (let i = 0; i < 4; i++) put(CYL(0.003, 0.003, 0.12, 4), 0xc8ccd0, x - 0.03 + i * 0.02, z + 0.08, 0, 0, y + 0.1, 0);
     k.spawns.push(new THREE.Vector3(x + w * 0.22, y + 0.08, z));
@@ -463,7 +457,7 @@ export function buildPub(scene) {
       k.texBox(0.03, 0.6, bw - 0.3, W - 0.015, 2.25, mz, TNG, { tile: 0.4 });
       const arch = new THREE.TorusGeometry((bw - 0.3) / 2, 0.025, 6, 16, Math.PI); arch.rotateY(Math.PI / 2); k.parts.push(part(arch, 0xf4efe2, [W - 0.04, 2.38, mz], [0, 0, 0], [1, 0.4, 1]));
       R(W - 0.2, z0 + 0.15, W, z1 - 0.15, 0.03, 2.0, 0xf4efe2, { collide: true });
-      for (let z = z0 + 0.25, i = b; z < z1 - 0.2; z += 0.11, i++) bottle(W - 0.1, 2.015, z, OPT[(i * 3) % OPT.length]);
+      for (let z = z0 + 0.25, i = b; z < z1 - 0.2; z += 0.11, i++) dorm.add('spirit', W - 0.1, 2.015 + 0.12, z, Math.PI / 2, (i * 5 + b) % 6, 0, 0, { r: 0.08 });   // (bottles you can take down)
       k.lamp(W - 0.1, 2.5, mz, 0xffe0b0, 0.05);
       if (b > 0) k.texBox(0.06, 1.25, 0.3, W - 0.03, 2.12, z0, BRICK, { tile: 0.6 });
     }
@@ -1083,7 +1077,7 @@ export function buildPub(scene) {
     k.texBox(x1 - x0, 0.42, z1 - z0, (x0 + x1) / 2, H - 0.21, (z0 + z1) / 2, TNG, { tile: 0.5 }); k.box(x1 - x0 + 0.02, 0.08, z1 - z0 + 0.02, (x0 + x1) / 2, H - 0.45, (z0 + z1) / 2, 0x2a1a10); }
   k.box(0.08, 0.06, Z(1305) - Z(605), X(195) + 0.04, H - 0.05, (Z(605) + Z(1305)) / 2, 0xeeeae0);                          // cornice
   // big screens: the football is on
-  const tv = (x, y, z, ry) => { k.box(2.0, 1.15, 0.08, x, y, z, 0x111111, { rot: [0, ry, 0] }); k.label('tv', 1.9, 1.05, [x + Math.sin(ry) * 0.05, y, z + Math.cos(ry) * 0.05], [0, ry, 0], { tex: tvTex(), glow: true }); };
+  const tv = (x, y, z, ry) => { k.box(2.0, 1.15, 0.08, x, y, z, 0x111111, { rot: [0, ry, 0] }); regTV(k.label('tv', 1.9, 1.05, [x + Math.sin(ry) * 0.05, y, z + Math.cos(ry) * 0.05], [0, ry, 0], { tex: tvTex(), glow: true }), 1.9, 1.05); };
   tv(X(250), 2.25, Z(605) + 0.12, 0);
   tv(X(885), 2.2, Z(1305) + 0.12, 0);
   // street-view windows with burgundy curtains on the raised area's outside wall... (none: it's an inside wall) -> on the restaurant side
@@ -1140,7 +1134,7 @@ export function buildPub(scene) {
     const mc = (cx0 + 0.56 + cx1) / 2, fz = zc - 0.1;
     R(mc - 0.55, fz - 0.02, mc + 0.55, fz, 0.7, 1.45, 0x2a1a10); k.label('mirror', 1.0, 0.6, [mc, 1.45, fz - 0.026], [0, Math.PI, 0], { tex: mir });
     const arch = new THREE.TorusGeometry(0.6, 0.05, 6, 18, Math.PI); arch.rotateY(Math.PI); k.parts.push(part(arch, 0x7a3020, [mc, 1.8, fz - 0.02], [0, 0, 0], [1, 0.35, 1]));
-    k.box(1.3, 0.76, 0.06, mc, 2.4, fz - 0.03, 0x111111); k.label('tv', 1.22, 0.69, [mc, 2.4, fz - 0.065], [0, Math.PI, 0], { tex: tvTex(), glow: true }); k.box(0.3, 0.1, 0.05, mc, 2.0, fz - 0.025, 0x111111);
+    k.box(1.3, 0.76, 0.06, mc, 2.4, fz - 0.03, 0x111111); regTV(k.label('tv', 1.22, 0.69, [mc, 2.4, fz - 0.065], [0, Math.PI, 0], { tex: tvTex(), glow: true }), 1.22, 0.69); k.box(0.3, 0.1, 0.05, mc, 2.0, fz - 0.025, 0x111111);
     for (const x of [mc - 0.95, mc + 0.95]) { k.box(0.1, 0.16, 0.05, x, 2.0, fz - 0.03, 0x1a1a1a); k.lamp(x, 2.08, fz - 0.07, 0xffd8a0, 0.05); sconceGlow(k, x, 2.0, fz - 0.09, x, fz + 1); }
     k.lamp(mc, H - 0.01, zc - 0.6, 0xfffbe8, 0.04); k.light(mc, 2.2, zc - 1.0, 0xffc884, 2.5, 4);
     // a fern in a pot by the window and the pillar, like the photo
@@ -1177,7 +1171,7 @@ export function buildPub(scene) {
     k.label('BOOKINGS: RONNIE, TABLE FOR ONE, FOOD FOR TWELVE', 0.3, 0.2, [x + 0.2, 0.89, zc - 0.3], [-Math.PI / 2, 0, Math.PI / 2], { bg: '#fffdf2', fg: '#111', border: null, size: 30 });
     R(x + 0.12, zc + 0.05, x + 0.32, zc + 0.3, 0.16, 0.95, 0x8a5a2a); k.cyl(0.03, 0.03, 0.14, x + 0.25, 0.94, zc - 0.05, 0x2a7ac8, 8); k.cyl(0.012, 0.012, 0.04, x + 0.25, 1.03, zc - 0.05, 0xf4f4f4, 6);
     k.spawns.push(new THREE.Vector3(x + 0.3, 0.95, zc - 0.25));
-    k.box(1.3, 0.76, 0.06, x + 0.05, 2.35, Z(1120), 0x111111, { rot: [0, Math.PI / 2, 0] }); k.label('tv', 1.22, 0.69, [x + 0.09, 2.35, Z(1120)], [0, Math.PI / 2, 0], { tex: tvTex(), glow: true });
+    k.box(1.3, 0.76, 0.06, x + 0.05, 2.35, Z(1120), 0x111111, { rot: [0, Math.PI / 2, 0] }); regTV(k.label('tv', 1.22, 0.69, [x + 0.09, 2.35, Z(1120)], [0, Math.PI / 2, 0], { tex: tvTex(), glow: true }), 1.22, 0.69);
     k.light(x + 0.6, 2.5, zc, 0xff3a3a, 2.2, 4); k.lamp(x + 0.08, 2.92, Z(1215), 0xff4040, 0.06);
   }
   // real warm lights over the bar and the middle of the room
@@ -1449,6 +1443,7 @@ export function buildPub(scene) {
   }
   buildRestaurant(k, scene, { chairsAt });
   k.splitX = -14.0;                                   // (the restaurant's furniture merges separately from the pub's, so it can be skipped)
+  dorm.build(scene);
   const sky = skyDome(scene);
   scene.fog = new THREE.Fog(HAZE.clone(), 1e4, 2e4);                 // haze outdoors only (set as you go out: see onBeforeRender)
   { const gt = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#5e8a3a'; g.fillRect(0, 0, w, h); for (let i = 0; i < 2200; i++) { g.fillStyle = ['#4e7a30', '#6e9a44', '#557f34', '#7aa04c', '#486e2c'][i % 5]; g.fillRect(Math.random() * w, Math.random() * h, 2, 3 + Math.random() * 3); } });
@@ -1464,7 +1459,7 @@ export function buildPub(scene) {
   });
   room.floorAt = pubFloorAt;
   for (const o of scene.children.slice(sceneStart)) if (o.isMesh || o.isInstancedMesh) { o.updateMatrix(); o.updateMatrixWorld(true); o.matrixAutoUpdate = false; }   // (static: no per-frame matrix work)
-  room.chairsAt = chairsAt;
+  room.chairsAt = chairsAt; room.dormant = dorm; room.tvs = tvs; k.room = room;
   room.barSpots = barSpots.concat([-6.4, -4.6, -2.8, -1.0, 0.8].map(z => ({ x: -18.1, z, yaw: Math.PI / 2 })));   // (the pub bar, and the restaurant's)
   // From the pub you can only see the restaurant down the corridor, through its doorway in the pub's left wall:
   // anything of the restaurant's outside that line of sight is behind walls, so it isn't drawn.

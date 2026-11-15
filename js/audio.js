@@ -136,6 +136,13 @@ const SOUNDS = {
     tone(d, t + 0.75, 'sawtooth', 1047, 1047, 0.5, 0.16, 0.01);
     tone(d, t + 0.75, 'sawtooth', 784, 784, 0.5, 0.12, 0.01);
   },
+  smash(d, t) {      // a telly screen going in: a crack, glass showering down, a fizzle
+    noise(d, t, 0.08, 'highpass', 3000, 0.7, 1.0, 0.001);
+    tone(d, t, 'square', 180, 40, 0.12, 0.45, 0.001);
+    for (let i = 0; i < 9; i++) tone(d, t + 0.04 + i * 0.035 + Math.random() * 0.03, 'sine', 2600 + Math.random() * 3200, 2200 + Math.random() * 2400, 0.06 + Math.random() * 0.08, 0.18, 0.001);
+    noise(d, t + 0.05, 0.5, 'bandpass', 5200, 1.2, 0.35);
+    noise(d, t + 0.1, 0.9, 'bandpass', 900, 3, 0.15);
+  },
   thwack(d, t) {     // swatting veg
     noise(d, t, 0.06, 'bandpass', 2500, 0.8, 1.0, 0.001);
     tone(d, t, 'square', 240, 60, 0.09, 0.5, 0.001);
