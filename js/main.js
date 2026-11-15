@@ -800,16 +800,25 @@ function gameOver(lines) {
   const leaveTxt = net.connected ? '↩ RETURN TO LOBBY' : '🏠 MAIN MENU';
   document.getElementById('over-leave').textContent = leaveTxt; document.getElementById('end-leave').textContent = leaveTxt;
   // multiplayer: the host can start the same game again for everyone, right from here (nobody goes back to the menu)
-  for (const id of ['over-again', 'end-again']) document.getElementById(id).style.display = net.connected && net.host ? '' : 'none';
+  for (const id of ['over-again', 'end-again']) { const el = document.getElementById(id); el.style.display = !net.connected || net.host ? '' : 'none'; el.textContent = net.connected ? '▶ PLAY AGAIN (EVERYONE)' : '▶ PLAY AGAIN'; }
+  setTimeout(placeReceipt, 30);
   try { sessionStorage.setItem('rs_was_host', net.connected && net.host ? '1' : ''); } catch (e) {}
   const best = (lines || []).find(l => l[1] !== '' && l[1] !== undefined); document.getElementById('end-where').textContent = best ? `${best[0]}: ${best[1]}` : 'Here\'s how you did';
-  const rc = director.receipt; if (rc) { camera.add(rc); rc.renderOrder = 62; rc.material.depthTest = false; rc.material.depthWrite = false; rc.rotation.set(0, 0, 0);
-    const vr = renderer.xr.isPresenting; rc.position.set(vr ? -0.3 : 0, vr ? -0.05 : 0.02, vr ? -0.8 : -0.62); rc.scale.setScalar(vr ? 0.62 : 0.78); rc.visible = true; }
+  const rc = director.receipt; if (rc) { camera.add(rc); rc.renderOrder = 999; rc.material.depthTest = false; rc.material.depthWrite = false; rc.rotation.set(0, 0, 0); placeReceipt(); rc.visible = true; }
   if (renderer.xr.isPresenting) { setPaused(true); pauseEl.classList.add('show-end'); }
 }
+// the receipt: as big as fits on this screen, between a little gap at the top and the buttons at the bottom (any phone,
+// either way up, a computer); in the headset, a card in front of you
+function placeReceipt() { const rc = director.receipt; if (!rc || !G.over) return;
+  if (renderer.xr.isPresenting) { rc.position.set(-0.3, -0.05, -0.8); rc.scale.setScalar(0.62); return; }
+  const d = 0.62, vh = 2 * d * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), vw = vh * camera.aspect, px = Math.max(200, window.innerHeight);
+  const btn = document.getElementById('over'), bh = (btn && btn.offsetHeight ? btn.offsetHeight : 70) + 28, topGap = 14;
+  const availH = vh * (1 - (bh + topGap) / px), sc = Math.min(availH / 0.88, (vw * 0.94) / 0.5);
+  rc.scale.setScalar(sc); rc.position.set(0, vh / 2 - (topGap / px) * vh - 0.44 * sc, -d); }
+window.addEventListener('resize', () => setTimeout(placeReceipt, 60));
 const leaveGame = () => { location.href = location.pathname + (net.connected && net.code ? '?lobby=' + encodeURIComponent(net.code) : ''); };
 document.getElementById('over-leave').addEventListener('click', leaveGame);
-for (const id of ['over-again', 'end-again']) document.getElementById(id).addEventListener('click', () => { if (!net.host) return; initAudio(); hostNewGame(director.mode || chosenMode()); });
+for (const id of ['over-again', 'end-again']) document.getElementById(id).addEventListener('click', () => { if (net.connected && !net.host) return; initAudio(); const m = curMode(); if (director.mode === 'chonkoff2') SEL.mode = 'chonkoff2'; if (net.connected) hostNewGame(m); else newGame(m); });
 document.getElementById('end-leave').addEventListener('click', leaveGame);
 renderer.xr.addEventListener('sessionend', () => { if (G.over) { setPaused(false); } });
 function setPaused(on) {
@@ -824,7 +833,8 @@ function setPaused(on) {
 let soundOff = false;
 document.getElementById('menu-btn').addEventListener('click', () => setPaused(true));
 document.getElementById('pause-resume').addEventListener('click', () => { initAudio(); setPaused(false); });
-document.getElementById('pause-restart').addEventListener('click', () => { hostNewGame(director.mode || chosenMode()); });
+document.getElementById('pause-restart').addEventListener('click', () => { hostNewGame(curMode()); });
+function curMode() { return director.noNpc ? 'roam0' : (director.mode || chosenMode()); }
 document.getElementById('pause-sound').addEventListener('click', (e) => { soundOff = !soundOff; e.currentTarget.textContent = soundOff ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'; });
 document.getElementById('pause-quit').addEventListener('click', () => {
   if (net.connected && !renderer.xr.isPresenting && !window.confirm('Leave the game? You\'ll drop out of the room.')) return;     // (multiplayer: no leaving by accident)
@@ -844,12 +854,13 @@ const PAUSE_MODES = {
   sweep: ['🛒', 'SUPERMARKET SWEEP', 'Grab the most calories. Dodge security'],
   bbq: ['🍖', "IAN'S BARBECUE", 'Eat off the grill before Ian makes it healthy'],
   date: ['💜', 'DATE NIGHT', 'Eat when Chloe looks away'],
-  roam: ['🚶', 'FREE ROAM', 'Have a look round. Nobody attacks'],
+  roam: ['🚶', 'FREE ROAM · WITH THE SQUAD', 'Have a look round. Everyone\'s about, nobody attacks'],
+  roam0: ['🧍', 'FREE ROAM · JUST YOU', 'The place to yourself: no NPCs at all'],
   runpub: ['🍺', 'RUN THE PUB', 'Behind the bar: serve the punters, sort out the trouble'],
   imposter: ['🔪', 'IMPOSTER · 1 IMPOSTER', 'Multiplayer: do your jobs, find the imposter, vote them out'],
   imposter2: ['🔪', 'IMPOSTER · 2 IMPOSTERS', 'Multiplayer: two imposters among you (5+ players)'],
 };
-const PLACE_GAMES = { pub: ['everyone', 'runpub', 'imposter', 'imposter2', 'chonkoff', 'chonkoff2', 'roam'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
+const PLACE_GAMES = { pub: ['everyone', 'runpub', 'imposter', 'imposter2', 'chonkoff', 'chonkoff2', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam', 'roam0'], shop: ['sweep', 'roam', 'roam0'], garden: ['bbq', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'] };
 const modeTitle = () => { const m = director.mode; return (PAUSE_MODES[m] && PAUSE_MODES[m][1]) || (m === 'classic' ? 'CLASSIC' : m === 'intervention' ? 'THE SQUAD' : (m || '').toUpperCase()); };
 function showPauseModes() {
   const list = document.getElementById('pause-mode-list'), cur = director.mode;

@@ -174,6 +174,7 @@ export class Director {
 
   // ------------------------------------------------------------------ starting / ending
   start(id) {
+    this.noNpc = id === 'roam0'; if (this.noNpc) id = 'roam';          // (Free Roam, just you: nobody else about)
     const g = this.g, m = MODES[id];
     if (!m) return;
     if (this.imposter) { this.imposter.dispose(); this.imposter = null; }
@@ -202,7 +203,7 @@ export class Director {
     else if (id === 'catch') squad = ['harry'];
     else if (id === 'sweep') squad = ['oliver', 'aidanw'];        // both work at Lidl (Aidan W can't chase you: knee)
     else if (id === 'bbq') squad = ['ian', 'lewis', ...shuffle(everyone.filter(s => s !== 'ian' && s !== 'lewis')).slice(0, 4)];
-    else if (id === 'roam') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 6);   // everyone about, nobody attacking
+    else if (id === 'roam') squad = this.noNpc ? [] : big ? shuffle(everyone) : shuffle(everyone).slice(0, 6);   // everyone about, nobody attacking
     else if (id === 'runpub') squad = ['lewis', 'ben', 'aidan', 'connor', 'chloe'];      // the staff (punters and drop-ins come later)
     else if (id === 'classic') squad = [];
     else squad = [];
@@ -250,7 +251,8 @@ export class Director {
       chonkoff2: this.player2 && this.player2.stage === 2 ? 'Player two! Beat that. Please don\'t.' : 'Eat-Off! Player one, sixty seconds. Go.',
       classic: 'Back to normal then. Normal for you.',
       roam: 'Free roam, Ron. Have a wander. Nobody\'s attacking you. Today.',
-    }[id], 5);
+    }[id], this.noNpc ? 0 : 5);
+    if (this.noNpc) { this.hideTommy(true); tommy.active = false; }
     sfx('fanfare', null, 1);
   }
 
@@ -1130,7 +1132,7 @@ export class Director {
     c.textAlign = 'center'; c.font = '20px monospace'; c.fillStyle = '#111';
     c.fillText('------------------------------------', w / 2, h - 96);
     c.fillText('Thank you for eating with us.', w / 2, h - 66);
-    c.fillText('Play again on the MODE BOARD.', w / 2, h - 40);
+    c.fillText('Tap PLAY AGAIN for another go.', w / 2, h - 40);
     this.rtex.needsUpdate = true;
     // hold it up in front of Ronnie
     const p = this.g.player;
