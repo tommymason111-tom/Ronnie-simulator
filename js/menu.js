@@ -1,10 +1,11 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '2.10.0';
+var GAME_VERSION = '2.11.0';
 // when each update came out (UK time)
-var GAME_WHEN = {'2.10.0': '2026-11-15T17:10', '1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.9.0': '2026-11-15T16:54', '2.8.0': '2026-11-15T16:45', '2.7.0': '2026-11-15T16:34', '2.6.3': '2026-11-15T16:15', '2.6.2': '2026-11-15T16:15', '2.6.1': '2026-11-15T16:00', '2.6.0': '2026-11-15T15:54', '2.5.3': '2026-11-15T15:48', '2.5.2': '2026-11-15T15:46', '2.5.1': '2026-11-15T15:43', '2.5.0': '2026-11-15T15:42', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
+var GAME_WHEN = {'2.11.0': '2026-11-15T17:55', '2.10.0': '2026-11-15T17:10', '1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.9.0': '2026-11-15T16:54', '2.8.0': '2026-11-15T16:45', '2.7.0': '2026-11-15T16:34', '2.6.3': '2026-11-15T16:15', '2.6.2': '2026-11-15T16:15', '2.6.1': '2026-11-15T16:00', '2.6.0': '2026-11-15T15:54', '2.5.3': '2026-11-15T15:48', '2.5.2': '2026-11-15T15:46', '2.5.1': '2026-11-15T15:43', '2.5.0': '2026-11-15T15:42', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
 
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['2.11.0', ["How to play pages before every game: a few pages on how that mode works and its controls (phone, computer or headset), with arrows between them, then I'M READY. Multiplayer guests see them too", "Run the Pub: tested a full shift: orders, the guide arrow, kids and the throwing penalty all working"]],
   ['2.10.0', ["Run the Pub: real drinks stations behind the bar. Guinness/lager tap (hold a glass under it), fridges of lager, cider and MONSTOR, wine, a coffee machine, and a soft-drink gun (A/X or EAT switches COKE and FANTA)", "Run the Pub: an orders list shows what everyone wants, an arrow guides you to the next station, kids order too (serve them booze and you're fined \u00a310), and throwing a drink at someone halves the tip", "The pub's background noise is gone", "Food outline only goes round the outside of the food now, never over toppings, buns or inside tacos", "Fixed: the game freezing when eating some of the new foods", "Fixed: the buttons vanishing during attacks and leaving you stuck", "Harry's dating attack is redone: a detailed phone with real profiles, his thumb swiping NOPE, an unmatch notification and his unanswered chat. It only takes up the middle of the screen now"]],
   ['2.9.0', ['Ronnie\'s belly is a real belly now: navel, a fold underneath, love handles, hanging further forward every stage. His T-shirt rides up as he grows, then splits and rips until it\'s in tatters', 'Multiplayer: the characters get fatter every stage, a big round belly hanging over the waistband, wider hips and thicker thighs (everyone sees it)', 'Multiplayer: playing as one of the squad (or Tommy), look down and you see your own character\'s body (and your emotes play on it)']],
   ['2.8.0', ['Every bit of fast food is rebuilt in far more detail (sesame seeds, melted cheese, grill marks, sauces, sprinkles, crumbs): burger, pizza, doughnut, hot dog, chips, a proper doner kebab in pitta, fried chicken, taco, crisps, chocolate bar, cookie, ice cream, sausage roll', '10 new fast foods: chicken nuggets, Cornish pasty, onion rings, burrito, waffle, pancake stack, churros, cupcake, brownie and a bacon bap', 'The detail shows up close; further away the simpler versions are drawn, so it stays smooth on the Quest']],
@@ -397,7 +398,7 @@ var GAME_UPDATES = [
     try { const w = await mpConnect(code); mp.role = 'join';
       if (w.host) { mpStatus(`Nobody's in room <b>${code}</b> yet. Check the code with your mate.`); mp.net.leave(); mp.net = null; mp.role = null; lobby(); return; }
       mpStatus(''); show('room'); lobby();
-      mp.net.on.setup = (m) => { place = m.place; mode = m.mode; $('#room-msg').textContent = 'Off we go!'; window.__menuGo(true); };
+      mp.net.on.setup = (m) => { if (window.__setupSeen) return; window.__setupSeen = true; place = m.place; mode = m.mode; $('#room-msg').textContent = 'Off we go!'; window.__menuIntro(() => window.__menuGo(true)); };      // (guests read how it works too, then join in)
     } catch (e) { mpStatus("Couldn't connect. Check your internet and try again."); }
   });
 
@@ -443,7 +444,59 @@ var GAME_UPDATES = [
       if (window.ronnieHero && window.ronnieHero.inVR) setTimeout(finish, 60);
       else requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(finish, 60)));
     };
-    $('#go').addEventListener('click', () => go());
+    // ---- before it starts: a few pages on how THIS game works (arrows between them, then I'M READY)
+    const intro = (then) => {
+      const vr = !!(window.ronnieHero && window.ronnieHero.inVR), pc = !vr && !touchy;
+      const C = vr ? { move: '🕹️ Left stick to walk (click it in to sprint), right stick to turn', grab: '✊ Grip or trigger to grab, with either hand (you can hold two things)', eat: '😋 Bring food up to your mouth to take a bite', throw: '🎯 Swing and let go to throw', slap: '✋ Swing your hand into someone to slap them', pause: '☰ Menu button to pause' }
+        : pc ? { move: '⌨️ W A S D to walk, click and drag to look round', grab: '👆 Click food to pick it up', eat: '😋 E to eat (or drink)', throw: '🎯 Space or F to throw', slap: '✋ Click anyone nearby to slap them', pause: '⏸ Esc to pause' }
+        : { move: '🕹️ Joystick to walk, drag the screen to look round', grab: '👆 Tap food to pick it up', eat: '😋 EAT button to take a bite', throw: '🎯 THROW button to chuck it', slap: '✋ Tap anyone nearby to slap them', pause: '⏸ PAUSE (top right) any time' };
+      const controls = { pic: vr ? '🥽' : pc ? '💻' : '📱', title: 'THE CONTROLS', lines: [C.move, C.grab, C.eat, C.throw] };
+      const PAGES = {
+        everyone: [
+          { pic: '🍔', title: 'THE WHOLE SQUAD', lines: ['Eat as much as you can. Every bite fills your EAT METER', 'Fill it to grow: six stages, from Little Ronnie to the biggest Ronnie ever', 'The squad are all here, and they WILL try to stop you'] },
+          controls,
+          { pic: '⚠️', title: 'THE ATTACKS', lines: ['The red bar counts down to the next attack', 'A banner tells you who\'s coming, and an arrow shows where they are', 'Each of the lads has his own attack. Throw food at them or slap them to fight back'] },
+          { pic: '🥦', title: 'WATCH OUT', lines: [vr ? '🥦 Broccoli gets thrown at you: swat it with a fast swing' : '🥦 Broccoli gets thrown at you: ' + (pc ? 'click' : 'tap') + ' it to swat it away', '🥤 MONSTOR cans count too: chug one for MANGO LOCO MODE', C.pause] } ],
+        sweep: [
+          { pic: '🛒', title: 'SUPERMARKET SWEEP', lines: ['90 seconds in Lidl with a trolley', 'Everything you pick up goes straight in your trolley', 'Bigger, better food is worth more calories. Most calories wins'] },
+          controls,
+          { pic: '🟢', title: 'GREEN GLOW = TROLLEY', lines: ['Grab anything that glows green', '🥦 Fruit and veg COST you: things come back out of the trolley', 'You\'re faster than normal: leg it round the shop'] },
+          { pic: '👮', title: 'SECURITY', lines: ['Oliver and Aidan W are on security', 'If they catch you, things come out of your trolley', 'Aidan W is slow (it\'s the knee). Oliver isn\'t'] } ],
+        bbq: [
+          { pic: '🍖', title: 'IAN\'S BARBECUE', lines: ['Round Lewis\'s house. Ian\'s on the grill', 'Grab the food off the barbecue and eat it before Ian gets to it', 'Fill your EAT METER before time runs out'] },
+          controls,
+          { pic: '🥦', title: 'IAN MAKES IT HEALTHY', lines: ['Leave food too long and Ian swaps it for veg', 'Then he throws it at you: ' + (vr ? 'swat it with a fast swing' : (pc ? 'click' : 'tap') + ' it to swat it'), 'Lewis is fetching plates. The lads will try to get in the way', C.pause] } ],
+        date: [
+          { pic: '💜', title: 'DATE NIGHT', lines: ['Dinner with Chloe at La Grande Portion', 'Eat as much as you can... but ONLY when Chloe isn\'t looking', 'Three catches and it\'s salad. Game over'] },
+          controls,
+          { pic: '👀', title: 'WATCH CHLOE', lines: ['Keep an eye on her: when she looks away, EAT', 'When she turns back, put it down and look innocent', 'If Chloe gets up to dance, you get 6 seconds to eat EVERYTHING', C.pause] } ],
+        chonkoff: [
+          { pic: '⏱️', title: 'EAT-OFF', lines: ['60 seconds on the clock', 'Eat everything you can find', 'Beat your best score'] }, controls ],
+        chonkoff2: [
+          { pic: '🆚', title: 'EAT-OFF · 2 PLAYERS', lines: ['Pass and play: 60 seconds each', 'Player 1 goes first, then hand it over to Player 2', 'Whoever eats more wins'] }, controls ],
+        runpub: [
+          { pic: '🍺', title: 'RUN THE PUB', lines: ['A six-minute shift behind the bar at the Oysterfleet', 'Punters come up to the bar and order a drink', 'Serve them the right drink, fast, for money and tips'] },
+          { pic: '🧾', title: 'ORDERS', lines: ['The ORDERS list ' + (vr ? 'on your left wrist' : 'top right') + ' shows who wants what, oldest first', 'A yellow arrow points you to the next thing to do', 'Then hand it over: ' + (vr ? 'hold it out to them' : 'look at them across the bar while holding it')] },
+          { pic: '🍷', title: 'THE BAR', lines: ['🍺 BLACK LIFFEY: a pint glass, held under the tap', '🍏 Lager, cider and ⚡ MONSTOR: from the fridges at the back', '☕ Coffee: a mug under the machine. 🍷 Wine: off the back counter', '🥤 Coke or Fanta: a cup, then the soda gun (' + (vr ? 'A/X' : 'the EAT button') + ' switches flavour)'] },
+          { pic: '🧒', title: 'THE RULES', lines: ['Kids are only allowed soft drinks: serve them booze and it\'s -£10', 'Give a kid asking for booze a Coke instead for a bonus', 'Throwing a drink at someone works, but they only pay half', 'Break up fights and catch runaway kids. Don\'t eat the bar snacks (you will)'] },
+          controls ],
+        roam: [
+          { pic: '🚶', title: 'FREE ROAM', lines: ['Have a look round and explore', 'Everyone is here, but nobody attacks you', 'No timer: eat, throw, slap and play the machines'] }, controls ],
+      };
+      const pages = PAGES[mode] || PAGES.everyone; let i = 0;
+      const draw = () => { const pg = pages[i];
+        $('#intro-title').textContent = pg.title; $('#intro-step').textContent = `HOW TO PLAY · PAGE ${i + 1} OF ${pages.length}`;
+        const pic = $('#intro-pic'); pic.textContent = pg.pic; pic.style.animation = 'none'; void pic.offsetWidth; pic.style.animation = '';
+        $('#intro-lines').innerHTML = pg.lines.map(l => `<p class="sub">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`).join('');
+        $('#intro-dots').innerHTML = pages.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('');
+        $('#intro-prev').hidden = i === 0; $('#intro-next').hidden = i === pages.length - 1; $('#intro-ready').classList.toggle('last', i === pages.length - 1); };
+      $('#intro-prev').onclick = () => { if (i > 0) { i--; draw(); blip(520, 0.05); } };
+      $('#intro-next').onclick = () => { if (i < pages.length - 1) { i++; draw(); blip(620, 0.05); } };
+      $('#intro-ready').onclick = () => { $('#intro-ready').onclick = null; then(); };
+      draw(); show('intro');
+    };
+    window.__menuIntro = (then) => intro(then);
+    $('#go').addEventListener('click', () => intro(() => go()));
     window.__menuGo = go;
     // the floating menu in VR (see ronnieHero.js) picks with these
     window.menuVR = {
@@ -476,6 +529,7 @@ var GAME_UPDATES = [
     if (start.classList.contains('gone')) return;
     if (current === 'place' && e.key === 'ArrowRight') stepPlace(1);
     if (current === 'place' && e.key === 'ArrowLeft') stepPlace(-1);
-    if (e.key === 'Enter') { const nxt = { title: 'place', place: 'mode', mode: 'ready' }[current]; if (nxt) show(nxt); else if (current === 'ready') $('#go').click(); }
+    if (e.key === 'Enter') { const nxt = { title: 'place', place: 'mode', mode: 'ready' }[current]; if (nxt) show(nxt); else if (current === 'ready') $('#go').click(); else if (current === 'intro') ($('#intro-next').hidden ? $('#intro-ready') : $('#intro-next')).click(); }
+    if (current === 'intro' && e.key === 'ArrowRight') $('#intro-next').click(); if (current === 'intro' && e.key === 'ArrowLeft') $('#intro-prev').click();
   });
 })();

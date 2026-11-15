@@ -234,7 +234,7 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5 * PH / PW), new THREE.MeshBasicMaterial({ map: ptex, transparent: true }));
   panel.visible = false; scene.add(panel);
   let hover = -1, drawnKey = '', rows = [], scroll = 0, maxScroll = 0, kb = null;
-  const SEL = 'h2, .sub, .scene.cur, .flip, .mate, .rp, input, button, #mp-status2, #room-msg, #name-msg, #mus-msg, #room-code, .where';
+  const SEL = 'h2, #intro-pic, .sub, .scene.cur, .flip, .mate, .rp, input, button, #mp-status2, #room-msg, #name-msg, #mus-msg, #room-code, .where';
   const txt = (el) => (el.tagName === 'INPUT' ? (el.value || el.placeholder || '') : el.textContent || '').trim().replace(/\s+/g, ' ');
   function items() {
     const scr = document.querySelector('#start .screen.on') || document.querySelector('.screen.on'); if (!scr) return [];
@@ -293,8 +293,16 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
       if (el.matches('.rp')) { rr(30, y, PW - 60, 60, 14, 'rgba(255,255,255,0.1)'); g.fillStyle = '#fff'; fit(t, PW - 100, 24, 700); g.fillText(t, PW / 2, y + 30); y += 68; continue; }
       if (el.tagName === 'INPUT') { const r = { x0: 40, y0: y, x1: PW - 40, y1: y + 84, el }; rows.push(r); const hot = hover === rows.length - 1;
         rr(r.x0, r.y0, r.x1 - r.x0, 84, 18, '#fff', hot ? '#ffd400' : '#999', hot ? 7 : 3); g.fillStyle = el.value ? '#111' : '#888'; fit(t || '…', PW - 120, 36); g.fillText(t || '…', PW / 2, y + 44); y += 96; continue; }
+      if (el.id === 'intro-prev' || el.id === 'intro-next') { const L = el.id === 'intro-prev', r = { x0: L ? 30 : PW / 2 + 6, y0: y, x1: L ? PW / 2 - 6 : PW - 30, y1: y + 78, el }; rows.push(r);       // side by side
+        btn(r, t, hover === rows.length - 1, '#4a3aa8'); if (!L || !els.some(e => e.id === 'intro-next')) y += 90; continue; }
       if (el.tagName === 'BUTTON') { const big = el.matches('.bigbtn, .playbtn, #go, .resume'); const h = big ? 104 : 78, r = { x0: 30, y0: y, x1: PW - 30, y1: y + h, el }; rows.push(r);
         btn(r, t, hover === rows.length - 1, big ? '#39ff14' : el.matches('.backbtn') ? '#2a2a5a' : '#4a3aa8'); y += h + 12; continue; }
+      if (el.id === 'intro-pic') { g.font = '96px sans-serif'; g.fillStyle = '#fff'; g.fillText(t, PW / 2, y + 56); y += 116; continue; }
+      if (el.closest('#intro-lines')) {                            // how-to-play lines: big, wrapped, in a box each
+        g.font = '700 28px "Arial Black", Arial, sans-serif'; const ws = t.split(' '), ls = []; let ln = '';
+        for (const w of ws) { const tr = ln ? ln + ' ' + w : w; if (g.measureText(tr).width > PW - 110 && ln) { ls.push(ln); ln = w; } else ln = tr; } if (ln) ls.push(ln);
+        const h = ls.length * 36 + 24; rr(30, y, PW - 60, h, 16, 'rgba(255,255,255,0.12)'); g.fillStyle = '#fff'; g.textAlign = 'left';
+        ls.forEach((l, j) => g.fillText(l, 52, y + 30 + j * 36)); g.textAlign = 'center'; y += h + 10; continue; }
       // plain text
       if (!t) continue; g.fillStyle = el.matches('#name-msg, #mus-msg') ? '#ff9a9a' : '#c9d3ff'; fit(t.length > 90 ? t.slice(0, 88) + '…' : t, PW - 60, 22, 700); g.fillText(t.length > 90 ? t.slice(0, 88) + '…' : t, PW / 2, y + 16); y += 38;
     }
