@@ -8,6 +8,9 @@
 //                  fists pumping in opposition to the legs, the chest twisting with them. Every eighth count the
 //                  hands go up to the eyes as "goggles" (thumb and index finger in rings, the other fingers
 //                  fanned) with the elbows out wide, while the feet keep going.
+//   BACKFLIP       a deep crouch with the arms swung right back, an explosive jump throwing the arms up, then a tucked
+//                  360° turn backwards at the top (knees pulled to the chest, hands on the shins), legs out to land,
+//                  knees giving to soak it up, arms out to steady, then up with both arms raised.
 //   SIX SEVEN      elbows tucked into the sides, forearms out in front with the palms up, see-sawing: one hand up
 //                  as the other goes down ("six... seven..."), a shrug of the shoulders, the head bobbing and
 //                  tilting side to side, a little bounce in the knees.
@@ -19,6 +22,7 @@ export const EMOTES = [
   { id: 'finger', name: 'MIDDLE FINGER', icon: '🖕', dur: 3.4 },
   { id: 'griddy', name: 'THE GRIDDY', icon: '🕺', dur: 6.4 },
   { id: 'sixseven', name: 'SIX SEVEN', icon: '🤲', dur: 4.0 },
+  { id: 'backflip', name: 'BACKFLIP', icon: '🤸', dur: 2.6 },
 ];
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4();
@@ -127,7 +131,8 @@ export class EmotePlayer {
     const bob0 = r.bob || 0;
     const out = this[this.id](t, vr);      // sets r.pose.* (and returns the hand shapes + hip bob)
     // blend from what they were doing into the emote and back out
-    for (const k in r.pose) { if (vr && /Arm/.test(k)) { r.pose[k].copy(base[k]); continue; } r.pose[k].copy(base[k].slerp(r.pose[k], w)); }
+    for (const k in r.pose) { if (vr && !out.full && /Arm/.test(k)) { r.pose[k].copy(base[k]); continue; } r.pose[k].copy(base[k].slerp(r.pose[k], w)); }
+    if (out.flip) { _q.setFromAxisAngle(X, out.flip); for (const k in r.pose) r.pose[k].premultiply(_q); }      // the whole body turns over (round the hips)
     r.bob = bob0 + (out.bob || 0) * w;
     this.out = out;
     return w;
@@ -201,6 +206,42 @@ export class EmotePlayer {
     P.head.setFromAxisAngle(X, (0.12 + 0.08 * Math.sin(Math.PI * ph * 2)) * (1 - g) - 0.08 * g).multiply(_q.setFromAxisAngle(Z, 0.05 * sw));
     if (n !== this.lastBeat) { this.lastBeat = n; }
     return { hand: g > 0.5 ? { L: 'goggle', R: 'goggle' } : { L: 'fist', R: 'fist' }, bob };
+  }
+
+  // ---------------------------------------------------------------- BACKFLIP
+  backflip(t) {
+    const r = this.c.rag, P = r.pose, kH = r.height / 1.68;
+    const crouch = ramp(t, 0.05, 0.42) * (1 - ramp(t, 0.42, 0.56));          // down... and up
+    const air = clamp01((t - 0.55) / 0.85), flying = t > 0.55 && t < 1.4;
+    const tuck = ramp(t, 0.6, 0.78) * (1 - ramp(t, 1.15, 1.35));
+    const land = ramp(t, 1.38, 1.5) * (1 - ramp(t, 1.6, 2.0));                 // knees giving on landing
+    const cheer = ramp(t, 1.75, 1.95);
+    // legs: bend for the crouch / landing, pulled right up for the tuck
+    const knee = Math.max(crouch * 1.5, land * 1.1), hip = Math.max(crouch * 0.9, land * 0.7);
+    for (const [S, sx] of [['L', 1], ['R', -1]]) {
+      const th = hip * (1 - tuck) + tuck * 1.7, kn = knee * (1 - tuck) + tuck * 2.3;
+      r.aim('uLeg' + S, sx * (0.06 + tuck * 0.05), -Math.cos(th), Math.sin(th));
+      r.aim('lLeg' + S, sx * 0.04, -Math.cos(th - kn), Math.sin(th - kn));
+    }
+    // arms: swung right back in the crouch, thrown up on take-off, hugging the shins in the tuck, out wide to land, up to celebrate
+    const up = ramp(t, 0.42, 0.56) * (1 - tuck);
+    for (const [S, sx] of [['L', 1], ['R', -1]]) {
+      let u = [sx * 0.2, -0.55, -0.8], l = [sx * 0.15, -0.6, -0.75];                                        // swung back
+      const mix = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
+      u = mix(u, [sx * 0.15, 1, 0.15], up); l = mix(l, [sx * 0.1, 1, 0.1], up);                             // thrown up
+      u = mix(u, [sx * 0.25, -0.3, 1], tuck); l = mix(l, [sx * -0.1, -0.8, 0.5], tuck);                      // hands on the shins
+      u = mix(u, [sx * 1, 0.1, 0.25], land); l = mix(l, [sx * 1, 0.15, 0.2], land);                          // out to steady
+      u = mix(u, [sx * 0.45, 1, 0.1], cheer); l = mix(l, [sx * 0.35, 1, 0], cheer);                          // arms up!
+      r.aim('uArm' + S, ...u); r.aim('lArm' + S, ...l);
+    }
+    // chest leans into the crouch, curls up in the tuck; head tucks in then looks up
+    P.chest.setFromAxisAngle(X, crouch * 0.45 + tuck * 0.5 + land * 0.25 - cheer * 0.08);
+    P.head.setFromAxisAngle(X, tuck * 0.45 - up * 0.25 - cheer * 0.2);
+    // up into the air (a jump of ~0.9 m) and all the way round backwards
+    const bob = (flying ? 0.95 * kH * 4 * air * (1 - air) : 0) - crouch * 0.28 * kH - land * 0.2 * kH + tuck * 0.25 * kH * (flying ? 1 : 0);
+    const flip = flying ? -Math.PI * 2 * ss((t - 0.58) / 0.78) : 0;
+    if (t > 0.5 && !this.whoosh) { this.whoosh = true; this.onWord && this.onWord('', null, 'whoosh'); } if (t < 0.5) this.whoosh = false;
+    return { hand: tuck > 0.5 ? { L: 'fist', R: 'fist' } : null, bob, flip, full: true };
   }
 
   // ---------------------------------------------------------------- SIX SEVEN

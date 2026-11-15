@@ -712,7 +712,11 @@ document.getElementById('menu-btn').addEventListener('click', () => setPaused(tr
 document.getElementById('pause-resume').addEventListener('click', () => { initAudio(); setPaused(false); });
 document.getElementById('pause-restart').addEventListener('click', () => { setPaused(false); director.start(chosenMode()); });
 document.getElementById('pause-sound').addEventListener('click', (e) => { soundOff = !soundOff; e.currentTarget.textContent = soundOff ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'; });
-document.getElementById('pause-quit').addEventListener('click', () => { location.href = location.pathname; });
+document.getElementById('pause-quit').addEventListener('click', () => {
+  if (net.connected && !renderer.xr.isPresenting && !window.confirm('Leave the game? You\'ll drop out of the room.')) return;     // (multiplayer: no leaving by accident)
+  location.href = location.pathname; });
+// the tap that opened a menu (the music, a TV) mustn't also press whatever button it lands on in that menu
+document.getElementById('pause').addEventListener('click', (e) => { if (performance.now() - (window.__menuOpenAt || 0) < 450) { e.stopPropagation(); e.preventDefault(); } }, true);
 document.getElementById('pause-controls').addEventListener('click', () => {
   const touchy = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window;
   document.querySelectorAll('#pause .clist').forEach(l => l.classList.toggle('on', l.dataset.d === (renderer.xr.isPresenting ? 'vr' : touchy ? 'touch' : 'pc')));
@@ -1006,13 +1010,13 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
 const mp = new MPSync({ net, scene, room, physics, player, items, cast, director, words, fx: attackFx, G, tommy });
 // music from the speakers (the DJ booth, the hi-fi, the tannoy): only the host picks, everyone hears it
 const music = new Music({ scene, room, net, player, words, hint: (t) => touch.hint(t), ui: {
-  open() { initAudio(); setPaused(true); pauseEl.classList.add('show-music'); setMuted(soundOff); music.render(); },
+  open() { window.__menuOpenAt = performance.now(); initAudio(); setPaused(true); pauseEl.classList.add('show-music'); setMuted(soundOff); music.render(); },
   say(t) { const m = document.getElementById('mus-msg'); if (m) { m.textContent = t; clearTimeout(m._t); m._t = setTimeout(() => { m.textContent = ''; }, 2600); } },
 } });
 document.getElementById('mus-close').addEventListener('click', () => { initAudio(); setPaused(false); });
 // the tellies: tap / poke one to put a video on it (only the host chooses in multiplayer)
 const tvs = new TVs({ scene, room, net, player, hint: (t) => touch.hint(t), ui: {
-  open() { initAudio(); setPaused(true); pauseEl.classList.add('show-tv'); setMuted(soundOff); tvs.render(); },
+  open() { window.__menuOpenAt = performance.now(); initAudio(); setPaused(true); pauseEl.classList.add('show-tv'); setMuted(soundOff); tvs.render(); },
   say(t) { const m = document.getElementById('tv-msg'); if (m) { m.textContent = t; clearTimeout(m._t); m._t = setTimeout(() => { m.textContent = ''; }, 2800); } },
 } });
 document.getElementById('tv-close').addEventListener('click', () => { initAudio(); setPaused(false); });
@@ -1026,7 +1030,7 @@ class SquadPuppet {
     this.p = p; this.tagC = document.createElement('canvas'); this.tagC.width = 320; this.tagC.height = 96; this.tagTex = new THREE.CanvasTexture(this.tagC); this.tagTex.colorSpace = THREE.SRGBColorSpace;
     this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; scene.add(this.tag); this.drawTag();
     this.down = 0; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0;
-    this.emote = new EmotePlayer(this.c, scene, (txt, at) => words.show(txt, at.clone().add({ x: 0, y: 0.15, z: 0 }), '#ffd400', 0.22, 0.8)); }
+    this.emote = new EmotePlayer(this.c, scene, (txt, at, snd) => { if (snd) sfx(snd, this.c.headPos(new THREE.Vector3()), 0.8); if (txt && at) words.show(txt, at.clone().add({ x: 0, y: 0.15, z: 0 }), '#ffd400', 0.22, 0.8); }); }
   update(dt, pose) {
     const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * 12);
     const prev = this.pos.clone(); this.pos.lerp(_a.set(...pose.h), k); this.rh.lerp(_b.set(...pose.rh), k); this.lh.lerp(_b.set(...pose.l), k);

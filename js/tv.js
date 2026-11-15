@@ -22,12 +22,14 @@ export class TVs {
     scene.traverse(o => { const d = o.userData && o.userData.tv; if (!d) return; const ry = o.rotation.y;
       this.screens.push({ mesh: o, c: o.position.clone(), n: new THREE.Vector3(Math.sin(ry), 0, Math.cos(ry)), u: new THREE.Vector3(Math.cos(ry), 0, -Math.sin(ry)), w: d.w, h: d.h }); });
     this.state = { tv: -1, key: null, playing: false, vol: 0.8, pos: 0 };
-    this.have = new Map(); this.incoming = new Map(); this.sel = -1;
+    this.have = new Map(); this.incoming = new Map(); this.sel = -1; this.mem = new Map();
     this.el = document.createElement('video'); this.el.loop = true; this.el.playsInline = true; this.el.setAttribute('playsinline', ''); this.el.crossOrigin = 'anonymous'; this.el.preload = 'auto';
     this.tex = new THREE.VideoTexture(this.el); this.tex.colorSpace = THREE.SRGBColorSpace;
     metas().then(ms => { for (const m of ms) this.have.set(m.key, m); this.render(); }).catch(() => {});
     for (const k of ['tv', 'vidreq', 'vidpart']) { const prev = net.on[k]; net.on[k] = (m, p) => { prev && prev(m, p); this['on_' + k](m, p); }; }
     this.bindUI();
+    // a video from the host starts without a tap: any touch gets it going if the phone held it back
+    window.addEventListener('pointerdown', () => { if (this.state.playing && this.state.key && this.loaded === this.state.key && (this.el.paused || this.el.muted)) { this.el.muted = false; this.level(); this.el.play().catch(() => {}); } }, true);
   }
   get isGuest() { return !!(this.net.connected && !this.net.host); }
   ok(i) { const s = this.screens[i]; return s && !(s.src && s.src.broken); }
@@ -45,6 +47,9 @@ export class TVs {
   open(i) { this.sel = i; this.ui.open(); this.render(); }
 
   update(dt) {
+    // a guest still waiting on a video that's stopped arriving: ask the host again; the host keeps everyone in step
+    if (this.isGuest && this.state.key && this.loaded !== this.state.key && (this.retryT = (this.retryT || 0) - dt) <= 0) { this.retryT = 3; const inc = this.incoming.get(this.state.key); if (!this.mem.has(this.state.key) && (!inc || performance.now() - inc.at > 10000)) this.apply(true); }
+    if (this.net.connected && this.net.host && this.state.key && (this.syncT = (this.syncT || 0) - dt) <= 0) { this.syncT = 4; this.send(); }
     if (this.player.flatMode) return;
     if ((this.pokeCool -= dt) > 0) return;
     for (const h of this.player.hands || []) { if (!h.tracked || !h.palm) continue;
@@ -77,7 +82,7 @@ export class TVs {
     const st = this.state;
     if (!st.key || st.tv < 0 || !this.ok(st.tv)) { this.el.pause(); this.showOn(-1); this.loaded = null; return; }
     if (this.loaded !== st.key) {
-      const blob = await get(st.key).catch(() => null);
+      const blob = this.mem.get(st.key) || await get(st.key).catch(() => null);
       if (!blob) { this.showOn(-1); if (this.isGuest) this.request(st.key); return; }
       if (this.url) URL.revokeObjectURL(this.url); this.url = URL.createObjectURL(blob); this.el.src = this.url; this.loaded = st.key; restart = true;
       await new Promise(r => { const d = () => { this.el.removeEventListener('loadedmetadata', d); r(); }; this.el.addEventListener('loadedmetadata', d); setTimeout(d, 4000); });
@@ -118,7 +123,7 @@ export class TVs {
     if (st.playing && this.el.paused) this.el.play().catch(() => {}); else if (!st.playing && !this.el.paused) setTimeout(() => { if (!this.state.playing) this.el.pause(); }, 30);
     this.render();
   }
-  request(key) { if (this.incoming.has(key) || !this.hostId) return; this.incoming.set(key, { parts: [], n: 0, got: 0 }); this.net.send({ t: 'vidreq', key, to: this.hostId }); this.render(); }
+  request(key) { const old = this.incoming.get(key); if ((old && performance.now() - old.at < 10000) || !this.hostId) return; this.incoming.set(key, { parts: [], n: 0, got: 0, at: performance.now() }); this.net.send({ t: 'vidreq', key, to: this.hostId }); this.render(); }
   async on_vidreq(m) {
     if (!this.net.host) return; const blob = await get(m.key).catch(() => null); if (!blob) return;
     if (blob.size > SHARE_MAX) { this.net.send({ t: 'vidpart', to: m.f, key: m.key, big: 1 }); return; }
@@ -132,11 +137,11 @@ export class TVs {
   async on_vidpart(m) {
     if (m.big) { this.incoming.delete(m.key); this.ui.say('That video\'s too big to send round, so only the host can see it'); return; }
     const inc = this.incoming.get(m.key) || (this.incoming.set(m.key, { parts: [], n: 0, got: 0 }), this.incoming.get(m.key));
-    if (inc.parts[m.i]) return; inc.n = m.n; inc.parts[m.i] = m.d; inc.got++; if (m.title) { inc.title = m.title; inc.type = m.type; }
+    inc.at = performance.now(); if (inc.parts[m.i]) return; inc.n = m.n; inc.parts[m.i] = m.d; inc.got++; if (m.title) { inc.title = m.title; inc.type = m.type; }
     if (inc.got % 20 === 0) this.render(); if (inc.got < inc.n) return;
     const arrs = inc.parts.map(d => { const s = atob(d), a = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; });
     const blob = new Blob(arrs, { type: inc.type || 'video/mp4' }), meta = { key: m.key, title: inc.title || 'Video', size: blob.size };
-    this.incoming.delete(m.key); try { await put(m.key, blob, meta); } catch (e) {} this.have.set(m.key, meta);
+    this.incoming.delete(m.key); this.mem.set(m.key, blob); try { await put(m.key, blob, meta); } catch (e) {} this.have.set(m.key, meta);
     if (this.state.key === m.key) { this.loaded = null; this.apply(true); } this.render();
   }
 

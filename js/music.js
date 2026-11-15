@@ -74,14 +74,19 @@ export class Music {
     this.have = new Map();        // key -> { title, artist, c }  (songs this device has)
     this.extra = [];              // songs added that aren't in the library
     this.incoming = new Map();    // key -> { parts, n, got }
+    this.mem = new Map();         // songs held in memory (if this device won't save them)
     this.el = new Audio(); this.el.loop = true; this.el.preload = 'auto'; this.el.setAttribute('playsinline', ''); this.el.crossOrigin = 'anonymous';
     this.url = null; this.loadedKey = null; this.page = 0; this.t = 0; this.syncT = 0;
     this.station = STATIONS[room.placeId] || null;
     if (this.station) this.build();
     dbMetas().then(ms => { for (const m of ms) { this.have.set(m.key, m); if (m.extra && !this.extra.some(e => e.key === m.key)) this.extra.push(m); } this.render(); }).catch(() => {});
-    // phones only let a page start sound from a tap: get the player ready on the first touch
-    const prime = () => { window.removeEventListener('pointerdown', prime, true); if (!this.state.playing) { this.el.muted = true; this.el.play().then(() => { this.el.pause(); this.el.muted = false; }).catch(() => { this.el.muted = false; }); } };
-    window.addEventListener('pointerdown', prime, true);
+    // phones only let a page start sound from a tap: the first touch gets the player ready, and any touch starts
+    // the song if it's meant to be playing but the phone stopped it (a song from the host arrives without a tap)
+    let primed = false;
+    const touched = () => { initAudio();
+      if (this.state.playing && this.state.key && this.loadedKey === this.state.key && this.el.paused) { this.level(); this.el.play().then(() => this.blocked(false)).catch(() => {}); return; }
+      if (!primed && !this.state.playing) { primed = true; this.el.muted = true; this.el.play().then(() => { this.el.pause(); this.el.muted = false; }).catch(() => { this.el.muted = false; }); } };
+    window.addEventListener('pointerdown', touched, true); window.addEventListener('keydown', touched, true);
     // network
     for (const k of ['music', 'songreq', 'songpart']) { const prev = net.on[k]; net.on[k] = (m, p) => { prev && prev(m, p); this['on_' + k](m, p); }; }
     this.bindUI();
@@ -157,6 +162,8 @@ export class Music {
     if (this.panner && this.srcPos) { const t = bus.ctx.currentTime; if (this.panner.positionX) { this.panner.positionX.setValueAtTime(this.srcPos.x, t); this.panner.positionY.setValueAtTime(this.srcPos.y, t); this.panner.positionZ.setValueAtTime(this.srcPos.z, t); } else this.panner.setPosition(this.srcPos.x, this.srcPos.y, this.srcPos.z); }
     // the host keeps everyone in step (and tells late arrivals what's on)
     if (this.net.connected && this.net.host && this.state.key && (this.syncT -= dt) <= 0) { this.syncT = 4; this.broadcast(); }
+    // a guest still waiting on a song that's stopped arriving: ask the host again
+    if (this.isGuest && this.state.key && this.loadedKey !== this.state.key && (this.retryT = (this.retryT || 0) - dt) <= 0) { this.retryT = 3; const inc = this.incoming.get(this.state.key); if (!this.mem.has(this.state.key) && (!inc || performance.now() - inc.at > 8000)) this.apply(true); }
     this.drawButton();
   }
   hook(bus) {
@@ -199,7 +206,7 @@ export class Music {
   async apply(restart = false) {
     const st = this.state;
     if (st.key && this.loadedKey !== st.key) {
-      const blob = await dbGet(st.key).catch(() => null);
+      const blob = this.mem.get(st.key) || await dbGet(st.key).catch(() => null);
       if (!blob) { this.el.pause(); if (this.isGuest) this.request(st.key); return; }
       if (this.url) URL.revokeObjectURL(this.url); this.url = URL.createObjectURL(blob); this.el.src = this.url; this.loadedKey = st.key; restart = true;
       await new Promise(r => { const done = () => { this.el.removeEventListener('loadedmetadata', done); r(); }; this.el.addEventListener('loadedmetadata', done); setTimeout(done, 3000); });
@@ -207,7 +214,7 @@ export class Music {
     this.setVol(st.vol);
     // (a joining player catches up with where the host has got to while the song was loading)
     if (restart) { const late = this.isGuest && st.playing && this.posAt ? (performance.now() - this.posAt) / 1000 : 0; try { this.el.currentTime = ((st.pos || 0) + late) % Math.max(1, this.el.duration || 1e9); } catch (e) {} }
-    if (st.playing && st.key) { clearTimeout(this.pauseT); this.level(); this.el.play().catch(() => { this.hint('Tap the screen to hear the music'); }); } else this.pauseEl();
+    if (st.playing && st.key) { clearTimeout(this.pauseT); this.level(); this.el.play().then(() => this.blocked(false)).catch(() => this.blocked(true)); } else { this.pauseEl(); this.blocked(false); }
     this.drawButton && this.button && this.drawButton(); this.render();
   }
 
@@ -228,10 +235,10 @@ export class Music {
     if (newSong || this.loadedKey !== st.key) { this.apply(true); return; }
     this.setVol(st.vol);
     if (st.playing && (Math.abs((this.el.currentTime || 0) - st.pos) > 1.5 || !wasPlaying)) { try { this.el.currentTime = st.pos; } catch (e) {} }
-    if (st.playing && this.el.paused && this.loadedKey === st.key) { this.level(); this.el.play().catch(() => {}); } else if (!st.playing) this.pauseEl();
+    if (st.playing && this.el.paused && this.loadedKey === st.key) { this.level(); this.el.play().then(() => this.blocked(false)).catch(() => this.blocked(true)); } else if (!st.playing) { this.pauseEl(); this.blocked(false); }
     this.render();
   }
-  request(key) { if (this.incoming.has(key) || !this.hostId) return; this.incoming.set(key, { parts: [], n: 0, got: 0 }); this.net.send({ t: 'songreq', key, to: this.hostId }); this.render(); }
+  request(key) { const old = this.incoming.get(key); if ((old && performance.now() - old.at < 8000) || !this.hostId) return; this.incoming.set(key, { parts: [], n: 0, got: 0, at: performance.now() }); this.net.send({ t: 'songreq', key, to: this.hostId }); this.render(); }
   async on_songreq(m) {
     if (!this.net.host) return; const blob = await dbGet(m.key).catch(() => null); if (!blob) return;
     const meta = this.have.get(m.key) || {}, buf = new Uint8Array(await blob.arrayBuffer()), CH = 33000, n = Math.ceil(buf.length / CH);
@@ -244,12 +251,12 @@ export class Music {
   }
   async on_songpart(m) {
     const inc = this.incoming.get(m.key) || (this.incoming.set(m.key, { parts: [], n: 0, got: 0 }), this.incoming.get(m.key));
-    if (inc.parts[m.i]) return; inc.n = m.n; inc.parts[m.i] = m.d; inc.got++; if (m.title) { inc.title = m.title; inc.artist = m.artist; inc.type = m.type; }
+    inc.at = performance.now(); if (inc.parts[m.i]) return; inc.n = m.n; inc.parts[m.i] = m.d; inc.got++; if (m.title) { inc.title = m.title; inc.artist = m.artist; inc.type = m.type; }
     if (inc.got % 10 === 0) this.render();
     if (inc.got < inc.n) return;
     const arrs = inc.parts.map(d => { const s = atob(d), a = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; });
     const blob = new Blob(arrs, { type: inc.type || 'audio/mpeg' }), lib = LIBRARY.find(s => s.key === m.key), meta = { key: m.key, title: inc.title || (lib && lib.title) || 'Song', artist: inc.artist || (lib && lib.artist) || '', c: (lib && lib.c) || '#78909c', extra: !lib };
-    this.incoming.delete(m.key);
+    this.incoming.delete(m.key); this.mem.set(m.key, blob);      // (plays from memory even if the device can't save it)
     try { await dbPut(m.key, blob, meta); } catch (e) {}
     this.have.set(m.key, meta); if (meta.extra && !this.extra.some(e => e.key === m.key)) this.extra.push(meta);
     if (this.state.key === m.key) { this.loadedKey = null; this.apply(true); }
@@ -285,6 +292,14 @@ export class Music {
       return `<button class="song${cur ? ' cur' : ''}${has ? '' : ' need'}${Math.floor(i / 4) === this.page ? ' pg' : ''}" data-key="${s.key}" style="--c:${s.c}"><span class="art">${cur && st.playing ? '<i></i><i></i><i></i>' : (i + 1)}</span>${cur && st.playing ? '▶ ' : ''}${esc(s.title)}<small>${esc(s.artist)}${has ? '' : guest ? '' : ' · ➕ needs adding'}</small></button>`; }).join('');
   }
   has(key) { return this.have.has(key); }
+  // the phone wouldn't start the song by itself: a big friendly "tap to hear it" until the next touch
+  blocked(on) {
+    let b = document.getElementById('mus-tap');
+    if (on && !b) { b = document.createElement('div'); b.id = 'mus-tap'; b.textContent = '🔊 TAP TO HEAR THE MUSIC';
+      b.style.cssText = 'position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:60;background:linear-gradient(90deg,#ff4fa3,#7a2aff);color:#fff;font:900 18px Arial Black,Arial,sans-serif;padding:14px 22px;border-radius:30px;box-shadow:0 0 24px rgba(255,79,163,.7);pointer-events:auto;cursor:pointer';
+      b.addEventListener('pointerdown', () => { b.remove(); }); document.body.appendChild(b); }
+    else if (!on && b) b.remove();
+  }
   dispose() { this.el.pause(); if (this.url) URL.revokeObjectURL(this.url); for (const s of this.speakers || []) this.scene.remove(s); if (this.button) this.scene.remove(this.button); }
 }
 const esc = (t) => String(t).replace(/[<>&"]/g, '');
