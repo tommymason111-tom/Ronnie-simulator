@@ -63,6 +63,7 @@ export function tv(k, scene, { x, y, z, ry, w = 1.25, wall = false }) {
     P(rbox(0.8, 0.07, 0.08, 0.02), 0x222222, 0, -h / 2 - 0.12, -0.12); }                                   // soundbar in front
   const scr = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.04, h - 0.04), new THREE.MeshBasicMaterial({ map: matchTex(), color: 0xdddddd }));
   scr.position.set(x - 0.021 * s, y, z - 0.021 * c); scr.rotation.y = ry + Math.PI; scene.add(scr);
+  scr.userData.tv = { w: w - 0.04, h: h - 0.04 };          // (you can put a video on it)
   return scr;
 }
 function matchTex() {

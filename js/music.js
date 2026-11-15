@@ -161,14 +161,20 @@ export class Music {
   }
   hook(bus) {
     try {
-      this.node = bus.ctx.createMediaElementSource(this.el); this.gain = bus.ctx.createGain(); this.gain.gain.value = this.state.vol;
+      this.node = bus.ctx.createMediaElementSource(this.el); this.gain = bus.ctx.createGain(); this.gain.gain.value = this.state.playing ? this.state.vol : 0;
       if (this.station && this.station.source !== null && !this.station.ceiling) {
         this.panner = bus.ctx.createPanner(); this.panner.panningModel = 'equalpower'; this.panner.distanceModel = 'inverse'; this.panner.refDistance = 4; this.panner.rolloffFactor = 0.7; this.panner.maxDistance = 60;
         this.node.connect(this.gain); this.gain.connect(this.panner); this.panner.connect(bus.out);
       } else { this.node.connect(this.gain); this.gain.connect(bus.out); }
     } catch (e) { this.node = true; }
   }
-  setVol(v) { this.state.vol = Math.max(0, Math.min(1, Math.round(v * 10) / 10)); if (this.gain && this.gain.gain) this.gain.gain.value = this.state.vol; else this.el.volume = this.state.vol; }
+  setVol(v) { this.state.vol = Math.max(0, Math.min(1, Math.round(v * 10) / 10)); this.level(); }
+  // the speakers' volume: silent the moment it's paused (iPhones otherwise keep repeating the last scrap of sound
+  // through the game's speakers when a song stops), back up to the volume when it plays
+  level() { const on = this.state.playing && !!this.state.key, v = on ? this.state.vol : 0;
+    if (this.gain && this.gain.gain && this.gain.context) { const g = this.gain.gain, t = this.gain.context.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(v, t + (on ? 0.05 : 0.015)); }
+    else this.el.volume = v; }
+  pauseEl() { this.level(); clearTimeout(this.pauseT); this.pauseT = setTimeout(() => { if (!this.state.playing) this.el.pause(); }, 30); }
 
   // ------------------------------------------------------------------ choosing (host / solo only)
   guard() { if (this.isGuest) { this.ui.say('🔒 Only the host can change the music'); this.hint('Only the host can change the music'); return false; } return true; }
@@ -182,7 +188,9 @@ export class Music {
   togglePlay() {
     if (!this.guard()) return; initAudio();
     if (!this.state.key) { const first = this.songs().find(s => this.have.has(s.key)); if (first) return this.choose(first.key); this.ui.say('➕ Add some songs first'); return; }
-    this.state.playing = !this.state.playing; this.state.pos = this.el.currentTime || 0; this.apply(); this.broadcast(); this.render();
+    this.state.playing = !this.state.playing; this.state.pos = this.el.currentTime || 0;
+    if (this.state.playing) { this.level(); this.el.play().catch(() => {}); } else this.pauseEl();     // (straight from where it stopped)
+    this.broadcast(); this.render(); this.drawButton && this.button && this.drawButton();
   }
   volume(d) { if (!this.guard()) return; this.setVol(this.state.vol + d); this.broadcast(); this.render(); }
   broadcast() { if (!this.net.connected || !this.net.host) return; this.net.send({ t: 'music', key: this.state.key, playing: this.state.playing ? 1 : 0, vol: this.state.vol, pos: Math.round((this.el.currentTime || 0) * 100) / 100 }); }
@@ -199,7 +207,7 @@ export class Music {
     this.setVol(st.vol);
     // (a joining player catches up with where the host has got to while the song was loading)
     if (restart) { const late = this.isGuest && st.playing && this.posAt ? (performance.now() - this.posAt) / 1000 : 0; try { this.el.currentTime = ((st.pos || 0) + late) % Math.max(1, this.el.duration || 1e9); } catch (e) {} }
-    if (st.playing && st.key) { this.el.play().catch(() => { this.hint('Tap the screen to hear the music'); }); } else this.el.pause();
+    if (st.playing && st.key) { clearTimeout(this.pauseT); this.level(); this.el.play().catch(() => { this.hint('Tap the screen to hear the music'); }); } else this.pauseEl();
     this.drawButton && this.button && this.drawButton(); this.render();
   }
 
@@ -219,7 +227,7 @@ export class Music {
     if (newSong || this.loadedKey !== st.key) { this.apply(true); return; }
     this.setVol(st.vol);
     if (st.playing && (Math.abs((this.el.currentTime || 0) - st.pos) > 1.5 || !wasPlaying)) { try { this.el.currentTime = st.pos; } catch (e) {} }
-    if (st.playing && this.el.paused && this.loadedKey === st.key) this.el.play().catch(() => {}); else if (!st.playing && !this.el.paused) this.el.pause();
+    if (st.playing && this.el.paused && this.loadedKey === st.key) { this.level(); this.el.play().catch(() => {}); } else if (!st.playing) this.pauseEl();
     this.render();
   }
   request(key) { if (this.incoming.has(key) || !this.hostId) return; this.incoming.set(key, { parts: [], n: 0, got: 0 }); this.net.send({ t: 'songreq', key, to: this.hostId }); this.render(); }

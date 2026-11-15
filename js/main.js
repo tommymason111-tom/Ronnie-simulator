@@ -25,6 +25,7 @@ import { MPSync } from './mpsync.js';
 import { foodGlow } from './foods.js';
 import { EMOTES, EmotePlayer } from './emotes.js';
 import { Music } from './music.js';
+import { TVs } from './tv.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
 
 // start downloading everyone's 3D model now, while the menu is still up
@@ -142,7 +143,7 @@ items.onTvSmash = (tv, p, u, v) => {
   const out = p.clone().addScaledVector(tv.n, 1.2); out.y -= 0.6;
   attackFx.spray(p, out, 0xdfeff8, 14); attackFx.spray(p, p.clone().addScaledVector(tv.n, 0.8).setY(p.y + 0.3), 0xffd060, 10);
   words.show('SMASH!', p.clone().addScaledVector(tv.n, 0.3), '#ffffff', 0.12, 1.4);
-  G.tvsSmashed = (G.tvsSmashed || 0) + 1; director.onTvSmash && director.onTvSmash(tv);
+  G.tvsSmashed = (G.tvsSmashed || 0) + 1; director.onTvSmash && director.onTvSmash(tv); if (typeof tvs !== 'undefined') tvs.smashed();
 };
 items.onLand = (it, speed) => {
   if (time - G.lastLand < 0.08) return;
@@ -505,6 +506,7 @@ const touch = setupTouch({
     const ray = raycaster.ray, reach = 3 * player.scale;
     if (director.tapBoard(ray) || director.tapBubble(ray)) return;
     if (music.tap(ray, reach)) return;                       // the music button on the speakers / DJ deck
+    if (tvs.hitTV(ray, reach)) return;                        // a telly: put a video on it
     // the lightbox sign in Lewis's cabin: tap it to write your own message
     if (room.lightbox) { const lb = room.lightbox, lp = lb.mesh.getWorldPosition(_b);
       const along = _a.subVectors(lp, ray.origin).dot(ray.direction);
@@ -699,7 +701,7 @@ function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t 
 let paused = false;
 const pauseEl = document.getElementById('pause');
 function setPaused(on) {
-  paused = on; pauseEl.classList.toggle('on', on); pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-ctrls', 'show-modes', 'show-music'); vrPause && vrPause.close(); }
+  paused = on; pauseEl.classList.toggle('on', on); pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-ctrls', 'show-modes', 'show-music', 'show-tv'); vrPause && vrPause.close(); }
   if (on) { const guest = !!(net.connected && !net.host);   // multiplayer: only the host changes the game or restarts it
     document.getElementById('pause-mode').style.display = guest ? 'none' : ''; document.getElementById('pause-restart').style.display = guest ? 'none' : '';
     const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = (t ? t.textContent : '') + (guest ? ' · the host picks the game' : ''); try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
@@ -854,7 +856,7 @@ const vrEmote = (() => {
 })();
 function frame(simDt) {
   foodGlow(performance.now() / 1000);
-  music.update(Math.min(0.05, 1 / 60)); pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
+  music.update(Math.min(0.05, 1 / 60)); tvs.update(1 / 60); pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
   if (renderer.xr.isPresenting && simDt == null) { vrMenuButtons(); vrEmote.update(); }
   if (paused && simDt == null && net.connected) { if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } }
   else if (paused && simDt == null) { clock.getDelta(); if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } renderer.render(scene, camera); return; }    // frozen until RESUME
@@ -1008,6 +1010,12 @@ const music = new Music({ scene, room, net, player, words, hint: (t) => touch.hi
   say(t) { const m = document.getElementById('mus-msg'); if (m) { m.textContent = t; clearTimeout(m._t); m._t = setTimeout(() => { m.textContent = ''; }, 2600); } },
 } });
 document.getElementById('mus-close').addEventListener('click', () => { initAudio(); setPaused(false); });
+// the tellies: tap / poke one to put a video on it (only the host chooses in multiplayer)
+const tvs = new TVs({ scene, room, net, player, hint: (t) => touch.hint(t), ui: {
+  open() { initAudio(); setPaused(true); pauseEl.classList.add('show-tv'); setMuted(soundOff); tvs.render(); },
+  say(t) { const m = document.getElementById('tv-msg'); if (m) { m.textContent = t; clearTimeout(m._t); m._t = setTimeout(() => { m.textContent = ''; }, 2800); } },
+} });
+document.getElementById('tv-close').addEventListener('click', () => { initAudio(); setPaused(false); });
 mp.start();
 if (window.ronnieMP && window.ronnieMP.role === 'join') director.remote = true;
 // someone playing as a squad member: their own body, moved by where their head and hands are
@@ -1097,4 +1105,4 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { net, mp, music, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
