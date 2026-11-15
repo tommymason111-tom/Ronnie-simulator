@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.7.1', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '1.7.2', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['1.7.2', ['Floors no longer draw over the bar foot rail or show through under the walls']],
   ['1.7.1', ['Oysterfleet reception moved to where it really is: an L-shaped oak desk down the left side, staff behind it in front of the red wall with the office door and Reception sign', 'Proper front doors: glazed oak double doors with brass push plates and pull handles, kick plates, a gilt-lettered fanlight, door closers and a stone threshold', 'More detail in reception: framed awards and an Est. 1931 plaque, a brass lantern, a key cabinet, the premises licence']],
   ['1.7.0', ['The Oysterfleet restaurant: through the old restaurant entrance, a big eight-sided dining room laid out from your plan — white tablecloths, honey-wood chairs, places laid with glasses and napkins, amber candles, brass chandeliers with yellow shades, sconces, paintings and tall curtained windows', 'A long mahogany bar with brass beer founts, a rack of hanging glasses and a lit wall of wine bottles', 'A side room through a wide opening: three long banqueting tables, green damask and sage panelling, a big gilt mirror, yellow floor lamps', 'A hall to new Ladies and Gents, and the kitchen extended up so the restaurant has its own kitchen door next to the bar (walk-in cold room, pastry bench, dry stores)', 'Smoother: far-away parts of the pub are no longer drawn when out of view']],
   ['1.6.6', ['Two tall tables in the middle of the Oysterfleet floor', 'You now start the Oysterfleet in reception, facing the desk']],

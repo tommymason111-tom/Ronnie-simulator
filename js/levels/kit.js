@@ -135,7 +135,7 @@ export class Kit {
     const g = new THREE.PlaneGeometry(x1 - x0, z1 - z0);
     const t = tex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set((x1 - x0) / repeat, (z1 - z0) / repeat);
     this.floorN = (this.floorN || 0) + 1;
-    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: t, polygonOffset: true, polygonOffsetFactor: -this.floorN, polygonOffsetUnits: -2 * this.floorN }));
+    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: t, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));   // (overlapping floors sit at different heights; a big offset here drew floors over the bottoms of walls)
     m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
     this.scene.add(m);
     return m;

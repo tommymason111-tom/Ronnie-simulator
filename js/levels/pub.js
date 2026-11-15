@@ -397,8 +397,8 @@ export function buildPub(scene) {
       const uv = g.attributes.uv, pa = g.attributes.position, c = Math.cos(rot), s2 = Math.sin(rot);
       for (let i = 0; i < uv.count; i++) { const x = pa.getX(i), z = pa.getZ(i); uv.setXY(i, (x * c - z * s2) / scale, (x * s2 + z * c) / scale); }
       const t = tex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -order, polygonOffsetUnits: -4 * order }));
-      m.position.y = 0.003; scene.add(m); };
+      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
+      m.position.y = order === 30 ? 0.006 : 0.005; scene.add(m); };
     // the counter's customer face, as a smooth curve
     const path = new THREE.CatmullRomCurve3([[695, 605], [695, 800], [705, 880], [735, 955], [775, 982], [795, 1010], [795, 1245]].map(([x, z]) => new THREE.Vector3(X(x), 0, Z(z))), false, 'centripetal').getPoints(60);
     // the outer edge: 1.5m out from the counter, with a gentle wave, sweeping round at the ends
