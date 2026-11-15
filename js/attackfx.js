@@ -178,9 +178,12 @@ export class AttackFX {
       const fov = THREE.MathUtils.degToRad(xr ? 100 : this.camera.fov), aspect = this.viewAspect();
       const hh = 2 * 0.6 * Math.tan(fov / 2) * 1.04;
       c.screen.scale.set(hh * aspect / 2.6, hh / 1.95, 1);
-    } else if (!(this.player.renderer && this.player.renderer.xr.isPresenting)) {   // the film always fits across the screen
-      const vw = 2 * 0.66 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
-      c.screen.scale.setScalar(Math.min(1, vw * 0.96 / 0.96));
+    } else if (!(this.player.renderer && this.player.renderer.xr.isPresenting)) {   // the film fills the whole phone screen
+      const vh = 2 * 0.66 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2), vw = vh * this.camera.aspect;
+      const portrait = vw < vh;     // upright phone: turn the film so it runs top to bottom
+      c.screen.rotation.z = portrait ? -Math.PI / 2 : 0;
+      const fw = portrait ? vh : vw, fh = portrait ? vw : vh;
+      c.screen.scale.setScalar(Math.max(fw / 0.96, fh / 0.54) * 1.01);
     }
     c.back.material.opacity = Math.max(0, fade); c.screen.material.opacity = Math.max(0, fade);
     const g = c.cv.getContext('2d');

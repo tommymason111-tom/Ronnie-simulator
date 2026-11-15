@@ -37,6 +37,7 @@
     /* on-screen controls (phone / tablet / desktop) */
     #touch { display: none; position: fixed; inset: 0; pointer-events: none; user-select: none; -webkit-user-select: none; }
     #touch.on { display: block; }
+    #touch.on.busy { display: none; }   /* buttons hide while an attack plays */
     #stick { position: absolute; left: max(24px, env(safe-area-inset-left)); bottom: max(28px, env(safe-area-inset-bottom)); width: 130px; height: 130px; border-radius: 50%;
       background: rgba(255,255,255,0.14); border: 3px solid rgba(255,255,255,0.45); pointer-events: auto; touch-action: none; }
     #knob { position: absolute; left: 37px; top: 37px; width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,0.85); box-shadow: 0 2px 8px rgba(0,0,0,0.4); }

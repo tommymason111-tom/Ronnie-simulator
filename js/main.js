@@ -719,7 +719,7 @@ renderer.setAnimationLoop(() => {
   }
   director.update(dt, ctx);
   attackFx.update(dt);
-  if (player.flatMode) updateTouchUI();
+  if (player.flatMode) { updateTouchUI(); touch.busy(!!attackFx.cut || director.cast.some(c => c.state === 'act')); }
 
   // timers & tint
   if (G.locoT > 0) {

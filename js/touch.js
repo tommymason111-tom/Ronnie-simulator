@@ -89,6 +89,7 @@ export function setupTouch(cb) {
 
   return {
     show(on) { root.classList.toggle('on', on); },
+    busy(on) { if (root.classList.contains('busy') !== on) root.classList.toggle('busy', on); },
     setSprint: showSprint,
     setZoomAvailable(on, zoomed) { zm.classList.toggle('show', on); showZoom(on && zoomed); },
     setEatLabel(txt, enabled) { eat.textContent = txt; eat.classList.toggle('off', !enabled); },
