@@ -305,6 +305,7 @@ export function buildPub(scene) {
   });
   // ================================================================ the main pub floor
   freeTable(X(515), Z(925), true); tallTable(X(605), Z(908));
+  tallTable(X(592), Z(1108));                                                             // a tall table in the open floor between the pillars and the bar
   smallTable(X(370), Z(1065) - 0.5, true); smallTable(X(430), Z(1065) - 0.5, true); { const tx = X(370), tz = Z(1065) + 0.07 + 0.42; table(tx, tz, 1.2, 0.8, 0); for (const dx of [-0.3, 0.3]) pubChair(tx + dx, tz + 0.7, 0); candles.push([tx, tz]); }   // against the panelled wall tallTable(X(573), Z(1090)); freeTable(X(612), Z(1162));
   freeTable(X(370), Z(1250));
   bench(true, X(455) + 0.08, Z(1165) + 0.05, Z(1305) - 0.1, 1);                          // "Table booth" against the partition

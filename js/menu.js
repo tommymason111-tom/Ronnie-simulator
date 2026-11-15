@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.6.4', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '1.6.5', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['1.6.5', ['A tall table with three bar chairs in the middle of the Oysterfleet floor, between the pillars and the bar']],
   ['1.6.4', ['Men\'s toilets redone: urinals with privacy screens on three walls (no cubicles), the sinks, mirror, soap and a hand dryer on the right-hand wall, a frosted window up high', 'The unflushed surprise has moved to the accessible toilet']],
   ['1.6.3', ['Oysterfleet reception rebuilt like the real one: an oak panelled desk with a cream top facing into the room, staff behind it, a red wall with the office door and a Reception sign, tulips, leaflets, and a red buttoned leather tub chair']],
   ['1.6.2', ['Removed the specials board standing on the floor by the pub entrance']],
