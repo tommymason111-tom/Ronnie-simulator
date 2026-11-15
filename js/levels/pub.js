@@ -25,7 +25,11 @@ const H = 3.0;
 const S = 0.024;
 const X = (px) => (px - 600) * S, Z = (py) => (py - 975) * S;
 const GZ = Z(1645), GZ1 = GZ + 26, GX0 = -10, GX1 = X(1045);          // the beer garden behind the pub (metres)
-const CONS_WIN = [-8.22, -5.42, -2.62, 0.18], WIN_Y0 = 0.75, WIN_Y1 = 2.45;   // the conservatory's windows (centres, sill, head)
+const CONS_WIN = [-6.85, -4.1, -1.35, 1.4], WIN_Y0 = 0.75, WIN_Y1 = 2.45;   // the conservatory's windows (centres, sill, head)
+// a corridor down the left of the conservatory, from the pub to a back door out on to the deck
+const COR_X0 = -9.72, COR_X1 = -8.32, BDOOR = [-9.45, -8.55], BDOOR_H = 2.2;
+// every opening in the back wall of the conservatory + corridor: [x0, x1, bottom, top]
+const BACK_HOLES = [[BDOOR[0], BDOOR[1], 0, BDOOR_H], ...CONS_WIN.map(c => [c - 1.1, c + 1.1, WIN_Y0, WIN_Y1])];
 const DW = 1.0;                                                         // the deck outside the back door was widened by this much (everything beyond moved back)
 const B = { x0: REST_BOUNDS.x0, x1: X(1045) + 7, z0: REST_BOUNDS.z0, z1: GZ1 + DW };          // (out to the left for the restaurant)
 // the walkable rooms on the plan (pixels); everything else inside the bounds is solid
@@ -161,10 +165,13 @@ export function buildPub(scene) {
   WX(605, 25, 195, [[95, 143]], WALL); WZ(25, 605, 1060, [], WALL); WX(1060, 15, 195); WX(1190, 15, 195, [], WALL);   // (a door up into the kitchen extension; the corridor opens into the restaurant)
   R(X(15) - T2, Z(1060), X(15) + T2, Z(1190), H - 2.35, 2.35 + (H - 2.35) / 2, PLASTER); R(X(15) - 0.1, Z(1060), X(15) + 0.1, Z(1190), 0.08, 2.39, DARKWOOD);   // the header over the way into the restaurant
   // conservatory + the passage to the beer garden
-  WX(1305, 290, 330); WZ(715, 1305, 1645); WX(1645, 715, 795, [[722, 793]], WALL);
+  WZ(715, 1305, 1645);
+  // the corridor down the left of the conservatory: its wall (papered both sides by the wall dressing further down),
+  // open to the pub at the top end, the back door to the garden at the bottom
+  R(COR_X1 - T2, Z(1305) - T2, COR_X1 + T2, Z(1645), H, H / 2, PLASTER, { collide: true, block: true }); WX(1645, 715, 795, [[722, 793]], WALL);
   // the conservatory's back wall, with four real window openings looking out on to the beer garden
-  { const z = Z(1645), ops = CONS_WIN.map(c => [c - 1.1, c + 1.1]); let a = X(195) - T2;
-    for (const [o0, o1] of ops) { R(a, z - T2, o0, z + T2, H, H / 2, WALL, { collide: true, block: true }); R(o0, z - T2, o1, z + T2, WIN_Y0, WIN_Y0 / 2, WALL, { collide: true, block: true }); R(o0, z - T2, o1, z + T2, H - WIN_Y1, (H + WIN_Y1) / 2, WALL); a = o1; }
+  { const z = Z(1645); let a = X(195) - T2;
+    for (const [o0, o1, y0, y1] of BACK_HOLES) { R(a, z - T2, o0, z + T2, H, H / 2, WALL, { collide: true, block: true }); if (y0 > 0) R(o0, z - T2, o1, z + T2, y0, y0 / 2, WALL, { collide: true, block: true }); R(o0, z - T2, o1, z + T2, H - y1, (H + y1) / 2, WALL); a = o1; }
     R(a, z - T2, X(715) + T2, z + T2, H, H / 2, WALL, { collide: true, block: true }); }   // (the rest of the conservatory wall: windows and the brick cubby, further down)
   // DJ booth (half walls) and the raised area's edge (half walls with a brass rail on top)
   const HALF = 1.1;
@@ -325,7 +332,7 @@ export function buildPub(scene) {
   freeTable(X(515), Z(925), true); tallTable(X(605), Z(908));
   tallTable(X(596), Z(1053)); tallTable(X(596), Z(1150));                                 // two tall tables in the open floor between the pillars and the bar
   smallTable(X(370), Z(1065) - 0.5, true); smallTable(X(430), Z(1065) - 0.5, true); { const tx = X(370), tz = Z(1065) + 0.07 + 0.42; table(tx, tz, 1.2, 0.8, 0); for (const dx of [-0.3, 0.3]) pubChair(tx + dx, tz + 0.7, 0); candles.push([tx, tz]); }   // against the panelled wall tallTable(X(573), Z(1090)); freeTable(X(612), Z(1162));
-  freeTable(X(370), Z(1250));
+  freeTable(-4.65, Z(1250));                                                              // (moved over: the corridor to the back door runs down past it)
   bench(true, X(455) + 0.08, Z(1165) + 0.05, Z(1305) - 0.1, 1);                          // "Table booth" against the partition
   boothTable(X(455) + 0.95, Z(1200), true, 1);
   bench(false, Z(1305) - 0.1, X(575), X(712), -1);                                      // "Table booth" under the windows into the conservatory
@@ -1012,10 +1019,10 @@ export function buildPub(scene) {
   k.label('TOILETS →', 0.7, 0.22, [X(385), 2.5, Z(605) + 0.09], [0, 0, 0], { bg: '#1b3a2a', fg: '#d4af37', border: null, size: 60 });
 
   // ================================================================ the conservatory: booths, tables, a glass roof
-  bench(false, Z(1305) + 0.1, X(300), X(700), 1);                                                     // "Tables with booth" along the partition
+  bench(false, Z(1305) + 0.1, -5.75, X(700), 1);                                                     // "Tables with booth" along the partition
   boothTable(X(390), Z(1305) + 0.95, false, 1); boothTable(X(510), Z(1305) + 0.95, false, 1); boothTable(X(635), Z(1305) + 0.95, false, 1);
-  bench(true, X(195) + 0.08, Z(1390), Z(1530), 1);                                       // "Table booth" on the left wall
-  boothTable(X(195) + 0.95, Z(1420), true, 1); boothTable(X(195) + 0.95, Z(1500), true, 1);
+  bench(true, COR_X1 + 0.08, Z(1390), Z(1530), 1);                                       // "Table booth" on the corridor wall
+  boothTable(COR_X1 + 0.95, Z(1420), true, 1); boothTable(COR_X1 + 0.95, Z(1500), true, 1);
   freeTable(X(655), Z(1465), true);
   for (const px of [325, 430, 540]) freeTable(X(px), Z(1590), true);
   { const x0 = X(195), x1 = X(715), z0 = Z(1305), z1 = Z(1645);
@@ -1034,7 +1041,7 @@ export function buildPub(scene) {
     k.pool((x0 + x1) / 2, 0, (z0 + z1) / 2, 7, 0xfff8e8);
     k.label('THE CONSERVATORY — PLEASE DO NOT TAP ON THE GLASS (RONNIE: OR LICK IT)', 2.2, 0.4, [x0 + 0.12, 2.35, z1 - 1.8], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#2e7d32', border: '#2e7d32', size: 36 });
     // plants in the corners
-    for (const [x, z] of [[x1 - 0.4, z1 - 0.4], [x0 + 0.4, z1 - 0.4]]) pottedPlant(k, x, z, { s: 1.0, pot: 0xb05a32 });
+    for (const [x, z] of [[x1 - 0.4, z1 - 0.4], [COR_X1 + 0.48, z1 - 0.4]]) pottedPlant(k, x, z, { s: 1.0, pot: 0xb05a32 });
   }
 
   // ================================================================ lights, beams, cladding, telly, signs
@@ -1112,7 +1119,8 @@ export function buildPub(scene) {
         for (const s4 of [-1, 1]) R(mx + s4 * bw * 0.21 - 0.008, zc - 0.03, mx + s4 * bw * 0.21 + 0.008, zc + 0.03, top - 2.05, (top + 2.05) / 2, FRAME); }
       blk(x0, zc - 0.1, x1, zc + 0.1, H);
     };
-    winWall(X(330), X(452)); winWall(X(565), X(715));
+    winWall(-5.9, X(452)); winWall(X(565), X(715));   // (the conservatory's way in is now from the corridor end, -8.24 to -5.9)
+    R(-6.0, zc - 0.1, -5.9, zc + 0.1, H, H / 2, DARKWOOD, { block: true });                                                     // a dark post at the edge of the way in
     // the cubby: brick on three sides, set back into the conservatory side
     // the brick corner (from the photo): a brick wall in line with the windows, its booth meeting the partition's
     // booth in an L, the old beer mirror under a brick arch and the telly above, lights either side, a brick pier
@@ -1133,10 +1141,30 @@ export function buildPub(scene) {
     for (const x of [mc - 0.95, mc + 0.95]) { k.box(0.1, 0.16, 0.05, x, 2.0, fz - 0.03, 0x1a1a1a); k.lamp(x, 2.08, fz - 0.07, 0xffd8a0, 0.05); sconceGlow(k, x, 2.0, fz - 0.09, x, fz + 1); }
     k.lamp(mc, H - 0.01, zc - 0.6, 0xfffbe8, 0.04); k.light(mc, 2.2, zc - 1.0, 0xffc884, 2.5, 4);
     // a fern in a pot by the window and the pillar, like the photo
-    pottedPlant(k, X(345), zc - 0.45, { s: 0.95, pot: 0x5a3a22, fronds: 22 });
+    pottedPlant(k, -5.55, zc - 0.42, { s: 0.95, pot: 0x5a3a22, fronds: 22 });
     // posters on the pillar and brick
     k.label('MATCH NIGHT — ALL GAMES SHOWN (RONNIE: ALL PIES EATEN)', 0.42, 0.6, [X(290) + 0.05 + 0.29, 1.6, zc - 0.35], [0, Math.PI / 2, 0], { bg: '#1a1a3a', fg: '#ffd400', border: '#c9a24a', size: 36 });
   }
+  // ---- the corridor and its back door: a half-glazed door hooked open against the wall, the push bar, an EXIT sign,
+  // a BEER GARDEN finger sign, downlights, a framed print, a fire extinguisher, a coir mat; outside a step, a lantern
+  { const cx = (COR_X0 + COR_X1) / 2, gz = Z(1645), dw = BDOOR[1] - BDOOR[0], dcx = (BDOOR[0] + BDOOR[1]) / 2;
+    for (const sd of [0, 1]) R(BDOOR[sd] - 0.05 + sd * 0.0, gz - 0.11, BDOOR[sd] + 0.05, gz + 0.11, BDOOR_H, BDOOR_H / 2, DARKWOOD); R(BDOOR[0] - 0.05, gz - 0.11, BDOOR[1] + 0.05, gz + 0.11, 0.08, BDOOR_H + 0.04, DARKWOOD);   // the frame
+    const lx = COR_X0 + 0.12;                                                                                                       // the door, open flat against the wall
+    R(lx - 0.025, gz - 0.12 - dw, lx + 0.025, gz - 0.12, 2.08, 1.04, 0xf2efe6); R(lx + 0.026, gz - 0.12 - dw + 0.12, lx + 0.03, gz - 0.24, 1.1, 1.5, 0xbfdce8);
+    R(lx + 0.03, gz - 0.12 - dw + 0.06, lx + 0.075, gz - 0.18, 0.05, 1.0, 0xc8ccd0); k.box(0.12, 0.04, 0.04, lx + 0.06, 1.0, gz - 0.12 - dw + 0.08, 0x222222);   // push bar, door stop
+    R(BDOOR[0], gz - 0.11, BDOOR[1], gz + 0.25, 0.04, 0.02, 0x8a8a8a);                                                              // threshold
+    k.label('EXIT', 0.36, 0.14, [dcx, BDOOR_H + 0.25, gz - 0.09], [0, Math.PI, 0], { bg: '#1b8a3a', fg: '#fff', border: null, size: 90, glow: true });
+    k.label('BEER GARDEN →', 0.95, 0.22, [COR_X1 - 0.09, 2.45, Z(1305) + 0.9], [0, -Math.PI / 2, 0], { bg: '#2e7d32', fg: '#fff', border: null, size: 60 });
+    k.label('BEER GARDEN', 0.8, 0.2, [cx, 2.62, Z(1305) - 0.09], [0, Math.PI, 0], { bg: '#2e7d32', fg: '#fff', border: null, size: 60 });
+    for (let z = Z(1305) + 1.0; z < gz; z += 2.0) { k.lamp(cx, H - 0.01, z, 0xfffbe8, 0.035); k.pool(cx, 0, z, 1.4, 0xfff0d0); }
+    k.light(cx, 2.5, (Z(1305) + gz) / 2, 0xffe8c8, 1.6, 6);
+    k.cyl(0.07, 0.07, 0.5, COR_X1 - 0.17, 0.45, gz - 0.6, 0xd32f2f, 10); k.box(0.05, 0.08, 0.05, COR_X1 - 0.17, 0.75, gz - 0.6, 0x222222);   // extinguisher
+    R(COR_X1 - 0.1, gz - 0.85, COR_X1 - 0.08, gz - 0.35, 0.3, 1.25, 0xd32f2f); k.label('FIRE EXIT — KEEP CLEAR (RONNIE)', 0.42, 0.26, [COR_X1 - 0.11, 1.65, gz - 0.6], [0, -Math.PI / 2, 0], { bg: '#1b8a3a', fg: '#fff', border: null, size: 30 });
+    k.box(dw + 0.1, 0.012, 0.75, dcx, 0.008, gz - 0.55, 0x8a6a3a);                                                                 // coir mat
+    // outside: a stone step, a black lantern over the door, a sign
+    R(BDOOR[0] - 0.15, gz + 0.1, BDOOR[1] + 0.15, gz + 0.45, 0.05, 0.025, 0x9a968e);
+    k.box(0.1, 0.12, 0.2, dcx, 2.5, gz + 0.2, 0x111111); k.cyl(0.08, 0.1, 0.24, dcx, 2.38, gz + 0.32, 0x111111, 6); k.lamp(dcx, 2.36, gz + 0.32, 0xfff0d0, 0.05);
+    k.label('THE OYSTERFLEET — BAR & RESTAURANT THIS WAY', 0.85, 0.22, [dcx, 2.75, gz + 0.145], [0, 0, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 34 }); }
   // the white painted dresser and the console table (menus, hand gel) by the books wall, the telly above, a red glow
   { const x = X(195) + 0.08, z0 = Z(1200), z1 = Z(1290), zc = (z0 + z1) / 2, D = 0.45;
     R(x, z0, x + D, z1, 0.85, 0.425, 0xeeece6, { collide: true, block: true }); R(x - 0.01, z0 - 0.02, x + D + 0.03, z1 + 0.02, 0.04, 0.87, 0xd8d4ca);
@@ -1174,9 +1202,9 @@ export function buildPub(scene) {
     k.texBox(CX1 - CX0, 3.9, 0.2, (CX0 + CX1) / 2, H + 1.95, GZ, weather, { tile: 1.2 });   // (the conservatory is part of the building: the upstairs runs straight over it)
     // cladding with the conservatory's window openings left clear
     const cladHoles = (x0, x1, y0, y1, d, z, tex, tile) => { let a = x0;
-      for (const c of CONS_WIN) { const o0 = Math.max(c - 1.1, x0), o1 = Math.min(c + 1.1, x1); if (o1 <= o0) continue;
+      for (const [c0, c1, hy0, hy1] of BACK_HOLES) { const o0 = Math.max(c0, x0), o1 = Math.min(c1, x1); if (o1 <= o0) continue;
         if (o0 > a) k.texBox(o0 - a, y1 - y0, d, (a + o0) / 2, (y0 + y1) / 2, z, tex, { tile });
-        k.texBox(o1 - o0, WIN_Y0 - y0, d, (o0 + o1) / 2, (y0 + WIN_Y0) / 2, z, tex, { tile }); k.texBox(o1 - o0, y1 - WIN_Y1, d, (o0 + o1) / 2, (WIN_Y1 + y1) / 2, z, tex, { tile }); a = o1; }
+        if (hy0 > y0) k.texBox(o1 - o0, hy0 - y0, d, (o0 + o1) / 2, (y0 + hy0) / 2, z, tex, { tile }); k.texBox(o1 - o0, y1 - hy1, d, (o0 + o1) / 2, (hy1 + y1) / 2, z, tex, { tile }); a = o1; }
       if (x1 > a) k.texBox(x1 - a, y1 - y0, d, (a + x1) / 2, (y0 + y1) / 2, z, tex, { tile }); };
     cladHoles(-6, 2.93, 0, H, 0.03, GZ + 0.095, weather, 1.2); k.texBox(GX1 - 4.63, H, 0.03, (GX1 + 4.63) / 2, H / 2, GZ + 0.095, weather, { tile: 1.2 });
     cladHoles(B.x0, -6, 0, H, 0.06, GZ + 0.11, brickO, 0.9); k.texBox(CX0 - B.x0, 3.9, 0.06, (B.x0 + CX0) / 2, H + 1.95, GZ + 0.11, brickO, { tile: 0.9 });   // the brick wing on the left
@@ -1261,8 +1289,8 @@ export function buildPub(scene) {
     const lattice = (x0, x1, z) => { R(x0, z - 0.03, x1, z + 0.03, 0.45, 0.225, FENCE); for (let x = x0; x < x1; x += 0.15) for (const sd of [1, -1]) k.box(0.02, 0.62, 0.012, x + 0.075, 0.27, z + sd * 0.02, 0x4a3a30, { rot: [0, 0, sd * 0.78] }); };
     const lampPost = (x, z, y0 = 0) => { k.cyl(0.04, 0.06, 2.6, x, 1.3 + y0, z, 0x111111, 8); k.cyl(0.12, 0.12, 0.1, x, 0.05 + y0, z, 0x111111, 10); for (const sd of [-1, 1]) { k.box(0.4, 0.03, 0.03, x + sd * 0.2, 2.55 + y0, z, 0x111111); k.cyl(0.07, 0.1, 0.18, x + sd * 0.38, 2.42 + y0, z, 0x1a1a1a, 8); k.lamp(x + sd * 0.38, 2.36 + y0, z, 0xfff0d0, 0.05); } blk(x - 0.08, z - 0.08, x + 0.08, z + 0.08, 2.7); };
     for (const x of [-8.6, -6.6, -1.6, 0.4, 2.4, 4.4]) bench(x, 18.95, Math.PI / 2, 0, x === 0.4 ? true : false);   // longways, out from the building: a clear walkway in front of them (none in front of the door)
-    for (const [x, c] of [[7.9, 0x7e57c2], [8.6, 0x43a047], [9.3, 0x43a047]]) { R(x - 0.3, 19.68, x + 0.3, 20.28, 0.42, 0.21, c, { collide: true, block: true }); R(x - 0.3, 19.68, x + 0.3, 20.28, 0.05, 0.445, 0xffffff); }
-    { const px = 8.7, pz = 18.45; roundT(px, pz); const pm = new THREE.MeshLambertMaterial({ color: 0xc8189a }); MM.compose(V3.set(px, 2.05, pz), QQ.identity(), S1); k.instance(openG, pm, MM.clone()); MM.compose(V3.set(px, 0, pz), QQ.identity(), S1); k.instance(poleG, poleM, MM.clone()); }
+    for (const [x, c] of []) { R(x - 0.3, 19.68, x + 0.3, 20.28, 0.42, 0.21, c, { collide: true, block: true }); R(x - 0.3, 19.68, x + 0.3, 20.28, 0.05, 0.445, 0xffffff); }
+    { const px = 8.85, pz = 19.3; roundT(px, pz); const pm = new THREE.MeshLambertMaterial({ color: 0xc8189a }); MM.compose(V3.set(px, 2.05, pz), QQ.identity(), S1); k.instance(openG, pm, MM.clone()); MM.compose(V3.set(px, 0, pz), QQ.identity(), S1); k.instance(poleG, poleM, MM.clone()); }
     lampPost(7.4, 19.0);
     // ---- the stream: slate chippings, sleeper edges, bright green water, mooring posts, reeds; the bridge over it
     flr(GX0, 19.4, GX1, 20.02, SLATE, 0.6, 0.003); flr(GX0, 21.98, GX1, 22.9, SLATE, 0.6, 0.003);   // slate chippings either side of the water
