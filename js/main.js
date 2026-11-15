@@ -647,7 +647,7 @@ function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t 
 let paused = false;
 const pauseEl = document.getElementById('pause');
 function setPaused(on) {
-  paused = on; pauseEl.classList.toggle('on', on); if (!on) pauseEl.classList.remove('show-ctrls');
+  paused = on; pauseEl.classList.toggle('on', on); if (!on) pauseEl.classList.remove('show-ctrls', 'show-modes');
   if (on) { const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = t ? t.textContent : ''; try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
   setMuted(on || soundOff);
 }
@@ -662,6 +662,32 @@ document.getElementById('pause-controls').addEventListener('click', () => {
   document.querySelectorAll('#pause .clist').forEach(l => l.classList.toggle('on', l.dataset.d === (touchy ? 'touch' : 'pc')));
   pauseEl.classList.add('show-ctrls');
 });
+// change game mode from the pause menu (only the games this place has)
+const PAUSE_MODES = {
+  everyone: ['👥', 'THE WHOLE SQUAD', 'Everyone takes turns attacking you while you eat'],
+  chonkoff: ['⏱️', 'EAT-OFF · 1 PLAYER', '60 seconds. Eat everything'],
+  chonkoff2: ['🆚', 'EAT-OFF · 2 PLAYERS', 'Pass-and-play: who eats more?'],
+  sweep: ['🛒', 'SUPERMARKET SWEEP', 'Grab the most calories. Dodge security'],
+  bbq: ['🍖', "IAN'S BARBECUE", 'Eat off the grill before Ian makes it healthy'],
+  date: ['💜', 'DATE NIGHT', 'Eat when Chloe looks away'],
+  roam: ['🚶', 'FREE ROAM', 'Have a look round. Nobody attacks'],
+};
+const PLACE_GAMES = { pub: ['everyone', 'chonkoff', 'chonkoff2', 'roam'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
+function showPauseModes() {
+  const list = document.getElementById('pause-mode-list'), cur = director.mode;
+  list.innerHTML = (PLACE_GAMES[room.placeId] || PLACE_GAMES.bedroom).map(id => { const [ico, name, desc] = PAUSE_MODES[id];
+    return `<button class="alt mode-opt${id === cur ? ' cur' : ''}" data-id="${id}">${ico} ${name}<small>${id === cur ? 'Playing now · tap to restart' : desc}</small></button>`; }).join('');
+  list.querySelectorAll('.mode-opt').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.id; SEL.mode = id;
+    try { const st = JSON.parse(localStorage.getItem('rs_menu') || '{}'); st.mode = id; localStorage.setItem('rs_menu', JSON.stringify(st)); } catch (e) {}
+    const tag = document.getElementById('ready-tag'); if (tag) tag.textContent = tag.textContent.replace(/·.*$/, '· ' + PAUSE_MODES[id][1]);
+    attackFx.removeAll();
+    initAudio(); setPaused(false); director.start(id);
+  }));
+  pauseEl.classList.add('show-modes');
+}
+document.getElementById('pause-mode').addEventListener('click', showPauseModes);
+document.getElementById('pause-modes-back').addEventListener('click', () => pauseEl.classList.remove('show-modes'));
 document.getElementById('pause-ctrls-back').addEventListener('click', () => pauseEl.classList.remove('show-ctrls'));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && player.flatMode) setPaused(!paused); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && player.flatMode && !paused) setPaused(true); });   // switching apps pauses

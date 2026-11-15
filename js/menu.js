@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.6.0', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '1.6.1', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['1.6.1', ['Change game mode from the pause menu (GAME MODE shows the games for the place you\'re in)']],
   ['1.6.0', ['Ben\'s Turkey attack fills the whole phone screen, top to bottom (turn your phone sideways to watch)', 'On-screen buttons hide while an attack is happening']],
   ['1.5.9', ['Smoother at full quality: no lag knocking people over, off-screen stock not drawn, walls and panelling merged into far fewer draw calls, no per-frame work for anything that doesn\'t move']],
   ['1.5.8', ['Oysterfleet beer garden out the back door: a deck, the green stream and its little footbridge, block paving, the octagonal outdoor bar, picnic benches and yellow parasols, a raised deck by the river, a smoking shelter', 'The pub\'s MONSTOR fridge, back bar and cellar fitted out']],
