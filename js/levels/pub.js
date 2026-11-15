@@ -762,11 +762,11 @@ export function buildPub(scene) {
     // reception (copied from the real one, set where the plan shows it): an L-shaped honey-oak raised-panel desk down
     // the left side, its front to the room and the front doors; staff stand behind it, in front of the red angled wall
     // with the glazed office door under the "Reception" plaque
-    const TOP = 1.06, fX = 3.05, bX = 2.42, zT = Z(385) + T2, zB = -11.3, rX0 = 1.62, rZ1 = -10.78;
+    const TOP = 1.06, fX = 2.86, bX = 2.42, zT = Z(385) + T2, zB = -11.3;
     const OAKF = woodTex('#9a5e28'), OAKP = woodTex('#b2763a'), OAKD = woodTex('#7e4a1e');
     const TB = (x0, z0, x1, z1, h, y, tex) => k.texBox(Math.abs(x1 - x0), h, Math.abs(z1 - z0), (x0 + x1) / 2, y, (z0 + z1) / 2, tex);
-    TB(bX, zT, fX, zB, TOP - 0.04, (TOP - 0.04) / 2, OAKF); TB(rX0, zB, fX, rZ1, TOP - 0.04, (TOP - 0.04) / 2, OAKF);
-    k.colliders.push(new THREE.Box3(new THREE.Vector3(bX, 0, zT), new THREE.Vector3(fX, TOP, rZ1)), new THREE.Box3(new THREE.Vector3(rX0, 0, zB), new THREE.Vector3(fX, TOP, rZ1)));
+    TB(bX, zT, fX, zB, TOP - 0.04, (TOP - 0.04) / 2, OAKF);
+    k.colliders.push(new THREE.Box3(new THREE.Vector3(bX, 0, zT), new THREE.Vector3(fX, TOP, zB)));
     // raised-and-fielded panels on a front: along z (facing +x) or along x (facing +z)
     const panels = (alongZ, c, a0, a1) => {
       const L = a1 - a0, np = Math.max(1, Math.round(L / 0.55)), pw = L / np;
@@ -780,35 +780,32 @@ export function buildPub(scene) {
         BX(p0 + 0.035, p1 - 0.035, 0.03, 0.034, y1 - 0.047, y1 - 0.035, null, 0xc48a4a); BX(p0 + 0.035, p1 - 0.035, 0.03, 0.034, y0 + 0.035, y0 + 0.047, null, 0x6e4018); }
     };
     panels(true, fX, zT + 0.02, zB);                     // the long front, facing the room and the doors
-    panels(false, rZ1, rX0, fX);                         // the return, facing down the room
-    { const x = rX0 - 0.015;                             // tongue-and-groove boarding on the end where the staff go in
-      for (let z = zB + 0.03, j = 0; z < rZ1 - 0.03; z += 0.065, j++) { R(x - 0.012, z, x + 0.012, z + 0.06, TOP - 0.32, 0.21 + (TOP - 0.32) / 2, [0xa8682e, 0xb07236, 0x9e6229][j % 3]); R(x - 0.02, z + 0.06, x - 0.012, z + 0.065, TOP - 0.32, 0.21 + (TOP - 0.32) / 2, 0x4a2a10); }
-      TB(x - 0.015, zB, x + 0.015, rZ1, 0.1, 0.16, OAKF); TB(x - 0.015, zB, x + 0.015, rZ1, 0.09, TOP - 0.1, OAKF); }
+    panels(false, zB, bX, fX);                           // the end, facing down the room
     // the cream solid-surface top, overhanging the fronts, with rounded front edges
-    R(bX - 0.02, zT, fX + 0.07, rZ1 + 0.07, 0.035, TOP + 0.0175, 0xf1e9d4, { collide: true }); R(rX0 - 0.06, zB - 0.02, bX, rZ1 + 0.07, 0.035, TOP + 0.0175, 0xf1e9d4, { collide: true });
-    k.parts.push(part(new THREE.CylinderGeometry(0.0175, 0.0175, rZ1 + 0.07 - zT, 10), 0xf1e9d4, [fX + 0.07, TOP + 0.0175, (zT + rZ1 + 0.07) / 2], [Math.PI / 2, 0, 0]));
-    k.parts.push(part(new THREE.CylinderGeometry(0.0175, 0.0175, fX + 0.07 - rX0 + 0.06, 10), 0xf1e9d4, [(rX0 - 0.06 + fX + 0.07) / 2, TOP + 0.0175, rZ1 + 0.07], [0, 0, Math.PI / 2]));
-    R(bX - 0.02, zT, fX + 0.07, rZ1 + 0.07, 0.006, TOP - 0.003, 0xc9bfa6);
-    blk(bX - 0.02, zT, fX + 0.09, rZ1 + 0.09, TOP + 0.05); blk(rX0 - 0.06, zB - 0.02, bX, rZ1 + 0.09, TOP + 0.05);
+    R(bX - 0.02, zT, fX + 0.07, zB + 0.07, 0.035, TOP + 0.0175, 0xf1e9d4, { collide: true });
+    k.parts.push(part(new THREE.CylinderGeometry(0.0175, 0.0175, zB + 0.07 - zT, 10), 0xf1e9d4, [fX + 0.07, TOP + 0.0175, (zT + zB + 0.07) / 2], [Math.PI / 2, 0, 0]));
+    k.parts.push(part(new THREE.CylinderGeometry(0.0175, 0.0175, fX + 0.09 - bX, 10), 0xf1e9d4, [(bX - 0.02 + fX + 0.07) / 2, TOP + 0.0175, zB + 0.07], [0, 0, Math.PI / 2]));
+    R(bX - 0.02, zT, fX + 0.07, zB + 0.07, 0.006, TOP - 0.003, 0xc9bfa6);
+    blk(bX - 0.02, zT, fX + 0.09, zB + 0.09, TOP + 0.05);
     // on top: tulips in a glass vase, the bell, the signing-in book and pen, the leaflet rack, a pot of yellow flowers, the card machine
     { const vx = fX - 0.2, vz = zT + 0.45; k.cyl(0.05, 0.04, 0.24, vx, TOP + 0.155, vz, 0xd8eef0, 12); k.cyl(0.046, 0.036, 0.1, vx, TOP + 0.085, vz, 0x9ac0a0, 12);
       for (let i = 0; i < 9; i++) { const a = i * 0.7, r = 0.02 + (i % 3) * 0.025, hgt = 0.3 + (i % 4) * 0.05, tx = vx + Math.cos(a) * r, tz = vz + Math.sin(a) * r;
         const stm = new THREE.CylinderGeometry(0.004, 0.004, hgt, 4); stm.rotateZ(Math.cos(a) * r * 2.5); stm.rotateX(-Math.sin(a) * r * 2.5); k.parts.push(part(stm, 0x4a8a2a, [(vx + tx) / 2, TOP + 0.04 + hgt / 2, (vz + tz) / 2]));
         k.parts.push(part(new THREE.SphereGeometry(0.026, 8, 6).scale(1, 1.4, 1), i % 3 ? 0xffd21a : 0xf5c000, [tx, TOP + 0.05 + hgt, tz]));
         const lf = new THREE.SphereGeometry(0.03, 6, 4); lf.scale(0.35, 1.6, 0.12); lf.rotateY(a); k.parts.push(part(lf, 0x3a7a24, [vx + Math.cos(a) * 0.03, TOP + 0.3, vz + Math.sin(a) * 0.03])); } }
-    k.cyl(0.04, 0.05, 0.035, fX - 0.1, TOP + 0.053, -12.6, 0xd4af37, 12); k.cyl(0.006, 0.006, 0.03, fX - 0.1, TOP + 0.083, -12.6, 0x333333, 6);
-    R(fX - 0.32, -12.35, fX - 0.06, -11.85, 0.025, TOP + 0.048, 0x7a1f24); R(fX - 0.3, -12.33, fX - 0.08, -11.87, 0.012, TOP + 0.066, 0xfaf6ea);
-    k.label('SIGN IN: "RONNIE — TABLE FOR ONE, FOOD FOR TWELVE"', 0.42, 0.2, [fX - 0.19, TOP + 0.073, -12.1], [-Math.PI / 2, 0, Math.PI / 2], { bg: '#faf6ea', fg: '#111', border: null, size: 28 });
-    k.parts.push(part(new THREE.CylinderGeometry(0.004, 0.004, 0.14, 6), 0x1a1a1a, [fX - 0.12, TOP + 0.078, -11.95], [0, 1.2, Math.PI / 2]));
+    k.cyl(0.04, 0.05, 0.035, fX - 0.1, TOP + 0.053, -12.85, 0xd4af37, 12); k.cyl(0.006, 0.006, 0.03, fX - 0.1, TOP + 0.083, -12.85, 0x333333, 6);
+    R(fX - 0.32, -12.6, fX - 0.06, -12.1, 0.025, TOP + 0.048, 0x7a1f24); R(fX - 0.3, -12.58, fX - 0.08, -12.12, 0.012, TOP + 0.066, 0xfaf6ea);
+    k.label('SIGN IN: "RONNIE — TABLE FOR ONE, FOOD FOR TWELVE"', 0.42, 0.2, [fX - 0.19, TOP + 0.073, -12.35], [-Math.PI / 2, 0, Math.PI / 2], { bg: '#faf6ea', fg: '#111', border: null, size: 28 });
+    k.parts.push(part(new THREE.CylinderGeometry(0.004, 0.004, 0.14, 6), 0x1a1a1a, [fX - 0.12, TOP + 0.078, -12.2], [0, 1.2, Math.PI / 2]));
     { const lx = fX - 0.2, lz = -13.35; R(lx - 0.08, lz - 0.16, lx + 0.08, lz + 0.16, 0.02, TOP + 0.045, 0x3a2416);
       for (let i = 0; i < 3; i++) { const z = lz - 0.1 + i * 0.1; R(lx - 0.03, z - 0.045, lx - 0.02, z + 0.045, 0.2, TOP + 0.15, 0x2a1a10, { rot: [0, 0, 0.25] });
         k.label(['TONIGHT: QUIZ', 'SUNDAY ROAST', 'DARTS LEAGUE'][i], 0.08, 0.17, [lx - 0.01, TOP + 0.17, z], [0, Math.PI / 2, -0.25], { bg: ['#1b3a2a', '#7a1f24', '#d4af37'][i], fg: '#fff', border: null, size: 22 }); } }
-    { const px = 2.75, pz = rZ1 - 0.2; k.cyl(0.065, 0.05, 0.11, px, TOP + 0.09, pz, 0xf6f2e8, 14);
+    { const px = bX + 0.1, pz = zB - 0.17; k.cyl(0.065, 0.05, 0.11, px, TOP + 0.09, pz, 0xf6f2e8, 14);
       for (let i = 0; i < 14; i++) { const a = i * 2.4, r = 0.02 + (i % 4) * 0.018; k.parts.push(part(new THREE.SphereGeometry(0.022, 6, 4), i % 2 ? 0xffd21a : 0xffe56a, [px + Math.cos(a) * r, TOP + 0.19 + (i % 3) * 0.025, pz + Math.sin(a) * r])); }
       for (let i = 0; i < 8; i++) { const lf = new THREE.SphereGeometry(0.03, 6, 4); lf.scale(0.4, 1.4, 0.12); lf.rotateY(i * 0.8); k.parts.push(part(lf, 0x3a7a24, [px + Math.cos(i * 0.8) * 0.03, TOP + 0.17, pz + Math.sin(i * 0.8) * 0.03])); } }
     R(fX - 0.25, -11.55, fX - 0.1, -11.4, 0.05, TOP + 0.06, 0x222222); k.box(0.1, 0.02, 0.06, fX - 0.17, TOP + 0.09, -11.47, 0x111111, { rot: [0, 0, 0.3] });   // card machine
-    R(1.85, rZ1 - 0.35, 2.15, rZ1 - 0.12, 0.01, TOP + 0.04, 0x1b2a1b); for (let i = 0; i < 5; i++) R(1.86, rZ1 - 0.34, 2.14, rZ1 - 0.13, 0.008, TOP + 0.05 + i * 0.009, i % 2 ? 0x1b2a1b : 0x162216);   // menus
-    k.spawns.push(new THREE.Vector3(fX - 0.25, TOP + 0.15, -12.9)); k.spawns.push(new THREE.Vector3(2.3, TOP + 0.15, rZ1 - 0.25));
+    R(bX + 0.02, -12.02, bX + 0.3, -11.72, 0.01, TOP + 0.04, 0x1b2a1b); for (let i = 0; i < 5; i++) R(bX + 0.03, -12.01, bX + 0.29, -11.73, 0.008, TOP + 0.05 + i * 0.009, i % 2 ? 0x1b2a1b : 0x162216);   // menus
+    k.spawns.push(new THREE.Vector3(fX - 0.25, TOP + 0.15, -12.9));
     // behind the desk: a lower work top on cupboards (the booking screen, the phone, the till drawer), a swivel chair
     { R(bX - 0.3, zT + 0.1, bX, zB, 0.03, 0.78, 0xe8dfc8); R(bX - 0.28, zT + 0.1, bX, zB, 0.76, 0.38, 0xd8cdb4);
       for (let z = zT + 0.15; z < zB - 0.4; z += 0.5) { R(bX - 0.29, z, bX - 0.28, z + 0.46, 0.66, 0.4, 0xe2d8c0); k.box(0.012, 0.012, 0.1, bX - 0.3, 0.66, z + 0.23, 0xb8bcc2); }
@@ -840,7 +837,7 @@ export function buildPub(scene) {
       { const [x, z] = at(LW - 0.35, d0 + 0.02); piece(LW - 0.55, LW - 0.15, 1.45, 1.95, d0, d0 + 0.025, 0xb8923a); k.label('PREMISES LICENCE — THE OYSTERFLEET, CANVEY ISLAND', 0.34, 0.44, [x + nx * 0.008, 1.7, z + nz * 0.008], [0, lry, 0], { bg: '#faf6ea', fg: '#2a1a0a', border: null, size: 22 }); }
     }
     // the red leather chesterfield tub chair in front, on the right, angled towards the desk
-    { const ax = 4.2, az = -11.7, ry = Math.atan2(1, -0.5), c = Math.cos(ry), s = Math.sin(ry), LEA = 0x8e1a22, LEAD = 0x6e1018;
+    { const ax = 3.47, az = -13.58, ry = Math.atan2(-0.45, -0.9), c = Math.cos(ry), s = Math.sin(ry), LEA = 0x8e1a22, LEAD = 0x6e1018;
       const rb = (w, h, d, r) => new RoundedBoxGeometry(w, h, d, 3, r);
       const P = (geo, col, lx, y, lz, rot = [0, 0, 0]) => k.parts.push(part(geo, col, [ax + lx * c + lz * s, y, az - lx * s + lz * c], [rot[0], ry + rot[1], rot[2]]));
       P(rb(0.74, 0.3, 0.7, 0.06), LEAD, 0, 0.22, 0); P(rb(0.56, 0.12, 0.54, 0.05), LEA, 0, 0.42, -0.04);

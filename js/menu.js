@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.7.3', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '1.7.4', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['1.7.4', ['Reception desk: the end return is gone and the desk is slimmer, further from the front doors; the red armchair now sits in the corner by the doors']],
   ['1.7.3', ['The restaurant dining room has a much higher ceiling (4.2m): deep cream beams wall to wall, bigger plaster roses, chandeliers on long drops, taller curtained windows']],
   ['1.7.2', ['Floors no longer draw over the bar foot rail or show through under the walls']],
   ['1.7.1', ['Oysterfleet reception moved to where it really is: an L-shaped oak desk down the left side, staff behind it in front of the red wall with the office door and Reception sign', 'Proper front doors: glazed oak double doors with brass push plates and pull handles, kick plates, a gilt-lettered fanlight, door closers and a stone threshold', 'More detail in reception: framed awards and an Est. 1931 plaque, a brass lantern, a key cabinet, the premises licence']],
