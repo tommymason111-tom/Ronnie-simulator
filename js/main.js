@@ -23,6 +23,7 @@ import { buildGarden } from './levels/garden.js';
 import { Net, newCode } from './net.js';
 import { MPSync } from './mpsync.js';
 import { EMOTES, EmotePlayer } from './emotes.js';
+import { Music } from './music.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
 
 // start downloading everyone's 3D model now, while the menu is still up
@@ -178,6 +179,10 @@ function openBag(bag) {
     const it = items.spawn(t, from.clone(), v); it.spawnScale = 0.2; sfx('pop', from, 0.6);
   }, 700 + i * 220));
 }
+// you can only hold one thing at a time
+function holdingMsg(it) { const n = (it.def.label || it.type).replace(/^Bottle off the back bar$/, 'bottle').toLowerCase(), a = /^[aeiou]/.test(n) ? 'an' : 'a';
+  const t = `You're already holding ${/s$/.test(n) && !/ss$/.test(n) ? 'some' : a} ${n}!`; touch.hint(t); words.show(t.toUpperCase(), player.head.clone().addScaledVector(player.fwd, 0.8).add({ x: 0, y: -0.15, z: 0 }), '#ffd400', 0.07 * player.scale, 1.4); }
+player.onBlocked = (it) => holdingMsg(it);
 player.onRelease = (it, h, sp) => { if (sp > 2.5) sfx('whoosh', it.pos, Math.min(1, sp / 6)); if (sp > 1.2 && typeof mp !== 'undefined') mp.swing(h && h.handedness === 'left' ? 'L' : 'R'); };
 
 // anyone throwing anything at Ronnie
@@ -371,7 +376,7 @@ function stageUp() {
   player.setBelly(st.belly);
   setPitchScale(1 / Math.pow(st.scale, 0.8));
   sfx('bwoomp', null, 1); sfx('fanfare', null, 1);
-  showBanner(`STAGE ${G.stage + 1}`, st.name.toUpperCase());
+  showBanner(`STAGE ${G.stage + 1}`, stageNameOf(G.stage).toUpperCase());
   player.hands.forEach(h => h.pulse(1, 300));
   tommy.say(STAGE_LINES[G.stage + 1] || "You're getting bigger, Ron. Still younger though.", 5);
 }
@@ -448,7 +453,7 @@ function vegAndHits(dt) {
         const mass = it.def.mass * (it.empty ? 0.3 : 1);
         _a.copy(it.vel).multiplyScalar(mass * 6);        // cartoon physics: food hits 6x harder than real life
         const res = who.hitBy(part, it.pos, _a, veg);
-        sfx('splat', it.pos, res === 'ko' ? 1 : 0.6);
+        hitSfx('splat', it.pos, res === 'ko' ? 1 : 0.6);
         if (res === 'ko') words.show(veg ? 'RETURN TO SENDER!' : ['SPLAT!', 'WALLOP!', 'POW!'][Math.floor(Math.random() * 3)], it.pos.clone().add({ x: 0, y: 0.3, z: 0 }), veg ? '#7cff6a' : '#ff5a36', 0.25, 1.3);
         else words.show('SPLAT!', it.pos.clone().add({ x: 0, y: 0.2, z: 0 }), '#ff9a36', 0.16, 0.9);
         it.vel.multiplyScalar(-0.25);
@@ -458,6 +463,8 @@ function vegAndHits(dt) {
   }
 }
 
+// a hit sound here that the other players hear too, from where it happened (louder the nearer they are)
+function hitSfx(name, pos, vol = 1) { sfx(name, pos, vol); if (typeof mp !== 'undefined') mp.sfxOut(name, pos, vol); }
 // ---------------- slaps (VR hands swinging into Tommy) ----------------
 function slaps() {
   for (const h of player.hands) {
@@ -469,7 +476,7 @@ function slaps() {
     if (!res) continue;
     mp.swing(h.handedness === 'left' ? 'L' : 'R');
     h.pulse(1, 80);
-    sfx(res === 'ko' ? 'splat' : 'thwack', h.palm, 1);
+    hitSfx(res === 'ko' ? 'splat' : 'thwack', h.palm, 1);
     words.show(res === 'ko' ? 'WALLOP!' : 'SLAP!', h.palm.clone().add({ x: 0, y: 0.25, z: 0 }), '#ff5a36', 0.2, 1);
   }
 }
@@ -495,6 +502,7 @@ const touch = setupTouch({
     raycaster.setFromCamera(ndc, camera);
     const ray = raycaster.ray, reach = 3 * player.scale;
     if (director.tapBoard(ray) || director.tapBubble(ray)) return;
+    if (music.tap(ray, reach)) return;                       // the music button on the speakers / DJ deck
     // the lightbox sign in Lewis's cabin: tap it to write your own message
     if (room.lightbox) { const lb = room.lightbox, lp = lb.mesh.getWorldPosition(_b);
       const along = _a.subVectors(lp, ray.origin).dot(ray.direction);
@@ -544,7 +552,7 @@ const touch = setupTouch({
       if (bd > reach && who.state !== 'clinging') { touch.hint(`Get closer to slap ${who.name}!`); return; }
       const pos = part.body.position; _b.set(pos.x, pos.y, pos.z);
       const res = who.slap(part, _b, _a.copy(ray.direction).multiplyScalar(4.2)); mp.swing('R');
-      if (res) { sfx(res === 'ko' ? 'splat' : 'thwack', _b, 1); words.show(res === 'ko' ? 'WALLOP!' : 'SLAP!', _b.clone().add({ x: 0, y: 0.3, z: 0 }), '#ff5a36', 0.22, 1); }
+      if (res) { hitSfx(res === 'ko' ? 'splat' : 'thwack', _b, 1); words.show(res === 'ko' ? 'WALLOP!' : 'SLAP!', _b.clone().add({ x: 0, y: 0.3, z: 0 }), '#ff5a36', 0.22, 1); }
       return;
     }
     if (!best) return;
@@ -556,6 +564,7 @@ const touch = setupTouch({
       return;
     }
     if (bd > reach) { touch.hint('Too far — walk closer with the joystick'); return; }
+    if (player.flatHolder.held && player.flatHolder.held !== best) { holdingMsg(player.flatHolder.held); return; }
     player.flatGrab(best);
   },
 });
@@ -568,6 +577,8 @@ function updateZoom() {
   if (can) { const d = camera.getWorldPosition(_a).distanceTo(db.c) + (player.zoomLean || 0); player.zoomDist = Math.max(0, Math.min(1.6, d - 0.75)); }   // stop short of the board
   if (zoomShown !== can + '|' + !!player.zoom) { zoomShown = can + '|' + !!player.zoom; touch.setZoomAvailable(can, !!player.zoom); }
 }
+// in multiplayer the stages are named after who you're playing as (Snacky Lewis, Chunky Chloe...)
+function stageNameOf(i) { const base = STAGES[i].name, c = typeof net !== 'undefined' && net.connected && net.char && net.char !== 'ronnie' ? (net.char === 'tommy' ? 'Tommy' : (SQUAD_MP[net.char] && SQUAD_MP[net.char].name)) : null; return c ? base.replace('Ronnie', c) : base; }
 function updateTouchUI() {
   const held = player.flatHolder?.held;
   touch.setEatLabel(held && held.def.drink ? 'DRINK' : 'EAT', !!held && !held.empty);
@@ -646,7 +657,7 @@ function resetRonnie() {
 const director = new Director({
   scene, room, physics, player, items, words, G, tommy, cast, onThrow, addChonk, resetRonnie, fx: attackFx, crumbs,
   showBanner: (a, b) => showBanner(a, b),
-  stageName: () => STAGES[G.stage].name,
+  stageName: () => stageNameOf(G.stage),
   // points that pop bubbles / press board buttons: palms, fingertips and held food
   popPoints: (fingers) => {
     const pts = [];
@@ -686,7 +697,7 @@ function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t 
 let paused = false;
 const pauseEl = document.getElementById('pause');
 function setPaused(on) {
-  paused = on; pauseEl.classList.toggle('on', on); if (!on) { pauseEl.classList.remove('show-ctrls', 'show-modes'); vrPause && vrPause.close(); }
+  paused = on; pauseEl.classList.toggle('on', on); pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-ctrls', 'show-modes', 'show-music'); vrPause && vrPause.close(); }
   if (on) { const guest = !!(net.connected && !net.host);   // multiplayer: only the host changes the game or restarts it
     document.getElementById('pause-mode').style.display = guest ? 'none' : ''; document.getElementById('pause-restart').style.display = guest ? 'none' : '';
     const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = (t ? t.textContent : '') + (guest ? ' · the host picks the game' : ''); try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
@@ -743,7 +754,7 @@ const menuCam = new THREE.PerspectiveCamera(70, 1, 0.05, 40), menuShot = { t: 0,
 // button and pull the trigger (or pinch). It mirrors whatever the phone menu is showing (main page, controls,
 // game modes), and pressing a button presses the real one, so the two never disagree.
 var vrPause = (() => {
-  const W = 640, H = 860, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  const W = 640, H = 1100, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
   const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5 * H / W), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
   panel.renderOrder = 60; panel.visible = false; scene.add(panel);
@@ -840,6 +851,7 @@ const vrEmote = (() => {
   }, get open() { return held; } };
 })();
 function frame(simDt) {
+  music.update(Math.min(0.05, 1 / 60)); pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
   if (renderer.xr.isPresenting && simDt == null) { vrMenuButtons(); vrEmote.update(); }
   if (paused && simDt == null && net.connected) { if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } }
   else if (paused && simDt == null) { clock.getDelta(); if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } renderer.render(scene, camera); return; }    // frozen until RESUME
@@ -960,7 +972,7 @@ function frame(simDt) {
     const max = G.stage === STAGES.length - 1;
     const cur = STAGES[G.stage].chonk, next = max ? cur : STAGES[G.stage + 1].chonk;
     player.drawWrist({
-      stage: G.stage, stages: STAGES.length, name: STAGES[G.stage].name, chonk: G.chonk, next, max,
+      stage: G.stage, stages: STAGES.length, name: stageNameOf(G.stage), chonk: G.chonk, next, max,
       fill: max ? 1 : (G.chonk - cur) / (next - cur), loco: G.locoT, stout: G.stoutT, eaten: G.eaten, swats: G.swats, fps: G.fps,
       modeLine: director.hud(),
     });
@@ -987,6 +999,12 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
 }
 // the shared game (food and people): see mpsync.js
 const mp = new MPSync({ net, scene, room, physics, player, items, cast, director, words, fx: attackFx, G, tommy });
+// music from the speakers (the DJ booth, the hi-fi, the tannoy): only the host picks, everyone hears it
+const music = new Music({ scene, room, net, player, words, hint: (t) => touch.hint(t), ui: {
+  open() { initAudio(); setPaused(true); pauseEl.classList.add('show-music'); setMuted(soundOff); music.render(); },
+  say(t) { const m = document.getElementById('mus-msg'); if (m) { m.textContent = t; clearTimeout(m._t); m._t = setTimeout(() => { m.textContent = ''; }, 2600); } },
+} });
+document.getElementById('mus-close').addEventListener('click', () => { initAudio(); setPaused(false); });
 mp.start();
 if (window.ronnieMP && window.ronnieMP.role === 'join') director.remote = true;
 // someone playing as a squad member: their own body, moved by where their head and hands are
@@ -1076,4 +1094,4 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { net, mp, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { net, mp, music, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)

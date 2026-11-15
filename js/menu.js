@@ -1,10 +1,11 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '2.4.4';
+var GAME_VERSION = '2.5.0';
 // when each update came out (UK time)
-var GAME_WHEN = {'1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
+var GAME_WHEN = {'1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.5.0': '2026-11-15T15:42', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
 
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['2.5.0', ['MUSIC: speakers in every place (the DJ booth at the Oysterfleet, a hi-fi either side of Lewis\'s telly, a speaker in the restaurant and the bedroom, the Lidl tannoy). Tap the glowing 🎵 MUSIC button (or poke it in VR) to pick a song, play / pause and turn it up or down. A song keeps repeating until you pick another', 'The library: Supersonic, Wonderwall, Miss Alissa, You Really Got Me, London Calling, You Don\'t Know Me, Chelsea Dagger, My Type, Jerk It Out, Busy Earnin\', Freed From Desire, Horny \'98, The Hampsterdance Song, Did You See, Options. Add the songs once with ➕ ADD SONGS (they\'re kept on your device)', 'Multiplayer: everyone hears the host\'s music (it\'s sent to anyone who hasn\'t got the song) in time with the host; only the host can change it', 'Multiplayer: you hear other players\' hits, slaps and punches, from where they happen (louder when they\'re near you)', 'You can only hold one thing at a time: try to pick up another and it tells you what you\'re already holding', 'Multiplayer: the stages are named after your character (Snacky Lewis, Chunky Chloe...)', 'The bedroom is single player only']],
   ['2.4.4', ['Behind the bar: the floor no longer flickers grey through the red tiles (an old concrete floor was underneath them)']],
   ['2.4.3', ['The brick pillar by the way into the conservatory has moved over against the wall, so there\'s no gap beside it']],
   ['2.4.2', ['Multiplayer: someone playing in VR now shows their arms the way they\'re really holding them (they were swapped over, so they looked crossed), with the elbows bending like real arms', 'The buttons on the high bar chairs sit in the leather instead of floating off the back']],
@@ -223,22 +224,28 @@ var GAME_UPDATES = [
       <div class="big">${p.ico}</div>
       <h3>${p.name}</h3><p>${p.desc}</p>
       <div class="tick">✓ PICKED</div>
+      <div class="soloonly">👤 SINGLE PLAYER ONLY</div>
     </div>`).join('');
   let pi = Math.max(0, PLACES.findIndex(p => p.id === place));
+  // the bedroom is just for one player: in multiplayer it's greyed out and skipped
+  const SOLO_ONLY = ['bedroom'], isMulti = () => !!(window.ronnieMP && window.ronnieMP.role);
+  const okPlace = (i) => !(isMulti() && SOLO_ONLY.includes(PLACES[i].id));
   function drawPlace() {
+    if (!okPlace(pi)) pi = PLACES.findIndex((p, i) => okPlace(i));
     place = PLACES[pi].id;
+    $$('.scene', track).forEach((el, i) => el.classList.toggle('solo', !okPlace(i)));
     $$('.scene', track).forEach((el, i) => { el.classList.toggle('cur', i === pi); el.style.transform = `translateX(${(i - pi) * 104}%) scale(${i === pi ? 1 : 0.86}) rotate(${(i - pi) * 3}deg)`; el.style.opacity = Math.abs(i - pi) > 1 ? 0 : i === pi ? 1 : 0.5; });
     $$('#place-dots i').forEach((d, i) => d.classList.toggle('on', i === pi));
     if (!gameChoices(place).includes(mode)) mode = gameChoices(place)[0];
   }
-  const stepPlace = (d) => { pi = (pi + d + PLACES.length) % PLACES.length; drawPlace(); blip(440 + pi * 60, 0.05); };
+  const stepPlace = (d) => { do { pi = (pi + d + PLACES.length) % PLACES.length; } while (!okPlace(pi)); drawPlace(); blip(440 + pi * 60, 0.05); };
   $('#place-prev').addEventListener('click', () => stepPlace(-1));
   $('#place-next').addEventListener('click', () => stepPlace(1));
   $('#place-dots').innerHTML = PLACES.map(() => '<i></i>').join('');
   $$('#place-dots i').forEach((d, i) => d.addEventListener('click', () => { pi = i; drawPlace(); blip(500, 0.05); }));
   let swiped = 0;
   track.addEventListener('click', (e) => { if (performance.now() - swiped < 400) return;     // (that was the end of a swipe, not a tap)
-    const s = e.target.closest('.scene'); if (!s) return; const i = PLACES.findIndex(p => p.id === s.dataset.id); if (i !== pi) { pi = i; drawPlace(); blip(500, 0.05); } else { s.classList.remove('wiggle'); void s.offsetWidth; s.classList.add('wiggle'); blip(700, 0.06); } });
+    const s = e.target.closest('.scene'); if (!s) return; const i = PLACES.findIndex(p => p.id === s.dataset.id); if (!okPlace(i)) { blip(200, 0.08, 'square', 0.06); return; } if (i !== pi) { pi = i; drawPlace(); blip(500, 0.05); } else { s.classList.remove('wiggle'); void s.offsetWidth; s.classList.add('wiggle'); blip(700, 0.06); } });
   // swipe: the cards follow your finger (or mouse), let go past a quarter of a card (or flick) to change place
   let sx = null, st = 0, drag = 0, pid = null;
   const follow = (dx) => { const wPx = track.getBoundingClientRect().width || 300;
@@ -316,7 +323,7 @@ var GAME_UPDATES = [
   const CHARS = [{ id: 'ronnie', n: 'Ronnie', c: '#ffd400', a: '🍔', t: 'The man himself', img: null }].concat(SQUAD.map(s => ({ id: (s.img || s.n.toLowerCase()).replace(/ /g, ''), n: s.n, c: s.c, a: s.a, t: s.t, img: s.img || s.n.toLowerCase() })));
   let mpChar = 'ronnie'; try { mpChar = localStorage.getItem('rs_mp_char') || 'ronnie'; } catch (e) {}
   const mp = window.ronnieMP = { role: null, net: null, char: () => CHARS.find(c => c.id === mpChar) || CHARS[0] };
-  $('#pick-solo').addEventListener('click', () => { mp.role = null; if (mp.net) { mp.net.leave(); mp.net = null; } $('#mp-code-chip').textContent = ''; show('place'); });
+  $('#pick-solo').addEventListener('click', () => { mp.role = null; if (mp.net) { mp.net.leave(); mp.net = null; } $('#mp-code-chip').textContent = ''; drawPlace(); show('place'); });
   $('#pick-multi').addEventListener('click', () => { show('mpname'); setTimeout(() => { try { $('#mp-myname').focus(); } catch (e) {} }, 450); });
   const cgrid = $('#char-grid');
   cgrid.innerHTML = CHARS.map((s, i) => `<div class="mate${s.id === mpChar ? ' sel' : ''}" data-id="${s.id}" style="--c:${s.c};animation-delay:${i * 0.03}s">
@@ -369,7 +376,7 @@ var GAME_UPDATES = [
     try { await mpConnect(code); mp.role = 'host'; $('#mp-code-chip').textContent = `👥 ROOM ${code}`; mpStatus(''); show('room'); lobby();
     } catch (e) { mpStatus("Couldn't connect. Check your internet and try again."); }
   });
-  $('#room-go').addEventListener('click', () => show('place'));
+  $('#room-go').addEventListener('click', () => { drawPlace(); show('place'); });
   $('#room-leave').addEventListener('click', () => { if (mp.net) mp.net.leave(); mp.net = null; mp.role = null; $('#mp-code-chip').textContent = ''; show('mp', -1); });
   $('#mp-code2').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
   $('#mp-join2').addEventListener('click', async () => {

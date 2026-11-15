@@ -25,7 +25,7 @@ export class MPSync {
     this.sentDefs = new Set(); this.remoteHolds = new Map(); this.lastSay = new Map();
     this.charSnap = new Map(); this.punchCool = 0;
     const net = this.net;
-    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc', 'emote', 'swing'])
+    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc', 'emote', 'swing', 'sfx'])
       net.on[k] = (m, p) => this['on_' + k] && this['on_' + k](m, p);
   }
   get host() { return this.net.host; }
@@ -51,6 +51,8 @@ export class MPSync {
       Character.prototype.drawBubble = function (text) { draw0.call(this, text); if (self.on && self.host && !this.netDriven && !this.mpPuppet) self.net.send({ t: 'say', id: this.id, text }); }; }
     // hitting one of the host's people on a joining player's game: tell the host, who knocks them over for real
     // (and the next snapshot shows everyone the ragdoll); the WALLOP / SLAP still shows straight away here
+    if (!Character.prototype.__mpKo) { Character.prototype.__mpKo = true; const ko0 = Character.prototype.knockOut;
+      Character.prototype.knockOut = function (line) { const r = ko0.call(this, line); if (self.on && self.host && !this.mpPuppet && this.headPos) self.sfxOut('boing', this.headPos(new THREE.Vector3()), 1); return r; }; }
     if (!Character.prototype.__mpHit) { Character.prototype.__mpHit = true;
       const hit0 = Character.prototype.hitBy, slap0 = Character.prototype.slap;
       const fwd = (c, kind, part, point, v, veg) => { self.net.send({ t: 'hitc', id: c.id, kind, part: part.name, p: [q3(point.x), q3(point.y), q3(point.z)], v: [q2(v.x), q2(v.y), q2(v.z)], veg: veg ? 1 : 0 }); };
@@ -78,6 +80,9 @@ export class MPSync {
   // you swung at something (slap, punch, throw): your character's arm goes for everyone else too
   swing(side = 'R') { if (!this.net.connected) return; const n = performance.now(); if (n - (this.swingAt || 0) < 150) return; this.swingAt = n; this.net.send({ t: 'swing', s: side }); }
   on_swing(m, p) { p && p.avatar && p.avatar.swing && p.avatar.swing(m.s || 'R'); }
+  // hit sounds: sent to everyone, played where it happened (so you hear the ones near you louder)
+  sfxOut(n, p, v = 1) { if (!this.net.connected) return; const t = performance.now(), at = this.sfxAt || (this.sfxAt = {}); if (t - (at[n] || 0) < 60) return; at[n] = t; this.net.send({ t: 'sfx', n, p: [q2(p.x), q2(p.y), q2(p.z)], v: q2(v) }); }
+  on_sfx(m) { if (!['splat', 'thwack', 'boing', 'whoosh'].includes(m.n)) return; sfx(m.n, new THREE.Vector3(...m.p), m.v || 1); }
   on_hitc(m) {
     if (!this.host) return; const c = this.cast.find(x => x.id === m.id); if (!c || c.disposed) return;
     const part = c.rag.parts[m.part] || c.rag.parts.chest, p = new THREE.Vector3(...m.p), v = new THREE.Vector3(...m.v);
@@ -256,7 +261,7 @@ export class MPSync {
     this.punchCool = 0.5;
     // (sent to everyone: the one who got hit falls over on their own screen, everyone else sees them go flying)
     this.net.send({ t: 'punch', side: vel.side || 'R', target: p.id, v: [q2(vel.x), q2(vel.z)], s: q2(vel.length()), at: [q2(at.x), q2(at.y), q2(at.z)] });
-    sfx('thwack', at, 1); this.words.show(vel.length() > 3.5 ? 'KAPOW!' : 'POW!', at.clone().add({ x: 0, y: 0.25, z: 0 }), '#ff5a36', 0.2, 1);
+    sfx('thwack', at, 1); this.sfxOut('thwack', at, 1); this.words.show(vel.length() > 3.5 ? 'KAPOW!' : 'POW!', at.clone().add({ x: 0, y: 0.25, z: 0 }), '#ff5a36', 0.2, 1);
     this.knockAvatar(p, vel, vel.length(), at);
   }
   knockAvatar(p, v, s, at) { const av = p && p.avatar; if (!av) return; if (av.knock) av.knock(v, s, at); else av.flinch && av.flinch(v); }

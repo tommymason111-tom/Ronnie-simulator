@@ -39,6 +39,9 @@ function unlockIOS() {
 }
 
 export function setPitchScale(s) { pitchScale = s; }
+// where the songs from the speakers go in (through the same master volume / mute as everything else)
+let songOut = null;
+export function musicBus() { if (!ctx || !master) return null; if (!songOut) { songOut = ctx.createGain(); songOut.gain.value = 0.9; songOut.connect(master); } return { ctx, out: songOut }; }
 
 export function setListener(pos, fwd, up) {
   if (!ctx) return;

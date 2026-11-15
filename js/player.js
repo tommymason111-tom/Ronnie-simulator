@@ -337,6 +337,8 @@ export class Player {
     const r = TUNING.grabRadius * Math.max(1, this.scale);
     const it = this.items.nearest(h.pos, r);
     if (!it) { this.grabTommy(h); return; }
+    const other = this.hands.find(o => o !== h && o.held && !o.held.dead);          // one thing at a time
+    if (other && other.held !== it) { this.onBlocked && this.onBlocked(other.held, h); h.pulse(0.2, 40); return; }
     if (it.heldBy && it.heldBy !== h) { it.heldBy.held = null; }
     it.heldBy = h; h.held = it; it.resting = false;
     it.vel.set(0, 0, 0);
