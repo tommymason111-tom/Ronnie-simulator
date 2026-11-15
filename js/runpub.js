@@ -7,17 +7,24 @@
 import * as THREE from 'three';
 import { SquadMember, SQUAD, makeProp } from './squad.js';
 import { sfx } from './audio.js';
+import { Bar } from './barstations.js';
 
 const DOOR = { x: 4.45, z: -12.95 };
 const STAFF_SPOTS = { aidan: [3.45, -8.0, -Math.PI / 2], connor: [3.45, -4.9, -Math.PI / 2], chloe: [4.1, -2.7, -Math.PI / 2], ben: [-12.75, -7.4, -Math.PI / 2] };
 const RONNIE_SPOT = { x: 3.6, z: -6.45 };
-const ORDERS = [
-  { kind: 'lager', name: 'PINT OF LAGER', icon: '🍺', price: 5.2, lines: ['Pint of lager please, son.', 'Lager. A cold one.', 'Pint of the usual, landlord.', 'Lager top. Hold the top.'], ok: (it) => it.type === 'beer' || it.type === 'pint' },
-  { kind: 'stout', name: 'BLACK LIFFEY', icon: '🍺', price: 5.8, lines: ['Pint of the black stuff.', 'A BLACK LIFFEY, please. Let it settle.', 'Stout, landlord. Proper pour.'], ok: (it) => it.type === 'pint' },
-  { kind: 'wine', name: 'WINE', icon: '🍷', price: 7.5, lines: ['Large glass of wine please, love.', 'Bottle of red for the table.', 'White wine. Large. It\'s been a week.'], ok: (it) => it.type === 'spirit' && it.variant >= 4 },
-  { kind: 'spirit', name: 'A SHORT', icon: '🥃', price: 4.8, lines: ['Whisky. Neat.', 'Double vodka, sharpish.', 'Gin, if you\'ve got any.', 'Rum. Don\'t ask why.'], ok: (it) => it.type === 'spirit' && it.variant < 4 },
-];
-const isDrink = (it) => it && !it.dead && (it.type === 'pint' || it.type === 'beer' || it.type === 'spirit');
+// what people order: where it comes from (the station), what counts, and what it costs
+const ORDERS = {
+  guinness: { name: 'BLACK LIFFEY', icon: '🍺', price: 5.8, booze: true, lines: ['Pint of the black stuff.', 'A BLACK LIFFEY, please. Let it settle.', 'Stout, landlord. Proper pour.'], ok: (it) => it.type === 'pint', from: 'glasses', make: 'tap', vessel: 'glass', how: 'pint glass → hold it under the BLACK LIFFEY tap' },
+  lager: { name: 'LAGER', icon: '🍺', price: 4.8, booze: true, lines: ['Bottle of lager please, son.', 'Lager. A cold one.', 'Lager, landlord.'], ok: (it) => it.type === 'beer', from: 'lager', how: 'take a bottle from the LAGER fridge' },
+  cider: { name: 'CIDER', icon: '🍏', price: 5.0, booze: true, lines: ['Cider please. Over ice if you\'ve got it.', 'Bottle of cider, mate.', 'Cider. It\'s basically fruit.'], ok: (it) => it.type === 'cider', from: 'cider', how: 'take a bottle from the CIDER fridge' },
+  wine: { name: 'WINE', icon: '🍷', price: 6.5, booze: true, lines: ['Large glass of wine please, love.', 'Glass of red, please.', 'White wine. Large. It\'s been a week.'], ok: (it) => it.type === 'wine', from: 'wine', how: 'grab a glass off the back counter' },
+  coffee: { name: 'COFFEE', icon: '☕', price: 3.2, lines: ['A coffee, please. Driving.', 'Flat white? Just coffee then.', 'Coffee, strong as you like.'], ok: (it) => it.type === 'coffee', from: 'mugs', make: 'coffee', vessel: 'mug', how: 'a mug → hold it under the COFFEE MACHINE' },
+  cola: { name: 'COKE', icon: '🥤', price: 2.8, soft: true, lines: ['A Coke, please!', 'Can I have a Coke?', 'Coke. With ice!'], ok: (it) => it.type === 'soft' && it.variant === 0, from: 'cups', make: 'gun', vessel: 'cup', how: 'a cup → hold the soft-drink gun over it, on COKE' },
+  fanta: { name: 'FANTA', icon: '🍊', price: 2.8, soft: true, lines: ['Fanta please!', 'Orange Fanta!', 'Can I have a Fanta? Please?'], ok: (it) => it.type === 'soft' && it.variant === 1, from: 'cups', make: 'gun', vessel: 'cup', how: 'a cup → hold the soft-drink gun over it, on FANTA' },
+  monstor: { name: 'MONSTOR', icon: '⚡', price: 3.5, lines: ['MONSTOR. The green one.', 'Got any MONSTOR?', 'A MONSTOR, I\'ve got work tomorrow.'], ok: (it) => it.type === 'can', from: 'monstor', how: 'take a can from the MONSTOR fridge' },
+};
+const MENU = { old: ['guinness', 'guinness', 'lager', 'lager', 'cider', 'coffee'], dad: ['lager', 'guinness', 'cider', 'coffee'], mum: ['wine', 'wine', 'coffee', 'cider'], lad: ['lager', 'cider', 'monstor', 'guinness'], kid: ['cola', 'fanta'], hool: ['lager'] };
+const isDrink = (it) => it && !it.dead && it.def.drink;
 const R = (a) => a[Math.floor(Math.random() * a.length)];
 const SKINS = [0xf1c3a5, 0xf3cdb4, 0xe5b08e, 0xd9a07a, 0xc08060, 0x8a5a3a];
 
@@ -84,9 +91,10 @@ function orderTag() {
   const c = document.createElement('canvas'); c.width = 256; c.height = 128;
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false, depthWrite: false })); s.renderOrder = 13; s.scale.set(0.5, 0.25, 1);
-  s.draw = (o, k) => { const g = c.getContext('2d'); g.clearRect(0, 0, 256, 128);
+  s.draw = (o, k, kid) => { s.kid = kid; const g = c.getContext('2d'); g.clearRect(0, 0, 256, 128);
     g.fillStyle = 'rgba(10,14,30,0.85)'; g.beginPath(); g.roundRect(4, 4, 248, 120, 22); g.fill(); g.lineWidth = 6; g.strokeStyle = k > 0.5 ? '#39ff14' : k > 0.25 ? '#ffd400' : '#ff3a3a'; g.stroke();
     g.font = '64px serif'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(o.icon, 14, 54);
+    if (s.kid) { g.fillStyle = '#ff3a3a'; g.font = '900 18px Arial'; g.fillText('🧒 UNDER 18!', 150, 112); }
     g.fillStyle = '#fff'; g.font = '900 26px Arial'; g.fillText(o.name, 88, 40); g.fillStyle = '#ffd400'; g.font = '900 24px Arial'; g.fillText('£' + o.price.toFixed(2), 88, 76);
     g.fillStyle = 'rgba(255,255,255,0.2)'; g.fillRect(14, 100, 228, 12); g.fillStyle = k > 0.5 ? '#39ff14' : k > 0.25 ? '#ffd400' : '#ff3a3a'; g.fillRect(14, 100, 228 * Math.max(0, k), 12);
     t.needsUpdate = true; };
@@ -114,7 +122,8 @@ export class RunPub {
     const tb = (room.barSpots || [])[3]; if (tb && g.tommy) { g.tommy.rag.placeAt(tb.x, tb.z, tb.yaw); g.tommy.faceYaw = tb.yaw; g.tommy.attacks = false; g.tommy.directed = false; this.barTaken.set(tb, g.tommy); }
     // Ronnie behind the bar, facing the punters
     const P = g.player; P.rig.position.set(RONNIE_SPOT.x, 0, RONNIE_SPOT.z); P.rig.rotation.y = Math.PI / 2; if (P.flatMode) { P.flatYaw = 0; P.flatPitch = -0.18; }
-    this.stock(true);
+    this.bar = new Bar(this);
+    this.buildOrdersUI();
     g.showBanner('RUN THE PUB', 'SERVE THE PUNTERS');
   }
 
@@ -165,7 +174,7 @@ export class RunPub {
       c.faceYaw = c.rpSpot[2]; c.active = false; c.stayPut = true;
       if (c.id === 'ben' && Math.random() < dt / 25) { c.say(R(['SERVICE!', 'Two scampi, one pie, table nine!', 'Who ordered the Ronnie Platter? ...Ronnie did.', 'CHIPS ARE UP!', 'Ronnie, get your hands OFF the pass!']), 3); sfx('ting', c.pos, 0.6); }
     }
-    if ((this.stockT -= dt) <= 0) { this.stockT = 4; this.stock(false); }
+    this.bar.update(dt); this.guide(); this.drawOrders(dt);
     // new punters: fill up to 6 early on, then keep it busy (up to 10)
     const elapsed = 360 - (this.d.timeLeft || 0), cap = Math.min(10, 4 + Math.floor(elapsed / 30));
     if ((this.spawnT -= dt) <= 0) {
@@ -235,7 +244,7 @@ export class RunPub {
         break;
       case 'waiting': {
         rp.wait += dt; const k = 1 - rp.wait / rp.patience;
-        const tag = this.tags.get(c); if (tag) { const h = c.headPos(new THREE.Vector3()); tag.position.set(h.x, h.y + 0.42, h.z); if ((rp.tagT = (rp.tagT || 0) - dt) <= 0) { rp.tagT = 0.25; tag.draw(rp.order, k); } }
+        const tag = this.tags.get(c); if (tag) { const h = c.headPos(new THREE.Vector3()); tag.position.set(h.x, h.y + 0.42, h.z); if ((rp.tagT = (rp.tagT || 0) - dt) <= 0) { rp.tagT = 0.25; tag.draw(rp.order, k, rp.kidBooze); } }
         c.faceYaw = rp.spot.yaw; c.activity = k < 0.35 ? 'tantrum' : null;
         if (k < 0.35 && !rp.moaned) { rp.moaned = true; c.say(R(['Any chance of a drink?!', 'HELLO? Anyone serving?', 'I\'ll die of thirst here.', 'Ronnie, stop eating and SERVE.']), 4); }
         // handed over (held near them) or thrown to them
@@ -245,8 +254,8 @@ export class RunPub {
           let ok;
           if (P.flatMode) { const dx = chest.x - P.head.x, dz = chest.z - P.head.z, d = Math.hypot(dx, dz); ok = d < 2.5 && (dx * P.fwd.x + dz * P.fwd.z) / (d * Math.hypot(P.fwd.x, P.fwd.z) || 1) > 0.55; }   // across the bar, looking at them
           else ok = it.pos.distanceTo(chest) < 0.6;                                                                     // VR: hold it out to them
-          if (ok) { this.deliver(c, it); return; } }
-        for (const it of this.g.items.items) if (isDrink(it) && !it.heldBy && !it.shelf && it.pos.distanceTo(chest) < 0.55) { this.deliver(c, it); return; }
+          if (ok) { this.deliver(c, it, null, false); return; } }
+        for (const it of this.g.items.items) if (isDrink(it) && !it.heldBy && !it.shelf && it.pos.distanceTo(chest) < 0.55) { this.deliver(c, it, null, true); return; }      // (thrown at them)
         if (rp.wait >= rp.patience) { this.walkouts++; this.rating -= 0.35; sfx('sadviolin', c.pos, 0.5); if (Math.random() < 0.45) this.leave(c, 'angry'); else { c.say('angry', 4); this.release(c); this.dropTag(c); rp.thirst = 25 + Math.random() * 20; this.goHome(c); } }
         break;
       }
@@ -260,22 +269,72 @@ export class RunPub {
     }
   }
   order(c) {
-    const rp = c.rp, o = rp.kind === 'old' ? R([ORDERS[0], ORDERS[0], ORDERS[1], ORDERS[1], ORDERS[3]]) : rp.kind === 'mum' ? R([ORDERS[2], ORDERS[2], ORDERS[0]]) : R(ORDERS);
-    rp.order = o; rp.wait = 0; rp.patience = rp.kind === 'old' ? 42 : 52; rp.moaned = false; rp.phase = 'waiting';
-    c.state = 'idle'; c.faceYaw = rp.spot.yaw; c.say(R(o.lines), 4);
+    const rp = c.rp, kid = rp.kind === 'kid';
+    let key = R(MENU[rp.kind] || MENU.old); rp.kidBooze = false;
+    if (kid && Math.random() < 0.3) { key = R(['lager', 'cider', 'guinness']); rp.kidBooze = true; }       // a kid trying their luck
+    const o = ORDERS[key];
+    rp.order = o; rp.orderKey = key; rp.wait = 0; rp.patience = rp.kind === 'old' ? 46 : 56; rp.moaned = false; rp.phase = 'waiting';
+    c.state = 'idle'; c.faceYaw = rp.spot.yaw; c.say(rp.kidBooze ? R(['Pint of lager please. I\'m eighteen. Honest.', 'A cider. For my... dad.', 'Can I get a BLACK LIFFEY? I\'ve got ID. At home.']) : R(o.lines), 4);
     let tag = this.tags.get(c); if (!tag) { tag = orderTag(); this.tags.set(c, tag); this.g.scene.add(tag); } tag.visible = true; rp.tagT = 0;
   }
   dropTag(c) { const tag = this.tags.get(c); if (tag) tag.visible = false; }
-  deliver(c, it, byStaff = null) {
+  deliver(c, it, byStaff = null, thrown = false) {
     const rp = c.rp, o = rp.order, P = this.g.player, where = c.headPos(new THREE.Vector3()).add({ x: 0, y: 0.3, z: 0 });
     if (it) { for (const h of P.hands || []) if (h.held === it) h.held = null; if (P.flatHolder && P.flatHolder.held === it) P.flatHolder.held = null; it.heldBy = null; this.g.items.remove(it); }
-    const right = !it || o.ok(it), quick = 1 - rp.wait / rp.patience;
+    const quick = 1 - rp.wait / rp.patience;
     if (byStaff) { this.staffServed++; this.pay(o.price, where, '+£' + o.price.toFixed(2) + ' (' + byStaff.name + ')'); this.rating += 0.03; }
-    else if (right) { const tip = Math.round(Math.max(0, quick) * 3 * 10) / 10; this.served++; this.pay(o.price + tip, where, tip > 0.4 ? `+£${o.price.toFixed(2)} +£${tip.toFixed(2)} TIP` : null); this.rating += 0.05 + quick * 0.12; c.say('thanks', 3); }
-    else { this.wrong++; this.served++; this.pay(o.price * 0.5, where, '+£' + (o.price * 0.5).toFixed(2) + ' (WRONG DRINK)'); this.rating -= 0.1; c.say(R(['That\'s not what I asked for!', 'I said ' + o.name.toLowerCase() + '! ...go on then.', 'Are you even listening, Ronnie?']), 4); }
+    else if (rp.kidBooze && it && it.def.booze) {                       // you served a kid alcohol
+      this.kidBooze = (this.kidBooze || 0) + 1; this.money -= 10; this.rating -= 0.45; this.g.words.show('SERVED A KID BOOZE! -£10', where, '#ff3a3a', 0.11, 1.8); sfx('sadviolin', where, 0.6);
+      c.say(R(['YESSS! Wait till I tell Tyler!', 'Cheers, mate! Hic.', 'Don\'t tell my mum.']), 4); this.g.showBanner('YOU SERVED A KID!', 'CHECK THEIR AGE: SOFT DRINKS ONLY');
+      if (rp.family) { const mum = rp.family.find(f => f.rp.kind === 'mum' || f.rp.kind === 'dad'); mum && setTimeout(() => !mum.disposed && mum.say('Did you just give my CHILD a drink?! I want the manager!', 5), 1500); }
+    } else if (rp.kidBooze && it && it.def.drink && !it.def.booze) {    // a kid after booze, given a soft drink instead: well done
+      this.served++; this.carded = (this.carded || 0) + 1; this.pay(2.8 + 2, where, '+£4.80 GOOD CALL!'); this.rating += 0.15; c.say(R(['Awww. Fine. Thanks.', 'Worth a try.', 'Is there sugar in it at least?']), 3);
+    } else if (!it || o.ok(it)) {
+      const tip = thrown ? 0 : Math.round(Math.max(0, quick) * 3 * 10) / 10, pay = thrown ? o.price * 0.5 : o.price + tip;
+      this.served++; this.pay(pay, where, thrown ? `+£${pay.toFixed(2)} (THROWN AT THEM)` : tip > 0.4 ? `+£${o.price.toFixed(2)} +£${tip.toFixed(2)} TIP` : null);
+      if (thrown) { this.thrown = (this.thrown || 0) + 1; this.rating -= 0.08; c.say(R(['Did you just THROW that at me?!', 'Is this how you serve everyone?!', 'Half of it\'s on my shirt now!', 'I\'m leaving a review about this.', 'Charming. Absolutely charming.']), 4); }
+      else { this.rating += 0.05 + quick * 0.12; c.say('thanks', 3); }
+    } else { this.wrong++; this.served++; const pay = o.price * (thrown ? 0.25 : 0.5); this.pay(pay, where, '+£' + pay.toFixed(2) + ' (WRONG DRINK)'); this.rating -= 0.1; c.say(R(['That\'s not what I asked for!', 'I said ' + o.name.toLowerCase() + '! ...go on then.', 'Are you even listening, Ronnie?']), 4); }
     rp.drinks++; rp.phase = 'served'; rp.servedT = 1.8; this.dropTag(c);
     if (!c.prop) { c.prop = makeProp('pint', c.rag.height / 1.68); this.g.scene.add(c.prop); }
     c.activity = 'drink';
+  }
+
+  // ------------------------------------------------------------------ what to do next: the arrow and the orders list
+  waiting() { return this.punters.filter(c => c.rp.phase === 'waiting').sort((a, b) => (b.rp.wait / b.rp.patience) - (a.rp.wait / a.rp.patience)); }
+  guide() {
+    const next = this.waiting()[0], bar = this.bar; if (!next) { bar.arrowAt = null; return; }
+    const o = next.rp.kidBooze ? ORDERS.cola : next.rp.order, held = bar.held();
+    if (held.some(i => o.ok(i) || (next.rp.kidBooze && i.def.drink && !i.def.booze))) { bar.arrowAt = next.headPos(new THREE.Vector3()).add({ x: 0, y: 0.25, z: 0 }); return; }   // got it: take it to them
+    let st = o.from;
+    if (o.make && held.some(i => i.type === o.vessel)) st = o.make;                // got the glass / mug / cup: now go and fill it
+    if (o.make === 'gun' && held.some(i => i.type === 'sodagun')) st = 'cups';
+    bar.arrowAt = bar.st[st] && bar.st[st].at;
+  }
+  buildOrdersUI() {
+    // phone / PC: a little table of orders under the HUD
+    const el = this.ordersEl = document.createElement('div'); el.id = 'rp-orders';
+    el.style.cssText = 'position:fixed;right:max(10px,env(safe-area-inset-right));top:62px;z-index:12;width:min(230px,52vw);background:rgba(10,14,40,0.82);border:3px solid #ffd400;border-radius:14px;padding:6px 8px;font:700 12px Arial,sans-serif;color:#fff;pointer-events:none';
+    document.body.appendChild(el);
+    // VR: the same list on your left wrist
+    const cv = this.wristCv = document.createElement('canvas'); cv.width = 256; cv.height = 320; this.wristTex = new THREE.CanvasTexture(cv); this.wristTex.colorSpace = THREE.SRGBColorSpace;
+    this.wrist = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.1375), new THREE.MeshBasicMaterial({ map: this.wristTex, transparent: true, depthTest: false })); this.wrist.renderOrder = 20; this.wrist.visible = false; this.g.scene.add(this.wrist);
+  }
+  drawOrders(dt) {
+    if ((this.ordersT = (this.ordersT || 0) - dt) > 0) return; this.ordersT = 0.25;
+    const list = this.waiting().slice(0, 6), vr = !this.g.player.flatMode;
+    const rows = list.map((c, i) => { const rp = c.rp, o = rp.order, k = 1 - rp.wait / rp.patience; return { icon: o.icon, name: o.name, who: c.name, k, kid: rp.kidBooze, how: i === 0 ? (rp.kidBooze ? 'they\'re a KID: give them a soft drink' : o.how) : '' }; });
+    this.ordersEl.style.display = vr ? 'none' : 'block';
+    this.ordersEl.innerHTML = '<div style="font:900 13px Arial Black,Arial;color:#ffd400;margin-bottom:3px">🧾 ORDERS</div>' + (rows.length ? rows.map(r => `<div style="margin:3px 0"><div style="display:flex;justify-content:space-between"><span>${r.icon} ${r.name}${r.kid ? ' <b style="color:#ff5a5a">🧒</b>' : ''}</span><span style="color:#c9d3ff">${r.who}</span></div><div style="height:4px;background:rgba(255,255,255,0.2);border-radius:2px"><div style="height:4px;width:${Math.max(0, r.k) * 100}%;background:${r.k > 0.5 ? '#39ff14' : r.k > 0.25 ? '#ffd400' : '#ff3a3a'};border-radius:2px"></div></div>${r.how ? `<div style="color:#9fe;font-size:11px">➜ ${r.how}</div>` : ''}</div>`).join('') : '<div style="color:#c9d3ff">Nobody waiting. Wipe the bar.</div>');
+    // VR wrist
+    const P = this.g.player, h = (P.hands || []).find(h => h.handedness === 'left' && h.tracked);
+    this.wrist.visible = vr && !!h; if (!this.wrist.visible) return;
+    const g = this.wristCv.getContext('2d'); g.clearRect(0, 0, 256, 320); g.fillStyle = 'rgba(10,14,40,0.9)'; g.beginPath(); g.roundRect(4, 4, 248, 312, 18); g.fill(); g.lineWidth = 5; g.strokeStyle = '#ffd400'; g.stroke();
+    g.fillStyle = '#ffd400'; g.font = '900 24px Arial'; g.textAlign = 'center'; g.fillText('🧾 ORDERS', 128, 34); g.textAlign = 'left';
+    rows.forEach((r, i) => { const y = 64 + i * 42; g.fillStyle = r.kid ? '#ff8a8a' : '#fff'; g.font = '700 20px Arial'; g.fillText(`${r.icon} ${r.name}`, 14, y); g.fillStyle = 'rgba(255,255,255,0.2)'; g.fillRect(14, y + 8, 228, 6); g.fillStyle = r.k > 0.5 ? '#39ff14' : r.k > 0.25 ? '#ffd400' : '#ff3a3a'; g.fillRect(14, y + 8, 228 * Math.max(0, r.k), 6); });
+    if (rows[0]) { g.fillStyle = '#9fe'; g.font = '700 15px Arial'; const t = '➜ ' + rows[0].how; g.fillText(t.length > 30 ? t.slice(0, 30) : t, 14, 300); }
+    this.wristTex.needsUpdate = true;
+    h.grip.updateMatrixWorld(true); this.wrist.position.set(0, 0.03, 0.09).applyMatrix4(h.grip.matrixWorld); this.wrist.quaternion.setFromRotationMatrix(h.grip.matrixWorld).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)));
   }
 
   // ------------------------------------------------------------------ the squad drop in
@@ -379,6 +438,9 @@ export class RunPub {
       ['DRINKS SERVED BY RONNIE', this.served],
       ['SERVED BY THE STAFF (SHAME)', this.staffServed],
       ['WRONG DRINKS', this.wrong],
+      ['THROWN AT PEOPLE', this.thrown || 0],
+      ['KIDS SERVED BOOZE (!!)', this.kidBooze || 0],
+      ['KIDS SPOTTED', this.carded || 0],
       ['WALK-OUTS', this.walkouts],
       ['FIGHTS BROKEN UP', this.fights],
       ['TVS SMASHED', this.g.G.tvsSmashed || 0],
@@ -386,5 +448,5 @@ export class RunPub {
       [stars >= 4 ? 'Lewis: "Bro. Landlord of the year, bro."' : stars >= 2.5 ? 'Aidan: "Not bad. Let it settle next time."' : 'Chloe: "Babe. You ate the profits."', ''],
     ];
   }
-  cleanup() { for (const id of Object.keys(SQUAD)) if (/^p\d+$/.test(id)) delete SQUAD[id]; for (const t of this.tags.values()) this.g.scene.remove(t); this.tags.clear(); for (const c of this.cast) if (c.plate) { this.g.scene.remove(c.plate); c.plate = null; } }
+  cleanup() { if (this.bar) this.bar.dispose(); if (this.ordersEl) this.ordersEl.remove(); if (this.wrist) this.g.scene.remove(this.wrist); for (const id of Object.keys(SQUAD)) if (/^p\d+$/.test(id)) delete SQUAD[id]; for (const t of this.tags.values()) this.g.scene.remove(t); this.tags.clear(); for (const c of this.cast) if (c.plate) { this.g.scene.remove(c.plate); c.plate = null; } }
 }

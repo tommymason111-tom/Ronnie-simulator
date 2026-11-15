@@ -38,7 +38,7 @@ const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'pub', mode: 'e
   await Promise.race([MODEL_LOAD, new Promise(r => setTimeout(r, 25000))]); done = true; }
 
 // ---------------- renderer / scene ----------------
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -209,6 +209,8 @@ const SNACK_WORD = { burger: ['CHOMP!', 'MUNCH!', 'NOM!'], pizza: ['CRUNCH!', 'M
   crisps: ['CRUNCH!', 'RUSTLE!'], choc: ['SNAP!', 'NOM!'], cookie: ['CRUNCH!', 'NOM!'], icecream: ['BRAIN FREEZE!', 'SLURP!'], sausageroll: ['FLAKY!', 'CHOMP!'],
   croissant: ['FLAKY!', 'OUI OUI!'], baguette: ['CRUNCH!', 'OH LA LA!'], muffin: ['SQUISH!', 'CHOC!'], painchoc: ['FLAKY!', 'MAGNIFIQUE!'], swirl: ['SWIRL!', 'NOM!'], icedbun: ['STICKY!', 'NOM!'], pretzel: ['TWISTED!', 'CRUNCH!'] };
 const CRUMB_COLORS = {
+  nuggets: [0xd9902e, 0xf0c070, 0xa86020], pasty: [0xe0a050, 0xf2cf90, 0x8a5a3a], onionrings: [0xe0a040, 0xf6d080, 0xfaf6e8], burrito: [0xf2dcae, 0x5a2a1a, 0xd8352a, 0x6fbf3f],
+  waffle: [0xe0a050, 0xd8102e, 0xfffcf4], pancakes: [0xe8b060, 0x9a4a10, 0x2a2a6a], churros: [0xc98a3a, 0xf4e6c8, 0x3a1a08], cupcake: [0xffb0d8, 0xc98a4a, 0x3fa3ff], brownie: [0x3a1e0e, 0x4e2a14, 0xc8a070], baconbap: [0xe8c890, 0xd9707a, 0xf6e6d8],
   burger: [0xd9933f, 0x5a2e14, 0x4caf3c, 0xffc21a, 0xe0a04a],
   pizza: [0xf2b233, 0xc9852f, 0xb3261e, 0xffe08a],
   doughnut: [0xff6fae, 0xd9a05b, 0x3fc1ff, 0xfff04a, 0xffffff],
@@ -244,7 +246,7 @@ function bite(it, hand) {
   it.bitesLeft--;
   if (it.nid && mp.on && !mp.host && it.bitesLeft > 0) net.send({ t: 'bite', nid: it.nid, left: it.bitesLeft });
   sfx(SNACK_SFX[it.type], fx, 1);
-  crumbs.burst(fx, CRUMB_COLORS[it.type], 26, 1.5, player.fwd);
+  crumbs.burst(fx, CRUMB_COLORS[it.type] || CRUMB_COLORS.burger, 26, 1.5, player.fwd);     // (anything without its own crumbs gets burger crumbs: never nothing)
   const w = SNACK_WORD[it.type];
   words.show(w[Math.floor(Math.random() * w.length)], _b.copy(player.head).addScaledVector(player.fwd, 0.7 * player.scale).add({ x: 0, y: 0.05, z: 0 }), '#ffd400', 0.12 * player.scale);
   hand && hand.pulse(0.9, 70);
@@ -497,7 +499,7 @@ const touch = setupTouch({
     if (!player.flatMode) return;
     player.flatYaw -= dx; player.flatPitch = THREE.MathUtils.clamp(player.flatPitch - dy, -1.35, 1.35);
   },
-  onEat: () => { if (player.flatHolder?.held) player.flatEat(); },
+  onEat: () => { const h = player.flatHolder?.held; if (h && h.def.gun && director.runpub && director.runpub.bar) { director.runpub.bar.toggleFlavour(); return; } if (h) player.flatEat(); },
   onThrow: () => player.flatThrow(),
   onEmote: (id) => mp.emote(id),
   onZoom: (dir) => { player.zoom = dir === undefined ? !player.zoom : dir; return player.zoom; },
@@ -509,6 +511,7 @@ const touch = setupTouch({
     const ray = raycaster.ray, reach = 3 * player.scale;
     if (director.tapBoard(ray) || director.tapBubble(ray)) return;
     if (music.tap(ray, reach)) return;                       // the music button on the speakers / DJ deck
+    if (director.runpub && director.runpub.bar && director.runpub.bar.tap(ray)) return;   // Run the Pub: the tap, the coffee machine, the soft-drink gun
     if (tvs.hitTV(ray, reach)) return;                        // a telly: put a video on it
     // the lightbox sign in Lewis's cabin: tap it to write your own message
     if (room.lightbox) { const lb = room.lightbox, lp = lb.mesh.getWorldPosition(_b);
@@ -588,7 +591,8 @@ function updateZoom() {
 function stageNameOf(i) { let on = false; try { on = net.connected; } catch (e) {} const base = STAGES[i].name, c = on && net.char && net.char !== 'ronnie' ? (net.char === 'tommy' ? 'Tommy' : (SQUAD_MP[net.char] && SQUAD_MP[net.char].name)) : null; return c ? base.replace('Ronnie', c) : base; }
 function updateTouchUI() {
   const held = player.flatHolder?.held;
-  touch.setEatLabel(held && held.def.drink ? 'DRINK' : 'EAT', !!held && !held.empty);
+  const gun = held && held.def.gun && director.runpub && director.runpub.bar;
+  touch.setEatLabel(gun ? (director.runpub.bar.gunFlavour ? 'FANTA ⇄' : 'COKE ⇄') : held && held.def.drink ? 'DRINK' : 'EAT', gun || (!!held && !held.empty && !held.def.prop));
   touch.setThrowEnabled(!!held);
   touch.setEmoteAvailable(!!net.connected);
 }
@@ -664,6 +668,7 @@ function resetRonnie() {
 const director = new Director({
   scene, room, physics, player, items, words, G, tommy, cast, onThrow, addChonk, resetRonnie, fx: attackFx, crumbs,
   showBanner: (a, b) => showBanner(a, b),
+  hint: (t) => touch.hint(t),
   stageName: () => stageNameOf(G.stage),
   // points that pop bubbles / press board buttons: palms, fingertips and held food
   popPoints: (fingers) => {
@@ -949,7 +954,7 @@ function frame(simDt) {
   }
   director.update(dt, ctx);
   attackFx.update(dt);
-  if (player.flatMode) { updateTouchUI(); touch.busy(!!attackFx.cut || director.cast.some(c => c.state === 'act')); }
+  if (player.flatMode) { updateTouchUI(); touch.busy(!!(attackFx.cut && !attackFx.cut.overlay)); }
 
   // timers & tint
   if (G.locoT > 0) {

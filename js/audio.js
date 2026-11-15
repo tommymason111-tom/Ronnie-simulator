@@ -277,7 +277,7 @@ export function stopLocoMusic() {
 let ambKind = null, ambGain = null, ambTimer = null, ambNext = 0, ambBar = 0, ambListener = null, ambStarted = false, nextEvent = {};
 export function setAmbience(kind, listenerFn) { ambKind = kind; ambListener = listenerFn; startAmbience(); }
 function startAmbience() {
-  if (!ctx || ambStarted || !ambKind || !['shop', 'restaurant', 'pub'].includes(ambKind)) return;
+  if (!ctx || ambStarted || !ambKind || !['shop', 'restaurant'].includes(ambKind)) return;     // (no background noise in the pub: the music from the DJ booth is there instead)
   ambStarted = true;
   ambGain = ctx.createGain(); ambGain.gain.value = 0; ambGain.connect(master);
   ambGain.gain.setTargetAtTime(1, ctx.currentTime + 0.2, 1.5);    // fade in

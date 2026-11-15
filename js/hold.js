@@ -29,6 +29,14 @@ const SPEC = {
   beer:     { axis: nY, up: Z, at: [0, -0.04, 0], r: 0.031 },
   bat:      { axis: nY, up: X, at: [0, -0.1, 0], r: 0.013 },              // table tennis bat: shakehand grip, face along the palm
   pint:     { axis: nY, up: Z, at: [0, -0.01, 0], r: 0.039 },
+  glass:    { axis: nY, up: Z, at: [0, -0.01, 0], r: 0.039 },
+  cider:    { axis: nY, up: Z, at: [0, -0.04, 0], r: 0.031 },
+  wine:     { axis: nY, up: Z, at: [0, -0.045, 0], r: 0.006 },        // by the stem
+  mug:      { axis: nY, up: Z, at: [0, 0, 0], r: 0.036 },
+  coffee:   { axis: nY, up: Z, at: [0, 0, 0], r: 0.036 },
+  cup:      { axis: nY, up: Z, at: [0, 0, 0], r: 0.034 },
+  soft:     { axis: nY, up: Z, at: [0, 0, 0], r: 0.034 },
+  sodagun:  { axis: nY, up: Z, at: [0, -0.02, 0], r: 0.016 },        // by its handle
   shake:    { axis: nY, up: Z, at: [0, -0.01, 0], r: 0.035 },
   fries:    { axis: nY, up: Z, at: [0, -0.025, 0], r: 0.028 },
   kebab:    { axis: nY, up: Z, at: [0, -0.03, 0], r: 0.034 },

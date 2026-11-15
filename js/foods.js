@@ -6,6 +6,7 @@ import { part, merge, vcLambert, cyl, sph, box } from './geo.js';
 import { canLabelTex } from './textures.js';
 import { batMesh } from './pingpong.js';
 import { HI } from './foodmodels.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ---------- geometry ----------
 function burgerGeo() {
@@ -226,6 +227,47 @@ function beerGeo() {
   p.push(part(cyl(0.0145, 0.0145, 0.01, 10), 0xd4af37, [0, 0.124, 0]));              // cap
   return merge(p);
 }
+// ---- behind the bar: glasses, cups and what goes in them (Run the Pub)
+const GLASSC = 0xcfe6ee;
+function glassGeo() {            // an empty pint glass (nonic: the bulge near the top)
+  const p = [part(new THREE.LatheGeometry([[0, -0.07], [0.03, -0.07], [0.033, -0.05], [0.04, 0.035], [0.043, 0.05], [0.041, 0.06], [0.04, 0.07], [0.037, 0.07], [0.038, 0.06], [0.04, 0.05], [0.037, 0.035], [0.03, -0.062], [0, -0.062]].map(([x, y]) => new THREE.Vector2(x, y)), 20), GLASSC)];
+  return merge(p);
+}
+function ciderGeo() {
+  const p = [];
+  p.push(part(cyl(0.031, 0.031, 0.13, 14), 0x8a4a12, [0, -0.045, 0]));
+  p.push(part(cyl(0.0315, 0.0315, 0.06, 14), 0xc8102e, [0, -0.05, 0]));
+  p.push(part(cyl(0.032, 0.032, 0.012, 14), 0x7cc84a, [0, -0.03, 0]));               // the apple stripe
+  p.push(part(cyl(0.013, 0.031, 0.05, 14), 0x8a4a12, [0, 0.045, 0]));
+  p.push(part(cyl(0.012, 0.013, 0.05, 10), 0x8a4a12, [0, 0.095, 0]));
+  p.push(part(cyl(0.0145, 0.0145, 0.01, 10), 0xc0c0c0, [0, 0.124, 0]));
+  return merge(p);
+}
+function wineGeo(v = 0) {         // a glass of red (0) or white (1)
+  const p = [];
+  p.push(part(cyl(0.032, 0.034, 0.004, 18), GLASSC, [0, -0.085, 0]), part(cyl(0.004, 0.004, 0.07, 8), GLASSC, [0, -0.05, 0]));
+  p.push(part(new THREE.LatheGeometry([[0.004, -0.015], [0.026, -0.005], [0.036, 0.02], [0.034, 0.05], [0.031, 0.065]].map(([x, y]) => new THREE.Vector2(x, y)), 20), GLASSC));
+  p.push(part(new THREE.LatheGeometry([[0, -0.012], [0.024, -0.004], [0.033, 0.016], [0, 0.016]].map(([x, y]) => new THREE.Vector2(x, y)), 20), v ? 0xf2e2a0 : 0x7a0a24));
+  return merge(p);
+}
+function mugGeo(full) {
+  const p = [part(cyl(0.036, 0.033, 0.08, 18), 0xf6f6f2), part(new THREE.TorusGeometry(0.018, 0.006, 6, 12, Math.PI), 0xf6f6f2, [0.036, 0, 0], [0, 0, -Math.PI / 2])];
+  p.push(part(cyl(0.031, 0.031, 0.002, 18), full ? 0x6a3a1a : 0xe0e0dc, [0, full ? 0.034 : -0.035, 0]));
+  if (full) { p.push(part(cyl(0.024, 0.024, 0.002, 16), 0xd8b080, [0, 0.0355, 0])); for (let i = 0; i < 3; i++) p.push(part(new THREE.TorusGeometry(0.008 + i * 0.006, 0.0012, 4, 16), 0xf0dcc0, [0, 0.0365, 0], [Math.PI / 2, 0, 0])); }   // crema and a latte-art swirl
+  return merge(p);
+}
+function cupGeo(v = -1) {          // a plastic tumbler: empty (-1), Coke (0) or Fanta (1), with ice and a straw
+  const p = [part(new THREE.LatheGeometry([[0, -0.045], [0.028, -0.045], [0.036, 0.045], [0.034, 0.045], [0.026, -0.04], [0, -0.04]].map(([x, y]) => new THREE.Vector2(x, y)), 18), 0xe8f2f6)];
+  if (v >= 0) { p.push(part(cyl(0.0335, 0.027, 0.075, 16), v ? 0xff8a00 : 0x3a1a0a, [0, -0.004, 0])); for (let i = 0; i < 4; i++) p.push(part(box(0.014, 0.014, 0.014), 0xf0faff, [Math.cos(i * 1.6) * 0.014, 0.03, Math.sin(i * 1.6) * 0.014], [i, i * 2, 0]));
+    p.push(part(cyl(0.003, 0.003, 0.12, 6), v ? 0x2a8aff : 0xff3a3a, [0.012, 0.04, 0], [0, 0, -0.2])); }
+  return merge(p);
+}
+function sodagunGeo() {           // the bar's soft-drink gun: buttons on top, the nozzle, the hose
+  const p = [part(box(0.035, 0.05, 0.03), 0x1a1a1a, [0, 0.0, 0]), part(cyl(0.012, 0.009, 0.03, 10), 0x222222, [0, -0.035, 0.01])];
+  [[0xc8102e, -0.01], [0xff8a00, 0.0], [0x7cc84a, 0.01]].forEach(([c, x]) => p.push(part(cyl(0.004, 0.004, 0.004, 8), c, [x, 0.026, 0])));
+  p.push(part(cyl(0.009, 0.009, 0.06, 8), 0x333333, [0, 0.045, -0.012], [0.5, 0, 0]));                // the hose going off
+  return merge(p);
+}
 // a dart: steel tip pointing along -z, tungsten barrel, shaft, flights
 function dartGeo() {
   const R = [-Math.PI / 2, 0, 0], p = [];
@@ -383,10 +425,13 @@ function meshFor(type, v = 0) {
   if (type === 'condiment') return new THREE.Mesh(condimentGeo(v), vcLambert);
   if (type === 'beermat') return new THREE.Mesh(beermatGeo(v), vcLambert);
   if (type === 'chair') return new THREE.Mesh(chairGeo(v), vcLambert);
+  if (type === 'wine' || type === 'soft') { const k = type + v; if (!geoCache[k]) geoCache[k] = type === 'wine' ? wineGeo(v) : cupGeo(v); return new THREE.Mesh(geoCache[k], vcLambert); }
+  if (type === 'mug' || type === 'coffee') { if (!geoCache[type]) geoCache[type] = mugGeo(type === 'coffee'); return new THREE.Mesh(geoCache[type], vcLambert); }
+  if (type === 'cup') { if (!geoCache.cup) geoCache.cup = cupGeo(-1); return new THREE.Mesh(geoCache.cup, vcLambert); }
   if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo, poop: poopGeo,
     hotdog: hotdogGeo, fries: friesGeo, kebab: kebabGeo, chicken: chickenGeo, taco: tacoGeo, crisps: crispsGeo, choc: chocGeo, cookie: cookieGeo, icecream: icecreamGeo, sausageroll: sausageRollGeo,
     croissant: croissantGeo, baguette: baguetteGeo, muffin: muffinGeo, painchoc: painchocGeo, swirl: swirlGeo, icedbun: icedbunGeo, pretzel: pretzelGeo,
-    apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo, dart: dartGeo, beer: beerGeo, ...lowNew }[type]();
+    apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo, dart: dartGeo, beer: beerGeo, glass: glassGeo, cider: ciderGeo, sodagun: sodagunGeo, ...lowNew }[type]();
   return new THREE.Mesh(geoCache[type], vcLambert);
 }
 
@@ -403,13 +448,29 @@ const _v = new THREE.Vector3(), _c = new THREE.Vector3();
 // food comes bigger than life (easier to see, grab and throw); drinks and props stay their real size
 export const FOOD_BIG = 1.6;
 const bigFor = (def) => (def.prop || def.drink || def.poop) ? 1 : FOOD_BIG;
-const hiCache = {};
+const hiCache = {}, hullCache = {};
+// the outside shape of a food for its outline: its big pieces only (buns, patty, slice, crust...), joined up smooth, so
+// the line goes round the food and not round every sesame seed, pepperoni or blob of sauce
+function silhouette(src) {
+  const g0 = src.clone(); for (const k of Object.keys(g0.attributes)) if (k !== 'position') g0.deleteAttribute(k);
+  const g = mergeVertices(g0), idx = g.index.array, pos = g.attributes.position, n = pos.count, par = new Int32Array(n).map((_, i) => i);
+  const find = (i) => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+  for (let t = 0; t < idx.length; t += 3) { const a = find(idx[t]), b = find(idx[t + 1]), c = find(idx[t + 2]); par[b] = a; par[c] = a; }
+  const box = new THREE.Box3().setFromBufferAttribute(pos), whole = box.getSize(new THREE.Vector3()).length(), boxes = new Map(), v = new THREE.Vector3();
+  for (let i = 0; i < n; i++) { const r = find(i); v.fromBufferAttribute(pos, i); (boxes.get(r) || boxes.set(r, new THREE.Box3()).get(r)).expandByPoint(v); }
+  const keepIdx = [], seen = new Set(); for (let t = 0; t < idx.length; t += 3) { const r = find(idx[t]); if (boxes.get(r).getSize(v).length() < whole * 0.32) continue;
+    const k = [idx[t], idx[t + 1], idx[t + 2]].sort((a, b) => a - b).join(); if (seen.has(k)) continue; seen.add(k); keepIdx.push(idx[t], idx[t + 1], idx[t + 2]); }      // (two-sided parts: one copy, or the normals cancel out)
+  const out = new THREE.BufferGeometry(); out.setAttribute('position', pos); out.setIndex(keepIdx.length ? keepIdx : Array.from(idx)); out.computeVertexNormals(); g0.dispose(); return out;
+}
 export const HI_NEAR = 3.2;      // (metres: closer than this you see the detailed fast food)
 const sizedMesh = (type, v) => {
   let m = meshFor(type, v);
   if (HI[type]) { const lod = new THREE.LOD(); lod.addLevel(new THREE.Mesh(hiCache[type] || (hiCache[type] = HI[type]()), vcLambert), 0); lod.addLevel(m, HI_NEAR); m = lod; }
   const k = bigFor(FOODS[type]); if (k !== 1) m.scale.multiplyScalar(k); return m; };
-const outlineMat = (color, w) => new THREE.ShaderMaterial({ uniforms: { c: { value: new THREE.Color(color) }, w: { value: w } }, side: THREE.BackSide,
+const outlineMat = (color, w) => new THREE.ShaderMaterial({ uniforms: { c: { value: new THREE.Color(color) }, w: { value: w } }, side: THREE.DoubleSide,
+  // drawn after the food and only where the food isn't (the food marks its pixels in the stencil): so the line can only
+  // ever be round the outside, never across a topping, inside a taco shell or over the top of a bun
+  stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc, stencilZPass: THREE.KeepStencilOp,
   vertexShader: 'uniform float w; void main(){ vec3 p = position + normalize(normal) * w; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }',
   fragmentShader: 'uniform vec3 c; void main(){ gl_FragColor = vec4(c, 1.0); }' });
 const OUTLINE_MATS = [outlineMat(0x0a0a0a, 0.0048)];      // a bold black outline (picked out of white, yellow, black and black+white); in the food's own size (it's drawn 1.6x)
@@ -418,6 +479,9 @@ const HALO_MAT = (() => { const c = document.createElement('canvas'); c.width = 
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   return new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 }); })();
 export const foodGlow = (t) => { HALO_MAT.opacity = 0.34 + Math.sin(t * 2.6) * 0.12; };
+// the food's own materials write 1 into the stencil wherever they're drawn (see the outline)
+const markFood = (o) => o.traverse(m => { if (!m.isMesh || m.material === OUTLINE_MATS[0]) return; for (const mt of [].concat(m.material)) { if (mt.stencilWrite) continue;
+  mt.stencilWrite = true; mt.stencilRef = 1; mt.stencilFunc = THREE.AlwaysStencilFunc; mt.stencilZPass = THREE.ReplaceStencilOp; } });
 export class Item {
   constructor(type, v = 0) {
     this.type = type;
@@ -457,10 +521,17 @@ export class Item {
   }
   // a black outline round the food so it stands out on any floor or table (white, yellow, black and black+white
   // were all tried on carpet, wood, tablecloths, grass, the Lidl floor and the booths: black was the favourite)
+  // (only round the outside: one outline from the food's overall shape, not round every seed and topping)
   addOutline() {
-    const ms = []; this.obj.children[0].traverse(m => { if (m.isMesh) ms.push(m); });
-    this.outline = [];
-    for (const m of ms) for (const mat of OUTLINE_MATS) { const h = new THREE.Mesh(m.geometry, mat); h.renderOrder = -1; h.frustumCulled = true; m.add(h); this.outline.push(h); }
+    const top = this.obj.children[0], key = this.type + (this.variant || 0), mat = OUTLINE_MATS[0];
+    if (top.isLOD) {        // traced from the detailed model up close and the simple one further away, so it always fits
+      const c = hullCache[key] || (hullCache[key] = { hi: silhouette(top.levels[0].object.geometry), lo: silhouette(top.levels[top.levels.length - 1].object.geometry) });
+      const lod = new THREE.LOD(); const a = new THREE.Mesh(c.hi, mat), b = new THREE.Mesh(c.lo, mat); a.renderOrder = b.renderOrder = 1; markFood(top);
+      lod.addLevel(a, 0); lod.addLevel(b, HI_NEAR); top.add(lod); this.outline = [lod]; return;
+    }
+    let src = top; if (!src.isMesh) { const ms = []; src.traverse(m => { if (m.isMesh) ms.push(m); }); src = ms[0]; } if (!src) return;
+    const geo = hullCache[key] || (hullCache[key] = silhouette(src.geometry));
+    markFood(top); const h = new THREE.Mesh(geo, mat); h.renderOrder = 1; top.add(h); if (src !== top) h.scale.copy(src.scale); this.outline = [h];
   }
   setVariant(v) { if (this.variant === v) return; this.variant = v; const s = this.obj.scale.x; this.obj.clear(); this.obj.add(sizedMesh(this.type, v)); this.obj.scale.setScalar(s); if (this.halo) { this.obj.add(this.halo); this.addOutline(); this.outlineOn = undefined; } }
   get pos() { return this.obj.position; }

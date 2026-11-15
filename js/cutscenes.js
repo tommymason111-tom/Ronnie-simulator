@@ -418,34 +418,143 @@ export function drawBeer(g, t, dur) {
   text(g, 'ONE MORE. JUST THE ONE. (IT\'S NEVER JUST THE ONE)', W / 2, H - 26, 28, '#fff', { lw: 6, maxW: W - 60 });
   g.restore();
 }
-// Harry: his dating app takes over your whole screen, swiping through the disasters
+// Harry: his phone shoved in front of you (not the whole screen: you can still see round it), his dating app on it,
+// swiping NOPE through the profiles with his thumb, then his chat: five messages, all "Seen", no replies, unmatched
+const MATCHR = [
+  { name: 'STACEY', age: 27, miles: 2, bio: 'No time-wasters. Gym 6 days a week 💪', tags: ['Gym', 'Brunch', 'Ibiza'], skin: '#e8b48a', hair: '#5a3a22', top: '#e84a7a', bg: ['#ffb36b', '#ff6f91'], long: 1, ear: '#ffd400' },
+  { name: 'JADE', age: 25, miles: 4, bio: '6ft only. (Harry: 5\'11 and a half)', tags: ['Tall men', 'Wine', 'Travel'], skin: '#f2c9a0', hair: '#e8c070', top: '#2e86de', bg: ['#7ee0ff', '#3a7bd5'], long: 1, ear: '#fff' },
+  { name: 'KELLY', age: 29, miles: 1, bio: 'Must love dogs. Must REALLY love dogs.', tags: ['Dogs', 'Dogs', 'More dogs'], skin: '#c98a5a', hair: '#1a1210', top: '#27ae60', bg: ['#b8f0a0', '#4caf50'], long: 0, ear: '#ffd400', dog: 1 },
+  { name: 'AMBER', age: 26, miles: 7, bio: 'If you know Harry, swipe left.', tags: ['Not Harry', 'Cocktails', 'Spurs'], skin: '#ffd9b8', hair: '#a0522d', top: '#8e44ad', bg: ['#d6a4ff', '#6a3093'], long: 1, ear: '#c0c0c0' },
+];
+function matchrFace(g, p, s) {      // a profile photo: background, her, (a dog), all inside the card
+  const bg = g.createLinearGradient(0, -190, 0, 190); bg.addColorStop(0, p.bg[0]); bg.addColorStop(1, p.bg[1]); g.fillStyle = bg; g.fillRect(-128, -195, 256, 390);
+  g.fillStyle = 'rgba(255,255,255,0.18)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(-100 + i * 45, -150 + (i % 2) * 40, 14 + (i % 3) * 6, 0, 7); g.fill(); }     // bokeh lights
+  // shoulders and top
+  g.fillStyle = p.top; g.beginPath(); g.moveTo(-110, 195); g.quadraticCurveTo(-100, 40, 0, 30); g.quadraticCurveTo(100, 40, 110, 195); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.12)'; g.beginPath(); g.moveTo(-30, 40); g.quadraticCurveTo(0, 80, 30, 40); g.fill();
+  // hair behind
+  g.fillStyle = p.hair; g.beginPath(); g.ellipse(0, -70, 70, 78, 0, 0, 7); g.fill(); if (p.long) { rr(g, -72, -70, 144, 150, 40); g.fill(); }
+  // neck and face
+  g.fillStyle = p.skin; rr(g, -18, -10, 36, 50, 10); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.13)'; g.fillRect(-18, -8, 36, 10);
+  g.fillStyle = p.skin; g.beginPath(); g.ellipse(0, -60, 50, 60, 0, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(-50, -56, 8, 13, 0, 0, 7); g.ellipse(50, -56, 8, 13, 0, 0, 7); g.fill();       // ears
+  g.fillStyle = p.ear; g.beginPath(); g.arc(-51, -40, 4, 0, 7); g.arc(51, -40, 4, 0, 7); g.fill();          // earrings
+  g.fillStyle = 'rgba(255,90,90,0.22)'; g.beginPath(); g.ellipse(-27, -42, 12, 7, 0, 0, 7); g.ellipse(27, -42, 12, 7, 0, 0, 7); g.fill();       // blush
+  for (const sx of [-1, 1]) {      // eyes: white, iris, pupil, shine, lashes, brow
+    const ex = sx * 19, ey = -64;
+    g.fillStyle = '#fff'; g.beginPath(); g.ellipse(ex, ey, 11, 7, 0, 0, 7); g.fill();
+    g.fillStyle = ['#5a3a1a', '#3a7bd5', '#4a2a10', '#2e8b57'][MATCHR.indexOf(p)]; g.beginPath(); g.arc(ex, ey, 5.5, 0, 7); g.fill();
+    g.fillStyle = '#111'; g.beginPath(); g.arc(ex, ey, 2.6, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(ex + 2, ey - 2, 1.5, 0, 7); g.fill();
+    g.strokeStyle = '#111'; g.lineWidth = 2.5; g.beginPath(); g.ellipse(ex, ey, 11, 7, 0, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
+    g.strokeStyle = p.hair; g.lineWidth = 4; g.beginPath(); g.moveTo(ex - 11, ey - 15 - sx * 0); g.quadraticCurveTo(ex, ey - 21, ex + 11, ey - 15); g.stroke();
+  }
+  g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(0, -58); g.lineTo(-5, -40); g.lineTo(3, -38); g.stroke();      // nose
+  g.fillStyle = '#c2405a'; g.beginPath(); g.moveTo(-15, -24); g.quadraticCurveTo(0, -30, 15, -24); g.quadraticCurveTo(0, -10, -15, -24); g.fill();   // lips
+  g.fillStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.ellipse(-4, -22, 4, 1.5, 0, 0, 7); g.fill();
+  // fringe on top
+  g.fillStyle = p.hair; g.beginPath(); g.moveTo(-52, -70); g.quadraticCurveTo(-40, -132, 10, -124); g.quadraticCurveTo(50, -118, 54, -70); g.quadraticCurveTo(30, -100, -10, -96); g.quadraticCurveTo(-35, -94, -52, -70); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = 3; g.beginPath(); g.moveTo(-30, -112); g.quadraticCurveTo(-10, -122, 20, -116); g.stroke();
+  if (p.dog) {     // and her dog, photobombing
+    g.save(); g.translate(68, 120);
+    g.fillStyle = '#c8954f'; g.beginPath(); g.ellipse(0, 0, 40, 34, 0, 0, 7); g.fill();
+    g.fillStyle = '#8a5a2a'; g.beginPath(); g.ellipse(-34, -6, 12, 24, 0.4, 0, 7); g.ellipse(34, -6, 12, 24, -0.4, 0, 7); g.fill();
+    g.fillStyle = '#f3dcb5'; g.beginPath(); g.ellipse(0, 14, 20, 15, 0, 0, 7); g.fill();
+    g.fillStyle = '#111'; g.beginPath(); g.arc(-13, -6, 4.5, 0, 7); g.arc(13, -6, 4.5, 0, 7); g.fill(); g.beginPath(); g.ellipse(0, 6, 7, 5, 0, 0, 7); g.fill();
+    g.fillStyle = '#e8607a'; g.beginPath(); g.ellipse(4, 26, 6, 9, 0, 0, 7); g.fill();
+    g.restore();
+  }
+}
+function matchrCard(g, p, nope) {
+  g.save(); g.beginPath(); rr(g, -128, -195, 256, 390, 18); g.clip();
+  matchrFace(g, p);
+  g.fillStyle = 'rgba(255,255,255,0.85)'; for (let i = 0; i < 4; i++) { g.globalAlpha = i ? 0.45 : 1; rr(g, -118 + i * 60, -188, 54, 4, 2); g.fill(); } g.globalAlpha = 1;   // photo dots
+  const sh = g.createLinearGradient(0, 40, 0, 195); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.85)'); g.fillStyle = sh; g.fillRect(-128, 40, 256, 155);
+  text(g, `${p.name}`, -112, 104, 28, '#fff', { align: 'left' }); g.font = `900 28px ${FONT}`; const nw = g.measureText(p.name).width;
+  text(g, `${p.age}`, -104 + nw, 104, 24, '#fff', { align: 'left', weight: 400 });
+  g.fillStyle = '#3ddc84'; g.beginPath(); g.arc(-100 + nw + 40, 96, 5, 0, 7); g.fill();                // online now
+  text(g, `📍 ${p.miles} miles away`, -112, 128, 14, '#eee', { align: 'left', weight: 700 });
+  text(g, p.bio, -112, 150, 13, '#fff', { align: 'left', weight: 700, maxW: 228 });
+  let cx = -112; g.font = `700 12px ${FONT}`;
+  for (const t of p.tags) { const w = g.measureText(t).width + 16; g.fillStyle = 'rgba(255,255,255,0.22)'; rr(g, cx, 162, w, 22, 11); g.fill(); text(g, t, cx + w / 2, 178, 12, '#fff', { weight: 700 }); cx += w + 6; }
+  if (nope > 0) {     // the NOPE stamp
+    g.save(); g.globalAlpha = Math.min(1, nope * 2); g.translate(60, -130); g.rotate(0.35);
+    g.strokeStyle = '#ff3b5c'; g.lineWidth = 6; rr(g, -64, -26, 128, 52, 8); g.stroke(); text(g, 'NOPE', 0, 14, 38, '#ff3b5c'); g.restore();
+  }
+  g.restore();
+  g.strokeStyle = 'rgba(0,0,0,0.12)'; g.lineWidth = 1; rr(g, -128, -195, 256, 390, 18); g.stroke();
+}
+function matchrBtn(g, x, y, r, col, glyph, push) { g.save(); g.translate(x, y); g.scale(1 + push * 0.25, 1 + push * 0.25);
+  g.fillStyle = push ? col : '#fff'; g.shadowColor = 'rgba(0,0,0,0.18)'; g.shadowBlur = 8; g.shadowOffsetY = 3; g.beginPath(); g.arc(0, 0, r, 0, 7); g.fill(); g.shadowColor = 'rgba(0,0,0,0)';
+  g.strokeStyle = col; g.lineWidth = 2; g.stroke(); text(g, glyph, 0, r * 0.38, r * 1.05, push ? '#fff' : col); g.restore(); }
 export function drawDating(g, t, dur) {
   g.clearRect(0, 0, W, H); const a = fadeIO(t, dur);
   g.save(); g.globalAlpha = a;
-  g.fillStyle = 'rgba(40,0,20,0.6)'; g.fillRect(0, 0, W, H);
-  // broken hearts floating up the sides (behind the phone)
-  for (let n = 0; n < 12; n++) { const hx = n % 2 ? rnd(n) * W * 0.25 + 30 : W - rnd(n) * W * 0.25 - 30, hy = H - ((t * 90 + n * 70) % (H + 60)); text(g, n % 3 ? '💔' : '❤', hx, hy, 38, '#ff6b8b'); }
-  // the phone: as big as the screen allows (most of a phone screen held upright)
-  const k = Math.min((H * 0.84) / 520, (W * 0.9) / 300);
-  g.save(); g.translate(W / 2, H * 0.03 + (1 - ease(t / 0.35)) * H * 0.7); g.scale(k, k);
-  g.fillStyle = '#111'; rr(g, -150, 0, 300, 520, 36); g.fill();
-  g.fillStyle = grad(g, 0, 520, [[0, '#ff5f8a'], [1, '#ff3b6b']]); rr(g, -138, 14, 276, 492, 28); g.fill();
-  text(g, 'MATCHR', 0, 52, 30, '#fff');
-  const names = ['STACEY, 27', 'JADE, 25', 'KELLY, 29', 'AMBER, 26', 'CHANTELLE, 28'], bios = ['"No time-wasters"', '"6ft only (Harry: 5\'11 and a half)"', '"Must love dogs"', '"Here for a good time"', '"If you know Harry, swipe left"'];
-  const i = Math.floor(t / 1.05) % names.length, kk = (t % 1.05) / 1.05, sw = kk > 0.7 ? (kk - 0.7) / 0.3 : 0;
-  g.save(); g.translate(-sw * 320, 250); g.rotate(-sw * 0.5);
-  g.fillStyle = '#fff'; rr(g, -120, -170, 240, 330, 20); g.fill();
-  g.fillStyle = ['#e8b48a', '#f2c9a0', '#c98a5a', '#ffd9b8', '#e0a070'][i]; g.beginPath(); g.arc(0, -70, 62, 0, 7); g.fill();
-  g.fillStyle = ['#5a3a22', '#e8c070', '#1a1210', '#a0522d', '#3a2416'][i]; g.beginPath(); g.arc(0, -90, 64, Math.PI, 0); g.fill();
-  g.fillStyle = '#111'; g.beginPath(); g.arc(-22, -70, 6, 0, 7); g.arc(22, -70, 6, 0, 7); g.fill();
-  g.strokeStyle = '#c0392b'; g.lineWidth = 4; g.beginPath(); g.arc(0, -50, 18, 0.3, Math.PI - 0.3); g.stroke();
-  text(g, names[i], 0, 40, 26, '#111'); text(g, bios[i], 0, 72, 16, '#555', { weight: 700, maxW: 220 });
-  if (sw > 0) { g.save(); g.rotate(0.3); g.strokeStyle = '#c0392b'; g.lineWidth = 6; rr(g, -90, 90, 180, 50, 8); g.stroke(); text(g, 'NOPE', 0, 128, 34, '#c0392b'); g.restore(); }
+  vignette(g, 'rgba(90,0,40,ALPHA)', 0.55);      // a pink-dark edge, but the middle and sides of the game still show
+  for (let n = 0; n < 10; n++) { const hx = n % 2 ? rnd(n) * W * 0.22 + 20 : W - rnd(n) * W * 0.22 - 20, hy = H + 30 - ((t * 70 + n * 80) % (H + 60)); g.globalAlpha = a * 0.8; text(g, n % 3 ? '💔' : '❤', hx + Math.sin(t * 2 + n) * 12, hy, 26, '#ff6b8b'); }
+  g.globalAlpha = a;
+  // the phone: about two-thirds of the screen's height, in the middle
+  const k = Math.min((H * 0.7) / 600, (W * 0.44) / 300), inn = ease(t / 0.35), out = ease((t - (dur - 0.35)) / 0.35);
+  g.save(); g.translate(W / 2 + Math.sin(t * 1.7) * 6, (H - 600 * k) / 2 - 10 + (1 - inn) * H * 0.8 + out * H * 0.8); g.rotate(Math.sin(t * 1.3) * 0.025 - 0.02); g.scale(k, k);
+  // body: frame, side buttons, glass
+  g.shadowColor = 'rgba(0,0,0,0.5)'; g.shadowBlur = 30; g.shadowOffsetY = 12;
+  const fr = g.createLinearGradient(-150, 0, 150, 0); fr.addColorStop(0, '#3a3a40'); fr.addColorStop(0.5, '#1a1a1e'); fr.addColorStop(1, '#3a3a40'); g.fillStyle = fr; rr(g, -150, 0, 300, 600, 44); g.fill();
+  g.shadowColor = 'rgba(0,0,0,0)'; g.fillStyle = '#2a2a30'; rr(g, -154, 110, 6, 40, 3); g.fill(); rr(g, -154, 160, 6, 60, 3); g.fill(); rr(g, 148, 140, 6, 80, 3); g.fill();
+  g.fillStyle = '#000'; rr(g, -142, 8, 284, 584, 38); g.fill();
+  g.save(); g.beginPath(); rr(g, -136, 14, 272, 572, 34); g.clip();
+  const chat = t > 3.75;
+  g.fillStyle = chat ? '#fff' : '#f4f4f6'; g.fillRect(-136, 14, 272, 572);
+  // status bar + dynamic island
+  text(g, '21:47', -96, 40, 15, '#111', { weight: 700 });
+  g.fillStyle = '#111'; for (let i = 0; i < 4; i++) g.fillRect(60 + i * 5, 36 - i * 3, 3, 4 + i * 3);
+  g.strokeStyle = '#111'; g.lineWidth = 1.5; rr(g, 86, 27, 26, 13, 4); g.stroke(); g.fillStyle = '#e53935'; g.fillRect(88, 29, 4, 9); g.fillStyle = '#111'; g.fillRect(113, 31, 2, 5);   // battery: 3%
+  g.fillStyle = '#000'; rr(g, -44, 22, 88, 26, 13); g.fill();
+  if (!chat) {
+    // header: the flame logo, the app's name, settings and messages
+    const fl = g.createLinearGradient(0, 60, 0, 90); fl.addColorStop(0, '#ff7a59'); fl.addColorStop(1, '#ff2e63'); g.fillStyle = fl;
+    g.beginPath(); g.moveTo(-58, 90); g.bezierCurveTo(-80, 82, -74, 62, -62, 56); g.bezierCurveTo(-62, 66, -56, 70, -54, 70); g.bezierCurveTo(-56, 60, -50, 54, -44, 52); g.bezierCurveTo(-44, 66, -32, 70, -38, 84); g.closePath(); g.fill();
+    text(g, 'matchr', 8, 84, 28, '#ff2e63', { weight: 900 });
+    g.fillStyle = '#b0b0b8'; g.beginPath(); g.arc(-108, 76, 9, 0, 7); g.fill(); g.beginPath(); g.arc(108, 76, 9, 0, 7); g.fill();
+    // the stack: the next card behind, the current one swiped away by Harry's thumb
+    const per = 0.85, k2 = Math.max(0, t - 0.35), i = Math.min(MATCHR.length - 1, Math.floor(k2 / per)), f = (k2 % per) / per, sw = i === MATCHR.length - 1 && k2 >= per * MATCHR.length ? 1 : f > 0.55 ? (f - 0.55) / 0.45 : 0;
+    g.save(); g.translate(0, 300); g.scale(0.95, 0.95); matchrCard(g, MATCHR[(i + 1) % MATCHR.length], 0); g.restore();
+    g.save(); g.translate(-sw * sw * 380, 300 + sw * 30); g.rotate(-sw * 0.45); matchrCard(g, MATCHR[i], f > 0.3 ? (f - 0.3) / 0.25 : 0); g.restore();
+    // the buttons: rewind, nope (pressed as he swipes), super like, like, boost
+    matchrBtn(g, -104, 528, 18, '#f5b700', '↺', 0); matchrBtn(g, -52, 528, 25, '#ff3b5c', '✕', sw > 0 ? 1 - sw : 0); matchrBtn(g, 0, 528, 18, '#2fa8ff', '★', 0);
+    matchrBtn(g, 52, 528, 25, '#2ed47a', '♥', 0); matchrBtn(g, 104, 528, 18, '#a259ff', '⚡', 0);
+    g.fillStyle = '#ddd'; g.fillRect(-136, 556, 272, 1); for (let j = 0; j < 4; j++) { g.fillStyle = j ? '#c0c0c8' : '#ff2e63'; g.beginPath(); g.arc(-96 + j * 64, 572, 7, 0, 7); g.fill(); }
+    // the bad news drops in from the top
+    const nb = Math.max(0, Math.min(1, (t - 2.2) / 0.25, (3.4 - t) / 0.25));
+    if (nb > 0) { g.save(); g.translate(0, -70 + nb * 120); g.fillStyle = 'rgba(250,250,252,0.97)'; g.shadowColor = 'rgba(0,0,0,0.25)'; g.shadowBlur = 12; rr(g, -126, 0, 252, 56, 16); g.fill(); g.shadowColor = 'rgba(0,0,0,0)';
+      g.fillStyle = '#ff2e63'; rr(g, -116, 12, 32, 32, 8); g.fill(); text(g, '🔥', -100, 35, 18, '#fff');
+      text(g, 'MATCHR · now', -76, 24, 11, '#888', { align: 'left', weight: 700 }); text(g, 'Jade has unmatched you 💔', -76, 44, 14, '#111', { align: 'left', weight: 700, maxW: 196 }); g.restore(); }
+  } else {
+    // the chat with Chantelle: five messages from Harry, Seen, and then she's gone
+    const c = t - 3.75;
+    g.fillStyle = '#f7f7f9'; g.fillRect(-136, 50, 272, 64); g.fillStyle = '#ddd'; g.fillRect(-136, 114, 272, 1);
+    text(g, '‹', -116, 92, 30, '#ff2e63'); g.fillStyle = '#ffd9b8'; g.beginPath(); g.arc(-74, 82, 20, 0, 7); g.fill(); g.fillStyle = '#3a2416'; g.beginPath(); g.arc(-74, 76, 20, Math.PI, 0); g.fill();
+    text(g, 'Chantelle, 28', -46, 80, 17, '#111', { align: 'left' }); text(g, 'Active 2h ago', -46, 99, 12, '#888', { align: 'left', weight: 700 });
+    text(g, 'You matched on 03/02', 0, 140, 11, '#aaa', { weight: 700 });
+    const msgs = ['hey', 'hey 😊', 'u there?', 'hellooo??', 'ok then 👍', 'was only being friendly'];
+    msgs.forEach((m, j) => { const show = Math.max(0, Math.min(1, (c - j * 0.16) / 0.15)); if (!show) return; g.save(); g.globalAlpha = a * show;
+      g.font = `700 15px ${FONT}`; const w = g.measureText(m).width + 26, y = 158 + j * 44; g.fillStyle = '#2f80ff'; rr(g, 120 - w, y, w, 34, 17); g.fill(); text(g, m, 120 - w / 2, y + 23, 15, '#fff', { weight: 700 }); g.restore(); });
+    if (c > 1.0) text(g, 'Seen 21:48', 120, 158 + msgs.length * 44 + 8, 11, '#999', { align: 'right', weight: 700 });
+    if (c > 1.15) { g.fillStyle = 'rgba(255,46,99,0.1)'; rr(g, -120, 470, 240, 48, 12); g.fill(); text(g, 'Chantelle has unmatched you', 0, 500, 15, '#ff2e63'); }
+    g.fillStyle = '#f0f0f3'; rr(g, -120, 532, 200, 36, 18); g.fill(); text(g, 'Type a message...', -104, 556, 13, '#aaa', { align: 'left', weight: 700 });
+    g.fillStyle = '#ccc'; g.beginPath(); g.arc(106, 550, 16, 0, 7); g.fill(); text(g, '➤', 106, 556, 16, '#fff');
+  }
   g.restore();
-  const chats = ['hey', 'hey', 'u there?', 'hellooo', 'ok then'];
-  g.fillStyle = '#fff'; rr(g, -120, 430, 240, 46, 18); g.fill(); text(g, `Harry: "${chats[i]}"`, 0, 461, 18, '#333', { weight: 700 });
+  // glass shine
+  const gl = g.createLinearGradient(-140, 0, 140, 600); gl.addColorStop(0, 'rgba(255,255,255,0.10)'); gl.addColorStop(0.35, 'rgba(255,255,255,0)'); g.fillStyle = gl; rr(g, -136, 14, 272, 572, 34); g.fill();
+  // Harry's thumb, swiping
+  if (!chat) { const per = 0.85, f = (Math.max(0, t - 0.35) % per) / per, sw = f > 0.55 ? (f - 0.55) / 0.45 : 0, tx = 70 - sw * 200, ty = 470 - Math.sin(sw * Math.PI) * 30;
+    g.save(); g.translate(tx + 60, ty + 140); g.rotate(-0.55);
+    g.fillStyle = '#e9b48e'; rr(g, -34, -150, 68, 220, 34); g.fill(); g.fillStyle = 'rgba(0,0,0,0.08)'; rr(g, -34, -40, 68, 6, 3); g.fill();
+    g.fillStyle = '#f6d6c4'; rr(g, -22, -142, 44, 50, 18); g.fill(); g.strokeStyle = 'rgba(160,100,80,0.5)'; g.lineWidth = 2; rr(g, -22, -142, 44, 50, 18); g.stroke(); g.restore(); }
   g.restore();
-  text(g, 'HARRY\'S DATING HISTORY: 47 MATCHES · 0 REPLIES', W / 2, H - 20, 26, '#fff', { lw: 6, maxW: W - 40 });
+  // the caption under it
+  g.font = `900 22px ${FONT}`; const cap = 'HARRY\'S DATING HISTORY: 47 MATCHES · 0 REPLIES', cw = Math.min(W - 40, g.measureText(cap).width + 40);
+  g.fillStyle = 'rgba(30,0,15,0.7)'; rr(g, W / 2 - cw / 2, H - 46, cw, 36, 18); g.fill(); text(g, cap, W / 2, H - 20, 20, '#fff', { lw: 4, maxW: W - 60 });
   g.restore();
 }
 // Chloe: the diet plan clipboard slides in, junk food gets crossed off, lettuce rains down

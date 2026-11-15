@@ -49,7 +49,7 @@ export function setupTouch(cb) {
   };
   stick.addEventListener('pointermove', moveStick);
   const endStick = (e) => { if (e.pointerId === stickId) { stickId = null; setKnob(0, 0); } };
-  stick.addEventListener('pointerup', endStick); stick.addEventListener('pointercancel', endStick);
+  stick.addEventListener('pointerup', endStick); stick.addEventListener('pointercancel', endStick); stick.addEventListener('lostpointercapture', endStick);
 
   // ---- buttons ----
   const press = (el, fn) => el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); cb.onUserGesture?.(); fn(); el.classList.add('down'); setTimeout(() => el.classList.remove('down'), 150); });
@@ -115,7 +115,7 @@ export function setupTouch(cb) {
 
   return {
     show(on) { root.classList.toggle('on', on); },
-    busy(on) { if (root.classList.contains('busy') !== on) root.classList.toggle('busy', on); },
+    busy(on) { if (root.classList.contains('busy') !== on) { root.classList.toggle('busy', on); if (stickId !== null) { stickId = null; setKnob(0, 0); } } },      // (let go of the stick when they hide or come back)
     setSprint: showSprint,
     setZoomAvailable(on, zoomed) { zm.classList.toggle('show', on); showZoom(on && zoomed); },
     setEatLabel(txt, enabled) { eat.textContent = txt; eat.classList.toggle('off', !enabled); },

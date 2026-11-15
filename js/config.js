@@ -51,10 +51,10 @@ export const FOODS = {
   pepper:   { label: 'Pepper',      chonk: -6, bites: 1, radius: 0.04, mass: 0.12, veg: true },
   cauliflower: { label: 'Cauliflower', chonk: -12, bites: 1, radius: 0.045, mass: 0.2, veg: true },
   poop:     { label: 'Poop', chonk: 0, bites: 1, radius: 0.045, mass: 0.2, poop: true },
-  beer:     { label: 'Bottle of lager', chonk: 15, bites: 1, radius: 0.035, mass: 0.4, drink: true, beer: true },
+  beer:     { label: 'Bottle of lager', chonk: 15, bites: 1, radius: 0.035, mass: 0.4, drink: true, beer: true, booze: true },
   dart:     { label: 'Dart', chonk: 0, bites: 1, radius: 0.025, mass: 0.02, dart: true, prop: true },
   bat:      { label: 'Table tennis bat', chonk: 0, bites: 1, radius: 0.02, mass: 0.1, bat: true, prop: true },
-  pint:     { label: 'BLACK LIFFEY STOUT', chonk: 20, bites: 1, radius: 0.045, mass: 0.6, drink: true, stout: true },
+  pint:     { label: 'BLACK LIFFEY STOUT', chonk: 20, bites: 1, radius: 0.045, mass: 0.6, drink: true, stout: true, booze: true },
   shake:    { label: 'Protein shake', chonk: 25, bites: 1, radius: 0.04, mass: 0.5, drink: true, shake: true },
   // the Lidl bakery
   croissant: { label: 'Croissant', chonk: 11, bites: 2, radius: 0.05, mass: 0.1, bake: true },
@@ -72,6 +72,15 @@ export const FOODS = {
   condiment: { label: 'Condiment', chonk: 0, bites: 1, radius: 0.035, mass: 0.3, prop: true, condiment: true },
   beermat:   { label: 'Beer mat', chonk: 0, bites: 1, radius: 0.03, mass: 0.01, prop: true, mat: true, flat: true },
   chair:     { label: 'Pub chair', chonk: 0, bites: 1, radius: 0.3, mass: 5.0, prop: true, chair: true, big: true },
+  // behind the bar (Run the Pub): glasses and cups to fill, and what goes in them
+  glass:     { label: 'Empty pint glass', chonk: 0, bites: 1, radius: 0.042, mass: 0.3, prop: true, vessel: 'glass' },
+  mug:       { label: 'Empty mug', chonk: 0, bites: 1, radius: 0.04, mass: 0.3, prop: true, vessel: 'mug' },
+  cup:       { label: 'Empty cup', chonk: 0, bites: 1, radius: 0.038, mass: 0.1, prop: true, vessel: 'cup' },
+  cider:     { label: 'Bottle of cider', chonk: 14, bites: 1, radius: 0.035, mass: 0.4, drink: true, booze: true },
+  wine:      { label: 'Glass of wine', chonk: 10, bites: 1, radius: 0.04, mass: 0.25, drink: true, booze: true },
+  coffee:    { label: 'Coffee', chonk: 4, bites: 1, radius: 0.04, mass: 0.3, drink: true },
+  soft:      { label: 'Soft drink', chonk: 8, bites: 1, radius: 0.038, mass: 0.3, drink: true },
+  sodagun:   { label: 'Soft-drink gun', chonk: 0, bites: 1, radius: 0.04, mass: 0.4, prop: true, gun: true },
 };
 
 export const TUNING = {
