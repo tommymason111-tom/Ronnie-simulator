@@ -28,7 +28,7 @@ const X = (px) => (px - 600) * S, Z = (py) => (py - 975) * S;
 const GZ = Z(1645), GZ1 = GZ + 26, GX0 = -10, GX1 = X(1045);          // the beer garden behind the pub (metres)
 const CONS_WIN = [-6.85, -4.1, -1.35, 1.4], WIN_Y0 = 0.75, WIN_Y1 = 2.45;   // the conservatory's windows (centres, sill, head)
 // a corridor down the left of the conservatory, from the pub to a back door out on to the deck
-const COR_X0 = -9.72, COR_X1 = -8.32, BDOOR = [-9.45, -8.55], BDOOR_H = 2.2;
+const COR_X0 = -9.72, COR_X1 = -8.32, PIL2_X = COR_X1 + 0.08 + 0.28, BDOOR = [-9.45, -8.55], BDOOR_H = 2.2;
 // every opening in the back wall of the conservatory + corridor: [x0, x1, bottom, top]
 const BACK_HOLES = [[BDOOR[0], BDOOR[1], 0, BDOOR_H], ...CONS_WIN.map(c => [c - 1.1, c + 1.1, WIN_Y0, WIN_Y1])];
 const DW = 1.0;                                                         // the deck outside the back door was widened by this much (everything beyond moved back)
@@ -341,7 +341,7 @@ export function buildPub(scene) {
   const PX = X(540), PZ = Z(830);
   pillar(PX, PZ);
   pillar(X(480), Z(1065));                                                                // a matching pillar at the end of the panelled half wall
-  pillar(X(455), Z(1165) - 0.35); pillar(X(290) + 0.05, Z(1305) - 0.35);                  // the two along the walkway on the left (photo)
+  pillar(X(455), Z(1165) - 0.35); pillar(PIL2_X, Z(1305) - 0.35);                  // the two along the walkway on the left (photo); the second right up against the end of the corridor wall (no gap)
   // dark wood posts where the plan's walls end in the open room
   for (const [x, z] of [[X(355), Z(605)], [X(715), Z(1305)], [X(790), Z(1305)]]) k.box(0.16, H - 0.5, 0.16, x, (H - 0.5) / 2, z, DARKWOOD, { block: true });
   // dark posts at every corner of the DJ booth's half walls, floor to ceiling
@@ -1139,7 +1139,7 @@ export function buildPub(scene) {
     // a fern in a pot by the window and the pillar, like the photo
     pottedPlant(k, -5.55, zc - 0.42, { s: 0.95, pot: 0x5a3a22, fronds: 22 });
     // posters on the pillar and brick
-    k.label('MATCH NIGHT — ALL GAMES SHOWN (RONNIE: ALL PIES EATEN)', 0.42, 0.6, [X(290) + 0.05 + 0.29, 1.6, zc - 0.35], [0, Math.PI / 2, 0], { bg: '#1a1a3a', fg: '#ffd400', border: '#c9a24a', size: 36 });
+    k.label('MATCH NIGHT — ALL GAMES SHOWN (RONNIE: ALL PIES EATEN)', 0.42, 0.6, [PIL2_X + 0.29, 1.6, zc - 0.35], [0, Math.PI / 2, 0], { bg: '#1a1a3a', fg: '#ffd400', border: '#c9a24a', size: 36 });
   }
   // ---- the corridor and its back door: a half-glazed door hooked open against the wall, the push bar, an EXIT sign,
   // a BEER GARDEN finger sign, downlights, a framed print, a fire extinguisher, a coir mat; outside a step, a lantern
