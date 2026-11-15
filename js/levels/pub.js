@@ -1124,7 +1124,6 @@ export function buildPub(scene) {
     const cx0 = X(452), cx1 = X(565), cz = zc;
     R(cx0, zc - 0.08, cx1, zc + 0.08, H, H / 2, PLASTER, { collide: true, block: true });
     clad(cx0 + 0.08, zc - 0.1, cx1, zc - 0.08, BRICK, H, 0.75); clad(cx0, zc + 0.08, cx1, zc + 0.1, BRICK, H, 0.75);
-    clad(X(290), zc - 0.1, X(330), zc - 0.08, BRICK, H, 0.75);
     k.texBox(0.34, H, 0.3, cx1, H / 2, zc - 0.07, BRICK, { tile: 0.75, collide: true, block: true });                         // brick pier where it meets the windows
     bench(false, cz - 0.08, cx0 + 0.56, cx1 - 0.2, -1);                                                                             // the booth along the brick
     for (const x of [X(500), X(540)]) { const tz = zc - 0.9; put(CYL(0.28, 0.28, 0.035, 20), 0x2a1810, x, tz, 0, 0, 0.74, 0); put(CYL(0.035, 0.035, 0.7, 8), 0x161616, x, tz, 0, 0, 0.36, 0); put(CYL(0.22, 0.24, 0.04, 16), 0x161616, x, tz, 0, 0, 0.02, 0);
