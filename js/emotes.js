@@ -15,6 +15,9 @@
 //   SIX SEVEN      elbows tucked in, forearms out front palms up, see-sawing ("six" right hand, "seven" left hand)
 //   BACKFLIP       crouch, jump, tucked backwards somersault, land, arms up.
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone as skelClone } from 'three/addons/utils/SkeletonUtils.js';
+import { FINGERS, BENDS } from './hands.js';
 
 export const EMOTES = [
   { id: 'finger', name: 'MIDDLE FINGER', icon: '🖕', dur: 3.4 },
@@ -54,6 +57,54 @@ const mixv = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
 const HANDS = { fist: { curl: 1, mid: 1 }, finger: { curl: 1, mid: 0 }, palm: { curl: 0.08, mid: 0.08 }, open: { curl: 0, mid: 0 }, goggle: { curl: 0.55, mid: 0.6 }, grip: { curl: 0.8, mid: 0.8 } };
 const lam = (c, extra = {}) => new THREE.MeshLambertMaterial({ color: c, ...extra });
 
+// ------------------------------------------------------------------ hands for gestures
+// The scanned models' fingers are joined together (no gaps between them), so bending them leaves stretched skin.
+// For a gesture (a fist, the middle finger, palms up...) the character's hand is swapped for a fully jointed hand
+// (every finger bone), coloured to match their own skin from their model, at their wrist, for as long as the gesture.
+const HAND_SRC = {}; const loadHand = (side) => HAND_SRC[side] || (HAND_SRC[side] = new GLTFLoader().loadAsync(`./assets/hands/${side}.glb`).then(g => g.scene).catch(e => { console.warn('hand', e); return null; }));
+loadHand('left'); loadHand('right');
+// per hand shape, how far each finger curls (0 straight .. 1 a tight fist)
+const CURLS = {
+  fist: { thumb: 0.8, index: 1, middle: 1, ring: 1, pinky: 1 },
+  finger: { thumb: 0.85, index: 1, middle: 0, ring: 1, pinky: 1 },
+  palm: { thumb: 0.15, index: 0.08, middle: 0.06, ring: 0.1, pinky: 0.14 },
+  goggle: { thumb: 0.45, index: 0.62, middle: 0.2, ring: 0.18, pinky: 0.15 },
+  grip: { thumb: 0.6, index: 0.7, middle: 0.72, ring: 0.75, pinky: 0.78 },
+  open: { thumb: 0.15, index: 0.1, middle: 0.12, ring: 0.14, pinky: 0.16 },
+};
+class ModelHand {
+  constructor(side, color, scene) {
+    this.side = side; this.root = new THREE.Group(); this.root.visible = false; scene.add(this.root); this.ready = false;
+    loadHand(side).then(src => { if (!src) return; const m = skelClone(src); m.traverse(o => { if (o.isMesh) { o.frustumCulled = false; o.material = new THREE.MeshLambertMaterial({ color, emissive: new THREE.Color(color).multiplyScalar(0.18) }); } });
+      this.bones = {}; for (const ch of Object.values(FINGERS)) for (const n of ch) this.bones[n] = m.getObjectByName(n); this.wrist = m.getObjectByName('wrist');
+      this.rest = {}; for (const [n, b] of Object.entries(this.bones)) this.rest[n] = { p: b.position.clone(), q: b.quaternion.clone() };
+      m.updateMatrixWorld(true); this.wristInv = this.wrist.matrixWorld.clone().invert(); this.model = m; m.matrixAutoUpdate = false; this.root.add(m); this.ready = true; });
+  }
+  pose(curl) {
+    if (!this.ready) return; const ax = new THREE.Vector3(), q = new THREE.Quaternion();
+    for (const [f, chain] of Object.entries(FINGERS)) { const c = THREE.MathUtils.clamp(curl[f] ?? 0, 0, 1), P = chain.map(n => this.rest[n].p.clone()), Q = chain.map(n => this.rest[n].q.clone());
+      for (const [j, full] of BENDS[f]) { ax.set(1, 0, 0).applyQuaternion(Q[j]); q.setFromAxisAngle(ax, -full * c); for (let k = j + 1; k < chain.length; k++) P[k].sub(P[j]).applyQuaternion(q).add(P[j]); for (let k = j; k < chain.length; k++) Q[k].premultiply(q); }
+      chain.forEach((n, i) => { this.bones[n].position.copy(P[i]); this.bones[n].quaternion.copy(Q[i]); }); }
+  }
+  // the wrist at `at`, fingers pointing along `along`, the back of the hand towards `back`
+  place(at, along, back, scale) {
+    if (!this.ready) return; const z = along.clone().negate().normalize(), y = back.clone().addScaledVector(z, -back.dot(z)); if (y.lengthSq() < 1e-6) y.set(0, 1, 0).addScaledVector(z, -z.y); y.normalize();
+    const x = new THREE.Vector3().crossVectors(y, z), m = new THREE.Matrix4().makeBasis(x, y, z).setPosition(at); m.scale(new THREE.Vector3(scale, scale, scale));
+    this.model.matrix.copy(m).multiply(this.wristInv); this.model.matrixWorldNeedsUpdate = true;
+  }
+  dispose() { this.root.parent && this.root.parent.remove(this.root); }
+}
+// the colour of a character's skin, from their own model's texture round the hands
+function skinColour(rag) {
+  if (rag._skinCol) return rag._skinCol; let col = new THREE.Color(0xe2b08c);
+  try { const mesh = rag.mesh, img = mesh.material.map && mesh.material.map.image, uv = mesh.geometry.attributes.uv, si = mesh.geometry.attributes.skinIndex;
+    if (img && uv && si && rag.handBone) { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.drawImage(img, 0, 0, 128, 128); const d = g.getImageData(0, 0, 128, 128).data;
+      const hb = new Set(Object.values(rag.handBone)); let r = 0, gg = 0, b = 0, n = 0;
+      for (let i = 0; i < uv.count && n < 400; i += 3) { if (!hb.has(si.getX(i))) continue; const px = Math.min(127, Math.max(0, Math.floor(uv.getX(i) * 128))), py = Math.min(127, Math.max(0, Math.floor(uv.getY(i) * 128))), k = (py * 128 + px) * 4; r += d[k]; gg += d[k + 1]; b += d[k + 2]; n++; }
+      if (n > 10) col = new THREE.Color().setRGB(r / n / 255, gg / n / 255, b / n / 255, THREE.SRGBColorSpace); } } catch (e) { /* (a texture we can't read: the default) */ }
+  return (rag._skinCol = col);
+}
+
 // ------------------------------------------------------------------ the body moves
 // Runs on a character after its normal (idle / walk) pose has been set and before the ragdoll animates.
 // Arm/leg aims are directions in the character's own frame: +x to their left, +y up, +z the way they face.
@@ -64,8 +115,8 @@ export class EmotePlayer {
   get active() { return !!this.id; }
   start(id) { const e = emoteInfo(id); if (!e) return; if (this.id) this.stop(); this.id = id; this.dur = e.dur; this.t = 0; this.lastBeat = -1; this.marks = {}; }
   stop() { this.id = null; this.hide(); this.clearProps(); this.unstretch(); }
-  hide() { const r = this.c.rag; if (r.handHide) r.handHide.lArmL = r.handHide.lArmR = false; if (r.handPose) for (const k in r.handPose) { r.handPose[k].curl = 0; r.handPose[k].mid = 0; r.handPose[k].q.identity(); } }
-  dispose() { this.stop(); }
+  hide() { this.hideHands(); const r = this.c.rag; if (r.handHide) r.handHide.lArmL = r.handHide.lArmR = false; if (r.handPose) for (const k in r.handPose) { r.handPose[k].curl = 0; r.handPose[k].mid = 0; r.handPose[k].q.identity(); } }
+  dispose() { this.stop(); if (this.mh) { this.mh.L.dispose(); this.mh.R.dispose(); this.mh = null; } }
   clearProps() { for (const k in this.props) { const p = this.props[k]; this.scene.remove(p); p.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } this.props = {}; }
   unstretch() { const g = this.c.rag.group; if (g && (g.scale.x !== 1 || g.scale.y !== 1)) { g.scale.set(1, 1, 1); g.position.set(0, 0, 0); } }
   // once per emote: fire a word / sound at a moment
@@ -105,20 +156,20 @@ export class EmotePlayer {
   place() { if (this.id && this.out) this.gestures(this.out, this.w); }
   gestures(out, w) {
     const r = this.c.rag; if (!r.handPose) return;
+    if (!this.mh) { const col = skinColour(r); this.mh = { L: new ModelHand('left', col, this.scene), R: new ModelHand('right', col, this.scene) }; }
     for (const S of ['L', 'R']) {
-      const name = 'lArm' + S, hp = r.handPose[name], ax = r.handAxes && r.handAxes[name]; if (!hp || !ax) continue;
-      const kind = out.hand && out.hand[S], shp = HANDS[kind] || HANDS.open;
-      hp.curl = shp.curl * w; hp.mid = shp.mid * w;
-      // turn the wrist so the back of the hand faces the way the emote wants (palms up, backs of the hands out...)
-      const want = out.back && out.back[S];
-      if (want && w > 0.05) {
-        const fq = r.partQuat(name, _q2).invert(), b = _v.set(...want).applyAxisAngle(Y, r.yaw).applyQuaternion(fq);     // wanted back-of-hand, in the hand's own (bind) frame
-        b.addScaledVector(ax.along, -b.dot(ax.along)); if (b.lengthSq() < 1e-6) { hp.q.identity(); continue; } b.normalize();
-        const cur = _v2.copy(ax.palm).negate(), ang = Math.atan2(_v3.crossVectors(cur, b).dot(ax.along), cur.dot(b));
-        hp.q.setFromAxisAngle(ax.along, ang * w);
-      } else hp.q.identity();
+      const name = 'lArm' + S, hp = r.handPose[name], ax = r.handAxes && r.handAxes[name], mh = this.mh[S]; if (!hp || !ax) continue;
+      hp.curl = 0; hp.mid = 0; hp.q.identity();             // (the scanned fingers are never bent: no stretched skin)
+      const kind = out.hand && out.hand[S], swap = !!kind && kind !== 'open' && w > 0.25 && mh.ready && !this.c.down;
+      mh.root.visible = swap; if (r.handHide) r.handHide[name] = swap;
+      if (!swap) continue;
+      const wr = new THREE.Vector3(), dir = new THREE.Vector3(); r.wrist(name, wr, dir);
+      const fq = r.partQuat(name, new THREE.Quaternion());
+      const want = out.back && out.back[S], back = want ? new THREE.Vector3(...want).applyAxisAngle(Y, r.yaw) : ax.palm.clone().negate().applyQuaternion(fq);
+      mh.pose(CURLS[kind] || CURLS.open); mh.place(wr, dir, back, this.kH * 1.02);
     }
   }
+  hideHands() { if (this.mh) for (const S of ['L', 'R']) this.mh[S].root.visible = false; }
 
   // ================================================================ DEFAULT EMOTES
   finger(t) {
@@ -358,9 +409,9 @@ export class EmotePlayer {
     this.legsStand(0.1); P.head.setFromAxisAngle(Z, Math.sin(t * 2) * 0.12);
     const head = this.c.headPos(new THREE.Vector3()), hq = r.partQuat('head', new THREE.Quaternion());
     for (const [k, sx] of [['earL', 1], ['earR', -1]]) {
-      const e = this.prop(k, () => { const gr = new THREE.Group(); const m = lam(0xf2c6a8); const lobe = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.012, 8, 20), m); lobe.scale.set(0.8, 1.2, 1); gr.add(lobe); const fill = new THREE.Mesh(new THREE.CircleGeometry(0.03, 16), lam(0xe0a890, { side: THREE.DoubleSide })); fill.scale.set(0.8, 1.2, 1); gr.add(fill); return gr; });
+      const e = this.prop(k, () => earMesh(sx));
       const sc = this.kH * (1 + 7 * g);
-      e.position.copy(head).add(_v.set(sx * (0.075 * this.kH + 0.022 * sc), 0.01, 0).applyQuaternion(hq)); e.quaternion.copy(hq).multiply(_q.setFromAxisAngle(Y, sx * (1.35 + flap)));
+      e.position.copy(head).add(_v.set(sx * (0.072 * this.kH + 0.016 * (sc - this.kH)), (0.005 - 0.012 * (sc / this.kH - 1)) * this.kH * 0.4, -0.01 * this.kH).applyQuaternion(hq)); e.quaternion.copy(hq).multiply(_q.setFromAxisAngle(Y, sx * (0.25 + flap)));
       e.scale.setScalar(sc);
     }
     this.at(t, 1.2, 'a', () => this.say('🏆 UCL EARS 🏆', null, 'trumpet'));
@@ -595,6 +646,24 @@ export class EmotePlayer {
     this.at(t, 1.0, 'a', () => this.say('', null, 'slurp')); this.at(t, 3.0, 'b', () => this.say('🥭 MANGO LOCO MODE! 🥭', null, 'fanfare'));
     return { hand: { L: 'open', R: 'grip' } };
   }
+}
+
+// a proper ear: the outline (round at the top, narrowing to a soft lobe), the curl of the rim, the hollow inside
+// and the little flap in front, made from the ear's own shape. Built for a right-way-out ear on that side.
+function earMesh(sx) {
+  const g = new THREE.Group(), skin = lam(0xf0c2a2), inner = lam(0xd99a82), deep = lam(0xb87262);
+  const sh = new THREE.Shape(); sh.moveTo(0, -0.032); sh.bezierCurveTo(0.014, -0.034, 0.018, -0.02, 0.016, -0.006); sh.bezierCurveTo(0.03, 0.006, 0.03, 0.03, 0.012, 0.036);
+  sh.bezierCurveTo(-0.006, 0.042, -0.02, 0.03, -0.018, 0.012); sh.bezierCurveTo(-0.017, 0.0, -0.01, -0.006, -0.012, -0.018); sh.bezierCurveTo(-0.013, -0.028, -0.008, -0.032, 0, -0.032);
+  const ext = (shape, d, b) => new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: true, bevelThickness: b, bevelSize: b, bevelSegments: 3, curveSegments: 18 });
+  const outer = new THREE.Mesh(ext(sh, 0.004, 0.003), skin); g.add(outer);
+  // the hollow (concha) and the curl of the rim, a little further out
+  const c = new THREE.Shape(); c.moveTo(0.002, -0.014); c.bezierCurveTo(0.012, -0.012, 0.016, 0.0, 0.014, 0.012); c.bezierCurveTo(0.01, 0.024, -0.004, 0.026, -0.008, 0.014); c.bezierCurveTo(-0.011, 0.004, -0.006, -0.012, 0.002, -0.014);
+  const hollow = new THREE.Mesh(ext(c, 0.001, 0.0015), inner); hollow.position.z = 0.0065; g.add(hollow);
+  const d = new THREE.Mesh(new THREE.SphereGeometry(0.006, 12, 8), deep); d.scale.set(1, 1.3, 0.35); d.position.set(0.002, -0.002, 0.009); g.add(d);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.0035, 6, 24, Math.PI * 1.25), skin); rim.position.set(0.004, 0.012, 0.007); rim.rotation.z = -0.2; g.add(rim);
+  const tragus = new THREE.Mesh(new THREE.SphereGeometry(0.0045, 10, 8), skin); tragus.position.set(-0.012, -0.006, 0.008); g.add(tragus);
+  // face outwards from the side of the head, mirrored for the left ear
+  const holder = new THREE.Group(); g.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2; if (sx > 0) g.scale.x = -1; holder.add(g); return holder;
 }
 
 // little textures for props

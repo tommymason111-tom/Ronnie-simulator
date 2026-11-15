@@ -12,7 +12,7 @@ import { FOODS } from './config.js';
 import { SquadMember, SQUAD } from './squad.js';
 import { Character, KO_IMPULSE } from './character.js';
 import { sfx } from './audio.js';
-import { EMOTES } from './emotes.js';
+import { emoteInfo } from './emotes.js';
 
 const TYPES = Object.keys(FOODS);
 const SNAP_HZ = 10;
@@ -28,7 +28,7 @@ export class MPSync {
     // VR on a joining player's game: grabbing one of the host's people sends it to the host
     if (this.player) this.player.remoteGrab = (h, who, part, ph) => this.sendGrab(h, who, part, ph);
     const net = this.net;
-    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc', 'emote', 'swing', 'sfx', 'rgrab'])
+    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc', 'emote', 'swing', 'sfx', 'rgrab', 'chat'])
       net.on[k] = (m, p) => this['on_' + k] && this['on_' + k](m, p);
   }
   get host() { return this.net.host; }
@@ -73,14 +73,17 @@ export class MPSync {
   }
   // emotes: everyone sees your character do it (you get a little "you did it" here)
   emote(id) {
-    if (!this.net.connected) return; const e = EMOTES.find(x => x.id === id); if (!e) return;
+    if (!this.net.connected) return; const e = emoteInfo(id); if (!e) return;      // (default emotes and every character's own)
     if ((this.emoteCool || 0) > performance.now()) return; this.emoteCool = performance.now() + 600;
     this.net.send({ t: 'emote', e: id });
     if (this.selfBody && this.selfBody()) this.selfBody().doEmote(id);
     const P = this.player; this.words.show(e.icon + ' ' + e.name, P.head.clone().addScaledVector(P.fwd, 1.1).add({ x: 0, y: -0.1, z: 0 }), '#ff4fa3', 0.1, 1.6);
   }
-  on_emote(m, p) { const e = EMOTES.find(x => x.id === m.e); if (!e || !p || !p.avatar) return;
+  on_emote(m, p) { const e = emoteInfo(m.e); if (!e || !p || !p.avatar) return;
     if (p.avatar.doEmote) p.avatar.doEmote(m.e); else this.words.show(e.icon, p.avatar.headPos().add({ x: 0, y: 0.45, z: 0 }), '#ffd400', 0.3, e.dur); }
+  // chat (multiplayer): a message to everyone; it shows over your character's head and in everyone's chat log
+  chat(text) { if (!this.net.connected) return false; text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 90); if (!text) return false; this.net.send({ t: 'chat', s: text }); this.onChat && this.onChat(text, null); return true; }
+  on_chat(m, p) { const s = String(m.s || '').slice(0, 90); if (!s) return; if (p && p.avatar && p.avatar.chat) p.avatar.chat(s); this.onChat && this.onChat(s, p); }
   // you swung at something (slap, punch, throw): your character's arm goes for everyone else too
   swing(side = 'R') { if (!this.net.connected) return; const n = performance.now(); if (n - (this.swingAt || 0) < 150) return; this.swingAt = n; this.net.send({ t: 'swing', s: side }); }
   on_swing(m, p) { p && p.avatar && p.avatar.swing && p.avatar.swing(m.s || 'R'); }

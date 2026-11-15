@@ -29,6 +29,7 @@ import { TVs } from './tv.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
 
 // start downloading everyone's 3D model now, while the menu is still up
+const MEDIA_ON = false;      // the DJ booth / music and the TVs (off for now)
 const MODEL_LOAD = preloadModels(['./assets/tommy.glb', ...Object.values(SQUAD).filter(d => !d.playerOnly).map(d => d.model).filter(Boolean)]);   // (Ronnie's body only loads if someone plays as him)
 // wait for the start screen: where are we playing, and what mode?
 const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'pub', mode: 'everyone' }));
@@ -258,6 +259,7 @@ function bite(it, hand) {
   director.onAte(it, amount);
   if (it.bitesLeft <= 0) {
     setTimeout(() => sfx('gulp', null, 1), 220);
+    for (const h of player.hands) if (h.held === it) h.held = null; if (player.flatHolder && player.flatHolder.held === it) player.flatHolder.held = null;      // (all gone: empty hand)
     items.remove(it);
     if (!it.foodPass && !it.fromClutter && !room.big) items.queueRespawn(it.type);     // (big places top themselves up, away from everyone)
     G.eaten++;
@@ -513,9 +515,9 @@ const touch = setupTouch({
     raycaster.setFromCamera(ndc, camera);
     const ray = raycaster.ray, reach = 3 * player.scale;
     if (director.tapBoard(ray) || director.tapBubble(ray)) return;
-    if (music.tap(ray, reach)) return;                       // the music button on the speakers / DJ deck
+    if (MEDIA_ON && music.tap(ray, reach)) return;                       // the music button on the speakers / DJ deck
     if (director.runpub && director.runpub.bar && director.runpub.bar.tap(ray)) return;   // Run the Pub: the tap, the coffee machine, the soft-drink gun
-    if (tvs.hitTV(ray, reach)) return;                        // a telly: put a video on it
+    if (MEDIA_ON && tvs.hitTV(ray, reach)) return;                        // a telly: put a video on it
     // the lightbox sign in Lewis's cabin: tap it to write your own message
     if (room.lightbox) { const lb = room.lightbox, lp = lb.mesh.getWorldPosition(_b);
       const along = _a.subVectors(lp, ray.origin).dot(ray.direction);
@@ -708,6 +710,40 @@ const ctx = {
   },
 };
 
+// ---------------- chat (multiplayer): a button under PAUSE, a box to type in, and a little log under the Eat Meter
+function wrapText(g, text, maxW) { const words = text.split(' '), out = []; let ln = ''; for (const w of words) { const t = ln ? ln + ' ' + w : w; if (g.measureText(t).width > maxW && ln) { out.push(ln); ln = w; } else ln = t; } if (ln) out.push(ln); return out; }
+const chatUI = (() => {
+  const st = document.createElement('style'); st.textContent = `
+#chat-btn { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 40px); right: max(10px, env(safe-area-inset-right)); z-index: 20; display: none; font: 900 12px Arial, sans-serif; padding: 8px 12px; border-radius: 12px; border: 0; background: rgba(0,0,0,0.6); color: #fff; }
+body.flat.mpon #chat-btn { display: block; }
+#chat-box { position: fixed; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 45; display: none; gap: 6px; background: rgba(10,12,30,0.92); padding: 8px; border-radius: 16px; border: 3px solid #ffd400; width: min(520px, 92vw); box-sizing: border-box; }
+#chat-box.on { display: flex; } #chat-box input { flex: 1; min-width: 0; font: 700 16px Arial; padding: 9px 10px; border-radius: 10px; border: 0; }
+#chat-box button { font: 900 13px Arial; border: 0; border-radius: 10px; padding: 0 12px; background: #39ff14; color: #111; } #chat-box button.x { background: #444; color: #fff; }
+#chat-log { position: fixed; z-index: 19; pointer-events: none; display: none; flex-direction: column; gap: 3px; max-width: 46vw; }
+body.flat.mpon #chat-log { display: flex; }
+#chat-log div { font: 700 12px Arial, sans-serif; color: #fff; background: rgba(0,0,0,0.55); padding: 3px 8px; border-radius: 8px; text-shadow: 0 1px 2px #000; transition: opacity .6s; }
+#chat-log div b { color: #ffd400; }`;
+  document.head.appendChild(st);
+  const btn = document.createElement('button'); btn.id = 'chat-btn'; btn.textContent = '💬 CHAT'; document.body.appendChild(btn);
+  const box = document.createElement('div'); box.id = 'chat-box'; box.innerHTML = '<input id="chat-in" maxlength="90" placeholder="Say something…" enterkeyhint="send" autocomplete="off"><button id="chat-send">SEND</button><button class="x" id="chat-x">✕</button>'; document.body.appendChild(box);
+  const log = document.createElement('div'); log.id = 'chat-log'; document.body.appendChild(log);
+  const inp = box.querySelector('input');
+  const close = () => { box.classList.remove('on'); inp.blur(); };
+  const send = () => { if (mp.chat(inp.value)) inp.value = ''; close(); };
+  btn.addEventListener('click', () => { box.classList.add('on'); setTimeout(() => inp.focus(), 30); });
+  box.querySelector('#chat-send').addEventListener('click', send); box.querySelector('#chat-x').addEventListener('click', close);
+  inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') send(); if (e.key === 'Escape') close(); });
+  inp.addEventListener('keyup', (e) => e.stopPropagation());
+  const add = (name, text) => { const d = document.createElement('div'); d.innerHTML = `<b></b> `; d.querySelector('b').textContent = name + ':'; d.appendChild(document.createTextNode(text)); log.appendChild(d);
+    while (log.children.length > 5) log.firstChild.remove(); setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 700); }, 15000); };
+  // the log sits just under the Eat Meter, wherever that is on this screen
+  const corners = [[-0.05, -0.03125], [0.05, -0.03125]].map(([x, y]) => new THREE.Vector3(x, y, 0)), v = new THREE.Vector3();
+  const place = () => { if (!player.wrist || !player.wrist.visible) return; let x0 = 1e9, y1 = -1e9; player.wrist.updateMatrixWorld();
+    for (const c of corners) { v.copy(c).applyMatrix4(player.wrist.matrixWorld).project(camera); const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight; x0 = Math.min(x0, sx); y1 = Math.max(y1, sy); }
+    if (isFinite(x0)) { log.style.left = Math.max(6, x0) + 'px'; log.style.top = (y1 + 6) + 'px'; } };
+  return { add, update() { document.body.classList.toggle('mpon', !!net.connected); if (net.connected && player.flatMode) place(); }, get typing() { return box.classList.contains('on'); } };
+})();
+
 // ---------------- main loop ----------------
 function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * (2 * Math.PI / 3)) + 1; }
 
@@ -872,29 +908,33 @@ const vrEmote = (() => {
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
   mesh.renderOrder = 61; mesh.visible = false; scene.add(mesh);
   let open = false, sel = -1, drawn = '', page = 0, bWas = false, okWas = false;
-  const slots = () => { const own = charEmotes(), list = page === 0 ? EMOTES : own; return own.length ? [...list, { id: '__page', icon: '⇄', name: page === 0 ? charEmoteTitle() : 'DEFAULT EMOTES' }] : list; };
+  // page -1: pick a set first (DEFAULT EMOTES or your character's), then 0 / 1: that set's wheel (with a way back)
+  const slots = () => { const own = charEmotes();
+    if (page < 0) return [{ id: '__def', icon: '😎', name: 'DEFAULT EMOTES' }, { id: '__own', icon: own[0] ? own[0].icon : '⭐', name: charEmoteTitle() }];
+    const list = page === 0 ? EMOTES : own; return own.length ? [...list, { id: '__back', icon: '⬅', name: 'BACK' }] : list; };
   const draw = () => { const L = slots(), key = page + '|' + sel + '|' + L.length; if (drawn === key) return; drawn = key; g.clearRect(0, 0, S, S); const n = L.length, c = S / 2;
     g.fillStyle = 'rgba(20,28,90,0.9)'; g.beginPath(); g.arc(c, c, 250, 0, Math.PI * 2); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ffd400'; g.stroke();
-    const r = n > 6 ? 72 : 84;
-    L.forEach((e, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n, x = c + Math.cos(a) * 165, y = c + Math.sin(a) * 165, pg = e.id === '__page';
+    const r = n === 2 ? 100 : n > 6 ? 72 : 84;
+    L.forEach((e, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n, two = page < 0, x = two ? c + (i ? 112 : -112) : c + Math.cos(a) * 165, y = two ? c + 40 : c + Math.sin(a) * 165, pg = e.id.startsWith('__');
       g.fillStyle = i === sel ? '#ff4fa3' : pg ? '#3a2a7a' : '#1c2c8c'; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.lineWidth = 6; g.strokeStyle = i === sel ? '#fff' : '#ffd400'; g.stroke();
       g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `${r * 0.7}px serif`; g.fillText(e.icon, x, y - 14); g.fillStyle = '#fff';
       let f = 20; do { g.font = `900 ${f}px Arial`; f--; } while (g.measureText(e.name).width > r * 1.8 && f > 10); g.fillText(e.name, x, y + r * 0.52); });
-    g.fillStyle = '#ffd400'; g.font = '900 24px Arial'; g.textAlign = 'center'; g.fillText(page === 0 ? 'DEFAULT EMOTES' : charEmoteTitle(), c, c - 22);
-    g.fillStyle = '#fff'; g.font = '900 17px Arial'; g.fillText(sel < 0 ? 'STICK TO PICK' : 'A / TRIGGER TO GO', c, c + 10); g.fillText('B TO CLOSE', c, c + 34); tex.needsUpdate = true; };
+    g.fillStyle = '#ffd400'; g.font = '900 24px Arial'; g.textAlign = 'center'; g.fillText(page < 0 ? 'WHICH EMOTES?' : page === 0 ? 'DEFAULT EMOTES' : charEmoteTitle(), c, page < 0 ? c - 120 : c - 22);
+    g.fillStyle = '#fff'; g.font = '900 17px Arial'; if (page >= 0) { g.fillText(sel < 0 ? 'STICK TO PICK' : 'A / TRIGGER TO GO', c, c + 10); g.fillText('B TO CLOSE', c, c + 34); } else { g.fillText('STICK LEFT / RIGHT, THEN A', c, c + 175); } tex.needsUpdate = true; };
   const place = () => { const f = new THREE.Vector3(player.fwd.x, 0, player.fwd.z).normalize(); mesh.position.copy(player.head).addScaledVector(f, 0.55).add({ x: 0, y: -0.08, z: 0 }); mesh.lookAt(player.head); };
   const close = () => { open = false; mesh.visible = false; player.noTurn = false; player.wheelOpen = false; };
   return { update() {
     const h = player.hands.find(h => h.source && h.handedness === 'right' && h.source.gamepad), gp = h && h.source.gamepad;
     const bDown = !!(gp && gp.buttons[5] && gp.buttons[5].pressed), ok = !!(gp && ((gp.buttons[4] && gp.buttons[4].pressed) || (gp.buttons[0] && gp.buttons[0].pressed)));
     if (!net.connected || !renderer.xr.isPresenting || paused) { if (open) close(); bWas = bDown; okWas = ok; return; }
-    if (bDown && !bWas) { if (open) close(); else { open = true; sel = -1; drawn = ''; page = 0; player.noTurn = true; player.wheelOpen = true; } }
+    if (bDown && !bWas) { if (open) close(); else { open = true; sel = -1; drawn = ''; page = charEmotes().length ? -1 : 0; player.noTurn = true; player.wheelOpen = true; } }
     bWas = bDown;
     if (open) {
       place(); mesh.visible = true; const L = slots();
       const ax = gp && (gp.axes.length >= 4 ? gp.axes[2] : gp.axes[0]) || 0, ay = gp && (gp.axes.length >= 4 ? gp.axes[3] : gp.axes[1]) || 0;
-      if (Math.hypot(ax, ay) > 0.55) { let a = Math.atan2(ay, ax) + Math.PI / 2; const n = L.length; a = ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); const i = Math.round(a / (2 * Math.PI / n)) % n; if (i !== sel) { sel = i; h && h.pulse && h.pulse(0.3, 20); } }
-      if (ok && !okWas && sel >= 0) { const e = L[sel]; if (e.id === '__page') { page = 1 - page; sel = -1; h && h.pulse && h.pulse(0.5, 30); } else { close(); mp.emote(e.id); } }
+      if (page < 0) { if (Math.abs(ax) > 0.55) { const i = ax < 0 ? 0 : 1; if (i !== sel) { sel = i; h && h.pulse && h.pulse(0.3, 20); } } }
+      else if (Math.hypot(ax, ay) > 0.55) { let a = Math.atan2(ay, ax) + Math.PI / 2; const n = L.length; a = ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); const i = Math.round(a / (2 * Math.PI / n)) % n; if (i !== sel) { sel = i; h && h.pulse && h.pulse(0.3, 20); } }
+      if (ok && !okWas && sel >= 0) { const e = L[sel]; if (e.id === '__def' || e.id === '__own' || e.id === '__back') { page = e.id === '__def' ? 0 : e.id === '__own' ? 1 : -1; sel = -1; drawn = ''; h && h.pulse && h.pulse(0.5, 30); } else { close(); mp.emote(e.id); } }
       if (open) draw();
     }
     okWas = ok;
@@ -912,7 +952,7 @@ function selfBodyUpdate(dt) {
 }
 function frame(simDt) {
   foodGlow(performance.now() / 1000);
-  music.update(Math.min(0.05, 1 / 60)); tvs.update(1 / 60); try { selfBodyUpdate(Math.min(0.05, 1 / 60)); } catch (e) {} pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
+  chatUI.update(); music.update(Math.min(0.05, 1 / 60)); tvs.update(1 / 60); try { selfBodyUpdate(Math.min(0.05, 1 / 60)); } catch (e) {} pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
   if (renderer.xr.isPresenting && simDt == null) { vrMenuButtons(); vrEmote.update(); }
   if (paused && simDt == null && net.connected) { if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } }
   else if (paused && simDt == null) { clock.getDelta(); if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } renderer.render(scene, camera); return; }    // frozen until RESUME
@@ -1063,13 +1103,16 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
 // the shared game (food and people): see mpsync.js
 const mp = new MPSync({ net, scene, room, physics, player, items, cast, director, words, fx: attackFx, G, tommy });
 mp.selfBody = () => selfBody;      // (your emotes play on your own body too)
+mp.onChat = (text, p) => chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text);
 // music from the speakers (the DJ booth, the hi-fi, the tannoy): only the host picks, everyone hears it
+// (switched off for now, with the TVs: MEDIA_ON brings both back. The speakers and tellies stay as scenery.)
 const music = new Music({ scene, room, net, player, words, hint: (t) => touch.hint(t), ui: {
   open() { window.__menuOpenAt = performance.now(); initAudio(); setPaused(true); pauseEl.classList.add('show-music'); setMuted(soundOff); music.render(); },
   say(t) { const m = document.getElementById('mus-msg'); if (m) { m.textContent = t; clearTimeout(m._t); m._t = setTimeout(() => { m.textContent = ''; }, 2600); } },
 } });
 document.getElementById('mus-close').addEventListener('click', () => { initAudio(); setPaused(false); });
 // the tellies: tap / poke one to put a video on it (only the host chooses in multiplayer)
+if (!MEDIA_ON && music.button) music.button.visible = false;
 const tvs = new TVs({ scene, room, net, player, hint: (t) => touch.hint(t), ui: {
   open() { window.__menuOpenAt = performance.now(); initAudio(); setPaused(true); pauseEl.classList.add('show-tv'); setMuted(soundOff); tvs.render(); },
   say(t) { const m = document.getElementById('tv-msg'); if (m) { m.textContent = t; clearTimeout(m._t); m._t = setTimeout(() => { m.textContent = ''; }, 2800); } },
@@ -1171,7 +1214,20 @@ class SquadPuppet {
     x.fillStyle = 'rgba(10,14,30,0.85)'; x.beginPath(); x.roundRect(4, 4, 312, 88, 22); x.fill(); x.lineWidth = 5; x.strokeStyle = '#39ff14'; x.stroke();
     x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; let f = 40; do { x.font = `900 ${f}px Arial`; f -= 2; } while (x.measureText(nm).width > 290 && f > 16); x.fillText(nm, 160, 38);
     x.fillStyle = '#c9d3ff'; x.font = '700 20px Arial'; x.fillText('👤 PLAYER · as ' + (this.p.char === 'tommy' ? 'Tommy' : SQUAD_MP[this.p.char]?.name || this.c.name), 160, 74); this.tagTex.needsUpdate = true; }
-  placeTag() { if (this.p.self) return; if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.headPos(new THREE.Vector3()); this.tag.position.set(h.x, h.y + 0.36, h.z); }
+  // a chat message: a black speech bubble over their head (black, so you can tell it from the squad's white ones)
+  chat(text) {
+    if (!this.chatS) { const c = document.createElement('canvas'); c.width = 512; c.height = 200; this.chatC = c; this.chatT = new THREE.CanvasTexture(c); this.chatT.colorSpace = THREE.SRGBColorSpace;
+      this.chatS = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.chatT, depthTest: false, transparent: true })); this.chatS.renderOrder = 13; scene.add(this.chatS); }
+    const g = this.chatC.getContext('2d'); g.clearRect(0, 0, 512, 200);
+    let f = 34, lines; do { g.font = `700 ${f}px Arial`; lines = wrapText(g, text, 460); f -= 2; } while (lines.length > 3 && f > 18);
+    const lh = f + 8, h = lines.length * lh + 30;
+    g.fillStyle = 'rgba(12,12,16,0.94)'; g.beginPath(); g.roundRect(6, 6, 500, h, 26); g.fill(); g.lineWidth = 4; g.strokeStyle = '#fff'; g.stroke();
+    g.beginPath(); g.moveTo(230, h + 4); g.lineTo(256, h + 34); g.lineTo(282, h + 4); g.fill();
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; lines.forEach((l, i) => g.fillText(l, 256, 6 + 15 + lh / 2 + i * lh));
+    this.chatT.needsUpdate = true; this.chatS.scale.set(0.9, 0.9 * 200 / 512, 1); this.chatS.visible = true; this.chatUntil = performance.now() + 2500 + text.length * 70;
+  }
+  placeTag() { if (this.chatS) { const on = performance.now() < this.chatUntil; this.chatS.visible = on; if (on) { const h = this.c.headPos(new THREE.Vector3()); this.chatS.position.set(h.x, h.y + 0.68, h.z); } }
+    if (this.p.self) return; if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.headPos(new THREE.Vector3()); this.tag.position.set(h.x, h.y + 0.36, h.z); }
   flinch(v) { this.c.flinch(v.clone ? v.clone() : new THREE.Vector3(v.x, 0, v.z), 1); }
   // a proper hit: go limp and fly, same as the NPCs (a light one is just a flinch)
   knock(v, s, at) {
@@ -1183,6 +1239,6 @@ class SquadPuppet {
     const part = r.parts.head, p = at || part.body.position; r.hit(part, new THREE.Vector3(p.x, p.y, p.z), imp);
   }
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
-  dispose() { scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
+  dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
 window.RS = { net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)

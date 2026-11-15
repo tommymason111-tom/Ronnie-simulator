@@ -26,6 +26,13 @@ export function setupTouch(cb) {
 #emote-wheel .ew-item { position: absolute; left: 0; top: 0; width: 104px; height: 104px; border-radius: 50%; border: 4px solid #ffd400; background: #1c2c8c; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; box-shadow: 0 5px 0 rgba(0,0,0,0.4); }
 #emote-wheel .ew-item span { font-size: 40px; line-height: 44px; } #emote-wheel .ew-item b { font: 900 11px "Arial Black", Arial, sans-serif; text-align: center; padding: 0 6px; }
 #emote-wheel .ew-item:active { background: #ff4fa3; }
+#emote-wheel.picking .ew-ring::before { display: none; } #emote-wheel.picking .ew-x { top: calc(50% + 120px); }
+#emote-wheel .ew-choose { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); display: flex; gap: 16px; }
+#emote-wheel .ew-pick { width: 150px; height: 150px; border-radius: 26px; border: 4px solid #ffd400; background: #1c2c8c; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 6px 0 rgba(0,0,0,0.35); }
+#emote-wheel .ew-pick.own { background: #8a1f5a; border-color: #ff9fd0; }
+#emote-wheel .ew-pick span { font-size: 54px; line-height: 56px; } #emote-wheel .ew-pick b { font: 900 14px "Arial Black", Arial, sans-serif; text-align: center; padding: 0 8px; }
+#emote-wheel .ew-pick:active { transform: scale(0.95); }
+#emote-wheel .ew-back { position: absolute; left: 172px; top: 0; transform: translateY(-50%); white-space: nowrap; font: 900 13px "Arial Black", Arial, sans-serif; padding: 9px 14px; border-radius: 14px; border: 3px solid #fff; background: rgba(20,28,90,0.9); color: #ffd400; }
 #emote-wheel .ew-tabs { position: fixed; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 2; display: flex; gap: 8px; white-space: nowrap; }
 #emote-wheel .ew-tab { font: 900 13px "Arial Black", Arial, sans-serif; padding: 9px 12px; border-radius: 14px; border: 3px solid #fff; background: rgba(20,28,90,0.85); color: #fff; }
 #emote-wheel .ew-tab.on { background: #ffd400; color: #111; }
@@ -67,16 +74,21 @@ export function setupTouch(cb) {
   // ---- emotes (multiplayer): the button opens a wheel, tap one ----
   const emb = root.querySelector('#btn-emote'), wheel = root.querySelector('#emote-wheel');
   let lists = { def: [], own: () => [], title: () => '' }, page = 'def';
-  const openWheel = (on) => { if (on) { page = 'def'; drawWheel(); } wheel.classList.toggle('open', on); };
+  const openWheel = (on) => { if (on) { page = 'pick'; drawWheel(); } wheel.classList.toggle('open', on); };
   press(emb, () => openWheel(!wheel.classList.contains('open')));
   wheel.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation();
-    const tab = e.target.closest('.ew-tab'); if (tab) { page = tab.dataset.p; drawWheel(); return; }
+    const tab = e.target.closest('.ew-tab, .ew-pick, .ew-back'); if (tab) { page = tab.dataset.p; drawWheel(); return; }
     const b = e.target.closest('.ew-item'); if (b) cb.onEmote && cb.onEmote(b.dataset.id); openWheel(false); });
   // two pages: DEFAULT EMOTES and the character's own ("CHLOE'S EMOTES"), picked with the tabs above the wheel
   function drawWheel() {
-    let own = []; try { own = lists.own() || []; } catch (e) {} const list = page === 'own' && own.length ? own : lists.def, n = list.length, ring = wheel.querySelector('.ew-ring');
+    let own = []; try { own = lists.own() || []; } catch (e) {} const ring = wheel.querySelector('.ew-ring');
+    // first: which set? two big buttons in the middle of the screen (straight to the wheel if there's only one set)
+    if (page === 'pick' && !own.length) page = 'def';
+    wheel.classList.toggle('picking', page === 'pick');
+    if (page === 'pick') { ring.innerHTML = `<div class="ew-choose"><button class="ew-pick" data-p="def"><span>😎</span><b>DEFAULT EMOTES</b></button><button class="ew-pick own" data-p="own"><span>${own[0].icon}</span><b>${lists.title()}</b></button></div>`; return; }
+    const list = page === 'own' && own.length ? own : lists.def, n = list.length;
     const R = n > 5 ? 112 : 100;
-    ring.innerHTML = (own.length ? `<div class="ew-tabs"><button class="ew-tab${page === 'def' ? ' on' : ''}" data-p="def">DEFAULT EMOTES</button><button class="ew-tab${page === 'own' ? ' on' : ''}" data-p="own">${lists.title()}</button></div>` : '') +
+    ring.innerHTML = (own.length ? `<button class="ew-back" data-p="pick">⬅ BACK</button>` : '') +
       list.map((em, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n, x = Math.cos(a) * R, y = Math.sin(a) * R;
       return `<button class="ew-item" data-id="${em.id}" style="transform:translate(calc(-50% + ${x.toFixed(0)}px), calc(-50% + ${y.toFixed(0)}px))"><span>${em.icon}</span><b>${em.name}</b></button>`; }).join('');
   }

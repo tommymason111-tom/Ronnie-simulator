@@ -447,10 +447,44 @@ const _v = new THREE.Vector3(), _c = new THREE.Vector3();
 export const FOOD_BIG = 1.6;
 const bigFor = (def) => (def.prop || def.drink || def.poop) ? 1 : FOOD_BIG;
 const hiCache = {};
+// Every bit of food is one solid piece: anything that isn't touching the rest (a seed floating off the bun, a loose
+// crumb, a topping hovering over the cheese) is taken out. Pieces count as touching if they come within 2.5mm of
+// a piece that's already part of the food, starting from the biggest.
+export const foodStats = {};
+function solidOnly(geo, name) {
+  const pos = geo.attributes.position, n = pos.count, idx = geo.index ? geo.index.array : null, T = idx ? idx.length / 3 : n / 3;
+  const vi = (t, k) => idx ? idx[t * 3 + k] : t * 3 + k;
+  // vertices at the same spot are the same vertex; triangles sharing one are the same piece
+  const key = new Map(), id = new Int32Array(n); for (let i = 0; i < n; i++) { const k = Math.round(pos.getX(i) * 1e4) + ',' + Math.round(pos.getY(i) * 1e4) + ',' + Math.round(pos.getZ(i) * 1e4); let v = key.get(k); if (v === undefined) { v = key.size; key.set(k, v); } id[i] = v; }
+  const par = new Int32Array(key.size).map((_, i) => i), find = (a) => { while (par[a] !== a) { par[a] = par[par[a]]; a = par[a]; } return a; };
+  for (let t = 0; t < T; t++) { const a = find(id[vi(t, 0)]), b = find(id[vi(t, 1)]), c = find(id[vi(t, 2)]); par[b] = a; par[find(c)] = a; }
+  const comps = new Map(); for (let i = 0; i < n; i++) { const r = find(id[i]); (comps.get(r) || comps.set(r, []).get(r)).push(i); }
+  if (comps.size < 2) { foodStats[name] = { pieces: 1, removed: 0, tris: T }; return geo; }
+  const list = [...comps.values()].sort((a, b) => b.length - a.length), E = 0.006, cell = (x) => Math.floor(x / E), grid = new Map();
+  const addPiece = (vs) => { for (const i of vs) { const k = cell(pos.getX(i)) + ',' + cell(pos.getY(i)) + ',' + cell(pos.getZ(i)); (grid.get(k) || grid.set(k, []).get(k)).push(i); } };
+  const touches = (vs) => { for (const i of vs) { const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), cx = cell(x), cy = cell(y), cz = cell(z);
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) { const g = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (g) for (const j of g) if ((pos.getX(j) - x) ** 2 + (pos.getY(j) - y) ** 2 + (pos.getZ(j) - z) ** 2 < E * E) return true; } } return false; };
+  const keep = new Set([0]); addPiece(list[0]);
+  for (let changed = true; changed;) { changed = false; for (let k = 1; k < list.length; k++) if (!keep.has(k) && touches(list[k])) { keep.add(k); addPiece(list[k]); changed = true; } }
+  // anything still loose isn't thrown away: it's moved onto the food (the shortest way) until it touches, so the
+  // toppings, seeds and chips all sit on it as one piece
+  const keptV = []; for (const k of keep) for (const i of list[k]) keptV.push(i);
+  const step = Math.max(1, Math.floor(keptV.length / 3000)); let moved = 0;
+  for (let k = 1; k < list.length; k++) {
+    if (keep.has(k)) continue; const vs = list[k]; let bd = Infinity, bi = -1, bj = -1;
+    for (const i of vs) { const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); for (let m = 0; m < keptV.length; m += step) { const j = keptV[m], d = (pos.getX(j) - x) ** 2 + (pos.getY(j) - y) ** 2 + (pos.getZ(j) - z) ** 2; if (d < bd) { bd = d; bi = i; bj = j; } } }
+    if (bi < 0) continue; const dx = pos.getX(bj) - pos.getX(bi), dy = pos.getY(bj) - pos.getY(bi), dz = pos.getZ(bj) - pos.getZ(bi), L = Math.sqrt(bd), f = L > 0 ? Math.max(0, (L - 0.0008) / L) : 0;
+    for (const i of vs) pos.setXYZ(i, pos.getX(i) + dx * f, pos.getY(i) + dy * f, pos.getZ(i) + dz * f);
+    keep.add(k); for (const i of vs) keptV.push(i); moved++;
+  }
+  pos.needsUpdate = true; geo.computeBoundingSphere();
+  foodStats[name] = { pieces: list.length, attached: list.length - moved, moved, tris: T };
+  return geo;
+}
 export const HI_NEAR = 3.2;      // (metres: closer than this you see the detailed fast food)
 const sizedMesh = (type, v) => {
   let m = meshFor(type, v);
-  if (HI[type]) { const lod = new THREE.LOD(); lod.addLevel(new THREE.Mesh(hiCache[type] || (hiCache[type] = HI[type]()), vcLambert), 0); lod.addLevel(m, HI_NEAR); m = lod; }
+  if (HI[type]) { const lod = new THREE.LOD(); lod.addLevel(new THREE.Mesh(hiCache[type] || (hiCache[type] = solidOnly(HI[type](), type)), vcLambert), 0); lod.addLevel(m, HI_NEAR); m = lod; }
   const k = bigFor(FOODS[type]); if (k !== 1) m.scale.multiplyScalar(k); return m; };
 const HALO_MAT = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
   r.addColorStop(0, 'rgba(255,245,190,1)'); r.addColorStop(0.3, 'rgba(255,220,100,0.6)'); r.addColorStop(0.65, 'rgba(255,200,60,0.18)'); r.addColorStop(1, 'rgba(255,200,60,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64);

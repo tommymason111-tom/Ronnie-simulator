@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const FINGERS = {
+export const FINGERS = {
   thumb: ['thumb-metacarpal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip'],
   index: ['index-finger-metacarpal', 'index-finger-phalanx-proximal', 'index-finger-phalanx-intermediate', 'index-finger-phalanx-distal', 'index-finger-tip'],
   middle: ['middle-finger-metacarpal', 'middle-finger-phalanx-proximal', 'middle-finger-phalanx-intermediate', 'middle-finger-phalanx-distal', 'middle-finger-tip'],
@@ -18,7 +18,7 @@ const FINGERS = {
   pinky: ['pinky-finger-metacarpal', 'pinky-finger-phalanx-proximal', 'pinky-finger-phalanx-intermediate', 'pinky-finger-phalanx-distal', 'pinky-finger-tip'],
 };
 // [joint index to bend at, radians at full curl]
-const BENDS = {
+export const BENDS = {
   thumb: [[0, 0.35], [1, 0.6], [2, 0.7]],
   index: [[1, 1.45], [2, 1.65], [3, 1.0]],
   middle: [[1, 1.5], [2, 1.7], [3, 1.0]],

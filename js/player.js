@@ -237,6 +237,9 @@ export class Player {
   // ---------------- per-frame ----------------
   update(dt, t) {
     const xr = this.renderer.xr.isPresenting;
+    // food that's been finished (or taken away) leaves your hand: you go and get another one
+    for (const h of this.hands) if (h.held && h.held.dead) h.held = null;
+    if (this.flatHolder && this.flatHolder.held && this.flatHolder.held.dead) { this.flatHolder.held = null; this.flatEatT = -1; }
     this.rig.updateMatrixWorld(true);
 
     // head, forward, mouth

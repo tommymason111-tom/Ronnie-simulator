@@ -1,5 +1,8 @@
 // Pictures for the HOW TO PLAY pages before each game: drawn on a canvas (so the headset's menu panel can show
 // them too). Maps show where things really are (the bar's stations are drawn from their real positions).
+// (older iPhones' browsers have no roundRect on a canvas: without it every picture came out blank)
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+  r = Math.min(typeof r === 'number' ? r : (r && r[0]) || 0, w / 2, h / 2); this.moveTo(x + r, y); this.arcTo(x + w, y, x + w, y + h, r); this.arcTo(x + w, y + h, x, y + h, r); this.arcTo(x, y + h, x, y, r); this.arcTo(x, y, x + w, y, r); this.closePath(); };
 const PORTRAITS = {};
 const portrait = (id, redraw) => { if (PORTRAITS[id]) return PORTRAITS[id].complete ? PORTRAITS[id] : null; const im = new Image(); im.onload = redraw; im.src = `./assets/portraits/${id}.webp`; PORTRAITS[id] = im; return null; };
 const FONT = '"Arial Black", Arial, sans-serif';
@@ -150,8 +153,12 @@ function clock(g, W, H, two) {
 
 // draw page picture `kind` into the canvas (redrawn when portraits load)
 export function drawHowPic(cv, pic, ctx = {}) {
+  try { drawPic(cv, pic, ctx); } catch (e) { console.warn('howto pic', e); const g = cv.getContext('2d'); g.fillStyle = '#1c2c8c'; g.fillRect(0, 0, cv.width, cv.height); g.font = '110px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🍔', cv.width / 2, cv.height / 2); }
+}
+function drawPic(cv, pic, ctx) {
   const g = cv.getContext('2d'), W = cv.width, H = cv.height; g.clearRect(0, 0, W, H);
-  const redraw = () => drawHowPic(cv, pic, ctx);
+  const redraw = () => { if (cv.dataset.pic === pic) drawHowPic(cv, pic, ctx); };      // (only if that page is still showing)
+  cv.dataset.pic = pic;
   const [kind, arg] = pic.split(':');
   if (kind === 'pub') pubMap(g, W, H, arg);
   else if (kind === 'squad') squadFaces(g, W, H, ctx.squad || [], redraw);

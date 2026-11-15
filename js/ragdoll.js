@@ -574,6 +574,10 @@ export class Ragdoll {
       if (g.length < 2) continue;
       let same = true; for (const i of g) for (let j = 0; j < 4; j++) if (skinIndex[i * 4 + j] !== skinIndex[g[0] * 4 + j] || Math.abs(skinWeight[i * 4 + j] - skinWeight[g[0] * 4 + j]) > 1e-3) same = false;
       if (same) continue;
+      // only copies on joined parts (a seam on the arm, the shoulder...): a palm resting on a thigh in the scan shares
+      // points with the thigh, and averaging those made a strip of skin stretch from the hand to the leg
+      const doms = [...new Set(g.map(i => skinIndex[i * 4]))], par = (b) => { const d = this.defs[b]; return d && d.parent ? this.defs.findIndex(e => e.name === d.parent) : -1; };
+      if (doms.some(a => doms.some(b => a !== b && par(a) !== b && par(b) !== a))) continue;
       const acc = new Map(); for (const i of g) for (let j = 0; j < 4; j++) { const w = skinWeight[i * 4 + j]; if (w > 0) acc.set(skinIndex[i * 4 + j], (acc.get(skinIndex[i * 4 + j]) || 0) + w); }
       const top = [...acc].sort((a, b) => b[1] - a[1]).slice(0, 4), tot = top.reduce((t, x) => t + x[1], 0);
       for (const i of g) for (let j = 0; j < 4; j++) { skinIndex[i * 4 + j] = top[j] ? top[j][0] : 0; skinWeight[i * 4 + j] = top[j] ? top[j][1] / tot : 0; }
@@ -587,6 +591,7 @@ export class Ragdoll {
     const dup = new Map(), extra = [], newTris = [];
     for (let f = 0; f < tris.length; f += 3) {
       const vs = [tris[f], tris[f + 1], tris[f + 2]], ls = vs.map(v => skinIndex[v * 4]);
+      if (ls.some(l => !D[l] || D[l].name.startsWith('lArm'))) continue;      // (skin where a hand touched the thigh is just dropped: put back, it hung off the leg like a strip)
       let target = ls[0]; for (const l of ls) if (rank(l) > rank(target)) target = l;
       if (rank(target) === 0) { target = ls.find((l, i) => ls.indexOf(l) !== i) ?? ls[0]; }        // (no body part in it: whichever two of them share)
       for (const v of vs) {
@@ -882,8 +887,9 @@ export class Ragdoll {
         const curl = eb.kind === 'fingers' ? hp.curl : eb.kind === 'middle' ? hp.mid : 0;
         if (curl) _hm.multiply(pivotM(ax.knuckle, _hq2.setFromAxisAngle(ax.width, curl * 1.55 * ax.curlSign)));
       }
+      // a hand that's hidden (a gesture hand stands in for it) shrinks away into the wrist, not the middle of the arm
+      if (this.handHide[eb.name]) { const w = ax ? ax.wrist : this.parts[eb.name].def.b; _hm.multiply(_hm3.makeTranslation(w.x, w.y, w.z).multiply(_pmR.makeScale(0.001, 0.001, 0.001)).multiply(_pmT.makeTranslation(-w.x, -w.y, -w.z))); }
       _hm.multiply(_hm2.makeTranslation(c.x, c.y, c.z)); _hm.decompose(bone.position, bone.quaternion, bone.scale);
-      bone.scale.setScalar(this.handHide[eb.name] ? 0.001 : 1);
     });
   }
   // the wrist (where the hand starts) and the way the forearm points, in the world
