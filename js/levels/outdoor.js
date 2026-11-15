@@ -255,3 +255,46 @@ function roofTex() {
   for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '90,100,60' : '200,200,180'},0.18)`; g.fillRect(Math.random() * 256, Math.random() * 256, 3 + Math.random() * 5, 2); }   // lichen
   ROOF = new THREE.CanvasTexture(c); ROOF.colorSpace = THREE.SRGBColorSpace; return ROOF;
 }
+
+// ---- a tall indoor fig (ficus) in a pot: braided trunks, branches arching out, a dense crown of broad glossy leaves,
+// each one a curved oval with a midrib, darker underneath, angled every which way
+export function figTree(k, x, z, { h = 2.1, pot = 0x2a2420, rim = 0xc9a24a } = {}) {
+  seed = (Math.abs(Math.round(x * 1000 + z * 77)) % 2147483646) + 1;
+  const ph = 0.44, pr = 0.24;
+  k.parts.push(part(new THREE.CylinderGeometry(pr, pr * 0.78, ph, 20), pot, [x, ph / 2, z]));
+  k.parts.push(part(new THREE.CylinderGeometry(pr * 1.06, pr * 1.06, 0.04, 20), rim, [x, ph - 0.01, z]));
+  k.parts.push(part(new THREE.CylinderGeometry(pr * 0.96, pr * 0.96, 0.02, 16), 0x3a2a1c, [x, ph - 0.02, z]));
+  for (let i = 0; i < 7; i++) k.parts.push(part(new THREE.SphereGeometry(0.02, 5, 3), 0x8a8478, [x + Math.cos(i * 2.3) * 0.15, ph - 0.005, z + Math.sin(i * 2.3) * 0.15], [0, 0, 0], [1, 0.5, 1]));   // pebbles on the soil
+  k.blockers.push({ x0: x - pr, x1: x + pr, z0: z - pr, z1: z + pr, y1: ph });
+  const BARK = 0x7a6a58, seg = (p, q, r0, r1, col = BARK) => { const d = new THREE.Vector3().subVectors(q, p), L = d.length(); const g = new THREE.CylinderGeometry(r1, r0, L, 6); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize())); k.parts.push(part(g, col, [(p.x + q.x) / 2, (p.y + q.y) / 2, (p.z + q.z) / 2])); };
+  const LEAF = [0x1f4a1a, 0x2a5a20, 0x346a26, 0x2e6224, 0x3e7a2c, 0x264e1c];
+  const leafAt = (p, dir) => {            // a leaf on a short stalk, pointing out and drooping
+    const a = Math.atan2(dir.z, dir.x) + (rnd() - 0.5) * 1.6, droop = -0.2 - rnd() * 0.7, len = 0.07 + rnd() * 0.035;
+    const tip = new THREE.Vector3(Math.cos(a) * Math.cos(droop), Math.sin(droop), Math.sin(a) * Math.cos(droop));
+    const c = p.clone().addScaledVector(tip, len * 0.6 + 0.015);
+    const g = new THREE.SphereGeometry(1, 6, 3); g.scale(len, 0.004, len * 0.48);
+    const pos = g.attributes.position; for (let i = 0; i < pos.count; i++) { const u = pos.getX(i) / len; pos.setY(i, pos.getY(i) - 0.012 * u * u + (Math.abs(pos.getZ(i)) / (len * 0.48)) * 0.006); }   // curl down at the tip, cupped
+    g.rotateX((rnd() - 0.5) * 0.9); g.rotateZ(droop); g.rotateY(-a);
+    const col = LEAF[Math.floor(rnd() * LEAF.length)];
+    k.parts.push(part(g, col, c.toArray()));
+    const mr = new THREE.BoxGeometry(len * 1.6, 0.002, 0.003); mr.rotateZ(droop); mr.rotateY(-a); k.parts.push(part(mr, new THREE.Color(col).multiplyScalar(1.5).getHex(), [c.x, c.y + 0.003, c.z]));   // the midrib
+  };
+  // three trunks twisting round each other
+  const tops = [];
+  for (let t = 0; t < 3; t++) { let prev = new THREE.Vector3(x + Math.cos(t * 2.1) * 0.03, ph, z + Math.sin(t * 2.1) * 0.03);
+    for (let i = 1; i <= 8; i++) { const yy = ph + (h * 0.62) * i / 8, a = t * 2.1 + i * 0.7, q = new THREE.Vector3(x + Math.cos(a) * 0.035, yy, z + Math.sin(a) * 0.035); seg(prev, q, 0.024 - i * 0.0015, 0.023 - i * 0.0016); prev = q; }
+    tops.push(prev); }
+  // branches: arching out and up from the upper trunks, each splitting into twigs thick with leaves
+  const branch = (from, dir, len, depth) => {
+    const N = 5; let p = from.clone(); const d = dir.clone().normalize();
+    for (let i = 0; i < N; i++) { const q = p.clone().addScaledVector(d, len / N); q.y += (len / N) * (0.25 - i * 0.12); seg(p, q, 0.011 - depth * 0.003 - i * 0.001, 0.01 - depth * 0.003 - i * 0.001);
+      const nl = depth === 0 ? 3 : 6; for (let l = 0; l < nl; l++) leafAt(q.clone().lerp(p, rnd()), d);
+      if (depth < 1 && i >= 1 && rnd() < 0.7) { const nd = d.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), (rnd() - 0.5) * 2.2); nd.y += 0.2 + rnd() * 0.3; branch(q, nd, len * 0.55, depth + 1); }
+      p = q; }
+    for (let l = 0; l < 10; l++) leafAt(p.clone().add(new THREE.Vector3((rnd() - 0.5) * 0.06, (rnd() - 0.5) * 0.06, (rnd() - 0.5) * 0.06)), d);   // a tuft at the tip
+  };
+  for (let b = 0; b < 14; b++) { const t = tops[b % 3], from = new THREE.Vector3(t.x, ph + h * (0.3 + 0.32 * (b / 14)) + rnd() * 0.08, t.z), a = b * 2.39996, up = 0.25 + rnd() * 0.5;
+    branch(from, new THREE.Vector3(Math.cos(a), up, Math.sin(a)), 0.32 + rnd() * 0.28, 0); }
+  for (const t of tops) branch(t, new THREE.Vector3((rnd() - 0.5) * 0.4, 1, (rnd() - 0.5) * 0.4), 0.38, 0);   // the leaders at the top
+  for (let i = 0; i < 6; i++) { const a = rnd() * 6.28; leafAt(new THREE.Vector3(x + Math.cos(a) * 0.04, ph + 0.05, z + Math.sin(a) * 0.04), new THREE.Vector3(Math.cos(a), 0, Math.sin(a))); }   // a couple of fallen leaves... on the soil
+}

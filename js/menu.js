@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.8.3', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '1.8.4', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['1.8.4', ['The Please Wait To Be Seated sign has moved aside by the wall, out of the way in', 'The plant by the fruit machine is now a full fig tree: braided trunks, arching branches and hundreds of glossy leaves']],
   ['1.8.3', ['Oysterfleet entrance: the bare walls by the way in are papered and panelled like the rest, with a framed print and wall lamps', 'A proper coat rack: oak board, brass hooks, a hat shelf, four real coats with sleeves, collars, hoods and buttons, a scarf, a flat cap, a bobble hat and a brolly', 'You now start on the entrance mat, facing into the pub']],
   ['1.8.2', ['The conservatory has a normal ceiling again (with spotlights), and the upstairs of the pub runs straight over it; the windows still look out on the garden']],
   ['1.8.1', ['The distance outside looks real: a painted 360° view of the town, wooded hills, the estuary with ships and the oil terminal, all fading into a summer haze', 'Real terraced houses round the beer garden: brick and render, uPVC windows with curtains, back doors, kitchen extensions, tiled roofs with chimney pots and satellite dishes, and long back gardens with fences, sheds, trampolines and washing out', 'Grass and fields all round instead of nothing', 'Picnic benches and round tables rebuilt: separate weathered boards with gaps, bolted A-frames, braces, curved seats; pints, ashtrays and sauce caddies on some', 'The deck outside the garden door is wider, with a clear walkway, and its tables now run out from the building']],

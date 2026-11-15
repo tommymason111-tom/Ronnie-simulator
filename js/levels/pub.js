@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { part, cyl as CYL } from '../geo.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { streetViewTex } from './kit.js';
-import { skyDome, waterMaterial, updateOutdoor, leafyHedge, leafyBall, pottedPlant, terrace, HAZE } from './outdoor.js';
+import { skyDome, waterMaterial, updateOutdoor, leafyHedge, leafyBall, pottedPlant, figTree, terrace, HAZE } from './outdoor.js';
 import { REST, REST_BOUNDS, REST_H, inRestaurant, inNewArea, buildRestaurant } from './oysterRestaurant.js';
 import { Kit, carpetTex, tileTex, canvasTex, FONT, brickTex, booksWallTex, tngTex, oakPanelTex, woodTex } from './kit.js';
 
@@ -558,14 +558,7 @@ export function buildPub(scene) {
   machine(PX + 0.31 + 0.5, PZ, Math.PI / 2);                                              // by the pillar, facing the bar
   barChair(PX + 0.81 + 0.72, PZ, Math.PI / 2);                                            // a tall chair to sit at it
   // a tall leafy fig in a pot on the machine's right
-  { const fx = PX + 0.62, fz = PZ - 0.8;
-    k.cyl(0.22, 0.17, 0.42, fx, 0.21, fz, 0x2a2420, 14, { block: true }); k.cyl(0.215, 0.215, 0.02, fx, 0.4, fz, 0x3a2a1a, 14);
-    for (let i = 0; i < 3; i++) { const g = new THREE.CylinderGeometry(0.012, 0.02, 1.3, 6); g.rotateZ((i - 1) * 0.12); g.rotateY(i * 2.1); g.translate(fx + (i - 1) * 0.03, 1.05, fz); k.parts.push(part(g, 0x6a4a2a)); }
-    let sd = 7; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 260; i++) { const a = r() * 6.28, h = 0.75 + r() * 1.2, rad = (0.12 + r() * 0.3) * (1 - Math.abs(h - 1.35) * 0.45);
-      const leaf = new THREE.SphereGeometry(0.045, 6, 4); leaf.scale(1, 0.25, 0.55); leaf.rotateZ(r() - 0.5); leaf.rotateY(a);
-      k.parts.push(part(leaf, [0x2e6a2a, 0x3a7a32, 0x24561f, 0x4a8a3a][i % 4], [fx + Math.cos(a) * rad, h, fz + Math.sin(a) * rad])); }
-  }
+  figTree(k, PX + 0.62, PZ - 0.8, { h: 2.15 });
   // the gambling room: machines down both walls and along the end, stools in front
   for (let z = Z(1430); z < Z(1600); z += 0.9) machine(X(795) + 0.08 + 0.5, z, Math.PI / 2);
   for (let z = Z(1330); z < Z(1600); z += 0.9) machine(X(975) - 0.08 - 0.5, z, -Math.PI / 2);
@@ -864,7 +857,7 @@ export function buildPub(scene) {
       for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; k.box(0.015, 0.34, 0.015, lx + Math.cos(a) * 0.12, H - 0.71, lz + Math.sin(a) * 0.12, 0xb8923a); }
       k.parts.push(part(new THREE.CylinderGeometry(0.11, 0.11, 0.32, 4, 1, true), 0xf4ecd0, [lx, H - 0.71, lz], [0, Math.PI / 4, 0])); k.cyl(0.13, 0.1, 0.05, lx, H - 0.9, lz, 0x2a2a2a, 4); k.lamp(lx, H - 0.72, lz, 0xffd8a0, 0.06); k.pool(lx, 0, lz, 2.4, 0xffd8a0); }
     // a "please wait to be seated" stand on the way into the pub
-    { const sx = 1.85, sz = -9.45; k.cyl(0.18, 0.2, 0.03, sx, 0.015, sz, 0x222222, 14); k.cyl(0.015, 0.015, 1.3, sx, 0.65, sz, 0xc9a24a, 8); R(sx - 0.24, sz - 0.015, sx + 0.24, sz + 0.015, 0.34, 1.3, 0x1b3a2a);
+    { const sx = 3.45, sz = -9.6;        // (by the angled wall, out of the way in) k.cyl(0.18, 0.2, 0.03, sx, 0.015, sz, 0x222222, 14); k.cyl(0.015, 0.015, 1.3, sx, 0.65, sz, 0xc9a24a, 8); R(sx - 0.24, sz - 0.015, sx + 0.24, sz + 0.015, 0.34, 1.3, 0x1b3a2a);
       k.label('PLEASE WAIT TO BE SEATED', 0.44, 0.3, [sx, 1.3, sz - 0.017], [0, Math.PI, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 44 }); blk(sx - 0.22, sz - 0.22, sx + 0.22, sz + 0.22, 1.5); }
     // a big coir mat inside the front doors
     { const mx = (door.x0 + door.x1) / 2 - door.uz * 0.75, mz = (door.z0 + door.z1) / 2 + door.ux * 0.75; k.box(door.L - 0.3, 0.012, 1.1, mx, 0.006, mz, 0x8a6a3a, { rot: [0, door.ry, 0] });
