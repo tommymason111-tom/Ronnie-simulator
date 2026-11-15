@@ -117,7 +117,7 @@ export function buildPub(scene) {
   k.floor(X(195), Z(605), X(855), Z(1305), carpet, 0.002, 1.2);                          // the pub floor
   k.floor(X(615), Z(385), X(835), Z(605), tiles, 0.003, 1.0);                            // entrance (tiled)
   k.floor(X(855), Z(690), X(1045), Z(975), tileTex('#b8b4aa', '#aca89e', '#8a867c', 48), 0.004, 0.9);   // staff room
-  k.floor(X(835), Z(925), X(1045), Z(1305), tileTex('#9a9a96', '#8e8e8a', '#6e6e6a', 64), 0.005, 1.5);  // corridor + back room (concrete)
+  k.floor(X(895), Z(925), X(1045), Z(1305), tileTex('#9a9a96', '#8e8e8a', '#6e6e6a', 64), 0.005, 1.5);  // back room (concrete) — not under the bar: the quarry tiles and slate there would fight with it and flicker
   k.floor(X(195), Z(1305), X(795), Z(1645), tileTex('#d8c8a8', '#ccbc9c', '#a89878', 72), 0.003, 1.0);  // conservatory (stone tiles)
   k.floor(X(795), Z(1305), X(975), Z(1620), carpetTex('#2a3a5a', '#1a2440', '#c9a24a'), 0.003, 1.2);   // gambling room
   k.floor(X(25), Z(605), X(195), Z(1060), tileTex('#c9c9c4', '#bdbdb7', '#8f8f8a', 48), 0.003, 0.8);   // kitchen
@@ -414,7 +414,7 @@ export function buildPub(scene) {
       for (let i = 0; i < uv.count; i++) { const x = pa.getX(i), z = pa.getZ(i); uv.setXY(i, (x * c - z * s2) / scale, (x * s2 + z * c) / scale); }
       const t = tex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping;
       const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
-      m.position.y = order === 30 ? 0.006 : 0.005; scene.add(m); };
+      m.position.y = order === 30 ? 0.013 : 0.011; scene.add(m); };     // (well clear of the carpet and the staff room floor underneath, so they never flicker through)
     // the counter's customer face, as a smooth curve
     const path = new THREE.CatmullRomCurve3([[695, 605], [695, 800], [705, 880], [735, 955], [775, 982], [795, 1010], [795, 1245]].map(([x, z]) => new THREE.Vector3(X(x), 0, Z(z))), false, 'centripetal').getPoints(60);
     // the outer edge: 1.5m out from the counter, with a gentle wave, sweeping round at the ends
