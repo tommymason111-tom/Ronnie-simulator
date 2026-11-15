@@ -33,6 +33,7 @@ export const MOUNT = {
   left: { pos: [-0.03, 0.07, 0.035], euler: [0, 0, 0] },
 };
 
+const GRIP_TILT = 1.3;          // radians
 const loader = new GLTFLoader();
 const _m = new THREE.Matrix4(), _m2 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _ax = new THREE.Vector3(), _d = new THREE.Vector3();
 
@@ -74,6 +75,8 @@ export class ControllerHand {
     _m.compose(new THREE.Vector3(...m.pos), _q, new THREE.Vector3(1, 1, 1));
     _m2.compose(w.p, w.q, new THREE.Vector3(1, 1, 1)).invert();
     _m.multiply(_m2);
+    // tipped forward round the grip's X axis: held up, the hand points ahead along the controller, not at the floor
+    _m.premultiply(_m2.makeRotationX(GRIP_TILT));
     this.model.matrixAutoUpdate = false;
     this.model.matrix.copy(_m);
   }

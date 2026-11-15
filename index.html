@@ -234,6 +234,25 @@
     #countdown.on { display: flex; } #countdown.beat { animation: beat .5s; }
     @keyframes beat { from { transform: scale(2.2); opacity: 0; } 40% { transform: scale(0.9); opacity: 1; } }
     /* squad */
+    .pchoice { position: relative; display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; max-width: 760px; margin: 10px auto; }
+    .pbig { flex: 1 1 260px; max-width: 340px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 22px 14px; border-radius: 22px; border: 4px solid #ffd400; background: rgba(28,44,140,0.94); color: #fff; cursor: pointer; animation: popin .4s backwards cubic-bezier(.3,1.6,.5,1); }
+    .pbig span { font-size: 56px; } .pbig b { font: 900 26px "Arial Black", Arial, sans-serif; color: #ffd400; } .pbig small { font: 700 13px Arial, sans-serif; color: #c9d3ff; }
+    button.pbig:hover { transform: translateY(-3px); background: #2a3db0; }
+    .coderow { display: flex; gap: 8px; margin-top: 8px; } .coderow input { width: 120px; font: 900 26px "Arial Black", Arial, sans-serif; text-align: center; letter-spacing: 4px; text-transform: uppercase; padding: 8px; border-radius: 12px; border: 0; }
+    .coderow button { font: 900 18px "Arial Black", Arial, sans-serif; padding: 8px 16px; border-radius: 12px; border: 0; background: #39ff14; color: #111; cursor: pointer; }
+    #mp-status2 { position: relative; font: 700 15px Arial, sans-serif; color: #9fe; min-height: 1.3em; } #mp-status2 b { color: #ffd400; font-size: 30px; letter-spacing: 4px; }
+    #mp-lobby { position: relative; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; } #mp-lobby div { background: rgba(0,0,0,0.4); border-radius: 10px; padding: 6px 12px; font: 900 14px Arial, sans-serif; }
+    #room-code { position: relative; font: 900 64px "Arial Black", Arial, sans-serif; letter-spacing: 10px; color: #ffd400; -webkit-text-stroke: 2px #111; margin: 0 0 10px; }
+    #room-players { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; width: min(700px, 100%); margin: 0 auto 10px; }
+    .rp { background: rgba(28,44,140,0.94); border: 3px solid var(--c); border-radius: 16px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; animation: popin .4s backwards cubic-bezier(.3,1.6,.5,1); }
+    .rp img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid var(--c); background: #111; } .rp .em { font-size: 48px; line-height: 64px; }
+    .rp b { font: 900 18px "Arial Black", Arial, sans-serif; } .rp small { font: 700 12px Arial, sans-serif; color: #c9d3ff; } .rp .tag { font: 900 11px Arial, sans-serif; color: #111; background: #ffd400; border-radius: 8px; padding: 2px 8px; }
+    .rp.empty { border-style: dashed; border-color: rgba(255,255,255,0.3); opacity: 0.55; animation: none; }
+    #room-msg { position: relative; font: 700 15px Arial, sans-serif; color: #9fe; }
+    .mate.settled:not(.talk) { animation: none; }
+    #char-grid { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; max-width: 760px; margin: 0 auto 12px; }
+    #char-grid .mate.sel { background: var(--c); box-shadow: 0 0 18px #39ff14; border-color: #39ff14; }
+    #mp-code-chip { position: relative; font: 900 18px Arial, sans-serif; color: #ffd400; margin: 4px 0 8px; } #mp-code-chip:empty { display: none; }
     #roster { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; max-width: 760px; margin: 0 auto 12px; }
     .mate { background: rgba(28,44,140,0.94); border: 3px solid var(--c); border-radius: 16px; padding: 10px 6px; cursor: pointer; animation: popin .4s backwards cubic-bezier(.3,1.6,.5,1); transition: transform .15s; }
     .mate:hover { transform: translateY(-3px); }
@@ -360,7 +379,7 @@
       </div>
       <p class="tagline">Eat everything. Grow enormous. Your mates are "just trying to help".</p>
       <div class="menu-btns">
-        <button class="bigbtn playbtn" data-go="place">PLAY ➜</button>
+        <button class="bigbtn playbtn" data-go="players">PLAY ➜</button>
         <button class="midbtn vrbtn" id="title-vr" hidden>🥽 SEE RONNIE IN VR</button>
         <div class="smallrow">
           <button class="midbtn" data-go="squad">👥 MEET THE SQUAD</button>
@@ -368,6 +387,51 @@
         </div>
       </div>
       <p class="tagline" style="font-size:12px;opacity:.7;margin-top:16px">Meta Quest 3 (hands or controllers) · phone · tablet · computer</p>
+    </section>
+
+    <!-- SOLO OR MULTIPLAYER -->
+    <section class="screen" data-s="players">
+      <button class="backbtn" data-go="title" data-back="1">⬅ BACK</button>
+      <h2>WHO'S PLAYING?</h2>
+      <p class="sub">On your own, or with your mates (phones, computers and headsets can all play together)</p>
+      <div class="pchoice">
+        <button class="pbig" id="pick-solo"><span>🍔</span><b>SOLO</b><small>Just you and the squad</small></button>
+        <button class="pbig" id="pick-multi"><span>👥</span><b>MULTIPLAYER</b><small>Host a game or join a mate's</small></button>
+      </div>
+    </section>
+
+    <!-- MULTIPLAYER: WHO ARE YOU -->
+    <section class="screen" data-s="mpchar">
+      <button class="backbtn" data-go="players" data-back="1">⬅ BACK</button>
+      <h2>WHO ARE YOU?</h2>
+      <p class="sub">Your mates will see you as this person (and they won't be in the game as well)</p>
+      <div class="coderow" style="justify-content:center;margin-bottom:12px"><input id="mp-myname" maxlength="12" placeholder="YOUR NAME" autocomplete="off" style="width:220px;letter-spacing:1px"></div>
+      <div id="char-grid"></div>
+      <button class="bigbtn stick" id="char-next">NEXT ➜</button>
+    </section>
+
+    <!-- MULTIPLAYER: HOST OR JOIN -->
+    <section class="screen" data-s="mp">
+      <button class="backbtn" data-go="mpchar" data-back="1">⬅ BACK</button>
+      <h2>HOST OR JOIN?</h2>
+      <p class="sub" id="mp-who"></p>
+      <div class="pchoice">
+        <button class="pbig" id="mp-host2"><span>⭐</span><b>HOST A GAME</b><small>You pick where and what everyone plays</small></button>
+        <div class="pbig joinbox"><span>🔑</span><b>JOIN A GAME</b><small>Type your mate's 4-letter code</small>
+          <div class="coderow"><input id="mp-code2" maxlength="4" placeholder="CODE" autocomplete="off"><button id="mp-join2">JOIN</button></div></div>
+      </div>
+      <p id="mp-status2"></p>
+    </section>
+
+    <!-- MULTIPLAYER: THE ROOM -->
+    <section class="screen" data-s="room">
+      <button class="backbtn" id="room-leave">⬅ LEAVE ROOM</button>
+      <h2>THE ROOM</h2>
+      <p class="sub">Room code</p>
+      <div id="room-code"></div>
+      <div id="room-players"></div>
+      <p id="room-msg"></p>
+      <button class="bigbtn stick" id="room-go">CHOOSE THE GAME ➜</button>
     </section>
 
     <!-- PLACE -->
@@ -397,6 +461,7 @@
     <section class="screen" data-s="ready">
       <button class="backbtn" data-go="mode" data-back="1">⬅ BACK</button>
       <h2>READY, RONNIE?</h2>
+      <div id="mp-code-chip"></div>
       <div class="readycard"><div class="chip" id="ready-place"></div><div class="chip" id="ready-mode"></div></div>
       <p id="ready-desc"></p>
       <button id="go" class="bigbtn">LET'S EAT ➜</button>
@@ -501,14 +566,7 @@
     <button id="back-menu" class="ghost">⬅ Change place or mode</button>
     <button id="enter-vr" disabled>CHECKING VR…</button>
     <button id="sound">🔊 Test sound</button><br>
-    <button id="play-flat">📱 PLAY ON THIS SCREEN</button><br>
-    <button id="mp-btn" class="ghost">👥 PLAY WITH FRIENDS</button>
-    <div id="mp-panel">
-      <p class="mp-row">Your name <input id="mp-name" maxlength="14" placeholder="Ronnie"></p>
-      <button id="mp-host">⭐ HOST A GAME</button>
-      <p class="mp-row">or join a mate's game <input id="mp-code" maxlength="4" placeholder="CODE"> <button id="mp-join">JOIN</button></p>
-      <p id="mp-status"></p>
-    </div>
+    <button id="play-flat">📱 PLAY ON THIS SCREEN</button>
     <p id="status">Loading…</p>
     <details>
       <summary>How to play</summary>

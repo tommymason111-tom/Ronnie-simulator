@@ -931,33 +931,15 @@ function frame(simDt) {
 renderer.setAnimationLoop(() => frame());
 
 // Debug handle for testing in a desktop browser console.
-// ---------------- multiplayer (step 1: room codes, everyone sees everyone else's Ronnie) ----------------
-const net = new Net();
-{ const $ = (id) => document.getElementById(id), qs = new URLSearchParams(location.search);
-  const status = (h) => { $('mp-status').innerHTML = h; };
+// ---------------- multiplayer: the room was set up on the menu (SOLO / MULTIPLAYER), this carries it on ----------------
+const net = (window.ronnieMP && window.ronnieMP.net) || new Net();
+net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie';
+{ const $ = (id) => document.getElementById(id);
   const chip = () => { const n = net.players.size + 1; $('mp-chip').textContent = `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`; $('mp-chip').classList.toggle('on', net.connected); };
-  let savedName = ''; try { savedName = localStorage.getItem('rs_mp_name') || ''; } catch (e) {}
-  $('mp-name').value = qs.get('mpname') || savedName;
-  const myName = () => { const n = ($('mp-name').value || 'Ronnie').trim().slice(0, 14) || 'Ronnie'; try { localStorage.setItem('rs_mp_name', n); } catch (e) {} return n; };
-  $('mp-btn').addEventListener('click', () => $('mp-panel').classList.toggle('on'));
-  // the host tells anyone who joins which place and game to load
+  // the host tells anyone who joins late which place and game to load
   net.on.join = (m) => { chip(); if (net.host) net.send({ t: 'setup', to: m.id, place: room.placeId, mode: director.mode || SEL.mode }); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
   net.on.leave = () => chip(); net.on.host = () => chip(); net.on.status = () => chip();
-  net.on.setup = (m) => {
-    if (m.place !== room.placeId || (m.mode && m.mode !== SEL.mode)) { const u = new URL(location.href); u.search = ''; u.searchParams.set('place', m.place); u.searchParams.set('mode', m.mode || 'roam'); u.searchParams.set('go', '1'); u.searchParams.set('mp', net.code); u.searchParams.set('mpname', net.name); if (qs.get('relay')) u.searchParams.set('relay', qs.get('relay')); status('Going to the same place as the host…'); net.leave(); location.href = u.toString(); return; }
-    status(`Joined room <b>${net.code}</b>. Press PLAY!`); chip();
-  };
-  const join = async (code, quiet) => {
-    if (!/^[A-Z0-9]{4}$/.test(code)) { status('Type the 4-letter code your mate gave you.'); return; }
-    status('Connecting…');
-    try { const w = await net.connect(code, myName(), qs.get('relay') || undefined); chip();   // (?relay= points at a test relay)
-      if (w.host) status(quiet ? `Room <b>${code}</b> is empty: you're the host now.` : `Nobody's in room <b>${code}</b> yet: you're the host. Tell your mates the code!`);
-      else status(quiet ? `Joined room <b>${code}</b>.` : 'Connected! Checking where your mate is…');
-    } catch (e) { status('Couldn\'t connect. Check your internet and try again.'); }
-  };
-  $('mp-host').addEventListener('click', async () => { const code = newCode(); await join(code, true); if (net.connected) status(`Your room code: <b>${code}</b><br>Tell your mates to press PLAY WITH FRIENDS and type it in. Then press PLAY.`); });
-  $('mp-join').addEventListener('click', () => join(($('mp-code').value || '').toUpperCase().trim()));
-  $('mp-code').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
-  if (qs.get('mp')) { $('mp-panel').classList.add('on'); $('mp-code').value = qs.get('mp'); join(qs.get('mp').toUpperCase(), true); }
+  net.on.setup = () => {};
+  if (net.connected) chip();
 }
 window.RS = { net, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)

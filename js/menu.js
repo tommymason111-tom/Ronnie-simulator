@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '2.0.2', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '2.1.0', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['2.1.0', ['PLAY now asks SOLO or MULTIPLAYER. Multiplayer: type your name and pick who you are from the squad, then HOST (you choose the place and game for everyone) or JOIN with a code', 'A room screen shows everyone in the room, their name and who they are playing as', 'Meet the Squad: picking someone else no longer makes the last one vanish for a moment', 'VR: holding the controllers, your hands point forward instead of down']],
   ['2.0.2', ['VR: PLAY on the headset menu now actually starts the game', 'VR: the menu button (or Y) pauses, with the same pause menu as the phone floating in front of you: point and pull the trigger', 'VR: attack pop-ups, banners and the attack animations are smaller and in the middle of your view, and pop in smoothly', 'When an attacker sets off, a tag says who is coming for you, with an arrow pointing to them']],
   ['2.0.1', ['Smoother, especially in VR: only the lights near you are worked out (same look), and the sky and water effects only work on what you can actually see', 'The screen behind PLAY ON THIS SCREEN is just a slow look round the place, cutting between different areas, with nothing else running']],
   ['2.0.0', ['MULTIPLAYER (first step): press PLAY WITH FRIENDS, HOST A GAME and share the 4-letter code. Your mates type it in and land in the same place and game as you. You can see each other walking round as Ronnies (with name tags, arms following your hands, getting fatter as you eat). Up to 6 per room, on phones, computers and Quest']],
@@ -291,10 +292,72 @@ var GAME_UPDATES = [
   roster.addEventListener('click', (e) => {
     const c = e.target.closest('.mate'); if (!c) return;
     const s = SQUAD[+c.dataset.i];
-    $$('.mate', roster).forEach(m => m.classList.toggle('talk', m === c));
+    $$('.mate', roster).forEach(m => { m.classList.add('settled'); m.classList.toggle('talk', m === c); });   // (settled: don't replay the pop-in when the highlight goes)
     quote.innerHTML = `<b style="color:${s.c}">${s.n}:</b> "${s.l}"<br><span>${s.a} Attack: ${s.t}</span>`;
     quote.classList.remove('on'); void quote.offsetWidth; quote.classList.add('on');
     blip(300 + (+c.dataset.i) * 40, 0.07, 'triangle', 0.08);
+  });
+
+  // ---------------------------------------------------------------- SOLO OR MULTIPLAYER
+  // Multiplayer: pick who you are, then host (you choose the place and game for everyone) or join with a code
+  // (you wait for the host, and go wherever they've picked).
+  const CHARS = [{ id: 'ronnie', n: 'Ronnie', c: '#ffd400', a: '🍔', t: 'The man himself', img: null }].concat(SQUAD.filter(s => s.n !== 'Tommy').map(s => ({ id: (s.img || s.n.toLowerCase()).replace(/ /g, ''), n: s.n, c: s.c, a: s.a, t: s.t, img: s.img || s.n.toLowerCase() })));
+  let mpChar = 'ronnie'; try { mpChar = localStorage.getItem('rs_mp_char') || 'ronnie'; } catch (e) {}
+  const mp = window.ronnieMP = { role: null, net: null, char: () => CHARS.find(c => c.id === mpChar) || CHARS[0] };
+  $('#pick-solo').addEventListener('click', () => { mp.role = null; if (mp.net) { mp.net.leave(); mp.net = null; } $('#mp-code-chip').textContent = ''; show('place'); });
+  $('#pick-multi').addEventListener('click', () => show('mpchar'));
+  const cgrid = $('#char-grid');
+  cgrid.innerHTML = CHARS.map((s, i) => `<div class="mate${s.id === mpChar ? ' sel' : ''}" data-id="${s.id}" style="--c:${s.c};animation-delay:${i * 0.03}s">
+      <div class="face-badge">${s.img ? `<img src="./assets/portraits/${s.img}.webp" alt="${s.n}" draggable="false">` : '<span style="font-size:44px">🍔</span>'}</div><b>${s.n}</b><div class="atk">${s.a} ${s.t}</div></div>`).join('');
+  cgrid.addEventListener('click', (e) => { const c = e.target.closest('.mate'); if (!c) return; mpChar = c.dataset.id; try { localStorage.setItem('rs_mp_char', mpChar); } catch (er) {} $$('.mate', cgrid).forEach(m => m.classList.toggle('sel', m === c)); blip(400, 0.07, 'triangle', 0.08); });
+  $('#char-next').addEventListener('click', () => { $('#mp-who').textContent = `You're playing as ${mp.char().n}`; show('mp'); });
+  const mpStatus = (h) => { $('#mp-status2').innerHTML = h; };
+  let myName = ''; try { myName = localStorage.getItem('rs_mp_name') || ''; } catch (e) {}
+  $('#mp-myname').value = myName;
+  const nameOf = () => { const n = ($('#mp-myname').value || '').trim().slice(0, 12) || mp.char().n; try { localStorage.setItem('rs_mp_name', n); } catch (e) {} return n; };
+  const esc = (t) => String(t).replace(/[<>&"]/g, '');
+  // the room: everyone in it, their name and who they're playing as; a free slot for each space left
+  const lobby = () => {
+    if (!mp.net) return;
+    const me = { name: nameOf(), char: mpChar, host: mp.net.host, me: true };
+    const ps = [me, ...mp.net.players.values()];
+    $('#room-code').textContent = mp.net.code;
+    $('#room-players').innerHTML = ps.map(p => { const c = CHARS.find(x => x.id === p.char) || CHARS[0];
+      return `<div class="rp" style="--c:${c.c}">${c.img ? `<img src="./assets/portraits/${c.img}.webp" alt="">` : '<div class="em">🍔</div>'}<b>${esc(p.name || '...')}</b><small>as ${c.n}</small>${p.host ? '<span class="tag">HOST</span>' : ''}${p.me ? '<span class="tag" style="background:#39ff14">YOU</span>' : ''}</div>`; }).join('')
+      + Array.from({ length: Math.max(0, 6 - ps.length) }, () => '<div class="rp empty"><div class="em">➕</div><small>free space</small></div>').join('');
+    $('#room-go').style.display = mp.net.host ? '' : 'none';
+    $('#room-msg').textContent = mp.net.host ? (ps.length > 1 ? 'Everyone\'s in? Choose where you\'re playing.' : 'Tell your mates the code. Start when everyone\'s in.') : 'Waiting for the host to choose the game…';
+  };
+  async function mpConnect(code) {
+    const { Net, RELAY } = await import('./net.js');
+    if (mp.net) mp.net.leave();
+    const net = mp.net = new Net(); net.char = mpChar;
+    const relay = q.get('relay') || RELAY;
+    const w = await net.connect(code, nameOf(), relay);
+    // everyone says who they're playing as; a new arrival gets told by everyone already in
+    const hi = (to) => net.send({ t: 'hi', to, name: nameOf(), char: mpChar });
+    net.on.hi = (m, p) => { if (p) { p.char = m.char; p.name = m.name; } lobby(); };
+    net.on.join = (m) => { hi(m.id); lobby(); }; net.on.leave = () => lobby(); net.on.host = () => lobby();
+    hi(); return w;
+  }
+  $('#mp-host2').addEventListener('click', async () => {
+    const { newCode } = await import('./net.js'); const code = newCode();
+    mpStatus('Setting up your room…');
+    try { await mpConnect(code); mp.role = 'host'; $('#mp-code-chip').textContent = `👥 ROOM ${code}`; mpStatus(''); show('room'); lobby();
+    } catch (e) { mpStatus("Couldn't connect. Check your internet and try again."); }
+  });
+  $('#room-go').addEventListener('click', () => show('place'));
+  $('#room-leave').addEventListener('click', () => { if (mp.net) mp.net.leave(); mp.net = null; mp.role = null; $('#mp-code-chip').textContent = ''; show('mp', -1); });
+  $('#mp-code2').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+  $('#mp-join2').addEventListener('click', async () => {
+    const code = ($('#mp-code2').value || '').toUpperCase().trim();
+    if (!/^[A-Z0-9]{4}$/.test(code)) { mpStatus('Type the 4-letter code your mate gave you.'); return; }
+    mpStatus('Connecting…');
+    try { const w = await mpConnect(code); mp.role = 'join';
+      if (w.host) { mpStatus(`Nobody's in room <b>${code}</b> yet. Check the code with your mate.`); mp.net.leave(); mp.net = null; mp.role = null; lobby(); return; }
+      mpStatus(''); show('room'); lobby();
+      mp.net.on.setup = (m) => { place = m.place; mode = m.mode; $('#room-msg').textContent = 'Off we go!'; window.__menuGo(true); };
+    } catch (e) { mpStatus("Couldn't connect. Check your internet and try again."); }
   });
 
   // ---------------------------------------------------------------- HOW: tabs (opens on your device's tab)
@@ -313,6 +376,7 @@ var GAME_UPDATES = [
     const go = (instant) => {
       if (going) return; going = true;
       try { localStorage.setItem('rs_menu', JSON.stringify({ place, mode })); } catch (e) {}
+      if (window.ronnieMP && window.ronnieMP.role === 'host' && window.ronnieMP.net) window.ronnieMP.net.send({ t: 'setup', place, mode });   // everyone waiting in the lobby comes too
       const finish = () => {
         start.classList.add('gone');
         if (window.ronnieHero) window.ronnieHero.stop();
@@ -338,6 +402,7 @@ var GAME_UPDATES = [
       else requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(finish, 60)));
     };
     $('#go').addEventListener('click', () => go());
+    window.__menuGo = go;
     // the floating menu in VR (see ronnieHero.js) picks with these
     window.menuVR = {
       info: () => ({ place: PLACES.find(p => p.id === place).name, mode: modeInfo(mode).name }),
