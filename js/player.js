@@ -408,7 +408,7 @@ export class Player {
     if (Math.abs(mx) > 0.15 || Math.abs(mz) > 0.15) {
       _v.set(this.fwd.x, 0, this.fwd.z).normalize();
       _v2.crossVectors(_v, UP);       // right
-      const sp = TUNING.moveSpeed * dt * mul * (this.speedMul || 1) * (this.sprint ? 1.9 : 1);
+      const sp = TUNING.moveSpeed * dt * mul * (this.speedMul || 1) * (this.sprint ? 2.1 : 1);
       this.rig.position.addScaledVector(_v, -mz * sp).addScaledVector(_v2, mx * sp);
     }
     if (this.snapReady && Math.abs(turn) > 0.7) {
@@ -505,7 +505,7 @@ export class Player {
     if (this.zoomLean > 0.001) { const f = new THREE.Vector3(0, 0, -1).applyEuler(this.camera.rotation); this.camera.position.addScaledVector(f, this.zoomLean); }
     const mx = this.flatMove.x, mz = this.flatMove.z;
     if (Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05) {
-      const sp = TUNING.moveSpeed * dt * 0.9 * (this.speedMul || 1) * (this.sprint ? 1.9 : 1);
+      const sp = TUNING.moveSpeed * dt * 0.9 * (this.speedMul || 1) * (this.sprint ? 2.1 : 1);
       const yw = this.flatYaw + this.rig.rotation.y, sy = Math.sin(yw), cy = Math.cos(yw);
       this.rig.position.x += (-sy * -mz + cy * mx) * sp;
       this.rig.position.z += (-cy * -mz - sy * mx) * sp;

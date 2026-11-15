@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { part, cyl as CYL } from '../geo.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { streetViewTex } from './kit.js';
+import { skyDome, waterMaterial, updateOutdoor, leafyHedge, leafyBall, pottedPlant } from './outdoor.js';
 import { REST, REST_BOUNDS, REST_H, inRestaurant, inNewArea, buildRestaurant } from './oysterRestaurant.js';
 import { Kit, carpetTex, tileTex, canvasTex, FONT, brickTex, booksWallTex, tngTex, oakPanelTex, woodTex } from './kit.js';
 
@@ -24,6 +25,7 @@ const H = 3.0;
 const S = 0.024;
 const X = (px) => (px - 600) * S, Z = (py) => (py - 975) * S;
 const GZ = Z(1645), GZ1 = GZ + 26, GX0 = -10, GX1 = X(1045);          // the beer garden behind the pub (metres)
+const CONS_WIN = [-8.22, -5.42, -2.62, 0.18], WIN_Y0 = 0.75, WIN_Y1 = 2.45;   // the conservatory's windows (centres, sill, head)
 const B = { x0: REST_BOUNDS.x0, x1: X(1045) + 7, z0: REST_BOUNDS.z0, z1: GZ1 };          // (out to the left for the restaurant)
 // the walkable rooms on the plan (pixels); everything else inside the bounds is solid
 const INSIDE = [
@@ -114,7 +116,8 @@ export function buildPub(scene) {
   k.floor(X(175), Z(305), X(415), Z(605), tileTex('#d8d8d8', '#cfcfcf', '#9a9a9a', 40), 0.003, 0.6);   // men's, disabled, corridor
   k.floor(X(415), Z(345), X(615), Z(605), tileTex('#e8dfe4', '#ddd3d8', '#b0a4aa', 40), 0.003, 0.6);   // women's
   { const sh = new THREE.Shape([[B.x0, B.z0], [X(1045), B.z0], [X(1045), GZ], [B.x0, GZ]].map(([x, z]) => new THREE.Vector2(x, z)));   // ceiling (the building only: sky over the garden;
-    sh.holes.push(new THREE.Path(REST.main.map(([x, z]) => new THREE.Vector2(x, z))));                                                      //  the restaurant's dining room has its own, higher up)
+    sh.holes.push(new THREE.Path(REST.main.map(([x, z]) => new THREE.Vector2(x, z))));
+    sh.holes.push(new THREE.Path([[X(195) + 0.1, Z(1305) + 0.1], [X(715) - 0.1, Z(1305) + 0.1], [X(715) - 0.1, Z(1645) - 0.1], [X(195) + 0.1, Z(1645) - 0.1]].map(([x, z]) => new THREE.Vector2(x, z))));   // (the conservatory's glass roof)                                                      //  the restaurant's dining room has its own, higher up)
     const g = new THREE.ShapeGeometry(sh); g.rotateX(Math.PI / 2);
     const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0xf7f3ea, emissive: 0xbdb5a2 })); m.position.y = H; scene.add(m);
     // and a solid ceiling at 3m everywhere but the dining room, so thrown food bounces off it
@@ -151,14 +154,18 @@ export function buildPub(scene) {
   WX(690, 855, 1045, [], WALL); WZ(1045, 690, 1305, [], WALL); WX(975, 895, 1045); WX(975, 855, 895); WZ(855, 925, 975, [[928, 972]]);      // (the staff room's door is on its side now, off the end of the bar)
   WZ(895, 975, 1305, [[1235, 1300]]);
   WX(1305, 790, 1045);
-  WZ(795, 1305, 1620, [[1335, 1400]]); WZ(975, 1305, 1620, [], WALL); WX(1620, 795, 975, [], WALL);
+  WZ(795, 1305, 1645, [[1335, 1400]]);   // (right down to the back wall: no gap beside the garden door) WZ(975, 1305, 1620, [], WALL); WX(1620, 795, 975, [], WALL);
   // the pub's left wall: kitchen door, restaurant entrance
   WZ(195, 605, 1645, [[990, 1035], [1090, 1145]], WALL);
   // kitchen + restaurant entrance
   WX(605, 25, 195, [[95, 143]], WALL); WZ(25, 605, 1060, [], WALL); WX(1060, 15, 195); WX(1190, 15, 195, [], WALL);   // (a door up into the kitchen extension; the corridor opens into the restaurant)
   R(X(15) - T2, Z(1060), X(15) + T2, Z(1190), H - 2.35, 2.35 + (H - 2.35) / 2, PLASTER); R(X(15) - 0.1, Z(1060), X(15) + 0.1, Z(1190), 0.08, 2.39, DARKWOOD);   // the header over the way into the restaurant
   // conservatory + the passage to the beer garden
-  WX(1305, 290, 330); WZ(715, 1305, 1645); WX(1645, 195, 715, [], WALL); WX(1645, 715, 795, [[722, 793]], WALL);   // (the rest of the conservatory wall: windows and the brick cubby, further down)
+  WX(1305, 290, 330); WZ(715, 1305, 1645); WX(1645, 715, 795, [[722, 793]], WALL);
+  // the conservatory's back wall, with four real window openings looking out on to the beer garden
+  { const z = Z(1645), ops = CONS_WIN.map(c => [c - 1.1, c + 1.1]); let a = X(195) - T2;
+    for (const [o0, o1] of ops) { R(a, z - T2, o0, z + T2, H, H / 2, WALL, { collide: true, block: true }); R(o0, z - T2, o1, z + T2, WIN_Y0, WIN_Y0 / 2, WALL, { collide: true, block: true }); R(o0, z - T2, o1, z + T2, H - WIN_Y1, (H + WIN_Y1) / 2, WALL); a = o1; }
+    R(a, z - T2, X(715) + T2, z + T2, H, H / 2, WALL, { collide: true, block: true }); }   // (the rest of the conservatory wall: windows and the brick cubby, further down)
   // DJ booth (half walls) and the raised area's edge (half walls with a brass rail on top)
   const HALF = 1.1;
   WZ(475, 605, 665, [], DARKWOOD, HALF); WD(475, 665, 515, 705, DARKWOOD, HALF); WX(705, 515, 535, [], DARKWOOD, HALF);
@@ -877,7 +884,7 @@ export function buildPub(scene) {
         if (i % 2 === 0) { R(hx - 0.18, z - 0.2, hx - 0.02, z + 0.2, 0.85, 1.28, [0x2a3a5a, 0x5a3a2a, 0x2a2a2a][i / 2]); R(hx - 0.16, z - 0.12, hx - 0.03, z + 0.12, 0.1, 1.72, [0x2a3a5a, 0x5a3a2a, 0x2a2a2a][i / 2]); } }
       R(hx - 0.01, Z(430), hx + 0.01, Z(430) + 1.45, 0.12, 1.75, 0x3a2416); blk(hx - 0.2, Z(430), hx + 0.1, Z(430) + 1.4, 1.5);
       const ux = X(835) - 0.24, uz = Z(497); k.cyl(0.13, 0.12, 0.5, ux, 0.25, uz, 0x2a2a2a, 12, { block: true }); for (let i = 0; i < 3; i++) { k.cyl(0.01, 0.01, 0.85, ux - 0.04 + i * 0.04, 0.6, uz + (i - 1) * 0.03, 0x111111, 6); k.cyl(0.03, 0.045, 0.3, ux - 0.04 + i * 0.04, 0.85, uz + (i - 1) * 0.03, [0x1e4ea8, 0xc62828, 0x111111][i], 8); }
-      for (const [px, pz] of [[0.72, -9.05], [4.05, -9.95]]) { k.cyl(0.24, 0.18, 0.5, px, 0.25, pz, 0x2a2420, 14, { block: true }); for (let i = 0; i < 80; i++) { const a = i * 2.4, r = 0.08 + (i % 5) * 0.06, h = 0.65 + (i % 7) * 0.13; const leaf = new THREE.SphereGeometry(0.06, 6, 4); leaf.scale(1, 0.3, 0.5); leaf.rotateY(a); k.parts.push(part(leaf, [0x2e6a2a, 0x3a7a32, 0x24561f][i % 3], [px + Math.cos(a) * r, h, pz + Math.sin(a) * r])); } }
+      for (const [px, pz] of [[0.72, -9.05], [4.05, -9.95]]) pottedPlant(k, px, pz, { s: 1.15, pot: 0x2a2420, rim: 0xc9a24a });
     }
     // lights: two glass globes over the counter, downlights, a wall lamp by the door
     for (const z of [-13.3, -12.0]) { const x = 2.75; k.cyl(0.004, 0.004, 0.6, x, H - 0.3, z, 0x222222, 4); k.cyl(0.03, 0.045, 0.06, x, H - 0.63, z, 0xb87333, 10); for (let i = 0; i < 6; i++) { const r = new THREE.TorusGeometry(0.11, 0.004, 4, 16); r.rotateY(i / 6 * Math.PI); k.parts.push(part(r, 0xf0e6c8, [x, H - 0.77, z])); } k.lamp(x, H - 0.77, z, 0xffe2a8, 0.1); k.pool(x, 1.15, z, 0.9, 0xffc070); }
@@ -885,7 +892,7 @@ export function buildPub(scene) {
   }
   // the beer garden door at the end of the passage
   { const xc = (X(722) + X(793)) / 2;
-    for (const sd of [-1, 1]) { const hx = xc + sd * (X(793) - X(722)) / 2 - sd * 0.06; k.box(0.05, 2.15, 0.75, hx - sd * 0.03, 1.08, GZ + 0.48, 0xf4f2ec); k.box(0.02, 1.9, 0.6, hx - sd * 0.03, 1.08, GZ + 0.48, 0xbfdce8); }   // doors folded open
+    for (const sd of [-1, 1]) { const hx = xc + sd * (X(793) - X(722)) / 2 - sd * 0.06; k.box(0.75, 2.15, 0.05, hx + sd * 0.44, 1.08, GZ + 0.15, 0xf4f2ec); k.box(0.6, 1.9, 0.02, hx + sd * 0.44, 1.08, GZ + 0.18, 0xbfdce8); k.box(0.04, 0.04, 0.12, hx + sd * 0.78, 1.0, GZ + 0.12, 0x222222); }   // doors folded right back flat against the wall, hooked open
     k.label('BEER GARDEN →', 1.2, 0.3, [xc, 2.55, Z(1645) - 0.115], [0, Math.PI, 0], { bg: '#2e7d32', fg: '#fff', border: null, size: 60 }); }
 
   // ================================================================ toilets
@@ -993,16 +1000,25 @@ export function buildPub(scene) {
   for (const px of [325, 430, 540]) freeTable(X(px), Z(1590), true);
   { const x0 = X(195), x1 = X(715), z0 = Z(1305), z1 = Z(1645);
     const sky = canvasTex(256, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#9ccff2'); gr.addColorStop(1, '#e8f4fc'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,0.8)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.ellipse(40 + i * 40, 60 + (i % 3) * 50, 40, 14, 0, 0, 7); g.fill(); } });
-    const roof = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 - 0.2, z1 - z0 - 0.2), new THREE.MeshBasicMaterial({ map: sky })); roof.rotation.x = Math.PI / 2; roof.position.set((x0 + x1) / 2, H - 0.012, (z0 + z1) / 2); scene.add(roof);
+    const roof = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 - 0.2, z1 - z0 - 0.2), new THREE.MeshLambertMaterial({ color: 0xe8f4f8, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide })); roof.renderOrder = 4;   // real glass: the sky above shows through roof.rotation.x = Math.PI / 2; roof.position.set((x0 + x1) / 2, H - 0.012, (z0 + z1) / 2); scene.add(roof);
     for (let x = x0 + 1.0; x < x1; x += 1.0) k.box(0.06, 0.08, z1 - z0, x, H - 0.05, (z0 + z1) / 2, WHITE);   // glazing bars
     for (let z = z0 + 1.6; z < z1; z += 1.6) k.box(x1 - x0, 0.08, 0.06, (x0 + x1) / 2, H - 0.05, z, WHITE);
-    for (const [i, x] of [x0 + 1.5, x0 + 4.3, x0 + 7.1, x0 + 9.9].entries()) k.window(x, 1.6, z1 - 0.1, 2.2, 1.7, Math.PI, streetViewTex(i + 5, true), { frame: WHITE, bars: 2 });
+    const glassM = new THREE.MeshLambertMaterial({ color: 0xdfeef4, transparent: true, opacity: 0.14, depthWrite: false, side: THREE.DoubleSide });
+    for (const x of CONS_WIN) { const w = 2.2, h = WIN_Y1 - WIN_Y0, yc = (WIN_Y0 + WIN_Y1) / 2;
+      const gl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), glassM); gl.position.set(x, yc, z1); gl.renderOrder = 4; scene.add(gl);
+      k.colliders.push({ min: new THREE.Vector3(x - w / 2, WIN_Y0, z1 - 0.02), max: new THREE.Vector3(x + w / 2, WIN_Y1, z1 + 0.02) });
+      for (const sd of [-1, 1]) { R(x - w / 2 - 0.06, z1 + sd * 0.03, x - w / 2, z1 + sd * 0.11, h + 0.12, yc, WHITE); R(x + w / 2, z1 + sd * 0.03, x + w / 2 + 0.06, z1 + sd * 0.11, h + 0.12, yc, WHITE);   // frames, inside and out
+        R(x - w / 2, z1 + sd * 0.03, x + w / 2, z1 + sd * 0.11, 0.06, WIN_Y1 + 0.03, WHITE); R(x - w / 2, z1 + sd * 0.03, x + w / 2, z1 + sd * 0.11, 0.06, WIN_Y0 - 0.03, WHITE);
+        for (const t of [-1 / 3, 1 / 3]) R(x + t * w - 0.02, z1 + sd * 0.005, x + t * w + 0.02, z1 + sd * 0.06, h, yc, WHITE);                                         // mullions
+        R(x - w / 2, z1 + sd * 0.005, x + w / 2, z1 + sd * 0.05, 0.035, WIN_Y0 + h * 0.72, WHITE); }                                                                  // transom
+      R(x - w / 2 - 0.15, z1 - 0.3, x + w / 2 + 0.15, z1 - 0.08, 0.05, WIN_Y0 - 0.02, WHITE, { collide: true });                                                       // inside sill
+      R(x - w / 2 - 0.1, z1 + 0.08, x + w / 2 + 0.1, z1 + 0.22, 0.05, WIN_Y0 - 0.06, 0xd8d4cc); }                                                                    // outside sill
     for (const [i, z] of [z0 + 2.2, z0 + 4.6].entries()) k.window(x1 - 0.1, 1.6, z, 1.8, 1.7, -Math.PI / 2, streetViewTex(i + 2, true), { frame: WHITE, bars: 2 });
     k.light((x0 + x1) / 2, 2.5, (z0 + z1) / 2, 0xfff4e0, 4, 10);
     k.pool((x0 + x1) / 2, 0, (z0 + z1) / 2, 7, 0xfff8e8);
     k.label('THE CONSERVATORY — PLEASE DO NOT TAP ON THE GLASS (RONNIE: OR LICK IT)', 2.2, 0.4, [x0 + 0.12, 2.35, z1 - 1.8], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#2e7d32', border: '#2e7d32', size: 36 });
     // plants in the corners
-    for (const [x, z] of [[x1 - 0.4, z1 - 0.4], [x0 + 0.4, z1 - 0.4]]) { k.cyl(0.22, 0.16, 0.45, x, 0.225, z, 0xb05a32, 12, { block: true }); for (let i = 0; i < 8; i++) k.box(0.03, 0.6, 0.12, x + Math.cos(i) * 0.08, 0.75, z + Math.sin(i) * 0.08, 0x3a7a2a, { rot: [Math.sin(i) * 0.4, i, Math.cos(i) * 0.4] }); }
+    for (const [x, z] of [[x1 - 0.4, z1 - 0.4], [x0 + 0.4, z1 - 0.4]]) pottedPlant(k, x, z, { s: 1.0, pot: 0xb05a32 });
   }
 
   // ================================================================ lights, beams, cladding, telly, signs
@@ -1101,7 +1117,7 @@ export function buildPub(scene) {
     for (const x of [mc - 0.95, mc + 0.95]) { k.box(0.1, 0.16, 0.05, x, 2.0, fz - 0.03, 0x1a1a1a); k.lamp(x, 2.08, fz - 0.07, 0xffd8a0, 0.05); sconceGlow(k, x, 2.0, fz - 0.09, x, fz + 1); }
     k.lamp(mc, H - 0.01, zc - 0.6, 0xfffbe8, 0.04); k.light(mc, 2.2, zc - 1.0, 0xffc884, 2.5, 4);
     // a fern in a pot by the window and the pillar, like the photo
-    { const fx = X(345), fz = zc - 0.45; k.cyl(0.2, 0.15, 0.4, fx, 0.2, fz, 0x5a3a22, 12, { block: true }); for (let i = 0; i < 16; i++) { const a = i * 2.4; k.parts.push(part(new THREE.ConeGeometry(0.05, 0.6, 4), 0x2e6a2a, [fx + Math.cos(a) * 0.12, 0.65 + (i % 3) * 0.12, fz + Math.sin(a) * 0.12], [Math.sin(a) * 0.7, 0, Math.cos(a) * 0.7])); } }
+    pottedPlant(k, X(345), zc - 0.45, { s: 0.95, pot: 0x5a3a22, fronds: 22 });
     // posters on the pillar and brick
     k.label('MATCH NIGHT — ALL GAMES SHOWN (RONNIE: ALL PIES EATEN)', 0.42, 0.6, [X(290) + 0.05 + 0.29, 1.6, zc - 0.35], [0, Math.PI / 2, 0], { bg: '#1a1a3a', fg: '#ffd400', border: '#c9a24a', size: 36 });
   }
@@ -1136,15 +1152,26 @@ export function buildPub(scene) {
     // ---- the back of the pub from outside: black weatherboard with white windows, a brick wing, a tiled roof
     const weather = canvasTex(256, 128, (g, w, h) => { for (let y = 0; y < h; y += 16) { g.fillStyle = '#1e2228'; g.fillRect(0, y, w, 16); g.fillStyle = '#2a2e36'; g.fillRect(0, y, w, 4); g.fillStyle = '#121418'; g.fillRect(0, y + 14, w, 2); } });
     const brickO = oldBrickTex();
-    k.texBox(GX1 - B.x0, 3.9, 0.2, (B.x0 + GX1) / 2, H + 1.95, GZ, weather, { tile: 1.2 });                       // upstairs
-    k.texBox(2.93 - (-6), H, 0.03, (2.93 - 6) / 2, H / 2, GZ + 0.095, weather, { tile: 1.2 }); k.texBox(GX1 - 4.63, H, 0.03, (GX1 + 4.63) / 2, H / 2, GZ + 0.095, weather, { tile: 1.2 });
-    k.texBox(-6 - B.x0, H + 3.9, 0.06, (B.x0 - 6) / 2, (H + 3.9) / 2, GZ + 0.11, brickO, { tile: 0.9 });          // the brick wing on the left
-    for (const x of [-12, -8.5, -3.5, 0, 6, 9.2]) { k.box(0.9, 1.0, 0.06, x, H + 1.7, GZ + 0.13, 0xf4f4f0); k.box(0.78, 0.88, 0.02, x, H + 1.7, GZ + 0.165, 0x5a6a78); k.box(0.04, 0.88, 0.03, x, H + 1.7, GZ + 0.17, 0xf4f4f0); k.box(0.78, 0.04, 0.03, x, H + 1.95, GZ + 0.17, 0xf4f4f0); }   // upstairs sash windows
+    // upstairs: the main building line; over the conservatory it is set back to the conservatory's inner wall (the
+    // conservatory sticks out on its own under a glass roof), with short returns either side
+    const CX0 = X(195), CX1 = X(715), CZB = Z(1305);
+    k.texBox(CX0 - B.x0, 3.9, 0.2, (B.x0 + CX0) / 2, H + 1.95, GZ, weather, { tile: 1.2 }); k.texBox(GX1 - CX1, 3.9, 0.2, (CX1 + GX1) / 2, H + 1.95, GZ, weather, { tile: 1.2 });
+    k.texBox(CX1 - CX0, 3.9, 0.2, (CX0 + CX1) / 2, H + 1.95, CZB, weather, { tile: 1.2 });
+    for (const x of [CX0, CX1]) k.texBox(0.2, 3.9, GZ - CZB, x, H + 1.95, (GZ + CZB) / 2, weather, { tile: 1.2 });
+    // cladding with the conservatory's window openings left clear
+    const cladHoles = (x0, x1, y0, y1, d, z, tex, tile) => { let a = x0;
+      for (const c of CONS_WIN) { const o0 = Math.max(c - 1.1, x0), o1 = Math.min(c + 1.1, x1); if (o1 <= o0) continue;
+        if (o0 > a) k.texBox(o0 - a, y1 - y0, d, (a + o0) / 2, (y0 + y1) / 2, z, tex, { tile });
+        k.texBox(o1 - o0, WIN_Y0 - y0, d, (o0 + o1) / 2, (y0 + WIN_Y0) / 2, z, tex, { tile }); k.texBox(o1 - o0, y1 - WIN_Y1, d, (o0 + o1) / 2, (WIN_Y1 + y1) / 2, z, tex, { tile }); a = o1; }
+      if (x1 > a) k.texBox(x1 - a, y1 - y0, d, (a + x1) / 2, (y0 + y1) / 2, z, tex, { tile }); };
+    cladHoles(-6, 2.93, 0, H, 0.03, GZ + 0.095, weather, 1.2); k.texBox(GX1 - 4.63, H, 0.03, (GX1 + 4.63) / 2, H / 2, GZ + 0.095, weather, { tile: 1.2 });
+    cladHoles(B.x0, -6, 0, H, 0.06, GZ + 0.11, brickO, 0.9); k.texBox(CX0 - B.x0, 3.9, 0.06, (B.x0 + CX0) / 2, H + 1.95, GZ + 0.11, brickO, { tile: 0.9 });   // the brick wing on the left
+    for (const x of [-12, -8.5, -3.5, 0, 6, 9.2]) { const wz = x > CX0 && x < CX1 ? CZB - GZ : 0; k.box(0.9, 1.0, 0.06, x, H + 1.7, GZ + wz + 0.13, 0xf4f4f0); k.box(0.78, 0.88, 0.02, x, H + 1.7, GZ + wz + 0.165, 0x5a6a78); k.box(0.04, 0.88, 0.03, x, H + 1.7, GZ + wz + 0.17, 0xf4f4f0); k.box(0.78, 0.04, 0.03, x, H + 1.95, GZ + wz + 0.17, 0xf4f4f0); }   // upstairs sash windows
     const goth = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#3a4a56'; g.fillRect(0, 0, w, h); g.strokeStyle = '#f4f4f0'; g.lineWidth = 10; g.strokeRect(5, 5, w - 10, h - 10); g.lineWidth = 6; for (const x of [w / 3, 2 * w / 3]) { g.beginPath(); g.moveTo(x, h); g.lineTo(x, h * 0.42); g.stroke(); } g.beginPath(); g.moveTo(0, h * 0.42); g.lineTo(w, h * 0.42); g.stroke(); for (const cx of [w / 6, w / 2, 5 * w / 6]) { g.beginPath(); g.moveTo(cx - w / 6, h * 0.42); g.quadraticCurveTo(cx - w / 6, h * 0.1, cx, h * 0.04); g.quadraticCurveTo(cx + w / 6, h * 0.1, cx + w / 6, h * 0.42); g.stroke(); } });
-    for (const x of [-3.8, -1.8, 0.2]) { k.box(1.5, 1.7, 0.05, x, 1.3, GZ + 0.12, 0xf4f4f0); k.label('window', 1.4, 1.6, [x, 1.3, GZ + 0.146], [0, 0, 0], { tex: goth }); }   // the gothic glazing
     k.box(GX1 - B.x0, 0.1, 0.3, (B.x0 + GX1) / 2, H + 0.05, GZ + 0.2, 0xf4f4f0);                                   // white fascia between the floors
     { const rf = new THREE.PlaneGeometry(GX1 - B.x0 + 0.6, 4.2), tiles = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#7a3a2a'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 16) for (let x = (y / 16 % 2) * 12; x < w; x += 24) { g.fillStyle = ['#8a4a32', '#6a3222', '#9a5238'][(x + y) % 3]; g.fillRect(x + 1, y + 1, 22, 14); } }); tiles.wrapS = tiles.wrapT = THREE.RepeatWrapping; tiles.repeat.set(16, 4);
-      const m = new THREE.Mesh(rf, new THREE.MeshLambertMaterial({ map: tiles, side: THREE.DoubleSide })); m.rotation.x = -Math.PI / 2 + 0.6; m.position.set((B.x0 + GX1) / 2, H + 3.9 + 1.2, GZ - 1.6); scene.add(m); }
+      const m = new THREE.Mesh(rf, new THREE.MeshLambertMaterial({ map: tiles, side: THREE.DoubleSide })); m.rotation.x = -Math.PI / 2 + 0.6;
+      for (const [x0, x1, z] of [[B.x0 - 0.3, CX0, GZ], [CX1, GX1 + 0.3, GZ], [CX0 - 0.1, CX1 + 0.1, CZB]]) { const r = m.clone(); r.geometry = new THREE.PlaneGeometry(x1 - x0, 4.2); r.position.set((x0 + x1) / 2, H + 3.9 + 1.2, z - 1.6); scene.add(r); } }
     k.box(1.9, 0.08, 1.0, (2.93 + 4.63) / 2, 2.55, GZ + 0.55, 0x1a1a1a); for (const sd of [-1, 1]) k.box(0.05, 0.05, 1.0, (2.93 + 4.63) / 2 + sd * 0.9, 2.45, GZ + 0.55, 0x1a1a1a, { rot: [0.5, 0, 0] });   // a canopy over the door
     k.lamp(2.6, 2.3, GZ + 0.2, 0xfff0d0, 0.06); k.lamp(5.0, 2.3, GZ + 0.2, 0xfff0d0, 0.06);
     // (everything from here on is laid out the other way round, then mirrored so the river is on the right as you walk out)
@@ -1186,10 +1213,10 @@ export function buildPub(scene) {
       if (umb !== null) parasol(x, z, y0, umb);
     };
     const barrel = (x, z) => { const g = new THREE.LatheGeometry([[0, 0], [0.26, 0], [0.31, 0.25], [0.32, 0.45], [0.31, 0.65], [0.26, 0.9], [0, 0.9]].map(([a, b]) => new THREE.Vector2(a, b)), 14); k.parts.push(part(g, 0x6a4024, [x, 0, z])); for (const y of [0.1, 0.32, 0.58, 0.8]) put(CYL(0.315, 0.315, 0.035, 14), 0x2a2a2a, x, z, 0, 0, y, 0); put(CYL(0.36, 0.36, 0.04, 14), 0x5a3a20, x, z, 0, 0, 0.92, 0); k.colliders.push({ min: new THREE.Vector3(x - 0.3, 0.88, z - 0.3), max: new THREE.Vector3(x + 0.3, 0.94, z + 0.3) }); blk(x - 0.33, z - 0.33, x + 0.33, z + 0.33, 0.94); k.spawns.push(new THREE.Vector3(x, 1.0, z)); };
-    const hedge = (x0, z0, x1, z1, h = 1.3) => { k.texBox(x1 - x0, h - 0.4, z1 - z0, (x0 + x1) / 2, 0.4 + (h - 0.4) / 2, (z0 + z1) / 2, LEAFT, { tile: 0.8 }); const g = new THREE.CapsuleGeometry(Math.min(x1 - x0, z1 - z0) / 2, Math.max(x1 - x0, z1 - z0) - Math.min(x1 - x0, z1 - z0), 4, 8); if (x1 - x0 > z1 - z0) g.rotateZ(Math.PI / 2); else g.rotateX(Math.PI / 2); g.scale(1.04, 0.35, 1.04); k.parts.push(part(g, GREENW, [(x0 + x1) / 2, h, (z0 + z1) / 2])); blk(x0, z0, x1, z1, h); };
+    const hedge = (x0, z0, x1, z1, h = 1.3) => leafyHedge(k, x0, z0, x1, z1, h);
     const lattice = (x0, x1, z) => { R(x0, z - 0.03, x1, z + 0.03, 0.45, 0.225, FENCE); for (let x = x0; x < x1; x += 0.15) for (const sd of [1, -1]) k.box(0.02, 0.62, 0.012, x + 0.075, 0.27, z + sd * 0.02, 0x4a3a30, { rot: [0, 0, sd * 0.78] }); };
     const lampPost = (x, z, y0 = 0) => { k.cyl(0.04, 0.06, 2.6, x, 1.3 + y0, z, 0x111111, 8); k.cyl(0.12, 0.12, 0.1, x, 0.05 + y0, z, 0x111111, 10); for (const sd of [-1, 1]) { k.box(0.4, 0.03, 0.03, x + sd * 0.2, 2.55 + y0, z, 0x111111); k.cyl(0.07, 0.1, 0.18, x + sd * 0.38, 2.42 + y0, z, 0x1a1a1a, 8); k.lamp(x + sd * 0.38, 2.36 + y0, z, 0xfff0d0, 0.05); } blk(x - 0.08, z - 0.08, x + 0.08, z + 0.08, 2.7); };
-    bench(-8.0, 18.2, 0, 0, false); bench(-4.6, 18.2, 0, 0, false); bench(-1.2, 18.2, 0);
+    bench(-8.0, 18.2, 0, 0, false); bench(-5.5, 18.2, 0, 0, false);   // (the deck in front of the door is kept clear)
     for (const [x, c] of [[7.6, 0x7e57c2], [8.3, 0x43a047], [9.0, 0x43a047], [9.7, 0xe53935]]) { R(x - 0.32, 18.3, x + 0.32, 18.95, 0.42, 0.21, c, { collide: true, block: true }); R(x - 0.32, 18.3, x + 0.32, 18.95, 0.05, 0.445, 0xffffff); }
     { const px = 10.0, pz = 17.2; roundT(px, pz); const pm = new THREE.MeshLambertMaterial({ color: 0xc8189a }); MM.compose(V3.set(px, 2.05, pz), QQ.identity(), S1); k.instance(openG, pm, MM.clone()); MM.compose(V3.set(px, 0, pz), QQ.identity(), S1); k.instance(poleG, poleM, MM.clone()); }
     lampPost(7.4, 19.0);
@@ -1197,7 +1224,7 @@ export function buildPub(scene) {
     flr(GX0, 19.4, GX1, 20.02, SLATE, 0.6, 0.003); flr(GX0, 21.98, GX1, 22.9, SLATE, 0.6, 0.003);   // slate chippings either side of the water
     for (const z of [19.95, 22.05]) R(GX0, z - 0.06, GX1 + 7, z + 0.06, 0.25, -0.12, 0x3a3a34);   // the stream's sides
     { const wt = canvasTex(256, 128, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#5ab83a'); gr.addColorStop(1, '#3a9a2a'); g.fillStyle = gr; g.fillRect(0, 0, w, h); for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '200,240,140' : '30,90,20'},0.25)`; g.beginPath(); g.ellipse(Math.random() * w, Math.random() * h, 2 + Math.random() * 6, 1 + Math.random() * 2, 0, 0, 7); g.fill(); } }); wt.wrapS = wt.wrapT = THREE.RepeatWrapping; wt.repeat.set(10, 1);
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(GX1 - GX0 + 7, 1.7), new THREE.MeshLambertMaterial({ map: wt, emissive: 0x0a2a08 })); m.rotation.x = -Math.PI / 2; m.position.set((GX0 + GX1 + 7) / 2, -0.12, 21.0); scene.add(m); }
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(GX1 - GX0 + 7, 1.7), waterMaterial({ deep: 0x1e3a12, shallow: 0x5a8a28, flow: 0.18, scale: 0.9 })); m.rotation.x = -Math.PI / 2; m.position.set((GX0 + GX1 + 7) / 2, -0.12, 21.0); scene.add(m); }
     for (const z of [20.12, 21.88]) { R(GX0, z - 0.1, GX1 + 7, z + 0.1, 0.22, -0.02, 0x3a2a20); for (let x = GX0 + 0.5; x < GX1 + 7; x += 1.6) k.cyl(0.07, 0.08, 0.5, x, 0.1, z + (z < 21 ? -0.05 : 0.05), 0x1a1a1a, 8); }
     blk(GX0, 19.5, 5.4, 22.8, 1.0); blk(7.0, 19.5, GX1, 22.8, 1.0);
     for (let i = 0; i < 18; i++) { const x = GX0 + 0.6 + i * 1.15 + ((i * 7) % 3) * 0.2, z = i % 2 ? 20.25 : 21.75; if (x > 5.0 && x < 7.4) continue; for (let j = 0; j < 7; j++) k.box(0.02, 0.6 + ((i + j) % 3) * 0.2, 0.05, x + (j - 3) * 0.04, 0.3, z, 0x6a9a3a, { rot: [((j * 3) % 5 - 2) * 0.1, j, ((j * 7) % 5 - 2) * 0.12] }); }
@@ -1229,7 +1256,7 @@ export function buildPub(scene) {
     for (const [x, z, u] of [[4.6, 27.0, false], [4.6, 29.8, true], [4.6, 32.6, false], [4.6, 35.4, false]]) bench(x, z, 0, 0, u);
     for (const x of [-6.0, -3.0, 0.0, 3.0]) roundT(x, 38.6, 0, x === 0 ? true : false);
     barrel(-5.4, 30.9); barrel(2.6, 26.9); barrel(2.8, 37.0); barrel(-5.6, 35.6);
-    for (const [x, z] of [[1.6, 26.9], [-4.6, 37.0]]) { R(x - 0.45, z - 0.3, x + 0.45, z + 0.3, 0.5, 0.25, 0x5a3a20, { block: true }); for (let i = 0; i < 20; i++) k.parts.push(part(new THREE.SphereGeometry(0.1, 6, 4), [0x3a7a2a, 0x5a9a3a, 0xc8202a, 0xffd400][i % 4], [x - 0.35 + (i % 5) * 0.17, 0.55 + (i % 3) * 0.08, z - 0.2 + Math.floor(i / 5) * 0.13])); }   // planters
+    for (const [x, z] of [[1.6, 26.9], [-4.6, 37.0]]) { R(x - 0.45, z - 0.3, x + 0.45, z + 0.3, 0.5, 0.25, 0x5a3a20, { block: true }); for (const dx of [-0.25, 0.0, 0.25]) leafyBall(k, x + dx, 0.68, z, 0.24, { n: 26, r: 0.07 }); for (let i = 0; i < 14; i++) k.parts.push(part(new THREE.SphereGeometry(0.035, 6, 4), [0xc8202a, 0xffd400, 0xf4f4f4, 0xe0508a][i % 4], [x - 0.38 + (i % 7) * 0.12, 0.82 + (i % 3) * 0.05, z - 0.18 + Math.floor(i / 7) * 0.3])); }   // planters, full of flowers
     // ---- the outdoor bar: an octagon on a low platform, posts, a panelled counter with taps, a shingle roof
     { const gx = -1.2, gz = 31.4, RR = 3.2, top = 2.65, ang = (i) => i / 8 * Math.PI * 2 + Math.PI / 8;
       const plat = new THREE.CylinderGeometry(RR + 0.25, RR + 0.3, 0.15, 8); plat.rotateY(Math.PI / 8); k.parts.push(part(plat, 0x4a3a30, [gx, 0.075, gz]));
@@ -1268,20 +1295,23 @@ export function buildPub(scene) {
     R(7.3, 22.6, 7.6, GZ1 - 2, 0.15, 0.075, 0x4a3a30, { collide: true });
     railZ(GX1 - 0.05, 19.4, GZ1 - 2, 1.0, 0.3); railX(7.6, GX1, GZ1 - 2, 1.0);
     for (const z of [24.4, 27.4, 30.4, 33.4, 36.4]) roundT(9.2, z, 0.3, true);
-    for (const z of [25.9, 31.9]) { R(10.05, z - 0.5, 10.6, z + 0.5, 0.55, 0.575, 0x5a3a20, { block: true }); for (let i = 0; i < 18; i++) k.parts.push(part(new THREE.SphereGeometry(0.12, 6, 4), [0x3a7a2a, 0x5a9a3a, 0x2e6a22][i % 3], [10.12 + (i % 3) * 0.16, 0.92 + (i % 2) * 0.1, z - 0.4 + Math.floor(i / 3) * 0.16])); }
+    for (const z of [25.9, 31.9]) { R(10.05, z - 0.5, 10.6, z + 0.5, 0.55, 0.575, 0x5a3a20, { block: true }); for (const dz of [-0.3, 0.05, 0.38]) leafyBall(k, 10.32, 0.98, z + dz, 0.26, { n: 28, r: 0.075 }); }
     for (const z of [23.0, 29.0, 35.0]) lampPost(10.55, z, 0.3);
     // ---- the river beyond the railing: reeds on the bank, the water, the far bank
     { const wt = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#5a8a8a'; g.fillRect(0, 0, w, h); for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '220,240,240' : '30,60,60'},0.18)`; g.fillRect(Math.random() * w, Math.random() * h, 8 + Math.random() * 20, 1.5); } }); wt.wrapS = wt.wrapT = THREE.RepeatWrapping; wt.repeat.set(3, 10);
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(6, 40), new THREE.MeshLambertMaterial({ map: wt, emissive: 0x0a1a1a })); m.rotation.x = -Math.PI / 2; m.position.set(GX1 + 4.5, -0.25, 28); scene.add(m);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(18, 70), waterMaterial({ deep: 0x16302e, shallow: 0x4a706a, flow: 0.04, scale: 0.4 })); m.rotation.x = -Math.PI / 2; m.position.set(GX1 + 10.5, -0.25, 30); scene.add(m);
       const bank = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 40), new THREE.MeshLambertMaterial({ map: LEAFT })); bank.rotation.x = -Math.PI / 2; bank.position.set(GX1 + 1.1, 0.0, 28); scene.add(bank);
       for (let i = 0; i < 160; i++) { const x = GX1 + 0.2 + Math.random() * 1.9, z = 14 + Math.random() * 30, h = 0.8 + Math.random() * 0.9; k.box(0.025, h, 0.06, x, h / 2, z, [0x6a9a3a, 0x8aa84a, 0x5a8a2a, 0xa8b860][i % 4], { rot: [(Math.random() - 0.5) * 0.4, Math.random() * 3, (Math.random() - 0.5) * 0.4] }); }
-      const far = new THREE.Mesh(new THREE.PlaneGeometry(4, 40), new THREE.MeshLambertMaterial({ map: LEAFT })); far.rotation.x = -Math.PI / 2; far.position.set(GX1 + 9.5, 0.2, 28); scene.add(far); }
+      const far = new THREE.Mesh(new THREE.PlaneGeometry(10, 70), new THREE.MeshLambertMaterial({ map: LEAFT })); far.rotation.x = -Math.PI / 2; far.position.set(GX1 + 24.5, 0.15, 30); scene.add(far);
+      R(GX1 + 19.4, -5, GX1 + 19.6, 65, 0.5, -0.05, 0x5a5040);                                             // the far bank's edge
+      for (let z = 0; z < 62; z += 2.6) { const x = GX1 + 20.5 + ((z * 7) % 3); leafyBall(k, x, 0.5, z, 0.9 + ((z * 3) % 5) * 0.12); }   // bushes along the far bank
+      for (const [x, z, r] of [[GX1 + 23, 8, 2.2], [GX1 + 25, 20, 2.8], [GX1 + 23.5, 33, 2.4], [GX1 + 26, 45, 3.0], [GX1 + 24, 56, 2.2]]) { k.cyl(0.2, 0.3, 3.6, x, 1.8, z, 0x5a4030, 8); leafyBall(k, x, 4.2, z, r); } }
     // ---- the far end: hedges and a fence, the houses beyond, trees
     hedge(GX0 + 0.1, GZ1 - 0.9, 7.6, GZ1 - 0.1, 1.7); railX(GX0, GX1, GZ1 - 0.05, 1.8);
     for (let i = 0; i < 9; i++) { const x = -12 + i * 3.6, d = 3 + (i % 3), col = [0xa85a3a, 0x9a4a2a, 0xe8e2d8, 0xb86a4a, 0x8aa0b8][i % 5]; k.box(3.2, 4.2, d, x, 2.1, GZ1 + 3 + d / 2 + (i % 2) * 1.5, col);
       const rg = new THREE.ConeGeometry(2.4, 1.6, 4); rg.rotateY(Math.PI / 4); rg.scale(1, 1, d / 3.4); k.parts.push(part(rg, [0x5a3a2a, 0x3a3a3a, 0x6a4030][i % 3], [x, 5.0, GZ1 + 3 + d / 2 + (i % 2) * 1.5]));
       for (const wx of [-0.8, 0.8]) for (const wy of [1.3, 3.1]) k.box(0.7, 0.8, 0.04, x + wx, wy, GZ1 + 2.98 + (i % 2) * 1.5, 0xf4f4f0); }
-    for (const [x, z, r] of [[-11.5, 30, 2.4], [-12, 40, 2.8], [6, GZ1 + 2.0, 1.8], [12, GZ1 + 4, 2.6], [-6, GZ1 + 2.5, 1.6]]) { k.cyl(0.18, 0.25, 3.4, x, 1.7, z, 0x5a4030, 8); for (let i = 0; i < 6; i++) k.parts.push(part(new THREE.IcosahedronGeometry(r * (0.6 + (i % 3) * 0.15), 1), [0x3a6a2a, 0x4a7a32, 0x2e5a22][i % 3], [x + Math.cos(i) * r * 0.45, 3.6 + (i % 2) * r * 0.4, z + Math.sin(i * 1.3) * r * 0.45])); }
+    for (const [x, z, r] of [[-11.5, 30, 2.4], [-12, 40, 2.8], [6, GZ1 + 2.0, 1.8], [12, GZ1 + 4, 2.6], [-6, GZ1 + 2.5, 1.6]]) { k.cyl(0.18, 0.25, 3.4, x, 1.7, z, 0x5a4030, 8); for (let i = 0; i < 3; i++) k.cyl(0.06, 0.1, 1.4, x + Math.cos(i * 2.1) * 0.5, 3.3, z + Math.sin(i * 2.1) * 0.5, 0x5a4030, 6); leafyBall(k, x, 3.9, z, r); leafyBall(k, x + r * 0.45, 3.5, z - r * 0.3, r * 0.65); leafyBall(k, x - r * 0.4, 3.7, z + r * 0.35, r * 0.6); }
     // ---- sunshine
     k.light(-2, 9, 28, 0xfff4e0, 3.2, 26); k.light(6, 8, 21, 0xfff4e0, 2.4, 16); k.light(9, 7, 34, 0xfff4e0, 2.2, 16);
     for (const [x, z] of [[-2, 28], [6, 22], [9, 33], [-6, 36]]) k.pool(x, 0, z, 8, 0xfff8e0);
@@ -1320,6 +1350,7 @@ export function buildPub(scene) {
   }
   buildRestaurant(k, scene, { chairsAt });
   k.splitX = -14.0;                                   // (the restaurant's furniture merges separately from the pub's, so it can be skipped)
+  const sky = skyDome(scene);
   const room = k.finish({
     name: 'The Oysterfleet',
     sky: 0xffe2c0, ground: 0x6a4a3a, hemiI: 1.55, sun: 0xfff0d8, sunI: 0.45, sunPos: [-6, 10, 5], ambient: 0.32,
@@ -1350,8 +1381,9 @@ export function buildPub(scene) {
   room.extraItems = [{ type: 'poop', pos: poopAt }];
   room.machines = machines;
   const baseUpdate = room.update.bind(room);
+  let outT = 0;
   room.update = (dt) => {
-    baseUpdate(dt);
+    baseUpdate(dt); outT += dt; sky.update(outT); updateOutdoor(outT);
     for (const m of machines) {
       if (m.cool > 0) m.cool -= dt;
       if (m.t < 0) continue;

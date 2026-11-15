@@ -11,6 +11,7 @@ import { part } from '../geo.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { canvasTex, tileTex, streetViewTex } from './kit.js';
+import { pottedPlant } from './outdoor.js';
 
 const H = 3.0, T = 0.08;
 export const REST_H = 4.2;          // the main dining room is taller than the rest of the building
@@ -441,9 +442,7 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
     R(x - 0.22, z - 0.15, x + 0.22, z + 0.15, 0.012, 1.106, 0xfaf6ea); k.label('RESERVATIONS: RONNIE x 1 (FOR 9)', 0.4, 0.26, [x, 1.114, z], [-Math.PI / 2, 0, Math.PI / 2], { bg: '#faf6ea', fg: '#111', border: null, size: 26 });
     k.cyl(0.04, 0.05, 0.03, x + 0.18, 1.115, z - 0.14, BRASS, 10); k.cyl(0.006, 0.006, 0.25, x + 0.18, 1.24, z - 0.14, BRASS, 6); P(new THREE.CylinderGeometry(0.04, 0.07, 0.07, 14, 1, true), 0x1b3a2a, [x + 0.18, 1.38, z - 0.14]); k.lamp(x + 0.18, 1.36, z - 0.14, 0xffd8a0, 0.02);
     k.label('PLEASE WAIT TO BE SEATED', 0.5, 0.36, [x + 0.29, 0.75, z], [0, Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 40 }); }
-  const plant = (x, z, s = 1) => { k.cyl(0.2 * s, 0.15 * s, 0.42 * s, x, 0.21 * s, z, 0x2a2420, 14, { block: true }); k.cyl(0.21 * s, 0.21 * s, 0.03, x, 0.42 * s, z, BRASS, 14);
-    for (let i = 0; i < 26; i++) { const a = i * 2.4, r = 0.05 + (i % 5) * 0.05, h = 0.55 + (i % 7) * 0.13; const lf = new THREE.SphereGeometry(0.1 * s, 6, 4); lf.scale(0.35, 0.12, 1); lf.rotateY(a); lf.rotateX(0.5); P(lf, [0x2e6a2a, 0x3a7a32, 0x24561f][i % 3], [x + Math.cos(a) * r * s, h * s, z + Math.sin(a) * r * s]); }
-    for (let i = 0; i < 7; i++) P(new THREE.CylinderGeometry(0.008, 0.01, 0.6 * s, 5), 0x3a5a22, [x + Math.cos(i) * 0.05, 0.7 * s, z + Math.sin(i) * 0.05], [Math.cos(i) * 0.3, 0, Math.sin(i) * 0.3]); };
+  const plant = (x, z, s = 1) => pottedPlant(k, x, z, { s: s * 1.1, pot: 0x2a2420, rim: BRASS, fronds: 20 });
   plant(-25.6, -13.75); plant(-28.5, -8.3, 1.1); plant(-28.4, 5.6, 1.1); plant(-18.2, 9.4); plant(-38.4, -7.9, 1.05); plant(-15.0, -8.4, 0.9);
   { const x = -19.6, z0 = -13.95; R(x - 0.7, z0 - 0.42, x + 0.7, z0, 0.92, 0.46, 0x4a2412, { collide: true, block: true }); R(x - 0.72, z0 - 0.44, x + 0.72, z0 + 0.02, 0.03, 0.935, 0x3a1a0c, { collide: true });   // waiter's station: cutlery drawers, folded napkins, jugs
     for (let i = 0; i < 4; i++) { R(x - 0.66 + i * 0.33, z0 - 0.01, x - 0.36 + i * 0.33, z0 + 0.0, 0.14, 0.8, 0x5a2e18); k.box(0.08, 0.015, 0.015, x - 0.51 + i * 0.33, 0.8, z0 + 0.008, BRASS); }
