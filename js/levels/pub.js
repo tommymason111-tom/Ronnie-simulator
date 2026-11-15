@@ -1464,7 +1464,7 @@ export function buildPub(scene) {
     for (const o of scene.children.slice(sceneStart)) if (o.isMesh && !o.isInstancedMesh && o.geometry) { o.geometry.computeBoundingBox(); bx.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); if (bx.max.x < -13.6) west.push({ o, x0: bx.min.x, x1: bx.max.x, z0: bx.min.z, z1: bx.max.z }); }
     scene.onBeforeRender = (r, sc, camera) => {
       cam.setFromMatrixPosition(camera.matrixWorld);
-      const outside = cam.z > Z(1305); scene.fog.near = outside ? 27 : 1e4; scene.fog.far = outside ? 39.5 : 2e4;
+      const outside = cam.z > Z(1305); if (scene.fog && !scene.userData.fogLock) { scene.fog.near = outside ? 27 : 1e4; scene.fog.far = outside ? 39.5 : 2e4; }   // (Imposter sets its own: how far you can see)
       const inPub = cam.x > DX + 0.05 && cam.z < Z(1305);          // (only from inside the pub itself is the restaurant hidden behind walls)
       for (const w of west) {
         if (!inPub) { w.o.visible = !(cam.z > GZ && w.z1 < GZ - 0.3); continue; }      // (out in the garden the restaurant is behind the pub's solid back wall)

@@ -60,7 +60,7 @@ export class Imposter {
     // no food in this one: none at all, ever (the host's game takes it all away, and keeps it that way)
     this.clearFood();
     // the vision: you only see so far (further as an imposter; hardly at all with the lights out)
-    this.fog0 = g.scene.fog; g.scene.fog = new THREE.Fog(0x05060a, 5, 13);
+    this.fog0 = g.scene.fog; g.scene.fog = new THREE.Fog(0x05060a, 5, 13); g.scene.userData.fogLock = true;
     // nobody hits anybody, and you can only talk in meetings (ghosts only to ghosts)
     const mp = g.mp; mp.noPunch = true;
     mp.chatGate = () => { const me = this.mine(); if (!me || !me.alive) return { ok: true, ghost: true }; if (this.phase === 'meeting' || this.phase === 'waiting' || this.phase === 'over') return { ok: true }; return { ok: false, why: 'SHH! YOU CAN ONLY TALK IN MEETINGS' }; };
@@ -190,7 +190,7 @@ export class Imposter {
       this.syncPuppets(); return;
     }
     if (k === 'imSync') { for (const id of m.dead) { const p = this.players.get(id); if (p) p.alive = false; } for (const id in m.done) { const p = this.players.get(id); if (p) for (const t of m.done[id]) p.done.add(t); } this.bar.done = m.bar;
-      if (m.phase === 'play') { this.phase = 'play'; this.introT = 0; } if (m.sab) { this.sab = { k: m.sab.k, until: m.sab.left ? now() + m.sab.left : 0, fixed: {} }; this.sabAlert(true); } if (!this.mine() || !this.mine().alive) this.g.scene.fog = null; this.syncPuppets(); return; }
+      if (m.phase === 'play') { this.phase = 'play'; this.introT = 0; } if (m.sab) { this.sab = { k: m.sab.k, until: m.sab.left ? now() + m.sab.left : 0, fixed: {} }; this.sabAlert(true); } this.setFog(); this.syncPuppets(); return; }
     if (k === 'imBar') { this.bar.done = m.done; const p = this.players.get(m.who); if (p) p.done.add(m.task); return; }
     if (k === 'imMeet') { this.startMeeting(m); return; }
     if (k === 'imVoted') { if (this.meeting) this.meeting.voted.add(m.who); sfx('clink', null, 0.6); return; }
@@ -384,7 +384,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
       : `<h1>THROWN OUT</h1><p style="color:#cfe0ff">You're a ghost 👻 Only ghosts can hear you now.</p>`;
     sp.classList.add('on'); clearTimeout(this.splashT); this.splashT = setTimeout(() => sp.classList.remove('on'), 5500);
     if (this.g.renderer.xr.isPresenting) this.g.showBanner(how === 'killed' ? 'KILLED BY' : 'THROWN OUT', how === 'killed' ? (k ? k.name.toUpperCase() : '?') : 'YOU\'RE A GHOST');
-    sfx('sadviolin', null, 0.8); this.g.scene.fog = null; this.syncPuppets();
+    sfx('sadviolin', null, 0.8); this.setFog(); this.syncPuppets();
   }
   startMeeting(m) {
     this.phase = 'meeting'; this.panel.close(true); this.setVent(null); this.sabEl.classList.remove('on'); this.toggleMap(false); this.spect = null;
@@ -467,13 +467,13 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     this.toast('BACK TO WORK');
   }
   sabAlert(on) {
-    const el = this.alertEl; if (!on) { el.classList.remove('on'); this.g.scene.fog && this.setFog(); this.toast('FIXED ✓'); return; }
+    const el = this.alertEl; if (!on) { el.classList.remove('on'); this.setFog(); this.toast('FIXED ✓'); return; }
     sfx('thud', null, 1); this.setFog();
     if (this.g.renderer.xr.isPresenting) this.g.showBanner(SAB[this.sab.k].icon + ' SABOTAGE', SAB[this.sab.k].name);
   }
-  setFog() { const me = this.mine(); if (!me || !me.alive) { this.g.scene.fog = null; return; } const dark = this.sab && this.sab.k === 'lights' && !me.imp; const f = this.g.scene.fog || (this.g.scene.fog = new THREE.Fog(0x05060a, 4, 10)); f.near = dark ? 0.8 : me.imp ? 7 : 5; f.far = dark ? 3.4 : me.imp ? 18 : 13; }
+  setFog() { const me = this.mine(), f = this.g.scene.fog || (this.g.scene.fog = new THREE.Fog(0x05060a, 5, 13)); if (!me || !me.alive || this.phase === 'over') { f.near = 1e4; f.far = 2e4; return; } const dark = this.sab && this.sab.k === 'lights' && !me.imp; f.near = dark ? 0.8 : me.imp ? 7 : 5; f.far = dark ? 3.4 : me.imp ? 18 : 13; }
   win(m) {
-    this.phase = 'over'; this.panel.close(true); this.setVent(null); this.sabEl.classList.remove('on'); this.alertEl.classList.remove('on'); this.g.scene.fog = null;
+    this.phase = 'over'; this.panel.close(true); this.setVent(null); this.sabEl.classList.remove('on'); this.alertEl.classList.remove('on'); this.phase = 'over'; this.setFog();
     const imps = (this.impList || []).map(id => this.players.get(id)).filter(Boolean), me = this.mine(), mine = me && (m.side === 'imposter' ? this.impList.includes(this.me) : !this.impList.includes(this.me));
     sfx(mine ? 'fanfare' : 'sadviolin', null, 1);
     const playB = { x: 40, y: 430, w: 200, h: 56 }, lobbyB = { x: 272, y: 430, w: 200, h: 56 };
@@ -505,14 +505,15 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     txt(x, 'THE OYSTERFLEET · TAP TO CLOSE', W / 2, 40, 30, '#ffd400');
   }
   renderMap() {
-    try { const g = this.g, r = g.renderer, box = this.mapBox = [-15, 9, -16, 14.5], W = 900, H = Math.round(W * (box[3] - box[2]) / (box[1] - box[0]));
+    // a top-down picture of the pub: drawn once onto the game's own canvas (at the map's size) and copied straight off it
+    const box = this.mapBox = [-15, 9, -16, 14.5];
+    try { const g = this.g, r = g.renderer, W = 600, H = Math.round(W * (box[3] - box[2]) / (box[1] - box[0])), size = r.getSize(new THREE.Vector2()), pr = r.getPixelRatio();
       const cam = new THREE.OrthographicCamera(box[0], box[1], -box[2], -box[3], 0.01, 3.2); cam.position.set(0, 2.75, 0); cam.up.set(0, 0, -1); cam.lookAt(0, 0, 0);
-      const rt = new THREE.WebGLRenderTarget(W, H); const fog = g.scene.fog; g.scene.fog = null; const vis = this.grp.visible; this.grp.visible = false;
-      r.setRenderTarget(rt); r.render(g.scene, cam); r.setRenderTarget(null); g.scene.fog = fog; this.grp.visible = vis;
-      const px = new Uint8Array(W * H * 4); r.readRenderTargetPixels(rt, 0, 0, W, H, px); rt.dispose();
-      const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'), id = x.createImageData(W, H);
-      for (let y = 0; y < H; y++) id.data.set(px.subarray((H - 1 - y) * W * 4, (H - y) * W * 4), y * W * 4);
-      x.putImageData(id, 0, 0); this.mapImg = c; this.mapCv.height = H; } catch (e) { console.warn('map', e); this.mapBox = [-15, 9, -16, 14.5]; }
+      const fog = g.scene.fog, vis = this.grp.visible; g.scene.fog = new THREE.Fog(0x000000, 1e4, 2e4); this.grp.visible = false;
+      r.setPixelRatio(1); r.setSize(W, H, false); r.render(g.scene, cam);
+      const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(r.domElement, 0, 0, W, H);
+      r.setPixelRatio(pr); r.setSize(size.x, size.y, false); g.scene.fog = fog; this.grp.visible = vis;
+      this.mapImg = c; this.mapCv.width = 900; this.mapCv.height = Math.round(900 * H / W); } catch (e) { console.warn('map', e); }
   }
 
   // ------------------------------------------------------------------ every frame
@@ -594,7 +595,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     document.body.classList.remove('imposter'); window.removeEventListener('keydown', this.onKey, true);
     for (const k in this.handlers) delete this.net.on[k]; this.net.on.leave = this.leaveWas;
     const mp = this.g.mp; mp.noPunch = false; mp.chatGate = null; mp.chatRecvGate = null;
-    this.g.scene.fog = this.fog0 || null; this.g.player.menuLock = false;
+    this.g.scene.fog = this.fog0 || null; this.g.scene.userData.fogLock = false; this.g.player.menuLock = false;
     for (const p of this.players.values()) { const av = this.avatar(p.id); if (av) { av.impBody = av.impHidden = av.impRed = false; av.impLaid = false; } }
   }
 }
