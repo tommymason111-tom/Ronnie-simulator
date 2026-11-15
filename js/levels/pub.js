@@ -716,78 +716,121 @@ export function buildPub(scene) {
   }
   // the entrance booking area: front doors on the corner, the booking podium, coat hooks
   { const mx = (door.x0 + door.x1) / 2 - door.uz * 0.07, mz = (door.z0 + door.z1) / 2 + door.ux * 0.07;
-    const g = new THREE.Mesh(new THREE.PlaneGeometry(door.L - 0.3, 2.2), new THREE.MeshBasicMaterial({ map: streetViewTex(1), color: 0xdddddd })); g.position.set(mx, 1.1, mz); g.rotation.y = door.ry; scene.add(g);
-    k.box(0.04, 2.2, 0.06, mx, 1.1, mz, DARKWOOD, { rot: [0, door.ry, 0] });
-    k.label('EXIT', 0.4, 0.18, [mx, 2.5, mz], [0, door.ry, 0], { bg: '#1b8a3a', fg: '#fff', border: null, size: 90, glow: true });
-    // reception (copied from the real one): a honey-oak raised-panel desk with a cream top, its back to the top
-    // wall; staff stand behind it, in front of a red wall with a glazed office door under a "Reception" plaque
-    const wz = Z(385) + T2, cx0 = 2.05, cx1 = 4.15, cz0 = wz + 0.95, cz1 = cz0 + 0.58, TOP = 1.06;
+    // the front doors: a pair of glazed oak doors in a heavy frame, a gilt-lettered fanlight over them, brass push
+    // plates and pull handles, kick plates, door closers, the opening hours, EXIT over the top
+    { const dx0 = door.x0, dz0 = door.z0, ux = door.ux, uz = door.uz, nx = -uz, nz = ux, ry = door.ry, LL = door.L;
+      const at = (s, d) => [dx0 + ux * s + nx * d, dz0 + uz * s + nz * d];
+      const piece = (s0, s1, y0, y1, d0, d1, color) => { const [x, z] = at((s0 + s1) / 2, (d0 + d1) / 2); k.box(s1 - s0, y1 - y0, d1 - d0, x, (y0 + y1) / 2, z, color, { rot: [0, ry, 0] }); };
+      const OAKDR = 0x5a3418, OAKDL = 0x7a4a24, BR = 0xc9a24a;
+      const st = new THREE.Mesh(new THREE.PlaneGeometry(LL - 0.2, 2.2), new THREE.MeshBasicMaterial({ map: streetViewTex(1), color: 0xd8d8d8 }));
+      { const [x, z] = at(LL / 2, 0.055); st.position.set(x, 1.15, z); st.rotation.y = ry; scene.add(st); }
+      piece(0, 0.12, 0, H, 0.05, 0.16, OAKDR); piece(LL - 0.12, LL, 0, H, 0.05, 0.16, OAKDR);                 // the frame
+      piece(0.12, LL - 0.12, 2.28, 2.4, 0.05, 0.16, OAKDR); piece(0.12, LL - 0.12, H - 0.1, H, 0.05, 0.16, OAKDR);
+      piece(0, LL, 0, 0.03, 0.05, 0.3, 0x8a8a8a);                                                           // the stone threshold
+      { const ft = canvasTex(512, 96, (g, w, h) => { g.fillStyle = '#10180f'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(160,190,210,0.25)'; g.fillRect(0, 0, w, h);
+          g.font = 'italic 700 46px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#e8c45a'; g.strokeStyle = '#6a4a12'; g.lineWidth = 2; g.strokeText('The Oysterfleet', w / 2, h / 2); g.fillText('The Oysterfleet', w / 2, h / 2); });
+        const [x, z] = at(LL / 2, 0.165); k.label('fanlight', LL - 0.26, H - 2.5, [x, (2.4 + H - 0.1) / 2, z], [0, ry, 0], { tex: ft }); }
+      // two leaves: stiles and rails, a fielded panel at the bottom, glass above with a bar, brass furniture
+      const lw = (LL - 0.24) / 2;
+      for (const [i, s0] of [0.12, 0.12 + lw].entries()) { const s1 = s0 + lw, D0 = 0.06, D1 = 0.11;
+        piece(s0, s0 + 0.09, 0.03, 2.27, D0, D1, OAKDL); piece(s1 - 0.09, s1, 0.03, 2.27, D0, D1, OAKDL);
+        piece(s0 + 0.09, s1 - 0.09, 0.03, 0.2, D0, D1, OAKDL); piece(s0 + 0.09, s1 - 0.09, 0.8, 0.92, D0, D1, OAKDL); piece(s0 + 0.09, s1 - 0.09, 2.17, 2.27, D0, D1, OAKDL);
+        piece(s0 + 0.09, s1 - 0.09, 0.2, 0.8, D0 + 0.01, D1 - 0.01, OAKDR); piece(s0 + 0.15, s1 - 0.15, 0.27, 0.73, D1 - 0.01, D1 + 0.005, OAKDL);   // fielded panel
+        piece(s0 + 0.09, s1 - 0.09, 1.55, 1.58, D0 + 0.02, D1 - 0.02, OAKDL);                                     // glazing bar
+        piece(s0 + 0.02, s1 - 0.02, 0.03, 0.2, D1, D1 + 0.004, BR);                                                // kick plate
+        const hs = i === 0 ? s1 - 0.16 : s0 + 0.16;
+        piece(hs - 0.05, hs + 0.05, 1.05, 1.45, D1, D1 + 0.004, BR);                                              // push plate
+        { const [x, z] = at(hs, D1 + 0.07); k.cyl(0.013, 0.013, 0.5, x, 1.1, z, BR, 10); } piece(hs - 0.015, hs + 0.015, 0.88, 0.9, D1, D1 + 0.07, BR); piece(hs - 0.015, hs + 0.015, 1.32, 1.34, D1, D1 + 0.07, BR);
+        { const [x, z] = at(s0 + lw / 2, D1 + 0.002); k.label('PUSH', 0.12, 0.04, [x, 1.5, z], [0, ry, 0], { bg: '#c9a24a', fg: '#2a1a0a', border: null, size: 60 }); }
+        const hx = i === 0 ? s0 + 0.05 : s1 - 0.05; piece(hx - 0.02, hx + 0.02, 0.4, 0.5, D1, D1 + 0.01, BR); piece(hx - 0.02, hx + 0.02, 1.8, 1.9, D1, D1 + 0.01, BR);   // hinges
+        const cs = i === 0 ? s0 + 0.12 : s1 - 0.42; piece(cs, cs + 0.3, 2.3, 2.36, 0.16, 0.22, 0x2a2a2a);         // door closer
+      }
+      piece(LL / 2 - 0.01, LL / 2 + 0.01, 0.03, 2.27, 0.11, 0.125, OAKDR);                                         // the meeting stile
+      { const [x, z] = at(LL / 2, 0.112); k.box(0.02, 0.18, 0.02, x, 2.12, z, BR, { rot: [0, ry, 0] }); }        // the drop bolt
+      { const [x, z] = at(0.12 + lw / 2, 0.115); k.label('OPEN DAILY 11–11 · FOOD 12–9', 0.42, 0.1, [x, 1.95, z], [0, ry, 0], { bg: '#10180f', fg: '#e8c45a', border: null, size: 40 }); }   // gilt lettering on the glass
+      { const [x, z] = at(LL / 2, 0.17); k.label('EXIT', 0.36, 0.14, [x, H - 0.05 - 0.09, z + 0.0], [0, ry, 0], { bg: '#1b8a3a', fg: '#fff', border: null, size: 90, glow: true }); }
+      { const [x, z] = at(LL + 0.25, 0.12); k.box(0.08, 0.12, 0.04, x, 1.25, z, 0xe8e8e8, { rot: [0, ry, 0] }); k.box(0.03, 0.03, 0.02, x, 1.25, z + 0.02, 0xd32f2f, { rot: [0, ry, 0] }); }   // the light switch / alarm panel
+    }
+    // reception (copied from the real one, set where the plan shows it): an L-shaped honey-oak raised-panel desk down
+    // the left side, its front to the room and the front doors; staff stand behind it, in front of the red angled wall
+    // with the glazed office door under the "Reception" plaque
+    const TOP = 1.06, fX = 3.05, bX = 2.42, zT = Z(385) + T2, zB = -11.3, rX0 = 1.62, rZ1 = -10.78;
     const OAKF = woodTex('#9a5e28'), OAKP = woodTex('#b2763a'), OAKD = woodTex('#7e4a1e');
     const TB = (x0, z0, x1, z1, h, y, tex) => k.texBox(Math.abs(x1 - x0), h, Math.abs(z1 - z0), (x0 + x1) / 2, y, (z0 + z1) / 2, tex);
-    TB(cx0, cz0, cx1, cz1, TOP - 0.04, (TOP - 0.04) / 2, OAKF); k.colliders.push(new THREE.Box3(new THREE.Vector3(cx0, 0, cz0), new THREE.Vector3(cx1, TOP, cz1)));
-    R(cx0 + 0.02, cz1, cx1 - 0.02, cz1 + 0.025, 0.1, 0.05, 0x5a3416);                                                          // kick plinth
-    // the front: four tall raised-and-fielded panels between stiles, a moulded rail under the top
-    const np = 4, pw = (cx1 - cx0) / np, fz = cz1;
-    for (let i = 0; i <= np; i++) TB(cx0 + i * pw - 0.045, fz, cx0 + i * pw + 0.045, fz + 0.03, TOP - 0.16, 0.1 + (TOP - 0.16) / 2, OAKF);     // stiles
-    TB(cx0, fz, cx1, fz + 0.03, 0.1, 0.16, OAKF); TB(cx0, fz, cx1, fz + 0.03, 0.09, TOP - 0.1, OAKF);                      // bottom + top rails
-    R(cx0 - 0.01, fz + 0.02, cx1 + 0.01, fz + 0.045, 0.03, TOP - 0.065, 0x6e4018);                                           // moulding
-    for (let i = 0; i < np; i++) { const a0 = cx0 + i * pw + 0.045, a1 = cx0 + (i + 1) * pw - 0.045, y0 = 0.21, y1 = TOP - 0.145;
-      TB(a0, fz + 0.005, a1, fz + 0.012, y1 - y0, (y0 + y1) / 2, OAKD);                                                       // the shadowed recess
-      TB(a0 + 0.035, fz + 0.012, a1 - 0.035, fz + 0.03, y1 - y0 - 0.07, (y0 + y1) / 2, OAKP);                                  // the raised field
-      for (const [x, w] of [[a0 + 0.035, 0.012], [a1 - 0.047, 0.012]]) R(x, fz + 0.03, x + w, fz + 0.034, y1 - y0 - 0.07, (y0 + y1) / 2, 0xc48a4a);   // bevel highlights
-      R(a0 + 0.035, fz + 0.03, a1 - 0.035, fz + 0.034, 0.012, y1 - 0.041, 0xc48a4a); R(a0 + 0.035, fz + 0.03, a1 - 0.035, fz + 0.034, 0.012, y0 + 0.041, 0x6e4018); }
-    // both ends: tongue-and-groove boarding in a frame (like the right-hand end in the photo)
-    for (const [ex, sd] of [[cx0, -1], [cx1, 1]]) { const xo = ex + sd * 0.015;
-      TB(xo - 0.015, cz0, xo + 0.015, cz1, 0.1, 0.16, OAKF); TB(xo - 0.015, cz0, xo + 0.015, cz1, 0.09, TOP - 0.1, OAKF);
-      TB(xo - 0.015, cz0, xo + 0.015, cz0 + 0.06, TOP - 0.04, (TOP - 0.04) / 2, OAKF);
-      for (let z = cz0 + 0.07, j = 0; z < cz1 - 0.03; z += 0.065, j++) { R(xo - 0.012, z, xo + 0.012, z + 0.06, TOP - 0.32, 0.21 + (TOP - 0.32) / 2, [0xa8682e, 0xb07236, 0x9e6229][j % 3]); R(xo + sd * 0.008 - 0.004, z + 0.06, xo + sd * 0.008 + 0.004, z + 0.065, TOP - 0.32, 0.21 + (TOP - 0.32) / 2, 0x4a2a10); } }
-    // the cream solid-surface top, overhanging the front, with a rounded front edge
-    R(cx0 - 0.06, cz0 - 0.02, cx1 + 0.06, cz1 + 0.07, 0.035, TOP + 0.0175, 0xf1e9d4, { collide: true });
-    k.parts.push(part(new THREE.CylinderGeometry(0.0175, 0.0175, cx1 - cx0 + 0.12, 10), 0xf1e9d4, [(cx0 + cx1) / 2, TOP + 0.0175, cz1 + 0.07], [0, 0, Math.PI / 2]));
-    R(cx0 - 0.06, cz0 - 0.02, cx1 + 0.06, cz1 + 0.07, 0.006, TOP - 0.003, 0xc9bfa6);
-    blk(cx0 - 0.08, cz0 - 0.03, cx1 + 0.08, cz1 + 0.09, TOP + 0.05);
-    // on top: a glass vase of yellow tulips (left), the bell, the signing-in book and pen, a rack of leaflets and
-    // a pot of yellow flowers at the right, a little brass card holder
-    { const vx = cx0 + 0.3, vz = cz1 - 0.15; k.cyl(0.05, 0.04, 0.24, vx, TOP + 0.155, vz, 0xd8eef0, 12); k.cyl(0.046, 0.036, 0.1, vx, TOP + 0.085, vz, 0x9ac0a0, 12);
+    TB(bX, zT, fX, zB, TOP - 0.04, (TOP - 0.04) / 2, OAKF); TB(rX0, zB, fX, rZ1, TOP - 0.04, (TOP - 0.04) / 2, OAKF);
+    k.colliders.push(new THREE.Box3(new THREE.Vector3(bX, 0, zT), new THREE.Vector3(fX, TOP, rZ1)), new THREE.Box3(new THREE.Vector3(rX0, 0, zB), new THREE.Vector3(fX, TOP, rZ1)));
+    // raised-and-fielded panels on a front: along z (facing +x) or along x (facing +z)
+    const panels = (alongZ, c, a0, a1) => {
+      const L = a1 - a0, np = Math.max(1, Math.round(L / 0.55)), pw = L / np;
+      const BX = (p0, p1, d0, d1, y0, y1, tex, color) => { if (alongZ) { if (tex) TB(c + d0, p0, c + d1, p1, y1 - y0, (y0 + y1) / 2, tex); else R(c + d0, p0, c + d1, p1, y1 - y0, (y0 + y1) / 2, color); } else { if (tex) TB(p0, c + d0, p1, c + d1, y1 - y0, (y0 + y1) / 2, tex); else R(p0, c + d0, p1, c + d1, y1 - y0, (y0 + y1) / 2, color); } };
+      BX(a0, a1, 0, 0.025, 0, 0.1, null, 0x5a3416);                                                   // kick plinth
+      for (let i = 0; i <= np; i++) BX(a0 + i * pw - 0.045, a0 + i * pw + 0.045, 0, 0.03, 0.1, TOP - 0.06, OAKF);      // stiles
+      BX(a0, a1, 0, 0.03, 0.1, 0.21, OAKF); BX(a0, a1, 0, 0.03, TOP - 0.15, TOP - 0.06, OAKF); BX(a0 - 0.01, a1 + 0.01, 0.02, 0.045, TOP - 0.08, TOP - 0.05, null, 0x6e4018);
+      for (let i = 0; i < np; i++) { const p0 = a0 + i * pw + 0.045, p1 = a0 + (i + 1) * pw - 0.045, y0 = 0.21, y1 = TOP - 0.15;
+        BX(p0, p1, 0.005, 0.012, y0, y1, OAKD); BX(p0 + 0.035, p1 - 0.035, 0.012, 0.03, y0 + 0.035, y1 - 0.035, OAKP);
+        BX(p0 + 0.035, p0 + 0.047, 0.03, 0.034, y0 + 0.035, y1 - 0.035, null, 0xc48a4a); BX(p1 - 0.047, p1 - 0.035, 0.03, 0.034, y0 + 0.035, y1 - 0.035, null, 0xc48a4a);
+        BX(p0 + 0.035, p1 - 0.035, 0.03, 0.034, y1 - 0.047, y1 - 0.035, null, 0xc48a4a); BX(p0 + 0.035, p1 - 0.035, 0.03, 0.034, y0 + 0.035, y0 + 0.047, null, 0x6e4018); }
+    };
+    panels(true, fX, zT + 0.02, zB);                     // the long front, facing the room and the doors
+    panels(false, rZ1, rX0, fX);                         // the return, facing down the room
+    { const x = rX0 - 0.015;                             // tongue-and-groove boarding on the end where the staff go in
+      for (let z = zB + 0.03, j = 0; z < rZ1 - 0.03; z += 0.065, j++) { R(x - 0.012, z, x + 0.012, z + 0.06, TOP - 0.32, 0.21 + (TOP - 0.32) / 2, [0xa8682e, 0xb07236, 0x9e6229][j % 3]); R(x - 0.02, z + 0.06, x - 0.012, z + 0.065, TOP - 0.32, 0.21 + (TOP - 0.32) / 2, 0x4a2a10); }
+      TB(x - 0.015, zB, x + 0.015, rZ1, 0.1, 0.16, OAKF); TB(x - 0.015, zB, x + 0.015, rZ1, 0.09, TOP - 0.1, OAKF); }
+    // the cream solid-surface top, overhanging the fronts, with rounded front edges
+    R(bX - 0.02, zT, fX + 0.07, rZ1 + 0.07, 0.035, TOP + 0.0175, 0xf1e9d4, { collide: true }); R(rX0 - 0.06, zB - 0.02, bX, rZ1 + 0.07, 0.035, TOP + 0.0175, 0xf1e9d4, { collide: true });
+    k.parts.push(part(new THREE.CylinderGeometry(0.0175, 0.0175, rZ1 + 0.07 - zT, 10), 0xf1e9d4, [fX + 0.07, TOP + 0.0175, (zT + rZ1 + 0.07) / 2], [Math.PI / 2, 0, 0]));
+    k.parts.push(part(new THREE.CylinderGeometry(0.0175, 0.0175, fX + 0.07 - rX0 + 0.06, 10), 0xf1e9d4, [(rX0 - 0.06 + fX + 0.07) / 2, TOP + 0.0175, rZ1 + 0.07], [0, 0, Math.PI / 2]));
+    R(bX - 0.02, zT, fX + 0.07, rZ1 + 0.07, 0.006, TOP - 0.003, 0xc9bfa6);
+    blk(bX - 0.02, zT, fX + 0.09, rZ1 + 0.09, TOP + 0.05); blk(rX0 - 0.06, zB - 0.02, bX, rZ1 + 0.09, TOP + 0.05);
+    // on top: tulips in a glass vase, the bell, the signing-in book and pen, the leaflet rack, a pot of yellow flowers, the card machine
+    { const vx = fX - 0.2, vz = zT + 0.45; k.cyl(0.05, 0.04, 0.24, vx, TOP + 0.155, vz, 0xd8eef0, 12); k.cyl(0.046, 0.036, 0.1, vx, TOP + 0.085, vz, 0x9ac0a0, 12);
       for (let i = 0; i < 9; i++) { const a = i * 0.7, r = 0.02 + (i % 3) * 0.025, hgt = 0.3 + (i % 4) * 0.05, tx = vx + Math.cos(a) * r, tz = vz + Math.sin(a) * r;
-        const st = new THREE.CylinderGeometry(0.004, 0.004, hgt, 4); st.rotateZ(Math.cos(a) * r * 2.5); st.rotateX(-Math.sin(a) * r * 2.5); k.parts.push(part(st, 0x4a8a2a, [(vx + tx) / 2, TOP + 0.04 + hgt / 2, (vz + tz) / 2]));
+        const stm = new THREE.CylinderGeometry(0.004, 0.004, hgt, 4); stm.rotateZ(Math.cos(a) * r * 2.5); stm.rotateX(-Math.sin(a) * r * 2.5); k.parts.push(part(stm, 0x4a8a2a, [(vx + tx) / 2, TOP + 0.04 + hgt / 2, (vz + tz) / 2]));
         k.parts.push(part(new THREE.SphereGeometry(0.026, 8, 6).scale(1, 1.4, 1), i % 3 ? 0xffd21a : 0xf5c000, [tx, TOP + 0.05 + hgt, tz]));
         const lf = new THREE.SphereGeometry(0.03, 6, 4); lf.scale(0.35, 1.6, 0.12); lf.rotateY(a); k.parts.push(part(lf, 0x3a7a24, [vx + Math.cos(a) * 0.03, TOP + 0.3, vz + Math.sin(a) * 0.03])); } }
-    k.cyl(0.04, 0.05, 0.035, cx0 + 0.75, TOP + 0.053, cz1 - 0.08, 0xd4af37, 12); k.cyl(0.006, 0.006, 0.03, cx0 + 0.75, TOP + 0.083, cz1 - 0.08, 0x333333, 6);
-    R(cx0 + 1.0, cz1 - 0.3, cx0 + 1.5, cz1 - 0.04, 0.025, TOP + 0.048, 0x7a1f24); R(cx0 + 1.02, cz1 - 0.28, cx0 + 1.48, cz1 - 0.06, 0.012, TOP + 0.066, 0xfaf6ea);
-    k.label('SIGN IN: "RONNIE — TABLE FOR ONE, FOOD FOR TWELVE"', 0.42, 0.2, [cx0 + 1.25, TOP + 0.073, cz1 - 0.17], [-Math.PI / 2, 0, 0], { bg: '#faf6ea', fg: '#111', border: null, size: 28 });
-    k.parts.push(part(new THREE.CylinderGeometry(0.004, 0.004, 0.14, 6), 0x1a1a1a, [cx0 + 1.45, TOP + 0.078, cz1 - 0.12], [0, 0.4, Math.PI / 2]));
-    { const lx = cx1 - 0.45, lz = cz1 - 0.2; R(lx - 0.16, lz - 0.08, lx + 0.16, lz + 0.08, 0.02, TOP + 0.045, 0x3a2416);
-      for (let i = 0; i < 3; i++) { const x = lx - 0.1 + i * 0.1; R(x - 0.045, lz + 0.02, x + 0.045, lz + 0.03, 0.2, TOP + 0.15, 0x2a1a10, { rot: [-0.25, 0, 0] });
-        k.label(['TONIGHT: QUIZ', 'SUNDAY ROAST', 'DARTS LEAGUE'][i], 0.08, 0.17, [x, TOP + 0.17, lz + 0.01], [-0.25, Math.PI, 0], { bg: ['#1b3a2a', '#7a1f24', '#d4af37'][i], fg: '#fff', border: null, size: 22 }); } }
-    { const px = cx1 - 0.15, pz = cz1 - 0.15; k.cyl(0.065, 0.05, 0.11, px, TOP + 0.09, pz, 0xf6f2e8, 14);
+    k.cyl(0.04, 0.05, 0.035, fX - 0.1, TOP + 0.053, -12.6, 0xd4af37, 12); k.cyl(0.006, 0.006, 0.03, fX - 0.1, TOP + 0.083, -12.6, 0x333333, 6);
+    R(fX - 0.32, -12.35, fX - 0.06, -11.85, 0.025, TOP + 0.048, 0x7a1f24); R(fX - 0.3, -12.33, fX - 0.08, -11.87, 0.012, TOP + 0.066, 0xfaf6ea);
+    k.label('SIGN IN: "RONNIE — TABLE FOR ONE, FOOD FOR TWELVE"', 0.42, 0.2, [fX - 0.19, TOP + 0.073, -12.1], [-Math.PI / 2, 0, Math.PI / 2], { bg: '#faf6ea', fg: '#111', border: null, size: 28 });
+    k.parts.push(part(new THREE.CylinderGeometry(0.004, 0.004, 0.14, 6), 0x1a1a1a, [fX - 0.12, TOP + 0.078, -11.95], [0, 1.2, Math.PI / 2]));
+    { const lx = fX - 0.2, lz = -13.35; R(lx - 0.08, lz - 0.16, lx + 0.08, lz + 0.16, 0.02, TOP + 0.045, 0x3a2416);
+      for (let i = 0; i < 3; i++) { const z = lz - 0.1 + i * 0.1; R(lx - 0.03, z - 0.045, lx - 0.02, z + 0.045, 0.2, TOP + 0.15, 0x2a1a10, { rot: [0, 0, 0.25] });
+        k.label(['TONIGHT: QUIZ', 'SUNDAY ROAST', 'DARTS LEAGUE'][i], 0.08, 0.17, [lx - 0.01, TOP + 0.17, z], [0, Math.PI / 2, -0.25], { bg: ['#1b3a2a', '#7a1f24', '#d4af37'][i], fg: '#fff', border: null, size: 22 }); } }
+    { const px = 2.75, pz = rZ1 - 0.2; k.cyl(0.065, 0.05, 0.11, px, TOP + 0.09, pz, 0xf6f2e8, 14);
       for (let i = 0; i < 14; i++) { const a = i * 2.4, r = 0.02 + (i % 4) * 0.018; k.parts.push(part(new THREE.SphereGeometry(0.022, 6, 4), i % 2 ? 0xffd21a : 0xffe56a, [px + Math.cos(a) * r, TOP + 0.19 + (i % 3) * 0.025, pz + Math.sin(a) * r])); }
       for (let i = 0; i < 8; i++) { const lf = new THREE.SphereGeometry(0.03, 6, 4); lf.scale(0.4, 1.4, 0.12); lf.rotateY(i * 0.8); k.parts.push(part(lf, 0x3a7a24, [px + Math.cos(i * 0.8) * 0.03, TOP + 0.17, pz + Math.sin(i * 0.8) * 0.03])); } }
-    k.spawns.push(new THREE.Vector3(cx0 + 1.9, TOP + 0.15, cz1 - 0.25));
-    // behind the desk: a lower work top on cupboards, the booking screen, a phone, the card machine, a till drawer,
-    // a pigeonhole shelf of paperwork, and a swivel chair for the staff
-    { const iz0 = cz0 - 0.02, iz1 = cz0 + 0.02; R(cx0 + 0.05, cz0 - 0.3, cx1 - 0.05, cz0, 0.03, 0.78, 0xe8dfc8); R(cx0 + 0.08, cz0 - 0.28, cx1 - 0.08, cz0, 0.76, 0.38, 0xd8cdb4);
-      for (let i = 0; i < 4; i++) { const x = cx0 + 0.1 + i * 0.5; R(x, cz0 - 0.29, x + 0.46, cz0 - 0.28, 0.66, 0.4, 0xe2d8c0); k.box(0.1, 0.012, 0.012, x + 0.23, 0.66, cz0 - 0.3, 0xb8bcc2); }
-      k.box(0.44, 0.28, 0.03, cx0 + 1.0, 1.0, cz0 - 0.12, 0x111111, { rot: [0.15, 0, 0] }); k.box(0.4, 0.24, 0.005, cx0 + 1.0, 1.0, cz0 - 0.136, 0x2a6ad8, { rot: [0.15, 0, 0] }); k.box(0.04, 0.16, 0.04, cx0 + 1.0, 0.86, cz0 - 0.06, 0x222222);
-      R(cx0 + 0.85, cz0 - 0.27, cx0 + 1.2, cz0 - 0.15, 0.02, 0.805, 0x222222); R(cx0 + 1.5, cz0 - 0.25, cx0 + 1.7, cz0 - 0.05, 0.05, 0.82, 0x222222); R(cx0 + 1.85, cz0 - 0.22, cx0 + 1.95, cz0 - 0.05, 0.06, 0.825, 0x111111);
-      k.cyl(0.25, 0.25, 0.06, cx0 + 1.0, 0.47, cz0 - 0.52, 0x1a1a1a, 14); k.box(0.42, 0.45, 0.06, cx0 + 1.0, 0.75, cz0 - 0.74, 0x1a1a1a); k.cyl(0.025, 0.025, 0.4, cx0 + 1.0, 0.25, cz0 - 0.52, 0x555555, 8);
-      for (let i = 0; i < 5; i++) { const a = i * 1.2566; k.box(0.26, 0.025, 0.03, cx0 + 1.0 + Math.cos(a) * 0.13, 0.04, cz0 - 0.52 + Math.sin(a) * 0.13, 0x333333, { rot: [0, -a, 0] }); }
-      blk(cx0 + 0.75, cz0 - 0.78, cx0 + 1.25, cz0 - 0.3, 0.9); blk(cx0, cz0 - 0.3, cx1, cz0, 0.8); }
-    // the red wall behind (picture rail, skirting), the office door with its frosted glass, the brass "Reception" plaque,
-    // a wall key cabinet, a round clock
-    { const rx0 = X(695) - 0.05, rx1 = X(775) - 0.02, rz = wz + 0.006, RED = 0x9e1f26, dx = 3.35;
-      R(rx0, wz, rx1, rz, H, H / 2, RED); R(rx0, rz, rx1, rz + 0.025, 0.04, 2.45, 0x7a1018); R(rx0, rz, rx1, rz + 0.02, 0.14, 0.07, 0x5a1a12);
-      R(dx - 0.55, rz, dx + 0.55, rz + 0.06, 2.22, 1.11, 0x8a5a2a);                                             // the frame
-      R(dx - 0.47, rz + 0.06, dx + 0.47, rz + 0.08, 2.14, 1.07, 0xa06a32);                                       // the door
-      R(dx - 0.4, rz + 0.08, dx + 0.4, rz + 0.09, 0.85, 0.5, 0x8a5a26); R(dx - 0.34, rz + 0.09, dx + 0.34, rz + 0.1, 0.72, 0.5, 0xb07a3e);   // bottom panel
-      R(dx - 0.4, rz + 0.08, dx + 0.4, rz + 0.095, 1.05, 1.58, 0xe8eef0); R(dx - 0.36, rz + 0.095, dx + 0.36, rz + 0.1, 0.97, 1.58, 0xd6dde0);   // frosted glass
-      R(dx - 0.01, rz + 0.1, dx + 0.01, rz + 0.105, 0.97, 1.58, 0x8a5a26); R(dx - 0.36, rz + 0.1, dx + 0.36, rz + 0.105, 0.02, 1.58, 0x8a5a26);   // glazing bars
-      k.parts.push(part(new THREE.SphereGeometry(0.03, 10, 8), 0xd4af37, [dx + 0.38, 1.0, rz + 0.12])); k.box(0.12, 0.02, 0.02, dx + 0.34, 1.0, rz + 0.13, 0xd4af37);
-      k.label('STAFF ONLY', 0.24, 0.07, [dx, 1.4, rz + 0.106], [0, 0, 0], { bg: '#f5f0e6', fg: '#7a1f24', border: '#7a1f24', size: 40 });
-      R(dx - 0.62, rz, dx + 0.62, rz + 0.03, 0.34, 2.5, 0x5a1214); k.label('Reception', 1.1, 0.26, [dx, 2.5, rz + 0.031], [0, 0, 0], { bg: '#7a1a1e', fg: '#f3e2c0', border: '#c9a24a', size: 70 });
-      R(rx0 + 0.12, rz, rx0 + 0.62, rz + 0.12, 0.6, 1.55, 0x6a3a1a); R(rx0 + 0.15, rz + 0.12, rx0 + 0.59, rz + 0.13, 0.54, 1.55, 0x7a4a26); k.box(0.02, 0.06, 0.02, rx0 + 0.55, 1.55, rz + 0.14, 0xd4af37);
-      const clk = canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#f5f0e6'; g.beginPath(); g.arc(64, 64, 62, 0, 7); g.fill(); g.lineWidth = 6; g.strokeStyle = '#2a1a10'; g.stroke(); g.fillStyle = '#111'; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.fillRect(62 + Math.sin(a) * 50, 62 - Math.cos(a) * 50, 4, 4); } g.lineWidth = 4; g.beginPath(); g.moveTo(64, 64); g.lineTo(64, 28); g.moveTo(64, 64); g.lineTo(92, 70); g.stroke(); });
-      k.label('clock', 0.32, 0.32, [rx1 - 0.3, 2.05, rz + 0.012], [0, 0, 0], { tex: clk }); }
+    R(fX - 0.25, -11.55, fX - 0.1, -11.4, 0.05, TOP + 0.06, 0x222222); k.box(0.1, 0.02, 0.06, fX - 0.17, TOP + 0.09, -11.47, 0x111111, { rot: [0, 0, 0.3] });   // card machine
+    R(1.85, rZ1 - 0.35, 2.15, rZ1 - 0.12, 0.01, TOP + 0.04, 0x1b2a1b); for (let i = 0; i < 5; i++) R(1.86, rZ1 - 0.34, 2.14, rZ1 - 0.13, 0.008, TOP + 0.05 + i * 0.009, i % 2 ? 0x1b2a1b : 0x162216);   // menus
+    k.spawns.push(new THREE.Vector3(fX - 0.25, TOP + 0.15, -12.9)); k.spawns.push(new THREE.Vector3(2.3, TOP + 0.15, rZ1 - 0.25));
+    // behind the desk: a lower work top on cupboards (the booking screen, the phone, the till drawer), a swivel chair
+    { R(bX - 0.3, zT + 0.1, bX, zB, 0.03, 0.78, 0xe8dfc8); R(bX - 0.28, zT + 0.1, bX, zB, 0.76, 0.38, 0xd8cdb4);
+      for (let z = zT + 0.15; z < zB - 0.4; z += 0.5) { R(bX - 0.29, z, bX - 0.28, z + 0.46, 0.66, 0.4, 0xe2d8c0); k.box(0.012, 0.012, 0.1, bX - 0.3, 0.66, z + 0.23, 0xb8bcc2); }
+      k.box(0.03, 0.28, 0.44, bX - 0.12, 1.0, -12.9, 0x111111, { rot: [0, 0, -0.15] }); k.box(0.005, 0.24, 0.4, bX - 0.136, 1.0, -12.9, 0x2a6ad8, { rot: [0, 0, -0.15] }); k.box(0.04, 0.16, 0.04, bX - 0.06, 0.86, -12.9, 0x222222);
+      R(bX - 0.27, -13.1, bX - 0.15, -12.75, 0.02, 0.805, 0x222222); R(bX - 0.25, -12.3, bX - 0.05, -12.1, 0.05, 0.82, 0x222222); R(bX - 0.22, -11.95, bX - 0.05, -11.85, 0.06, 0.825, 0x111111);
+      const sx = bX - 0.45, sz = -12.45; k.cyl(0.25, 0.25, 0.06, sx, 0.47, sz, 0x1a1a1a, 14); k.box(0.06, 0.45, 0.42, sx - 0.24, 0.75, sz, 0x1a1a1a); k.cyl(0.025, 0.025, 0.4, sx, 0.25, sz, 0x555555, 8);
+      for (let i = 0; i < 5; i++) { const a = i * 1.2566; k.box(0.26, 0.025, 0.03, sx + Math.cos(a) * 0.13, 0.04, sz + Math.sin(a) * 0.13, 0x333333, { rot: [0, -a, 0] }); }
+      blk(sx - 0.28, sz - 0.22, sx + 0.2, sz + 0.22, 0.9); blk(bX - 0.3, zT, bX, zB, 0.8); }
+    // the angled wall behind: painted deep red with a dado, the office door with frosted glass, the "Reception" plaque,
+    // a key cabinet, a round clock, a framed licence
+    { const ax = X(615), az = Z(465), bxW = X(695), bzW = Z(385), LW = Math.hypot(bxW - ax, bzW - az), ux = (bxW - ax) / LW, uz = (bzW - az) / LW, nx = -uz, nz = ux, ry = Math.atan2(-uz, ux), lry = Math.atan2(nx, nz);
+      const at = (s, d) => [ax + ux * s + nx * d, az + uz * s + nz * d];
+      const piece = (s0, s1, y0, y1, d0, d1, color) => { const [x, z] = at((s0 + s1) / 2, (d0 + d1) / 2); k.box(s1 - s0, y1 - y0, d1 - d0, x, (y0 + y1) / 2, z, color, { rot: [0, ry, 0] }); };
+      const RED = 0x9e1f26, d0 = 0.08;
+      piece(0.08, LW - 0.08, 0, H, d0, d0 + 0.006, RED);                                                   // red paint
+      piece(0.08, LW - 0.08, 0, 0.15, d0, d0 + 0.025, 0x3a1a10); piece(0.08, LW - 0.08, 0.92, 0.96, d0, d0 + 0.03, 0x6a1a1a); piece(0.08, LW - 0.08, 2.42, 2.46, d0, d0 + 0.025, 0x6a1a1a);   // skirting, dado, picture rail
+      piece(0.08, LW - 0.08, H - 0.12, H, d0, d0 + 0.07, 0xf4f0e6);                                       // cornice
+      const ds = LW / 2 + 0.15;                                                                           // the office door
+      piece(ds - 0.55, ds + 0.55, 0, 2.22, d0, d0 + 0.06, 0x8a5a2a); piece(ds - 0.47, ds + 0.47, 0, 2.14, d0 + 0.06, d0 + 0.08, 0xa06a32);
+      piece(ds - 0.4, ds + 0.4, 0.08, 0.92, d0 + 0.08, d0 + 0.09, 0x8a5a26); piece(ds - 0.34, ds + 0.34, 0.14, 0.86, d0 + 0.09, d0 + 0.1, 0xb07a3e);
+      piece(ds - 0.4, ds + 0.4, 1.06, 2.1, d0 + 0.08, d0 + 0.095, 0xe8eef0); piece(ds - 0.36, ds + 0.36, 1.1, 2.06, d0 + 0.095, d0 + 0.1, 0xd6dde0);
+      piece(ds - 0.01, ds + 0.01, 1.1, 2.06, d0 + 0.1, d0 + 0.105, 0x8a5a26); piece(ds - 0.36, ds + 0.36, 1.57, 1.59, d0 + 0.1, d0 + 0.105, 0x8a5a26);
+      { const [x, z] = at(ds + 0.38, d0 + 0.13); k.parts.push(part(new THREE.SphereGeometry(0.03, 10, 8), 0xd4af37, [x, 1.0, z])); }
+      { const [x, z] = at(ds, d0 + 0.106); k.label('PRIVATE', 0.22, 0.07, [x, 1.38, z], [0, lry, 0], { bg: '#f5f0e6', fg: '#7a1f24', border: '#7a1f24', size: 40 }); }
+      piece(ds - 0.62, ds + 0.62, 2.34, 2.66, d0, d0 + 0.03, 0x5a1214); { const [x, z] = at(ds, d0 + 0.031); k.label('Reception', 1.1, 0.26, [x, 2.5, z], [0, lry, 0], { bg: '#7a1a1e', fg: '#f3e2c0', border: '#c9a24a', size: 70 }); }
+      piece(0.25, 0.68, 1.3, 1.85, d0, d0 + 0.12, 0x6a3a1a); piece(0.28, 0.65, 1.33, 1.82, d0 + 0.12, d0 + 0.13, 0x7a4a26); { const [x, z] = at(0.6, d0 + 0.14); k.box(0.02, 0.06, 0.02, x, 1.58, z, 0xd4af37); }   // key cabinet
+      const clk = canvasTex(128, 128, (g) => { g.fillStyle = '#f5f0e6'; g.beginPath(); g.arc(64, 64, 62, 0, 7); g.fill(); g.lineWidth = 6; g.strokeStyle = '#2a1a10'; g.stroke(); g.fillStyle = '#111'; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.fillRect(62 + Math.sin(a) * 50, 62 - Math.cos(a) * 50, 4, 4); } g.lineWidth = 4; g.beginPath(); g.moveTo(64, 64); g.lineTo(64, 28); g.moveTo(64, 64); g.lineTo(92, 70); g.stroke(); });
+      { const [x, z] = at(0.46, d0 + 0.012); k.label('clock', 0.3, 0.3, [x, 2.15, z], [0, lry, 0], { tex: clk }); }
+      { const [x, z] = at(LW - 0.35, d0 + 0.02); piece(LW - 0.55, LW - 0.15, 1.45, 1.95, d0, d0 + 0.025, 0xb8923a); k.label('PREMISES LICENCE — THE OYSTERFLEET, CANVEY ISLAND', 0.34, 0.44, [x + nx * 0.008, 1.7, z + nz * 0.008], [0, lry, 0], { bg: '#faf6ea', fg: '#2a1a0a', border: null, size: 22 }); }
+    }
     // the red leather chesterfield tub chair in front, on the right, angled towards the desk
     { const ax = 4.2, az = -11.7, ry = Math.atan2(1, -0.5), c = Math.cos(ry), s = Math.sin(ry), LEA = 0x8e1a22, LEAD = 0x6e1018;
       const rb = (w, h, d, r) => new RoundedBoxGeometry(w, h, d, 3, r);
@@ -800,9 +843,17 @@ export function buildPub(scene) {
         for (const y of [0.5, 0.64]) P(new THREE.SphereGeometry(0.012, 6, 4), 0x4a0a10, lx * 0.82, y + (i % 2) * 0.05, lz * 0.82); }
       k.blockers.push({ x0: ax - 0.42, x1: ax + 0.42, z0: az - 0.42, z1: az + 0.42, y1: 0.75 });
       k.colliders.push(new THREE.Box3(new THREE.Vector3(ax - 0.36, 0, az - 0.36), new THREE.Vector3(ax + 0.36, 0.45, az + 0.36))); }
-    // a "please wait to be seated" stand to the left of the desk
-    { const sx = 2.0, sz = -10.25; k.cyl(0.18, 0.2, 0.03, sx, 0.015, sz, 0x222222, 14); k.cyl(0.015, 0.015, 1.3, sx, 0.65, sz, 0xc9a24a, 8); R(sx - 0.24, sz - 0.015, sx + 0.24, sz + 0.015, 0.34, 1.3, 0x1b3a2a);
-      k.label('PLEASE WAIT TO BE SEATED', 0.44, 0.3, [sx, 1.3, sz + 0.017], [0, 0, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 44 }); blk(sx - 0.22, sz - 0.22, sx + 0.22, sz + 0.22, 1.5); }
+    // on the wall between the desk and the doors: framed awards and an "Est. 1931" brass plaque; a brass lantern overhead
+    { const wz2 = Z(385) + T2;
+      [[3.35, 1.75, 'CAMRA PUB OF THE YEAR 2019 — ESSEX'], [3.85, 1.75, 'GOOD BEER GUIDE — LISTED'], [3.6, 1.32, 'FOOD HYGIENE RATING 5 — VERY GOOD']].forEach(([x, y, t]) => {
+        R(x - 0.2, wz2, x + 0.2, wz2 + 0.025, 0.28, y, 0xb8923a); k.label(t, 0.34, 0.22, [x, y, wz2 + 0.027], [0, 0, 0], { bg: '#faf6ea', fg: '#2a1a0a', border: '#7a1f24', size: 26 }); });
+      R(3.42, wz2, 3.78, wz2 + 0.02, 0.14, 2.15, 0xc9a24a); k.label('EST. 1931', 0.32, 0.1, [3.6, 2.15, wz2 + 0.022], [0, 0, 0], { bg: '#c9a24a', fg: '#2a1a0a', border: null, size: 60 });
+      const lx = 3.9, lz = -12.0; k.cyl(0.006, 0.006, 0.5, lx, H - 0.25, lz, 0x222222, 4); k.cyl(0.12, 0.14, 0.04, lx, H - 0.52, lz, 0x2a2a2a, 4);
+      for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; k.box(0.015, 0.34, 0.015, lx + Math.cos(a) * 0.12, H - 0.71, lz + Math.sin(a) * 0.12, 0xb8923a); }
+      k.parts.push(part(new THREE.CylinderGeometry(0.11, 0.11, 0.32, 4, 1, true), 0xf4ecd0, [lx, H - 0.71, lz], [0, Math.PI / 4, 0])); k.cyl(0.13, 0.1, 0.05, lx, H - 0.9, lz, 0x2a2a2a, 4); k.lamp(lx, H - 0.72, lz, 0xffd8a0, 0.06); k.pool(lx, 0, lz, 2.4, 0xffd8a0); }
+    // a "please wait to be seated" stand on the way into the pub
+    { const sx = 1.85, sz = -9.45; k.cyl(0.18, 0.2, 0.03, sx, 0.015, sz, 0x222222, 14); k.cyl(0.015, 0.015, 1.3, sx, 0.65, sz, 0xc9a24a, 8); R(sx - 0.24, sz - 0.015, sx + 0.24, sz + 0.015, 0.34, 1.3, 0x1b3a2a);
+      k.label('PLEASE WAIT TO BE SEATED', 0.44, 0.3, [sx, 1.3, sz - 0.017], [0, Math.PI, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 44 }); blk(sx - 0.22, sz - 0.22, sx + 0.22, sz + 0.22, 1.5); }
     // a big coir mat inside the front doors
     { const mx = (door.x0 + door.x1) / 2 - door.uz * 0.75, mz = (door.z0 + door.z1) / 2 + door.ux * 0.75; k.box(door.L - 0.3, 0.012, 1.1, mx, 0.006, mz, 0x8a6a3a, { rot: [0, door.ry, 0] });
       const mt = canvasTex(256, 96, (g, w, h) => { g.fillStyle = '#8a6a3a'; g.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '60,40,20' : '170,140,90'},0.4)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 1); } g.fillStyle = '#2a1a0a'; g.font = '700 30px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('THE OYSTERFLEET', w / 2, h / 2); });
@@ -821,10 +872,10 @@ export function buildPub(scene) {
         if (i % 2 === 0) { R(hx - 0.18, z - 0.2, hx - 0.02, z + 0.2, 0.85, 1.28, [0x2a3a5a, 0x5a3a2a, 0x2a2a2a][i / 2]); R(hx - 0.16, z - 0.12, hx - 0.03, z + 0.12, 0.1, 1.72, [0x2a3a5a, 0x5a3a2a, 0x2a2a2a][i / 2]); } }
       R(hx - 0.01, Z(430), hx + 0.01, Z(430) + 1.45, 0.12, 1.75, 0x3a2416); blk(hx - 0.2, Z(430), hx + 0.1, Z(430) + 1.4, 1.5);
       const ux = X(835) - 0.24, uz = Z(497); k.cyl(0.13, 0.12, 0.5, ux, 0.25, uz, 0x2a2a2a, 12, { block: true }); for (let i = 0; i < 3; i++) { k.cyl(0.01, 0.01, 0.85, ux - 0.04 + i * 0.04, 0.6, uz + (i - 1) * 0.03, 0x111111, 6); k.cyl(0.03, 0.045, 0.3, ux - 0.04 + i * 0.04, 0.85, uz + (i - 1) * 0.03, [0x1e4ea8, 0xc62828, 0x111111][i], 8); }
-      for (const [px, pz] of [[X(625) + 0.3, Z(470) - 0.35], [4.05, -9.95]]) { k.cyl(0.24, 0.18, 0.5, px, 0.25, pz, 0x2a2420, 14, { block: true }); for (let i = 0; i < 80; i++) { const a = i * 2.4, r = 0.08 + (i % 5) * 0.06, h = 0.65 + (i % 7) * 0.13; const leaf = new THREE.SphereGeometry(0.06, 6, 4); leaf.scale(1, 0.3, 0.5); leaf.rotateY(a); k.parts.push(part(leaf, [0x2e6a2a, 0x3a7a32, 0x24561f][i % 3], [px + Math.cos(a) * r, h, pz + Math.sin(a) * r])); } }
+      for (const [px, pz] of [[0.72, -9.05], [4.05, -9.95]]) { k.cyl(0.24, 0.18, 0.5, px, 0.25, pz, 0x2a2420, 14, { block: true }); for (let i = 0; i < 80; i++) { const a = i * 2.4, r = 0.08 + (i % 5) * 0.06, h = 0.65 + (i % 7) * 0.13; const leaf = new THREE.SphereGeometry(0.06, 6, 4); leaf.scale(1, 0.3, 0.5); leaf.rotateY(a); k.parts.push(part(leaf, [0x2e6a2a, 0x3a7a32, 0x24561f][i % 3], [px + Math.cos(a) * r, h, pz + Math.sin(a) * r])); } }
     }
     // lights: two glass globes over the counter, downlights, a wall lamp by the door
-    for (const x of [cx0 + 0.8, cx0 + 2.2]) { k.cyl(0.004, 0.004, 0.6, x, H - 0.3, cz0 + 0.3, 0x222222, 4); k.cyl(0.03, 0.045, 0.06, x, H - 0.63, cz0 + 0.3, 0xb87333, 10); for (let i = 0; i < 6; i++) { const r = new THREE.TorusGeometry(0.11, 0.004, 4, 16); r.rotateY(i / 6 * Math.PI); k.parts.push(part(r, 0xf0e6c8, [x, H - 0.77, cz0 + 0.3])); } k.lamp(x, H - 0.77, cz0 + 0.3, 0xffe2a8, 0.1); k.pool(x, 1.15, cz0 + 0.1, 0.9, 0xffc070); }
+    for (const z of [-13.3, -12.0]) { const x = 2.75; k.cyl(0.004, 0.004, 0.6, x, H - 0.3, z, 0x222222, 4); k.cyl(0.03, 0.045, 0.06, x, H - 0.63, z, 0xb87333, 10); for (let i = 0; i < 6; i++) { const r = new THREE.TorusGeometry(0.11, 0.004, 4, 16); r.rotateY(i / 6 * Math.PI); k.parts.push(part(r, 0xf0e6c8, [x, H - 0.77, z])); } k.lamp(x, H - 0.77, z, 0xffe2a8, 0.1); k.pool(x, 1.15, z, 0.9, 0xffc070); }
     for (const [x, z] of [[X(660), Z(520)], [X(740), Z(560)], [X(760), Z(420)]]) { k.lamp(x, H - 0.01, z, 0xfffbe8, 0.04); k.pool(x, 0, z, 1.8, 0xfff0d0); }
   }
   // the beer garden door at the end of the passage
@@ -1267,7 +1318,7 @@ export function buildPub(scene) {
   const room = k.finish({
     name: 'The Oysterfleet',
     sky: 0xffe2c0, ground: 0x6a4a3a, hemiI: 1.55, sun: 0xfff0d8, sunI: 0.45, sunPos: [-6, 10, 5], ambient: 0.32,
-    start: { x: 2.9, z: -10.0, yaw: -0.1 },          // in reception, facing the desk
+    start: { x: 3.6, z: -10.0, yaw: 0.4 },          // in reception, facing the desk
     board: { x: X(195) + 0.11, y: 1.45, z: Z(1062), ry: Math.PI / 2 },
     startFood: ['can', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza', 'doughnut', 'burger', 'pizza', 'can', 'doughnut', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza'],
     spotCount: 40,
