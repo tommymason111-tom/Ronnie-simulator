@@ -45,7 +45,10 @@ export class Net {
     if ((this.sendT -= dt) <= 0) {
       this.sendT = 1 / SEND_HZ;
       const P = player, q = P.camera.getWorldQuaternion(new THREE.Quaternion()), r = (v) => Math.round(v * 1000) / 1000;
-      const hands = P.flatMode ? [P.flatAnchorPos(), P.head] : P.hands.map(h => h.palm);
+      // [right, left] by which hand each controller really is (the controllers' own order isn't fixed: on a Quest the
+      // first one is often the left, which made everyone else see your arms crossed)
+      const side = (k) => P.hands.find(h => h.handedness === k && h.tracked) || null, R0 = side('right'), L0 = side('left');
+      const hands = P.flatMode ? [P.flatAnchorPos(), P.head] : [(R0 || P.hands[0]).palm, (L0 || P.hands.find(h => h !== R0) || P.hands[1]).palm];
       this.send({ t: 'p', c: this.char || 'ronnie', h: [r(P.head.x), r(P.head.y), r(P.head.z)], q: [r(q.x), r(q.y), r(q.z), r(q.w)], l: [r(hands[1].x), r(hands[1].y), r(hands[1].z)], rh: [r(hands[0].x), r(hands[0].y), r(hands[0].z)], s: r(P.scale), st: G.stage, flat: P.flatMode ? 1 : 0 });
     }
     for (const p of this.players.values()) {

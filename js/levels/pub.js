@@ -272,7 +272,7 @@ export function buildPub(scene) {
     for (const [w, d, lx, lz] of [[0.42, 0.025, 0, -0.2], [0.42, 0.025, 0, 0.2], [0.025, 0.42, -0.2, 0], [0.025, 0.42, 0.2, 0]]) put(new THREE.BoxGeometry(w, 0.025, d), 0x2a2420, x, z, ry, lx, 0.3, lz);   // the footrest
     put(new RoundedBoxGeometry(0.5, 0.11, 0.48, 3, 0.04), LEATHER, x, z, ry, 0, 0.79, -0.01);                                     // padded seat
     put(new THREE.BoxGeometry(0.46, 0.03, 0.44), BLACKW, x, z, ry, 0, 0.73, 0);
-    const back = new RoundedBoxGeometry(0.5, 0.48, 0.09, 3, 0.035), bp = back.attributes.position;                              // curved, button-tufted back
+    const back = new THREE.BoxGeometry(0.5, 0.48, 0.09, 16, 8, 1), bp = back.attributes.position;                              // curved, button-tufted back (enough segments that the curve is really there, so the buttons sit in it)
     for (let i = 0; i < bp.count; i++) { const xx = bp.getX(i) / 0.25; bp.setZ(i, bp.getZ(i) + 0.05 * xx * xx); } back.computeVertexNormals();
     put(back, LEATHER, x, z, ry, 0, 1.12, 0.22, -0.12);
     for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) { const bx = -0.165 + c * 0.11 + (r % 2) * 0.055; if (Math.abs(bx) > 0.2) continue; put(new THREE.SphereGeometry(0.009, 6, 4), LEATHER_D, x, z, ry, bx, 1.0 + r * 0.12, 0.17 + 0.05 * (bx / 0.25) ** 2 - (1.0 + r * 0.12 - 1.12) * 0.12); }

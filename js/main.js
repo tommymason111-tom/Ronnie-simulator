@@ -1015,8 +1015,9 @@ class SquadPuppet {
     const vr = !pose.flat, em = this.emote.active ? this.emote.update(dt, vr) : 0;
     if (em > 0 && !vr) { r.animate(dt); r.sync(); this.emote.place(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag(); return; }
     if (em > 0) { this.armT.R = this.armT.L = 0.45; }
-    // arms hang naturally; one only comes up to hit something (a fast swing, or a punch / throw we were told about)
-    // or to eat (hand up at the mouth), then drops back down
+    // a VR player's arms are their real arms: shoulder to elbow to hand, wherever they hold them.
+    // A phone player's arm hangs naturally and only comes up to hit something (a swing or punch we were told
+    // about) or to eat (hand up at the mouth), then drops back down
     const head = this.pos, chest = r.pos('chest', new THREE.Vector3());
     if (this.swingT > 0) this.swingT -= dt;
     for (const [side, h] of [['R', this.rh], ['L', this.lh]]) {
@@ -1024,10 +1025,11 @@ class SquadPuppet {
       const hv = h.distanceTo(this.prevH[side]) / Math.max(dt, 1e-3); this.prevH[side].copy(h);
       const atMouth = h.distanceTo(head) < 0.28, swinging = !pose.flat && hv > 2.2;
       const punching = this.swingT > 0 && (side === (this.swingSide || 'R') || !pose.flat);
-      if (atMouth || swinging || punching) this.armT[side] = 0.45;
+      if (!pose.flat || atMouth || swinging || punching) this.armT[side] = 0.45;
       else this.armT[side] -= dt;
       const want = this.armT[side] > 0 ? 1 : 0; this.armW[side] += (want - this.armW[side]) * Math.min(1, dt * (want ? 14 : 5));
       const w = this.armW[side]; if (w < 0.01) continue;
+      if (!pose.flat) { this.reachArm(side, h, w); continue; }
       let d;
       if (pose.flat && punching && !atMouth) { const k = 1 - this.swingT / 0.38; d = new THREE.Vector3(side === 'R' ? 0.1 : -0.1, 0.2 + 0.25 * (1 - k), 0.6 + k); }   // a phone player's jab: cocked, then straight out in front
       else { d = h.clone().sub(chest).applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.yaw); if (d.length() > 1.2 || d.lengthSq() < 1e-6) continue; }
@@ -1040,6 +1042,21 @@ class SquadPuppet {
   headPos() { return this.c.headPos(new THREE.Vector3()); }
   fwd() { return new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
   handPos() { return this.rh.clone(); }
+  // two-bone reach: put the palm on the target, with the elbow bending down and out like a real arm
+  reachArm(side, target, w) {
+    const r = this.c.rag, U = r.parts['uArm' + side], L = r.parts['lArm' + side], kH = r.height / 1.68, Yax = new THREE.Vector3(0, 1, 0);
+    const ub = U.body, q = new THREE.Quaternion(ub.quaternion.x, ub.quaternion.y, ub.quaternion.z, ub.quaternion.w);
+    const S = U.def.a.clone().sub(U.def.center).applyQuaternion(q).add(new THREE.Vector3(ub.position.x, ub.position.y, ub.position.z));   // the shoulder
+    const L1 = U.def.a.distanceTo(U.def.b), L2 = Math.max(0.12, L.def.a.distanceTo(L.def.b) - 0.085 * kH);     // upper arm; forearm to the palm
+    const toT = target.clone().sub(S), D = THREE.MathUtils.clamp(toT.length(), Math.abs(L1 - L2) + 0.02, L1 + L2 - 0.005), dir = toT.normalize();
+    const a = (L1 * L1 - L2 * L2 + D * D) / (2 * D), hh = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+    const fwd = this.fwd(), outw = new THREE.Vector3(side === 'L' ? 1 : -1, 0, 0).applyAxisAngle(Yax, this.yaw);
+    const hint = new THREE.Vector3(0, -1, 0).addScaledVector(outw, 0.6).addScaledVector(fwd, -0.35);         // elbows go down, out and back
+    const perp = hint.addScaledVector(dir, -hint.dot(dir)); if (perp.lengthSq() < 1e-6) perp.copy(outw); perp.normalize();
+    const E = S.clone().addScaledVector(dir, a).addScaledVector(perp, hh), T = S.clone().addScaledVector(dir, D);
+    const du = E.clone().sub(S).applyAxisAngle(Yax, -this.yaw).normalize(), dl = T.clone().sub(E).applyAxisAngle(Yax, -this.yaw).normalize();
+    for (const [n, d] of [['uArm' + side, du], ['lArm' + side, dl]]) { const rest = r.pose[n].clone(); r.aim(n, d.x, d.y, d.z); r.pose[n].copy(rest.slerp(r.pose[n], w)); }
+  }
   swing(side = 'R') { this.swingT = 0.38; this.swingSide = side; }
   drawTag() { const x = this.tagC.getContext('2d'), nm = (this.p.name || 'PLAYER').toUpperCase(); this.tagName = this.p.name; x.clearRect(0, 0, 320, 96);
     x.fillStyle = 'rgba(10,14,30,0.85)'; x.beginPath(); x.roundRect(4, 4, 312, 88, 22); x.fill(); x.lineWidth = 5; x.strokeStyle = '#39ff14'; x.stroke();
