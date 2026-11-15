@@ -925,8 +925,9 @@ var vrPause = (() => {
   const _fp = new THREE.Vector3(), _fd = new THREE.Vector3();
   function follow(snap) {
     if (!renderer.xr.isPresenting) return;
-    const cam = renderer.xr.getCamera(); cam.getWorldPosition(_a); if (_a.lengthSq() < 1e-8) _a.copy(player.head);     // (no head pose yet: use the player's)
-    _fd.set(0, 0, -1).applyQuaternion(cam.getWorldQuaternion(_q)); _fd.y = 0; if (_fd.lengthSq() < 1e-6) _fd.set(player.fwd.x, 0, player.fwd.z); _fd.normalize();
+    // (where your head really is in the world, like the emote wheel: the XR camera's own matrix isn't in world space
+    // between frames, which put the menu off at the far side of the map)
+    _a.copy(player.head); _fd.set(player.fwd.x, 0, player.fwd.z); if (_fd.lengthSq() < 1e-6) _fd.set(0, 0, -1); _fd.normalize();
     _fp.copy(_a).addScaledVector(_fd, 0.85); _fp.y = _a.y - 0.05;
     if (snap || panel.position.distanceTo(_fp) > 1.5) panel.position.copy(_fp); else panel.position.lerp(_fp, 0.12);
     panel.lookAt(_a.x, panel.position.y, _a.z); back.position.copy(_a);
@@ -1222,7 +1223,7 @@ class SquadPuppet {
     // a name tag over their head (so you can tell a real player from the squad): their name, and who they're playing as
     this.p = p; this.tagC = document.createElement('canvas'); this.tagC.width = 320; this.tagC.height = 96; this.tagTex = new THREE.CanvasTexture(this.tagC); this.tagTex.colorSpace = THREE.SRGBColorSpace;
     this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; scene.add(this.tag); this.drawTag();
-    this.down = 0; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0;
+    this.down = 0; this.hT = {}; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0;
     if (p.self) {               // your own body (seen from inside it): no head in the way, no name tag, no bumping into it
       this.tag.visible = false; this.c.rag.hideHead = true; for (const pt of this.c.rag.list) { pt.body.collisionResponse = false; } }
     this.emote = new EmotePlayer(this.c, scene, (txt, at, snd) => { if (snd) sfx(snd, this.c.headPos(new THREE.Vector3()), 0.8); if (txt && at) words.show(txt, at.clone().add({ x: 0, y: 0.15, z: 0 }), '#ffd400', 0.22, 0.8); }); }
@@ -1264,9 +1265,9 @@ class SquadPuppet {
     if (this.p.self) { r.root.x -= Math.sin(this.yaw) * 0.2; r.root.z -= Math.cos(this.yaw) * 0.2; }      // (just behind your eyes, so looking down you see your chest, belly and legs)
     if (speed > 0.25) c.walkPose(dt, Math.min(speed, 3)); else c.setIdlePose(c.t += dt);
     // an emote off the wheel: the whole body does it (a VR player's arms stay their own real arms)
-    const vr = !pose.flat, em = this.emote.active ? this.emote.update(dt, vr) : 0;
-    if (em > 0 && !vr) { r.animate(dt); r.sync(); this.emote.place(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag(); return; }
-    if (em > 0) { this.armT.R = this.armT.L = 0.45; }
+    // (a VR player's emote is the whole body too: their real arms would only fight it and flail about)
+    const em = this.emote.active ? this.emote.update(dt, false) : 0;
+    if (em > 0) { r.animate(dt); r.sync(); this.emote.place(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag(); return; }
     // a VR player's arms are their real arms: shoulder to elbow to hand, wherever they hold them.
     // A phone player's arm hangs naturally and only comes up to hit something (a swing or punch we were told
     // about) or to eat (hand up at the mouth), then drops back down
@@ -1274,6 +1275,12 @@ class SquadPuppet {
     if (this.swingT > 0) this.swingT -= dt;
     for (const [side, h] of [['R', this.rh], ['L', this.lh]]) {
       if (pose.flat && side === 'L') continue;                 // (phone players only have the one hand)
+      // a VR hand: smoothed, with a little dead zone (a still hand is a still arm: tracking jitter and the uneven updates
+      // made the arms flap about), and nothing taken from a hand that isn't really there (an untracked controller sends
+      // wherever it last was, or nowhere: the arm went flying after it)
+      if (!pose.flat) { const ok = h.distanceTo(head) < 1.15 * (pose.s || 1) && h.y > 0.15; const ft = this.hT[side] || (this.hT[side] = h.clone());
+        if (!ok) { this.armT[side] = Math.min(this.armT[side], 0); this.armW[side] += (0 - this.armW[side]) * Math.min(1, dt * 5); continue; }
+        const dd = h.distanceTo(ft); if (dd > 0.5) ft.copy(h); else if (dd > 0.012) ft.lerp(h, Math.min(1, dt * 9)); }
       const hv = h.distanceTo(this.prevH[side]) / Math.max(dt, 1e-3); this.prevH[side].copy(h);
       const atMouth = h.distanceTo(head) < 0.28, swinging = !pose.flat && hv > 2.2;
       const punching = this.swingT > 0 && (side === (this.swingSide || 'R') || !pose.flat);
@@ -1281,7 +1288,7 @@ class SquadPuppet {
       else this.armT[side] -= dt;
       const want = this.armT[side] > 0 ? 1 : 0; this.armW[side] += (want - this.armW[side]) * Math.min(1, dt * (want ? 14 : 5));
       const w = this.armW[side]; if (w < 0.01) continue;
-      if (!pose.flat) { this.reachArm(side, h, w); continue; }
+      if (!pose.flat) { this.reachArm(side, this.hT[side], w); continue; }
       let d;
       if (pose.flat && punching && !atMouth) { const k = 1 - this.swingT / 0.38; d = new THREE.Vector3(side === 'R' ? 0.1 : -0.1, 0.2 + 0.25 * (1 - k), 0.6 + k); }   // a phone player's jab: cocked, then straight out in front
       else { d = h.clone().sub(chest).applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.yaw); if (d.length() > 1.2 || d.lengthSq() < 1e-6) continue; }
