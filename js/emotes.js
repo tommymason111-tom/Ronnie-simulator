@@ -32,13 +32,13 @@ export const CHAR_EMOTES = {
   tommy: [{ id: 'ball', name: 'MY BALL', icon: '🟤', dur: 5.8 }, { id: 'older', name: 'ONE DAY OLDER', icon: '☝️', dur: 4.0 }],
   lewis: [{ id: 'siu', name: 'SIUUU', icon: '🐐', dur: 3.6 }, { id: 'tall', name: 'TOO TALL', icon: '🦒', dur: 5.0 }, { id: 'legday', name: 'LEG DAY', icon: '🏋️', dur: 5.0 }],
   chloe: [{ id: 'ears', name: 'UCL EARS', icon: '🏆', dur: 5.0 }, { id: 'chloedance', name: 'VICTORY DANCE', icon: '💃', dur: 4.4 }, { id: 'salad', name: 'SALAD TOSS', icon: '🥗', dur: 4.6 }],
-  aidanw: [{ id: 'knee', name: 'KNEE PAIN', icon: '🦵', dur: 5.4 }, { id: 'spidey', name: 'MILES MORALES', icon: '🕷️', dur: 4.2 }],
+  aidanw: [{ id: 'knee', name: 'KNEE PAIN', icon: '🦵', dur: 5.4 }, { id: 'beard', name: 'BEARD GROWTH', icon: '🧔', dur: 6.4 }],
   aidan: [{ id: 'guinness', name: 'GUINNESS DREAM', icon: '🍺', dur: 6.4 }, { id: 'settle', name: 'LET IT SETTLE', icon: '⏳', dur: 5.0 }],
-  dylan: [{ id: 'acl', name: 'ACL EXPLOSION', icon: '💥', dur: 5.0 }, { id: 'airguitar', name: 'WONDERWALL', icon: '🎸', dur: 5.0 }],
+  dylan: [{ id: 'acl', name: 'ACL EXPLOSION', icon: '💥', dur: 5.4 }, { id: 'airguitar', name: 'WONDERWALL', icon: '🎤', dur: 5.4 }, { id: 'oompa', name: 'OOMPA LOOMPA', icon: '🍫', dur: 5.4 }],
   ian: [{ id: 'abuse', name: 'SHOUTING ABUSE', icon: '🤬', dur: 4.6 }, { id: 'cast', name: 'GONE FISHING', icon: '🎣', dur: 4.8 }, { id: 'flip', name: 'BURGER FLIP', icon: '🍔', dur: 4.6 }],
   oliver: [{ id: 'honest', name: 'MY HONEST REACTION', icon: '😐', dur: 4.6 }, { id: 'live', name: 'GOING LIVE', icon: '📸', dur: 4.4 }],
   noah: [{ id: 'bellybounce', name: 'BELLY BOUNCE', icon: '🤰', dur: 4.2 }, { id: 'conversion', name: 'CONVERSION KICK', icon: '🏉', dur: 4.6 }],
-  harry: [{ id: 'date', name: 'ON A DATE', icon: '💕', dur: 6.0 }, { id: 'spike', name: 'TOUCHDOWN', icon: '🏈', dur: 4.4 }, { id: 'swipe', name: 'SWIPE LEFT', icon: '👈', dur: 4.4 }],
+  harry: [{ id: 'date', name: 'ON A DATE', icon: '💕', dur: 6.0 }, { id: 'spike', name: 'TOUCHDOWN', icon: '🏈', dur: 4.4 }, { id: 'swipe', name: 'SWIPE RIGHT', icon: '👉', dur: 4.4 }, { id: 'van', name: 'HARRY\'S VAN', icon: '🚐', dur: 9.0 }],
   alfie: [{ id: 'sugar', name: 'SPECIAL STUFF', icon: '🧂', dur: 5.6 }, { id: 'nutmeg', name: 'THE NUTMEG', icon: '⚽', dur: 4.6 }],
   connor: [{ id: 'ynwa', name: 'YNWA SCARF', icon: '🧣', dur: 5.0 }, { id: 'round', name: 'MY ROUND', icon: '🍻', dur: 4.2 }, { id: 'jig', name: 'IRISH JIG', icon: '☘️', dur: 5.0 }],
   ronnie: [{ id: 'drum', name: 'BELLY DRUM', icon: '🥁', dur: 4.4 }, { id: 'loco', name: 'MANGO LOCO', icon: '🥭', dur: 4.6 }],
@@ -118,8 +118,9 @@ export class EmotePlayer {
     this.c = c; this.scene = scene; this.onWord = onWord; this.id = null; this.t = 0; this.w = 0; this.props = {}; this.lastBeat = -1;
   }
   get active() { return !!this.id; }
-  start(id) { const e = emoteInfo(id); if (!e) return; if (this.id) this.stop(); this.id = id; this.dur = e.dur; this.t = 0; this.lastBeat = -1; this.marks = {}; }
-  stop() { this.id = null; this.hide(); this.clearProps(); this.unstretch(); }
+  start(id) { const e = emoteInfo(id); if (!e) return; if (this.id) this.stop(); this.id = id; this.dur = e.dur; this.t = 0; this.lastBeat = -1; this.marks = {}; this.tblAt = null; }
+  stop() { this.id = null; this.hide(); this.clearProps(); this.unstretch(); if (this.undo) { for (const f of this.undo) try { f(); } catch (e) {} this.undo = null; } }
+  onStop(f) { (this.undo || (this.undo = [])).push(f); }
   hide() { this.hideHands(); const r = this.c.rag; if (r.handHide) r.handHide.lArmL = r.handHide.lArmR = false; if (r.handPose) for (const k in r.handPose) { r.handPose[k].curl = 0; r.handPose[k].mid = 0; r.handPose[k].q.identity(); } }
   dispose() { this.stop(); if (this.mh) { this.mh.L.dispose(); this.mh.R.dispose(); this.mh = null; } }
   clearProps() { this.holding = null; for (const k in this.props) { const p = this.props[k]; this.scene.remove(p); p.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } this.props = {}; }
@@ -159,7 +160,9 @@ export class EmotePlayer {
     return w;
   }
   // after the body has moved this frame: the hands (the model's own fingers), and any props
-  place() { if (this.id && this.out) { this.gestures(this.out, this.w); if (this.holding) for (const [p, [S, off, rot]] of this.holding) if (p.visible && p.parent) this.placeInHand(p, S, off, rot); } }      // (held things follow the hand after it's moved: no lagging behind)
+  place() { if (this.id && this.c.prop && this.c.prop.visible) { const pr = this.c.prop; pr.visible = false; this.onStop(() => { pr.visible = true; }); }      // (their usual pint / phone / rod is put away for the emote)
+    if (this.id && this.c.reelLine) this.c.reelLine.visible = false;
+    if (this.id && this.out) { this.gestures(this.out, this.w); if (this.holding) for (const [p, [S, off, rot]] of this.holding) if (p.visible && p.parent) this.placeInHand(p, S, off, rot); } }      // (held things follow the hand after it's moved: no lagging behind)
   gestures(out, w) {
     const r = this.c.rag; if (!r.handPose) return;
     if (!this.mh) { const col = skinColour(r); this.mh = { L: new ModelHand('left', col, this.scene), R: new ModelHand('right', col, this.scene) }; }
@@ -286,8 +289,9 @@ export class EmotePlayer {
     const r = this.c.rag, P = r.pose, kH = this.kH;
     const rage = ramp(t, 2.9, 3.1), thrown = t > 3.15;
     const shake = Math.sin(t * 38) * 0.04 * (1 - rage);
-    for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, [0.12, -0.75, 0.55], [-0.35 + shake, 0.15, 1]);
-    if (rage > 0) { this.standArms('R', -1, mixv([0.12, -0.75, 0.55], [0.3, 0.9, -0.2], rage), mixv([-0.35, 0.15, 1], [0.1, 0.8, 0.7], rage)); }
+    // both hands on the pad in front of his belly (elbows tucked in), thumbs going; then the right arm hurls it
+    for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, [0.2, -0.85, 0.42], [-0.22 + shake, 0.2, 1]);
+    if (rage > 0) { this.standArms('R', -1, mixv([0.2, -0.85, 0.42], [0.3, 0.9, -0.2], rage), mixv([-0.22, 0.2, 1], [0.1, 0.8, 0.7], rage)); }
     this.legsStand(0.1, 0.15);
     P.chest.setFromAxisAngle(X, 0.25 - rage * 0.3); P.head.setFromAxisAngle(X, 0.35 - rage * 0.5).multiply(_q.setFromAxisAngle(Z, Math.sin(t * 9) * 0.05));
     const pad = this.prop('pad', () => { const g = new THREE.Group(); const m = lam(0x1a1a1e);
@@ -295,7 +299,7 @@ export class EmotePlayer {
       for (const x of [-0.06, 0.06]) { const grip = new THREE.Mesh(new THREE.CapsuleGeometry(0.02, 0.04, 4, 8), m); grip.position.set(x, -0.005, -0.04); grip.rotation.x = 1.2; g.add(grip); }
       for (const [x, c] of [[0.04, 0x3fc0ff], [0.055, 0xff4040], [0.025, 0x40ff60], [0.04, 0xffd000]]) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.006, 6, 4), lam(c)); b.position.set(x + (c === 0xffd000 ? 0 : 0), 0.02, c === 0xffd000 ? -0.012 : c === 0x40ff60 ? 0.012 : 0); g.add(b); }
       const lb = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.004, 0.01), lam(0x3060ff, { emissive: 0x2040ff })); lb.position.set(0, 0.019, 0.03); g.add(lb); return g; });
-    if (!thrown) { r.grip('lArmL', _v); r.grip('lArmR', _v2); pad.position.copy(_v).add(_v2).multiplyScalar(0.5).add({ x: 0, y: 0.02, z: 0 }); pad.rotation.set(0.5, r.yaw, 0); pad.userData.v = null; }
+    if (!thrown) { r.grip('lArmL', _v); r.grip('lArmR', _v2); pad.position.copy(_v).add(_v2).multiplyScalar(0.5).add({ x: 0, y: 0.015, z: 0 }); pad.rotation.set(0, r.yaw, 0); pad.rotateX(0.75); pad.scale.setScalar(this.kH * Math.max(1, _v.distanceTo(_v2) / 0.15)); pad.userData.v = null; this.padHands = true; }
     else { if (!pad.userData.v) { pad.userData.v = this.L(0, 0, 0).sub(this.L(0, 0, -1)).multiplyScalar(3.5).add({ x: 0, y: 3.5, z: 0 }); }
       const v = pad.userData.v; v.y -= 9.8 * 0.016; pad.position.addScaledVector(v, 0.016); pad.rotation.x += 0.4; pad.rotation.z += 0.25; if (pad.position.y < 0.03) { pad.position.y = 0.03; v.y = Math.abs(v.y) * 0.35; v.x *= 0.6; v.z *= 0.6; } }
     this.at(t, 1.0, 'a', () => this.say('COME ON!!')); this.at(t, 2.2, 'b', () => this.say('THAT\'S NEVER OFFSIDE!')); this.at(t, 3.0, 'c', () => this.say('THIS GAME IS RIGGED!', null, 'smash'));
@@ -392,7 +396,7 @@ export class EmotePlayer {
   // ================================================================ MORE CHARACTER EMOTES
   // ---- ETHAN: smells a pasty from three postcodes away: nose up, sniffing, turning to find it
   sniff(t) { const r = this.c.rag, P = r.pose, sn = Math.abs(Math.sin(t * 16)) * ramp(t, 0.2, 0.5), look = Math.sin(t * 1.3) * 0.7;
-    this.standArms('L', 1, [0.25, -1, 0.1], [0.2, -0.9, 0.3]); this.standArms('R', -1, [0.3, -0.5, 0.75], [-0.4, 0.6, 0.6]); this.legsStand(0.1);
+    this.standArms('L', 1, [0.25, -1, 0.1], [0.2, -0.9, 0.3]); this.standArms('R', -1, [0.35, -0.55, 0.7], [-0.4, 0.6, 0.6]); this.legsStand(0.1);
     P.chest.setFromAxisAngle(X, -0.12 + sn * 0.04).multiply(_q.setFromAxisAngle(Y, look * 0.4)); P.head.setFromAxisAngle(X, -0.35 + sn * 0.08).multiply(_q.setFromAxisAngle(Y, look));
     this.at(t, 0.5, 'a', () => this.say('*SNIFF SNIFF*')); this.at(t, 2.2, 'b', () => this.say('...PASTY. THREE POSTCODES THAT WAY.')); this.at(t, 3.3, 'c', () => this.say('', null, 'slurp'));
     return { hand: { R: 'point', L: 'open' }, spin: look * 0.3 }; }
@@ -409,12 +413,22 @@ export class EmotePlayer {
     this.at(t, 0.4, 'a', () => this.say('ONE. WHOLE. DAY.')); this.at(t, 2.0, 'b', () => this.say('RESPECT YOUR ELDERS, RONNIE.'));
     return { hand: { R: 'point', L: 'open' }, back: { R: [0, 0, 1] } }; }
   // ---- LEWIS: leg day: squats with an imaginary bar across his shoulders
-  legday(t) { const r = this.c.rag, P = r.pose, sq = (1 - Math.cos(Math.max(0, t - 0.4) * 3.2)) / 2 * ramp(t, 0.3, 0.6), kH = this.kH;
-    for (const [S, sx] of [['L', 1], ['R', -1]]) { this.standArms(S, sx, [0.9, 0.35, -0.2], [-0.2, 0.9, -0.3]); r.aim('uLeg' + S, sx * 0.18, -Math.cos(sq * 1.3), Math.sin(sq * 1.3)); r.aim('lLeg' + S, sx * 0.14, -1, -sq * 0.4); }
+  legday(t) {
+    // a loaded barbell across his shoulders (big plates on each end), squatting deep, counting his reps
+    const r = this.c.rag, P = r.pose, sq = (1 - Math.cos(Math.max(0, t - 0.4) * 3.2)) / 2 * ramp(t, 0.3, 0.6), kH = this.kH;
+    for (const [S, sx] of [['L', 1], ['R', -1]]) { this.standArms(S, sx, [0.72, -0.62, -0.3], [0.2, 0.72, -0.62]); r.aim('uLeg' + S, sx * 0.2, -Math.cos(sq * 1.35), Math.sin(sq * 1.35)); r.aim('lLeg' + S, sx * 0.15, -1, -sq * 0.45); }
     P.chest.setFromAxisAngle(X, sq * 0.45); P.head.setFromAxisAngle(X, -0.3 * sq);
+    const bar = this.prop('barbell', () => { const g = new THREE.Group(), steel = lam(0xb8bcc2), plate = lam(0x1a1a1a);
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 1.8, 10), steel); b.rotation.z = Math.PI / 2; g.add(b);
+      for (const sx of [-1, 1]) for (const [x, rad] of [[0.62, 0.22], [0.67, 0.22], [0.72, 0.16]]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, 0.04, 22), x === 0.72 ? lam(0xc62828) : plate); p.rotation.z = Math.PI / 2; p.position.x = sx * x; g.add(p); }
+      for (const sx of [-1, 1]) { const col = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 10), steel); col.rotation.z = Math.PI / 2; col.position.x = sx * 0.55; g.add(col); } return g; });
+    // the bar lives in his hands: centred between the two grips, pointing from one hand to the other
+    const gL = r.grip('lArmL', new THREE.Vector3()), gR = r.grip('lArmR', new THREE.Vector3()); bar.position.copy(gL).add(gR).multiplyScalar(0.5);
+    bar.quaternion.setFromUnitVectors(X, gL.sub(gR).normalize()); bar.scale.setScalar(kH);
     const n = Math.floor(Math.max(0, t - 0.4) * 3.2 / (Math.PI * 2) + 0.5); if (n > 0 && n !== this.lastBeat) { this.lastBeat = n; this.say(`${n}...`, null, 'thud'); }
     this.at(t, 4.2, 'z', () => this.say('LEG DAY, RON. EVERY DAY.'));
-    return { hand: { L: 'fist', R: 'fist' }, bob: -sq * 0.42 * kH }; }
+    return { hand: { L: 'grip', R: 'grip' }, back: { L: [0, 0, -1], R: [0, 0, -1] }, bob: -sq * 0.42 * kH };
+  }
   // ---- CHLOE: tossing a salad in a big bowl (for Ronnie, obviously)
   salad(t) { const r = this.c.rag, P = r.pose, tossT = Math.sin(t * 7), up = ramp(t, 0.2, 0.5);
     this.standArms('L', 1, [0.3, -0.8, 0.55], [-0.4, -0.1, 0.9]); this.standArms('R', -1, [0.3, -0.7, 0.6], [-0.4, 0.1 + tossT * 0.3, 0.9]); this.legsStand(0.1);
@@ -425,15 +439,37 @@ export class EmotePlayer {
     for (let i = 0; i < 18; i++) { const l = bowl.getObjectByName('leaf' + i); l.position.y = -0.03 + (i % 3) * 0.015 + Math.max(0, Math.sin(t * 7 + i)) * 0.06; }
     this.at(t, 0.6, 'a', () => this.say('🥗 FRESH SALAD, RONNIE!')); this.at(t, 2.6, 'b', () => this.say('NO CROUTONS. NO DRESSING. NO FUN.'));
     return { hand: { L: 'grip', R: 'grip' } }; }
-  // ---- AIDAN W: Miles Morales: crouched, one hand out shooting webs
-  spidey(t) { const r = this.c.rag, P = r.pose, kH = this.kH, crouch = ramp(t, 0.2, 0.6), shot = pulse(t, 1.4, 0.12) + pulse(t, 2.4, 0.12);
-    for (const [S, sx] of [['L', 1], ['R', -1]]) { r.aim('uLeg' + S, sx * 0.35, -0.6, 0.6 * crouch); r.aim('lLeg' + S, sx * 0.2, -1, -0.3 * crouch); }
-    this.standArms('R', -1, [0.15, 0.15 + shot * 0.1, 1], [0.05, 0.1, 1]); this.standArms('L', 1, [0.4, -0.7, 0.4], [0.1, -1, 0.3]);
-    P.chest.setFromAxisAngle(X, 0.35 * crouch); P.head.setFromAxisAngle(X, -0.25 * crouch);
-    const web = this.prop('web', () => new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, 1)]), new THREE.LineBasicMaterial({ color: 0xffffff })));
-    web.visible = shot > 0.2; if (web.visible) { const a = r.tip('lArmR', new THREE.Vector3()), b = this.L(-0.4, 2.2, 3); web.geometry.setFromPoints([a, b]); }
-    this.at(t, 1.4, 'a', () => this.say('THWIP!', null, 'whoosh')); this.at(t, 2.4, 'b', () => this.say('THWIP!', null, 'whoosh')); this.at(t, 3.2, 'c', () => this.say('...the knee though.'));
-    return { hand: { R: 'spidey', L: 'open' }, back: { R: [0, 1, 0] }, bob: -crouch * 0.3 * kH }; }
+  // ---- AIDAN W: growing his beard out: stroking his chin as it sprouts, then grows, and GROWS, right down to his
+  // belly, bushy and wide; then hands on hips, admiring it
+  beard(t) {
+    const r = this.c.rag, P = r.pose, kH = this.kH, grow = ss(ramp(t, 0.5, 4.3)), proud = ramp(t, 4.4, 4.8);
+    const g = grow + Math.max(0, Math.sin(t * 9)) * 0.03 * (grow > 0 && grow < 1 ? 1 : 0);   // (in little spurts)
+    // right hand at the chin, running down the beard (further down the longer it gets); then fists on hips, chest out
+    const stroke = (1 - Math.cos(t * 4)) / 2, down = stroke * (0.25 + g * 0.75) * (1 - proud);
+    const hipU = [0.7, -0.5, -0.3], hipL = [-0.5, -0.65, 0.2];
+    this.standArms('R', -1, mixv(mixv(DRINK_U, [0.15, -0.9, 0.35], down), hipU, proud), mixv(mixv(DRINK_L, [-0.6, 0.4, 0.68], down), hipL, proud));
+    this.standArms('L', 1, mixv([0.3, -0.85, 0.25], hipU, proud), mixv([0.1, -0.7, 0.5], hipL, proud)); this.legsStand(0.12 + proud * 0.06);
+    P.chest.setFromAxisAngle(X, -0.12 * proud); P.head.setFromAxisAngle(X, 0.12 * (1 - proud) - 0.3 * proud + Math.sin(t * 2) * 0.04).multiply(_q.setFromAxisAngle(Y, Math.sin(t * 1.3) * 0.25 * proud));
+    const bd = this.prop('beard', () => { const grp = new THREE.Group(), cols = [0x7a4426, 0x925630, 0x6a3a1e, 0xa8683a].map(c => lam(c));
+      // stubble round the jaw and the moustache
+      const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.1, 22, 12, 0, Math.PI, Math.PI * 0.55, Math.PI * 0.35), cols[0]); jaw.scale.set(1.02, 1, 1.1); jaw.position.set(0, 0.07, -0.06); jaw.name = 'jaw'; grp.add(jaw);
+      for (const sx of [-1, 1]) { const tache = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.06, 6), cols[1]); tache.rotation.z = sx * (Math.PI / 2 + 0.35); tache.position.set(sx * 0.025, 0.04, 0.045); grp.add(tache); }
+      // the long beard: a tapered core with dozens of hair strands hanging off it (unit length, scaled as it grows)
+      const hang = new THREE.Group(); hang.name = 'hang'; grp.add(hang);
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.012, 1, 14, 1, false, -Math.PI / 2, Math.PI), cols[0]); core.position.set(0, -0.5, 0.0); hang.add(core);
+      for (let i = 0; i < 70; i++) { const a = (i / 70) * Math.PI - Math.PI / 2 + Math.sin(i * 7.1) * 0.08, ring = (i % 3) / 3, L = 0.7 + ((i * 37) % 30) / 100 - Math.abs(Math.sin(a)) * 0.25;
+        const st = new THREE.Mesh(new THREE.ConeGeometry(0.018 + (i % 4) * 0.004, L, 5), cols[i % 4]); st.rotation.x = Math.PI;
+        const rr = 0.07 - ring * 0.02; st.position.set(Math.sin(a) * rr, -L / 2, Math.cos(a) * rr * 0.8 + 0.01); st.rotation.z = -Math.sin(a) * 0.08; hang.add(st); }
+      return grp; });
+    // under his chin, following his head
+    const head = this.c.headPos(new THREE.Vector3()); r.partQuat('head', bd.quaternion); bd.position.copy(head).add(_v.set(0, -0.135 * kH, 0.03 * kH).applyQuaternion(bd.quaternion)); bd.scale.setScalar(kH);
+    const hang = bd.getObjectByName('hang'), len = 0.03 + g * 0.72, wid = 0.8 + g * 1.5;
+    hang.scale.set(wid, len, 0.8 + g * 0.5); hang.rotation.x = -0.12 * g + Math.sin(t * 2.2) * 0.05 * g;
+    bd.getObjectByName('jaw').scale.set(1.02 + g * 0.25, 1 + g * 0.3, 1.1 + g * 0.3);
+    this.at(t, 0.3, 'a', () => this.say('*strokes chin*')); this.at(t, 1.2, 'b', () => this.say('NO-SHAVE NOVEMBER...', null, 'boing')); this.at(t, 2.3, 'c', () => this.say('...DECEMBER...', null, 'boing'));
+    this.at(t, 3.3, 'd', () => this.say('...THE WHOLE YEAR', null, 'boing')); this.at(t, 4.6, 'e', () => this.say('🧔 BEHOLD. THE BEARD.', null, 'jet'));
+    return { hand: { L: proud > 0.5 ? 'fist' : 'open', R: proud > 0.5 ? 'fist' : 'open' } };
+  }
   // ---- AIDAN O: let it settle: pint held up to the light, watching it, then a slow proper sip
   settle(t) { const r = this.c.rag, P = r.pose, up = ramp(t, 0.2, 0.6) * (1 - ramp(t, 3.0, 3.3)), sip = ramp(t, 3.2, 3.5) * (1 - ramp(t, 4.3, 4.6));
     this.standArms('R', -1, mixv(mixv([0.2, -1, 0.1], [0.3, 0.1, 0.95], up), DRINK_U, sip), mixv(mixv([0.1, -1, 0.2], [0.1, 0.6, 0.8], up), DRINK_L, sip));
@@ -445,23 +481,70 @@ export class EmotePlayer {
     this.at(t, 0.6, 'a', () => this.say('⏳ LET IT SETTLE...')); this.at(t, 2.0, 'b', () => this.say('...nearly...')); this.at(t, 3.4, 'c', () => this.say('PERFECT.', null, 'gulp'));
     return { hand: { L: 'open', R: 'grip' } }; }
   // ---- IAN: flipping burgers on the barbecue with his spatula
-  flip(t) { const r = this.c.rag, P = r.pose, fl = Math.max(0, Math.sin(t * 4.5));
-    this.standArms('R', -1, [0.3, -0.5, 0.8], [-0.1, -0.2 + fl * 0.8, 0.95]); this.standArms('L', 1, [0.3, -0.8, 0.4], [0.1, -0.6, 0.8]); this.legsStand(0.12);
-    P.chest.setFromAxisAngle(X, 0.25); P.head.setFromAxisAngle(X, 0.35);
-    const sp = this.prop('spatula', () => { const g = new THREE.Group(); const h = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.25, 6), lam(0x3a2414)); h.position.y = -0.12; g.add(h); const b = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.005, 0.11), lam(0xb0b4b8)); b.position.set(0, -0.26, 0.04); g.add(b); return g; });
-    this.inHand(sp, 'R', [0, 0, 0], [-0.4, 0, 0]);
-    const burger = this.prop('patty', () => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.018, 16), lam(0x5a2a14)); return m; });
-    r.tip('lArmR', burger.position); burger.position.y += fl * 0.25 + 0.06; burger.rotation.x = t * 9;
-    for (let i = 0; i < 3; i++) this.at(t, 0.5 + i * 1.4, 'f' + i, () => this.say(['FLIP!', 'SIZZLE!', 'HEALTHY? NEVER.'][i], null, i === 1 ? 'sizzle' : 'whoosh'));
-    return { hand: { R: 'grip', L: 'open' } }; }
+  flip(t) {
+    // at his barbecue: the grill in front of him, coals glowing, a burger sizzling; the spatula slides under it and
+    // flips it (up, a full turn over, back down on the grill), again and again
+    const r = this.c.rag, P = r.pose, kH = this.kH, F = 1.4, ph = (t % F) / F, n = Math.floor(t / F);
+    const scoop = ph < 0.3 ? ss(ph / 0.3) : ph < 0.55 ? 1 : 1 - ss((ph - 0.55) / 0.3), lift = ph > 0.3 && ph < 0.55 ? Math.sin((ph - 0.3) / 0.25 * Math.PI) : 0;
+    this.standArms('R', -1, [0.3, -0.55, 0.8], [-0.1, -0.5 + lift * 0.9 + scoop * 0.2, 0.95]); this.standArms('L', 1, [0.35, -0.85, 0.3], [0.2, -0.7, 0.6]); this.legsStand(0.14);
+    P.chest.setFromAxisAngle(X, 0.3); P.head.setFromAxisAngle(X, 0.45);
+    const bbq = this.prop('bbq', () => { const g = new THREE.Group(), blk = lam(0x1c1c1c);
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.16, 0.4), blk); body.position.y = 0.76; g.add(body);
+      for (const [x, z] of [[-0.27, -0.16], [0.27, -0.16], [-0.27, 0.16], [0.27, 0.16]]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.7, 6), blk); l.position.set(x, 0.35, z); g.add(l); }
+      const coals = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.02, 0.34), lam(0xff4a10, { emissive: 0xc02800 })); coals.position.y = 0.8; g.add(coals);
+      for (let i = -6; i <= 6; i++) { const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.38, 4), lam(0x888888)); bar.rotation.x = Math.PI / 2; bar.position.set(i * 0.045, 0.845, 0); g.add(bar); }
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.3), lam(0x6a4426)); shelf.position.set(0.42, 0.8, 0); g.add(shelf);
+      const pat = new THREE.Group(); pat.name = 'patty'; const meat = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.02, 18), lam(0x5a2a14)); pat.add(meat);
+      const marks = new THREE.Mesh(new THREE.CylinderGeometry(0.056, 0.056, 0.004, 18), lam(0x2a1206)); marks.position.y = 0.01; pat.add(marks); pat.position.set(-0.05, 0.86, 0.02); g.add(pat); return g; });
+    this.L(0.05, 0, 0.62, bbq.position); bbq.rotation.y = r.yaw; bbq.scale.setScalar(kH);
+    const pat = bbq.getObjectByName('patty'); pat.position.y = 0.86 + lift * 0.22; pat.rotation.x = n * Math.PI + (ph > 0.3 && ph < 0.55 ? (ph - 0.3) / 0.25 * Math.PI : ph >= 0.55 ? Math.PI : 0);
+    const sp = this.prop('spatula', () => { const g = new THREE.Group(); const h = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.25, 6), lam(0x3a2414)); h.position.y = 0.12; g.add(h); const b = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.005, 0.11), lam(0xb0b4b8)); b.position.set(0, 0.26, 0.04); g.add(b); return g; });
+    // the spatula from his hand to the burger
+    const hand = r.grip('lArmR', new THREE.Vector3()), pw = new THREE.Vector3(); pat.getWorldPosition(pw); sp.position.copy(hand); sp.quaternion.setFromUnitVectors(Y, pw.clone().sub(hand).normalize()); sp.scale.setScalar(Math.min(1.4, hand.distanceTo(pw) / 0.28));
+    if (ph > 0.3 && Math.floor((t - 1 / 60) / F) === n && ((t - 1 / 60) % F) / F <= 0.3) this.say(['FLIP!', 'SIZZLE!', 'HEALTHY? NEVER.', 'PERFECT!'][n % 4], null, n % 2 ? 'sizzle' : 'whoosh');
+    if (Math.random() < 0.02) this.say('', null, 'sizzle');
+    return { hand: { R: 'grip', L: 'open' } };
+  }
   // ---- HARRY: swiping left on his phone, again and again
-  swipe(t) { const r = this.c.rag, P = r.pose, sw = ((t * 1.6) % 1), sx2 = sw < 0.5 ? sw * 2 : 1;
-    this.standArms('L', 1, [0.25, -0.5, 0.8], [-0.3, 0.2, 0.95]); this.standArms('R', -1, [0.3, -0.5, 0.75], [-0.2 - sx2 * 0.6, 0.25, 0.9]); this.legsStand(0.1);
+  swipe(t) {
+    // swiping RIGHT on every single one: YES, yes, YES (the phone flashes green every time)
+    const r = this.c.rag, P = r.pose, sw = ((t * 1.6) % 1), sx2 = sw < 0.5 ? sw * 2 : 1;
+    this.standArms('L', 1, [0.25, -0.5, 0.8], [-0.3, 0.2, 0.95]); this.standArms('R', -1, [0.35, -0.55, 0.7], [0.32 - sx2 * 0.38, 0.3, 0.9]); this.legsStand(0.1);
     P.head.setFromAxisAngle(X, 0.45);
-    const ph = this.prop('phone', () => { const g = new THREE.Group(); g.add(new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.15, 0.01), lam(0x111111))); const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.066, 0.14), new THREE.MeshBasicMaterial({ color: 0xff3a6a })); sc.position.z = 0.006; g.add(sc); return g; });
-    this.inHand(ph, 'L', [0, 0.03, 0], [-1.2, 0, 0]);
-    const n = Math.floor(t * 1.6); if (n !== this.lastBeat && t > 0.3) { this.lastBeat = n; this.say(['NOPE.', 'NOPE.', 'NAH.', 'BLOCKED ME?!', 'NOPE.'][n % 5], null, 'pop'); }
-    return { hand: { L: 'grip', R: 'point' } }; }
+    const ph = this.prop('phone', () => { const g = new THREE.Group(); g.add(new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.15, 0.01), lam(0x111111))); const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.066, 0.14), new THREE.MeshBasicMaterial({ color: 0xff3a6a })); sc.position.z = 0.006; sc.name = 'screen'; g.add(sc); return g; });
+    this.inHand(ph, 'L', [0, 0.03, 0], [-1.2, 0, 0]); ph.getObjectByName('screen').material.color.setHex(sw > 0.45 && sw < 0.75 ? 0x2ed47a : 0xff3a6a);
+    const n = Math.floor(t * 1.6); if (n !== this.lastBeat && t > 0.3) { this.lastBeat = n; this.say(['YES! 💚', 'YES.', 'OBVIOUSLY YES', 'IT\'S A MATCH!', 'YES YES YES'][n % 5], null, 'ting'); }
+    return { hand: { L: 'grip', R: 'point' } };
+  }
+  // ---- HARRY'S VAN: a white van screeches up beside him, the back doors fly open, he loads his five kids in one at
+  // a time (they hop in), slams the doors and the van drives off
+  van(t) {
+    const r = this.c.rag, P = r.pose, kH = this.kH, arrive = ramp(t, 0, 1.6), doors = ramp(t, 1.7, 2.1) * (1 - ramp(t, 7.0, 7.3)), leave = ramp(t, 7.4, 9.0);
+    const wave = Math.sin(t * 7);
+    this.standArms('R', -1, [0.5, 0.1, 0.4], [0.3, 0.9 , 0.2 + wave * 0.3]); this.standArms('L', 1, [0.45, -0.5, 0.5], [0.4, -0.2, 0.8]); this.legsStand(0.12);
+    P.head.setFromAxisAngle(Y, 0.6);
+    const van = this.prop('van', vanMesh);
+    // the van comes in from behind him, pulls up alongside (back doors next to him), then drives away forwards
+    const side = 2.0, along = (-12 * (1 - ss(arrive))) + 14 * leave * leave;
+    this.L(side, 0, along + 1.6, van.position); van.rotation.y = r.yaw; van.scale.setScalar(1);
+    for (const w of van.userData.wheels) w.rotation.x += ((arrive < 1 ? 1 - arrive : 0) * 0.6 + leave * 0.8);
+    const blink = arrive >= 1 && leave === 0 && Math.sin(t * 9) > 0; for (const m of van.userData.hazards) m.visible = blink;
+    for (const sx of [-1, 1]) van.getObjectByName('door' + sx).rotation.y = sx * -doors * 1.9;
+    // the five kids: they come out from behind Harry, run to the back of the van and hop in, one by one
+    const cols = [0xff6fa8, 0x3fa3ff, 0x7cff6a, 0xffd400, 0xff7a1a], hair = [0x6a3a1a, 0xe8c070, 0x1a1210, 0xa0522d, 0x3a2416];
+    const backDoor = this.L(side, 0, -1.05 + along), inVan = this.L(side, 0, -0.2 + along);
+    for (let i = 0; i < 5; i++) {
+      const k = this.prop('kid' + i, () => kidMesh(cols[i], hair[i], i % 2 === 0)), start = 2.2 + i * 0.85, kt = clamp01((t - start) / 0.8);
+      const from = this.L(-0.6 + i * 0.3, 0, -0.8 - (i % 2) * 0.3), to = backDoor.clone();
+      const hop = clamp01((kt - 0.7) / 0.3); k.visible = t < start + 0.85;
+      k.position.copy(from).lerp(to, ss(Math.min(1, kt / 0.7))).lerp(inVan, hop); k.position.y = hop > 0 ? Math.sin(hop * Math.PI) * 0.25 + hop * 0.42 : Math.abs(Math.sin(t * 9)) * 0.03 * (kt > 0 ? 1 : 0);
+      k.rotation.y = kt > 0 ? Math.atan2(to.x - from.x, to.z - from.z) : r.yaw; k.scale.setScalar(0.85 + (i % 3) * 0.08); walkKid(k, t * 9 + i);
+      this.at(t, start + 0.8, 'k' + i, () => this.say(`${i + 1}...`, null, 'boing'));
+    }
+    this.at(t, 1.5, 'a', () => this.say('🚐 SCREEECH', null, 'whistle')); this.at(t, 1.8, 'b', () => this.say('IN YOU GET, KIDS!')); this.at(t, 7.0, 'c', () => this.say('*SLAM*', null, 'thud')); this.at(t, 7.5, 'd', () => this.say('SEE YOU LADS!', null, 'jet'));
+    return { hand: { L: 'open', R: 'open' } };
+  }
+
   // ---- ALFIE: the nutmeg: a ball at his feet, step-overs, then through the legs
   nutmeg(t) { const r = this.c.rag, P = r.pose, kH = this.kH, st = Math.sin(t * 7), go = t > 2.8;
     r.aim('uLegL', 0.12 + Math.max(0, st) * 0.2, -1, 0.15 + Math.max(0, st) * 0.3); r.aim('lLegL', 0.1, -1, 0.05); r.aim('uLegR', -0.12 - Math.max(0, -st) * 0.2, -1, 0.15 + Math.max(0, -st) * 0.3); r.aim('lLegR', -0.1, -1, 0.05);
@@ -568,30 +651,85 @@ export class EmotePlayer {
     return { hand: { L: 'open', R: fall > 0.3 ? 'open' : 'grip' }, bob: lie.bob, flip: lie.flip, full: true };
   }
 
-  // ---- DYLAN: the ACL goes (cartoon style): a kick, a POP, bits everywhere, down holding the leg
+  // ---- DYLAN: the ACL goes, cartoon style: a wobble, the knee swells up like a balloon, BANG, the bottom half of the
+  // leg pings off (spinning, bouncing across the floor, a sock and trainer still on it), a stump with a little red cap
+  // and a few red cartoon splats, stars round his head, and he topples over clutching what's left
   acl(t) {
-    const r = this.c.rag, P = r.pose, kick = ramp(t, 0.3, 0.8) * (1 - ramp(t, 0.9, 1.1)), down = ramp(t, 1.4, 1.9);
-    r.aim('uLegR', -0.08, -Math.cos(kick * 1.2), Math.sin(kick * 1.2)); r.aim('lLegR', -0.06, -Math.cos(kick * 1.1), Math.sin(kick * 1.1));
+    const r = this.c.rag, P = r.pose, kH = this.kH, kick = ramp(t, 0.2, 0.6) * (1 - ramp(t, 0.7, 0.9)), swell = ramp(t, 0.6, 1.25), off = t >= 1.25, down = ramp(t, 1.9, 2.4);
+    const wob = t > 0.6 && !off ? Math.sin(t * 40) * 0.08 * swell : 0;
+    r.aim('uLegR', -0.08, -Math.cos(kick * 1.2) , Math.sin(kick * 1.2) + wob); r.aim('lLegR', -0.06, -Math.cos(kick * 1.1), Math.sin(kick * 1.1));
     r.aim('uLegL', 0.08, -1, down * 0.5); r.aim('lLegL', 0.06, -1, down * 0.3);
-    for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, mixv([0.6, 0.1, 0.1], [0.15, -0.6, 0.75], down), mixv([0.6, 0.2, 0.1], [-0.3, -0.5, 0.6], down));
-    P.chest.setFromAxisAngle(X, 0.2 * down); P.head.setFromAxisAngle(X, 0.3 * down);
-    const bits = this.prop('bits', () => { const g = new THREE.Group(); const cols = [0xff4fa3, 0xffd400, 0x3fc0ff, 0x7cff6a, 0xffffff, 0xe8b08c];
-      for (let i = 0; i < 40; i++) { const m = new THREE.Mesh(i % 3 ? new THREE.BoxGeometry(0.02, 0.02, 0.02) : new THREE.TetrahedronGeometry(0.018), lam(cols[i % cols.length], { emissive: 0x222222 })); m.userData.v = new THREE.Vector3(Math.sin(i * 2.4) * 1.6, 1.5 + (i % 5) * 0.5, Math.cos(i * 2.4) * 1.6); g.add(m); } g.visible = false; return g; });
-    if (t > 1.0) { if (!bits.visible) { bits.visible = true; r.tip('uLegR', bits.position); for (const m of bits.children) m.position.set(0, 0, 0); }
-      for (const m of bits.children) { m.userData.v.y -= 9.8 * 0.016; m.position.addScaledVector(m.userData.v, 0.016); if (m.position.y + bits.position.y < 0.02) { m.position.y = 0.02 - bits.position.y; m.userData.v.multiplyScalar(0.3); } m.rotation.x += 0.2; m.rotation.y += 0.15; } }
-    this.at(t, 1.0, 'p', () => this.say('💥 POP! 💥', null, 'pop')); this.at(t, 1.2, 'q', () => this.say('', null, 'boing')); this.at(t, 2.2, 'r', () => this.say('NOT THE ACL AGAIN!', null, 'sadviolin'));
+    for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, mixv(off ? [0.9, 0.5, 0.2] : [0.6, 0.1, 0.1], [0.15, -0.6, 0.75], down), mixv(off ? [0.6, 0.9, 0.1] : [0.6, 0.2, 0.1], [-0.3, -0.5, 0.6], down));
+    P.chest.setFromAxisAngle(X, 0.2 * down - (off && !down ? 0.15 : 0)); P.head.setFromAxisAngle(X, 0.3 * down - (off && down < 0.5 ? 0.3 : 0));
+    if (!r.partHide) r.partHide = {}; r.partHide.lLegR = off; if (!this.undo || !this.undo.length) this.onStop(() => { if (r.partHide) r.partHide.lLegR = false; });
+    const knee = r.tip('uLegR', new THREE.Vector3());
+    // the swelling knee: a balloon of skin growing at the joint
+    const bal = this.prop('balloon', () => new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), lam(0xe8b08c, { emissive: 0x401810 })));
+    bal.visible = t > 0.6 && !off; bal.position.copy(knee); bal.scale.setScalar(kH * (0.8 + swell * 1.6 + Math.sin(t * 30) * 0.05 * swell));
+    // the leg that comes off
+    const leg = this.prop('leg', () => { const g = new THREE.Group(); const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.3, 6, 12), lam(0xe0a882)); shin.position.y = -0.17; g.add(shin);
+      const sock = new THREE.Mesh(new THREE.CylinderGeometry(0.047, 0.045, 0.1, 12), lam(0xf5f5f5)); sock.position.y = -0.33; g.add(sock);
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 0.25), lam(0xf5f5f5)); shoe.position.set(0, -0.4, 0.06); g.add(shoe); const sole = new THREE.Mesh(new THREE.BoxGeometry(0.105, 0.02, 0.26), lam(0x888888)); sole.position.set(0, -0.44, 0.06); g.add(sole);
+      const cap = new THREE.Mesh(new THREE.CircleGeometry(0.046, 16), lam(0xd81b2a, { side: THREE.DoubleSide })); cap.rotation.x = -Math.PI / 2; cap.position.y = 0.01; g.add(cap); g.visible = false; return g; });
+    if (off) { if (!leg.visible) { leg.visible = true; leg.position.copy(knee); leg.rotation.set(0, r.yaw, 0); const out = this.L(-0.6, 0, 0.3).sub(this.L(0, 0, 0)); leg.userData.v = out.multiplyScalar(2.2).add(new THREE.Vector3(0, 3.2, 0)); leg.userData.w = 9; }
+      const v = leg.userData.v; v.y -= 9.8 / 60; leg.position.addScaledVector(v, 1 / 60); leg.rotation.x += leg.userData.w / 60; leg.rotation.z += leg.userData.w * 0.4 / 60;
+      if (leg.position.y < 0.12 * kH) { leg.position.y = 0.12 * kH; v.y = Math.abs(v.y) * 0.45; v.x *= 0.7; v.z *= 0.7; leg.userData.w *= 0.6; } leg.scale.setScalar(kH); }
+    // the stump: a cartoon red cap (and a bone end) on the knee
+    const stump = this.prop('stump', () => { const g = new THREE.Group(); g.add(new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), lam(0xd81b2a))); const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.04, 8), lam(0xfff4e0)); bone.position.y = -0.02; g.add(bone); g.rotation.x = Math.PI; return g; });
+    stump.visible = off; stump.position.copy(knee); stump.scale.setScalar(kH);
+    // the bang: red and white cartoon splats and stars flying out of the knee
+    const bits = this.prop('bits', () => { const g = new THREE.Group(); for (let i = 0; i < 30; i++) { const m = new THREE.Mesh(i % 3 ? new THREE.SphereGeometry(0.018, 6, 4) : new THREE.OctahedronGeometry(0.022), lam(i % 3 ? 0xd81b2a : i % 2 ? 0xffd400 : 0xffffff, { emissive: 0x330000 })); m.userData.v = new THREE.Vector3(Math.sin(i * 2.4) * 1.8, 1.2 + (i % 5) * 0.5, Math.cos(i * 2.4) * 1.8); g.add(m); } g.visible = false; return g; });
+    if (off) { if (!bits.visible) { bits.visible = true; bits.position.copy(knee); for (const m of bits.children) m.position.set(0, 0, 0); }
+      for (const m of bits.children) { m.userData.v.y -= 9.8 / 60; m.position.addScaledVector(m.userData.v, 1 / 60); if (m.position.y + bits.position.y < 0.01) { m.position.y = 0.01 - bits.position.y; m.userData.v.set(0, 0, 0); m.scale.set(1.8, 0.2, 1.8); } } }
+    this.at(t, 0.65, 'w', () => this.say('UH OH...', null, 'boing')); this.at(t, 1.25, 'p', () => this.say('💥 BANG! 💥', null, 'pop')); this.at(t, 1.3, 'q', () => this.say('', null, 'smash'));
+    this.at(t, 1.8, 'r', () => this.say('...THAT\'S NOT MEANT TO DO THAT', null, 'boing')); this.at(t, 2.8, 's', () => this.say('ACL: GONE. LEG: ALSO GONE.', null, 'sadviolin'));
     const lie = this.lieBack(down);
-    return { hand: { L: down > 0.5 ? 'grip' : 'open', R: down > 0.5 ? 'grip' : 'open' }, bob: lie.bob, flip: lie.flip, full: true };
+    return { hand: { L: down > 0.5 ? 'grip' : 'open', R: down > 0.5 ? 'grip' : 'open' }, bob: (off && down < 0.1 ? Math.abs(Math.sin(t * 9)) * 0.06 * kH : 0) + lie.bob, flip: lie.flip, full: true };
   }
-  // ---- DYLAN: air guitar, Wonderwall
+  // ---- DYLAN: Wonderwall, Liam style: hands clasped behind his back, leaning in, head tipped up into the mic on its stand
   airguitar(t) {
-    const r = this.c.rag, P = r.pose, strum = Math.sin(t * 14);
-    this.standArms('L', 1, [0.15, -0.5, 0.8], [-0.85, 0.15, 0.5]);         // the neck of the guitar
-    this.standArms('R', -1, [0.25, -0.75, 0.4], [-0.3, -0.25 + strum * 0.35, 0.8]);
-    r.aim('uLegL', 0.12, -1, 0.15); r.aim('lLegL', 0.1, -1, 0); r.aim('uLegR', -0.12, -1, -0.05); r.aim('lLegR', -0.1, -1, 0);
-    P.chest.setFromAxisAngle(X, -0.15).multiply(_q.setFromAxisAngle(Y, 0.2)); P.head.setFromAxisAngle(X, -0.25 + Math.abs(Math.sin(t * 3.5)) * 0.25);
-    this.at(t, 0.4, 'a', () => this.say('🎸 TODAY IS GONNA BE THE DAY...')); this.at(t, 2.6, 'b', () => this.say('...THAT THEY\'RE GONNA THROW IT BACK TO YOU 🎶'));
-    return { hand: { L: 'grip', R: 'grip' }, bob: -0.02 * this.kH };
+    const r = this.c.rag, P = r.pose, kH = this.kH, sway = Math.sin(t * 2.1) * 0.05, belt = Math.abs(Math.sin(t * 3.5));
+    for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, [0.18, -0.85, -0.45], [-0.75, -0.2, -0.55]);           // hands behind his back
+    r.aim('uLegL', 0.13, -1, 0.04); r.aim('lLegL', 0.1, -1, 0); r.aim('uLegR', -0.13, -1, -0.02); r.aim('lLegR', -0.1, -1, 0);
+    P.pelvis.setFromAxisAngle(X, 0.22); P.chest.setFromAxisAngle(X, 0.58 + sway).multiply(_q.setFromAxisAngle(Z, sway));
+    P.head.setFromAxisAngle(X, -0.8 - belt * 0.1).multiply(_q.setFromAxisAngle(Z, -sway * 2));
+    const mic = this.prop('mic', () => { const g = new THREE.Group(), m = lam(0x1a1a1a), silver = lam(0xb8bcc2);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.15, 0.025, 20), m); base.position.y = 0.012; g.add(base);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.38, 8), silver); pole.position.y = 0.7; g.add(pole);
+      const clip = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.09, 8), m); clip.position.set(0, 1.42, -0.03); clip.rotation.x = 0.9; g.add(clip);
+      const mc = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.012, 0.12, 12), m); mc.position.set(0, 1.45, -0.09); mc.rotation.x = 0.9; g.add(mc);
+      const grille = new THREE.Mesh(new THREE.SphereGeometry(0.027, 12, 8), silver); grille.position.set(0, 1.48, -0.13); g.add(grille); return g; });
+    // the long navy trench coat: his clothes painted navy, plus the long skirt of the coat hanging from the hips to his
+    // shins (follows the pelvis), the collar turned up
+    paintRag(this, { uCoat: this.w });
+    const coat = this.prop('coat', () => { const g = new THREE.Group(), navy = lam(0x14213d, { side: THREE.DoubleSide }), dark = lam(0x0c1528, { side: THREE.DoubleSide });
+      const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.27, 0.62, 22, 1, true, 0.25, Math.PI * 2 - 0.5), navy); skirt.position.y = -0.33; g.add(skirt);   // (split at the front)
+      const belt = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.018, 6, 22), dark); belt.rotation.x = Math.PI / 2; belt.scale.set(1, 0.75, 1); g.add(belt);
+      for (const sx of [-1, 1]) for (const y of [0.12, -0.08]) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), dark); b.position.set(sx * 0.06, y - 0.12, 0.2 + y * 0.1); g.add(b); }
+      return g; });
+    const coll = this.prop('collar', () => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.15, 0.1, 18, 1, true, 0.6, Math.PI * 2 - 1.2), lam(0x14213d, { side: THREE.DoubleSide })); return m; });
+    { const b = r.parts.pelvis.body.position; coat.position.set(b.x, b.y, b.z); } r.partQuat('pelvis', coat.quaternion); coat.position.y += 0.08 * kH; coat.scale.set(kH, kH, kH * 0.8); coat.scale.y = kH;
+    const nk = this.c.headPos(new THREE.Vector3()); r.partQuat('chest', coll.quaternion); coll.position.copy(nk).add(_v.set(0, -0.13 * kH, -0.01 * kH).applyQuaternion(coll.quaternion)); coll.scale.setScalar(kH);
+    this.L(0, 0, 0.4, mic.position); mic.rotation.y = r.yaw + Math.PI; mic.scale.setScalar(kH);
+    const LY = ['🎤 TODAY IS GONNA BE THE DAY...', '...THAT THEY\'RE GONNA THROW IT BACK TO YOU 🎶', 'AND AFTER ALL... 🎶', 'YOU\'RE MY WONDERWAAALL 🎶'];
+    LY.forEach((l, i) => this.at(t, 0.4 + i * 1.15, 'l' + i, () => this.say(l)));
+    return { hand: { L: 'grip', R: 'grip' }, bob: -0.03 * kH };
+  }
+  // ---- DYLAN: the Oompa Loompa dance: orange all over, bright green hair, the little side-step and knee bob with
+  // the arms swinging across, "OOMPA LOOMPA DOOMPETY DOO"
+  oompa(t) {
+    const r = this.c.rag, P = r.pose, kH = this.kH, ph = t * 3.6, step = Math.sin(ph), bounce = Math.abs(Math.sin(ph)), turn = ramp(t, 0, 0.4);
+    // turning orange and the hair dyed bright green: painted onto his own model (a plain tint if there's no model)
+    if (!paintRag(this, { uOrange: turn * this.w, uHair: turn * this.w })) { const mat = r.mesh && r.mesh.material; if (mat && mat.color && !this.orange) { const o = this.orange = mat.color.clone(); this.onStop(() => { mat.color.copy(o); this.orange = null; }); }
+      if (mat && mat.color) mat.color.copy(this.orange).lerp(new THREE.Color(0xff7a10), 0.9 * turn * this.w); }
+    // side to side: step out, close, knees bobbing; arms bent, swinging across the body together
+    r.aim('uLegL', 0.12 + Math.max(0, step) * 0.15, -1, 0.15 * bounce); r.aim('lLegL', 0.08, -1, -0.15 * bounce);
+    r.aim('uLegR', -0.12 - Math.max(0, -step) * 0.15, -1, 0.15 * bounce); r.aim('lLegR', -0.08, -1, -0.15 * bounce);
+    for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, [0.35, -0.75, 0.35], [-0.35 * step * sx - 0.05, 0.25, 0.9]);
+    P.pelvis.setFromAxisAngle(Y, step * 0.25); P.chest.setFromAxisAngle(Z, step * 0.1); P.head.setFromAxisAngle(Z, -step * 0.18).multiply(_q.setFromAxisAngle(X, -0.1));
+    const LY = ['🎵 OOMPA LOOMPA', 'DOOMPETY DOO 🎵', 'I\'VE GOT ANOTHER', 'PUZZLE FOR YOU 🎵'];
+    LY.forEach((l, i) => this.at(t, 0.5 + i * 0.95, 'o' + i, () => this.say(l, null, i % 2 ? 'boing' : 'pop')));
+    return { hand: { L: 'fist', R: 'fist' }, bob: (-0.05 * bounce) * kH, spin: Math.sin(t * 1.8) * 0.5 };
   }
 
   // ---- IAN: shouting abuse (all of it bleeped)
@@ -606,23 +744,33 @@ export class EmotePlayer {
   }
   // ---- IAN: casting the rod out
   cast(t) {
-    const r = this.c.rag, P = r.pose, back = ramp(t, 0.3, 0.9) * (1 - ramp(t, 1.0, 1.2)), out = ramp(t, 1.0, 1.25);
-    for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, mixv(mixv([0.15, -0.4, 0.8], [0.15, 0.9, -0.3], back), [0.15, -0.1, 1], out), mixv(mixv([-0.2, -0.2, 0.9], [0.0, 1, 0.2], back), [-0.1, 0.1, 1], out));
-    this.legsStand(0.12, 0.1); P.chest.setFromAxisAngle(X, -0.2 * back + 0.15 * out);
-    const rod = this.prop('rod', () => { const g = new THREE.Group(); const m = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.012, 1.6, 6), lam(0x2a2a2a)); m.position.y = 0.8; g.add(m); const reel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.03, 10), lam(0x888888)); reel.rotation.z = Math.PI / 2; reel.position.y = 0.15; g.add(reel);
-      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 1.6, 0), new THREE.Vector3(0, 0, 3)]), new THREE.LineBasicMaterial({ color: 0xffffff })); line.name = 'line'; g.add(line); return g; });
-    r.grip('lArmR', rod.position); r.partQuat('lArmR', rod.quaternion); rod.quaternion.multiply(_q.setFromAxisAngle(X, Math.PI)); rod.scale.setScalar(this.kH);
-    const line = rod.getObjectByName('line'); const lp = line.geometry.attributes.position; const reach = out * 3; lp.setXYZ(1, 0, 1.6 - out * 1.5, -reach); lp.needsUpdate = true;
-    this.at(t, 1.05, 'c', () => this.say('', null, 'whoosh')); this.at(t, 1.6, 'p', () => this.say('*PLOP*', null, 'pop')); this.at(t, 2.8, 'q', () => this.say('...NOTHING. AGAIN.'));
+    // the rod held up in front, swung back over his shoulder, then whipped forward: the line flies out in an arc to
+    // the float bobbing far out in front, a wait... and nothing
+    const r = this.c.rag, P = r.pose, kH = this.kH, back = ramp(t, 0.3, 0.9) * (1 - ramp(t, 1.0, 1.15)), out = ramp(t, 1.0, 1.2);
+    for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, mixv(mixv([0.15, -0.5, 0.75], [0.2, 0.75, 0.2], back), [0.15, -0.3, 0.9], out), mixv(mixv([-0.25, -0.1, 0.95], [-0.1, 0.9, -0.3], back), [-0.15, 0.15, 0.98], out));
+    this.legsStand(0.14, 0.1); P.chest.setFromAxisAngle(X, -0.15 * back + 0.1 * out);
+    const rod = this.prop('rod', () => { const g = new THREE.Group(); const m = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.012, 1.6, 6), lam(0x2a2a2a)); m.position.y = 0.8; g.add(m); const reel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.03, 10), lam(0x888888)); reel.rotation.z = Math.PI / 2; reel.position.y = 0.12; g.add(reel); return g; });
+    // which way the rod points: up and a little forward at rest, right back over his shoulder, then out at 40°
+    const rest = new THREE.Vector3(0, 0.75, 0.66), up = new THREE.Vector3(0, 0.7, -0.7), cast = new THREE.Vector3(0, 0.62, 0.78);
+    const d = rest.clone().lerp(up, back).lerp(cast, out).normalize().applyAxisAngle(Y, r.yaw);
+    r.grip('lArmR', rod.position); rod.quaternion.setFromUnitVectors(Y, d); rod.scale.setScalar(kH);
+    const tip = rod.position.clone().addScaledVector(d, 1.6 * kH);
+    const line = this.prop('line', () => new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 16 }, () => new THREE.Vector3())), new THREE.LineBasicMaterial({ color: 0xeeeeee })));
+    const flo = this.prop('float', () => { const g = new THREE.Group(); const a = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), lam(0xff3a3a)); g.add(a); const b2 = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), lam(0xffffff)); g.add(b2); return g; });
+    const fly = clamp01((t - 1.05) / 0.7), far = this.L(0, 0.02, 0.5 + 4.5 * fly); far.y = 0.02 + (fly < 1 ? Math.sin(fly * Math.PI) * 1.4 : Math.sin(t * 3) * 0.01);
+    flo.visible = t > 1.05; flo.position.copy(t > 1.05 ? far : tip); flo.scale.setScalar(kH);
+    const pts = []; for (let i = 0; i < 16; i++) { const k = i / 15, p = tip.clone().lerp(t > 1.05 ? far : tip.clone().add({ x: 0, y: -0.3, z: 0 }), k); p.y -= Math.sin(k * Math.PI) * 0.25 * (t > 1.05 ? 1 : 0.3); pts.push(p); }
+    line.geometry.setFromPoints(pts);
+    this.at(t, 1.0, 'c', () => this.say('', null, 'whoosh')); this.at(t, 1.8, 'p', () => this.say('*PLOP*', null, 'pop')); this.at(t, 3.0, 'q', () => this.say('...NOTHING. AGAIN.'));
     return { hand: { L: 'grip', R: 'grip' } };
   }
-
   // ---- OLIVER: "my honest reaction": feet together, hands crossed in front, head tipped forward. Dead still.
   honest(t) {
-    const r = this.c.rag, P = r.pose, br = Math.sin(t * 2) * 0.01;
+    // feet together, hands crossed in front, head tipped forward... nodding slowly up and down
+    const r = this.c.rag, P = r.pose, nod = Math.sin(t * 4.2) * 0.22 * ramp(t, 0.4, 0.8);
     r.aim('uLegL', 0.02, -1, 0); r.aim('lLegL', 0.015, -1, 0); r.aim('uLegR', -0.02, -1, 0); r.aim('lLegR', -0.015, -1, 0);
     this.standArms('L', 1, [0.12, -1, 0.32], [-0.45, -0.8, 0.35]); this.standArms('R', -1, [0.12, -1, 0.3], [-0.5, -0.8, 0.38]);
-    P.head.setFromAxisAngle(X, 0.42 + br); P.chest.setFromAxisAngle(X, 0.04 + br);
+    P.head.setFromAxisAngle(X, 0.3 + nod); P.chest.setFromAxisAngle(X, 0.04 + nod * 0.1);
     this.at(t, 0.5, 'a', () => this.say('MY HONEST REACTION'));
     return { hand: { L: 'open', R: 'open' } };
   }
@@ -668,16 +816,9 @@ export class EmotePlayer {
     const r = this.c.rag, P = r.pose, kH = this.kH, s = this.walkLegs(t, 1.4, 0.32);
     this.standArms('L', 1, [0.45, -0.95, 0.05], [0.4, -0.95, 0.1]); this.standArms('R', -1, [0.15, -1, 0.25 * s], [0.1, -1, 0.3 + 0.2 * s]);
     P.head.setFromAxisAngle(Y, 0.6).multiply(_q.setFromAxisAngle(X, 0.35)); P.chest.setFromAxisAngle(Y, 0.08);
-    const kid = this.prop('kid', () => { const g = new THREE.Group(); const skin = lam(0xf0c4a4), top = lam(0xff6fa8), bot = lam(0x3a4a7a);
-      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.2, 4, 10), top); body.position.y = 0.62; g.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 12), skin); head.position.y = 0.92; g.add(head);
-      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.115, 16, 12, 0, Math.PI * 2, 0, 1.4), lam(0x6a3a1a)); hair.position.y = 0.93; g.add(hair);
-      for (const sx of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 4), lam(0x111111)); eye.position.set(sx * 0.04, 0.94, 0.1); g.add(eye); }
-      for (const sx of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.3, 4, 8), bot); leg.position.set(sx * 0.06, 0.24, 0); leg.name = 'leg' + sx; g.add(leg); }
-      const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.26, 4, 8), skin); arm.position.set(-0.15, 0.62, 0); arm.rotation.z = -0.6; g.add(arm);
-      const arm2 = arm.clone(); arm2.position.x = 0.15; arm2.rotation.z = 0.15; g.add(arm2); return g; });
+    const kid = this.prop('kid', () => kidMesh(0xff6fa8, 0x6a3a1a, true));
     this.L(0.62, 0, 0.05, kid.position); kid.rotation.y = r.yaw; kid.scale.setScalar(kH);
-    kid.getObjectByName('leg-1').rotation.x = 0.5 * s; kid.getObjectByName('leg1').rotation.x = -0.5 * s; kid.position.y = Math.abs(s) * 0.02;
+    walkKid(kid, t * 1.4 * Math.PI * 2); kid.position.y = Math.abs(s) * 0.02;
     for (let i = 0; i < 4; i++) { const h = this.prop('heart' + i, () => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: heartTex(), transparent: true, depthWrite: false })); return sp; });
       const k = ((t * 0.5 + i / 4) % 1); this.L(0.3 + Math.sin(t * 2 + i) * 0.08, 1.0 + k * 1.1, 0.1, h.position); h.scale.setScalar(0.16 * (1 - k * 0.5) * kH); h.material.opacity = Math.min(1, (1 - k) * 2); }
     this.at(t, 0.6, 'a', () => this.say('💕 DATE NIGHT 💕')); this.at(t, 3.0, 'b', () => this.say('BEST DATE I\'VE HAD ALL YEAR'));
@@ -701,21 +842,30 @@ export class EmotePlayer {
 
   // ---- ALFIE: "special stuff": a line of SUGAR on a little table, face down along it, gone
   sugar(t) {
-    const r = this.c.rag, P = r.pose, kH = this.kH, bend = ramp(t, 0.6, 1.2) * (1 - ramp(t, 3.3, 3.6)), along = clamp01((t - 1.3) / 1.8), wild = ramp(t, 3.6, 3.8) * (1 - ramp(t, 5.0, 5.5));
-    this.legsStand(0.14, 0.4 * bend);
-    for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, mixv(mixv([0.25, -1, 0.05], [0.3, -0.6, 0.75], bend), [0.6, 0.6, 0.2], wild), mixv(mixv([0.2, -1, 0.1], [0.1, -0.9, 0.4], bend), [0.5, 0.9, 0], wild));
-    P.chest.setFromAxisAngle(X, 0.95 * bend).multiply(_q.setFromAxisAngle(Y, (along - 0.5) * 0.5 * bend)); P.head.setFromAxisAngle(X, 0.4 * bend).multiply(_q.setFromAxisAngle(Y, (along - 0.5) * 0.6 * bend + Math.sin(t * 25) * 0.25 * wild));
+    // bent right over the little table, nose down on the line of sugar, sliding along it (it vanishes as he goes),
+    // then straight up, wide-eyed
+    const r = this.c.rag, P = r.pose, kH = this.kH, bend = ramp(t, 0.5, 1.2) * (1 - ramp(t, 3.3, 3.6)), along = clamp01((t - 1.3) / 1.8), wild = ramp(t, 3.6, 3.8) * (1 - ramp(t, 5.0, 5.5));
+    for (const [S, sx] of [['L', 1], ['R', -1]]) { r.aim('uLeg' + S, sx * 0.16, -1, 0.55 * bend); r.aim('lLeg' + S, sx * 0.12, -1, -0.45 * bend); }
+    for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, mixv(mixv([0.25, -1, 0.05], [0.3, -0.45, 0.85], bend), [0.6, 0.6, 0.2], wild), mixv(mixv([0.2, -1, 0.1], [0.05, -0.75, 0.6], bend), [0.5, 0.9, 0], wild));
+    P.pelvis.setFromAxisAngle(X, 0.6 * bend);
+    P.chest.setFromAxisAngle(X, 1.3 * bend).multiply(_q.setFromAxisAngle(Y, (along - 0.5) * 0.35 * bend)); P.head.setFromAxisAngle(X, 0.45 * bend).multiply(_q.setFromAxisAngle(Y, (along - 0.5) * 0.4 * bend + Math.sin(t * 25) * 0.25 * wild));
     const tbl = this.prop('table', () => { const g = new THREE.Group(); const wood = lam(0x6a4426); const top = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.03, 0.35), wood); top.position.y = 0.72; g.add(top);
       for (const [x, z] of [[-0.27, -0.14], [0.27, -0.14], [-0.27, 0.14], [0.27, 0.14]]) { const lg = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.72, 0.03), wood); lg.position.set(x, 0.36, z); g.add(lg); }
       const line = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.006, 0.018), lam(0xffffff, { emissive: 0x666666 })); line.position.set(0, 0.739, 0); line.name = 'line'; g.add(line);
-      const bag = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.05), lam(0x2a7ad8)); bag.position.set(0.24, 0.8, 0.08); g.add(bag);
-      const lbl = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.03), new THREE.MeshBasicMaterial({ map: labelTex('SUGAR') })); lbl.position.set(0.24, 0.82, 0.106); g.add(lbl); return g; });
-    this.L(0, 0, 0.5, tbl.position); tbl.rotation.y = r.yaw; tbl.scale.setScalar(kH * ramp(t, 0, 0.4));
-    const line = tbl.getObjectByName('line'); const left = 1 - clamp01(along); line.scale.x = Math.max(0.001, left); line.position.x = 0.2 - 0.2 * left; line.visible = left > 0.01;
+      const bag = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.05), lam(0x2a7ad8)); bag.position.set(0.24, 0.8, 0.12); g.add(bag);
+      const lbl = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.03), new THREE.MeshBasicMaterial({ map: labelTex('SUGAR') })); lbl.position.set(0.24, 0.82, 0.146); g.add(lbl); return g; });
+    tbl.rotation.y = r.yaw; tbl.scale.setScalar(kH * ramp(t, 0, 0.4));
+    // the table sits right under his face (and slides sideways so the line passes under his nose)
+    const face = this.c.headPos(new THREE.Vector3()), fwd = _v.set(Math.sin(r.yaw), 0, Math.cos(r.yaw)), side = _v2.set(Math.cos(r.yaw), 0, -Math.sin(r.yaw));
+    if (!this.tblAt) this.tblAt = this.L(0, 0, 0.72); const home = this.tblAt;
+    // once he's bent over, the table sits right under his face so the nose is down on the line
+    const nose = face.clone().addScaledVector(fwd, 0.08 * kH); home.x += (nose.x - home.x) * bend; home.z += (nose.z - home.z) * bend;
+    tbl.position.copy(home).addScaledVector(side, (0.5 - along) * 0.4 * kH * (bend > 0.5 ? 1 : 0));
+    tbl.scale.y = kH * ramp(t, 0, 0.4) * Math.min(1.15, Math.max(0.55, 1 + ((face.y - 0.1 * kH) / (0.74 * kH) - 1) * bend));
+    const line = tbl.getObjectByName('line'); const left = 1 - clamp01(along); line.scale.x = Math.max(0.001, left); line.position.x = -0.2 + 0.2 * left; line.visible = left > 0.01;
     this.at(t, 0.3, 'a', () => this.say('JUST A BIT OF SUGAR, LADS')); this.at(t, 1.4, 'b', () => this.say('', null, 'psst')); this.at(t, 3.7, 'c', () => this.say('⚡ SUGAR RUSH ⚡', null, 'jet'));
-    return { hand: { L: 'open', R: 'open' }, bob: -0.08 * bend * kH + Math.abs(Math.sin(t * 20)) * 0.03 * wild * kH };
+    return { hand: { L: 'open', R: 'open' }, bob: -0.26 * bend * kH + Math.abs(Math.sin(t * 20)) * 0.03 * wild * kH };
   }
-
   // ---- CONNOR: scarf up over his head, You'll Never Walk Alone
   ynwa(t) {
     const r = this.c.rag, P = r.pose, up = ramp(t, 0.2, 0.7), sw = Math.sin(t * 2.2) * 0.15;
@@ -739,11 +889,12 @@ export class EmotePlayer {
 
   // ---- RONNIE: drumming on his own belly
   drum(t) {
-    const r = this.c.rag, P = r.pose, a = Math.sin(t * 16), b = Math.sin(t * 16 + Math.PI);
-    this.standArms('L', 1, [0.25, -0.75, 0.6], [-0.35, -0.1 + 0.25 * Math.max(0, a), 0.9]); this.standArms('R', -1, [0.25, -0.75, 0.6], [-0.35, -0.1 + 0.25 * Math.max(0, b), 0.9]);
-    this.legsStand(0.14, 0.15); P.chest.setFromAxisAngle(X, -0.15); P.head.setFromAxisAngle(X, 0.25).multiply(_q.setFromAxisAngle(Z, Math.sin(t * 8) * 0.1));
-    const beat = Math.floor(t * 16 / Math.PI); if (beat !== this.lastBeat && t > 0.4 && t < 3.8) { this.lastBeat = beat; if (beat % 2 === 0) this.say(beat % 4 ? '' : 'BOM', null, 'thud'); }
-    return { hand: { L: 'open', R: 'open' }, bob: Math.abs(Math.sin(t * 8)) * -0.02 * this.kH };
+    // both hands slapping down on the front of his belly in turn (palms on it), the belly wobbling, BOM BOM
+    const r = this.c.rag, P = r.pose, a = Math.max(0, Math.sin(t * 16)), b = Math.max(0, Math.sin(t * 16 + Math.PI)), fat = 1 + (r.fat || 0) * 0.6;
+    this.standArms('L', 1, [0.3, -0.8, 0.5], [-0.35, -0.35 + a * 0.35, 0.85 * fat]); this.standArms('R', -1, [0.3, -0.8, 0.5], [-0.35, -0.35 + b * 0.35, 0.85 * fat]);
+    this.legsStand(0.14, 0.15); P.chest.setFromAxisAngle(X, -0.18); P.pelvis.setFromAxisAngle(X, -0.06); P.head.setFromAxisAngle(X, 0.3).multiply(_q.setFromAxisAngle(Z, Math.sin(t * 8) * 0.1));
+    const beat = Math.floor(t * 16 / Math.PI); if (beat !== this.lastBeat && t > 0.4 && t < 3.8) { this.lastBeat = beat; this.say(beat % 4 ? '' : 'BOM', null, 'thud'); }
+    return { hand: { L: 'palm', R: 'palm' }, back: { L: [0, 0, -1], R: [0, 0, -1] }, bob: Math.abs(Math.sin(t * 8)) * -0.02 * this.kH };
   }
   // ---- RONNIE: chugs a MANGO LOCO, arms up
   loco(t) {
@@ -795,6 +946,119 @@ export function hairyBall(R = 0.045) {
   g.add(new THREE.LineSegments(hg, new THREE.LineBasicMaterial({ color: 0x2a180c })));
   return g;
 }
+
+// paint the character's own model (ragdoll.paint uniforms): set every frame, cleared when the emote stops
+function paintRag(em, vals) { const p = em.c.rag.paint; if (!p) return false; if (!em.painted) { em.painted = true; em.onStop(() => { for (const k of ['uOrange', 'uHair', 'uCoat']) p[k].value = 0; em.painted = false; }); }
+  for (const k in vals) p[k].value = vals[k]; return true; }
+
+// Harry's white panel van: one shaped body (bonnet, windscreen, roof), cab windows, sliding-door seams, mirrors,
+// grille, lights, bumpers, plates, wheels with hubcaps, roof rack and ladder, a driver, and twin back doors (pivots
+// named door-1 / door1) that open onto the inside. Back of the van at z -2.2, front at +2.4.
+function vanMesh() {
+  const g = new THREE.Group(), white = lam(0xf2f2f0), glass = new THREE.MeshPhongMaterial({ color: 0x1c2a36, shininess: 90, specular: 0x8899aa }), blk = lam(0x161616), grey = lam(0x4a4d52), silver = lam(0xc4c8cc), chrome = new THREE.MeshPhongMaterial({ color: 0xdfe3e6, shininess: 120, specular: 0xffffff });
+  const add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0, par = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); par.add(m); return m; };
+  // the body: a side profile (z along the van, y up) extruded across its width, edges rounded off
+  const sh = new THREE.Shape(); sh.moveTo(-2.2, 0.42); sh.lineTo(-2.2, 2.0); sh.quadraticCurveTo(-2.2, 2.08, -2.1, 2.08); sh.lineTo(0.95, 2.08); sh.quadraticCurveTo(1.1, 2.08, 1.18, 1.98);
+  sh.lineTo(1.72, 1.32); sh.quadraticCurveTo(1.8, 1.24, 1.95, 1.22); sh.lineTo(2.3, 1.14); sh.quadraticCurveTo(2.42, 1.1, 2.42, 0.95); sh.lineTo(2.42, 0.5); sh.quadraticCurveTo(2.42, 0.42, 2.32, 0.42); sh.lineTo(-2.2, 0.42);
+  const bg = new THREE.ExtrudeGeometry(sh, { depth: 1.8, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.04, bevelSegments: 3, curveSegments: 10 }); bg.rotateY(-Math.PI / 2); bg.translate(0.9, 0, 0);
+  add(bg, white, 0, 0, 0);
+  // windscreen (follows the slope), side cab windows, the little quarter window
+  const wsLen = Math.hypot(1.72 - 1.18, 1.98 - 1.32); add(new THREE.PlaneGeometry(1.7, wsLen * 0.92), glass, 0, 1.65, 1.47, -(Math.PI / 2 - Math.atan2(1.98 - 1.32, 1.72 - 1.18)));
+  for (const sx of [-1, 1]) { const x = sx * 0.948, ry = sx * Math.PI / 2;
+    const win = new THREE.Shape(); win.moveTo(0, 0); win.lineTo(0.62, 0); win.lineTo(0.62, 0.32); win.lineTo(0.38, 0.55); win.lineTo(0, 0.55); win.lineTo(0, 0);
+    const wm = add(new THREE.ShapeGeometry(win), glass, x, 1.32, sx > 0 ? 0.78 : 1.4, 0, ry); wm.scale.x = 1;
+    add(new THREE.PlaneGeometry(0.004, 1.15), blk, x + sx * 0.002, 1.05, 0.72, 0, ry);           // cab door seams
+    add(new THREE.PlaneGeometry(0.004, 1.2), blk, x + sx * 0.002, 1.05, 1.5, 0, ry);
+    add(new THREE.BoxGeometry(0.03, 0.03, 0.14), grey, x + sx * 0.01, 1.22, 0.85);                // cab door handle
+    add(new THREE.PlaneGeometry(0.004, 1.45), blk, x + sx * 0.002, 1.2, -0.95, 0, ry);           // sliding side door seams + track
+    add(new THREE.PlaneGeometry(1.6, 0.012), grey, x + sx * 0.002, 1.62, -0.15, 0, ry);
+    add(new THREE.BoxGeometry(0.03, 0.035, 0.18), grey, x + sx * 0.01, 1.2, 0.5);                 // side door handle
+    // wing mirror on an arm
+    add(new THREE.BoxGeometry(0.12, 0.03, 0.03), blk, sx * 1.0, 1.42, 1.62); add(new THREE.BoxGeometry(0.05, 0.22, 0.14), blk, sx * 1.08, 1.45, 1.6);
+    add(new THREE.PlaneGeometry(0.12, 0.18), chrome, sx * 1.08, 1.45, 1.528, 0, Math.PI);
+    // plastic sill and wheel-arch trims
+    add(new THREE.BoxGeometry(0.03, 0.12, 2.4), grey, sx * 0.95, 0.5, 0.2);
+    for (const z of [1.55, -1.35]) { const arch = add(new THREE.TorusGeometry(0.42, 0.045, 6, 20, Math.PI), grey, sx * 0.955, 0.42, z, 0, ry); arch.scale.set(1, 1, 0.6); }
+    // indicator repeater
+    add(new THREE.BoxGeometry(0.02, 0.03, 0.06), lam(0xff9a00, { emissive: 0x663300 }), sx * 0.96, 1.0, 1.7);
+  }
+  // the livery down both sides
+  const liv = labelTex("HARRY & KIDS LTD · NO JOB TOO SMALL", '#1f4fbf', '#fff');
+  for (const sx of [-1, 1]) add(new THREE.PlaneGeometry(2.5, 0.22), new THREE.MeshBasicMaterial({ map: liv }), sx * 0.951, 1.15, -0.95, 0, sx * Math.PI / 2);
+  for (const sx of [-1, 1]) add(new THREE.PlaneGeometry(1.2, 0.05), new THREE.MeshBasicMaterial({ color: 0x1f4fbf }), sx * 0.951, 1.36, -0.95, 0, sx * Math.PI / 2);
+  // front: grille with slats, badge, headlights, indicators, bumper, number plate
+  add(new THREE.BoxGeometry(1.0, 0.32, 0.04), blk, 0, 0.88, 2.45); for (let i = 0; i < 4; i++) add(new THREE.BoxGeometry(0.94, 0.02, 0.02), grey, 0, 0.77 + i * 0.075, 2.475);
+  add(new THREE.SphereGeometry(0.05, 12, 8), chrome, 0, 0.9, 2.48).scale.set(1.4, 1, 0.3);
+  for (const sx of [-1, 1]) { const hl = add(new THREE.BoxGeometry(0.34, 0.16, 0.05), new THREE.MeshBasicMaterial({ color: 0xfffbe0 }), sx * 0.7, 0.98, 2.42, 0, sx * 0.15); hl.name = 'headlight';
+    add(new THREE.BoxGeometry(0.1, 0.06, 0.04), lam(0xff9a00, { emissive: 0x884400 }), sx * 0.87, 0.86, 2.42); }
+  add(new THREE.BoxGeometry(1.95, 0.22, 0.16), grey, 0, 0.52, 2.44); add(new THREE.BoxGeometry(1.4, 0.05, 0.05), blk, 0, 0.52, 2.53);
+  for (const sx of [-1, 1]) add(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 12), new THREE.MeshBasicMaterial({ color: 0xfff6c0 }), sx * 0.75, 0.5, 2.52, Math.PI / 2);   // fog lights
+  add(new THREE.PlaneGeometry(0.52, 0.11), new THREE.MeshBasicMaterial({ map: labelTex('H4 RRY', '#ffffff', '#111') }), 0, 0.62, 2.535);
+  // wipers
+  for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.55, 0.015, 0.015), blk, sx * 0.3, 1.38, 1.73, 0, 0, sx * 0.2);
+  // back: bumper with a step, tail lights, hazards (flash while parked), rear plate, reflectors, exhaust
+  add(new THREE.BoxGeometry(1.95, 0.2, 0.16), grey, 0, 0.5, -2.3); add(new THREE.BoxGeometry(0.7, 0.05, 0.22), blk, 0, 0.62, -2.33);
+  g.userData.hazards = [];
+  for (const sx of [-1, 1]) { add(new THREE.BoxGeometry(0.12, 0.6, 0.06), lam(0xc8101e, { emissive: 0x4a0008 }), sx * 0.9, 1.05, -2.27);
+    const hz = add(new THREE.BoxGeometry(0.13, 0.12, 0.07), new THREE.MeshBasicMaterial({ color: 0xffa200 }), sx * 0.9, 1.42, -2.27); hz.visible = false; g.userData.hazards.push(hz);
+    const fz = add(new THREE.BoxGeometry(0.13, 0.12, 0.07), new THREE.MeshBasicMaterial({ color: 0xffa200 }), sx * 0.87, 0.86, 2.43); fz.visible = false; g.userData.hazards.push(fz);
+    add(new THREE.CircleGeometry(0.035, 10), new THREE.MeshBasicMaterial({ color: 0xff2020 }), sx * 0.7, 0.5, -2.385, 0, Math.PI); }
+  add(new THREE.PlaneGeometry(0.52, 0.11), new THREE.MeshBasicMaterial({ map: labelTex('H4 RRY', '#ffd400', '#111'), side: THREE.DoubleSide }), 0, 0.5, -2.39, 0, Math.PI);
+  add(new THREE.BoxGeometry(0.3, 0.04, 0.05), lam(0xc8101e, { emissive: 0x4a0008 }), 0, 2.1, -2.2);   // high brake light
+  add(new THREE.CylinderGeometry(0.035, 0.035, 0.2, 10), grey, -0.6, 0.38, -2.25, Math.PI / 2);
+  // inside: a dark load bay with a floor and two benches (for the kids)
+  add(new THREE.BoxGeometry(1.76, 1.5, 0.02), lam(0x26282b), 0, 1.22, -0.2); add(new THREE.BoxGeometry(1.76, 0.03, 2.0), lam(0x5a5048), 0, 0.5, -1.2);
+  for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.3, 0.3, 1.8), lam(0x3a4a6a), sx * 0.7, 0.66, -1.2);
+  add(new THREE.BoxGeometry(1.76, 1.5, 0.02), lam(0x2e3034), 0, 1.25, -2.12).visible = false;
+  // the back doors: hinged at the outer edges, with windows, handles and a hinge each
+  for (const sx of [-1, 1]) { const piv = new THREE.Group(); piv.position.set(sx * 0.95, 1.22, -2.26); piv.name = 'door' + sx; g.add(piv);
+    add(new THREE.BoxGeometry(0.94, 1.56, 0.05), white, -sx * 0.475, 0, 0, 0, 0, 0, piv);
+    add(new THREE.PlaneGeometry(0.62, 0.42), glass, -sx * 0.47, 0.38, -0.028, 0, Math.PI, 0, piv);
+    add(new THREE.BoxGeometry(0.03, 0.18, 0.04), grey, -sx * 0.85, -0.05, -0.04, 0, 0, 0, piv);
+    for (const y of [0.55, -0.55]) add(new THREE.BoxGeometry(0.06, 0.1, 0.06), blk, -sx * 0.02, y, -0.02, 0, 0, 0, piv);
+    if (sx > 0) add(new THREE.PlaneGeometry(0.8, 0.14), new THREE.MeshBasicMaterial({ map: labelTex('HOW\'S MY PARENTING?', '#ffffff', '#1f4fbf') }), -0.47, -0.25, -0.028, 0, Math.PI, 0, piv); }
+  // roof rack with a ladder on it
+  for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.04, 0.04, 3.0), silver, sx * 0.82, 2.2, -0.6);
+  for (let i = 0; i < 5; i++) add(new THREE.BoxGeometry(1.68, 0.03, 0.04), silver, 0, 2.2, -2.0 + i * 0.7);
+  for (let i = 0; i < 4; i++) { const leg = add(new THREE.BoxGeometry(0.04, 0.1, 0.04), silver, (i % 2 ? 1 : -1) * 0.82, 2.14, i < 2 ? -2.0 : 0.8); }
+  for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.035, 0.035, 2.6), lam(0xb08a3a), sx * 0.2, 2.26, -0.6);
+  for (let i = 0; i < 9; i++) add(new THREE.BoxGeometry(0.4, 0.025, 0.025), lam(0xb08a3a), 0, 2.26, -1.8 + i * 0.3);
+  // the driver
+  const drv = new THREE.Group(); drv.position.set(-0.45, 1.05, 1.15); g.add(drv);
+  add(new THREE.CapsuleGeometry(0.17, 0.3, 4, 10), lam(0x2b6cc4), 0, 0.2, 0, 0, 0, 0, drv); add(new THREE.SphereGeometry(0.12, 14, 10), lam(0xe0b090), 0, 0.55, 0.02, 0, 0, 0, drv);
+  add(new THREE.SphereGeometry(0.125, 14, 10, 0, Math.PI * 2, 0, 1.3), lam(0x2a1a10), 0, 0.57, 0, 0, 0, 0, drv);
+  add(new THREE.TorusGeometry(0.16, 0.02, 6, 18), blk, 0, 0.32, 0.35, -0.9, 0, 0, drv);   // steering wheel
+  // wheels: tyre, sidewall, hubcap, nuts; each in a group that spins about its axle
+  g.userData.wheels = [];
+  for (const [x, z] of [[-0.86, 1.55], [0.86, 1.55], [-0.86, -1.35], [0.86, -1.35]]) { const w = new THREE.Group(); w.position.set(x, 0.37, z); g.add(w); g.userData.wheels.push(w);
+    const sx = Math.sign(x);
+    add(new THREE.CylinderGeometry(0.37, 0.37, 0.24, 24), blk, 0, 0, 0, 0, 0, Math.PI / 2, w);
+    add(new THREE.TorusGeometry(0.3, 0.06, 8, 24), lam(0x222222), sx * 0.1, 0, 0, 0, Math.PI / 2, 0, w);
+    add(new THREE.CylinderGeometry(0.22, 0.22, 0.02, 20), silver, sx * 0.125, 0, 0, 0, 0, Math.PI / 2, w);
+    add(new THREE.CylinderGeometry(0.07, 0.07, 0.03, 12), chrome, sx * 0.14, 0, 0, 0, 0, Math.PI / 2, w);
+    for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; add(new THREE.CylinderGeometry(0.018, 0.018, 0.03, 6), grey, sx * 0.14, Math.cos(a) * 0.13, Math.sin(a) * 0.13, 0, 0, Math.PI / 2, w); }
+    // spokes so you can see it turn
+    for (let i = 0; i < 5; i++) add(new THREE.BoxGeometry(0.01, 0.03, 0.34), grey, sx * 0.137, 0, 0, i / 5 * Math.PI, 0, 0, w);
+    add(new THREE.BoxGeometry(0.2, 0.22, 0.015), blk, x, 0.3, z - sx * 0 - 0.42);   // mud flap
+  }
+  return g;
+}
+
+// a little kid (Harry's): a body, head, hair (a ponytail if she has one), legs that walk, an arm to hold hands
+function kidMesh(top = 0xff6fa8, hairCol = 0x6a3a1a, pony = true, sc = 1) {
+  const g = new THREE.Group(), skin = lam(0xf0c4a4), topM = lam(top), bot = lam(0x3a4a7a);
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.2, 4, 10), topM); body.position.y = 0.62; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 12), skin); head.position.y = 0.92; g.add(head);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.115, 16, 12, 0, Math.PI * 2, 0, 1.4), lam(hairCol)); hair.position.y = 0.93; hair.rotation.x = -0.3; g.add(hair);
+  if (pony) { const tie = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.008, 6, 12), lam(0xff2e8a)); tie.position.set(0, 0.97, -0.105); g.add(tie);
+    const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.13, 4, 8), lam(hairCol)); tail.position.set(0, 0.9, -0.13); tail.rotation.x = 0.35; tail.name = 'pony'; g.add(tail); }
+  for (const sx of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 4), lam(0x111111)); eye.position.set(sx * 0.04, 0.94, 0.1); g.add(eye); }
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.006, 4, 10, Math.PI), lam(0x8a2a2a)); smile.rotation.z = Math.PI; smile.position.set(0, 0.89, 0.103); g.add(smile);
+  for (const sx of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.3, 4, 8), bot); leg.position.set(sx * 0.06, 0.24, 0); leg.name = 'leg' + sx; g.add(leg); }
+  for (const sx of [-1, 1]) { const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.26, 4, 8), skin); arm.position.set(sx * 0.15, 0.62, 0); arm.rotation.z = sx * 0.3; arm.name = 'arm' + sx; g.add(arm); }
+  g.scale.setScalar(sc); return g;
+}
+const walkKid = (k, ph) => { const s = Math.sin(ph); k.getObjectByName('leg-1').rotation.x = 0.5 * s; k.getObjectByName('leg1').rotation.x = -0.5 * s; const p = k.getObjectByName('pony'); if (p) p.rotation.x = 0.35 + Math.sin(ph * 2) * 0.15; };
 
 // little textures for props
 let _heart = null;

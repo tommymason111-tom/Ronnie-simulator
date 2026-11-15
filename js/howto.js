@@ -1,3 +1,5 @@
+// (a plain script, not a module: it's loaded straight in with the menu, so the pictures are always there)
+(function () {
 // Pictures for the HOW TO PLAY pages before each game: drawn on a canvas (so the headset's menu panel can show
 // them too). Maps show where things really are (the bar's stations are drawn from their real positions).
 // (older iPhones' browsers have no roundRect on a canvas: without it every picture came out blank)
@@ -152,7 +154,7 @@ function clock(g, W, H, two) {
 }
 
 // draw page picture `kind` into the canvas (redrawn when portraits load)
-export function drawHowPic(cv, pic, ctx = {}) {
+function drawHowPic(cv, pic, ctx = {}) {
   try { drawPic(cv, pic, ctx); } catch (e) { console.warn('howto pic', e); const g = cv.getContext('2d'); g.fillStyle = '#1c2c8c'; g.fillRect(0, 0, cv.width, cv.height); g.font = '110px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🍔', cv.width / 2, cv.height / 2); }
 }
 function drawPic(cv, pic, ctx) {
@@ -171,3 +173,6 @@ function drawPic(cv, pic, ctx) {
   else { bg(g, W, H); emoji(g, arg || kind, W / 2, H / 2, 110); }
   cv.dataset.v = (+cv.dataset.v || 0) + 1;      // (tells the headset panel it changed)
 }
+
+window.__howto = { drawHowPic };
+})();

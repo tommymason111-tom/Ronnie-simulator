@@ -1271,7 +1271,7 @@ class SquadPuppet {
     g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; lines.forEach((l, i) => g.fillText(l, 256, 6 + 15 + lh / 2 + i * lh));
     this.chatT.needsUpdate = true; this.chatS.scale.set(0.9, 0.9 * 200 / 512, 1); this.chatS.visible = true; this.chatUntil = performance.now() + 2500 + text.length * 70;
   }
-  placeTag() { if (this.chatS) { const on = performance.now() < this.chatUntil; this.chatS.visible = on; if (on) { const h = this.c.headPos(new THREE.Vector3()); this.chatS.position.set(h.x, h.y + 0.68, h.z); } }
+  placeTag() { if (this.chatS) { const on = performance.now() < this.chatUntil; this.chatS.visible = on; if (on) { const h = this.c.headPos(new THREE.Vector3()); this.chatS.position.set(h.x, h.y + (this.p.self ? 0.4 : 0.6), h.z); } }
     if (this.p.self) return; if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.headPos(new THREE.Vector3()); this.tag.position.set(h.x, h.y + 0.36, h.z); }
   flinch(v) { this.c.flinch(v.clone ? v.clone() : new THREE.Vector3(v.x, 0, v.z), 1); }
   // a proper hit: go limp and fly, same as the NPCs (a light one is just a flinch)

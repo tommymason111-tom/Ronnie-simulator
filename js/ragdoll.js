@@ -272,6 +272,26 @@ export class Ragdoll {
     // the eye openings are cut out with a smooth mask (stored in the model's occlusion slot)
     if (old.aoMap) { mat.alphaMap = old.aoMap; mat.alphaTest = 0.5; mat.side = THREE.DoubleSide; }   // double-sided: steep views into a socket never see through his head
     mat.map && (mat.map.anisotropy = 4);
+    // emote paint: dye the hair (dark texels on the top of the head), turn the skin orange, put a navy coat on (clothes
+    // between the knees and the neck), all from the model's own texture. Heights are bind-pose fractions of the model.
+    geo.computeBoundingBox(); const bb = geo.boundingBox, hgt = bb.max.y - bb.min.y;
+    const paint = this.paint = { uOrange: { value: 0 }, uHair: { value: 0 }, uHairCol: { value: new THREE.Color(0x39ff14) }, uCoat: { value: 0 }, uCoatCol: { value: new THREE.Color(0x14213d) },
+      uHairY: { value: bb.max.y - hgt * 0.065 }, uCoatY: { value: new THREE.Vector2(bb.min.y + hgt * 0.3, bb.min.y + hgt * 0.84) } };
+    mat.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, paint);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vBindY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvBindY = position.y;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vBindY; uniform float uOrange, uHair, uHairY, uCoat; uniform vec3 uHairCol, uCoatCol; uniform vec2 uCoatY;')
+        .replace('#include <map_fragment>', `#include <map_fragment>
+        if (uOrange + uHair + uCoat > 0.0) { vec3 c = diffuseColor.rgb; float lum = dot(c, vec3(0.299, 0.587, 0.114));
+          float skin = smoothstep(0.03, 0.1, c.r - c.b) * step(c.g, c.r) * smoothstep(0.12, 0.25, lum);
+          float hair = uHair * smoothstep(uHairY - 0.015, uHairY + 0.015, vBindY) * (1.0 - smoothstep(0.1, 0.22, lum));
+          float coat = uCoat * (1.0 - skin) * smoothstep(uCoatY.x - 0.02, uCoatY.x + 0.02, vBindY) * (1.0 - smoothstep(uCoatY.y - 0.02, uCoatY.y + 0.02, vBindY));
+          c = mix(c, vec3(1.0, 0.17, 0.01) * (0.45 + lum * 1.1), uOrange * mix(0.8, 1.0, skin));
+          c = mix(c, uHairCol * (0.75 + lum * 2.0), hair);
+          c = mix(c, uCoatCol * (0.7 + lum * 0.8), coat);
+          diffuseColor.rgb = c; }`)
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n        totalEmissiveRadiance = mix(totalEmissiveRadiance, diffuseColor.rgb * 0.3, clamp(uOrange + uHair + uCoat, 0.0, 1.0));');
+    };
 
     // ---- automatic skinning: weight each vertex by closeness to each bone segment ----
     const pos = geo.attributes.position, n = pos.count;
@@ -890,6 +910,12 @@ export class Ragdoll {
     if (this.uniform && this.uniform.morphTargetInfluences) this.uniform.morphTargetInfluences[0] = Math.max(0, this.fat || 0);     // (the belly: see addBellyMorph)
     if (this.fat > 0.001) for (const name of ['uLegL', 'uLegR']) { const part = this.parts[name]; if (!part) continue; const k = 1 + 0.22 * this.fat; this.bones[this.list.indexOf(part)].scale.set(k, 1, k); }   // thicker thighs
     if (this.hideHead) { const hb = this.bones[this.list.indexOf(this.parts.head)]; hb && hb.scale.setScalar(0.001); }   // (your own body, seen from inside your head)
+    // a limb that's come off (an emote): it shrinks away into the joint it hung from, leaving a stump
+    if (this.partHide) for (const name in this.partHide) { if (!this.partHide[name]) continue; const part = this.parts[name], bone = part && this.bones[this.list.indexOf(part)]; if (!bone) continue;
+      const b = part.body, c = part.def.center, a = part.def.a;
+      _hm.compose(_hp.set(b.position.x, b.position.y, b.position.z), _hq.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w), _hs.set(1, 1, 1)).multiply(_hm2.makeTranslation(-c.x, -c.y, -c.z))
+        .multiply(_hm3.makeTranslation(a.x, a.y, a.z).multiply(_pmR.makeScale(0.001, 0.001, 0.001)).multiply(_pmT.makeTranslation(-a.x, -a.y, -a.z))).multiply(_hm2.makeTranslation(c.x, c.y, c.z));
+      _hm.decompose(bone.position, bone.quaternion, bone.scale); }
     // the hands (and their fingers) ride on the forearms, turned at the wrist and curled at the knuckles as posed
     if (this.extraBones) this.extraBones.forEach((eb, j) => {
       const bone = this.bones[this.defs.length + j]; if (!bone) return; const b = this.parts[eb.name].body, c = this.parts[eb.name].def.center, ax = this.handAxes && this.handAxes[eb.name], hp = this.handPose && this.handPose[eb.name];
