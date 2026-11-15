@@ -16,6 +16,17 @@ export function setupTouch(cb) {
     <div id="emote-wheel"><div class="ew-ring"></div><button class="ew-x">✕</button></div>
     <div id="hint"></div>`;
   document.body.appendChild(root);
+  // (the emote button's and wheel's look lives here with them, so a page cached from before can't leave them unstyled)
+  const st = document.createElement('style'); st.textContent = `#btn-emote { display: none; left: max(36px, calc(env(safe-area-inset-left) + 20px)); bottom: max(256px, calc(env(safe-area-inset-bottom) + 236px)); width: 92px; height: 44px; border-radius: 22px; background: #ff4fa3; color: #fff; font-size: 13px; }
+#btn-emote.show { display: block; }
+#emote-wheel { display: none; position: absolute; inset: 0; pointer-events: auto; background: radial-gradient(circle at 50% 50%, rgba(10,14,40,0.55) 0, rgba(10,14,40,0.35) 160px, rgba(0,0,0,0) 260px); }
+#emote-wheel.open { display: block; animation: ewin .18s ease-out; } @keyframes ewin { from { opacity: 0; transform: scale(0.85); } }
+#emote-wheel .ew-ring { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+#emote-wheel .ew-ring::before { content: ''; position: absolute; left: -150px; top: -150px; width: 300px; height: 300px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.35); background: rgba(20,28,90,0.6); box-shadow: 0 0 30px rgba(255,79,163,0.5); }
+#emote-wheel .ew-item { position: absolute; left: 0; top: 0; width: 104px; height: 104px; border-radius: 50%; border: 4px solid #ffd400; background: #1c2c8c; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; box-shadow: 0 5px 0 rgba(0,0,0,0.4); }
+#emote-wheel .ew-item span { font-size: 40px; line-height: 44px; } #emote-wheel .ew-item b { font: 900 11px "Arial Black", Arial, sans-serif; text-align: center; padding: 0 6px; }
+#emote-wheel .ew-item:active { background: #ff4fa3; }
+#emote-wheel .ew-x { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; border-radius: 50%; border: 3px solid #fff; background: rgba(0,0,0,0.6); color: #fff; font: 900 26px Arial; }`; document.head.appendChild(st);
   const stick = root.querySelector('#stick'), knob = root.querySelector('#knob');
   const eat = root.querySelector('#btn-eat'), thr = root.querySelector('#btn-throw'), hint = root.querySelector('#hint'), spr = root.querySelector('#btn-sprint');
   const showSprint = (on) => { spr.classList.toggle('on', on); spr.textContent = on ? '🏃 SPRINTING' : '🏃 SPRINT'; };
