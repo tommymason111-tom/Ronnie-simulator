@@ -17,13 +17,14 @@ import * as THREE from 'three';
 import { part, cyl as CYL } from '../geo.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { streetViewTex } from './kit.js';
+import { REST, REST_BOUNDS, inRestaurant, inNewArea, buildRestaurant } from './oysterRestaurant.js';
 import { Kit, carpetTex, tileTex, canvasTex, FONT, brickTex, booksWallTex, tngTex, oakPanelTex, woodTex } from './kit.js';
 
 const H = 3.0;
 const S = 0.024;
 const X = (px) => (px - 600) * S, Z = (py) => (py - 975) * S;
 const GZ = Z(1645), GZ1 = GZ + 26, GX0 = -10, GX1 = X(1045);          // the beer garden behind the pub (metres)
-const B = { x0: X(15), x1: X(1045) + 7, z0: Z(305), z1: GZ1 };
+const B = { x0: REST_BOUNDS.x0, x1: X(1045) + 7, z0: REST_BOUNDS.z0, z1: GZ1 };          // (out to the left for the restaurant)
 // the walkable rooms on the plan (pixels); everything else inside the bounds is solid
 const INSIDE = [
   [[175, 305], [415, 305], [415, 465], [175, 465]],                                    // men's
@@ -41,6 +42,7 @@ const INSIDE = [
   [[15, 1060], [195, 1060], [195, 1190], [15, 1190]],                                  // restaurant entrance
 ].map(poly => poly.map(([x, y]) => [X(x), Z(y)]));
 INSIDE.push([[GX0, GZ], [GX1, GZ], [GX1, GZ1], [GX0, GZ1]]);                   // the beer garden
+for (const poly of Object.values(REST)) INSIDE.push(poly);                          // the restaurant, its side room, toilets, the kitchen extension
 const inPoly = (poly, x, z) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, zi] = poly[i], [xj, zj] = poly[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
 const inside = (x, z) => INSIDE.some(p => inPoly(p, x, z));
 // the raised seating area (top left of the pub floor), and the two steps up into it
@@ -145,7 +147,8 @@ export function buildPub(scene) {
   // the pub's left wall: kitchen door, restaurant entrance
   WZ(195, 605, 1645, [[990, 1035], [1090, 1145]], WALL);
   // kitchen + restaurant entrance
-  WX(605, 25, 195, [], WALL); WZ(25, 605, 1060, [], WALL); WX(1060, 15, 195); WZ(15, 1060, 1190, [], WALL); WX(1190, 15, 195, [], WALL);
+  WX(605, 25, 195, [[95, 143]], WALL); WZ(25, 605, 1060, [], WALL); WX(1060, 15, 195); WX(1190, 15, 195, [], WALL);   // (a door up into the kitchen extension; the corridor opens into the restaurant)
+  R(X(15) - T2, Z(1060), X(15) + T2, Z(1190), H - 2.35, 2.35 + (H - 2.35) / 2, PLASTER); R(X(15) - 0.1, Z(1060), X(15) + 0.1, Z(1190), 0.08, 2.39, DARKWOOD);   // the header over the way into the restaurant
   // conservatory + the passage to the beer garden
   WX(1305, 290, 330); WZ(715, 1305, 1645); WX(1645, 195, 715, [], WALL); WX(1645, 715, 795, [[722, 793]], WALL);   // (the rest of the conservatory wall: windows and the brick cubby, further down)
   // DJ booth (half walls) and the raised area's edge (half walls with a brass rail on top)
@@ -610,7 +613,7 @@ export function buildPub(scene) {
     const doorZ0 = Z(990), doorZ1 = Z(1035);
     // red quarry tiles with a coved skirting, white tiles to 1.8m on every wall, steel kick strips, the strip lights
     k.floor(x0 - 0.08, z0 - 0.08, x1 + 0.08, z1 + 0.08, tileTex('#a04a32', '#94442e', '#6a2e1e', 48), 0.004, 0.5);
-    clad(x0, z0, x1, z0 + 0.02, KTILE, 1.8, 0.3); clad(x0, z0, x0 + 0.02, z1, KTILE, 1.8, 0.3); clad(x0, z1 - 0.02, x1, z1, KTILE, 1.8, 0.3);
+    clad(x0, z0, X(95), z0 + 0.02, KTILE, 1.8, 0.3); clad(X(143), z0, x1, z0 + 0.02, KTILE, 1.8, 0.3); clad(x0, z0, x0 + 0.02, z1, KTILE, 1.8, 0.3); clad(x0, z1 - 0.02, x1, z1, KTILE, 1.8, 0.3);
     clad(x1 - 0.02, z0, x1, doorZ0 - 0.1, KTILE, 1.8, 0.3); clad(x1 - 0.02, doorZ1 + 0.1, x1, z1, KTILE, 1.8, 0.3);
     for (const [a0, b0, a1, b1] of [[x0, z0, x1, z0 + 0.04], [x0, z0, x0 + 0.04, z1], [x0, z1 - 0.04, x1, z1]]) R(a0, b0, a1, b1, 0.1, 0.05, SSD);
     for (let z = z0 + 1.2; z < z1; z += 2.4) { k.box(0.14, 0.06, 1.3, (x0 + x1) / 2, H - 0.04, z, 0xffffff); k.lamp((x0 + x1) / 2, H - 0.08, z, 0xf4fbff, 0.09, false); }
@@ -678,8 +681,8 @@ export function buildPub(scene) {
     R(x1 - 0.4, z0 + 4.25, x1 - 0.05, z0 + 4.75, 0.3, 2.07, 0x37474f); R(x1 - 0.41, z0 + 4.3, x1 - 0.4, z0 + 4.6, 0.22, 2.07, 0x111111);
     R(x0 + 0.01, z0 + 4.0, x0 + 0.04, z0 + 4.6, 0.04, 1.55, 0x222222); for (let i = 0; i < 5; i++) k.box(0.01, 0.2, 0.03, x0 + 0.05, 1.45, z0 + 4.05 + i * 0.12, 0xd0d4d8);
     for (let i = 0; i < 4; i++) { k.cyl(0.004, 0.004, 0.3, (x0 + x1) / 2 - 0.45 + i * 0.3, H - 0.5, z0 + 5.0, 0x222222, 4); }
-    k.label('clock', 0.35, 0.35, [(x0 + x1) / 2, 2.65, z0 + 0.025], [0, 0, 0], { tex: clockTex() });
-    k.label('PIE OF THE DAY: GONE (RONNIE)', 1.2, 0.6, [(x0 + x1) / 2, 2.05, z0 + 0.03], [0, 0, 0], { bg: '#222', fg: '#fff', border: '#ffd400', size: 50 });
+    k.label('clock', 0.35, 0.35, [x1 - 0.55, 2.65, z0 + 0.025], [0, 0, 0], { tex: clockTex() });
+    k.label('PIE OF THE DAY: GONE (RONNIE)', 0.85, 0.45, [x1 - 0.55, 2.0, z0 + 0.03], [0, 0, 0], { bg: '#222', fg: '#fff', border: '#ffd400', size: 50 });
     k.label('FOOD HYGIENE RATING: 5 (BEFORE RONNIE STARTED WORKING HERE)', 0.5, 0.3, [x1 - 0.025, 2.3, z0 + 5.3], [0, -Math.PI / 2, 0], { bg: '#2e7d32', fg: '#fff', border: '#fff', size: 34 });
     k.label('ALLERGENS: ASK STAFF. RONNIE IS ALLERGIC TO SALAD.', 0.5, 0.3, [x1 - 0.025, 1.9, z0 + 7.2], [0, -Math.PI / 2, 0], { bg: '#fff8e1', fg: '#c62828', border: '#c62828', size: 34 });
     // ---- the island: steel prep table with an under-shelf of pans, boards, a knife block, food prepped, a pan rack over it
@@ -707,9 +710,8 @@ export function buildPub(scene) {
   }
   // the restaurant entrance: outside door, mat, a menu board
   { const x0 = X(15), x1 = X(195), z0 = Z(1060), z1 = Z(1190), zc = (z0 + z1) / 2;
-    k.window(x0 + 0.1, 1.15, zc, 1.3, 2.2, Math.PI / 2, streetViewTex(2), { frame: DARKWOOD, bars: 1 });
     R(x0 + 0.2, zc - 0.8, x0 + 1.4, zc + 0.8, 0.01, 0.006, 0x3a3a3a);
-    k.label('ENTRANCE TO THE RESTAURANT — WAIT TO BE SEATED (RONNIE: WAIT TO BE STOPPED)', 1.6, 0.4, [x0 + 0.1, 2.55, zc], [0, Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 34 });
+    k.label('THE RESTAURANT — WAIT TO BE SEATED (RONNIE: WAIT TO BE STOPPED)', 1.9, 0.4, [x0 + 0.105, 2.68, zc], [0, Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 34 });
     R(x1 - 0.7, z0 + 0.2, x1 - 0.2, z0 + 0.5, 1.6, 0.8, DARKWOOD, { block: true }); k.label('TODAY\'S MENU: PIE. PIE AND CHIPS. CHIPS. (RONNIE: ALL OF IT)', 0.45, 0.6, [x1 - 0.45, 1.05, z0 + 0.51], [0, 0, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 30 });
   }
   // the entrance booking area: front doors on the corner, the booking podium, coat hooks
@@ -953,7 +955,7 @@ export function buildPub(scene) {
   clad(X(195) + 0.08, Z(610), X(195) + 0.1, Z(960), BRICK, H - RAISE, 0.9, RAISE);
   for (const [za, zb] of [[Z(1035), Z(1090)], [Z(1145), Z(1305)]]) R(X(195) + 0.06, za, X(195) + 0.12, zb, 0.06, 0.95, DARKWOOD);   // dado rail (not across the restaurant doorway)
   // ceiling spotlights everywhere (in the rooms), iron chandeliers, red wall lights
-  for (let x = B.x0 + 1; x < B.x1; x += 2) for (let z = B.z0 + 1; z < GZ; z += 2) if (inside(x, z) && !(x > X(195) && x < X(715) && z > Z(1305))) k.lamp(x, H - 0.01, z, 0xfffbe8, 0.035);
+  for (let x = B.x0 + 1; x < B.x1; x += 2) for (let z = B.z0 + 1; z < GZ; z += 2) if (inside(x, z) && !inRestaurant(x, z) && !(x > X(195) && x < X(715) && z > Z(1305))) k.lamp(x, H - 0.01, z, 0xfffbe8, 0.035);
   // antler chandeliers (black antlers, little black drum shades), as in the photo
   const antler = (x, z, y0 = 0) => {
     const y = H - 0.62 + y0, BLK = 0x1c1612;
@@ -1233,7 +1235,7 @@ export function buildPub(scene) {
   // cream damask paper above, a moulded cornice, and old framed pictures here and there (never on top of a sign)
   { const lower = anaglyptaTex(), upper = damaskTex(), signs = scene.children.filter(o => o.isMesh && o.userData.sign).map(o => o.position.clone());
     const art = [0, 1, 2, 3, 4, 5].map(paintingTex);
-    const faces = k.wallFaces({ colors: new Set([WALL, PLASTER]), minH: H - 0.05, inside, skip: (f) => (f.c > GZ - 0.2 && f.dir > 0 && f.axis === 'z') || f.axis === 'z' && f.c < Z(470) && f.c > Z(300) && f.dir > 0 && f.a0 > X(160) && f.a1 < X(420) });
+    const faces = k.wallFaces({ colors: new Set([WALL, PLASTER]), minH: H - 0.05, inside, skip: (f) => inNewArea(f.axis === 'x' ? f.c + f.dir * 0.25 : (f.a0 + f.a1) / 2, f.axis === 'x' ? (f.a0 + f.a1) / 2 : f.c + f.dir * 0.25) || (f.c > GZ - 0.2 && f.dir > 0 && f.axis === 'z') || f.axis === 'z' && f.c < Z(470) && f.c > Z(300) && f.dir > 0 && f.a0 > X(160) && f.a1 < X(420) });
     let n = 0;
     for (const f of faces) {
       const box = (a, b, y0, h, depth, color, tex, tile) => { const cx = (a + b) / 2, L = b - a, o = f.c + f.dir * depth / 2;
@@ -1260,6 +1262,8 @@ export function buildPub(scene) {
       }
     }
   }
+  buildRestaurant(k, scene, { chairsAt });
+  k.splitX = -14.0;                                   // (the restaurant's furniture merges separately from the pub's, so it can be skipped)
   const room = k.finish({
     name: 'The Oysterfleet',
     sky: 0xffe2c0, ground: 0x6a4a3a, hemiI: 1.55, sun: 0xfff0d8, sunI: 0.45, sunPos: [-6, 10, 5], ambient: 0.32,
@@ -1271,6 +1275,22 @@ export function buildPub(scene) {
   room.floorAt = pubFloorAt;
   for (const o of scene.children.slice(sceneStart)) if (o.isMesh || o.isInstancedMesh) { o.updateMatrix(); o.updateMatrixWorld(true); o.matrixAutoUpdate = false; }   // (static: no per-frame matrix work)
   room.chairsAt = chairsAt;
+  // From the pub you can only see the restaurant down the corridor, through its doorway in the pub's left wall:
+  // anything of the restaurant's outside that line of sight is behind walls, so it isn't drawn.
+  { const west = [], bx = new THREE.Box3(), DX = X(195), DZ0 = Z(1090), DZ1 = Z(1145), cam = new THREE.Vector3();
+    for (const o of scene.children.slice(sceneStart)) if (o.isMesh && !o.isInstancedMesh && o.geometry) { o.geometry.computeBoundingBox(); bx.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); if (bx.max.x < -13.6) west.push({ o, x0: bx.min.x, x1: bx.max.x, z0: bx.min.z, z1: bx.max.z }); }
+    scene.onBeforeRender = (r, sc, camera) => {
+      cam.setFromMatrixPosition(camera.matrixWorld);
+      const inPub = cam.x > DX + 0.05;
+      for (const w of west) {
+        if (!inPub) { w.o.visible = true; continue; }
+        // the wedge from the eye through the doorway, at the near and far x of this piece
+        let lo = Infinity, hi = -Infinity;
+        for (const x of [w.x0, w.x1]) { const t = (x - cam.x) / (DX - cam.x); for (const dz of [DZ0, DZ1]) { const z = cam.z + (dz - cam.z) * t; lo = Math.min(lo, z); hi = Math.max(hi, z); } }
+        w.o.visible = hi > w.z0 - 0.5 && lo < w.z1 + 0.5;
+      }
+    };
+  }
   room.extraItems = [{ type: 'poop', pos: poopAt }];
   room.machines = machines;
   const baseUpdate = room.update.bind(room);

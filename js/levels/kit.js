@@ -274,8 +274,10 @@ export class Kit {
     this.zfixed = this.separateCoplanar();
     if (this.pools) this.pools.build(this.scene);
     if (this.halos) this.halos.build(this.scene);
-    const mesh = new THREE.Mesh(merge(this.parts), vcLambert);
-    this.scene.add(mesh);
+    // merge the furniture in 12m patches (not one mesh for the whole level), so patches out of view aren't drawn
+    const cells = new Map(), c = new THREE.Vector3();
+    for (const p of this.parts) { p.computeBoundingBox(); p.boundingBox.getCenter(c); const w = this.splitX != null && c.x < this.splitX, cs = w ? 6 : 12, key = (w ? 'W' : '') + Math.floor(c.x / cs) + ',' + Math.floor(c.z / cs); (cells.get(key) || cells.set(key, []).get(key)).push(p); }
+    for (const list of cells.values()) this.scene.add(new THREE.Mesh(merge(list), vcLambert));
     const hemi = new THREE.HemisphereLight(sky, ground, hemiI);
     this.scene.add(hemi);
     this.scene.add(new THREE.AmbientLight(0xfff0dc, ambient));     // big rooms need a little fill everywhere
