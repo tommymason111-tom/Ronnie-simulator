@@ -51,6 +51,17 @@ const SPEC = {
   taco:     { rest: [0, -0.03, 0], fwd: X },                    // filling up, along the hand
   hotdog:   { rest: [0, -0.03, 0], fwd: X },                    // bun level, pointing out in front
   sausageroll: { rest: [0, -0.025, 0], fwd: X },
+  // the newer fast food
+  nuggets:  { axis: nY, up: Z, at: [0, -0.03, 0], r: 0.03 },          // the box, upright
+  pasty:    { rest: [0, -0.025, 0], fwd: X },
+  onionrings: { rest: [0, -0.012, 0], fwd: nZ },
+  burrito:  { rest: [0, -0.028, 0], fwd: X },
+  waffle:   { rest: [0, -0.012, 0], fwd: nZ },
+  pancakes: { rest: [0, -0.025, 0], fwd: nZ },
+  churros:  { axis: nY, up: Z, at: [0, -0.03, 0], r: 0.026 },          // the cup
+  cupcake:  { axis: nY, up: Z, at: [0, -0.022, 0], r: 0.027 },
+  brownie:  { rest: [0, -0.015, 0], fwd: nZ },
+  baconbap: { rest: [0, -0.04, 0], fwd: nZ },
   crisps:   { axis: nY, up: Z, at: [0, -0.045, 0], r: 0.016 },  // bag upright, bottom in the fist
   // round things: in the palm
   apple: { r: 0.036 }, pear: { axis: nY, up: Z, at: [0, -0.012, 0], r: 0.034 }, orange: { r: 0.036 }, tomato: { r: 0.03 },

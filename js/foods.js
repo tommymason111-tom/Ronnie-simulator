@@ -5,6 +5,7 @@ import { FOODS, TUNING, pickJunk } from './config.js';
 import { part, merge, vcLambert, cyl, sph, box } from './geo.js';
 import { canLabelTex } from './textures.js';
 import { batMesh } from './pingpong.js';
+import { HI } from './foodmodels.js';
 
 // ---------- geometry ----------
 function burgerGeo() {
@@ -156,6 +157,19 @@ function sausageRollGeo() {
   for (let i = 0; i < 4; i++) p.push(part(box(0.004, 0.003, 0.04), 0xb7782a, [-0.03 + i * 0.02, 0.024, 0], [0, 0.4, 0]));
   return merge(p);
 }
+// far-away versions of the newer fast food (the detailed ones are in foodmodels.js)
+const lowNew = {
+  nuggets: () => merge([part(box(0.09, 0.05, 0.06), 0xd32f2f, [0, -0.025, 0]), part(sph(0.03, 8, 6), 0xd9902e, [0, 0.004, 0], [0, 0, 0], [1.4, 0.5, 0.9])]),
+  pasty: () => merge([part(sph(0.05, 12, 8, 0, Math.PI), 0xe0a050, [0, -0.012, 0], [0, 0, 0], [1.25, 0.62, 0.6])]),
+  onionrings: () => merge([part(cyl(0.05, 0.05, 0.016, 12), 0xf5f0e0, [0, -0.006, 0], [0, 0, 0], [1.2, 1, 0.85]), part(new THREE.TorusGeometry(0.02, 0.0075, 6, 12), 0xe0a040, [0, 0.008, 0], [Math.PI / 2, 0, 0])]),
+  burrito: () => merge([part(new THREE.CapsuleGeometry(0.028, 0.1, 3, 8).rotateZ(Math.PI / 2), 0xf2dcae), part(cyl(0.0295, 0.0295, 0.07, 10).rotateZ(Math.PI / 2), 0xcfd4d8, [-0.035, 0, 0])]),
+  waffle: () => merge([part(box(0.1, 0.014, 0.1), 0xe0a050, [0, -0.004, 0]), part(sph(0.016, 8, 6), 0xfffcf4, [0.012, 0.012, 0.01])]),
+  pancakes: () => merge([part(cyl(0.046, 0.046, 0.038, 14), 0xe8b060, [0, -0.006, 0]), part(cyl(0.04, 0.04, 0.002, 14), 0x9a4a10, [0, 0.0135, 0])]),
+  churros: () => merge([part(cyl(0.03, 0.024, 0.055, 10), 0xd32f2f, [0, -0.03, 0]), part(box(0.03, 0.11, 0.014), 0xc98a3a, [0, 0.0, 0])]),
+  cupcake: () => merge([part(cyl(0.03, 0.024, 0.032, 12), 0x3fa3ff, [0, -0.022, 0]), part(new THREE.ConeGeometry(0.03, 0.06, 12), 0xffb0d8, [0, 0.025, 0])]),
+  brownie: () => merge([part(box(0.07, 0.03, 0.07), 0x3a1e0e)]),
+  baconbap: () => merge([part(cyl(0.058, 0.06, 0.022, 14), 0xe8c890, [0, -0.03, 0]), part(cyl(0.06, 0.06, 0.008, 14), 0xd9707a, [0, -0.013, 0]), part(sph(0.06, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0xe0b880, [0, 0.006, 0], [0, 0, 0], [1, 0.85, 1])]),
+};
 // ---------- more fruit & veg (thrown at Ronnie) ----------
 function appleGeo() { return merge([part(sph(0.036, 14, 10), 0xd62828, [0, 0, 0], [0, 0, 0], [1, 0.92, 1]), part(cyl(0.003, 0.003, 0.02, 5), 0x5b3a1e, [0, 0.038, 0]), part(new THREE.ConeGeometry(0.008, 0.024, 4), 0x3fa34d, [0.01, 0.04, 0], [0, 0, -1.2], [1, 1, 0.3])]); }
 function pearGeo() { return merge([part(sph(0.034, 14, 10), 0x9ccc3a, [0, -0.012, 0]), part(sph(0.022, 12, 8), 0xa8d040, [0, 0.026, 0]), part(cyl(0.003, 0.003, 0.02, 5), 0x5b3a1e, [0, 0.055, 0])]); }
@@ -372,7 +386,7 @@ function meshFor(type, v = 0) {
   if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo, poop: poopGeo,
     hotdog: hotdogGeo, fries: friesGeo, kebab: kebabGeo, chicken: chickenGeo, taco: tacoGeo, crisps: crispsGeo, choc: chocGeo, cookie: cookieGeo, icecream: icecreamGeo, sausageroll: sausageRollGeo,
     croissant: croissantGeo, baguette: baguetteGeo, muffin: muffinGeo, painchoc: painchocGeo, swirl: swirlGeo, icedbun: icedbunGeo, pretzel: pretzelGeo,
-    apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo, dart: dartGeo, beer: beerGeo }[type]();
+    apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo, dart: dartGeo, beer: beerGeo, ...lowNew }[type]();
   return new THREE.Mesh(geoCache[type], vcLambert);
 }
 
@@ -389,7 +403,12 @@ const _v = new THREE.Vector3(), _c = new THREE.Vector3();
 // food comes bigger than life (easier to see, grab and throw); drinks and props stay their real size
 export const FOOD_BIG = 1.6;
 const bigFor = (def) => (def.prop || def.drink || def.poop) ? 1 : FOOD_BIG;
-const sizedMesh = (type, v) => { const m = meshFor(type, v), k = bigFor(FOODS[type]); if (k !== 1) m.scale.multiplyScalar(k); return m; };
+const hiCache = {};
+export const HI_NEAR = 3.2;      // (metres: closer than this you see the detailed fast food)
+const sizedMesh = (type, v) => {
+  let m = meshFor(type, v);
+  if (HI[type]) { const lod = new THREE.LOD(); lod.addLevel(new THREE.Mesh(hiCache[type] || (hiCache[type] = HI[type]()), vcLambert), 0); lod.addLevel(m, HI_NEAR); m = lod; }
+  const k = bigFor(FOODS[type]); if (k !== 1) m.scale.multiplyScalar(k); return m; };
 const outlineMat = (color, w) => new THREE.ShaderMaterial({ uniforms: { c: { value: new THREE.Color(color) }, w: { value: w } }, side: THREE.BackSide,
   vertexShader: 'uniform float w; void main(){ vec3 p = position + normalize(normal) * w; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }',
   fragmentShader: 'uniform vec3 c; void main(){ gl_FragColor = vec4(c, 1.0); }' });
