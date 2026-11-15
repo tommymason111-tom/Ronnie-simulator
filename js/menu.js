@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.6.2', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '1.6.3', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['1.6.3', ['Oysterfleet reception rebuilt like the real one: an oak panelled desk with a cream top facing into the room, staff behind it, a red wall with the office door and a Reception sign, tulips, leaflets, and a red buttoned leather tub chair']],
   ['1.6.2', ['Removed the specials board standing on the floor by the pub entrance']],
   ['1.6.1', ['Change game mode from the pause menu (GAME MODE shows the games for the place you\'re in)']],
   ['1.6.0', ['Ben\'s Turkey attack fills the whole phone screen, top to bottom (turn your phone sideways to watch)', 'On-screen buttons hide while an attack is happening']],
