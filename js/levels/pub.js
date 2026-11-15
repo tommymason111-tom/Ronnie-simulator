@@ -880,9 +880,36 @@ export function buildPub(scene) {
       k.label('WELCOME TO THE OYSTERFLEET — PLEASE KEEP RONNIE AWAY FROM THE BAR SNACKS', 2.2, 0.45, [bx + 0.004, 2.35, (bz0 + bz1) / 2], [0, Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 38 });
       blk(bx, bz0 - 0.05, bx + 0.52, bz1 + 0.05, 0.95); }
     // coat hooks with coats on the back wall, an umbrella stand by the door, two big plants
-    { const hx = X(835) - 0.09; for (let i = 0; i < 5; i++) { const z = Z(430) + 0.1 + i * 0.3; k.box(0.08, 0.03, 0.03, hx - 0.02, 1.75, z, 0xc9a24a);
-        if (i % 2 === 0) { R(hx - 0.18, z - 0.2, hx - 0.02, z + 0.2, 0.85, 1.28, [0x2a3a5a, 0x5a3a2a, 0x2a2a2a][i / 2]); R(hx - 0.16, z - 0.12, hx - 0.03, z + 0.12, 0.1, 1.72, [0x2a3a5a, 0x5a3a2a, 0x2a2a2a][i / 2]); } }
-      R(hx - 0.01, Z(430), hx + 0.01, Z(430) + 1.45, 0.12, 1.75, 0x3a2416); blk(hx - 0.2, Z(430), hx + 0.1, Z(430) + 1.4, 1.5);
+    // the coat rack: an oak board with brass double hooks and a hat shelf over it; real coats hanging off it (shoulders,
+    // sleeves, collars, buttons, a hood, a scarf), a flat cap and a woolly hat on the shelf, a brolly hooked on the end
+    { const hx = X(835) - 0.08, rz0 = Z(430), rz1 = Z(430) + 1.45, OAKR = 0x5a3418, BR2 = 0xc9a24a;
+      R(hx - 0.025, rz0, hx, rz1, 0.16, 1.75, OAKR); R(hx - 0.03, rz0 - 0.02, hx, rz1 + 0.02, 0.02, 1.84, 0x3a2416); R(hx - 0.03, rz0 - 0.02, hx, rz1 + 0.02, 0.02, 1.66, 0x3a2416);
+      R(hx - 0.3, rz0 - 0.05, hx, rz1 + 0.05, 0.025, 2.02, OAKR, { collide: true }); for (const z of [rz0 + 0.1, rz1 - 0.1]) k.box(0.26, 0.16, 0.025, hx - 0.14, 1.92, z, OAKR, { rot: [0, 0, 0] });   // the hat shelf and its brackets
+      const CP = (geo, col, pos, rot = [0, 0, 0], scl = [1, 1, 1]) => k.parts.push(part(geo, col, pos, rot, scl));
+      const coat = (z, col, len, opts = {}) => {
+        const cx = hx - 0.12, top = 1.7, dk = new THREE.Color(col).multiplyScalar(0.7).getHex();
+        CP(new THREE.SphereGeometry(0.17, 12, 8), col, [cx, top - 0.06, z], [0, 0, 0], [0.55, 0.45, 1.25]);                        // hunched shoulders
+        const body = new THREE.CylinderGeometry(0.17, 0.22, len, 14, 1); CP(body, col, [cx - 0.01, top - 0.1 - len / 2, z], [0, 0, 0], [0.55, 1, 1.1]);   // the body, flaring
+        CP(new THREE.CylinderGeometry(0.2, 0.2, 0.012, 14, 1, true), dk, [cx - 0.01, top - 0.1 - len + 0.01, z], [0, 0, 0], [0.56, 1, 1.12]);         // hem
+        for (const sd of [-1, 1]) { const sl = new THREE.CylinderGeometry(0.045, 0.055, len * 0.85, 8); CP(sl, dk, [cx - 0.02, top - 0.12 - len * 0.42, z + sd * 0.2], [sd * 0.06, 0, 0]);   // sleeves hanging down
+          CP(new THREE.CylinderGeometry(0.056, 0.056, 0.05, 8), dk, [cx - 0.02, top - 0.12 - len * 0.84, z + sd * 0.215]); }                      // cuffs
+        CP(new THREE.BoxGeometry(0.02, len * 0.95, 0.012), dk, [cx - 0.105, top - 0.12 - len * 0.47, z]);                                         // the front opening
+        for (let b = 0; b < 4; b++) CP(new THREE.CylinderGeometry(0.012, 0.012, 0.008, 8), opts.btn ?? 0x1a1a1a, [cx - 0.112, top - 0.2 - b * len * 0.2, z + 0.03], [0, 0, Math.PI / 2]);
+        if (opts.hood) CP(new THREE.SphereGeometry(0.13, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), col, [cx + 0.02, top - 0.02, z], [0, 0, -1.9], [0.8, 0.9, 1]);
+        else { CP(new THREE.BoxGeometry(0.09, 0.07, 0.3), dk, [cx - 0.05, top + 0.0, z], [0, 0, 0.5]); }                                          // a turned-down collar
+        for (const sd of [-1, 1]) CP(new THREE.BoxGeometry(0.012, 0.11, 0.1), dk, [cx - 0.105, top - 0.1 - len * 0.62, z + sd * 0.1]);          // pocket flaps
+        k.box(0.06, 0.012, 0.012, hx - 0.03, top + 0.02, z, BR2);                                                                                 // its hook
+      };
+      for (let i = 0; i < 6; i++) { const z = rz0 + 0.12 + i * 0.245; k.box(0.06, 0.012, 0.012, hx - 0.03, 1.72, z, BR2); k.box(0.012, 0.05, 0.012, hx - 0.06, 1.74, z, BR2); k.parts.push(part(new THREE.SphereGeometry(0.009, 6, 4), BR2, [hx - 0.06, 1.77, z])); }
+      coat(rz0 + 0.18, 0x26344e, 0.95, { btn: 0x8a8a8a });                // a navy wool overcoat
+      coat(rz0 + 0.6, 0x5a3a24, 0.75, { btn: 0xc9a24a });                 // a brown wax jacket
+      coat(rz0 + 1.02, 0x2c2c2e, 0.68, { hood: true });                   // a black parka with the hood up
+      coat(rz0 + 1.32, 0x7a1f24, 0.6, { hood: true, btn: 0xf4f4f4 });     // a red rain mac
+      { const z = rz0 + 0.39, x = hx - 0.06; for (let i = 0; i < 9; i++) k.parts.push(part(new THREE.BoxGeometry(0.03, 0.12, 0.13), i % 2 ? 0xc8a24a : 0x2e5a3a, [x - 0.01, 1.66 - i * 0.11, z + Math.sin(i) * 0.01], [0, 0, 0.05])); k.parts.push(part(new THREE.BoxGeometry(0.035, 0.05, 0.14), 0xd8c09a, [x - 0.01, 0.66, z])); }   // a striped scarf, fringed
+      k.parts.push(part(new THREE.CylinderGeometry(0.11, 0.12, 0.06, 14), 0x6a5a4a, [hx - 0.15, 2.075, rz0 + 0.3], [0.08, 0, 0], [1, 1, 1.15])); k.parts.push(part(new THREE.BoxGeometry(0.1, 0.012, 0.18), 0x5a4a3a, [hx - 0.24, 2.05, rz0 + 0.3], [0, 0, -0.15]));   // a flat cap
+      k.parts.push(part(new THREE.SphereGeometry(0.1, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0x7a1f24, [hx - 0.15, 2.035, rz0 + 1.0])); k.parts.push(part(new THREE.SphereGeometry(0.035, 8, 6), 0xf4f4f4, [hx - 0.15, 2.14, rz0 + 1.0]));   // a bobble hat
+      k.parts.push(part(new THREE.CylinderGeometry(0.012, 0.012, 0.85, 6), 0x111111, [hx - 0.08, 1.2, rz1 + 0.08])); k.parts.push(part(new THREE.TorusGeometry(0.04, 0.008, 6, 10, Math.PI), 0x3a2416, [hx - 0.08, 1.64, rz1 + 0.04], [0, Math.PI / 2, 0])); k.parts.push(part(new THREE.ConeGeometry(0.06, 0.6, 8), 0x1a2a4a, [hx - 0.08, 1.0, rz1 + 0.08], [Math.PI, 0, 0]));   // a furled brolly
+      blk(hx - 0.32, rz0, hx + 0.02, rz1 + 0.1, 1.9);
       const ux = X(835) - 0.24, uz = Z(497); k.cyl(0.13, 0.12, 0.5, ux, 0.25, uz, 0x2a2a2a, 12, { block: true }); for (let i = 0; i < 3; i++) { k.cyl(0.01, 0.01, 0.85, ux - 0.04 + i * 0.04, 0.6, uz + (i - 1) * 0.03, 0x111111, 6); k.cyl(0.03, 0.045, 0.3, ux - 0.04 + i * 0.04, 0.85, uz + (i - 1) * 0.03, [0x1e4ea8, 0xc62828, 0x111111][i], 8); }
       for (const [px, pz] of [[0.72, -9.05], [4.05, -9.95]]) pottedPlant(k, px, pz, { s: 1.15, pot: 0x2a2420, rim: 0xc9a24a });
     }
@@ -1345,6 +1372,29 @@ export function buildPub(scene) {
   // ---------------- the walls: dark wood skirting, embossed burgundy anaglypta to the dado, a dark dado rail,
   // cream damask paper above, a moulded cornice, and old framed pictures here and there (never on top of a sign)
   { const lower = anaglyptaTex(), upper = damaskTex(), signs = scene.children.filter(o => o.isMesh && o.userData.sign).map(o => o.position.clone());
+    // the angled wall between the entrance and the pub (not one of the square walls the loop below dresses): the same
+    // skirting, anaglypta, dado rail, damask paper and cornice, a framed print with a picture light, a brass wall lamp
+    { const ax = X(835), az = Z(505), bx = X(755), bz = Z(605), LW = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / LW, uz = (bz - az) / LW;
+      let nx = -uz, nz = ux; if (nx > 0) { nx = -nx; nz = -nz; }                                      // (the face looking into the entrance)
+      const ry = Math.atan2(-uz, ux), lry = Math.atan2(nx, nz), t0 = 0.08;
+      const at = (s2, d) => [ax + ux * s2 + nx * d, az + uz * s2 + nz * d];
+      const tm = new Map(); const mat = (t) => { if (!tm.has(t.uuid)) { t.wrapS = t.wrapT = THREE.RepeatWrapping; tm.set(t.uuid, new THREE.MeshLambertMaterial({ map: t })); } return tm.get(t.uuid); };
+      const band = (y0, h, d, color, tex, tile = 0.5) => { const [x, z] = at(LW / 2, t0 + d / 2), L = LW - 0.16;
+        if (!tex) { k.box(L, h, d, x, y0 + h / 2, z, color, { rot: [0, ry, 0] }); return; }
+        const g = new THREE.BoxGeometry(L, h, d), uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * L / tile, uv.getY(i) * h / tile);
+        const m = new THREE.Mesh(g, mat(tex)); m.position.set(x, y0 + h / 2, z); m.rotation.y = ry; scene.add(m); };
+      band(0, 0.15, 0.03, 0x2a1a10); band(0.15, 0.75, 0.006, 0, lower, 0.5); band(0.88, 0.05, 0.035, 0x3a2416); band(0.93, 0.02, 0.02, 0x5a3a22);
+      band(0.95, H - 1.1, 0.005, 0, upper, 0.6); band(H - 0.15, 0.07, 0.05, 0xeee8da); band(H - 0.08, 0.08, 0.08, 0xf4f0e6);
+      const [px, pz] = at(LW / 2, t0 + 0.02); k.box(0.86, 0.66, 0.035, px, 1.75, pz, 0xb8923a, { rot: [0, ry, 0] });
+      k.label('painting', 0.76, 0.56, [px + nx * 0.02, 1.75, pz + nz * 0.02], [0, lry, 0], { tex: paintingTex(3) });
+      { const [lx, lz] = at(LW / 2, t0 + 0.12); k.lamp(lx, 2.2, lz, 0xffe0a8, 0.03, false); const [bx2, bz2] = at(LW / 2, t0 + 0.06); k.box(0.26, 0.025, 0.12, bx2, 2.15, bz2, 0xc9a24a, { rot: [0, ry, 0] }); }
+      // and the bit of the bar's back wall that shows through the way in (its face towards the entrance)
+      { const x0 = X(695) - T2, x1 = X(755) + 0.02, c = Z(605) - T2, L = x1 - x0, cx = (x0 + x1) / 2;
+        const bx3 = (y0, h, d, color, tex, tile = 0.5) => { if (tex) k.texBox(L, h, d, cx, y0 + h / 2, c - d / 2, tex, { tile }); else k.box(L, h, d, cx, y0 + h / 2, c - d / 2, color); };
+        bx3(0, 0.15, 0.03, 0x2a1a10); bx3(0.15, 0.75, 0.006, 0, lower, 0.5); bx3(0.88, 0.05, 0.035, 0x3a2416); bx3(0.93, 0.02, 0.02, 0x5a3a22);
+        bx3(0.95, H - 1.1, 0.005, 0, upper, 0.6); bx3(H - 0.15, 0.07, 0.05, 0xeee8da); bx3(H - 0.08, 0.08, 0.08, 0xf4f0e6); }
+      for (const s2 of [0.45, LW - 0.45]) { const [lx, lz] = at(s2, t0 + 0.06); k.box(0.1, 0.16, 0.04, lx, 1.95, lz, 0xc9a24a, { rot: [0, ry, 0] }); const [sx, sz] = at(s2, t0 + 0.14); k.parts.push(part(new THREE.CylinderGeometry(0.05, 0.08, 0.12, 12, 1, true), 0xf3e2b8, [sx, 2.05, sz])); k.lamp(sx, 2.02, sz, 0xffd8a0, 0.03); }
+    }
     const art = [0, 1, 2, 3, 4, 5].map(paintingTex);
     const faces = k.wallFaces({ colors: new Set([WALL, PLASTER]), minH: H - 0.05, inside, skip: (f) => inNewArea(f.axis === 'x' ? f.c + f.dir * 0.25 : (f.a0 + f.a1) / 2, f.axis === 'x' ? (f.a0 + f.a1) / 2 : f.c + f.dir * 0.25) || (f.c > GZ - 0.2 && f.dir > 0 && f.axis === 'z') || f.axis === 'z' && f.c < Z(470) && f.c > Z(300) && f.dir > 0 && f.a0 > X(160) && f.a1 < X(420) });
     let n = 0;
@@ -1383,7 +1433,7 @@ export function buildPub(scene) {
   const room = k.finish({
     name: 'The Oysterfleet',
     sky: 0xffe2c0, ground: 0x6a4a3a, hemiI: 1.55, sun: 0xfff0d8, sunI: 0.45, sunPos: [-6, 10, 5], ambient: 0.32,
-    start: { x: 3.6, z: -10.0, yaw: 0.4 },          // in reception, facing the desk
+    start: { x: 4.45, z: -12.95, yaw: 2.6 },     // on the mat inside the front doors, facing into the pub          // in reception, facing the desk
     board: { x: X(195) + 0.11, y: 1.45, z: Z(1062), ry: Math.PI / 2 },
     startFood: ['can', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza', 'doughnut', 'burger', 'pizza', 'can', 'doughnut', 'burger', 'pizza', 'doughnut', 'can', 'burger', 'pizza'],
     spotCount: 40,
