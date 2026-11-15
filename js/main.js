@@ -23,7 +23,7 @@ import { buildGarden } from './levels/garden.js';
 import { Net, newCode } from './net.js';
 import { MPSync } from './mpsync.js';
 import { foodGlow } from './foods.js';
-import { EMOTES, CHAR_EMOTES, EmotePlayer } from './emotes.js';
+import { EMOTES, CHAR_EMOTES, EmotePlayer, emoteInfo } from './emotes.js';
 import { Music } from './music.js';
 import { PowerUps } from './powerups.js';
 import { Imposter } from './imposter.js';
@@ -1042,11 +1042,12 @@ function selfBodyUpdate(dt) {
 let powerups = null;
 function frame(simDt) {
   foodGlow(performance.now() / 1000);
-  chatUI.update(); music.update(Math.min(0.05, 1 / 60)); tvs.update(1 / 60); try { selfBodyUpdate(Math.min(0.05, 1 / 60)); } catch (e) {} pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
+  chatUI.update(); music.update(Math.min(0.05, 1 / 60)); tvs.update(1 / 60); pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
   if (renderer.xr.isPresenting && simDt == null) { vrMenuButtons(); vrEmote.update(); }
   if (paused && simDt == null && net.connected) { if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } }
   else if (paused && simDt == null) { clock.getDelta(); if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } renderer.render(scene, camera); return; }    // frozen until RESUME
   const dt = simDt ?? Math.min(clock.getDelta(), 0.05);
+  try { selfBodyUpdate(dt); } catch (e) {}      // (with the real frame time: a fixed 1/60 made your own body's emotes run slow and its physics bodies run away)
   time += dt;
   const xr = renderer.xr.isPresenting;
   if (loadShown && time > 0.15) hideLoading();
@@ -1175,7 +1176,22 @@ function frame(simDt) {
   _b.set(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(_q));
   setListener(player.head, player.fwd, _b);
 
-  if (simDt == null) renderer.render(scene, camera);
+  if (simDt == null) renderer.render(scene, emoteCam() || camera);
+}
+// your own emote, on a phone or a computer: the camera swings round in front of you so you can watch your character do
+// it (your own head shows while it does), then back to your eyes when it's done
+const thirdCam = new THREE.PerspectiveCamera(55, 1, 0.05, 200); let ecK = 0;
+function emoteCam() {
+  const sb = selfBody, on = !!(sb && player.flatMode && !renderer.xr.isPresenting && sb.emote && sb.emote.active);
+  ecK = on ? Math.min(1, ecK + 0.06) : 0;
+  if (sb && sb.c && sb.c.rag) sb.c.rag.hideHead = !on;
+  if (!on) return null;
+  const r = sb.c.rag, f = sb.fwd(), t = performance.now() / 1000, a = Math.sin(t * 0.5) * 0.35, ch = r.drawn ? r.drawn(r.pos('chest', new THREE.Vector3())) : r.pos('chest', new THREE.Vector3());
+  const big = r.group ? r.group.scale.y : 1, ei = sb.emote.id && emoteInfo(sb.emote.id), dist = 2.9 * big * ((ei && ei.cam) || 1), side = new THREE.Vector3(f.z, 0, -f.x);
+  const want = new THREE.Vector3(r.root.x, 0, r.root.z).addScaledVector(f, Math.cos(a) * dist).addScaledVector(side, Math.sin(a) * dist); want.y = 1.55 * big;
+  const eye = camera.getWorldPosition(new THREE.Vector3()); thirdCam.position.copy(eye).lerp(want, ecK * ecK * (3 - 2 * ecK));
+  thirdCam.aspect = camera.aspect; thirdCam.fov = camera.fov; thirdCam.updateProjectionMatrix(); thirdCam.lookAt(ch.x, Math.max(0.6, ch.y * 0.85), ch.z);
+  return thirdCam;
 }
 // (one bad frame must never stop the game: log it, still draw, carry on with the next)
 let frameErrs = 0;
@@ -1203,6 +1219,11 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
     $('mp-chip').addEventListener('click', (e) => { e.stopPropagation(); draw(); pop.classList.toggle('on'); });
     document.addEventListener('pointerdown', (e) => { if (pop.classList.contains('on') && !pop.contains(e.target) && e.target.id !== 'mp-chip') pop.classList.remove('on'); }, true); }
   net.on.setup = () => {};
+  // everyone on the same version: whoever's behind updates (straight back into the same room)
+  const vNum = (v) => String(v || '0').split('.').map(Number).reduce((a, n) => a * 1000 + (n || 0), 0);
+  net.on.ver = (m) => { if (vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; showBanner('YOUR MATE HAS A NEWER VERSION', 'UPDATING...');
+    setTimeout(() => { location.href = location.pathname + '?lobby=' + encodeURIComponent(net.code || '') + '&u=' + Date.now(); }, 1600); } };
+  const sayVer = () => net.send({ t: 'ver', v: window.GAME_BUILD }); if (net.connected) sayVer(); const j0 = net.on.join; net.on.join = (m) => { j0 && j0(m); sayVer(); };
   // the host started a new game (changed the mode, or restarted): everyone starts it, back at the start of the map
   net.on.restart = (m) => { if (net.host || !m.mode) return; newGame(m.mode, 'NEW GAME'); };
   if (net.connected) chip();
@@ -1368,4 +1389,4 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)

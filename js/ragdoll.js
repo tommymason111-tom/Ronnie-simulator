@@ -277,6 +277,7 @@ export class Ragdoll {
     geo.computeBoundingBox(); const bb = geo.boundingBox, hgt = bb.max.y - bb.min.y;
     const paint = this.paint = { uOrange: { value: 0 }, uHair: { value: 0 }, uHairCol: { value: new THREE.Color(0x39ff14) }, uCoat: { value: 0 }, uCoatCol: { value: new THREE.Color(0x14213d) },
       uHairY: { value: bb.max.y - hgt * 0.065 }, uCoatY: { value: new THREE.Vector2(bb.min.y + hgt * 0.3, bb.min.y + hgt * 0.84) } };
+    this.paintBB = { min: bb.min.y, h: hgt };
     mat.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, paint);
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vBindY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvBindY = position.y;');

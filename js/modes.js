@@ -179,7 +179,7 @@ export class Director {
     if (!m) return;
     if (this.imposter) { this.imposter.dispose(); this.imposter = null; }
     this.hideTommy(false);
-    this.mode = id; this.running = true; this.used.clear(); this.pending = null;
+    this.mode = id; globalThis.RS_MODE = id; this.running = true; this.used.clear(); this.pending = null;
     this.timeLeft = m.time;
     this.stats = { chonk: 0, veg: 0, swats: 0, popped: 0, roasted: 0, caught: 0, thrown: 0, attempts: 0, fails: [] };
     this.meter = 0; this.nextIntervener = 0; this.waveT = 2.5; this.spawned = 0;

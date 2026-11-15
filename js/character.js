@@ -9,6 +9,7 @@ import { Dialogue, BANKS } from './dialogue.js';
 import { sfx, babble } from './audio.js';
 import { TUNING } from './config.js';
 import { Item } from './foods.js';
+import { MODE_LINES, modeGroup } from './modelines.js';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
 export const KO_IMPULSE = 6;          // N·s — anything harder than this knocks someone out
@@ -98,6 +99,10 @@ export class Character {
 
   // ---------------- speech ----------------
   line(bank) {
+    if (bank === 'chatter' && Math.random() < 0.5) {      // half the time: something about the game mode we're in
+      const g = modeGroup(globalThis.RS_MODE), m = g && ((MODE_LINES[this.cfg.id] || {})[g] || (Math.random() < 0.3 && MODE_LINES._[g]));
+      if (m && m.length) { const fresh = m.filter(l => !this.dialogue.recent.includes(l)); if (fresh.length) { const l = fresh[Math.floor(Math.random() * fresh.length)]; this.dialogue.recent.push(l); if (this.dialogue.recent.length > 8) this.dialogue.recent.shift(); return l; } }
+    }
     const own = this.banks[bank];
     if (own && own.length) {
       const fresh = own.filter(l => !this.dialogue.recent.includes(l));
