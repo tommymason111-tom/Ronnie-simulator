@@ -110,15 +110,15 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     const bitePos = MOUTH.clone().add(new THREE.Vector3(0.025, -0.035, 0.07));
     const EAT_ROT = new THREE.Euler(-0.55, 0.5, 0.15);
     if (e.phase === 'bring') {
-      const u = smooth(0, 1, e.t / 0.45);
+      const u = smooth(0, 1, e.t / 0.3);
       e.o.position.lerpVectors(e.from, bitePos, u); e.o.scale.setScalar(TRAY_SCALE + (FOOD_SCALE - TRAY_SCALE) * u);
       e.o.quaternion.slerp(new THREE.Quaternion().setFromEuler(EAT_ROT), Math.min(1, dt * 8));
       jawTarget = 0.12 * u;
-      if (u >= 1) { e.phase = 'open'; e.t = 0; }
+      if (u >= 1) { e.phase = e.o.userData.type === 'can' ? 'drink' : 'open'; e.t = 0; }
     } else if (e.phase === 'open') {            // wide open, lean in a little
       jawTarget = 0.30; nod = 0.06;
       e.o.position.lerp(MOUTH.clone().add(new THREE.Vector3(0.02, -0.03, 0.045)), Math.min(1, dt * 10));
-      if (e.t > 0.28) { e.phase = 'bite'; e.t = 0; }
+      if (e.t > 0.16) { e.phase = 'bite'; e.t = 0; }
     } else if (e.phase === 'bite') {            // CHOMP: snap shut, a chunk goes
       jawTarget = 0;
       if (e.t > 0.06 && !e.bitten) {
@@ -127,23 +127,31 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
         crumbs(e.o.position);
       }
       e.o.position.lerp(bitePos.clone().add(new THREE.Vector3(0.01, -0.02, 0.03)), Math.min(1, dt * 8));
-      if (e.t > 0.18) { e.phase = 'chew'; e.t = 0; e.bitten = false; nod = 0; }
+      if (e.t > 0.12) { e.phase = 'chew'; e.t = 0; e.bitten = false; nod = 0; }
     } else if (e.phase === 'chew') {            // 3 chews: the jaw drops a little and grinds side to side
-      const cyc = e.t * 2 * Math.PI * 1.7;
+      const cyc = e.t * 2 * Math.PI * 2.8;
       jawTarget = 0.035 + 0.07 * Math.max(0, Math.sin(cyc)); grind = 0.045 * Math.sin(cyc * 0.5);
       if (e.bites <= 0) { e.o.visible = false; }
-      if (e.t > 1.1) {
+      if (e.t > 0.55) {
         grind = 0;
         if (e.bites > 0) { e.phase = 'open'; e.t = 0; }
         else { e.phase = 'swallow'; e.t = 0; sfx && sfx('gulp'); onEat && onEat(e.o.userData.type); if (renderer.xr.isPresenting) say(['NOM!', 'MUNCH!', 'GULP!', 'YUM!'][Math.floor(Math.random() * 4)], 1.2); }
       }
+    } else if (e.phase === 'drink') {           // the MONSTOR: lips on the can, tipped back further and further, glug glug glug
+      const u = Math.min(1, e.t / 1.3);
+      jawTarget = 0.07; nod = -0.05 * u;
+      e.o.quaternion.slerp(new THREE.Quaternion().setFromEuler(new THREE.Euler(-1.1 - 1.0 * u, 0.15, 0)), Math.min(1, dt * 10));
+      const top = new THREE.Vector3(0, 0.06 * FOOD_SCALE, 0).applyQuaternion(e.o.quaternion);
+      e.o.position.lerp(MOUTH.clone().add(new THREE.Vector3(0, -0.01, 0.03)).sub(top), Math.min(1, dt * 12));
+      if ((e.glugT = (e.glugT || 0) - dt) <= 0) { e.glugT = 0.32; sfx && sfx('gulp'); }
+      if (u >= 1) { e.o.visible = false; e.phase = 'swallow'; e.t = 0; nod = 0; onEat && onEat('can'); if (renderer.xr.isPresenting) say('AAAH!'); }
     } else if (e.phase === 'swallow') {         // gulp: a little nod
       jawTarget = 0; nod = 0.05 * Math.sin(Math.min(1, e.t / 0.4) * Math.PI);
-      if (e.t > 0.5) {
+      if (e.t > 0.32) {
         const o = e.o, home = o.userData.home;
         if (home) { world.remove(o); const n = makeFood(nextType()); n.userData.home = home; n.position.copy(home); n.scale.setScalar(0.01); n.userData.pop = 0; tray[tray.indexOf(o)] = n; }
         else world.remove(o);
-        eating = null; idleT = 3 + Math.random() * 2;
+        eating = null; idleT = 0.7 + Math.random() * 0.8;
       }
     }
   }
