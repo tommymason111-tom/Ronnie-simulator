@@ -91,7 +91,9 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   const SPOTS = [new THREE.Vector3(-0.31, 0.27, 0.32), new THREE.Vector3(0.31, 0.29, 0.32), new THREE.Vector3(0.34, 0.74, 0.2)];
   let fi = Math.floor(Math.random() * FOODS.length);
   const nextType = () => FOODS[fi++ % FOODS.length];
-  const makeFood = (type) => { const it = new Item(type); const o = it.obj; o.scale.setScalar(TRAY_SCALE); o.userData.type = type; o.userData.bites = type === 'can' ? 1 : 3; world.add(o); return o; };
+  const makeFood = (type) => { const it = new Item(type); const o = it.obj;
+    if (it.halo) o.remove(it.halo); if (o.children[0]) o.children[0].scale.setScalar(1);   // (no in-game glow or extra size on the title screen)
+    o.scale.setScalar(TRAY_SCALE); o.userData.type = type; o.userData.bites = type === 'can' ? 1 : 3; world.add(o); return o; };
   const tray = SPOTS.map((p, i) => { const o = makeFood(nextType()); o.position.copy(p); o.userData.home = p; o.userData.pop = 1; return o; });
 
   // ---- animation state ----
