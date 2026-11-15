@@ -1368,13 +1368,9 @@ export function buildPub(scene) {
     for (const z of [23.0, 29.0, 35.0]) lampPost(10.55, z, 0.3);
     // ---- the river beyond the railing: reeds on the bank, the water, the far bank
     { const wt = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#5a8a8a'; g.fillRect(0, 0, w, h); for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '220,240,240' : '30,60,60'},0.18)`; g.fillRect(Math.random() * w, Math.random() * h, 8 + Math.random() * 20, 1.5); } }); wt.wrapS = wt.wrapT = THREE.RepeatWrapping; wt.repeat.set(3, 10);
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(18, 48.5), waterMaterial({ deep: 0x16302e, shallow: 0x4a706a, flow: 0.04, scale: 0.4 })); m.rotation.x = -Math.PI / 2; m.position.set(GX1 + 10.5, -0.25, 40.75); scene.add(m);   // (only behind the building: the restaurant is alongside further up)
       const bank = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 31.5), new THREE.MeshLambertMaterial({ map: LEAFT })); bank.rotation.x = -Math.PI / 2; bank.position.set(GX1 + 1.1, 0.0, 32.25); scene.add(bank);
       for (let i = 0; i < 160; i++) { const x = GX1 + 0.2 + Math.random() * 1.9, z = 16.6 + Math.random() * 30, h = 0.8 + Math.random() * 0.9; k.box(0.025, h, 0.06, x, h / 2, z, [0x6a9a3a, 0x8aa84a, 0x5a8a2a, 0xa8b860][i % 4], { rot: [(Math.random() - 0.5) * 0.4, Math.random() * 3, (Math.random() - 0.5) * 0.4] }); }
-      const far = new THREE.Mesh(new THREE.PlaneGeometry(10, 48.5), new THREE.MeshLambertMaterial({ map: LEAFT })); far.rotation.x = -Math.PI / 2; far.position.set(GX1 + 24.5, 0.15, 40.75); scene.add(far);
-      R(GX1 + 19.4, 16.5, GX1 + 19.6, 65, 0.5, -0.05, 0x5a5040);                                             // the far bank's edge
-      for (let z = 18.2; z < 62; z += 2.6) { const x = GX1 + 20.5 + ((z * 7) % 3); leafyBall(k, x, 0.5, z, 0.9 + ((z * 3) % 5) * 0.12); }   // bushes along the far bank
-      for (const [x, z, r] of [[GX1 + 25, 20, 2.8], [GX1 + 23.5, 33, 2.4], [GX1 + 26, 45, 3.0], [GX1 + 24, 56, 2.2]]) { k.cyl(0.2, 0.3, 3.6, x, 1.8, z, 0x5a4030, 8); leafyBall(k, x, 4.2, z, r); } }
+    }
     // ---- the far end: hedges and a fence, the houses beyond, trees
     hedge(GX0 + 0.1, GZ1 - 0.9, 7.6, GZ1 - 0.1, 1.7); railX(GX0, GX1, GZ1 - 0.05, 1.8);
     // the houses round the garden: a terrace across the end (their back gardens run up to the pub's fence), another down the left
@@ -1386,6 +1382,7 @@ export function buildPub(scene) {
     for (const [x, z] of [[-2, 28], [6, 22], [9, 33], [-6, 36]]) k.pool(x, 0, z, 8, 0xfff8e0);
     shiftGarden(k, scene, mark, 19.3, DW); railZ(GX0, 19.28, 19.4 + DW);
     mirrorGarden(k, scene, mark, GX0 + GX1);
+    buildLake(k, scene);
   }
   // ---------------- the walls: dark wood skirting, embossed burgundy anaglypta to the dado, a dark dado rail,
   // cream damask paper above, a moulded cornice, and old framed pictures here and there (never on top of a sign)
@@ -1702,6 +1699,49 @@ function paintingTex(i) {
 }
 
 // mirror everything added since `mark` across x = c2 / 2 (geometry, meshes, instances, colliders, blockers, spawns, lights)
+// The lake on the right as you walk out of the garden door (beyond the raised deck): a wide sheet of moving water
+// with a curving shore, a muddy beach line, reed beds, lily pads with flowers, a wooden jetty with a rowing boat
+// tied up, ducks and a pair of swans, and trees and bushes round the far shore fading into the haze.
+function buildLake(k, scene) {
+  const cx = -34, cz = 39, pts = [];
+  for (let i = 0; i < 72; i++) { const t = i / 72 * Math.PI * 2, x = cx + 23 * Math.cos(t) * (1 + 0.08 * Math.sin(3 * t + 1)), z = cz + 22 * Math.sin(t) * (1 + 0.07 * Math.cos(5 * t)); pts.push([Math.min(x, -11.35), z]); }
+  const shape = (scale, y, mat) => { const sh = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(cx + (x - cx) * scale, -(cz + (z - cz) * scale)))); const g = new THREE.ShapeGeometry(sh, 4); g.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(g, mat); m.position.y = y; scene.add(m); return m; };
+  shape(1.035, -0.3, new THREE.MeshLambertMaterial({ color: 0x7a6a4e }));                                                   // the muddy shore
+  shape(1.0, -0.25, waterMaterial({ deep: 0x14302c, shallow: 0x46706a, flow: 0.02, scale: 0.35 }));                       // the water
+  let sd = 11; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  const P = (geo, col, pos, rot = [0, 0, 0]) => k.parts.push(part(geo, col, pos, rot));
+  // reed beds round the shore (not along the deck side, which has its own)
+  for (let i = 0; i < pts.length; i += 2) { const [x, z] = pts[i]; if (x > -12) continue; if (r() < 0.35) continue;
+    for (let j = 0; j < 14; j++) { const h = 0.7 + r() * 0.9, px = x + (r() - 0.5) * 1.6, pz = z + (r() - 0.5) * 1.6; P(new THREE.BoxGeometry(0.02, h, 0.05), [0x6a9a3a, 0x8aa84a, 0x5a8a2a, 0xa8b860][j % 4], [px, h / 2 - 0.25, pz], [(r() - 0.5) * 0.4, r() * 3, (r() - 0.5) * 0.4]);
+      if (j % 5 === 0) P(new THREE.CylinderGeometry(0.02, 0.02, 0.12, 6), 0x5a3a20, [px, h - 0.2, pz]); } }                       // bulrush heads
+  // lily pads with flowers
+  for (let i = 0; i < 70; i++) { const a = r() * 6.28, d = 0.35 + r() * 0.55, x = cx + Math.cos(a) * 21 * d, z = cz + Math.sin(a) * 20 * d; if (x > -13) continue;
+    for (let j = 0; j < 4; j++) { const g = new THREE.CircleGeometry(0.22 + r() * 0.15, 12, 0.4, Math.PI * 2 - 0.4); g.rotateX(-Math.PI / 2); P(g, [0x2e6a26, 0x3a7a2e, 0x4a8a34][j % 3], [x + (r() - 0.5) * 1.2, -0.24, z + (r() - 0.5) * 1.2], [0, r() * 6, 0]); }
+    if (r() < 0.4) { const fx = x + 0.2, fz = z; for (let p2 = 0; p2 < 6; p2++) P(new THREE.SphereGeometry(0.05, 6, 4), p2 % 2 ? 0xf4f0f4 : 0xf2b8d0, [fx + Math.cos(p2) * 0.05, -0.2, fz + Math.sin(p2) * 0.05], [0, 0, 0]); P(new THREE.SphereGeometry(0.03, 6, 4), 0xffd400, [fx, -0.17, fz]); } }
+  // the jetty out from the bottom of the raised deck, a rowing boat tied up beside it
+  { const z0 = 32.0, x0 = -11.4, x1 = -17.5;
+    for (let x = x0; x > x1; x -= 0.16) P(new THREE.BoxGeometry(0.14, 0.05, 1.4), x * 7 % 2 > 1 ? 0x6a5040 : 0x5e4636, [x, -0.02, z0]);
+    for (let x = x0 - 0.2; x > x1; x -= 1.5) for (const dz of [-0.65, 0.65]) P(new THREE.CylinderGeometry(0.07, 0.08, 0.9, 8), 0x3a2a1e, [x, -0.4, z0 + dz]);
+    for (const dz of [-0.66, 0.66]) { P(new THREE.BoxGeometry(x0 - x1, 0.06, 0.06), 0x4a3a2e, [(x0 + x1) / 2, 0.9, z0 + dz]); for (let x = x0; x > x1; x -= 1.2) P(new THREE.BoxGeometry(0.07, 0.95, 0.07), 0x3a2a1e, [x, 0.45, z0 + dz]); }
+    const bx = x1 + 1.2, bz = z0 + 1.6, hull = new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2); hull.scale(1.5, 0.45, 0.55);   // the rowing boat
+    P(hull, 0x2a5a8a, [bx, -0.05, bz], [Math.PI, 0.1, 0]); const inner = new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2); inner.scale(1.42, 0.38, 0.5); P(inner, 0x8a6a48, [bx, -0.0, bz], [Math.PI, 0.1, 0]);
+    for (const dx of [-0.6, 0.4]) P(new THREE.BoxGeometry(0.2, 0.04, 0.95), 0x8a6a48, [bx + dx, 0.08, bz], [0, 0.1, 0]);
+    for (const sd2 of [-1, 1]) P(new THREE.BoxGeometry(1.6, 0.03, 0.06), 0xb8986a, [bx + 0.1, 0.12, bz + sd2 * 0.45], [0, 0.1 + sd2 * 0.3, -0.15]);   // oars
+    P(new THREE.CylinderGeometry(0.01, 0.01, 1.4, 4), 0xd8c8a0, [bx + 0.8, 0.0, bz - 0.8], [0, 0, 1.2]);
+    k.label('CANVEY LAKE — NO SWIMMING (RONNIE, THAT MEANS YOU)', 0.9, 0.36, [-11.3, 1.25, z0 + 1.0], [0, -Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#fff', border: '#d4af37', size: 34 });
+    P(new THREE.BoxGeometry(0.08, 1.5, 0.08), 0x3a2a1e, [-11.25, 0.5, z0 + 1.0]); }
+  // ducks and a pair of swans
+  const bird = (x, z, s2, body, head, beak, ry) => { const g = new THREE.SphereGeometry(0.16 * s2, 10, 6); g.scale(1.3, 0.7, 0.8); P(g, body, [x, -0.2 + 0.06 * s2, z], [0, ry, 0]);
+    const nx = x + Math.cos(-ry) * 0.18 * s2, nz = z + Math.sin(-ry) * 0.18 * s2; P(new THREE.CylinderGeometry(0.03 * s2, 0.04 * s2, (s2 > 1.5 ? 0.35 : 0.12) * s2, 6), body, [nx, -0.1 + (s2 > 1.5 ? 0.18 : 0.08) * s2, nz]);
+    const hx = nx + Math.cos(-ry) * 0.04 * s2, hz = nz + Math.sin(-ry) * 0.04 * s2, hy = -0.08 + (s2 > 1.5 ? 0.38 : 0.16) * s2; P(new THREE.SphereGeometry(0.06 * s2, 8, 6), head, [hx, hy, hz]);
+    P(new THREE.ConeGeometry(0.02 * s2, 0.07 * s2, 6), beak, [hx + Math.cos(-ry) * 0.07 * s2, hy - 0.01, hz + Math.sin(-ry) * 0.07 * s2], [0, 0, -Math.PI / 2 + 0], ); };
+  for (const [x, z, ry] of [[-16, 26, 0.5], [-16.8, 26.6, 0.8], [-17.4, 25.8, 0.2], [-15.2, 40, 2.4], [-15.9, 40.5, 2.0]]) bird(x, z, 1, [0x6a4a2a, 0x8a6a4a, 0x5a4a3a][Math.floor(Math.abs(x)) % 3], x > -16 ? 0x1e6a3a : 0x6a4a2a, 0xe8a020, ry);
+  bird(-21, 34, 2.0, 0xf8f8f6, 0xf8f8f6, 0xe86a1a, 1.2); bird(-22.2, 34.8, 2.0, 0xf8f8f6, 0xf8f8f6, 0xe86a1a, 1.0);
+  // trees and bushes round the far shore
+  for (let i = 0; i < pts.length; i += 3) { const [x, z] = pts[i]; if (x > -14 && z < 45) continue; const ox = x + (x - cx) * 0.12, oz = z + (z - cz) * 0.12;
+    if (i % 2) leafyBall(k, ox, 0.3, oz, 1.0 + r() * 0.6); else { k.cyl(0.2, 0.3, 3.4, ox, 1.5, oz, 0x5a4030, 8); leafyBall(k, ox, 4.0, oz, 2.0 + r() * 0.8); } }
+}
 // move everything of the garden beyond z = zc back by dz (to widen the deck without re-laying the whole garden)
 function shiftGarden(k, scene, mark, zc, dz) {
   const T = new THREE.Matrix4().makeTranslation(0, 0, dz), c = new THREE.Vector3();
