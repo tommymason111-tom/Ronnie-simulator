@@ -27,6 +27,14 @@ const UP = new THREE.Vector3(0, 1, 0);
 const SKIN = { light: 0xf1c3a5, fair: 0xf3cdb4, warm: 0xe5b08e, tan: 0xd9a07a };
 
 export const SQUAD = {
+  // Ronnie himself, full body (only ever a player in multiplayer: never one of the squad)
+  ronnie: {
+    name: 'Ronnie', color: '#ffd400', voicePitch: 0.85, playerOnly: true,
+    model: './assets/squad/ronnie.glb', modelBody: { h: 1.80, girth: 1.3, bind: { sh: [0.21, 1.44, 0.01], el: [0.52, 1.44, 0.02], ha: [0.89, 1.43, 0.03], hipX: 0.095, hipY: 0.9, kneeY: 0.47, neckY: 1.53, topY: 1.80, headZ: 0.01, chestW: 0.22, chestD: 0.17, pelvisW: 0.17, arm: 0.055, leg: 0.08 } },
+    body: { h: 1.80, sw: 1.05, girth: 1.3, limb: 1.0 },
+    look: { skin: SKIN.fair, hair: { style: 'short', color: 0x1a1410 }, top: 0x8ab4e0, sleeves: 'short', bottom: 0x8a8a8a, legs: 'shorts', shoes: 0xf5f5f5 },
+    banks: { hit: ['Oi!'], slap: ['OI!'] }, title: '', fail: '',
+  },
   chloe: {
     name: 'Chloe', color: '#B57BFF', voicePitch: 1.35,
     model: './assets/squad/chloe.glb', modelBody: { h: 1.70, bind: { sh: [0.20, 1.38, 0], el: [0.44, 1.37, -0.03], ha: [0.85, 1.37, -0.04], hipX: 0.10, hipY: 0.86, kneeY: 0.47, neckY: 1.45, topY: 1.70, headZ: 0, chestW: 0.15, chestD: 0.10, pelvisW: 0.16, arm: 0.04, leg: 0.075 } },

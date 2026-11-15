@@ -213,6 +213,7 @@ export class Music {
 
   // ------------------------------------------------------------------ adding songs from this device
   async addFiles(files) {
+    try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}     // (ask the browser to keep them: no clearing them out)
     let n = 0;
     for (const f of files) { const s = songFromFile(f.name), meta = { key: s.key, title: s.title, artist: s.artist, c: s.c, extra: !!s.extra };
       try { await dbPut(s.key, f, meta); this.have.set(s.key, meta); if (s.extra && !this.extra.some(e => e.key === s.key)) this.extra.push(meta); n++; } catch (e) { this.ui.say('Couldn\'t save ' + f.name); } }

@@ -280,7 +280,7 @@ export class RunPub {
 
   // ------------------------------------------------------------------ the squad drop in
   dropIn() {
-    const g = this.g, pool = Object.keys(SQUAD).filter(id => !id.startsWith('p') && !['lewis', 'ben', 'aidan', 'connor', 'chloe', 'tommy'].includes(id) && !this.cast.some(c => c.id === id));
+    const g = this.g, pool = Object.keys(SQUAD).filter(id => !id.startsWith('p') && !SQUAD[id].playerOnly && !['lewis', 'ben', 'aidan', 'connor', 'chloe', 'tommy'].includes(id) && !this.cast.some(c => c.id === id));
     if (!pool.length || this.cast.filter(c => c.dropIn).length >= 2) return;
     const id = R(pool), c = new SquadMember(g.scene, g.room, g.physics, id, [DOOR.x, DOOR.z + 0.3, Math.PI], this.d);
     this.d.hook(c); g.cast.push(c); c.dropIn = { t: 60 + Math.random() * 60, phase: 'in' }; c.active = false;

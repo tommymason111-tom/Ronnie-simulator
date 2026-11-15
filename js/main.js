@@ -29,7 +29,7 @@ import { TVs } from './tv.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
 
 // start downloading everyone's 3D model now, while the menu is still up
-const MODEL_LOAD = preloadModels(['./assets/tommy.glb', ...Object.values(SQUAD).map(d => d.model).filter(Boolean)]);
+const MODEL_LOAD = preloadModels(['./assets/tommy.glb', ...Object.values(SQUAD).filter(d => !d.playerOnly).map(d => d.model).filter(Boolean)]);   // (Ronnie's body only loads if someone plays as him)
 // wait for the start screen: where are we playing, and what mode?
 const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'pub', mode: 'everyone' }));
 // ...and make sure everyone's actually arrived before the game starts (so nobody's invisible)
@@ -1019,7 +1019,7 @@ document.getElementById('tv-close').addEventListener('click', () => { initAudio(
 mp.start();
 if (window.ronnieMP && window.ronnieMP.role === 'join') director.remote = true;
 // someone playing as a squad member: their own body, moved by where their head and hands are
-net.makeAvatar = (p) => { if (!p.char || p.char === 'ronnie' || (p.char !== 'tommy' && !SQUAD_MP[p.char])) return null; return new SquadPuppet(p); };
+net.makeAvatar = (p) => { if (!p.char || (p.char !== 'tommy' && !SQUAD_MP[p.char])) return null; return new SquadPuppet(p); };   // (Ronnie too: his full-body model)
 class SquadPuppet {
   constructor(p) { this.c = p.char === 'tommy' ? (() => { const t = new Tommy(scene, room, physics); t.load(); return t; })() : new SquadMemberMP(scene, room, physics, p.char, [0, 0, 0], director); this.c.attacks = false; this.c.mpPuppet = true; this.c.active = false; this.pos = new THREE.Vector3(); this.yaw = 0; this.rh = new THREE.Vector3(); this.lh = new THREE.Vector3(); this.first = true; this.c.name = p.name || this.c.name;
     // a name tag over their head (so you can tell a real player from the squad): their name, and who they're playing as

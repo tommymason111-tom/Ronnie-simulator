@@ -190,7 +190,7 @@ export class Director {
     tommy.directed = false; tommy.tripping = 0;
     tommy.active = true; tommy.attacks = tommy.attacks && id !== 'bbq';
     let squad = [];
-    const big = !!g.room.big, everyone = Object.keys(SQUAD).filter(s => !/^p\d+$/.test(s) && !(this.mp && this.mp.takenChars().has(s)));   // (anyone a player is playing as stays out)
+    const big = !!g.room.big, everyone = Object.keys(SQUAD).filter(s => !/^p\d+$/.test(s) && !SQUAD[s].playerOnly && !(this.mp && this.mp.takenChars().has(s)));   // (anyone a player is playing as stays out)
     if (id === 'intervention') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 4);
     else if (id === 'everyone') squad = big ? shuffle(everyone) : shuffle(everyone).slice(0, 5);
     else if (id === 'date') squad = ['chloe', ...shuffle(everyone.filter(s => s !== 'chloe'))];   // the whole squad is out for dinner too
@@ -790,7 +790,7 @@ export class Director {
     for (const c of this.cast) if (c.id === 'oliver' || c.id === 'aidanw') c.rag.wearUniform(c.id === 'aidanw' ? 'Aidan W' : first(c));
     let workers;
     if (id === 'roam') workers = shuffle(this.cast.filter(c => c !== g.tommy && c.id !== 'oliver' && c.id !== 'aidanw')).slice(0, 3);
-    else workers = shuffle(Object.keys(SQUAD).filter(s => !['oliver', 'aidanw', 'tommy'].includes(s) && !this.cast.some(c => c.id === s))).slice(0, 3).map(sid => {
+    else workers = shuffle(Object.keys(SQUAD).filter(s => !SQUAD[s].playerOnly && !['oliver', 'aidanw', 'tommy'].includes(s) && !this.cast.some(c => c.id === s))).slice(0, 3).map(sid => {
       const c = new SquadMember(g.scene, g.room, g.physics, sid, [TILLS[0] - 0.74, 10.3, Math.PI / 2], this); this.hook(c); g.cast.push(c); return c; });
     workers.forEach((c, i) => {
       const x = TILLS[i] - 0.74, z = 10.3, yaw = Math.PI / 2;        // at the till on the cashier's side, facing the belt

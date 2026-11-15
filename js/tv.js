@@ -101,6 +101,7 @@ export class TVs {
 
   // ------------------------------------------------------------------ adding videos
   async addFiles(files) {
+    try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
     let n = 0;
     for (const f of files) { const key = keyOf(f.name, f.size), meta = { key, title: nameOf(f.name), size: f.size };
       try { await put(key, f, meta); this.have.set(key, meta); n++; } catch (e) { this.ui.say('Couldn\'t save ' + f.name + ' (not enough space?)'); } }
