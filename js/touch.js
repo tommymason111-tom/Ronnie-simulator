@@ -12,6 +12,8 @@ export function setupTouch(cb) {
     <button id="btn-throw" class="tbtn">THROW</button>
     <button id="btn-sprint" class="tbtn">🏃 SPRINT</button>
     <button id="btn-zoom" class="tbtn">🔍 ZOOM</button>
+    <button id="btn-emote" class="tbtn">😎 EMOTE</button>
+    <div id="emote-wheel"><div class="ew-ring"></div><button class="ew-x">✕</button></div>
     <div id="hint"></div>`;
   document.body.appendChild(root);
   const stick = root.querySelector('#stick'), knob = root.querySelector('#knob');
@@ -48,6 +50,17 @@ export function setupTouch(cb) {
   // mouse wheel zooms too (while it's allowed)
   window.addEventListener('wheel', (e) => { if (!root.classList.contains('on') || !zm.classList.contains('show')) return; showZoom(cb.onZoom(e.deltaY < 0)); }, { passive: true });          // tap to switch sprinting on / off (no cooldown)
 
+  // ---- emotes (multiplayer): the button opens a wheel, tap one ----
+  const emb = root.querySelector('#btn-emote'), wheel = root.querySelector('#emote-wheel');
+  const openWheel = (on) => { wheel.classList.toggle('open', on); };
+  press(emb, () => openWheel(!wheel.classList.contains('open')));
+  wheel.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); const b = e.target.closest('.ew-item'); if (b) cb.onEmote && cb.onEmote(b.dataset.id); openWheel(false); });
+  const setEmotes = (list) => {
+    const ring = wheel.querySelector('.ew-ring'), n = list.length;
+    ring.innerHTML = list.map((em, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n, x = Math.cos(a) * 100, y = Math.sin(a) * 100;
+      return `<button class="ew-item" data-id="${em.id}" style="transform:translate(calc(-50% + ${x.toFixed(0)}px), calc(-50% + ${y.toFixed(0)}px))"><span>${em.icon}</span><b>${em.name}</b></button>`; }).join('');
+  };
+
   // ---- look + tap on the 3D view ----
   const canvas = cb.canvas;
   const looks = new Map();
@@ -82,6 +95,8 @@ export function setupTouch(cb) {
     if (e.code === 'KeyE') cb.onEat();
     else if (e.code === 'Space' || e.code === 'KeyF') { e.preventDefault(); cb.onThrow(); }
     else if (e.code === 'KeyZ' && zm.classList.contains('show')) showZoom(cb.onZoom());
+    else if (e.code === 'KeyG' && emb.classList.contains('show')) openWheel(!wheel.classList.contains('open'));
+    else if (/^Digit[1-9]$/.test(e.code) && wheel.classList.contains('open')) { const b = wheel.querySelectorAll('.ew-item')[+e.code.slice(5) - 1]; if (b) { cb.onEmote && cb.onEmote(b.dataset.id); openWheel(false); } }
     else if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyR') && !e.repeat) showSprint(cb.onSprint());
     keys.add(e.code); updKeys();
   });
@@ -93,6 +108,7 @@ export function setupTouch(cb) {
     setSprint: showSprint,
     setZoomAvailable(on, zoomed) { zm.classList.toggle('show', on); showZoom(on && zoomed); },
     setEatLabel(txt, enabled) { eat.textContent = txt; eat.classList.toggle('off', !enabled); },
+    setEmotes, setEmoteAvailable(on) { if (emb.classList.contains('show') !== on) emb.classList.toggle('show', on); if (!on) openWheel(false); },
     setThrowEnabled(on) { thr.classList.toggle('off', !on); },
     hint(txt) { hint.textContent = txt; hint.classList.add('on'); clearTimeout(hint._t); hint._t = setTimeout(() => hint.classList.remove('on'), 2200); },
   };

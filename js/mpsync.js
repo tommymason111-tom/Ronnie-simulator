@@ -11,6 +11,7 @@ import { FOODS } from './config.js';
 import { SquadMember, SQUAD } from './squad.js';
 import { Character, KO_IMPULSE } from './character.js';
 import { sfx } from './audio.js';
+import { EMOTES } from './emotes.js';
 
 const TYPES = Object.keys(FOODS);
 const SNAP_HZ = 10;
@@ -24,7 +25,7 @@ export class MPSync {
     this.sentDefs = new Set(); this.remoteHolds = new Map(); this.lastSay = new Map();
     this.charSnap = new Map(); this.punchCool = 0;
     const net = this.net;
-    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc'])
+    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc', 'emote', 'swing'])
       net.on[k] = (m, p) => this['on_' + k] && this['on_' + k](m, p);
   }
   get host() { return this.net.host; }
@@ -65,6 +66,18 @@ export class MPSync {
     }
     director.mp = this;
   }
+  // emotes: everyone sees your character do it (you get a little "you did it" here)
+  emote(id) {
+    if (!this.net.connected) return; const e = EMOTES.find(x => x.id === id); if (!e) return;
+    if ((this.emoteCool || 0) > performance.now()) return; this.emoteCool = performance.now() + 600;
+    this.net.send({ t: 'emote', e: id });
+    const P = this.player; this.words.show(e.icon + ' ' + e.name, P.head.clone().addScaledVector(P.fwd, 1.1).add({ x: 0, y: -0.1, z: 0 }), '#ff4fa3', 0.1, 1.6);
+  }
+  on_emote(m, p) { const e = EMOTES.find(x => x.id === m.e); if (!e || !p || !p.avatar) return;
+    if (p.avatar.doEmote) p.avatar.doEmote(m.e); else this.words.show(e.icon, p.avatar.headPos().add({ x: 0, y: 0.45, z: 0 }), '#ffd400', 0.3, e.dur); }
+  // you swung at something (slap, punch, throw): your character's arm goes for everyone else too
+  swing(side = 'R') { if (!this.net.connected) return; const n = performance.now(); if (n - (this.swingAt || 0) < 150) return; this.swingAt = n; this.net.send({ t: 'swing', s: side }); }
+  on_swing(m, p) { p && p.avatar && p.avatar.swing && p.avatar.swing(m.s || 'R'); }
   on_hitc(m) {
     if (!this.host) return; const c = this.cast.find(x => x.id === m.id); if (!c || c.disposed) return;
     const part = c.rag.parts[m.part] || c.rag.parts.chest, p = new THREE.Vector3(...m.p), v = new THREE.Vector3(...m.v);
@@ -242,14 +255,14 @@ export class MPSync {
   punch(p, vel, at) {
     this.punchCool = 0.5;
     // (sent to everyone: the one who got hit falls over on their own screen, everyone else sees them go flying)
-    this.net.send({ t: 'punch', target: p.id, v: [q2(vel.x), q2(vel.z)], s: q2(vel.length()), at: [q2(at.x), q2(at.y), q2(at.z)] });
+    this.net.send({ t: 'punch', side: vel.side || 'R', target: p.id, v: [q2(vel.x), q2(vel.z)], s: q2(vel.length()), at: [q2(at.x), q2(at.y), q2(at.z)] });
     sfx('thwack', at, 1); this.words.show(vel.length() > 3.5 ? 'KAPOW!' : 'POW!', at.clone().add({ x: 0, y: 0.25, z: 0 }), '#ff5a36', 0.2, 1);
     this.knockAvatar(p, vel, vel.length(), at);
   }
   knockAvatar(p, v, s, at) { const av = p && p.avatar; if (!av) return; if (av.knock) av.knock(v, s, at); else av.flinch && av.flinch(v); }
   on_punch(m, from) {
     const v = new THREE.Vector3(m.v[0] || 0, 0, m.v[1] || 0);
-    if (from && from.avatar && from.avatar.swing) from.avatar.swing();          // the puncher throws the punch
+    if (from && from.avatar && from.avatar.swing) from.avatar.swing(m.side || 'R');          // the puncher throws the punch
     if (m.target && m.target !== this.net.id) { this.knockAvatar(this.net.players.get(m.target), v, m.s || 3, m.at && new THREE.Vector3(...m.at)); return; }
     const P = this.player, s = m.s || 3, d = { x: m.v[0] || 0, z: m.v[1] || 0 };
     sfx('thwack', P.head, 1); this.words.show('OOF!', P.head.clone().addScaledVector(P.fwd, 0.5), '#ff5a36', 0.16, 1);

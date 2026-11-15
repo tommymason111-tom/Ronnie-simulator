@@ -403,7 +403,7 @@ export class Player {
       const ax = gp.axes.length >= 4 ? gp.axes[2] : gp.axes[0] || 0;
       const ay = gp.axes.length >= 4 ? gp.axes[3] : gp.axes[1] || 0;
       if (h.handedness === 'left') { mx = ax; mz = ay; const click = !!(gp.buttons[3] && gp.buttons[3].pressed); if (click && !this.sprintHeld) { this.sprint = !this.sprint; h.pulse && h.pulse(0.5, 60); } this.sprintHeld = click; }   // click the left stick: sprint on / off
-      else turn = ax;
+      else turn = this.noTurn ? 0 : ax;      // (not while the emote wheel is using the stick)
     }
     if (Math.abs(mx) > 0.15 || Math.abs(mz) > 0.15) {
       _v.set(this.fwd.x, 0, this.fwd.z).normalize();

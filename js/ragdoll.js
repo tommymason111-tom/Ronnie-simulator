@@ -395,11 +395,13 @@ export class Ragdoll {
     }
     this.solidifyPieces(geo, skinIndex, skinWeight);
     this.measureHands(geo, skinIndex, skinWeight);
+    this.splitHands(geo, skinIndex);
     geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndex, 4));
     geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeight, 4));
 
     // ---- one bone per body, all siblings, bind = T-pose ----
     this.bones = this.defs.map(d => { const b = new THREE.Bone(); b.position.copy(d.center); this.group.add(b); return b; });
+    for (const name of Object.keys(this.handBone || {})) { const b = new THREE.Bone(); b.position.copy(this.parts[name].def.center); this.group.add(b); this.bones.push(b); }
     this.mesh = new THREE.SkinnedMesh(geo, mat);
     this.mesh.frustumCulled = false;
     this.group.add(this.mesh);
@@ -542,6 +544,23 @@ export class Ragdoll {
       }
       if (n > 20) this.handC[name] = sum.multiplyScalar(1 / n);
     }
+  }
+  // Give each scanned hand (wrist to fingertips) its own bone that normally just follows the forearm, so a hand
+  // can be tucked away inside the forearm (scaled to nothing) while a posed gesture hand stands in for it (emotes).
+  splitHands(geo, skinIndex) {
+    const pos = geo.attributes.position, kH = this.height / 1.68, v = new THREE.Vector3(), dir = new THREE.Vector3();
+    this.handBone = {}; this.handHide = { lArmL: false, lArmR: false }; this.handLen = 0.165 * kH;
+    ['lArmL', 'lArmR'].forEach((name, j) => {
+      const k = this.defs.findIndex(d => d.name === name); if (k < 0) return; const d = this.defs[k], nb = this.defs.length + Object.keys(this.handBone).length;
+      dir.subVectors(d.b, d.a).normalize(); let n = 0;
+      for (let i = 0; i < pos.count; i++) {
+        if (skinIndex[i * 4] !== k) continue;
+        v.fromBufferAttribute(pos, i); if (v.clone().sub(d.b).dot(dir) < -this.handLen) continue;      // (up the arm from the wrist)
+        for (let sl = 0; sl < 4; sl++) if (skinIndex[i * 4 + sl] === k) skinIndex[i * 4 + sl] = nb;
+        n++;
+      }
+      if (n) this.handBone[name] = nb; void j;
+    });
   }
   // world position of the middle of a hand (falls back to just short of the fingertips)
   grip(name, out) {
@@ -724,6 +743,14 @@ export class Ragdoll {
       bone.position.set(b.position.x, b.position.y, b.position.z);
       bone.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
     });
+    if (this.handBone) for (const name in this.handBone) { const b = this.parts[name].body, bone = this.bones[this.handBone[name]]; if (!bone) continue;
+      bone.position.set(b.position.x, b.position.y, b.position.z); bone.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w); bone.scale.setScalar(this.handHide[name] ? 0.001 : 1); }
+  }
+  // the wrist (where the hand starts) and the way the forearm points, in the world
+  wrist(name, out, dirOut) {
+    const p = this.parts[name], d = p.def, b = p.body; _q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
+    dirOut.copy(d.dir).applyQuaternion(_q).normalize();
+    return this.tip(name, out).addScaledVector(dirOut, -(this.handLen || 0.165 * this.height / 1.68));
   }
 
   // ---- queries ----

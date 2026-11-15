@@ -1,10 +1,11 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '2.3.0';
+var GAME_VERSION = '2.4.0';
 // when each update came out (UK time)
-var GAME_WHEN = {'1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.3.0': '2026-11-15T14:44'};
+var GAME_WHEN = {'1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
 
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['2.4.0', ['EMOTES in multiplayer: press 😎 EMOTE (or hold B in VR and push the right stick) for the emote wheel: MIDDLE FINGER, THE GRIDDY and SIX SEVEN, done by your whole character for everyone to see (in VR your arms stay your own real arms)', 'Tommy can be picked in multiplayer (the real Tommy sits that game out)', 'Your arm swings for everyone when you slap, punch or throw', 'Multiplayer starts with its own WHAT\'S YOUR NAME? screen', 'Only the host can change the game: the GAME MODE and RESTART buttons in the pause menu and the GAME MODES board are just for the host', 'In multiplayer the game keeps going behind the pause menu (your mates are still playing)']],
   ['2.3.0', ['Multiplayer: punch another player hard and they go flying as a ragdoll, just like the NPCs, then get back up (everyone sees it)', 'Multiplayer: hitting or slapping the squad works for players who joined too: they fall over and ragdoll for everyone', 'Multiplayer: players\' arms hang down normally and only come up to hit something or eat', 'Multiplayer: every player has their name over their head (and who they\'re playing as), so you can tell them from the squad', 'Multiplayer: you have to type your name before you go on', 'The WHO ARE YOU? screen fits on a phone: smaller cards in neat columns, scroll down to see everyone', 'The updates list shows the date and time of each update']],
   ['2.2.0', ['MULTIPLAYER: everyone shares the same food and the same squad: grab, throw and bite and your mates see it', 'Your mates see you as the squad member you picked (and that person isn\'t in the game as well)', 'Punch other players: swing at them in VR, tap them on a phone (no picking them up)', 'Attacks go for one player at a time, picked at random, and everyone sees who: "HARRY H IS ATTACKING TOM"']],
   ['2.1.0', ['PLAY now asks SOLO or MULTIPLAYER. Multiplayer: type your name and pick who you are from the squad, then HOST (you choose the place and game for everyone) or JOIN with a code', 'A room screen shows everyone in the room, their name and who they are playing as', 'Meet the Squad: picking someone else no longer makes the last one vanish for a moment', 'VR: holding the controllers, your hands point forward instead of down']],
@@ -312,14 +313,22 @@ var GAME_UPDATES = [
   let mpChar = 'ronnie'; try { mpChar = localStorage.getItem('rs_mp_char') || 'ronnie'; } catch (e) {}
   const mp = window.ronnieMP = { role: null, net: null, char: () => CHARS.find(c => c.id === mpChar) || CHARS[0] };
   $('#pick-solo').addEventListener('click', () => { mp.role = null; if (mp.net) { mp.net.leave(); mp.net = null; } $('#mp-code-chip').textContent = ''; show('place'); });
-  $('#pick-multi').addEventListener('click', () => show('mpchar'));
+  $('#pick-multi').addEventListener('click', () => { show('mpname'); setTimeout(() => { try { $('#mp-myname').focus(); } catch (e) {} }, 450); });
   const cgrid = $('#char-grid');
   cgrid.innerHTML = CHARS.map((s, i) => `<div class="mate${s.id === mpChar ? ' sel' : ''}" data-id="${s.id}" style="--c:${s.c};animation-delay:${i * 0.03}s">
       <div class="face-badge">${s.img ? `<img src="./assets/portraits/${s.img}.webp" alt="${s.n}" draggable="false">` : '<span style="font-size:44px">🍔</span>'}</div><b>${s.n}</b><div class="atk">${s.a} ${s.t}</div></div>`).join('');
   cgrid.addEventListener('click', (e) => { const c = e.target.closest('.mate'); if (!c) return; mpChar = c.dataset.id; try { localStorage.setItem('rs_mp_char', mpChar); } catch (er) {} $$('.mate', cgrid).forEach(m => m.classList.toggle('sel', m === c)); blip(400, 0.07, 'triangle', 0.08); });
+  // the name step: you can't carry on without one
+  const nameNext = () => {
+    const i = $('#mp-myname'), nm = (i.value || '').trim();
+    if (!nm) { i.classList.remove('need'); void i.offsetWidth; i.classList.add('need'); $('#name-msg').textContent = 'Type your name first!'; i.focus(); blip(200, 0.1, 'square', 0.08); return; }
+    $('#name-msg').textContent = ''; nameOf(); i.blur(); $('#char-hello').textContent = `Hi ${nm.toUpperCase()}! Who are you playing as? (They won't be in the game as well)`; show('mpchar');
+  };
+  $('#name-next').addEventListener('click', nameNext);
+  $('#mp-myname').addEventListener('keydown', (e) => { if (e.key === 'Enter') nameNext(); });
+  $('#mp-myname').addEventListener('input', () => { $('#name-msg').textContent = ''; $('#mp-myname').classList.remove('need'); });
   $('#char-next').addEventListener('click', () => {
-    const nm = ($('#mp-myname').value || '').trim();
-    if (!nm) { const i = $('#mp-myname'); i.classList.remove('need'); void i.offsetWidth; i.classList.add('need'); i.placeholder = 'TYPE YOUR NAME FIRST'; i.focus(); i.scrollIntoView({ block: 'center', behavior: 'smooth' }); blip(200, 0.1, 'square', 0.08); return; }
+    if (!($('#mp-myname').value || '').trim()) { show('mpname', -1); return; }
     $('#mp-who').textContent = `You're playing as ${mp.char().n}`; show('mp'); });
   const mpStatus = (h) => { $('#mp-status2').innerHTML = h; };
   let myName = ''; try { myName = localStorage.getItem('rs_mp_name') || ''; } catch (e) {}

@@ -1056,6 +1056,10 @@ export class Director {
     btn.tex.needsUpdate = true;
   }
   updateBoard(dt, ctx) {
+    // multiplayer: the GAME MODES board is only there for the host (everyone else goes where the host says)
+    const guest = !!(this.mp && this.mp.net.connected && !this.mp.net.host);
+    if (this.board && this.board.visible === guest) this.board.visible = !guest;
+    if (guest) return;
     this.boardCool -= dt;
     for (const b of this.buttons) if (b.pressedT > 0) { b.pressedT -= dt; if (b.pressedT <= 0) this.drawButton(b, false); }
     if (this.boardCool > 0) return;
@@ -1076,6 +1080,7 @@ export class Director {
     for (const o of this.buttons) if (o !== b) this.drawButton(o, false);
   }
   tapBoard(ray) {
+    if (this.board && !this.board.visible) return false;
     for (const b of this.buttons) {
       const hit = ray.intersectBox(new THREE.Box3().setFromObject(b.mesh), _v);
       if (hit) { this.pressButton(b); return true; }

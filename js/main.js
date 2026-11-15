@@ -22,6 +22,7 @@ import { SQUAD } from './squad.js';
 import { buildGarden } from './levels/garden.js';
 import { Net, newCode } from './net.js';
 import { MPSync } from './mpsync.js';
+import { EMOTES, EmotePlayer } from './emotes.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
 
 // start downloading everyone's 3D model now, while the menu is still up
@@ -175,7 +176,7 @@ function openBag(bag) {
     const it = items.spawn(t, from.clone(), v); it.spawnScale = 0.2; sfx('pop', from, 0.6);
   }, 700 + i * 220));
 }
-player.onRelease = (it, h, sp) => { if (sp > 2.5) sfx('whoosh', it.pos, Math.min(1, sp / 6)); };
+player.onRelease = (it, h, sp) => { if (sp > 2.5) sfx('whoosh', it.pos, Math.min(1, sp / 6)); if (sp > 1.2 && typeof mp !== 'undefined') mp.swing(h && h.handedness === 'left' ? 'L' : 'R'); };
 
 // anyone throwing anything at Ronnie
 function onThrow(start, vel, type, who, spec) {
@@ -464,6 +465,7 @@ function slaps() {
     if (!part) continue;
     const res = who.slap(part, h.palm, h.vel);
     if (!res) continue;
+    mp.swing(h.handedness === 'left' ? 'L' : 'R');
     h.pulse(1, 80);
     sfx(res === 'ko' ? 'splat' : 'thwack', h.palm, 1);
     words.show(res === 'ko' ? 'WALLOP!' : 'SLAP!', h.palm.clone().add({ x: 0, y: 0.25, z: 0 }), '#ff5a36', 0.2, 1);
@@ -482,6 +484,7 @@ const touch = setupTouch({
   },
   onEat: () => { if (player.flatHolder?.held) player.flatEat(); },
   onThrow: () => player.flatThrow(),
+  onEmote: (id) => mp.emote(id),
   onZoom: (dir) => { player.zoom = dir === undefined ? !player.zoom : dir; return player.zoom; },
   onSprint: () => { player.sprint = !player.sprint; sfx(player.sprint ? 'whoosh' : 'pop', null, 0.4); return player.sprint; },
   onTap: (x, y) => {
@@ -538,7 +541,7 @@ const touch = setupTouch({
     if (part) {                         // tap someone = slap them
       if (bd > reach && who.state !== 'clinging') { touch.hint(`Get closer to slap ${who.name}!`); return; }
       const pos = part.body.position; _b.set(pos.x, pos.y, pos.z);
-      const res = who.slap(part, _b, _a.copy(ray.direction).multiplyScalar(4.2));
+      const res = who.slap(part, _b, _a.copy(ray.direction).multiplyScalar(4.2)); mp.swing('R');
       if (res) { sfx(res === 'ko' ? 'splat' : 'thwack', _b, 1); words.show(res === 'ko' ? 'WALLOP!' : 'SLAP!', _b.clone().add({ x: 0, y: 0.3, z: 0 }), '#ff5a36', 0.22, 1); }
       return;
     }
@@ -554,6 +557,7 @@ const touch = setupTouch({
     player.flatGrab(best);
   },
 });
+touch.setEmotes(EMOTES);
 // darts: zoom in on the board (button, wheel or Z) while you're holding a dart: your view leans in towards it
 let zoomShown = null;
 function updateZoom() {
@@ -566,6 +570,7 @@ function updateTouchUI() {
   const held = player.flatHolder?.held;
   touch.setEatLabel(held && held.def.drink ? 'DRINK' : 'EAT', !!held && !held.empty);
   touch.setThrowEnabled(!!held);
+  touch.setEmoteAvailable(!!net.connected);
 }
 function mpAfterStart() { if (director.remote) mp.becomeClient(); }
 function startFlat() {
@@ -680,7 +685,9 @@ let paused = false;
 const pauseEl = document.getElementById('pause');
 function setPaused(on) {
   paused = on; pauseEl.classList.toggle('on', on); if (!on) { pauseEl.classList.remove('show-ctrls', 'show-modes'); vrPause && vrPause.close(); }
-  if (on) { const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = t ? t.textContent : ''; try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
+  if (on) { const guest = !!(net.connected && !net.host);   // multiplayer: only the host changes the game or restarts it
+    document.getElementById('pause-mode').style.display = guest ? 'none' : ''; document.getElementById('pause-restart').style.display = guest ? 'none' : '';
+    const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = (t ? t.textContent : '') + (guest ? ' · the host picks the game' : ''); try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
   setMuted(on || soundOff);
 }
 let soundOff = false;
@@ -806,9 +813,34 @@ function vrMenuButtons() {
 }
 renderer.xr.addEventListener('sessionstart', () => { const s = renderer.xr.getSession(); s.addEventListener('visibilitychange', () => { if (s.visibilityState !== 'visible' && !paused && director.running) setPaused(true); }); });
 
+// VR emote wheel (multiplayer): hold B on the right controller, push the right stick towards an emote, let go of B
+const vrEmote = (() => {
+  const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d');
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
+  mesh.renderOrder = 61; mesh.visible = false; scene.add(mesh);
+  let held = false, sel = -1, drawn = -2;
+  const draw = () => { if (drawn === sel) return; drawn = sel; g.clearRect(0, 0, S, S); const n = EMOTES.length, c = S / 2;
+    g.fillStyle = 'rgba(20,28,90,0.88)'; g.beginPath(); g.arc(c, c, 250, 0, Math.PI * 2); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ffd400'; g.stroke();
+    EMOTES.forEach((e, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n, x = c + Math.cos(a) * 160, y = c + Math.sin(a) * 160;
+      g.fillStyle = i === sel ? '#ff4fa3' : '#1c2c8c'; g.beginPath(); g.arc(x, y, 84, 0, Math.PI * 2); g.fill(); g.lineWidth = 6; g.strokeStyle = i === sel ? '#fff' : '#ffd400'; g.stroke();
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '64px serif'; g.fillText(e.icon, x, y - 14); g.fillStyle = '#fff'; g.font = '900 20px Arial'; g.fillText(e.name, x, y + 46); });
+    g.fillStyle = '#fff'; g.font = '900 22px Arial'; g.textAlign = 'center'; g.fillText(sel < 0 ? 'PUSH THE STICK' : 'LET GO OF B', c, c); tex.needsUpdate = true; };
+  return { update() {
+    const h = player.hands.find(h => h.source && h.handedness === 'right' && h.source.gamepad), gp = h && h.source.gamepad;
+    const down = !!(gp && gp.buttons[5] && gp.buttons[5].pressed) && net.connected;
+    if (down) {
+      if (!held) { held = true; sel = -1; drawn = -2; const f = new THREE.Vector3(player.fwd.x, 0, player.fwd.z).normalize(); mesh.position.copy(player.head).addScaledVector(f, 0.55).add({ x: 0, y: -0.08, z: 0 }); mesh.lookAt(player.head); }
+      const ax = gp.axes.length >= 4 ? gp.axes[2] : gp.axes[0] || 0, ay = gp.axes.length >= 4 ? gp.axes[3] : gp.axes[1] || 0;
+      if (Math.hypot(ax, ay) > 0.55) { let a = Math.atan2(ay, ax) + Math.PI / 2; const n = EMOTES.length; a = ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); const i = Math.round(a / (2 * Math.PI / n)) % n; if (i !== sel) { sel = i; h.pulse && h.pulse(0.3, 20); } }
+      mesh.visible = true; player.noTurn = true; draw();
+    } else if (held) { held = false; mesh.visible = false; player.noTurn = false; if (sel >= 0) mp.emote(EMOTES[sel].id); }
+  }, get open() { return held; } };
+})();
 function frame(simDt) {
-  if (renderer.xr.isPresenting && simDt == null) vrMenuButtons();
-  if (paused && simDt == null) { clock.getDelta(); if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } renderer.render(scene, camera); return; }    // frozen until RESUME
+  if (renderer.xr.isPresenting && simDt == null) { vrMenuButtons(); vrEmote.update(); }
+  if (paused && simDt == null && net.connected) { if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } }
+  else if (paused && simDt == null) { clock.getDelta(); if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } renderer.render(scene, camera); return; }    // frozen until RESUME
   const dt = simDt ?? Math.min(clock.getDelta(), 0.05);
   time += dt;
   const xr = renderer.xr.isPresenting;
@@ -962,7 +994,8 @@ class SquadPuppet {
     // a name tag over their head (so you can tell a real player from the squad): their name, and who they're playing as
     this.p = p; this.tagC = document.createElement('canvas'); this.tagC.width = 320; this.tagC.height = 96; this.tagTex = new THREE.CanvasTexture(this.tagC); this.tagTex.colorSpace = THREE.SRGBColorSpace;
     this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; scene.add(this.tag); this.drawTag();
-    this.down = 0; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0; }
+    this.down = 0; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0;
+    this.emote = new EmotePlayer(this.c, scene, (txt, at) => words.show(txt, at.clone().add({ x: 0, y: 0.15, z: 0 }), '#ffd400', 0.22, 0.8)); }
   update(dt, pose) {
     const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * 12);
     const prev = this.pos.clone(); this.pos.lerp(_a.set(...pose.h), k); this.rh.lerp(_b.set(...pose.rh), k); this.lh.lerp(_b.set(...pose.l), k);
@@ -976,6 +1009,10 @@ class SquadPuppet {
     if (this.first) { r.placeAt(this.pos.x, this.pos.z, this.yaw); this.first = false; this.prevH.R.copy(this.rh); this.prevH.L.copy(this.lh); }
     r.root.x = this.pos.x; r.root.z = this.pos.z; r.yaw = this.yaw;
     if (speed > 0.25) c.walkPose(dt, Math.min(speed, 3)); else c.setIdlePose(c.t += dt);
+    // an emote off the wheel: the whole body does it (a VR player's arms stay their own real arms)
+    const vr = !pose.flat, em = this.emote.active ? this.emote.update(dt, vr) : 0;
+    if (em > 0 && !vr) { r.animate(dt); r.sync(); this.emote.place(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag(); return; }
+    if (em > 0) { this.armT.R = this.armT.L = 0.45; }
     // arms hang naturally; one only comes up to hit something (a fast swing, or a punch / throw we were told about)
     // or to eat (hand up at the mouth), then drops back down
     const head = this.pos, chest = r.pos('chest', new THREE.Vector3());
@@ -984,23 +1021,24 @@ class SquadPuppet {
       if (pose.flat && side === 'L') continue;                 // (phone players only have the one hand)
       const hv = h.distanceTo(this.prevH[side]) / Math.max(dt, 1e-3); this.prevH[side].copy(h);
       const atMouth = h.distanceTo(head) < 0.28, swinging = !pose.flat && hv > 2.2;
-      if (atMouth || swinging || (side === 'R' && this.swingT > 0)) this.armT[side] = 0.45;
+      const punching = this.swingT > 0 && (side === (this.swingSide || 'R') || !pose.flat);
+      if (atMouth || swinging || punching) this.armT[side] = 0.45;
       else this.armT[side] -= dt;
       const want = this.armT[side] > 0 ? 1 : 0; this.armW[side] += (want - this.armW[side]) * Math.min(1, dt * (want ? 14 : 5));
       const w = this.armW[side]; if (w < 0.01) continue;
       let d;
-      if (side === 'R' && this.swingT > 0 && !atMouth) d = new THREE.Vector3(0, 0.15, 1);                        // a punch straight out in front
+      if (pose.flat && punching && !atMouth) { const k = 1 - this.swingT / 0.38; d = new THREE.Vector3(side === 'R' ? 0.1 : -0.1, 0.2 + 0.25 * (1 - k), 0.6 + k); }   // a phone player's jab: cocked, then straight out in front
       else { d = h.clone().sub(chest).applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.yaw); if (d.length() > 1.2 || d.lengthSq() < 1e-6) continue; }
       d.normalize();
       for (const n of ['uArm' + side, 'lArm' + side]) { const rest = r.pose[n].clone(); r.aim(n, d.x, d.y, d.z); r.pose[n].copy(rest.slerp(r.pose[n], w)); }
     }
-    r.pose.head.setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.clamp(-Math.asin(f.y), -0.6, 0.6));
-    r.animate(dt); r.sync(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag();
+    if (!em) r.pose.head.setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.clamp(-Math.asin(f.y), -0.6, 0.6));
+    r.animate(dt); r.sync(); if (em) this.emote.place(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag();
   }
   headPos() { return this.c.headPos(new THREE.Vector3()); }
   fwd() { return new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
   handPos() { return this.rh.clone(); }
-  swing() { this.swingT = 0.35; }
+  swing(side = 'R') { this.swingT = 0.38; this.swingSide = side; }
   drawTag() { const x = this.tagC.getContext('2d'), nm = (this.p.name || 'PLAYER').toUpperCase(); this.tagName = this.p.name; x.clearRect(0, 0, 320, 96);
     x.fillStyle = 'rgba(10,14,30,0.85)'; x.beginPath(); x.roundRect(4, 4, 312, 88, 22); x.fill(); x.lineWidth = 5; x.strokeStyle = '#39ff14'; x.stroke();
     x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; let f = 40; do { x.font = `900 ${f}px Arial`; f -= 2; } while (x.measureText(nm).width > 290 && f > 16); x.fillText(nm, 160, 38);
@@ -1011,11 +1049,12 @@ class SquadPuppet {
   knock(v, s, at) {
     if (this.down > 0) { const b = this.c.rag.parts.chest; this.c.rag.hit(b, b.body.position, new THREE.Vector3(v.x, 0, v.z).normalize().multiplyScalar(s * 2.2)); return; }
     if (s <= 3.2) { this.flinch(v); return; }
-    const c = this.c, r = c.rag; c.knockOut('hit'); this.down = 2.4;
+    const c = this.c, r = c.rag; this.emote.stop(); c.knockOut('hit'); this.down = 2.4;
     const dir = new THREE.Vector3(v.x, 0, v.z); if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1); dir.normalize();
     const imp = dir.multiplyScalar(s * 2.2); imp.y = s * 0.9;
     const part = r.parts.head, p = at || part.body.position; r.hit(part, new THREE.Vector3(p.x, p.y, p.z), imp);
   }
-  dispose() { scene.remove(this.tag); this.tagTex.dispose(); this.c.dispose(); }
+  doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
+  dispose() { scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
 window.RS = { net, mp, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
