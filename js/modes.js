@@ -549,6 +549,7 @@ export class Director {
   launch(pick) {
     const { c, attack } = pick;
     const ok = c === this.g.tommy ? c.startTrip() : c.intervene(attack.key);
+    if (ok && this.g.fx && this.g.fx.coming && c !== this.g.tommy) this.g.fx.coming(c);
     if (ok) this.markUsed(c, attack.key);      // counts as their go from the moment they're picked
     return ok;
   }

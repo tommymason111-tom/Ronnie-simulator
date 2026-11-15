@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '2.0.1', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '2.0.2', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['2.0.2', ['VR: PLAY on the headset menu now actually starts the game', 'VR: the menu button (or Y) pauses, with the same pause menu as the phone floating in front of you: point and pull the trigger', 'VR: attack pop-ups, banners and the attack animations are smaller and in the middle of your view, and pop in smoothly', 'When an attacker sets off, a tag says who is coming for you, with an arrow pointing to them']],
   ['2.0.1', ['Smoother, especially in VR: only the lights near you are worked out (same look), and the sky and water effects only work on what you can actually see', 'The screen behind PLAY ON THIS SCREEN is just a slow look round the place, cutting between different areas, with nothing else running']],
   ['2.0.0', ['MULTIPLAYER (first step): press PLAY WITH FRIENDS, HOST A GAME and share the 4-letter code. Your mates type it in and land in the same place and game as you. You can see each other walking round as Ronnies (with name tags, arms following your hands, getting fatter as you eat). Up to 6 per room, on phones, computers and Quest']],
   ['1.9.1', ['Removed the stray brick across the way into the conservatory (the brick pillar stays)']],
@@ -332,7 +333,9 @@ var GAME_UPDATES = [
         ls.classList.add('on');
       }
       $('#go').classList.add('pressed');
-      requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(finish, 60)));
+      // (in the headset the page's own animation frames are paused, so don't wait for one: that's why PLAY did nothing in VR)
+      if (window.ronnieHero && window.ronnieHero.inVR) setTimeout(finish, 60);
+      else requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(finish, 60)));
     };
     $('#go').addEventListener('click', () => go());
     // the floating menu in VR (see ronnieHero.js) picks with these

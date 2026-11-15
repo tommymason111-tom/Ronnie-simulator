@@ -671,7 +671,7 @@ function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t 
 let paused = false;
 const pauseEl = document.getElementById('pause');
 function setPaused(on) {
-  paused = on; pauseEl.classList.toggle('on', on); if (!on) pauseEl.classList.remove('show-ctrls', 'show-modes');
+  paused = on; pauseEl.classList.toggle('on', on); if (!on) { pauseEl.classList.remove('show-ctrls', 'show-modes'); vrPause && vrPause.close(); }
   if (on) { const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = t ? t.textContent : ''; try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
   setMuted(on || soundOff);
 }
@@ -683,7 +683,7 @@ document.getElementById('pause-sound').addEventListener('click', (e) => { soundO
 document.getElementById('pause-quit').addEventListener('click', () => { location.href = location.pathname; });
 document.getElementById('pause-controls').addEventListener('click', () => {
   const touchy = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window;
-  document.querySelectorAll('#pause .clist').forEach(l => l.classList.toggle('on', l.dataset.d === (touchy ? 'touch' : 'pc')));
+  document.querySelectorAll('#pause .clist').forEach(l => l.classList.toggle('on', l.dataset.d === (renderer.xr.isPresenting ? 'vr' : touchy ? 'touch' : 'pc')));
   pauseEl.classList.add('show-ctrls');
 });
 // change game mode from the pause menu (only the games this place has)
@@ -721,8 +721,86 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && pla
 let loadShown = true;
 function hideLoading() { if (!loadShown) return; loadShown = false; const ls = document.getElementById('loadscreen'); if (ls && ls.classList.contains('on')) { ls.classList.add('fade'); setTimeout(() => ls.classList.remove('on', 'fade'), 320); } }
 const menuCam = new THREE.PerspectiveCamera(70, 1, 0.05, 40), menuShot = { t: 0, yaw: 0, dir: 1 };
+// ---------------- the pause menu in the headset ----------------
+// The phone's pause menu, drawn on a panel that floats in front of you: point a controller (or your hand) at a
+// button and pull the trigger (or pinch). It mirrors whatever the phone menu is showing (main page, controls,
+// game modes), and pressing a button presses the real one, so the two never disagree.
+var vrPause = (() => {
+  const W = 640, H = 860, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5 * H / W), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
+  panel.renderOrder = 60; panel.visible = false; scene.add(panel);
+  const back = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 10), new THREE.MeshBasicMaterial({ color: 0x080c28, transparent: true, opacity: 0.55, side: THREE.BackSide, depthTest: false, depthWrite: false }));
+  back.renderOrder = 59; back.visible = false; scene.add(back);
+  const rc = new THREE.Raycaster(); let rows = [], hover = -1, key = '';
+  const lines = [0, 1].map(() => { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0xffd400, depthTest: false })); l.renderOrder = 61; l.visible = false; return l; });
+  player.hands.forEach((h, i) => { h.ctrl.add(lines[i]); h.ctrl.addEventListener('select', () => { if (panel.visible) press(i); }); });
+  const visibleBox = () => [...document.querySelectorAll('#pause .box')].find(b => getComputedStyle(b).display !== 'none');
+  function draw() {
+    const box = visibleBox(); if (!box) return;
+    const items = [...box.querySelectorAll('h2, .where, button, .clist.on > div, #pause-mode-list button')].filter(el => el.offsetParent !== null || el.closest('.on'));
+    const sig = items.map(e => e.textContent + (e.classList.contains('cur') ? '*' : '')).join('|') + hover;
+    if (sig === key) return; key = sig;
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = '#1c2c8c'; g.beginPath(); g.roundRect(6, 6, W - 12, H - 12, 34); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ffd400'; g.stroke();
+    let y = 26; rows = [];
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    const fit = (t, max, size, weight = 900) => { let f = size; do { g.font = `${weight} ${f}px "Arial Black", Arial, sans-serif`; f -= 2; } while (g.measureText(t).width > max && f > 12); };
+    for (const el of items) {
+      const t = el.textContent.trim().replace(/\s+/g, ' ');
+      if (el.tagName === 'H2') { fit(t, W - 60, 56); g.fillStyle = '#ffd400'; g.fillText(t, W / 2, y + 34); y += 76; continue; }
+      if (el.classList.contains('where')) { fit(t, W - 60, 22, 700); g.fillStyle = '#c9d3ff'; g.fillText(t, W / 2, y + 12); y += 34; continue; }
+      if (el.tagName === 'DIV') { g.fillStyle = 'rgba(255,255,255,0.1)'; g.beginPath(); g.roundRect(30, y, W - 60, 58, 14); g.fill(); g.textAlign = 'left'; fit(t, W - 100, 22, 700); g.fillStyle = '#fff'; g.fillText(t, 48, y + 29); g.textAlign = 'center'; y += 66; continue; }
+      const i = rows.length, hot = hover === i, green = el.classList.contains('resume'), cur = el.classList.contains('cur');
+      const h = el.querySelector('small') ? 92 : 74;
+      g.fillStyle = hot ? '#ffe866' : green ? '#39ff14' : cur ? '#ffd400' : 'rgba(255,255,255,0.12)'; g.beginPath(); g.roundRect(40, y, W - 80, h, 20); g.fill();
+      if (!green && !cur && !hot) { g.lineWidth = 4; g.strokeStyle = '#fff'; g.stroke(); }
+      const small = el.querySelector('small'), main = small ? t.slice(0, t.length - small.textContent.length).trim() : t;
+      g.fillStyle = green || cur || hot ? '#111' : '#fff'; fit(main, W - 120, 32); g.fillText(main, W / 2, y + (small ? 32 : h / 2));
+      if (small) { fit(small.textContent, W - 120, 18, 700); g.fillStyle = green || cur || hot ? '#333' : '#c9d3ff'; g.fillText(small.textContent, W / 2, y + 66); }
+      rows.push({ el, y0: y, y1: y + h }); y += h + 12;
+      if (y > H - 40) break;
+    }
+    tex.needsUpdate = true;
+  }
+  function press(i) { if (hover < 0 || !rows[hover]) { pick(i); } const r = rows[hover]; if (!r) return; sfx('pop', null, 0.6); r.el.click(); key = ''; setTimeout(() => { key = ''; }, 50); }
+  function pick(i) { aim(); }
+  function aim() {
+    hover = -1;
+    player.hands.forEach((h, i) => {
+      const l = lines[i]; l.visible = panel.visible && !!h.source; if (!l.visible) return;
+      h.ctrl.updateMatrixWorld(true); rc.setFromXRController(h.ctrl);
+      const hit = rc.intersectObject(panel)[0];
+      l.scale.z = hit ? hit.distance : 1.5;
+      if (hit) { const y = (1 - hit.uv.y) * H; const r = rows.findIndex(r => y >= r.y0 && y <= r.y1); if (r >= 0) hover = r; }
+    });
+  }
+  return {
+    open() {
+      if (panel.visible) return;
+      renderer.xr.getCamera().getWorldPosition(_a); const d = new THREE.Vector3(0, 0, -1).applyQuaternion(renderer.xr.getCamera().getWorldQuaternion(_q)); d.y = 0; d.normalize();
+      panel.position.copy(_a).addScaledVector(d, 0.85); panel.position.y = _a.y - 0.05; panel.lookAt(_a.x, panel.position.y, _a.z);
+      back.position.copy(_a); panel.visible = back.visible = true; key = '';
+    },
+    close() { panel.visible = back.visible = false; lines.forEach(l => { l.visible = false; }); },
+    update() { if (!panel.visible) return; aim(); draw(); },
+    get open_() { return panel.visible; },
+  };
+})();
+// Quest: the left menu button (or Y) pauses; so does the Quest's own menu coming up over the game
+let menuHeld = false;
+function vrMenuButtons() {
+  let down = false;
+  for (const h of player.hands) { const gp = h.source && h.source.gamepad; if (!gp || h.handedness !== 'left') continue;
+    gp.buttons.forEach((b, i) => { if (b && b.pressed && ![0, 1, 2, 3, 4, 6].includes(i)) down = true; }); }      // (5 = Y; anything past the usual ones = the menu button)
+  if (down && !menuHeld) { if (paused) { initAudio(); setPaused(false); } else setPaused(true); }
+  menuHeld = down;
+}
+renderer.xr.addEventListener('sessionstart', () => { const s = renderer.xr.getSession(); s.addEventListener('visibilitychange', () => { if (s.visibilityState !== 'visible' && !paused && director.running) setPaused(true); }); });
+
 function frame(simDt) {
-  if (paused && simDt == null) { clock.getDelta(); renderer.render(scene, camera); return; }    // frozen until RESUME
+  if (renderer.xr.isPresenting && simDt == null) vrMenuButtons();
+  if (paused && simDt == null) { clock.getDelta(); if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } renderer.render(scene, camera); return; }    // frozen until RESUME
   const dt = simDt ?? Math.min(clock.getDelta(), 0.05);
   time += dt;
   const xr = renderer.xr.isPresenting;
@@ -820,7 +898,8 @@ function frame(simDt) {
     bannerT -= dt;
     const k = 2.6 - bannerT;
     const pop = k < 0.25 ? k / 0.25 * 1.15 : 1.15 - Math.min(0.15, (k - 0.25));
-    banner.scale.set(1.2 * pop * player.scale, 0.45 * pop * player.scale, 1);
+    const bs = renderer.xr.isPresenting ? 0.6 : 1;        // (headset: smaller, so it's all in the middle of your view)
+    banner.scale.set(1.2 * pop * player.scale * bs, 0.45 * pop * player.scale * bs, 1);
     banner.position.copy(player.head).addScaledVector(player.fwd, 1.3 * player.scale);
     banner.material.opacity = bannerT < 0.4 ? bannerT / 0.4 : 1;
     if (bannerT <= 0) banner.visible = false;

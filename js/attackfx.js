@@ -72,11 +72,13 @@ export class AttackFX {
     // stays up (centred, big) until the attack actually starts, then flies off
     if (this.cardOut < 0 && t > 8) this.hideCard();
     let x = 0, y = 0.05, rot = 0, sc = 1.15, op = 1;
-    if (t < 0.35) { const u = t / 0.35; x = 0.9 * (1 - easeOutBack(u)); rot = -0.5 * (1 - u); sc = 0.7 + 0.45 * u; }       // slams in from the right
+    if (this.vr) {                     // headset: smaller, in the middle of your view, a smooth pop (nothing flying in from the side)
+      const u = Math.min(1, t / 0.3); y = 0.02; sc = 0.6 * (0.85 + 0.15 * easeOutBack(u)); op = u; }
+    else if (t < 0.35) { const u = t / 0.35; x = 0.9 * (1 - easeOutBack(u)); rot = -0.5 * (1 - u); sc = 0.7 + 0.45 * u; }       // slams in from the right
     else { const k = t - 0.35; rot = Math.sin(k * 18) * 0.08 * Math.exp(-k * 3); sc = 1.15 + Math.sin(k * 5) * 0.04; }  // judders, settles, pulses
     if (this.cardOut >= 0) {
       this.cardOut += dt; const u = Math.min(1, this.cardOut / 0.35);
-      y += u * 0.45; op = 1 - u; sc *= 1 - u * 0.4;
+      y += u * (this.vr ? 0.08 : 0.45); op = Math.min(op, 1 - u); sc *= 1 - u * (this.vr ? 0.15 : 0.4);
       if (u >= 1) { c.visible = false; this.cardT = -1; this.cardOut = -1; return; }
     }
     c.position.set(x, y * 0.9, -0.75); c.rotation.set(0, 0, rot); c.scale.setScalar(sc); c.material.opacity = op;
@@ -167,6 +169,39 @@ export class AttackFX {
     this.cut = { kind, t: 0, dur, cv, tex, back, screen, overlay };
   }
   viewAspect() { return this.player.renderer && this.player.renderer.xr.isPresenting ? 1.1 : this.camera.aspect; }
+  get vr() { return !!(this.player.renderer && this.player.renderer.xr.isPresenting); }
+  // "LEWIS IS COMING FOR YOU!": the moment the countdown runs out, a tag says who it is, and an arrow points to
+  // where they are when they're not in front of you. Goes when their attack card comes up.
+  coming(who) {
+    if (!this.comeMesh) {
+      const cv = document.createElement('canvas'); cv.width = 768; cv.height = 128; this.comeCv = cv;
+      this.comeTex = new THREE.CanvasTexture(cv); this.comeTex.colorSpace = THREE.SRGBColorSpace;
+      this.comeMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.48, 0.08), new THREE.MeshBasicMaterial({ map: this.comeTex, transparent: true, depthTest: false, depthWrite: false }));
+      this.comeMesh.renderOrder = 41; this.comeMesh.frustumCulled = false; this.camera.add(this.comeMesh);
+      const ac = document.createElement('canvas'); ac.width = ac.height = 128; const ag = ac.getContext('2d');
+      ag.fillStyle = '#ffd400'; ag.strokeStyle = '#111'; ag.lineWidth = 10; ag.beginPath(); ag.moveTo(64, 8); ag.lineTo(118, 100); ag.lineTo(64, 78); ag.lineTo(10, 100); ag.closePath(); ag.stroke(); ag.fill();
+      const at = new THREE.CanvasTexture(ac); at.colorSpace = THREE.SRGBColorSpace;
+      this.comeArrow = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.06), new THREE.MeshBasicMaterial({ map: at, transparent: true, depthTest: false, depthWrite: false }));
+      this.comeArrow.renderOrder = 41; this.comeArrow.frustumCulled = false; this.camera.add(this.comeArrow);
+    }
+    const g = this.comeCv.getContext('2d'); g.clearRect(0, 0, 768, 128);
+    g.fillStyle = 'rgba(160,20,20,0.9)'; roundRect(g, 6, 6, 756, 116, 40); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ffd400'; roundRect(g, 6, 6, 756, 116, 40); g.stroke();
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; let f = 60; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(`⚠ ${who.name.toUpperCase()} IS COMING FOR YOU!`).width > 720);
+    g.fillText(`⚠ ${who.name.toUpperCase()} IS COMING FOR YOU!`, 384, 68); this.comeTex.needsUpdate = true;
+    this.comeWho = who; this.comeT = 0;
+  }
+  updateComing(dt) {
+    if (!this.comeWho) { if (this.comeMesh) this.comeMesh.visible = this.comeArrow.visible = false; return; }
+    const w = this.comeWho; this.comeT += dt;
+    if (this.cardShowing || w.down || w.disposed || this.comeT > 12 || !(w.state === 'act' && w.approach)) { this.comeWho = null; return; }
+    const u = Math.min(1, this.comeT / 0.25);
+    this.comeMesh.visible = true; this.comeMesh.material.opacity = u; this.comeMesh.position.set(0, this.vr ? 0.12 : 0.16, -0.8); this.comeMesh.scale.setScalar((this.vr ? 0.75 : 1) * (0.9 + 0.1 * u));
+    // the arrow: towards them, round the edge of a small circle in the middle of your view (hidden when they're in front)
+    _v.copy(w.pos); _v.y += 1.2; this.camera.worldToLocal(_v);
+    const ang = Math.atan2(_v.x, -_v.z), inFront = _v.z < 0 && Math.abs(ang) < 0.35 && Math.abs(Math.atan2(_v.y, -_v.z)) < 0.3;
+    this.comeArrow.visible = !inFront;
+    if (!inFront) { const a = Math.atan2(_v.y, _v.x); this.comeArrow.position.set(Math.cos(a) * 0.14, Math.sin(a) * 0.1 + 0.02, -0.8); this.comeArrow.rotation.set(0, 0, a - Math.PI / 2); this.comeArrow.scale.setScalar(1 + Math.sin(this.comeT * 10) * 0.12); }
+  }
   endCutscene() { if (!this.cut) return; this.camera.remove(this.cut.back); this.camera.remove(this.cut.screen); this.cut = null; }
   get inCutscene() { return !!(this.cut && !this.cut.overlay); }
   updateCutscene(dt) {
@@ -175,9 +210,10 @@ export class AttackFX {
     const fade = c.overlay ? 1 : Math.min(1, c.t / 0.35, (c.dur - c.t) / 0.4);
     if (c.overlay) {     // overlays exactly fill the view (phone screen or headset)
       const xr = this.player.renderer && this.player.renderer.xr.isPresenting;
-      const fov = THREE.MathUtils.degToRad(xr ? 100 : this.camera.fov), aspect = this.viewAspect();
-      const hh = 2 * 0.6 * Math.tan(fov / 2) * 1.04;
+      const fov = THREE.MathUtils.degToRad(xr ? 46 : this.camera.fov), aspect = this.viewAspect();     // (headset: a window in the middle of your view, not right out to the edges)
+      const hh = 2 * 0.6 * Math.tan(fov / 2) * (xr ? 1 : 1.04);
       c.screen.scale.set(hh * aspect / 2.6, hh / 1.95, 1);
+    } else if (this.vr) { c.screen.scale.setScalar(0.62); c.screen.rotation.z = 0;   // the film: a screen in the middle of your view
     } else if (!(this.player.renderer && this.player.renderer.xr.isPresenting)) {   // the film fills the whole phone screen
       const vh = 2 * 0.66 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2), vw = vh * this.camera.aspect;
       const portrait = vw < vh;     // upright phone: turn the film so it runs top to bottom
@@ -206,6 +242,7 @@ export class AttackFX {
   update(dt) {
     this.updateCard(dt);
     this.updateCutscene(dt);
+    this.updateComing(dt);
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i]; it.t += dt;
       if (it.update) it.update(it.t, it.obj, it.base);
