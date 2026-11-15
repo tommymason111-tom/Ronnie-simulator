@@ -341,6 +341,7 @@ export class Character {
   update(dt, ctx) {
     const r = this.rag;
     this.t += dt; this.stateT += dt;
+    if (this.benched) { this.rag.setMode('anim', 0); this.rag.root.set(0, -50, -60); this.rag.animate(dt); this.rag.sync(); return; }    // (a player is being him in multiplayer)
     if (this.netDriven) { this.netUpdate(dt); return; }
     if (this.slapCool > 0) this.slapCool -= dt;
     if (this.speakT > 0) { this.speakT -= dt; if (this.speakT <= 0) { this.bubble.visible = false; this.onSpeechEnd && this.onSpeechEnd(); } }

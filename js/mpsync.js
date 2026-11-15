@@ -88,6 +88,11 @@ export class MPSync {
   update(dt) {
     if (!this.net.connected) return;
     if (this.punchCool > 0) this.punchCool -= dt;
+    // someone's playing as Tommy: the real one sits this game out (hidden, out of the way, no attacks)
+    const T = this.tommy, bench = this.takenChars().has('tommy');
+    if (bench !== !!T.benched) { T.benched = bench; T.rag.group.visible = !bench; T.bubble && (T.bubble.visible = false);
+      if (bench) { T.attacks = false; T.directed = false; T.rag.placeAt(0, -60, 0); } else { const sp = this.room.tommySpots[0]; T.rag.placeAt(sp.x, sp.y, 0); } }
+    if (bench) { T.attacks = false; T.directed = false; }
     if (this.host) this.hostUpdate(dt); else this.clientUpdate(dt);
     this.punches();
   }

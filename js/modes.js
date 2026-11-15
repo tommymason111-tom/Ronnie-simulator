@@ -545,7 +545,7 @@ export class Director {
     if (this.nextAttackT > 0) { g.fx && g.fx.setCountdown(`NEXT ATTACK IN ${Math.ceil(this.nextAttackT)}`); return; }
     g.fx && g.fx.setCountdown('NEXT ATTACK: ANY SECOND...');
     // anyone who's up and about can be picked (wherever they are: they walk over)
-    const pool = this.cast.filter(c => !c.down && (c.state === 'idle' || c.state === 'walk' || c.state === 'enter') && (c !== g.tommy || g.tommy.attacks));
+    const pool = this.cast.filter(c => !c.down && !c.benched && (c.state === 'idle' || c.state === 'walk' || c.state === 'enter') && (c !== g.tommy || g.tommy.attacks));
     const pick = this.pickAttacker(pool);
     if (!pick || !this.launch(pick)) return;        // nobody free right now: try again next frame
     sfx('trumpet', null, 0.6);
@@ -571,7 +571,7 @@ export class Director {
   // Oliver filming or Harry's food passes carry on while the next countdown runs
   attackInProgress() { return !!this.pending || this.cast.some(c => c.busyAttacking); }
   // everyone in the room who can attack Ronnie (Tommy only when he's on the attack)
-  attackers() { return this.cast.filter(c => (ATTACKS[c.id] || []).length && (c !== this.g.tommy || this.g.tommy.attacks)); }
+  attackers() { return this.cast.filter(c => !c.benched && (ATTACKS[c.id] || []).length && (c !== this.g.tommy || this.g.tommy.attacks)); }
   // the round is over only when EVERY attacker in the room has used every attack;
   // until then nobody repeats (even if the ones who haven't gone yet are busy)
   refreshRound() { if (this.attackers().every(c => !this.nextAttack(c))) this.used.clear(); }

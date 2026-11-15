@@ -956,9 +956,9 @@ const mp = new MPSync({ net, scene, room, physics, player, items, cast, director
 mp.start();
 if (window.ronnieMP && window.ronnieMP.role === 'join') director.remote = true;
 // someone playing as a squad member: their own body, moved by where their head and hands are
-net.makeAvatar = (p) => { if (!p.char || p.char === 'ronnie' || !SQUAD_MP[p.char]) return null; return new SquadPuppet(p); };
+net.makeAvatar = (p) => { if (!p.char || p.char === 'ronnie' || (p.char !== 'tommy' && !SQUAD_MP[p.char])) return null; return new SquadPuppet(p); };
 class SquadPuppet {
-  constructor(p) { this.c = new SquadMemberMP(scene, room, physics, p.char, [0, 0, 0], director); this.c.mpPuppet = true; this.c.active = false; this.pos = new THREE.Vector3(); this.yaw = 0; this.rh = new THREE.Vector3(); this.lh = new THREE.Vector3(); this.first = true; this.c.name = p.name || this.c.name;
+  constructor(p) { this.c = p.char === 'tommy' ? (() => { const t = new Tommy(scene, room, physics); t.load(); return t; })() : new SquadMemberMP(scene, room, physics, p.char, [0, 0, 0], director); this.c.attacks = false; this.c.mpPuppet = true; this.c.active = false; this.pos = new THREE.Vector3(); this.yaw = 0; this.rh = new THREE.Vector3(); this.lh = new THREE.Vector3(); this.first = true; this.c.name = p.name || this.c.name;
     // a name tag over their head (so you can tell a real player from the squad): their name, and who they're playing as
     this.p = p; this.tagC = document.createElement('canvas'); this.tagC.width = 320; this.tagC.height = 96; this.tagTex = new THREE.CanvasTexture(this.tagC); this.tagTex.colorSpace = THREE.SRGBColorSpace;
     this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; scene.add(this.tag); this.drawTag();
@@ -1004,7 +1004,7 @@ class SquadPuppet {
   drawTag() { const x = this.tagC.getContext('2d'), nm = (this.p.name || 'PLAYER').toUpperCase(); this.tagName = this.p.name; x.clearRect(0, 0, 320, 96);
     x.fillStyle = 'rgba(10,14,30,0.85)'; x.beginPath(); x.roundRect(4, 4, 312, 88, 22); x.fill(); x.lineWidth = 5; x.strokeStyle = '#39ff14'; x.stroke();
     x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; let f = 40; do { x.font = `900 ${f}px Arial`; f -= 2; } while (x.measureText(nm).width > 290 && f > 16); x.fillText(nm, 160, 38);
-    x.fillStyle = '#c9d3ff'; x.font = '700 20px Arial'; x.fillText('👤 PLAYER · as ' + (SQUAD_MP[this.p.char]?.name || this.c.name), 160, 74); this.tagTex.needsUpdate = true; }
+    x.fillStyle = '#c9d3ff'; x.font = '700 20px Arial'; x.fillText('👤 PLAYER · as ' + (this.p.char === 'tommy' ? 'Tommy' : SQUAD_MP[this.p.char]?.name || this.c.name), 160, 74); this.tagTex.needsUpdate = true; }
   placeTag() { if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.headPos(new THREE.Vector3()); this.tag.position.set(h.x, h.y + 0.36, h.z); }
   flinch(v) { this.c.flinch(v.clone ? v.clone() : new THREE.Vector3(v.x, 0, v.z), 1); }
   // a proper hit: go limp and fly, same as the NPCs (a light one is just a flinch)
