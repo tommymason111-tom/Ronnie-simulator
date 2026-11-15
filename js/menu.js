@@ -390,8 +390,9 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     $('#room-players').innerHTML = ps.map(p => { const c = CHARS.find(x => x.id === p.char) || CHARS[0];
       return `<div class="rp" style="--c:${c.c}">${c.img ? `<img src="./assets/portraits/${c.img}.webp" alt="">` : '<div class="em">🍔</div>'}<b>${esc(p.name || '...')}</b><small>as ${c.n}</small>${p.host ? '<span class="tag">HOST</span>' : ''}${p.me ? '<span class="tag" style="background:#39ff14">YOU</span>' : ''}</div>`; }).join('')
       + Array.from({ length: Math.max(0, 6 - ps.length) }, () => '<div class="rp empty"><div class="em">➕</div><small>free space</small></div>').join('');
-    $('#room-go').style.display = mp.net.host ? '' : 'none';
-    $('#room-msg').textContent = mp.net.host ? (ps.length > 1 ? 'Everyone\'s in? Choose where you\'re playing.' : 'Tell your mates the code. Start when everyone\'s in.') : 'Waiting for the host to choose the game…';
+    const boss = mp.role === 'host' || (mp.net.host && mp.role !== 'join');
+    $('#room-go').style.display = boss ? '' : 'none';
+    $('#room-msg').textContent = boss ? (ps.length > 1 ? 'Everyone\'s in? Choose where you\'re playing.' : 'Tell your mates the code. Start when everyone\'s in.') : 'Waiting for the host to choose the game…';
   };
   async function mpConnect(code) {
     const { Net, RELAY } = await import('./net.js');
@@ -428,8 +429,10 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   // back to the lobby after a game (?lobby=CODE): straight back into the same room, as the same name and character
   if (q.get('lobby')) setTimeout(async () => {
     const code = q.get('lobby').toUpperCase().slice(0, 6); try { history.replaceState(null, '', location.pathname); } catch (e) {}
-    try { const w = await mpConnect(code); mp.role = w.host ? 'host' : 'join'; $('#mp-code-chip').textContent = `👥 ROOM ${code}`; show('room'); lobby();
-      if (!w.host) mp.net.on.setup = (m) => { if (window.__setupSeen) return; window.__setupSeen = true; place = m.place; mode = m.mode; $('#room-msg').textContent = 'Off we go!'; window.__menuIntro(() => window.__menuGo(true)); };
+    // (whoever was the host is still the host: the room hands "host" on to someone else while their page reloads)
+    let was = false; try { was = sessionStorage.getItem('rs_was_host') === '1'; } catch (e) {}
+    try { const w = await mpConnect(code); mp.role = w.host || was ? 'host' : 'join'; $('#mp-code-chip').textContent = `👥 ROOM ${code}`; show('room'); lobby();
+      if (mp.role === 'join') mp.net.on.setup = (m) => { if (window.__setupSeen) return; window.__setupSeen = true; place = m.place; mode = m.mode; $('#room-msg').textContent = 'Off we go!'; window.__menuIntro(() => window.__menuGo(true)); };
     } catch (e) { show('mp'); mpStatus("Couldn't get back into the room. Check your internet and try again."); }
   }, 600);
 

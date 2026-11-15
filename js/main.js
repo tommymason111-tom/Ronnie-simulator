@@ -634,7 +634,7 @@ function newGame(id, why) {
     const rc = director.receipt; if (rc && rc.parent === camera) { camera.remove(rc); rc.visible = false; } }
   setPaused(false); attackFx.removeAll(); SEL.mode = id;
   const tag = document.getElementById('ready-tag'); if (tag && PAUSE_MODES[id]) tag.textContent = tag.textContent.replace(/·.*$/, '· ' + PAUSE_MODES[id][1]);
-  director.start(id); mpAfterStart(); respawnPlayer();
+  director.start(id); mpAfterStart(); if (director.imposter) director.imposter.needSpawn = 2; else respawnPlayer();      // (Imposter puts everyone round the bell)
   if (why) showBanner(why, (PAUSE_MODES[id] ? PAUSE_MODES[id][1] : id.toUpperCase()));
 }
 // the host changes the game (or restarts it): everyone in the room starts the new one together, from the start
@@ -798,6 +798,9 @@ function gameOver(lines) {
   document.body.classList.add('gameover'); touch.show(false); if (player.wrist) player.wrist.visible = false;
   const leaveTxt = net.connected ? '↩ RETURN TO LOBBY' : '🏠 MAIN MENU';
   document.getElementById('over-leave').textContent = leaveTxt; document.getElementById('end-leave').textContent = leaveTxt;
+  // multiplayer: the host can start the same game again for everyone, right from here (nobody goes back to the menu)
+  for (const id of ['over-again', 'end-again']) document.getElementById(id).style.display = net.connected && net.host ? '' : 'none';
+  try { sessionStorage.setItem('rs_was_host', net.connected && net.host ? '1' : ''); } catch (e) {}
   const best = (lines || []).find(l => l[1] !== '' && l[1] !== undefined); document.getElementById('end-where').textContent = best ? `${best[0]}: ${best[1]}` : 'Here\'s how you did';
   const rc = director.receipt; if (rc) { camera.add(rc); rc.renderOrder = 62; rc.material.depthTest = false; rc.material.depthWrite = false; rc.rotation.set(0, 0, 0);
     const vr = renderer.xr.isPresenting; rc.position.set(vr ? -0.3 : 0, vr ? -0.05 : 0.02, vr ? -0.8 : -0.62); rc.scale.setScalar(vr ? 0.62 : 0.78); rc.visible = true; }
@@ -805,6 +808,7 @@ function gameOver(lines) {
 }
 const leaveGame = () => { location.href = location.pathname + (net.connected && net.code ? '?lobby=' + encodeURIComponent(net.code) : ''); };
 document.getElementById('over-leave').addEventListener('click', leaveGame);
+for (const id of ['over-again', 'end-again']) document.getElementById(id).addEventListener('click', () => { if (!net.host) return; initAudio(); hostNewGame(director.mode || chosenMode()); });
 document.getElementById('end-leave').addEventListener('click', leaveGame);
 renderer.xr.addEventListener('sessionend', () => { if (G.over) { setPaused(false); } });
 function setPaused(on) {

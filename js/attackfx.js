@@ -154,6 +154,9 @@ export class AttackFX {
     this.endCutscene();
     const overlay = kind !== 'turkey';
     const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 576;
+    // a phone held upright: the film stays upright, full width, framed top and bottom (not turned on its side)
+    const tall = !overlay && !this.vr && this.camera.aspect < 1; let film = null;
+    if (tall) { cv.width = 576; cv.height = 1024; film = document.createElement('canvas'); film.width = 1024; film.height = 576; }
     if (overlay) {      // the overlay's canvas has the same shape as the screen
       const asp = this.viewAspect();
       if (asp >= 1) { cv.width = 1024; cv.height = Math.round(1024 / asp); } else { cv.height = 1024; cv.width = Math.round(1024 * asp); }
@@ -161,12 +164,12 @@ export class AttackFX {
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
     const back = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 10), new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide, depthTest: false, depthWrite: false, transparent: true, opacity: 0 }));
     // the full scene sits like a big screen; overlays cover the whole view
-    const screen = new THREE.Mesh(new THREE.PlaneGeometry(overlay ? 2.6 : 0.96, overlay ? 1.95 : 0.54), new THREE.MeshBasicMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true, opacity: 0 }));
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(overlay ? 2.6 : tall ? 0.54 : 0.96, overlay ? 1.95 : tall ? 0.96 : 0.54), new THREE.MeshBasicMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true, opacity: 0 }));
     back.renderOrder = 50; screen.renderOrder = 51; back.frustumCulled = screen.frustumCulled = false;
     screen.position.set(0, 0, overlay ? -0.6 : -0.66);
     if (!overlay) this.camera.add(back);
     this.camera.add(screen);
-    this.cut = { kind, t: 0, dur, cv, tex, back, screen, overlay };
+    this.cut = { kind, t: 0, dur, cv, tex, back, screen, overlay, film };
   }
   viewAspect() { return this.player.renderer && this.player.renderer.xr.isPresenting ? 1.1 : this.camera.aspect; }
   get vr() { return !!(this.player.renderer && this.player.renderer.xr.isPresenting); }
@@ -222,15 +225,14 @@ export class AttackFX {
     } else if (this.vr) { c.screen.scale.setScalar(0.62); c.screen.rotation.z = 0;   // the film: a screen in the middle of your view
     } else if (!(this.player.renderer && this.player.renderer.xr.isPresenting)) {   // the film fills the whole phone screen
       const vh = 2 * 0.66 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2), vw = vh * this.camera.aspect;
-      const portrait = vw < vh;     // upright phone: turn the film so it runs top to bottom
-      c.screen.rotation.z = portrait ? -Math.PI / 2 : 0;
-      const fw = portrait ? vh : vw, fh = portrait ? vw : vh;
-      c.screen.scale.setScalar(Math.max(fw / 0.96, fh / 0.54) * 1.01);
+      c.screen.rotation.z = 0;
+      c.screen.scale.setScalar(c.film ? Math.max(vw / 0.54, vh / 0.96) * 1.01 : Math.max(vw / 0.96, vh / 0.54) * 1.01);
     }
     c.back.material.opacity = Math.max(0, fade); c.screen.material.opacity = Math.max(0, fade);
     const g = c.cv.getContext('2d');
     setCanvas(c.cv.width, c.cv.height);
-    if (c.kind === 'turkey') drawTurkey(g, c.t);
+    if (c.kind === 'turkey' && c.film) { setCanvas(1024, 576); drawTurkey(c.film.getContext('2d'), c.t); tallFrame(g, c.film, c.t); }
+    else if (c.kind === 'turkey') drawTurkey(g, c.t);
     else if (OVERLAYS[c.kind]) OVERLAYS[c.kind](g, c.t, c.dur);
     c.tex.needsUpdate = true;
     if (c.t >= c.dur) this.endCutscene();
@@ -275,4 +277,18 @@ function dotTex() {
   const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d');
   const gr = g.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
   return new THREE.CanvasTexture(c);
+}
+
+// the Turkey film on a phone held upright: Turkish red top and bottom, the film across the middle at full width,
+// "BEN'S TAKING YOU TO TURKEY" above it, a plane flying along underneath
+function tallFrame(g, film, t) {
+  const W = g.canvas.width, H = g.canvas.height, fh = W * 576 / 1024, fy = (H - fh) / 2;
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#7a0010'); gr.addColorStop(0.5, '#e30a17'); gr.addColorStop(1, '#7a0010'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); g.arc(W / 2 - 40, fy / 2 + 20, 70, 0, 7); g.fill(); g.fillStyle = '#c00814'; g.beginPath(); g.arc(W / 2 - 18, fy / 2 + 20, 57, 0, 7); g.fill();
+  g.fillStyle = '#fff'; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 13 : 32; g.lineTo(W / 2 + 70 + Math.cos(a) * r, fy / 2 + 20 + Math.sin(a) * r); } g.fill();
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  for (const [s, y, sz] of [['BEN\'S TAKING YOU', 115, 40], ['TO TURKEY ✈️', fy - 40, 50]]) { g.font = `900 ${sz}px Arial Black, Arial`; g.lineWidth = 10; g.strokeStyle = '#111'; g.strokeText(s, W / 2, y); g.fillStyle = '#ffd400'; g.fillText(s, W / 2, y); }
+  g.fillStyle = '#000'; g.fillRect(0, fy - 6, W, fh + 12); g.drawImage(film, 0, fy, W, fh);
+  const px = ((t * 120) % (W + 200)) - 100, py = fy + fh + (H - fy - fh) / 2; g.font = '80px serif'; g.fillText('✈️', px, py);
+  g.font = '900 30px Arial Black, Arial'; g.lineWidth = 8; g.strokeStyle = '#111'; g.strokeText('NEW HAIRLINE INCOMING', W / 2, H - 50); g.fillStyle = '#fff'; g.fillText('NEW HAIRLINE INCOMING', W / 2, H - 50);
 }

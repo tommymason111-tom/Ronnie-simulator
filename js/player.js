@@ -343,7 +343,7 @@ export class Player {
   // Point a controller at something on the floor (or across the room) and pull the trigger: it flies straight into
   // your hand, so you don't have to bend down for it. The pointer line shows what you'd get.
   pointTarget(h) {
-    if (!h.ctrl || !h.tracked || h.isHand || !this.items || this.menuLock) return null;
+    if (!h.ctrl || !h.tracked || h.isHand || !this.items || this.menuLock || this.noGrab) return null;
     h.ctrl.getWorldPosition(_pv); _pd.set(0, 0, -1).applyQuaternion(h.ctrl.getWorldQuaternion(_pq));
     let best = null, bs = 1e9;
     for (const it of this.items.items) {
@@ -367,6 +367,7 @@ export class Player {
       h.ptrDot.position.copy(tgt.pos); h.ptrDot.lookAt(_pv); h.ptrDot.scale.setScalar(Math.max(1, tgt.radius / 0.06)); }
   }
   grab(h) {
+    if (this.noGrab) return;               // (Imposter: no picking anything up)
     if (this.wheelOpen) return;            // (the trigger's picking an emote)
     if (!h.tracked || h.held || h.heldPart || h.remoteGrab || !this.items) return;
     const r = TUNING.grabRadius * Math.max(1, this.scale);
@@ -498,6 +499,7 @@ export class Player {
   }
 
   flatGrab(it) {
+    if (this.noGrab) return;
     const f = this.flatHolder;
     if (f.held) this.flatDrop();
     if (it.heldBy && it.heldBy !== f) it.heldBy.held = null;
@@ -634,9 +636,9 @@ export class Player {
     g.fillStyle = '#111827'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill();
     g.lineWidth = 8; g.strokeStyle = state.loco > 0 ? '#ff9a1f' : '#39ff14'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();
     g.textAlign = 'left'; g.textBaseline = 'middle';
-    g.fillStyle = '#9ca3af'; g.font = `900 30px ${FONT}`;
+    g.fillStyle = '#c3cad6'; g.font = `900 34px ${FONT}`;
     g.fillText(`EAT METER · STAGE ${state.stage + 1}/${state.stages}`, 30, 44);
-    g.fillStyle = '#ffffff'; g.font = `900 46px ${FONT}`;
+    g.fillStyle = '#ffffff'; { let f = 54; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(state.name.toUpperCase()).width > w - 60 && f > 28); }
     g.fillText(state.name.toUpperCase(), 30, 98);
     // belly-shaped bar that bulges as it fills
     const bx = 30, by = 140, bw = w - 60, bh = 70, k = Math.max(0, Math.min(1, state.fill));
@@ -654,7 +656,7 @@ export class Player {
       g.quadraticCurveTo(bx - 4, by + bh / 2, bx + 30, by - bulge * 0.3);
       g.fill();
     }
-    g.fillStyle = '#ffffff'; g.font = `900 34px ${FONT}`; g.textAlign = 'center';
+    g.fillStyle = '#ffffff'; g.font = `900 42px ${FONT}`; g.textAlign = 'center';
     g.fillText(state.max ? `${Math.round(state.chonk)} — MAXED OUT` : `${Math.round(state.chonk)} / ${state.next}`, w / 2, by + bh / 2 + 2);
     g.textAlign = 'left';
     if (state.loco > 0) {
@@ -664,8 +666,8 @@ export class Player {
       g.fillStyle = '#f3e6c8'; g.font = `900 36px ${FONT}`;
       g.fillText(`STOUT MODE x2 · ${state.stout.toFixed(1)}s`, 30, 262);
     } else if (state.modeLine) {
-      g.fillStyle = '#ffd400'; g.font = `900 26px ${FONT}`;
-      let size = 26; while (g.measureText(state.modeLine).width > w - 60 && size > 14) { size -= 2; g.font = `900 ${size}px ${FONT}`; }
+      g.fillStyle = '#ffd400'; g.font = `900 32px ${FONT}`;
+      let size = 32; while (g.measureText(state.modeLine).width > w - 60 && size > 14) { size -= 2; g.font = `900 ${size}px ${FONT}`; }
       g.fillText(state.modeLine, 30, 262);
     } else {
       g.fillStyle = '#6b7280'; g.font = `900 28px ${FONT}`;
@@ -718,7 +720,7 @@ export class Player {
     }
     if (mode === 'flat' && parent) {   // pin to the top-left corner of the screen, whatever its shape
       const d = 0.3, hh = d * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)), hw = hh * this.camera.aspect;
-      const sc = Math.min(1.15, hw * 0.9 / 0.1);
+      const sc = Math.min(1.25, hw * (this.camera.aspect < 1 ? 1.12 : 0.9) / 0.1);     // (a phone held upright: a bit bigger, easier to read)
       this.wrist.position.set(-hw + 0.05 * sc + 0.008, hh - 0.0375 * sc - 0.024, -d);
       this.wrist.scale.setScalar(sc);
     }

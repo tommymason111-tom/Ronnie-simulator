@@ -38,6 +38,8 @@ export const TASKS = [
   { id: 'rota', name: 'Clock in for your shift', room: 'STAFF ROOM', at: [7.16, -4.41], kind: 'swipe', o: { title: 'CLOCK IN FOR YOUR SHIFT' } },
 ];
 const TASK = Object.fromEntries(TASKS.map(t => [t.id, t]));
+const TASK_SIGN = { guinness: '🍺 POUR A GUINNESS', barrel: '🛢️ CHANGE THE BARREL', till: '💳 CARD MACHINE', jukebox: '🎵 JUKEBOX', fruit: '🍒 FRUIT MACHINE', toilet: '🚽 BLOCKED TOILET', looroll: '🧻 LOO ROLL',
+  bookings: '📖 BOOKINGS', fryer: '🍟 THE FRYER', empties: '🍺 EMPTIES', tables: '🧽 WIPE TABLES', slots: '🎰 SLOT MACHINE', keg: '⏲️ KEG PRESSURE', rota: '🕒 CLOCK IN' };
 // trapdoors (the imposter's vents): hop between them unseen
 const VENTS = [{ name: 'CELLAR HATCH', at: [5.08, -7.81] }, { name: 'KITCHEN', at: [-12.5, -1.0] }, { name: 'GAMBLING ROOM', at: [6.5, 12.5] }, { name: 'MEN\'S TOILETS', at: [-6.53, -13.1] }];
 const FUSE = { name: 'FUSE BOX · STAFF ROOM', at: [6.8, -2.0] };
@@ -60,7 +62,7 @@ export class Imposter {
     // no food in this one: none at all, ever (the host's game takes it all away, and keeps it that way)
     this.clearFood();
     // the vision: you only see so far (further as an imposter; hardly at all with the lights out)
-    this.fog0 = g.scene.fog; g.scene.fog = new THREE.Fog(0x05060a, 5, 13); g.scene.userData.fogLock = true;
+    this.fog0 = g.scene.fog; g.scene.fog = new THREE.Fog(0x05060a, 1e4, 2e4); g.scene.userData.fogLock = true;
     // nobody hits anybody, and you can only talk in meetings (ghosts only to ghosts)
     const mp = g.mp; mp.noPunch = true;
     mp.chatGate = () => { const me = this.mine(); if (!me || !me.alive) return { ok: true, ghost: true }; if (this.phase === 'meeting' || this.phase === 'waiting' || this.phase === 'over') return { ok: true }; return { ok: false, why: 'SHH! YOU CAN ONLY TALK IN MEETINGS' }; };
@@ -75,8 +77,9 @@ export class Imposter {
     on('imVent', (m, p) => { const pl = p && this.players.get(p.id); if (pl) { pl.vent = !!m.in; } });
     this.leaveWas = this.net.on.leave; this.net.on.leave = (m) => { this.leaveWas && this.leaveWas(m); if (this.host) this.hostLeft(m.id); };
     this.respawnRing();
-    if (this.host) this.startT = 2.5;       // (a moment for everyone's game to get going)
-    else { this.lobbyMsg = 'WAITING FOR THE HOST...'; this.net.send({ t: 'imHello' }); }
+    // the lobby: everyone wanders round the pub until the host rings the bell (3 or more players)
+    this.needSpawn = 2; this.lobbyT = 0; g.player.noGrab = true; g.player.flatDrop && g.player.flatDrop(); for (const h of g.player.hands || []) if (h.held) { h.held.heldBy = null; h.held = null; }
+    if (!this.host) this.net.send({ t: 'imHello' });
   }
   // ------------------------------------------------------------------ who's who
   mine() { return this.players.get(this.me); }
@@ -96,7 +99,7 @@ export class Imposter {
   ask(k, m) { if (this.host) this.hostIn(k, m, this.me); else { m.t = k; this.net.send(m); } }   // (anyone: ask the referee)
   hostDeal() {
     const list = this.roster();
-    if (list.length < IMP.MIN_PLAYERS) { this.send('imLobby', { n: list.length }); this.startT = 3; return; }
+    if (list.length < IMP.MIN_PLAYERS) { this.send('imLobby', { n: list.length }); this.toast(`NEED ${IMP.MIN_PLAYERS}+ PLAYERS (${list.length} HERE)`); return; }
     let n = this.nImp; if (n > 1 && list.length < 5) n = 1;
     const imps = shuffle(list.map(p => p.id)).slice(0, n), pool = TASKS.map(t => t.id), tasks = {};
     for (const p of list) tasks[p.id] = shuffle(pool).slice(0, IMP.TASKS_EACH);
@@ -105,7 +108,7 @@ export class Imposter {
   }
   // someone's game started late: the deal again (just for them), then everything that's happened since
   hostHello(id) {
-    if (!this.dealMsg) return;
+    if (!this.dealMsg) { this.net.send({ t: 'imLobby', n: this.roster().length }); return; }
     this.net.send({ t: 'imStart', to: id, ...this.dealMsg });
     const dead = [...this.players.values()].filter(p => !p.alive).map(p => p.id), done = {}; for (const p of this.players.values()) done[p.id] = [...p.done];
     this.net.send({ t: 'imSync', to: id, dead, done, bar: this.taskCount(), phase: this.phase === 'intro' ? 'intro' : 'play', sab: this.sab ? { k: this.sab.k, left: this.sab.until ? this.sab.until - now() : 0 } : null });
@@ -161,7 +164,7 @@ export class Imposter {
   }
   hostLeft(id) { const p = this.players.get(id); if (!p) return; p.left = true; p.alive = false; if (this.phase === 'meeting' && this.H.votes) { this.H.votes.delete(id); } this.hostCheck(); }
   hostUpdate(dt) {
-    if (this.startT > 0) { this.startT -= dt; if (this.startT <= 0) this.hostDeal(); return; }
+    if (this.phase === 'waiting') { if ((this.lobbyT -= dt) <= 0) { this.lobbyT = 2; this.send('imLobby', { n: this.roster().length }); } return; }
     const H = this.H; if (!H || this.phase === 'over') return;
     if (this.phase === 'play') { for (const [id, t] of H.killCD) H.killCD.set(id, t - dt); H.emergCD -= dt; if (!this.sab) H.sabCD -= dt;
       if (this.sab && this.sab.until && now() > this.sab.until) this.send('imWin', { side: 'imposter', why: 'THE KEG BLEW UP. THE CELLAR\'S GONE.' }); }
@@ -172,7 +175,7 @@ export class Imposter {
   // ------------------------------------------------------------------ everyone: what the referee says happened
   apply(k, m) {
     const g = this.g;
-    if (k === 'imLobby') { this.lobbyMsg = `IMPOSTER NEEDS ${IMP.MIN_PLAYERS}+ PLAYERS (${m.n} HERE). GET YOUR MATES IN!`; return; }
+    if (k === 'imLobby') { const ok = m.n >= IMP.MIN_PLAYERS; this.lobbyN = m.n; this.lobbyMsg = ok ? `${m.n} IN THE PUB. ${this.host ? 'YOU\'RE THE HOST: RING THE LAST ORDERS BELL IN THE MIDDLE TO START!' : 'WAITING FOR THE HOST TO RING THE BELL...'}` : `WAITING FOR PLAYERS: ${m.n} HERE (${IMP.MIN_PLAYERS}+ NEEDED). HAVE A WANDER ROUND.`; return; }
     if (k === 'imStart') {
       this.players.clear(); this.bodies.forEach(b => this.dropBody(b)); this.bodies = []; this.lobbyMsg = null;
       const iAmImp = m.imps.includes(this.me);
@@ -232,11 +235,15 @@ export class Imposter {
     this.markTex = { task: mk('#ffd400'), fix: mk('#ff3b3b') };
     this.marks = new Map();
     const addMark = (key, at, kind) => { const gr = new THREE.Group(); gr.position.set(at[0], fy(at[0], at[1]), at[1]);
-      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.markTex[kind], depthTest: false, transparent: true })); s.scale.setScalar(0.32); s.position.y = 2.1; s.renderOrder = 20; gr.add(s);
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.markTex[kind], depthTest: false, transparent: true })); s.scale.setScalar(0.32); s.position.y = 2.55; s.renderOrder = 20; gr.add(s);
       const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.52, 32), new THREE.MeshBasicMaterial({ color: kind === 'fix' ? 0xff3b3b : 0xffd400, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; gr.add(ring);
       gr.visible = false; this.grp.add(gr); this.marks.set(key, gr); };
     for (const t of TASKS) addMark(t.id, t.at, 'task');
     addMark('fuse', FUSE.at, 'fix'); VALVES.forEach((v, i) => addMark('valve' + i, v.at, 'fix'));
+    // every job has its own station, so you can see where it is: the kit for the job on a little stand, and a sign
+    // hanging over it with its name (the fuse box and the two keg valves too)
+    for (const t of TASKS) this.grp.add(this.station(t.id, t.at, TASK_SIGN[t.id]));
+    this.grp.add(this.station('fuse', FUSE.at, '⚡ FUSE BOX')); VALVES.forEach((v, i) => this.grp.add(this.station('valve', v.at, '🛢️ ' + v.name)));
     // a frying pan for the kill (it comes down on their head)
     this.pan = new THREE.Group(); { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.14, 0.04, 22), lam(0x222222)); this.pan.add(p); const h = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.32, 8), lam(0x5a2e14)); h.rotation.z = Math.PI / 2; h.position.x = 0.32; this.pan.add(h); }
     this.pan.visible = false; this.grp.add(this.pan);
@@ -254,6 +261,36 @@ export class Imposter {
     this.panT = 0.001; this.panAt = b.at.clone().setY(fy + 2.0);
     const w = g.words; w && w.show(['BONK!', 'CLANG!', 'DONK!'][Math.floor(Math.random() * 3)], b.at.clone().setY(fy + 1.9), '#ff5252', 0.22, 1.2);
     sfx('thwack', b.at, 1); setTimeout(() => sfx('smash', b.at, 0.7), 120);
+  }
+  // one job's station: the kit for it (pub stuff), on the spot, and its sign hanging above
+  station(id, at, label) {
+    const g = new THREE.Group(), room = this.g.room, fy = room.floorAt ? room.floorAt(at[0], at[1]) : 0; g.position.set(at[0], fy, at[1]);
+    const lam = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, ...o }), steel = new THREE.MeshPhongMaterial({ color: 0xb8bcc2, shininess: 90 }), dark = lam(0x1d1d1d), wood = lam(0x6a4426);
+    const add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); g.add(o); return o; };
+    const B = (w, h, d) => new THREE.BoxGeometry(w, h, d), C = (r1, r2, h, n = 16) => new THREE.CylinderGeometry(r1, r2, h, n);
+    const stand = (h = 0.9) => { add(C(0.04, 0.04, h, 10), dark, 0, h / 2, 0); add(C(0.2, 0.22, 0.03, 18), dark, 0, 0.015, 0); add(B(0.42, 0.04, 0.32), wood, 0, h, 0); return h + 0.02; };
+    // the kit: a little bit of the pub for each job (kept off to the side of where you stand)
+    const k = new THREE.Group(); k.position.set(0.55, 0, 0); g.add(k); const kadd = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); k.add(o); return o; };
+    const top = () => { kadd(C(0.04, 0.04, 0.9, 10), dark, 0, 0.45, 0); kadd(C(0.2, 0.22, 0.03, 18), dark, 0, 0.015, 0); kadd(B(0.44, 0.04, 0.34), wood, 0, 0.92, 0); return 0.94; };
+    if (id === 'guinness') { const y = top(); kadd(C(0.035, 0.05, 0.3, 14), dark, 0, y + 0.15, 0); kadd(C(0.012, 0.012, 0.12, 8), steel, 0, y + 0.28, 0.06, Math.PI / 2); kadd(new THREE.CircleGeometry(0.05, 18), lam(0xd4af37), 0, y + 0.22, 0.036); kadd(C(0.035, 0.028, 0.12, 12), lam(0x140a06), 0.12, y + 0.06, 0); }
+    else if (id === 'barrel' || id === 'keg' || id === 'valve') { for (const dx of id === 'barrel' ? [-0.18, 0.18] : [0]) { kadd(C(0.2, 0.2, 0.6, 20), steel, dx, 0.3, 0); for (const yy of [0.08, 0.52]) kadd(new THREE.TorusGeometry(0.2, 0.015, 6, 20), steel, dx, yy, 0, Math.PI / 2); kadd(C(0.05, 0.05, 0.06, 10), lam(id === 'valve' ? 0xd81b2a : 0x2a6df4), dx, 0.63, 0); }
+      if (id === 'keg') { kadd(C(0.02, 0.02, 0.6, 8), dark, 0.32, 0.3, 0); kadd(C(0.09, 0.09, 0.03, 20), lam(0xffffff), 0.32, 0.66, 0, Math.PI / 2); kadd(B(0.01, 0.07, 0.005), lam(0xd81b2a), 0.32, 0.68, 0.017, 0, 0, 0.6); } }
+    else if (id === 'till' || id === 'rota') { const y = top(); kadd(B(0.12, 0.18, 0.06), dark, 0, y + 0.09, 0, -0.3); kadd(B(0.09, 0.06, 0.005), lam(0x39ff14, { emissive: 0x115511 }), 0, y + 0.14, 0.033, -0.3); if (id === 'rota') kadd(B(0.3, 0.3, 0.02), lam(0xf5f0e0), 0, y + 0.45, -0.1); }
+    else if (id === 'jukebox' || id === 'slots' || id === 'fruit') { const col = id === 'jukebox' ? 0xc62828 : id === 'slots' ? 0x2c3e8f : 0x6a1b9a; kadd(B(0.6, 1.4, 0.45), lam(col), 0, 0.7, 0); kadd(C(0.3, 0.3, 0.45, 20, 1, false, 0, Math.PI), lam(col), 0, 1.4, 0, Math.PI / 2, 0, Math.PI / 2);
+      kadd(B(0.46, 0.4, 0.01), lam(0xffd400, { emissive: 0x664400 }), 0, 1.0, 0.23); for (let i = 0; i < 3; i++) kadd(B(0.1, 0.14, 0.012), lam(0xffffff), -0.13 + i * 0.13, 1.0, 0.235); if (id === 'fruit') kadd(C(0.12, 0.1, 0.14, 14), lam(0xd4af37), 0, 0.07, 0.4); }
+    else if (id === 'toilet') { kadd(C(0.18, 0.13, 0.38, 18), lam(0xf8f8f8), 0, 0.19, 0); kadd(B(0.36, 0.38, 0.16), lam(0xf8f8f8), 0, 0.52, -0.18); kadd(new THREE.TorusGeometry(0.16, 0.03, 8, 18), lam(0xf8f8f8), 0, 0.39, 0, Math.PI / 2);
+      kadd(C(0.012, 0.012, 0.6, 8), lam(0xb5651d), 0.25, 0.42, 0.1); kadd(new THREE.SphereGeometry(0.07, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), lam(0xd32f2f), 0.25, 0.1, 0.1, Math.PI); }
+    else if (id === 'looroll') { kadd(B(0.5, 0.04, 0.4), steel, 0, 0.3, 0); for (const yy of [0.04, 0.3, 0.56]) kadd(B(0.5, 0.02, 0.4), steel, 0, yy, 0); for (let i = 0; i < 12; i++) kadd(C(0.055, 0.055, 0.11, 14), lam(0xffffff), -0.17 + (i % 4) * 0.115, (i < 4 ? 0.1 : i < 8 ? 0.37 : 0.63), -0.09 + (Math.floor(i / 2) % 2) * 0.18); }
+    else if (id === 'bookings') { kadd(B(0.08, 1.0, 0.08), wood, 0, 0.5, 0); kadd(B(0.5, 0.04, 0.36), wood, 0, 1.02, 0, -0.35); kadd(B(0.44, 0.02, 0.3), lam(0xfff8dc), 0, 1.05, 0.01, -0.35); kadd(B(0.005, 0.03, 0.3), lam(0x7a1f3d), 0, 1.06, 0.01, -0.35); }
+    else if (id === 'fryer') { kadd(B(0.55, 0.9, 0.55), steel, 0, 0.45, 0); kadd(B(0.45, 0.02, 0.45), lam(0xd9a03a), 0, 0.905, 0); kadd(B(0.22, 0.12, 0.2), new THREE.MeshBasicMaterial({ color: 0x333333, wireframe: true }), 0.1, 0.98, 0); kadd(C(0.01, 0.01, 0.35, 6), dark, 0.1, 1.05, 0.25, Math.PI / 2 - 0.4); }
+    else if (id === 'empties') { const y = top(); kadd(C(0.18, 0.18, 0.02, 20), steel, 0, y + 0.01, 0); for (let i = 0; i < 6; i++) kadd(C(0.035, 0.028, 0.14, 10, 1, true), new THREE.MeshPhongMaterial({ color: 0xddeeff, transparent: true, opacity: 0.5 }), Math.cos(i) * 0.1, y + 0.08, Math.sin(i) * 0.1); }
+    else if (id === 'tables') { kadd(B(0.4, 0.5, 0.3), lam(0xffd400), 0, 0.3, 0); kadd(C(0.12, 0.1, 0.22, 14), lam(0x1565c0), 0.05, 0.66, 0); kadd(C(0.035, 0.035, 0.18, 10), lam(0x29b6ff), -0.12, 0.64, 0.05); kadd(B(0.04, 0.05, 0.03), lam(0xffffff), -0.12, 0.76, 0.05); }
+    else if (id === 'fuse') { kadd(B(0.06, 1.3, 0.06), dark, 0, 0.65, 0); kadd(B(0.45, 0.55, 0.12), lam(0x7a7f87), 0, 1.4, 0); kadd(B(0.4, 0.5, 0.01), lam(0xffd400), 0, 1.4, 0.065); }
+    // the sign: hanging over the spot, double-sided, the job's name
+    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128; const x = cv.getContext('2d'); x.fillStyle = '#1a0f0a'; rr(x, 4, 4, 504, 120, 26); x.fill(); x.lineWidth = 8; x.strokeStyle = '#d4af37'; rr(x, 8, 8, 496, 112, 22); x.stroke(); txt(x, label, 256, 66, 44, '#ffd400', 'center', 470);
+    const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true })); sign.scale.set(0.95, 0.24, 1); sign.position.set(0.55, 2.05, 0); g.add(sign);
+    void stand; void add; return g;
   }
   dropBody(b) { if (b.grp) this.grp.remove(b.grp); }
   avatar(id) { if (id === this.me) return this.g.selfBody(); const p = this.net.players.get(id); return p && p.avatar; }
@@ -299,7 +336,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
 #imp-splash.on { display: flex; } #imp-splash h1 { font-size: clamp(34px, 9vw, 80px); margin: 0; letter-spacing: 2px; } #imp-splash p { font-size: clamp(15px, 3.6vw, 26px); margin: 10px 18px; } #imp-splash .imgs { display: flex; gap: 12px; margin-top: 12px; } #imp-splash img { width: 92px; height: 92px; border-radius: 50%; border: 4px solid currentColor; object-fit: cover; }
 #imp-alert { position: fixed; left: 50%; top: max(70px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 44; display: none; padding: 8px 18px; border-radius: 14px; background: rgba(150,0,0,0.85); border: 3px solid #fff; color: #fff; font: 900 16px "Arial Black", Arial; text-align: center; pointer-events: none; animation: impflash 0.8s infinite alternate; }
 #imp-alert.on { display: block; } @keyframes impflash { from { background: rgba(150,0,0,0.85); } to { background: rgba(255,40,40,0.95); } }
-#imp-map { position: fixed; inset: 0; z-index: 67; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); } #imp-map.on { display: flex; } #imp-map canvas { width: min(94vw, 84vh); height: auto; border-radius: 16px; border: 4px solid #ffd400; }
+#imp-map { position: fixed; right: max(8px, env(safe-area-inset-right)); top: max(86px, calc(env(safe-area-inset-top) + 80px)); z-index: 43; display: none; pointer-events: none; } #imp-map.on { display: block; } #imp-map canvas { width: min(56vw, 330px, 46vh); height: auto; border-radius: 14px; border: 3px solid #ffd400; box-shadow: 0 6px 18px rgba(0,0,0,0.5); }
 #imp-sabm { position: fixed; inset: 0; z-index: 67; display: none; align-items: center; justify-content: center; gap: 16px; background: rgba(0,0,0,0.55); flex-wrap: wrap; } #imp-sabm.on { display: flex; }
 #imp-sabm button { width: 150px; height: 150px; border-radius: 22px; border: 4px solid #fff; background: #6a1b9a; color: #fff; font: 900 16px "Arial Black", Arial; } #imp-sabm button b { display: block; font-size: 48px; }`;
     document.head.appendChild(st); this.style = st;
@@ -314,8 +351,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     this.splash = document.createElement('div'); this.splash.id = 'imp-splash'; document.body.appendChild(this.splash);
     this.tasksEl = document.createElement('div'); this.tasksEl.id = 'imp-tasks'; document.body.appendChild(this.tasksEl);
     this.alertEl = document.createElement('div'); this.alertEl.id = 'imp-alert'; document.body.appendChild(this.alertEl);
-    this.mapEl = document.createElement('div'); this.mapEl.id = 'imp-map'; this.mapCv = document.createElement('canvas'); this.mapCv.width = 900; this.mapCv.height = 1000; this.mapEl.appendChild(this.mapCv); document.body.appendChild(this.mapEl);
-    this.mapEl.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.toggleMap(false); });
+    this.mapEl = document.createElement('div'); this.mapEl.id = 'imp-map'; this.mapCv = document.createElement('canvas'); this.mapCv.width = 600; this.mapCv.height = 780; this.mapEl.appendChild(this.mapCv); document.body.appendChild(this.mapEl);
     this.sabEl = document.createElement('div'); this.sabEl.id = 'imp-sabm'; this.sabEl.innerHTML = Object.entries(SAB).map(([k, s]) => `<button data-k="${k}"><b>${s.icon}</b>${s.name}${s.crit ? '<br><small>CRITICAL</small>' : ''}</button>`).join('') + '<button data-k="x" style="background:#444;width:90px;height:90px"><b>✕</b></button>';
     document.body.appendChild(this.sabEl);
     this.sabEl.addEventListener('pointerdown', (e) => { e.stopPropagation(); const b = e.target.closest('button'); this.sabEl.classList.remove('on'); if (b && b.dataset.k !== 'x') this.ask('imS', { k: b.dataset.k }); });
@@ -326,7 +362,8 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   }
   // ------------------------------------------------------------------ what's near me (for the buttons)
   near() {
-    const me = this.mine(), h = this.g.player.head, out = {}; if (!me || this.phase !== 'play' || this.vented) { if (this.vented) out.vent = this.vented; return out; }
+    const me = this.mine(), h = this.g.player.head, out = {}; if (this.phase === 'waiting') { if (this.hd(h, CENTRE) < 1.6) out.use = { kind: 'start' }; return out; }
+    if (!me || this.phase !== 'play' || this.vented) { if (this.vented) out.vent = this.vented; return out; }
     // a job, a fix, the bell
     if (this.sab && me.alive) { if (this.sab.k === 'lights' && this.hd(h, V(...FUSE.at)) < IMP.USE_R) out.use = { kind: 'fix', k: 'lights' };
       if (this.sab.k === 'keg') VALVES.forEach((v, i) => { if (!this.sab.fixed[i] && this.hd(h, V(...v.at)) < IMP.USE_R) out.use = { kind: 'fix', k: 'keg', part: i }; }); }
@@ -338,9 +375,10 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     return out;
   }
   doUse() {
-    if (this.panel.open || this.phase !== 'play') return; const n = this.near();
+    if (this.panel.open || (this.phase !== 'play' && this.phase !== 'waiting')) return; const n = this.near();
     if (!n.use) { if (n.body) return this.doReport(); return; }
     const u = n.use, me = this.mine();
+    if (u.kind === 'start') { if (!this.host) return this.toast('THE HOST RINGS THE BELL TO START'); for (let i = 0; i < 3; i++) setTimeout(() => sfx('ting', null, 1), i * 220); this.hostDeal(); return; }
     if (u.kind === 'bell') { if (this.emergLeft <= 0) return this.toast('YOU\'VE USED YOUR EMERGENCY MEETING'); if (this.emergCD > 0) return this.toast(`THE BELL'S READY IN ${Math.ceil(this.emergCD)}s`); if (this.sab && SAB[this.sab.k].crit) return this.toast('NOT DURING AN EMERGENCY! FIX THE KEG!'); this.ask('imM', {}); return; }
     if (u.kind === 'fix') { const game = u.k === 'lights' ? makeGame('switches', { title: 'FIX THE LIGHTS' }) : makeGame('crank', { title: VALVES[u.part].name, hint: 'RELEASE THE PRESSURE', turns: 2 }); game.sabFix = true;
       this.panel.show(game, { onDone: () => this.ask('imF', { k: u.k, part: u.part }) }); return; }
@@ -365,7 +403,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   doSpectate() { const live = [...this.players.values()].filter(p => p.alive && p.id !== this.me); if (!live.length) { this.spect = null; return; } const i = live.findIndex(p => p.id === this.spect); this.spect = i + 1 >= live.length ? null : live[i + 1].id; this.toast(this.spect ? `WATCHING ${this.nameOf(this.spect).toUpperCase()}` : 'FREE GHOST'); }
   toast(s) { this.g.words && this.g.words.show(s, this.g.player.head.clone().addScaledVector(this.g.player.fwd, 0.8).add({ x: 0, y: 0.1, z: 0 }), '#ffd400', 0.07, 1.4); }
   // move myself (keeps a VR player's place in their play space)
-  teleport(x, z, yaw) { const P = this.g.player; P.rig.position.x += x - P.head.x; P.rig.position.z += z - P.head.z; if (yaw !== undefined && P.flatMode) { P.flatYaw = yaw - P.rig.rotation.y; } }
+  teleport(x, z, yaw) { const P = this.g.player, cam = P.camera.getWorldPosition(new THREE.Vector3()); P.rig.position.x += x - cam.x; P.rig.position.z += z - cam.z; P.head.x = x; P.head.z = z; if (yaw !== undefined && P.flatMode) { P.flatYaw = yaw - P.rig.rotation.y; } }
   respawnRing() { const list = this.roster(), i = Math.max(0, list.findIndex(p => p.id === this.me)), s = SEATS[i % SEATS.length]; this.teleport(s[0], s[1], Math.atan2(CENTRE.x - s[0], CENTRE.z - s[1]) + Math.PI); }
 
   // ------------------------------------------------------------------ the big moments
@@ -471,7 +509,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     sfx('thud', null, 1); this.setFog();
     if (this.g.renderer.xr.isPresenting) this.g.showBanner(SAB[this.sab.k].icon + ' SABOTAGE', SAB[this.sab.k].name);
   }
-  setFog() { const me = this.mine(), f = this.g.scene.fog || (this.g.scene.fog = new THREE.Fog(0x05060a, 5, 13)); if (!me || !me.alive || this.phase === 'over') { f.near = 1e4; f.far = 2e4; return; } const dark = this.sab && this.sab.k === 'lights' && !me.imp; f.near = dark ? 0.8 : me.imp ? 7 : 5; f.far = dark ? 3.4 : me.imp ? 18 : 13; }
+  setFog() { const me = this.mine(), f = this.g.scene.fog || (this.g.scene.fog = new THREE.Fog(0x05060a, 5, 13)); if (!me || !me.alive || this.phase === 'over' || this.phase === 'waiting') { f.near = 1e4; f.far = 2e4; return; } const dark = this.sab && this.sab.k === 'lights' && !me.imp; f.near = dark ? 0.8 : me.imp ? 7 : 5; f.far = dark ? 3.4 : me.imp ? 18 : 13; }
   win(m) {
     this.phase = 'over'; this.panel.close(true); this.setVent(null); this.sabEl.classList.remove('on'); this.alertEl.classList.remove('on'); this.phase = 'over'; this.setFog();
     const imps = (this.impList || []).map(id => this.players.get(id)).filter(Boolean), me = this.mine(), mine = me && (m.side === 'imposter' ? this.impList.includes(this.me) : !this.impList.includes(this.me));
@@ -491,35 +529,44 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     }, down: (x, y) => { const In = (b) => x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h; if (this.host && In(playB)) { this.panel.close(true); this.g.restart(); } else if (In(lobbyB)) this.g.leave(); } }, { canClose: false });
   }
   // ------------------------------------------------------------------ the map (phone / computer)
-  toggleMap(on) {
-    const want = on === undefined ? !this.mapEl.classList.contains('on') : on; this.mapEl.classList.toggle('on', want); if (!want) return;
-    if (!this.mapImg) this.renderMap();
-    const c = this.mapCv, x = c.getContext('2d'), W = c.width, H = c.height, [x0, x1, z0, z1] = this.mapBox, px = (X) => (X - x0) / (x1 - x0) * W, pz = (Z) => (Z - z0) / (z1 - z0) * H;
-    x.clearRect(0, 0, W, H); if (this.mapImg) x.drawImage(this.mapImg, 0, 0, W, H); x.fillStyle = 'rgba(0,0,0,0.25)'; x.fillRect(0, 0, W, H);
+  toggleMap(on) { const want = on === undefined ? !this.mapEl.classList.contains('on') : on; this.mapEl.classList.toggle('on', want); if (want) this.drawMap(); }
+  // a cartoon plan of the Oysterfleet: every room coloured and named, the bar, the bell in the middle, your jobs (yellow,
+  // ticked when done), the fixes when something's sabotaged, trapdoors (imposters only) and you. Redrawn as you move.
+  drawMap() {
+    const c = this.mapCv, x = c.getContext('2d'), W = c.width, H = c.height, B = [-15, 11.5, -17, 17], sc = Math.min(W / (B[1] - B[0]), (H - 40) / (B[3] - B[2]));
+    const px = (X) => (X - B[0]) * sc, pz = (Z) => 40 + (Z - B[2]) * sc;
+    x.fillStyle = '#2f6b33'; x.fillRect(0, 0, W, H); for (let i = 0; i < 260; i++) { x.fillStyle = i % 2 ? '#357a3a' : '#2a5f2e'; x.fillRect((i * 97) % W, (i * 53) % H, 6, 6); }
+    const room = (x0, x1, z0, z1, col, name, sz = 15) => { x.fillStyle = col; x.strokeStyle = '#2b1a10'; x.lineWidth = 5; x.beginPath(); x.roundRect(px(x0), pz(z0), (x1 - x0) * sc, (z1 - z0) * sc, 8); x.fill(); x.stroke();
+      if (name) txt(x, name, px((x0 + x1) / 2), pz((z0 + z1) / 2), sz, '#fff', 'center', (x1 - x0) * sc - 6); };
+    room(-9.72, 6.12, -8.88, 7.92, '#7a3b3b', '');                       // the pub floor (burgundy carpet)
+    room(-9.72, -3.48, -8.88, -0.24, '#8d5a3a', 'RAISED BOOTHS', 14);
+    room(-10.2, -4.44, -16.08, -12.24, '#9fb7c9', "MEN'S", 14); room(-9.24, -5.88, -12.24, -8.88, '#b4c6d6', 'DISABLED', 11); room(-5.88, -4.44, -12.24, -8.88, '#c9b8a0', '', 10);
+    room(-4.44, 0.36, -15.12, -8.88, '#d9b8cc', "WOMEN'S", 14); room(0.36, 5.64, -14.16, -8.88, '#c8c0a8', 'ENTRANCE', 14);
+    room(6.12, 10.68, -6.84, 0, '#a8b0bd', 'STAFF ROOM', 13); room(7.08, 10.68, 0, 7.92, '#8a9aa8', 'KEG ROOM', 13); room(5.64, 7.08, -1.2, 7.92, '#9a8a7a', '', 10);
+    room(-13.8, -9.72, -8.88, 2.04, '#e0e0e0', 'KITCHEN', 14); room(-9.72, 4.68, 7.92, 16.08, '#e8dcc0', 'CONSERVATORY', 16); room(4.68, 9.0, 7.92, 15.48, '#2c3e8f', 'GAMBLING', 13);
+    // the bar: a honey-oak L along the right of the pub floor, stools along it
+    x.fillStyle = '#c98a48'; x.strokeStyle = '#5a2e14'; x.lineWidth = 4; x.beginPath(); x.moveTo(px(2.2), pz(-8.6)); x.lineTo(px(3.0), pz(-8.6)); x.lineTo(px(3.0), pz(-0.6)); x.lineTo(px(4.6), pz(-0.6)); x.lineTo(px(4.6), pz(6.2)); x.lineTo(px(3.8), pz(6.2)); x.lineTo(px(3.8), pz(0.2)); x.lineTo(px(2.2), pz(0.2)); x.closePath(); x.fill(); x.stroke();
+    txt(x, 'THE BAR', px(3.6), pz(2.6), 13, '#fff');
+    for (let z = -8; z < 0; z += 1.1) { x.fillStyle = '#7a1f2a'; x.beginPath(); x.arc(px(1.8), pz(z), 5, 0, 7); x.fill(); }
+    for (const [tx, tz] of [[-1.5, -2.2], [0, -2.2], [-1, 1.8], [0.5, 1.8], [-6, -6], [-6, -3], [-4, 10], [0, 10], [-7, 13], [2, 13]]) { x.fillStyle = '#5a3a22'; x.beginPath(); x.arc(px(tx), pz(tz), 9, 0, 7); x.fill(); }
+    x.fillStyle = '#222'; x.fillRect(px(-2.5), pz(-9.0), 2.1 * sc, 0.6 * sc); txt(x, 'DJ', px(-1.45), pz(-8.2), 12, '#ffd400');
+    txt(x, 'BEER GARDEN ↓', px(-3), H - 14, 16, '#cfe8c0');
+    // the bell, the jobs, the fixes, the trapdoors, you
+    x.fillStyle = '#d81b2a'; x.strokeStyle = '#fff'; x.lineWidth = 3; x.beginPath(); x.arc(px(CENTRE.x), pz(CENTRE.z), 12, 0, 7); x.fill(); x.stroke(); txt(x, '🔔', px(CENTRE.x), pz(CENTRE.z) + 1, 13);
     const me = this.mine();
-    if (me) for (const id of me.tasks) { const t = TASK[id], d = me.done.has(id); x.fillStyle = d ? '#39ff14' : '#ffd400'; x.beginPath(); x.arc(px(t.at[0]), pz(t.at[1]), 14, 0, 7); x.fill(); txt(x, (d ? '✓ ' : '! ') + t.name, px(t.at[0]), pz(t.at[1]) - 26, 20, d ? '#9cff9c' : '#ffd400', 'center', 300); }
-    if (this.sab) { const pts = this.sab.k === 'lights' ? [FUSE] : VALVES; for (const p of pts) { x.fillStyle = '#ff3b3b'; x.beginPath(); x.arc(px(p.at[0]), pz(p.at[1]), 18, 0, 7); x.fill(); txt(x, '⚠ ' + p.name, px(p.at[0]), pz(p.at[1]) + 34, 20, '#ff6b6b'); } }
-    x.fillStyle = '#d81b2a'; x.beginPath(); x.arc(px(CENTRE.x), pz(CENTRE.z), 16, 0, 7); x.fill(); txt(x, '🔔', px(CENTRE.x), pz(CENTRE.z), 22);
-    if (this.amImp()) for (const v of VENTS) { x.fillStyle = '#8d6e63'; x.fillRect(px(v.at[0]) - 12, pz(v.at[1]) - 12, 24, 24); }
-    const h = this.g.player.head; x.fillStyle = '#4fc3ff'; x.beginPath(); x.arc(px(h.x), pz(h.z), 16, 0, 7); x.fill(); x.lineWidth = 4; x.strokeStyle = '#fff'; x.stroke(); txt(x, 'YOU', px(h.x), pz(h.z) + 32, 22, '#4fc3ff');
-    txt(x, 'THE OYSTERFLEET · TAP TO CLOSE', W / 2, 40, 30, '#ffd400');
-  }
-  renderMap() {
-    // a top-down picture of the pub: drawn once onto the game's own canvas (at the map's size) and copied straight off it
-    const box = this.mapBox = [-15, 9, -16, 14.5];
-    try { const g = this.g, r = g.renderer, W = 600, H = Math.round(W * (box[3] - box[2]) / (box[1] - box[0])), size = r.getSize(new THREE.Vector2()), pr = r.getPixelRatio();
-      const cam = new THREE.OrthographicCamera(box[0], box[1], -box[2], -box[3], 0.01, 3.2); cam.position.set(0, 2.75, 0); cam.up.set(0, 0, -1); cam.lookAt(0, 0, 0);
-      const fog = g.scene.fog, vis = this.grp.visible; g.scene.fog = new THREE.Fog(0x000000, 1e4, 2e4); this.grp.visible = false;
-      r.setPixelRatio(1); r.setSize(W, H, false); r.render(g.scene, cam);
-      const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(r.domElement, 0, 0, W, H);
-      r.setPixelRatio(pr); r.setSize(size.x, size.y, false); g.scene.fog = fog; this.grp.visible = vis;
-      this.mapImg = c; this.mapCv.width = 900; this.mapCv.height = Math.round(900 * H / W); } catch (e) { console.warn('map', e); }
+    if (me) for (const id of me.tasks) { const t = TASK[id], d = me.done.has(id); x.fillStyle = d ? '#39ff14' : '#ffd400'; x.strokeStyle = '#111'; x.beginPath(); x.arc(px(t.at[0]), pz(t.at[1]), 10, 0, 7); x.fill(); x.stroke(); txt(x, d ? '✓' : '!', px(t.at[0]), pz(t.at[1]) + 1, 13, '#111'); }
+    if (this.sab) for (const pnt of this.sab.k === 'lights' ? [FUSE] : VALVES) { x.fillStyle = '#ff3b3b'; x.beginPath(); x.arc(px(pnt.at[0]), pz(pnt.at[1]), 13, 0, 7); x.fill(); txt(x, '⚠', px(pnt.at[0]), pz(pnt.at[1]) + 1, 14); }
+    if (this.amImp()) for (const v of VENTS) { x.fillStyle = '#4e342e'; x.strokeStyle = '#ff3b3b'; x.lineWidth = 3; x.fillRect(px(v.at[0]) - 8, pz(v.at[1]) - 8, 16, 16); x.strokeRect(px(v.at[0]) - 8, pz(v.at[1]) - 8, 16, 16); }
+    const P = this.g.player, h = P.head, a = Math.atan2(P.fwd.x, P.fwd.z);
+    x.save(); x.translate(px(h.x), pz(h.z)); x.rotate(-a + Math.PI); x.fillStyle = '#4fc3ff'; x.strokeStyle = '#fff'; x.lineWidth = 3; x.beginPath(); x.moveTo(0, -14); x.lineTo(10, 10); x.lineTo(0, 5); x.lineTo(-10, 10); x.closePath(); x.fill(); x.stroke(); x.restore();
+    x.fillStyle = 'rgba(0,0,0,0.6)'; x.fillRect(0, 0, W, 36); txt(x, '🗺️ THE OYSTERFLEET', W / 2, 19, 20, '#ffd400');
   }
 
   // ------------------------------------------------------------------ every frame
   clearFood() { const it = this.g.items; if (!it) return; it.minFood = 0; it.respawnQueue.length = 0; for (const f of it.items.slice()) if (!f.def.prop) it.remove(f); }
   update(dt) {
     const g = this.g, P = g.player, xr = g.renderer.xr.isPresenting;
+    if (this.needSpawn > 0 && --this.needSpawn === 0) this.respawnRing();          // (a frame in: everyone starts round the bell)
     if (this.host) this.hostUpdate(dt);
     if ((this.foodT = (this.foodT || 0) - dt) <= 0) { this.foodT = 1; this.clearFood(); }
     this.panel.update(dt);
@@ -534,7 +581,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     // markers: my jobs still to do; the fixes when something's sabotaged
     for (const [key, m] of this.marks) {
       let on = false; if (this.phase === 'play' && me) { if (TASK[key]) on = me.tasks.includes(key) && !me.done.has(key); else if (key === 'fuse') on = !!(this.sab && this.sab.k === 'lights'); else on = !!(this.sab && this.sab.k === 'keg' && !this.sab.fixed[Number(key.slice(5))]); }
-      m.visible = on; if (on) { m.children[0].position.y = 2.1 + Math.sin(performance.now() / 300) * 0.06; m.children[1].scale.setScalar(1 + Math.sin(performance.now() / 250) * 0.06); }
+      m.visible = on; if (on) { m.children[0].position.y = 2.55 + Math.sin(performance.now() / 300) * 0.06; m.children[1].scale.setScalar(1 + Math.sin(performance.now() / 250) * 0.06); }
     }
     for (const vm of this.ventMeshes) vm.getObjectByName('glow').visible = this.amImp() && alive;
     this.bigBtn.material.emissive.setHex(this.phase === 'play' && Math.sin(performance.now() / 300) > 0 ? 0x990000 : 0x330000);
@@ -554,7 +601,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     if (xr) { const pad = (hand) => { const h = (P.hands || []).find(h => h.source && h.handedness === hand); return h && h.source.gamepad; }, R = pad('right'), L = pad('left');
       const press = (key, gp, i) => { const on = !!(gp && gp.buttons[i] && gp.buttons[i].pressed), was = this.btnWas[key]; this.btnWas[key] = on; return on && !was; };
       if (!this.panel.open) { if (press('a', R, 4)) { const n = this.near(); if (n.body && !n.use) this.doReport(); else this.doUse(); } if (press('x', L, 4)) this.doKill(); if (press('y', L, 5)) { if (this.near().vent || this.vented) this.doVent(); else this.openSab(); } } }
-    else { this.drawButtons(me, alive); this.drawTasks(); if (P.wrist && P.flatMode) P.wrist.visible = false; }
+    else { this.drawButtons(me, alive); this.drawTasks(); if (this.mapEl.classList.contains('on') && (this.mapT = (this.mapT || 0) - dt) <= 0) { this.mapT = 0.2; this.drawMap(); } if (P.wrist && P.flatMode) P.wrist.visible = false; }
   }
   // phone / computer: the job list top left (role, the task bar, your jobs, what's sabotaged)
   drawTasks() {
@@ -573,7 +620,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   }
   drawButtons(me, alive) {
     const n = this.near(), B = this.B, play = this.phase === 'play', imp = this.amImp();
-    B.use.classList.toggle('off', !n.use || !play); B.use.querySelector('b').textContent = n.use ? (n.use.kind === 'bell' ? '🔔' : n.use.kind === 'fix' ? '🔧' : '✋') : '✋';
+    B.use.classList.toggle('off', !n.use || !(play || this.phase === 'waiting')); B.use.querySelector('b').textContent = n.use ? (n.use.kind === 'bell' ? '🔔' : n.use.kind === 'fix' ? '🔧' : '✋') : '✋';
     B.rep.hidden = !(n.body && alive && play);
     B.kill.hidden = !(imp && alive); B.kill.classList.toggle('off', this.killCD > 0 || !n.victim || !play); B.kill.querySelector('.cd').textContent = this.killCD > 0 && play ? Math.ceil(this.killCD) : '';
     B.sab.hidden = !(imp && play); B.sab.classList.toggle('off', !!this.sab || this.sabCD > 0);
@@ -594,7 +641,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     for (const el of [this.ui, this.splash, this.alertEl, this.mapEl, this.sabEl, this.style, this.tasksEl]) el && el.remove(); if (this.g.player.wrist && this.g.player.flatMode) this.g.player.wrist.visible = true;
     document.body.classList.remove('imposter'); window.removeEventListener('keydown', this.onKey, true);
     for (const k in this.handlers) delete this.net.on[k]; this.net.on.leave = this.leaveWas;
-    const mp = this.g.mp; mp.noPunch = false; mp.chatGate = null; mp.chatRecvGate = null;
+    const mp = this.g.mp; mp.noPunch = false; mp.chatGate = null; mp.chatRecvGate = null; this.g.player.noGrab = false;
     this.g.scene.fog = this.fog0 || null; this.g.scene.userData.fogLock = false; this.g.player.menuLock = false;
     for (const p of this.players.values()) { const av = this.avatar(p.id); if (av) { av.impBody = av.impHidden = av.impRed = false; av.impLaid = false; } }
   }
