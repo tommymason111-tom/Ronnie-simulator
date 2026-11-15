@@ -118,7 +118,6 @@ export function buildPub(scene) {
   k.floor(X(415), Z(345), X(615), Z(605), tileTex('#e8dfe4', '#ddd3d8', '#b0a4aa', 40), 0.003, 0.6);   // women's
   { const sh = new THREE.Shape([[B.x0, B.z0], [X(1045), B.z0], [X(1045), GZ], [B.x0, GZ]].map(([x, z]) => new THREE.Vector2(x, z)));   // ceiling (the building only: sky over the garden;
     sh.holes.push(new THREE.Path(REST.main.map(([x, z]) => new THREE.Vector2(x, z))));
-    sh.holes.push(new THREE.Path([[X(195) + 0.1, Z(1305) + 0.1], [X(715) - 0.1, Z(1305) + 0.1], [X(715) - 0.1, Z(1645) - 0.1], [X(195) + 0.1, Z(1645) - 0.1]].map(([x, z]) => new THREE.Vector2(x, z))));   // (the conservatory's glass roof)                                                      //  the restaurant's dining room has its own, higher up)
     const g = new THREE.ShapeGeometry(sh); g.rotateX(Math.PI / 2);
     const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0xf7f3ea, emissive: 0xbdb5a2 })); m.position.y = H; scene.add(m);
     // and a solid ceiling at 3m everywhere but the dining room, so thrown food bounces off it
@@ -1000,10 +999,6 @@ export function buildPub(scene) {
   freeTable(X(655), Z(1465), true);
   for (const px of [325, 430, 540]) freeTable(X(px), Z(1590), true);
   { const x0 = X(195), x1 = X(715), z0 = Z(1305), z1 = Z(1645);
-    const sky = canvasTex(256, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#9ccff2'); gr.addColorStop(1, '#e8f4fc'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,0.8)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.ellipse(40 + i * 40, 60 + (i % 3) * 50, 40, 14, 0, 0, 7); g.fill(); } });
-    const roof = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 - 0.2, z1 - z0 - 0.2), new THREE.MeshLambertMaterial({ color: 0xe8f4f8, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide })); roof.renderOrder = 4;   // real glass: the sky above shows through roof.rotation.x = Math.PI / 2; roof.position.set((x0 + x1) / 2, H - 0.012, (z0 + z1) / 2); scene.add(roof);
-    for (let x = x0 + 1.0; x < x1; x += 1.0) k.box(0.06, 0.08, z1 - z0, x, H - 0.05, (z0 + z1) / 2, WHITE);   // glazing bars
-    for (let z = z0 + 1.6; z < z1; z += 1.6) k.box(x1 - x0, 0.08, 0.06, (x0 + x1) / 2, H - 0.05, z, WHITE);
     const glassM = new THREE.MeshLambertMaterial({ color: 0xdfeef4, transparent: true, opacity: 0.14, depthWrite: false, side: THREE.DoubleSide });
     for (const x of CONS_WIN) { const w = 2.2, h = WIN_Y1 - WIN_Y0, yc = (WIN_Y0 + WIN_Y1) / 2;
       const gl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), glassM); gl.position.set(x, yc, z1); gl.renderOrder = 4; scene.add(gl);
@@ -1028,7 +1023,7 @@ export function buildPub(scene) {
   clad(X(195) + 0.08, Z(610), X(195) + 0.1, Z(960), BRICK, H - RAISE, 0.9, RAISE);
   for (const [za, zb] of [[Z(1035), Z(1090)], [Z(1145), Z(1305)]]) R(X(195) + 0.06, za, X(195) + 0.12, zb, 0.06, 0.95, DARKWOOD);   // dado rail (not across the restaurant doorway)
   // ceiling spotlights everywhere (in the rooms), iron chandeliers, red wall lights
-  for (let x = B.x0 + 1; x < B.x1; x += 2) for (let z = B.z0 + 1; z < GZ; z += 2) if (inside(x, z) && !inRestaurant(x, z) && !(x > X(195) && x < X(715) && z > Z(1305))) k.lamp(x, H - 0.01, z, 0xfffbe8, 0.035);
+  for (let x = B.x0 + 1; x < B.x1; x += 2) for (let z = B.z0 + 1; z < GZ; z += 2) if (inside(x, z) && !inRestaurant(x, z) && z < GZ) k.lamp(x, H - 0.01, z, 0xfffbe8, 0.035);
   // antler chandeliers (black antlers, little black drum shades), as in the photo
   const antler = (x, z, y0 = 0) => {
     const y = H - 0.62 + y0, BLK = 0x1c1612;
@@ -1153,12 +1148,10 @@ export function buildPub(scene) {
     // ---- the back of the pub from outside: black weatherboard with white windows, a brick wing, a tiled roof
     const weather = canvasTex(256, 128, (g, w, h) => { for (let y = 0; y < h; y += 16) { g.fillStyle = '#1e2228'; g.fillRect(0, y, w, 16); g.fillStyle = '#2a2e36'; g.fillRect(0, y, w, 4); g.fillStyle = '#121418'; g.fillRect(0, y + 14, w, 2); } });
     const brickO = oldBrickTex();
-    // upstairs: the main building line; over the conservatory it is set back to the conservatory's inner wall (the
-    // conservatory sticks out on its own under a glass roof), with short returns either side
-    const CX0 = X(195), CX1 = X(715), CZB = Z(1305);
+    // upstairs: weatherboard right along the back of the building
+    const CX0 = X(195), CX1 = X(715);
     k.texBox(CX0 - B.x0, 3.9, 0.2, (B.x0 + CX0) / 2, H + 1.95, GZ, weather, { tile: 1.2 }); k.texBox(GX1 - CX1, 3.9, 0.2, (CX1 + GX1) / 2, H + 1.95, GZ, weather, { tile: 1.2 });
-    k.texBox(CX1 - CX0, 3.9, 0.2, (CX0 + CX1) / 2, H + 1.95, CZB, weather, { tile: 1.2 });
-    for (const x of [CX0, CX1]) k.texBox(0.2, 3.9, GZ - CZB, x, H + 1.95, (GZ + CZB) / 2, weather, { tile: 1.2 });
+    k.texBox(CX1 - CX0, 3.9, 0.2, (CX0 + CX1) / 2, H + 1.95, GZ, weather, { tile: 1.2 });   // (the conservatory is part of the building: the upstairs runs straight over it)
     // cladding with the conservatory's window openings left clear
     const cladHoles = (x0, x1, y0, y1, d, z, tex, tile) => { let a = x0;
       for (const c of CONS_WIN) { const o0 = Math.max(c - 1.1, x0), o1 = Math.min(c + 1.1, x1); if (o1 <= o0) continue;
@@ -1167,12 +1160,12 @@ export function buildPub(scene) {
       if (x1 > a) k.texBox(x1 - a, y1 - y0, d, (a + x1) / 2, (y0 + y1) / 2, z, tex, { tile }); };
     cladHoles(-6, 2.93, 0, H, 0.03, GZ + 0.095, weather, 1.2); k.texBox(GX1 - 4.63, H, 0.03, (GX1 + 4.63) / 2, H / 2, GZ + 0.095, weather, { tile: 1.2 });
     cladHoles(B.x0, -6, 0, H, 0.06, GZ + 0.11, brickO, 0.9); k.texBox(CX0 - B.x0, 3.9, 0.06, (B.x0 + CX0) / 2, H + 1.95, GZ + 0.11, brickO, { tile: 0.9 });   // the brick wing on the left
-    for (const x of [-12, -8.5, -3.5, 0, 6, 9.2]) { const wz = x > CX0 && x < CX1 ? CZB - GZ : 0; k.box(0.9, 1.0, 0.06, x, H + 1.7, GZ + wz + 0.13, 0xf4f4f0); k.box(0.78, 0.88, 0.02, x, H + 1.7, GZ + wz + 0.165, 0x5a6a78); k.box(0.04, 0.88, 0.03, x, H + 1.7, GZ + wz + 0.17, 0xf4f4f0); k.box(0.78, 0.04, 0.03, x, H + 1.95, GZ + wz + 0.17, 0xf4f4f0); }   // upstairs sash windows
+    for (const x of [-12, -8.5, -3.5, 0, 6, 9.2]) { const wz = 0; k.box(0.9, 1.0, 0.06, x, H + 1.7, GZ + wz + 0.13, 0xf4f4f0); k.box(0.78, 0.88, 0.02, x, H + 1.7, GZ + wz + 0.165, 0x5a6a78); k.box(0.04, 0.88, 0.03, x, H + 1.7, GZ + wz + 0.17, 0xf4f4f0); k.box(0.78, 0.04, 0.03, x, H + 1.95, GZ + wz + 0.17, 0xf4f4f0); }   // upstairs sash windows
     const goth = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#3a4a56'; g.fillRect(0, 0, w, h); g.strokeStyle = '#f4f4f0'; g.lineWidth = 10; g.strokeRect(5, 5, w - 10, h - 10); g.lineWidth = 6; for (const x of [w / 3, 2 * w / 3]) { g.beginPath(); g.moveTo(x, h); g.lineTo(x, h * 0.42); g.stroke(); } g.beginPath(); g.moveTo(0, h * 0.42); g.lineTo(w, h * 0.42); g.stroke(); for (const cx of [w / 6, w / 2, 5 * w / 6]) { g.beginPath(); g.moveTo(cx - w / 6, h * 0.42); g.quadraticCurveTo(cx - w / 6, h * 0.1, cx, h * 0.04); g.quadraticCurveTo(cx + w / 6, h * 0.1, cx + w / 6, h * 0.42); g.stroke(); } });
     k.box(GX1 - B.x0, 0.1, 0.3, (B.x0 + GX1) / 2, H + 0.05, GZ + 0.2, 0xf4f4f0);                                   // white fascia between the floors
     { const rf = new THREE.PlaneGeometry(GX1 - B.x0 + 0.6, 4.2), tiles = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#7a3a2a'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 16) for (let x = (y / 16 % 2) * 12; x < w; x += 24) { g.fillStyle = ['#8a4a32', '#6a3222', '#9a5238'][(x + y) % 3]; g.fillRect(x + 1, y + 1, 22, 14); } }); tiles.wrapS = tiles.wrapT = THREE.RepeatWrapping; tiles.repeat.set(16, 4);
       const m = new THREE.Mesh(rf, new THREE.MeshLambertMaterial({ map: tiles, side: THREE.DoubleSide })); m.rotation.x = -Math.PI / 2 + 0.6;
-      for (const [x0, x1, z] of [[B.x0 - 0.3, CX0, GZ], [CX1, GX1 + 0.3, GZ], [CX0 - 0.1, CX1 + 0.1, CZB]]) { const r = m.clone(); r.geometry = new THREE.PlaneGeometry(x1 - x0, 4.2); r.position.set((x0 + x1) / 2, H + 3.9 + 1.2, z - 1.6); scene.add(r); } }
+      for (const [x0, x1, z] of [[B.x0 - 0.3, CX0, GZ], [CX1, GX1 + 0.3, GZ], [CX0 - 0.1, CX1 + 0.1, GZ]]) { const r = m.clone(); r.geometry = new THREE.PlaneGeometry(x1 - x0, 4.2); r.position.set((x0 + x1) / 2, H + 3.9 + 1.2, z - 1.6); scene.add(r); } }
     k.box(1.9, 0.08, 1.0, (2.93 + 4.63) / 2, 2.55, GZ + 0.55, 0x1a1a1a); for (const sd of [-1, 1]) k.box(0.05, 0.05, 1.0, (2.93 + 4.63) / 2 + sd * 0.9, 2.45, GZ + 0.55, 0x1a1a1a, { rot: [0.5, 0, 0] });   // a canopy over the door
     k.lamp(2.6, 2.3, GZ + 0.2, 0xfff0d0, 0.06); k.lamp(5.0, 2.3, GZ + 0.2, 0xfff0d0, 0.06);
     // (everything from here on is laid out the other way round, then mirrored so the river is on the right as you walk out)
