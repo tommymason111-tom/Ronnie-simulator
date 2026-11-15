@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { part, cyl as CYL } from '../geo.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { streetViewTex } from './kit.js';
-import { REST, REST_BOUNDS, inRestaurant, inNewArea, buildRestaurant } from './oysterRestaurant.js';
+import { REST, REST_BOUNDS, REST_H, inRestaurant, inNewArea, buildRestaurant } from './oysterRestaurant.js';
 import { Kit, carpetTex, tileTex, canvasTex, FONT, brickTex, booksWallTex, tngTex, oakPanelTex, woodTex } from './kit.js';
 
 const H = 3.0;
@@ -60,7 +60,7 @@ export function pubFloorAt(x, z) {
 
 export function buildPub(scene) {
   const sceneStart = scene.children.length;
-  const k = new Kit(scene, { ...B, y1: H });
+  const k = new Kit(scene, { ...B, y1: REST_H });                      // (the restaurant's dining room is the tallest room)
   const WALL = 0xeee6d6, PLASTER = 0xf2ecdf, DARKWOOD = 0x3a2416, WOOD = 0x4a2c18, REDLEATHER = 0x7a1f2a, BRASS = 0xc9a24a, CREAM = 0xe8dcc0, LIGHTWOOD = 0xc89a5a;
   const STEEL = 0xb8bcc2, DSTEEL = 0x8a9098, WHITE = 0xf8f8f6, PORCELAIN = 0xfbfbfb;
   const BRICK = oldBrickTex(), BOOKS = booksWallTex(), TNG = tngTex(), OAK = oakPanelTex();
@@ -113,7 +113,15 @@ export function buildPub(scene) {
   k.floor(X(15), Z(1060), X(195), Z(1190), tiles, 0.003, 1.0);                          // restaurant entrance
   k.floor(X(175), Z(305), X(415), Z(605), tileTex('#d8d8d8', '#cfcfcf', '#9a9a9a', 40), 0.003, 0.6);   // men's, disabled, corridor
   k.floor(X(415), Z(345), X(615), Z(605), tileTex('#e8dfe4', '#ddd3d8', '#b0a4aa', 40), 0.003, 0.6);   // women's
-  { const m = new THREE.Mesh(new THREE.PlaneGeometry(X(1045) - B.x0, GZ - B.z0), new THREE.MeshLambertMaterial({ color: 0xf7f3ea, emissive: 0xbdb5a2 })); m.rotation.x = Math.PI / 2; m.position.set((B.x0 + X(1045)) / 2, H, (B.z0 + GZ) / 2); scene.add(m); }   // ceiling (the building only: sky over the garden)
+  { const sh = new THREE.Shape([[B.x0, B.z0], [X(1045), B.z0], [X(1045), GZ], [B.x0, GZ]].map(([x, z]) => new THREE.Vector2(x, z)));   // ceiling (the building only: sky over the garden;
+    sh.holes.push(new THREE.Path(REST.main.map(([x, z]) => new THREE.Vector2(x, z))));                                                      //  the restaurant's dining room has its own, higher up)
+    const g = new THREE.ShapeGeometry(sh); g.rotateX(Math.PI / 2);
+    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0xf7f3ea, emissive: 0xbdb5a2 })); m.position.y = H; scene.add(m);
+    // and a solid ceiling at 3m everywhere but the dining room, so thrown food bounces off it
+    const inMain = (x, z) => { let c = false; const P = REST.main; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, zi] = P[i], [xj, zj] = P[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
+    for (let z = B.z0; z < GZ; z += 1) { let a0 = null; for (let x = B.x0; x <= X(1045) + 1; x += 1) { const solid = x < X(1045) && !inMain(x + 0.5, z + 0.5) && !inMain(x, z) && !inMain(x + 1, z + 1) && !inMain(x + 1, z) && !inMain(x, z + 1);
+      if (solid && a0 === null) a0 = x; if (!solid && a0 !== null) { k.colliders.push({ min: new THREE.Vector3(a0, H, z), max: new THREE.Vector3(Math.min(x, X(1045)), H + 0.3, Math.min(z + 1, GZ)) }); a0 = null; } } }
+  }
   // everything outside the rooms is solid (merged into strips so it stays cheap)
   { const C = 0.3; let prev = null;
     for (let z = B.z0; z < B.z1 - 1e-6; z += C) {

@@ -13,6 +13,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { canvasTex, tileTex, streetViewTex } from './kit.js';
 
 const H = 3.0, T = 0.08;
+export const REST_H = 4.2;          // the main dining room is taller than the rest of the building
+const RH = REST_H;
 // ---- the rooms (metres; the pub's restaurant entrance corridor is x -14.04..-9.72, z 2.04..5.16)
 export const REST = {
   main: [[-26.26, -14.45], [-16.88, -14.45], [-13.8, -9.78], [-13.8, -8.88], [-13.8, 2.04], [-14.04, 5.16], [-17.6, 10.24], [-27.38, 10.24], [-29.2, 6.74], [-29.2, -10.9]],
@@ -151,19 +153,19 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
     else if (axisZ(e)) k.box(2 * T, h, len, cx, y0 + h / 2, cz, color, { collide: true, block: y0 < 0.5 });
     else { k.box(len, h, 2 * T, cx, y0 + h / 2, cz, color, { rot: [0, e.ry, 0] }); if (y0 < 0.5) for (let s = a; s <= b + 0.01; s += 0.16) { const [x, z] = e.at(Math.min(s, b)); blk(x - 0.1, z - 0.1, x + 0.1, z + 0.1, y1); } }
   };
-  const wall = (e, gaps = [], color = RW, from = 0, to = e.len) => {
+  const wall = (e, gaps = [], color = RW, from = 0, to = e.len, TOPH = H) => {
     const gs = gaps.filter(g => g[1] > from && g[0] < to).sort((p, q) => p[0] - q[0]);
     let s = from;
-    for (const [g0, g1, top] of gs) { if (g0 > s) wallBox(e, s, g0, 0, H, color, s === 0 ? T : 0, 0); if (top != null && top < H) wallBox(e, g0, g1, top, H, color, 0, 0); s = g1;
+    for (const [g0, g1, top] of gs) { if (g0 > s) wallBox(e, s, g0, 0, TOPH, color, s === 0 ? T : 0, 0); if (top != null && top < TOPH) wallBox(e, g0, g1, top, TOPH, color, 0, 0); s = g1;
       for (const sd of [g0, g1]) { const [x, z] = e.at(sd); if (axisX(e)) k.box(0.05, top ?? H, 2 * T + 0.03, x, (top ?? H) / 2, z, DARK); else if (axisZ(e)) k.box(2 * T + 0.03, top ?? H, 0.05, x, (top ?? H) / 2, z, DARK); else k.box(0.05, top ?? H, 2 * T + 0.03, x, (top ?? H) / 2, z, DARK, { rot: [0, e.ry, 0] }); } }
-    if (to > s) wallBox(e, s, to, 0, H, color, s === 0 ? T : 0, to === e.len ? T : 0);
+    if (to > s) wallBox(e, s, to, 0, TOPH, color, s === 0 ? T : 0, to === e.len ? T : 0);
   };
   // dress a wall face: style 'cream' (the dining room), 'green' (the side room), 'tile' (toilets), 'kitchen'
   const STY = {
     cream: { skirt: DARK, panel: 0xece2cc, mould: 0xf7f0e0, shadow: 0xd6caae, rail: 0xf6efe0, paper: CREAM_PAPER, picture: 0xb89a62, cornice: 0xf7f2e6 },
     green: { skirt: 0x2a1a10, panel: 0x9ea486, mould: 0xb3b898, shadow: 0x80866b, rail: 0xb3b898, paper: DAMASK, picture: null, cornice: 0xf2ede0 },
   };
-  const dress = (e, style, gaps = [], from = 0, to = e.len) => {
+  const dress = (e, style, gaps = [], from = 0, to = e.len, TOPH = H) => {
     const runs = []; let s = from;
     for (const [g0, g1] of gaps.filter(g => g[1] > from && g[0] < to).sort((p, q) => p[0] - q[0])) { if (g0 > s) runs.push([s, g0]); s = Math.max(s, g1); }
     if (to > s) runs.push([s, to]);
@@ -179,9 +181,9 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
         slab(e, p0, p0 + 0.025, 0.27, 0.555, T + 0.01, 0.014, st.mould); slab(e, p1 - 0.025, p1, 0.27, 0.555, T + 0.01, 0.014, st.mould);
         slab(e, p0 + 0.025, p1 - 0.025, 0.295, 0.008, T + 0.01, 0.006, st.shadow); }
       slab(e, a, b, 0.92, 0.05, T, 0.04, st.rail); slab(e, a, b, 0.97, 0.015, T, 0.025, st.rail);   // dado rail
-      slab(e, a, b, 0.985, H - 1.13, T, 0.004, 0, st.paper, style === 'green' ? 0.55 : 0.6);        // wallpaper
+      slab(e, a, b, 0.985, TOPH - 1.13, T, 0.004, 0, st.paper, style === 'green' ? 0.55 : 0.6);        // wallpaper
       if (st.picture) slab(e, a, b, 2.5, 0.03, T, 0.022, st.picture);                               // picture rail
-      slab(e, a, b, H - 0.16, 0.07, T, 0.05, st.cornice); slab(e, a, b, H - 0.09, 0.09, T, 0.09, st.cornice);   // cornice
+      slab(e, a, b, TOPH - 0.16, 0.07, T, 0.05, st.cornice); slab(e, a, b, TOPH - 0.09, 0.09, T, 0.09, st.cornice); if (TOPH > H) { slab(e, a, b, TOPH - 0.3, 0.05, T, 0.03, st.cornice); slab(e, a, b, 2.9, 0.035, T, 0.02, st.picture || st.cornice); }   // cornice
     }
     // architraves round the doorways
     for (const [g0, g1, top] of gaps) { if (top == null || g1 < from || g0 > to) continue; const c = style === 'tile' || style === 'kitchen' ? 0xf4f2ec : DARK;
@@ -193,10 +195,16 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
   // 0 top (door to the toilets), 1 angled (kitchen door), 2 short wall by the kitchen, 3 behind the bar (the kitchen's own wall),
   // 4 open to the entrance corridor, 5 angled, 6 bottom (windows), 7 angled, 8 left (opening to the side room), 9 angled
   const HALLDOOR = [7.6, 9.1, 2.45], KDOOR = [2.86, 3.86, 2.2], SIDEOPEN = [6.44, 11.48, 2.6];
-  wall(me[0], [HALLDOOR]); wall(me[1], [KDOOR]); wall(me[2]); wall(me[5]); wall(me[6]); wall(me[7]); wall(me[8], [SIDEOPEN]); wall(me[9]);
-  dress(me[0], 'cream', [HALLDOOR]); dress(me[1], 'cream', [KDOOR]); dress(me[2], 'cream'); dress(me[3], 'cream'); dress(me[5], 'cream'); dress(me[6], 'cream'); dress(me[7], 'cream'); dress(me[8], 'cream', [SIDEOPEN]); dress(me[9], 'cream');
+  for (const [i, g] of [[0, [HALLDOOR]], [1, [KDOOR]], [2, []], [5, []], [6, []], [7, []], [8, [SIDEOPEN]], [9, []]]) wall(me[i], g, RW, 0, me[i].len, RH);
+  for (const [i, g] of [[0, [HALLDOOR]], [1, [KDOOR]], [2, []], [3, []], [5, []], [6, []], [7, []], [8, [SIDEOPEN]], [9, []]]) dress(me[i], 'cream', g, 0, me[i].len, RH);
+  // the pub's walls only go to 3m: carry the kitchen wall behind the bar, and the wall over the way in, up to the high ceiling
+  R(-13.88, -9.78, -13.72, 2.04, RH - H, (H + RH) / 2, RW); R(-14.06, 2.0, -13.76, 5.2, RH - H, (H + RH) / 2, RW);
+  { const e4 = edge([[-14.0, 5.16], [-14.0, 2.04], [-15.0, 2.04], [-15.0, 5.16]], 0); slab(e4, 0, 3.12, H, RH - H - 0.16, 0.065, 0.004, 0, CREAM_PAPER, 0.6); slab(e4, 0, 3.12, RH - 0.16, 0.07, 0.065, 0.05, 0xf7f2e6); slab(e4, 0, 3.12, RH - 0.09, 0.09, 0.065, 0.09, 0xf7f2e6); }
+  // the high ceiling of the dining room: a flat plaster ceiling cut to the room, with a deep cove round it
+  { const sh = new THREE.Shape(M.map(([x, z]) => new THREE.Vector2(x, z))), g = new THREE.ShapeGeometry(sh); g.rotateX(Math.PI / 2);
+    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0xf7f3ea, emissive: 0xbdb5a2 })); m.position.y = RH; scene.add(m); }
   // the bar's end wall (closing off behind the bar at the top), dressed both sides
-  { const e1 = edge([[-17.58, -7.54], [-13.8, -7.54], [-13.8, -9.0], [-17.58, -9.0]], 0), e2 = edge([[-13.8, -7.54], [-17.58, -7.54], [-17.58, -6.0], [-13.8, -6.0]], 0); wall(e1); dress(e1, 'cream'); dress(e2, 'cream'); }
+  { const e1 = edge([[-17.58, -7.54], [-13.8, -7.54], [-13.8, -9.0], [-17.58, -9.0]], 0), e2 = edge([[-13.8, -7.54], [-17.58, -7.54], [-17.58, -6.0], [-13.8, -6.0]], 0); wall(e1, [], RW, 0, e1.len, RH); dress(e1, 'cream', [], 0, e1.len, RH); dress(e2, 'cream', [], 0, e2.len, RH); }
 
   // ---- the side room (through the wide opening on the left)
   const SD = REST.side, se = SD.map((_, i) => edge(SD, i));
@@ -306,9 +314,9 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
   for (const z of [-5.6, -2.4, 0.8]) clothTable(-34.1, z, 6.2, 1.0, 0, 9, true);
 
   // ---------------------------------------------------------------- brass chandeliers with yellow drum shades (like the photo)
-  const chandelier = (x, z, arms = 5, drop = 0.75) => {
-    const y = H - drop; rose(x, z);
-    k.cyl(0.006, 0.006, drop - 0.12, x, H - (drop - 0.12) / 2, z, 0x6a5a3a, 4); k.cyl(0.05, 0.03, 0.04, x, H - 0.02, z, BRASS, 12);
+  const chandelier = (x, z, arms = 5, drop = 0.75, TOPH = H) => {
+    const y = TOPH - drop; rose(x, z, TOPH);
+    k.cyl(0.006, 0.006, drop - 0.12, x, TOPH - (drop - 0.12) / 2, z, 0x6a5a3a, 4); k.cyl(0.05, 0.03, 0.04, x, TOPH - 0.02, z, BRASS, 12);
     P(new THREE.SphereGeometry(0.045, 12, 8), BRASS, [x, y, z], [0, 0, 0], [1, 1.3, 1]); k.cyl(0.015, 0.015, 0.2, x, y + 0.13, z, BRASS, 8); P(new THREE.SphereGeometry(0.02, 8, 6), BRASS, [x, y - 0.07, z]);
     for (let i = 0; i < arms; i++) {
       const a = i / arms * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
@@ -320,10 +328,12 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
     }
     k.pool(x, 0.01, z, 3.4, 0xffc070);
   };
-  for (let z = -12.0; z < 10; z += 3.0) { for (let x0 = -29.1; x0 < -17.6; ) { const x1 = Math.min(x0 + 12, -17.6); if (z < -9.5) { /* angled ends */ } R(x0 + (z < -9.6 || z > 7 ? 1.4 : 0), z - 0.11, x1 - (z < -9.6 ? 0.2 : 0), z + 0.11, 0.18, H - 0.09, 0xf4efe4); x0 = x1 + 1; } }
+  const spanAt = (poly, z) => { const xs = []; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, zi] = poly[i], [xj, zj] = poly[j]; if ((zi > z) !== (zj > z)) xs.push(xi + (z - zi) * (xj - xi) / (zj - zi)); } return [Math.min(...xs), Math.max(...xs)]; };
+  for (let z = -12.0; z < 10; z += 3.0) { const [x0, x1] = spanAt(M, z), a0 = x0 + 0.06, a1 = x1 - 0.06;          // cream beams right across the room, wall to wall
+    R(a0, z - 0.14, a1, z + 0.14, 0.26, RH - 0.13, 0xf4efe4); R(a0, z - 0.17, a1, z + 0.17, 0.04, RH - 0.25, 0xf7f2e6); }
   for (let x = -38.0; x < -29.5; x += 3.0) R(x - 0.11, -8.44, x + 0.11, 3.16, 0.16, H - 0.08, 0xf4efe4);
-  const rose = (x, z) => { P(new THREE.CylinderGeometry(0.28, 0.32, 0.03, 28), 0xf7f2e6, [x, H - 0.015, z]); P(new THREE.TorusGeometry(0.22, 0.02, 6, 28), 0xf0e8d6, [x, H - 0.035, z], [Math.PI / 2, 0, 0]); P(new THREE.CylinderGeometry(0.1, 0.13, 0.04, 20), 0xf7f2e6, [x, H - 0.05, z]); };
-  for (const [x, z] of [[-22.2, -11.5], [-26.8, -11.2], [-23.0, -7.6], [-23.0, -3.9], [-23.0, 0.5], [-27.0, -7.1], [-27.0, 3.3], [-26.6, 7.0], [-22.7, 8.35], [-17.0, 6.5]]) chandelier(x, z);
+  const rose = (x, z, TOPH = H) => { P(new THREE.CylinderGeometry(0.36, 0.4, 0.03, 28), 0xf7f2e6, [x, TOPH - 0.015, z]); P(new THREE.TorusGeometry(0.3, 0.025, 6, 28), 0xf0e8d6, [x, TOPH - 0.035, z], [Math.PI / 2, 0, 0]); P(new THREE.CylinderGeometry(0.12, 0.16, 0.05, 20), 0xf7f2e6, [x, TOPH - 0.055, z]); };
+  for (const [x, z] of [[-22.2, -11.5], [-26.8, -11.2], [-23.0, -7.6], [-23.0, -3.9], [-23.0, 0.5], [-27.0, -7.1], [-27.0, 3.3], [-26.6, 7.0], [-22.7, 8.35], [-17.0, 6.5]]) chandelier(x, z, 6, 1.55, RH);
   for (const x of [-36.4, -34.1, -31.8]) for (const z of [-5.6, -2.4, 0.8]) chandelier(x, z, 5, 0.7);
   // wall sconces: a brass back plate, two curving arms, little cream shades
   const sconce = (e, s, y = 1.85, shade = 0xf3e2b8) => {
@@ -343,15 +353,15 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
   };
   // tall windows with heavy drapes (street outside)
   let wn = 0;
-  const tallWindow = (e, s, w = 1.25, hgt = 2.0) => { const [x, z] = e.at(s, 0.1), ry = Math.atan2(e.nx, e.nz); k.window(x, 1.4, z, w, hgt, ry, streetViewTex(20 + wn++), { frame: 0xf4efe4, bars: 2, curtains: 0x5a1820 });
-    const [vx, vz] = e.at(s, T + 0.03); L(new THREE.BoxGeometry(w + 1.1, 0.32, 0.08), 0x5a1820, vx, vz, ry, 0, 2.62, 0.06); L(new THREE.BoxGeometry(w + 1.1, 0.04, 0.09), 0xc9a24a, vx, vz, ry, 0, 2.47, 0.065); };   // pelmet with a gold trim
+  const tallWindow = (e, s, w = 1.25, hgt = 2.0, cy = 1.4) => { const [x, z] = e.at(s, 0.1), ry = Math.atan2(e.nx, e.nz); k.window(x, cy, z, w, hgt, ry, streetViewTex(20 + wn++), { frame: 0xf4efe4, bars: 2, curtains: 0x5a1820 });
+    const [vx, vz] = e.at(s, T + 0.03); const py = cy + hgt / 2 + 0.22; L(new THREE.BoxGeometry(w + 1.1, 0.32, 0.08), 0x5a1820, vx, vz, ry, 0, py, 0.06); L(new THREE.BoxGeometry(w + 1.1, 0.04, 0.09), 0xc9a24a, vx, vz, ry, 0, py - 0.15, 0.065); };   // pelmet with a gold trim
 
   // main room walls: windows, sconces, paintings
-  for (const s of [1.6, 4.9, 8.2]) tallWindow(me[6], s);
+  for (const s of [1.6, 4.9, 8.2]) tallWindow(me[6], s, 1.3, 2.6, 1.65);
   for (const s of [0.0, 3.25, 6.55, 9.78]) if (s > 0.3 && s < me[6].len - 0.3) sconce(me[6], s);
   painting(me[5], me[5].len / 2, 1.0, 0.75); sconce(me[5], 1.2); sconce(me[5], me[5].len - 1.2);
   painting(me[7], me[7].len / 2, 0.8, 0.6);
-  tallWindow(me[8], 1.75, 1.15); tallWindow(me[8], 16.45, 1.15);
+  tallWindow(me[8], 1.75, 1.15, 2.6, 1.65); tallWindow(me[8], 16.45, 1.15, 2.6, 1.65);
   painting(me[8], 4.9, 0.8, 0.6); painting(me[8], 13.3, 0.8, 0.6); sconce(me[8], 3.7); sconce(me[8], 6.1); sconce(me[8], 12.1); sconce(me[8], 14.5);
   painting(me[0], 2.0, 1.2, 0.8); painting(me[0], 5.2, 1.2, 0.8); sconce(me[0], 0.9); sconce(me[0], 3.6); sconce(me[0], 6.6);
   painting(me[9], me[9].len / 2, 0.8, 0.6); sconce(me[1], 1.4); painting(me[1], 4.8, 0.6, 0.5);
@@ -399,9 +409,9 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
     for (const z of [-6.2, -2.4, 1.2]) { k.cyl(0.04, 0.05, 0.03, bx - 0.15, TOPY + 0.015, z, BRASS, 12); k.cyl(0.008, 0.008, 0.25, bx - 0.15, TOPY + 0.15, z, BRASS, 6); P(new THREE.CylinderGeometry(0.05, 0.09, 0.09, 16, 1, true), 0x1b3a2a, [bx - 0.15, TOPY + 0.3, z]); k.lamp(bx - 0.15, TOPY + 0.26, z, 0xffd8a0, 0.025); }
     for (const z of [-5.6, -2.0, 0.8]) k.spawns.push(new THREE.Vector3(fx + 0.3, TOPY + 0.08, z));
     // glasses hanging upside-down from a rack over the bar, three brass pendants
-    for (const x of [fx + 0.08, bx - 0.08]) R(x - 0.03, z0 + 0.6, x + 0.03, z1 - 1.2, 0.05, 2.33, MAHD); for (let z = z0 + 0.6; z <= z1 - 1.2; z += 0.6) R(fx + 0.05, z - 0.02, bx - 0.05, z + 0.02, 0.04, 2.33, MAHD); for (const z of [z0 + 0.7, z1 - 1.3]) k.cyl(0.008, 0.008, 0.66, (fx + bx) / 2, 2.67, z, 0x222222, 4);
+    for (const x of [fx + 0.08, bx - 0.08]) R(x - 0.03, z0 + 0.6, x + 0.03, z1 - 1.2, 0.05, 2.33, MAHD); for (let z = z0 + 0.6; z <= z1 - 1.2; z += 0.6) R(fx + 0.05, z - 0.02, bx - 0.05, z + 0.02, 0.04, 2.33, MAHD); for (const z of [z0 + 0.7, z1 - 1.3]) k.cyl(0.008, 0.008, RH - 2.34, (fx + bx) / 2, (RH + 2.34) / 2, z, 0x222222, 4);
     for (let z = z0 + 0.8; z < z1 - 1.3; z += 0.17) for (const dx of [0.15, 0.3, 0.45]) G(wineGlassGeo(), fx + dx, 2.3, z, 0, Math.PI);
-    for (const z of [-5.5, -2.7, 0.1]) { k.cyl(0.005, 0.005, 0.7, (fx + bx) / 2 - 0.4, H - 0.35, z, 0x222222, 4); P(new THREE.CylinderGeometry(0.05, 0.16, 0.18, 18, 1, true), BRASS, [(fx + bx) / 2 - 0.4, H - 0.79, z]); k.lamp((fx + bx) / 2 - 0.4, H - 0.86, z, 0xffd8a0, 0.05); k.pool(fx - 0.2, TOPY, z, 1.3, 0xffc070); }
+    for (const z of [-5.5, -2.7, 0.1]) { k.cyl(0.005, 0.005, RH - 2.3, (fx + bx) / 2 - 0.4, (RH + 2.3) / 2, z, 0x222222, 4); P(new THREE.CylinderGeometry(0.05, 0.16, 0.18, 18, 1, true), BRASS, [(fx + bx) / 2 - 0.4, 2.21, z]); k.lamp((fx + bx) / 2 - 0.4, 2.14, z, 0xffd8a0, 0.05); k.pool(fx - 0.2, TOPY, z, 1.3, 0xffc070); }
     // behind: the back counter (under-counter fridges with lit glass doors), the coffee machine, the till, a sink
     const wx = -13.88, cx0 = wx - 0.62;
     R(cx0, z0, wx, z1 - 0.1, 0.9, 0.45, 0x3a1a0c, { collide: true, block: true }); R(cx0 - 0.03, z0, wx, z1 - 0.1, 0.04, 0.92, 0x2a2a2a, { collide: true });
@@ -424,7 +434,7 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
         P(new THREE.BoxGeometry(0.003, 0.07, 0.05), 0xf4ecd8, [wx - 0.217, y + 0.1, z]); } }
     R(wx - 0.38, sz0 - 0.02, wx - 0.01, sz1 + 0.02, 0.12, H - 0.06, MAHD);
     k.label('WINE', 0.8, 0.12, [wx - 0.385, H - 0.06, (sz0 + sz1) / 2], [0, -Math.PI / 2, 0], { bg: '#2e1408', fg: '#d4af37', border: null, size: 60 });
-    k.lamp(wx - 0.6, H - 0.02, -3.0, 0xfffbe8, 0.05); k.lamp(wx - 0.6, H - 0.02, 0.5, 0xfffbe8, 0.05);
+    k.lamp(wx - 0.6, RH - 0.02, -3.0, 0xfffbe8, 0.05); k.lamp(wx - 0.6, RH - 0.02, 0.5, 0xfffbe8, 0.05);
   }
   // ---------------------------------------------------------------- the host's lectern by the way in, a waiter's station, plants
   { const x = -15.2, z = 5.75; R(x - 0.28, z - 0.2, x + 0.28, z + 0.2, 1.05, 0.525, 0x4a2010, { block: true }); R(x - 0.32, z - 0.24, x + 0.32, z + 0.24, 0.04, 1.08, 0x2e1408, { rot: [0, 0, 0] });
@@ -529,9 +539,9 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
   // ---------------------------------------------------------------- the sign over the way in from the pub
   k.label('THE OYSTERFLEET — THE PUB & THE BAR', 1.9, 0.36, [-14.145, 2.68, 3.6], [0, -Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 44 });
   // ---------------------------------------------------------------- downlights, two real lamps for a warm glow, food spots on some tables
-  for (let x = -28.5; x < -14; x += 2.4) for (let z = -13.5; z < 10; z += 2.4) if (inPoly(REST.main, x, z) && x < -18.2) k.lamp(x, H - 0.01, z, 0xfffbe8, 0.03);
+  for (let x = -28.5; x < -14; x += 2.4) for (let z = -13.5; z < 10; z += 2.4) if (inPoly(REST.main, x, z) && x < -18.2) k.lamp(x, RH - 0.01, z, 0xfffbe8, 0.035);
   for (let x = -38.4; x < -29.5; x += 2.4) for (const z of [-7.8, 2.6]) k.lamp(x, H - 0.01, z, 0xfffbe8, 0.03);
-  k.light(-23.0, 2.6, -2.0, 0xffd8a8, 3.2, 14); k.light(-34.1, 2.6, -2.4, 0xffd8a8, 2.6, 11);
+  k.light(-23.0, 3.3, -2.0, 0xffd8a8, 3.6, 16); k.light(-34.1, 2.6, -2.4, 0xffd8a8, 2.6, 11);
   spawnsOn.forEach(([x, z], i) => { if (i % 2 === 0) k.spawns.push(new THREE.Vector3(x + 0.1, TY + 0.08, z + 0.05)); });
 
   // all the glassware in one see-through mesh
