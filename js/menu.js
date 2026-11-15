@@ -1,7 +1,12 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '2.2.0', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '2.3.0';
+// when each update came out (UK time)
+var GAME_WHEN = {'1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.3.0': '2026-11-15T14:44'};
+
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['2.3.0', ['Multiplayer: punch another player hard and they go flying as a ragdoll, just like the NPCs, then get back up (everyone sees it)', 'Multiplayer: hitting or slapping the squad works for players who joined too: they fall over and ragdoll for everyone', 'Multiplayer: players\' arms hang down normally and only come up to hit something or eat', 'Multiplayer: every player has their name over their head (and who they\'re playing as), so you can tell them from the squad', 'Multiplayer: you have to type your name before you go on', 'The WHO ARE YOU? screen fits on a phone: smaller cards in neat columns, scroll down to see everyone', 'The updates list shows the date and time of each update']],
+  ['2.2.0', ['MULTIPLAYER: everyone shares the same food and the same squad: grab, throw and bite and your mates see it', 'Your mates see you as the squad member you picked (and that person isn\'t in the game as well)', 'Punch other players: swing at them in VR, tap them on a phone (no picking them up)', 'Attacks go for one player at a time, picked at random, and everyone sees who: "HARRY H IS ATTACKING TOM"']],
   ['2.1.0', ['PLAY now asks SOLO or MULTIPLAYER. Multiplayer: type your name and pick who you are from the squad, then HOST (you choose the place and game for everyone) or JOIN with a code', 'A room screen shows everyone in the room, their name and who they are playing as', 'Meet the Squad: picking someone else no longer makes the last one vanish for a moment', 'VR: holding the controllers, your hands point forward instead of down']],
   ['2.0.2', ['VR: PLAY on the headset menu now actually starts the game', 'VR: the menu button (or Y) pauses, with the same pause menu as the phone floating in front of you: point and pull the trigger', 'VR: attack pop-ups, banners and the attack animations are smaller and in the middle of your view, and pop in smoothly', 'When an attacker sets off, a tag says who is coming for you, with an arrow pointing to them']],
   ['2.0.1', ['Smoother, especially in VR: only the lights near you are worked out (same look), and the sky and water effects only work on what you can actually see', 'The screen behind PLAY ON THIS SCREEN is just a slow look round the place, cutting between different areas, with nothing else running']],
@@ -103,8 +108,10 @@ var GAME_UPDATES = [
   if (!GAME_IDS.includes(mode)) mode = 'everyone';      // old links to Classic / Squad Intervention / Catch
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   // settings cog (top corner of the title screen): shows the version you're playing
-  $('#set-version').textContent = 'v' + GAME_VERSION; $('#set-date').textContent = GAME_DATE;
-  $('#set-updates').innerHTML = GAME_UPDATES.map(([v, list]) => `<div class="upd"><b>v${v}</b><ul>${list.map(t => `<li>${t}</li>`).join('')}</ul></div>`).join('');
+  const when = (v) => { const w = GAME_WHEN[v]; if (!w) return ''; const d = new Date(w + ':00Z');
+    return d.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' }).replace(/ (am|pm)$/, '$1'); };
+  $('#set-version').textContent = 'v' + GAME_VERSION; $('#set-date').textContent = when(GAME_VERSION);
+  $('#set-updates').innerHTML = GAME_UPDATES.map(([v, list]) => `<div class="upd"><b>v${v}${when(v) ? ` <i>${when(v)}</i>` : ''}</b><ul>${list.map(t => `<li>${t}</li>`).join('')}</ul></div>`).join('');
   $('#cog').addEventListener('click', () => { $('#settings').hidden = false; });
   $('#set-close').addEventListener('click', () => { $('#settings').hidden = true; });
   $('#settings').addEventListener('click', (e) => { if (e.target.id === 'settings') $('#settings').hidden = true; });
@@ -310,11 +317,14 @@ var GAME_UPDATES = [
   cgrid.innerHTML = CHARS.map((s, i) => `<div class="mate${s.id === mpChar ? ' sel' : ''}" data-id="${s.id}" style="--c:${s.c};animation-delay:${i * 0.03}s">
       <div class="face-badge">${s.img ? `<img src="./assets/portraits/${s.img}.webp" alt="${s.n}" draggable="false">` : '<span style="font-size:44px">🍔</span>'}</div><b>${s.n}</b><div class="atk">${s.a} ${s.t}</div></div>`).join('');
   cgrid.addEventListener('click', (e) => { const c = e.target.closest('.mate'); if (!c) return; mpChar = c.dataset.id; try { localStorage.setItem('rs_mp_char', mpChar); } catch (er) {} $$('.mate', cgrid).forEach(m => m.classList.toggle('sel', m === c)); blip(400, 0.07, 'triangle', 0.08); });
-  $('#char-next').addEventListener('click', () => { $('#mp-who').textContent = `You're playing as ${mp.char().n}`; show('mp'); });
+  $('#char-next').addEventListener('click', () => {
+    const nm = ($('#mp-myname').value || '').trim();
+    if (!nm) { const i = $('#mp-myname'); i.classList.remove('need'); void i.offsetWidth; i.classList.add('need'); i.placeholder = 'TYPE YOUR NAME FIRST'; i.focus(); i.scrollIntoView({ block: 'center', behavior: 'smooth' }); blip(200, 0.1, 'square', 0.08); return; }
+    $('#mp-who').textContent = `You're playing as ${mp.char().n}`; show('mp'); });
   const mpStatus = (h) => { $('#mp-status2').innerHTML = h; };
   let myName = ''; try { myName = localStorage.getItem('rs_mp_name') || ''; } catch (e) {}
   $('#mp-myname').value = myName;
-  const nameOf = () => { const n = ($('#mp-myname').value || '').trim().slice(0, 12) || mp.char().n; try { localStorage.setItem('rs_mp_name', n); } catch (e) {} return n; };
+  const nameOf = () => { const n = ($('#mp-myname').value || '').trim().slice(0, 12) || myName || mp.char().n; try { localStorage.setItem('rs_mp_name', n); } catch (e) {} return n; };
   const esc = (t) => String(t).replace(/[<>&"]/g, '');
   // the room: everyone in it, their name and who they're playing as; a free slot for each space left
   const lobby = () => {

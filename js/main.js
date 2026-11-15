@@ -958,28 +958,64 @@ if (window.ronnieMP && window.ronnieMP.role === 'join') director.remote = true;
 // someone playing as a squad member: their own body, moved by where their head and hands are
 net.makeAvatar = (p) => { if (!p.char || p.char === 'ronnie' || !SQUAD_MP[p.char]) return null; return new SquadPuppet(p); };
 class SquadPuppet {
-  constructor(p) { this.c = new SquadMemberMP(scene, room, physics, p.char, [0, 0, 0], director); this.c.mpPuppet = true; this.c.active = false; this.pos = new THREE.Vector3(); this.yaw = 0; this.rh = new THREE.Vector3(); this.lh = new THREE.Vector3(); this.first = true; this.c.name = p.name || this.c.name; }
+  constructor(p) { this.c = new SquadMemberMP(scene, room, physics, p.char, [0, 0, 0], director); this.c.mpPuppet = true; this.c.active = false; this.pos = new THREE.Vector3(); this.yaw = 0; this.rh = new THREE.Vector3(); this.lh = new THREE.Vector3(); this.first = true; this.c.name = p.name || this.c.name;
+    // a name tag over their head (so you can tell a real player from the squad): their name, and who they're playing as
+    this.p = p; this.tagC = document.createElement('canvas'); this.tagC.width = 320; this.tagC.height = 96; this.tagTex = new THREE.CanvasTexture(this.tagC); this.tagTex.colorSpace = THREE.SRGBColorSpace;
+    this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; scene.add(this.tag); this.drawTag();
+    this.down = 0; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0; }
   update(dt, pose) {
     const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * 12);
     const prev = this.pos.clone(); this.pos.lerp(_a.set(...pose.h), k); this.rh.lerp(_b.set(...pose.rh), k); this.lh.lerp(_b.set(...pose.l), k);
+    // knocked flat: a limp ragdoll (like the NPCs), then up again where they landed
+    if (this.down > 0) { this.down -= dt; r.sync(); const pl = r.parts.pelvis.body.position; c.fx.position.set(pl.x, 0, pl.z);
+      if (this.down <= 0) { c.state = 'idle'; c.setIdlePose(c.t); r.pose.head.identity(); r.getUp(0.9); }
+      this.placeTag(); return; }
     const q = new THREE.Quaternion(...pose.q), f = new THREE.Vector3(0, 0, -1).applyQuaternion(q); const yaw = Math.atan2(f.x, f.z);
     let dy = yaw - this.yaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; this.yaw = this.first ? yaw : this.yaw + dy * Math.min(1, dt * 6);
-    const eye = r.height * 0.93, speed = Math.hypot(this.pos.x - prev.x, this.pos.z - prev.z) / Math.max(dt, 1e-3);
-    if (this.first) { r.placeAt(this.pos.x, this.pos.z, this.yaw); this.first = false; }
+    const speed = Math.hypot(this.pos.x - prev.x, this.pos.z - prev.z) / Math.max(dt, 1e-3);
+    if (this.first) { r.placeAt(this.pos.x, this.pos.z, this.yaw); this.first = false; this.prevH.R.copy(this.rh); this.prevH.L.copy(this.lh); }
     r.root.x = this.pos.x; r.root.z = this.pos.z; r.yaw = this.yaw;
     if (speed > 0.25) c.walkPose(dt, Math.min(speed, 3)); else c.setIdlePose(c.t += dt);
-    // arms reach for where their hands are
-    for (const [side, h] of [['R', this.rh], ['L', this.lh]]) { if (pose.flat && side === 'L') continue;
-      const d = h.clone().sub(r.pos('chest', new THREE.Vector3())).applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.yaw); if (d.length() > 1.2) continue; d.normalize();
-      r.aim('uArm' + side, d.x, d.y, d.z); r.aim('lArm' + side, d.x, d.y, d.z); }
+    // arms hang naturally; one only comes up to hit something (a fast swing, or a punch / throw we were told about)
+    // or to eat (hand up at the mouth), then drops back down
+    const head = this.pos, chest = r.pos('chest', new THREE.Vector3());
+    if (this.swingT > 0) this.swingT -= dt;
+    for (const [side, h] of [['R', this.rh], ['L', this.lh]]) {
+      if (pose.flat && side === 'L') continue;                 // (phone players only have the one hand)
+      const hv = h.distanceTo(this.prevH[side]) / Math.max(dt, 1e-3); this.prevH[side].copy(h);
+      const atMouth = h.distanceTo(head) < 0.28, swinging = !pose.flat && hv > 2.2;
+      if (atMouth || swinging || (side === 'R' && this.swingT > 0)) this.armT[side] = 0.45;
+      else this.armT[side] -= dt;
+      const want = this.armT[side] > 0 ? 1 : 0; this.armW[side] += (want - this.armW[side]) * Math.min(1, dt * (want ? 14 : 5));
+      const w = this.armW[side]; if (w < 0.01) continue;
+      let d;
+      if (side === 'R' && this.swingT > 0 && !atMouth) d = new THREE.Vector3(0, 0.15, 1);                        // a punch straight out in front
+      else { d = h.clone().sub(chest).applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.yaw); if (d.length() > 1.2 || d.lengthSq() < 1e-6) continue; }
+      d.normalize();
+      for (const n of ['uArm' + side, 'lArm' + side]) { const rest = r.pose[n].clone(); r.aim(n, d.x, d.y, d.z); r.pose[n].copy(rest.slerp(r.pose[n], w)); }
+    }
     r.pose.head.setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.clamp(-Math.asin(f.y), -0.6, 0.6));
-    r.animate(dt); r.sync(); c.fx.position.set(this.pos.x, 0, this.pos.z);
-    void eye;
+    r.animate(dt); r.sync(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag();
   }
   headPos() { return this.c.headPos(new THREE.Vector3()); }
   fwd() { return new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
   handPos() { return this.rh.clone(); }
+  swing() { this.swingT = 0.35; }
+  drawTag() { const x = this.tagC.getContext('2d'), nm = (this.p.name || 'PLAYER').toUpperCase(); this.tagName = this.p.name; x.clearRect(0, 0, 320, 96);
+    x.fillStyle = 'rgba(10,14,30,0.85)'; x.beginPath(); x.roundRect(4, 4, 312, 88, 22); x.fill(); x.lineWidth = 5; x.strokeStyle = '#39ff14'; x.stroke();
+    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; let f = 40; do { x.font = `900 ${f}px Arial`; f -= 2; } while (x.measureText(nm).width > 290 && f > 16); x.fillText(nm, 160, 38);
+    x.fillStyle = '#c9d3ff'; x.font = '700 20px Arial'; x.fillText('👤 PLAYER · as ' + (SQUAD_MP[this.p.char]?.name || this.c.name), 160, 74); this.tagTex.needsUpdate = true; }
+  placeTag() { if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.headPos(new THREE.Vector3()); this.tag.position.set(h.x, h.y + 0.36, h.z); }
   flinch(v) { this.c.flinch(v.clone ? v.clone() : new THREE.Vector3(v.x, 0, v.z), 1); }
-  dispose() { this.c.dispose(); }
+  // a proper hit: go limp and fly, same as the NPCs (a light one is just a flinch)
+  knock(v, s, at) {
+    if (this.down > 0) { const b = this.c.rag.parts.chest; this.c.rag.hit(b, b.body.position, new THREE.Vector3(v.x, 0, v.z).normalize().multiplyScalar(s * 2.2)); return; }
+    if (s <= 3.2) { this.flinch(v); return; }
+    const c = this.c, r = c.rag; c.knockOut('hit'); this.down = 2.4;
+    const dir = new THREE.Vector3(v.x, 0, v.z); if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1); dir.normalize();
+    const imp = dir.multiplyScalar(s * 2.2); imp.y = s * 0.9;
+    const part = r.parts.head, p = at || part.body.position; r.hit(part, new THREE.Vector3(p.x, p.y, p.z), imp);
+  }
+  dispose() { scene.remove(this.tag); this.tagTex.dispose(); this.c.dispose(); }
 }
 window.RS = { net, mp, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)

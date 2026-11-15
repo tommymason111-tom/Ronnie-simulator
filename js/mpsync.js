@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { FOODS } from './config.js';
 import { SquadMember, SQUAD } from './squad.js';
-import { Character } from './character.js';
+import { Character, KO_IMPULSE } from './character.js';
 import { sfx } from './audio.js';
 
 const TYPES = Object.keys(FOODS);
@@ -24,7 +24,7 @@ export class MPSync {
     this.sentDefs = new Set(); this.remoteHolds = new Map(); this.lastSay = new Map();
     this.charSnap = new Map(); this.punchCool = 0;
     const net = this.net;
-    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end'])
+    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc'])
       net.on[k] = (m, p) => this['on_' + k] && this['on_' + k](m, p);
   }
   get host() { return this.net.host; }
@@ -48,7 +48,28 @@ export class MPSync {
     const self = this;
     if (!Character.prototype.__mpSay) { const draw0 = Character.prototype.drawBubble; Character.prototype.__mpSay = true;
       Character.prototype.drawBubble = function (text) { draw0.call(this, text); if (self.on && self.host && !this.netDriven && !this.mpPuppet) self.net.send({ t: 'say', id: this.id, text }); }; }
+    // hitting one of the host's people on a joining player's game: tell the host, who knocks them over for real
+    // (and the next snapshot shows everyone the ragdoll); the WALLOP / SLAP still shows straight away here
+    if (!Character.prototype.__mpHit) { Character.prototype.__mpHit = true;
+      const hit0 = Character.prototype.hitBy, slap0 = Character.prototype.slap;
+      const fwd = (c, kind, part, point, v, veg) => { self.net.send({ t: 'hitc', id: c.id, kind, part: part.name, p: [q3(point.x), q3(point.y), q3(point.z)], v: [q2(v.x), q2(v.y), q2(v.z)], veg: veg ? 1 : 0 }); };
+      Character.prototype.hitBy = function (part, point, impulse, isVeg = false) {
+        if (!this.netDriven || !self.on || self.host) { this.mpHitAt = performance.now(); return hit0.call(this, part, point, impulse, isVeg); }
+        fwd(this, 'hit', part, point, impulse, isVeg);
+        return this.netRag === 1 ? 'wobble' : impulse.length() >= KO_IMPULSE * (this.koMul || 1) ? 'ko' : 'wobble'; };
+      Character.prototype.slap = function (part, point, handVel) {
+        if (!this.netDriven || !self.on || self.host) return slap0.call(this, part, point, handVel);
+        if ((this.slapCool || 0) > 0) return null; this.slapCool = 0.35; setTimeout(() => { this.slapCool = 0; }, 350);
+        fwd(this, 'slap', part, point, handVel);
+        return this.netRag !== 1 && handVel.length() > 3.2 * (this.koMul || 1) ? 'ko' : 'slap'; };
+    }
     director.mp = this;
+  }
+  on_hitc(m) {
+    if (!this.host) return; const c = this.cast.find(x => x.id === m.id); if (!c || c.disposed) return;
+    const part = c.rag.parts[m.part] || c.rag.parts.chest, p = new THREE.Vector3(...m.p), v = new THREE.Vector3(...m.v);
+    if (m.kind === 'slap') { c.slapCool = 0; c.slap(part, p, v); }
+    else if (performance.now() - (c.mpHitAt || 0) > 400) c.hitBy(part, p, v, !!m.veg);   // (unless the food they threw already hit them here)
   }
   // a joining player's game: the host's people and food replace ours
   becomeClient() {
@@ -215,14 +236,19 @@ export class MPSync {
   }
   punch(p, vel, at) {
     this.punchCool = 0.5;
-    this.net.send({ t: 'punch', to: p.id, v: [q2(vel.x), q2(vel.z)], s: q2(vel.length()) });
+    // (sent to everyone: the one who got hit falls over on their own screen, everyone else sees them go flying)
+    this.net.send({ t: 'punch', target: p.id, v: [q2(vel.x), q2(vel.z)], s: q2(vel.length()), at: [q2(at.x), q2(at.y), q2(at.z)] });
     sfx('thwack', at, 1); this.words.show(vel.length() > 3.5 ? 'KAPOW!' : 'POW!', at.clone().add({ x: 0, y: 0.25, z: 0 }), '#ff5a36', 0.2, 1);
-    p.avatar && p.avatar.flinch && p.avatar.flinch(vel);
+    this.knockAvatar(p, vel, vel.length(), at);
   }
-  on_punch(m) {
+  knockAvatar(p, v, s, at) { const av = p && p.avatar; if (!av) return; if (av.knock) av.knock(v, s, at); else av.flinch && av.flinch(v); }
+  on_punch(m, from) {
+    const v = new THREE.Vector3(m.v[0] || 0, 0, m.v[1] || 0);
+    if (from && from.avatar && from.avatar.swing) from.avatar.swing();          // the puncher throws the punch
+    if (m.target && m.target !== this.net.id) { this.knockAvatar(this.net.players.get(m.target), v, m.s || 3, m.at && new THREE.Vector3(...m.at)); return; }
     const P = this.player, s = m.s || 3, d = { x: m.v[0] || 0, z: m.v[1] || 0 };
     sfx('thwack', P.head, 1); this.words.show('OOF!', P.head.clone().addScaledVector(P.fwd, 0.5), '#ff5a36', 0.16, 1);
-    if (s > 4.2 && P.knockDown) P.knockDown(d, 1.0);
+    if (s > 3.2 && P.knockDown) P.knockDown(d, 2.4);
     else { const l = Math.hypot(d.x, d.z) || 1; P.rig.position.x += d.x / l * 0.25; P.rig.position.z += d.z / l * 0.25; P.effect && P.effect('dizzy', 1.2); }
   }
 }

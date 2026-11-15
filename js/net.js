@@ -121,8 +121,13 @@ class RemoteRonnie {
       a.position.copy(sh); a.lookAt(end); a.scale.set(s, s, L); hand.position.copy(end); hand.quaternion.copy(a.quaternion); hand.scale.set(s, 0.7 * s, 1.3 * s);
     });
     this.tag.position.set(this.pos.x, this.pos.y + 0.32 * s, this.pos.z);
-    void floor;
+    // knocked over: the whole body topples away from the punch (pivoting at the feet), lies there, then gets back up
+    if (this.downT > 0) { this.downT -= dt; const t = 2.4 - this.downT, a = t < 0.35 ? (t / 0.35) * (Math.PI / 2) : this.downT < 0.6 ? Math.max(0, this.downT / 0.6) * (Math.PI / 2) : Math.PI / 2;
+      const foot = new THREE.Vector3(this.pos.x, floor, this.pos.z), Q = new THREE.Quaternion().setFromAxisAngle(this.downAxis, a);
+      this.g.quaternion.copy(Q); this.g.position.copy(foot).sub(foot.clone().applyQuaternion(Q)); }
+    else if (this.g.position.lengthSq() > 0) { this.g.quaternion.identity(); this.g.position.set(0, 0, 0); }
   }
+  knock(v, s) { if (s <= 3.2 || this.downT > 0) return; const d = new THREE.Vector3(v.x, 0, v.z); if (d.lengthSq() < 1e-6) d.set(0, 0, 1); d.normalize(); this.downAxis = new THREE.Vector3(d.z, 0, -d.x); this.downT = 2.4; }
   dispose() { this.gone = true; this.scene.remove(this.g); }
   headPos() { return this.pos.clone(); }
   fwd() { return new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }

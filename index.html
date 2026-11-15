@@ -104,13 +104,13 @@
     #settings h4 { margin: 14px 0 6px; color: #ffd400; font: 900 15px "Arial Black", Impact, sans-serif; text-align: left; }
     #settings .setbox { max-width: min(92vw, 420px); max-height: 86vh; overflow-y: auto; }
     #set-updates { text-align: left; max-height: 44vh; overflow-y: auto; font: 13px/1.35 Arial, sans-serif; padding-right: 4px; }
-    #set-updates .upd { margin-bottom: 10px; } #set-updates .upd b { color: #7cff6a; display: block; margin-bottom: 2px; }
+    #set-updates .upd { margin-bottom: 10px; } #set-updates .upd b { color: #7cff6a; display: block; margin-bottom: 2px; } #set-updates .upd b i { color: #c9d3ff; font: 700 12px Arial, sans-serif; font-style: normal; margin-left: 6px; }
     #set-updates ul { margin: 0; padding-left: 18px; } #set-updates li { margin: 2px 0; color: #e8eaf6; }
     #settings .midbtn { margin-top: 14px; }
     @keyframes popIn { from { transform: scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
     .screen { z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; }
     .screen > * { max-width: 100%; }
-    .carousel, #mode-grid, #roster, .howpane { width: 100%; }
+    .carousel, #mode-grid, #roster, #char-grid, .howpane { width: 100%; }
     .screen.on { opacity: 1; pointer-events: auto; transform: translateX(0); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
     .screen.on[data-s="title"] { pointer-events: none; }
     .screen.on[data-s="title"] > * { pointer-events: auto; }
@@ -251,6 +251,25 @@
     #room-msg { position: relative; font: 700 15px Arial, sans-serif; color: #9fe; }
     .mate.settled:not(.talk) { animation: none; }
     #char-grid { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; max-width: 760px; margin: 0 auto 12px; }
+    #char-grid { margin-bottom: 96px; }   /* (room to scroll the last row up past the NEXT button) */
+    #char-grid .mate { min-width: 0; }
+    #mp-myname.need { border: 3px solid #ff3a3a; animation: shake .4s; } @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+    @media (max-width: 520px) {   /* phones: three neat columns of smaller cards, scroll down for everyone */
+      #char-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+      #char-grid .mate { padding: 8px 4px; border-radius: 14px; }
+      #char-grid .face-badge { width: 62px; height: 62px; margin-bottom: 4px; }
+      #char-grid .mate b { font-size: 13px; } #char-grid .mate .atk { font-size: 9px; }
+      [data-s="mpchar"] h2 { margin-top: 40px; }
+    }
+    @media (max-height: 500px) and (orientation: landscape) {   /* phone on its side: more, smaller cards across */
+      #char-grid { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+      #char-grid .face-badge { width: 54px; height: 54px; }
+      #char-grid .mate .atk { font-size: 9px; }
+      [data-s="mpchar"] h2 { margin: 6px 0 2px; font-size: 24px; }
+      [data-s="mpchar"] .sub { margin-bottom: 6px; font-size: 11px; }
+      [data-s="mpchar"] .coderow { margin-bottom: 8px !important; } #mp-myname { font-size: 16px; padding: 6px 10px; }
+      #char-next { align-self: flex-end; font-size: 18px; padding: 8px 18px; bottom: max(10px, env(safe-area-inset-bottom)); }
+    }
     #char-grid .mate.sel { background: var(--c); box-shadow: 0 0 18px #39ff14; border-color: #39ff14; }
     #mp-code-chip { position: relative; font: 900 18px Arial, sans-serif; color: #ffd400; margin: 4px 0 8px; } #mp-code-chip:empty { display: none; }
     #roster { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; max-width: 760px; margin: 0 auto 12px; }
