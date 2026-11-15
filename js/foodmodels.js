@@ -190,17 +190,22 @@ export function chickenHi() {
 
 // ---------------------------------------------------------------- TACO (shell open at the top, along x)
 export function tacoHi() {
+  // one solid piece: the folded shell, packed full with the filling (mince, lettuce, tomato, cheese) as one lumpy
+  // mound inside it, and a dollop of soured cream sunk into the top. Nothing loose, nothing floating.
   S(81); const p = [];
-  const shell = new THREE.CylinderGeometry(0.046, 0.046, 0.11, 32, 4, true, Math.PI * 1.5 - 1.65, 3.3); shell.rotateZ(Math.PI / 2);
-  { const pp = shell.attributes.position; for (let i = 0; i < pp.count; i++) { const x = pp.getX(i), y = pp.getY(i); if (y > 0.0) pp.setY(i, y + Math.sin(x * 90) * 0.0025); } shell.computeVertexNormals(); }
+  const shell = new THREE.CylinderGeometry(0.046, 0.046, 0.11, 40, 4, true, Math.PI * 1.5 - 2.0, 4.0); shell.rotateZ(Math.PI / 2);
+  { const pp = shell.attributes.position; for (let i = 0; i < pp.count; i++) { const x = pp.getX(i), y = pp.getY(i); if (y > 0.0) pp.setY(i, y + Math.sin(x * 90) * 0.002); } shell.computeVertexNormals(); }
   p.push(...parts2(shell, 0xf2c14e, [0, 0.03, 0], [0, 0, 0], [1, 1, 1], (c, v, i) => { if (noise(v.x, v.y, v.z, 260) > 0.5) darken(c, 0.3); if (i) darken(c, 0.08); }));
-  // beef mince
-  for (let i = 0; i < 60; i++) p.push(part(new THREE.IcosahedronGeometry(rr(0.0035, 0.0065), 0), rnd() < 0.5 ? 0x6a3016 : 0x7a3b1a, [rr(-0.048, 0.048), rr(-0.012, 0.0), rr(-0.01, 0.01)]));
-  // shredded lettuce, diced tomato, grated cheese, a dollop of soured cream
-  for (let i = 0; i < 34; i++) p.push(part(box(rr(0.012, 0.024), 0.0012, 0.003), rnd() < 0.5 ? 0x7cc84a : 0xa8e070, [rr(-0.048, 0.048), rr(0.002, 0.01), rr(-0.014, 0.014)], [rr(-0.5, 0.5), rr(0, 3), rr(-0.5, 0.5)]));
-  for (let i = 0; i < 14; i++) p.push(part(box(0.006, 0.005, 0.006), 0xd8352a, [rr(-0.045, 0.045), rr(0.009, 0.014), rr(-0.01, 0.01)], [rnd(), rnd(), rnd()]));
-  for (let i = 0; i < 30; i++) p.push(part(box(0.012, 0.0015, 0.002), 0xffc21a, [rr(-0.045, 0.045), rr(0.012, 0.017), rr(-0.012, 0.012)], [rr(-0.4, 0.4), rr(0, 3), 0]));
-  p.push(part(lumpy(sph(0.012, 16, 10), 0.001, 200), 0xfaf8f0, [0.012, 0.018, 0], [0, 0, 0], [1.4, 0.6, 1]));
+  // the filling: a cylinder inside the shell with its top pushed into a heaped, lumpy mound just over the rim
+  const fill = new THREE.CylinderGeometry(0.043, 0.043, 0.104, 48, 24); fill.rotateZ(Math.PI / 2);
+  { const pp = fill.attributes.position, v = new THREE.Vector3(); for (let i = 0; i < pp.count; i++) { v.fromBufferAttribute(pp, i);
+      const top = 0.02 + Math.cos(v.x / 0.052 * 1.4) * 0.003 + noise(v.x, 0, v.z, 220) * 0.002;
+      if (v.y > top) v.y = top + noise(v.x, v.y, v.z, 400) * 0.002; pp.setXYZ(i, v.x, v.y, v.z); } fill.computeVertexNormals(); }
+  p.push(paint(part(fill, 0x6a3016, [0, 0.03, 0]), (c, v) => {
+    const n1 = noise(v.x, v.y, v.z, 900), n2 = noise(v.x + 1, v.y, v.z, 1300), n3 = noise(v.x, v.y + 2, v.z, 1700);
+    if (v.y < 0.046) { c.setHex(n1 > 0.2 ? 0x7a3b1a : 0x6a3016); return; }         // mince underneath
+    c.setHex(n1 > 0.15 ? (n2 > 0 ? 0x7cc84a : 0xa8e070) : n2 > 0.4 ? 0xd8352a : n3 > -0.1 ? 0xffc21a : 0x6a3016); }));
+  p.push(part(lumpy(sph(0.012, 16, 10), 0.001, 200), 0xfaf8f0, [0.012, 0.047, 0], [0, 0, 0], [1.4, 0.55, 1]));
   return merge(p);
 }
 
@@ -273,20 +278,23 @@ export function icecreamHi() {
 
 // ---------------------------------------------------------------- SAUSAGE ROLL (along x)
 export function sausageRollHi() {
-  S(131); const p = [];
-  // layered flaky pastry (several sheets, each a touch different), glazed golden on top
-  for (let k = 0; k < 4; k++) {
-    const sh = new THREE.CapsuleGeometry(0.0275 - k * 0.0012, 0.085, 6, 22); sh.rotateZ(Math.PI / 2);
-    p.push(paint(part(lumpy(sh, 0.0007, 140), [0xe8b25a, 0xf0c070, 0xe0a850, 0xf6d090][k], [0, k * 0.0008, 0], [0, 0, 0], [1 - k * 0.012, 0.86, 1]), (c, v) => { if (v.y > 0.012) darken(c, (v.y - 0.012) * 9); }));
-  }
-  // the scored slashes across the top
-  for (let i = 0; i < 5; i++) p.push(part(box(0.0025, 0.004, 0.034), 0x9a5e22, [-0.04 + i * 0.02, 0.0235, 0], [0, 0.35, 0]));
-  // the open ends: sausagemeat with flecks of herb, pastry layers round it
+  // one solid piece: flaky pastry (layered, glazed, with the scored slashes painted into the top), cut flat at both
+  // ends showing the sausagemeat inside a ring of pastry layers
+  S(131); const p = [], CUT = 0.068, R0 = 0.0275;
+  const body = new THREE.CylinderGeometry(R0, R0, CUT * 2, 32, 60, false); body.rotateZ(Math.PI / 2);
+  { const pp = body.attributes.position, v = new THREE.Vector3(); for (let i = 0; i < pp.count; i++) { v.fromBufferAttribute(pp, i); const e = Math.max(0, Math.abs(v.x) - (CUT - 0.006)) / 0.006;
+      const k = 1 - 0.12 * e * e; v.y *= k; v.z *= k; pp.setXYZ(i, v.x, v.y, v.z); } body.computeVertexNormals(); }        // (rounded edges at the ends)
+  p.push(paint(part(lumpy(body, 0.0006, 140), 0xe8b25a, [0, 0, 0], [0, 0, 0], [1, 0.86, 1]), (c, v) => {
+    if (Math.abs(v.x) > CUT - 0.0005) return;
+    c.setHex(noise(v.x, v.y, v.z, 300) > 0.4 ? 0xf0c070 : 0xe8b25a);
+    if (v.y > 0.012) darken(c, (v.y - 0.012) * 9);
+    if (v.y > 0.015 && Math.abs(((v.x + 0.05 + v.z * 0.35) % 0.02 + 0.02) % 0.02 - 0.01) < 0.0018 && Math.abs(v.x) < 0.052) c.setHex(0x9a5e22); }));     // the slashes
+  const rCut = R0 * 0.88;
   for (const sd of [-1, 1]) {
-    p.push(paint(part(new THREE.CircleGeometry(0.017, 20), 0xc98a70, [sd * 0.0705, 0, 0], [0, sd * Math.PI / 2, 0]), (c, v) => { if (noise(v.x, v.y, v.z, 500) > 0.5) c.setHex(0x8a5a40); }));
-    p.push(paint(part(new THREE.RingGeometry(0.017, 0.0262, 24, 3), 0xf6dca0, [sd * 0.0702, 0, 0], [0, sd * Math.PI / 2, 0], [1, 0.86, 1]), (c, v) => { if (Math.floor(Math.hypot(v.y, v.z) * 700) % 2) darken(c, 0.12); }));   // layers of pastry round it
+    const disc = new THREE.RingGeometry(0.0001, rCut, 32, 10);
+    p.push(paint(part(disc, 0xc98a70, [sd * (CUT + 0.0003), 0.0006, 0], [0, sd * Math.PI / 2, 0], [1, 0.86, 1]), (c, v) => { const r = Math.hypot(v.y, v.z) / rCut;
+      if (r > 0.66) { c.setHex(0xf6dca0); if (Math.floor(r * 14) % 2) darken(c, 0.12); } else if (noise(v.x, v.y, v.z, 500) > 0.5) c.setHex(0x8a5a40); }));
   }
-  for (let i = 0; i < 18; i++) p.push(part(box(0.003, 0.0015, 0.004), 0xf0c878, [rr(-0.05, 0.05), rr(0.02, 0.026), rr(-0.02, 0.02)], [rnd(), rnd(), rnd()]));   // loose flakes
   return merge(p);
 }
 
@@ -322,18 +330,22 @@ export function onionringsHi() {
 }
 // ---------------------------------------------------------------- BURRITO in foil (along x)
 export function burritoHi() {
+  // one solid piece: the rolled tortilla (cut flat at the bitten end), foil wrapped tight round the back half, and the
+  // filling showing across the cut end, painted on (rice, beans, beef, peppers, sour cream)
   S(171); const p = [];
-  const tort = new THREE.CapsuleGeometry(0.028, 0.1, 8, 24); tort.rotateZ(Math.PI / 2);
-  p.push(paint(part(lumpy(tort, 0.0008, 60), 0xf2dcae), (c, v) => { if (noise(v.x, v.y, v.z, 220) > 0.7) c.lerp(new THREE.Color(0x9a6a30), 0.5); }));
-  // the fold seam
-  p.push(part(tube([[-0.06, 0.02, 0.018], [0, 0.026, 0.014], [0.05, 0.02, 0.018]], 0.002, 20, 5), 0xe8cc98));
-  // foil round one half, crinkled
-  const foil = new THREE.CylinderGeometry(0.0295, 0.0295, 0.07, 28, 10, true); foil.rotateZ(Math.PI / 2);
-  { const pp = foil.attributes.position; for (let i = 0; i < pp.count; i++) { const n = noise(pp.getX(i), pp.getY(i), pp.getZ(i), 260) * 0.0015; pp.setY(i, pp.getY(i) * (1 + n * 30)); pp.setZ(i, pp.getZ(i) * (1 + n * 30)); } foil.computeVertexNormals(); }
-  p.push(paint(part(foil, 0xcfd4d8, [-0.035, 0, 0]), (c, v) => darken(c, -0.1 + noise(v.x, v.y, v.z, 300) * 0.15)));
-  // the bitten end: rice, beans, beef, peppers, sour cream
-  const end = new THREE.CircleGeometry(0.025, 24); p.push(part(end, 0xf2dcae, [0.0785, 0, 0], [0, Math.PI / 2, 0]));
-  for (let i = 0; i < 40; i++) { const a = rnd() * 6.28, r = Math.sqrt(rnd()) * 0.022; p.push(part(new THREE.IcosahedronGeometry(rr(0.002, 0.004), 0), [0xffffff, 0x5a2a1a, 0x7a3b1a, 0xd8352a, 0x6fbf3f, 0xfaf3e0][i % 6], [0.079 + rnd() * 0.004, Math.sin(a) * r, Math.cos(a) * r])); }
+  const tort = new THREE.CapsuleGeometry(0.028, 0.12, 8, 24); tort.rotateZ(Math.PI / 2);
+  const CUT = 0.068;
+  { const pp = tort.attributes.position; for (let i = 0; i < pp.count; i++) if (pp.getX(i) > CUT) pp.setX(i, CUT); tort.computeVertexNormals(); }
+  p.push(paint(part(lumpy(tort, 0.0006, 60), 0xf2dcae), (c, v) => { if (noise(v.x, v.y, v.z, 220) > 0.7) c.lerp(new THREE.Color(0x9a6a30), 0.5);
+  }));
+  const foil = new THREE.CylinderGeometry(0.0292, 0.0292, 0.075, 28, 10, true); foil.rotateZ(Math.PI / 2);
+  { const pp = foil.attributes.position; for (let i = 0; i < pp.count; i++) { const n = noise(pp.getX(i), pp.getY(i), pp.getZ(i), 260) * 0.0012; pp.setY(i, pp.getY(i) * (1 + n * 25)); pp.setZ(i, pp.getZ(i) * (1 + n * 25)); } foil.computeVertexNormals(); }
+  p.push(paint(part(foil, 0xcfd4d8, [-0.04, 0, 0]), (c, v) => darken(c, -0.1 + noise(v.x, v.y, v.z, 300) * 0.15)));
+  // the cut end: a slightly domed disc of filling exactly over the cut
+  const rCut = Math.sqrt(Math.max(0, 0.028 ** 2 - Math.max(0, CUT - 0.06) ** 2));
+  const end = new THREE.RingGeometry(0.0001, rCut * 0.98, 32, 12); { const pp = end.attributes.position; for (let i = 0; i < pp.count; i++) { const r = Math.hypot(pp.getX(i), pp.getY(i)); pp.setZ(i, (1 - (r / rCut) ** 2) * 0.004 + noise(pp.getX(i), pp.getY(i), 0, 500) * 0.0008); } end.computeVertexNormals(); }
+  p.push(paint(part(end, 0xffffff, [CUT + 0.0004, 0, 0], [0, Math.PI / 2, 0]), (c, v) => { const k = noise(v.y, v.z, 0.3, 1400), j = noise(v.z, v.y, 1, 1900);
+    c.setHex(k > 0.35 ? 0x5a2a1a : k < -0.35 ? 0x7a3b1a : j > 0.4 ? 0xd8352a : j < -0.45 ? 0x6fbf3f : 0xfaf3e0); }));
   return merge(p);
 }
 // ---------------------------------------------------------------- BELGIAN WAFFLE with strawberries and cream (flat)
@@ -388,16 +400,6 @@ export function cupcakeHi() {
   return merge(p);
 }
 // ---------------------------------------------------------------- CHOCOLATE BROWNIE (flat square)
-export function brownieHi() {
-  S(221); const p = [];
-  const b = new THREE.BoxGeometry(0.07, 0.03, 0.07, 10, 4, 10);
-  { const pp = b.attributes.position; for (let i = 0; i < pp.count; i++) { const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i); if (y > 0.01) pp.setY(i, y + noise(x, 0, z, 120) * 0.0025); pp.setX(i, x + noise(0, y, z, 200) * 0.0012); } b.computeVertexNormals(); }
-  p.push(paint(part(b, 0x3a1e0e), (c, v) => { if (v.y > 0.013) { c.setHex(0x4e2a14); if (Math.abs(noise(v.x, 0, v.z, 140)) < 0.05) c.setHex(0x8a5a3a); } else if (noise(v.x, v.y, v.z, 600) > 0.5) c.setHex(0x2a1208); }));
-  for (let i = 0; i < 6; i++) p.push(part(lumpy(new THREE.IcosahedronGeometry(0.006, 1), 0.0015, 600), 0xc8a070, [rr(-0.028, 0.028), 0.017, rr(-0.028, 0.028)], [rnd(), rnd(), rnd()], [1.2, 0.6, 1]));
-  for (let i = 0; i < 8; i++) p.push(part(new THREE.IcosahedronGeometry(0.004, 0), 0x2a1208, [rr(-0.03, 0.03), rr(-0.01, 0.012), 0.0355], [rnd(), rnd(), rnd()]));
-  return merge(p);
-}
-// ---------------------------------------------------------------- BACON BAP (like a burger)
 export function baconbapHi() {
   S(231); const p = [];
   p.push(paint(part(lathe([[0, -0.04], [0.05, -0.04], [0.058, -0.034], [0.06, -0.022], [0, -0.018]], 32), 0xe8c890), (c, v) => { if (v.y > -0.02) c.lerp(new THREE.Color(0xfaf2e0), 0.6); }));
@@ -415,4 +417,4 @@ export function baconbapHi() {
 }
 
 export const HI = { burger: burgerHi, pizza: pizzaHi, doughnut: doughnutHi, hotdog: hotdogHi, fries: friesHi, kebab: kebabHi, chicken: chickenHi, taco: tacoHi, crisps: crispsHi, choc: chocHi, cookie: cookieHi, icecream: icecreamHi, sausageroll: sausageRollHi,
-  nuggets: nuggetsHi, pasty: pastyHi, onionrings: onionringsHi, burrito: burritoHi, waffle: waffleHi, pancakes: pancakesHi, churros: churrosHi, cupcake: cupcakeHi, brownie: brownieHi, baconbap: baconbapHi };
+  nuggets: nuggetsHi, pasty: pastyHi, onionrings: onionringsHi, burrito: burritoHi, waffle: waffleHi, pancakes: pancakesHi, churros: churrosHi, cupcake: cupcakeHi, baconbap: baconbapHi };

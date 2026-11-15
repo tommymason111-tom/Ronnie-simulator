@@ -122,6 +122,9 @@ export class RunPub {
     const tb = (room.barSpots || [])[3]; if (tb && g.tommy) { g.tommy.rag.placeAt(tb.x, tb.z, tb.yaw); g.tommy.faceYaw = tb.yaw; g.tommy.attacks = false; g.tommy.directed = false; this.barTaken.set(tb, g.tommy); }
     // Ronnie behind the bar, facing the punters
     const P = g.player; P.rig.position.set(RONNIE_SPOT.x, 0, RONNIE_SPOT.z); P.rig.rotation.y = Math.PI / 2; if (P.flatMode) { P.flatYaw = 0; P.flatPitch = -0.18; }
+    // it's a shift, not a feed: no food about, only the drinks, glasses, mugs and cups for the punters
+    const its = g.items; its.drinksOnly = true; its.minFood = 0; its.respawnQueue.length = 0;
+    for (const it of its.items.slice()) if (!it.dead && !it.def.drink && !it.def.prop) its.remove(it);
     this.bar = new Bar(this);
     this.buildOrdersUI();
     g.showBanner('RUN THE PUB', 'SERVE THE PUNTERS');
@@ -448,5 +451,6 @@ export class RunPub {
       [stars >= 4 ? 'Lewis: "Bro. Landlord of the year, bro."' : stars >= 2.5 ? 'Aidan: "Not bad. Let it settle next time."' : 'Chloe: "Babe. You ate the profits."', ''],
     ];
   }
-  cleanup() { if (this.bar) this.bar.dispose(); if (this.ordersEl) this.ordersEl.remove(); if (this.wrist) this.g.scene.remove(this.wrist); for (const id of Object.keys(SQUAD)) if (/^p\d+$/.test(id)) delete SQUAD[id]; for (const t of this.tags.values()) this.g.scene.remove(t); this.tags.clear(); for (const c of this.cast) if (c.plate) { this.g.scene.remove(c.plate); c.plate = null; } }
+  cleanup() { const its = this.g.items; if (its) { its.drinksOnly = false; its.minFood = this.g.room.big ? 150 : 0; }
+    if (this.bar) this.bar.dispose(); if (this.ordersEl) this.ordersEl.remove(); if (this.wrist) this.g.scene.remove(this.wrist); for (const id of Object.keys(SQUAD)) if (/^p\d+$/.test(id)) delete SQUAD[id]; for (const t of this.tags.values()) this.g.scene.remove(t); this.tags.clear(); for (const c of this.cast) if (c.plate) { this.g.scene.remove(c.plate); c.plate = null; } }
 }

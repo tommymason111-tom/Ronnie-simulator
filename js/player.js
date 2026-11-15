@@ -16,6 +16,7 @@ import { holdTransform } from './hold.js';
 
 const HIST = 6;
 const _m = new THREE.Matrix4(), _s = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _qi = new THREE.Quaternion();
+const _pv = new THREE.Vector3(), _pd = new THREE.Vector3(), _pw = new THREE.Vector3(), _pq = new THREE.Quaternion();
 const UP = new THREE.Vector3(0, 1, 0);
 const FLAT_REST = 1.45;   // on-screen hand: fist upright (controller-handle axis pointing up)
 
@@ -73,6 +74,8 @@ export class Player {
     const hmf = new XRHandModelFactory();
     hmf.setPath('./assets/hands/');
     this.ctrlHands = {};
+    // both controller hand models load now, before the headset goes on, so they're there the moment you arrive
+    for (const side of ['left', 'right']) { const ch = this.ctrlHands[side] = new ControllerHand(side); ch.load().catch(e => console.warn('hand model', e)); }
     this.hands.forEach((h, i) => {
       const ctrl = renderer.xr.getController(i);
       const grip = renderer.xr.getControllerGrip(i);
@@ -244,9 +247,10 @@ export class Player {
 
     if (xr) {
       for (const h of this.hands) this.updateHand(h, dt, t);
+      for (const h of this.hands) this.updatePointer(h);
       if (!this.stunned && !this.menuLock) this.locomotion(dt, this.fx.slow > 0 ? 0.45 : 1);     // (not while a menu's open)
     } else {
-      for (const h of this.hands) { if (h.body) h.body.position.set(0, -10, 0); if (h.ctrlHand) h.ctrlHand.root.visible = false; }
+      for (const h of this.hands) { if (h.body) h.body.position.set(0, -10, 0); if (h.ctrlHand) h.ctrlHand.root.visible = false; if (h.ptr) h.ptr.visible = h.ptrDot.visible = false; }
       const mv = this.flatMove;
       if ((this.stunned || this.menuLock) && mv) this.flatMove = { x: 0, z: 0 };
       else if (this.fx.slow > 0 && mv) this.flatMove = { x: mv.x * 0.45, z: mv.z * 0.45 };
@@ -333,11 +337,40 @@ export class Player {
     }
   }
 
+  // Point a controller at something on the floor (or across the room) and pull the trigger: it flies straight into
+  // your hand, so you don't have to bend down for it. The pointer line shows what you'd get.
+  pointTarget(h) {
+    if (!h.ctrl || !h.tracked || h.isHand || !this.items || this.menuLock) return null;
+    h.ctrl.getWorldPosition(_pv); _pd.set(0, 0, -1).applyQuaternion(h.ctrl.getWorldQuaternion(_pq));
+    let best = null, bs = 1e9;
+    for (const it of this.items.items) {
+      if (it.dead || it.heldBy || it.empty || !it.obj.visible || it.def.gun) continue;
+      _pw.subVectors(it.pos, _pv); const along = _pw.dot(_pd); if (along < 0.35 || along > 7) continue;
+      const off = Math.sqrt(Math.max(0, _pw.lengthSq() - along * along)), tol = Math.max(0.09, it.radius * 1.3) + along * 0.025;
+      if (off > tol) continue; const score = off / tol + along * 0.05; if (score < bs) { bs = score; best = it; }
+    }
+    return best;
+  }
+  updatePointer(h) {
+    if (!h.ctrl) return;
+    if (!h.ptr) { const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]);
+      h.ptr = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffd400, transparent: true, opacity: 0.85, depthTest: false })); h.ptr.renderOrder = 30; h.ptr.frustumCulled = false; this.scene.add(h.ptr);
+      h.ptrDot = new THREE.Mesh(new THREE.RingGeometry(0.05, 0.065, 24), new THREE.MeshBasicMaterial({ color: 0xffd400, transparent: true, opacity: 0.9, depthTest: false, side: THREE.DoubleSide })); h.ptrDot.renderOrder = 30; this.scene.add(h.ptrDot); }
+    const tgt = (h.held || h.heldPart || h.remoteGrab) ? null : this.pointTarget(h);
+    // (not when it's right there in your hand's reach anyway)
+    const show = !!tgt && tgt.pos.distanceTo(h.pos) > TUNING.grabRadius * Math.max(1, this.scale) * 1.5;
+    h.ptr.visible = h.ptrDot.visible = show; h.ptrTarget = show ? tgt : null;
+    if (show) { h.ctrl.getWorldPosition(_pv); const p = h.ptr.geometry.attributes.position; p.setXYZ(0, _pv.x, _pv.y, _pv.z); p.setXYZ(1, tgt.pos.x, tgt.pos.y, tgt.pos.z); p.needsUpdate = true;
+      h.ptrDot.position.copy(tgt.pos); h.ptrDot.lookAt(_pv); h.ptrDot.scale.setScalar(Math.max(1, tgt.radius / 0.06)); }
+  }
   grab(h) {
+    if (this.wheelOpen) return;            // (the trigger's picking an emote)
     if (!h.tracked || h.held || h.heldPart || h.remoteGrab || !this.items) return;
     const r = TUNING.grabRadius * Math.max(1, this.scale);
-    const it = this.items.nearest(h.pos, r);
-    if (!it) { this.grabTommy(h); return; }
+    let it = this.items.nearest(h.pos, r);
+    if (!it) { this.grabTommy(h); if (h.heldPart || h.heldWho || h.remoteGrab || h.joint) return;
+      it = h.sel ? (h.ptrTarget || this.pointTarget(h)) : null; if (!it) return;          // pointing at something: it comes to you
+      it.pos.copy(h.pos); it.prev.copy(h.pos); it.resting = false; it.shelf = false; this.items.onPointGrab && this.items.onPointGrab(it); }
     if (it.heldBy && it.heldBy !== h) { it.heldBy.held = null; }
     it.heldBy = h; h.held = it; it.resting = false;
     it.vel.set(0, 0, 0);

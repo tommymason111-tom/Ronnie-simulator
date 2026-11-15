@@ -26,6 +26,9 @@ export function setupTouch(cb) {
 #emote-wheel .ew-item { position: absolute; left: 0; top: 0; width: 104px; height: 104px; border-radius: 50%; border: 4px solid #ffd400; background: #1c2c8c; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; box-shadow: 0 5px 0 rgba(0,0,0,0.4); }
 #emote-wheel .ew-item span { font-size: 40px; line-height: 44px; } #emote-wheel .ew-item b { font: 900 11px "Arial Black", Arial, sans-serif; text-align: center; padding: 0 6px; }
 #emote-wheel .ew-item:active { background: #ff4fa3; }
+#emote-wheel .ew-tabs { position: fixed; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 2; display: flex; gap: 8px; white-space: nowrap; }
+#emote-wheel .ew-tab { font: 900 13px "Arial Black", Arial, sans-serif; padding: 9px 12px; border-radius: 14px; border: 3px solid #fff; background: rgba(20,28,90,0.85); color: #fff; }
+#emote-wheel .ew-tab.on { background: #ffd400; color: #111; }
 #emote-wheel .ew-x { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; border-radius: 50%; border: 3px solid #fff; background: rgba(0,0,0,0.6); color: #fff; font: 900 26px Arial; }`; document.head.appendChild(st);
   const stick = root.querySelector('#stick'), knob = root.querySelector('#knob');
   const eat = root.querySelector('#btn-eat'), thr = root.querySelector('#btn-throw'), hint = root.querySelector('#hint'), spr = root.querySelector('#btn-sprint');
@@ -63,14 +66,21 @@ export function setupTouch(cb) {
 
   // ---- emotes (multiplayer): the button opens a wheel, tap one ----
   const emb = root.querySelector('#btn-emote'), wheel = root.querySelector('#emote-wheel');
-  const openWheel = (on) => { wheel.classList.toggle('open', on); };
+  let lists = { def: [], own: () => [], title: () => '' }, page = 'def';
+  const openWheel = (on) => { if (on) { page = 'def'; drawWheel(); } wheel.classList.toggle('open', on); };
   press(emb, () => openWheel(!wheel.classList.contains('open')));
-  wheel.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); const b = e.target.closest('.ew-item'); if (b) cb.onEmote && cb.onEmote(b.dataset.id); openWheel(false); });
-  const setEmotes = (list) => {
-    const ring = wheel.querySelector('.ew-ring'), n = list.length;
-    ring.innerHTML = list.map((em, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n, x = Math.cos(a) * 100, y = Math.sin(a) * 100;
+  wheel.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation();
+    const tab = e.target.closest('.ew-tab'); if (tab) { page = tab.dataset.p; drawWheel(); return; }
+    const b = e.target.closest('.ew-item'); if (b) cb.onEmote && cb.onEmote(b.dataset.id); openWheel(false); });
+  // two pages: DEFAULT EMOTES and the character's own ("CHLOE'S EMOTES"), picked with the tabs above the wheel
+  function drawWheel() {
+    let own = []; try { own = lists.own() || []; } catch (e) {} const list = page === 'own' && own.length ? own : lists.def, n = list.length, ring = wheel.querySelector('.ew-ring');
+    const R = n > 5 ? 112 : 100;
+    ring.innerHTML = (own.length ? `<div class="ew-tabs"><button class="ew-tab${page === 'def' ? ' on' : ''}" data-p="def">DEFAULT EMOTES</button><button class="ew-tab${page === 'own' ? ' on' : ''}" data-p="own">${lists.title()}</button></div>` : '') +
+      list.map((em, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n, x = Math.cos(a) * R, y = Math.sin(a) * R;
       return `<button class="ew-item" data-id="${em.id}" style="transform:translate(calc(-50% + ${x.toFixed(0)}px), calc(-50% + ${y.toFixed(0)}px))"><span>${em.icon}</span><b>${em.name}</b></button>`; }).join('');
-  };
+  }
+  const setEmotes = (list, own = () => [], title = () => '') => { lists = { def: list, own, title }; };      // (drawn when the wheel opens)
 
   // ---- look + tap on the 3D view ----
   const canvas = cb.canvas;

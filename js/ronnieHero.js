@@ -244,7 +244,7 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
       if (el.closest('.scene') && !el.closest('.scene.cur')) continue;
       if (out.some(o => o.contains(el))) continue;            // (a button inside a card that's already listed)
       if (!el.getClientRects().length) continue;              // hidden on the phone page too
-      if (!txt(el) && el.tagName !== 'INPUT') continue;
+      if (!txt(el) && el.tagName !== 'INPUT' && el.tagName !== 'CANVAS') continue;
       out.push(el);
     }
     return out;
@@ -252,7 +252,7 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   const KEYS = ['1234567890', 'QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
   function drawPanel(force) {
     const els = kb ? [] : items();
-    const sig = kb ? 'kb|' + kb.el.value + '|' + hover : els.map(e => txt(e).slice(0, 50) + (e.matches('.sel, .cur, .on, .picked') ? '*' : '')).join('|') + '|' + hover + '|' + scroll;
+    const sig = kb ? 'kb|' + kb.el.value + '|' + hover : els.map(e => (e.tagName === 'CANVAS' ? 'cv' + e.dataset.v : '') + txt(e).slice(0, 50) + (e.matches('.sel, .cur, .on, .picked') ? '*' : '')).join('|') + '|' + hover + '|' + scroll;
     if (!force && sig === drawnKey) return; drawnKey = sig;
     const g = pg; g.clearRect(0, 0, PW, PH); rows = [];
     const rr = (x, y, w, h, r, fill, stroke, lw = 5) => { g.beginPath(); g.roundRect(x, y, w, h, r); g.fillStyle = fill; g.fill(); if (stroke) { g.lineWidth = lw; g.strokeStyle = stroke; g.stroke(); } };
@@ -297,7 +297,7 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
         btn(r, t, hover === rows.length - 1, '#4a3aa8'); if (!L || !els.some(e => e.id === 'intro-next')) y += 90; continue; }
       if (el.tagName === 'BUTTON') { const big = el.matches('.bigbtn, .playbtn, #go, .resume'); const h = big ? 104 : 78, r = { x0: 30, y0: y, x1: PW - 30, y1: y + h, el }; rows.push(r);
         btn(r, t, hover === rows.length - 1, big ? '#39ff14' : el.matches('.backbtn') ? '#2a2a5a' : '#4a3aa8'); y += h + 12; continue; }
-      if (el.id === 'intro-pic') { g.font = '96px sans-serif'; g.fillStyle = '#fff'; g.fillText(t, PW / 2, y + 56); y += 116; continue; }
+      if (el.id === 'intro-pic') { const w = PW - 60, h = w * el.height / el.width; try { g.drawImage(el, 30, y, w, h); } catch (e) {} y += h + 12; continue; }      // the page's picture (a map, the squad...)
       if (el.closest('#intro-lines')) {                            // how-to-play lines: big, wrapped, in a box each
         g.font = '700 28px "Arial Black", Arial, sans-serif'; const ws = t.split(' '), ls = []; let ln = '';
         for (const w of ws) { const tr = ln ? ln + ' ' + w : w; if (g.measureText(tr).width > PW - 110 && ln) { ls.push(ln); ln = w; } else ln = tr; } if (ln) ls.push(ln);

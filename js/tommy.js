@@ -6,10 +6,12 @@ import { Character } from './character.js';
 import { canvasTex, beamTex } from './textures.js';
 import { sfx } from './audio.js';
 import { TUNING, pickVeg } from './config.js';
+import { EmotePlayer } from './emotes.js';
 
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion();
 const MODEL_URL = './assets/tommy.glb';
 const ANNOY_LINES = ['Ronnie. Ronnie. Ronnie. Ronnie. Ronnie. RONNIE.', 'Ron, quick question. Come here. No, closer.', 'Ronnie, your shoelace is undone. Look down. LOOK DOWN.', 'Hey Ron, what\'s that behind you? Don\'t turn round. Do turn round.'];
+const BALL_LINES = ['THE FINAL BALL, RONNIE!', 'Catch, Ron! ...you didn\'t catch it.', 'Have a lie down, Ron! It\'s for your health!', 'BALLED. Absolutely balled.'];
 const TRIP_LINES = ['Have a lie down, Ron! It\'s for your health!', 'TIMBERRRR!', 'Whoops! My foot was just... there.', 'Floor time! The floor\'s got no calories, Ronnie!'];
 
 export class Tommy extends Character {
@@ -127,11 +129,15 @@ export class Tommy extends Character {
   // ...and every so often he wanders over, winds you up and trips you over instead
   idleTick(dt, ctx) {
     if (!this.attacks) return;
+    this._dt = dt;
     if (this.tripping) {
       this.tripping -= dt;
-      if (this.distToPlayer < 1.0 && this.t - this.tripStart > 2) { this.tripping = 0; this.say(TRIP_LINES[Math.floor(Math.random() * TRIP_LINES.length)], 4); this.onTrip && this.onTrip(this); this.attackTimer = 14; return; }
+      // his attack: the FINAL BALL. Close enough (a few metres), he stops, pulls it out of the front of his trousers
+      // and lobs it at you (see ballThrow / updateBall)
+      if (!this.balling && this.distToPlayer < 3.0 && this.t - this.tripStart > 1.5) { this.balling = true; this.ballThrown = false; this.faceYaw = Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z); this.ballEm().start('ballthrow'); this.say(BALL_LINES[0], 4); }
+      if (this.balling) { this.faceYaw = Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z); if (!this.ballEm().active) { this.balling = false; this.tripping = 0; this.faceYaw = null; this.attackTimer = 14; } return; }
       if (this.tripping <= 0) { this.tripping = 0; return; }
-      _v.set(this.pos.x - ctx.head.x, 0, this.pos.z - ctx.head.z).setLength(0.6);
+      _v.set(this.pos.x - ctx.head.x, 0, this.pos.z - ctx.head.z).setLength(2.4);
       this.goTo(ctx.head.x + _v.x, ctx.head.z + _v.z, 1.5, 'idle');
       return;
     }
@@ -154,13 +160,31 @@ export class Tommy extends Character {
     this.say(ANNOY_LINES[Math.floor(Math.random() * ANNOY_LINES.length)], 3);
     return true;
   }
-  get busyAttacking() { return this.tripping > 0; }
+  get busyAttacking() { return this.tripping > 0 || !!this.balling || !!this.ball; }
+  ballEm() { return this._ballEm || (this._ballEm = new EmotePlayer(this, this.scene, () => {})); }
+  talkPose(t) { if (!this.balling) super.talkPose(t); }      // (no waving his arms about mid-throw)
+  personalityPose(t) { if (this._ballEm && this._ballEm.active) this._ballEm.update(this._dt || 1 / 60, false); }
+  // the ball in flight: beige, pulsing, straight at your head; it knocks you flat
+  updateBall(dt, ctx) {
+    const em = this._ballEm;
+    if (em && em.active && em.id === 'ballthrow' && em.t >= 1.25 && !this.ballThrown) {
+      this.ballThrown = true; const from = new THREE.Vector3(); this.rag.grip('lArmR', from);
+      if (!this.ballMesh) { this.ballMesh = new THREE.Mesh(new THREE.SphereGeometry(0.075, 24, 16), new THREE.MeshLambertMaterial({ color: 0xd8c3a0, emissive: 0x3a2a10 })); this.scene.add(this.ballMesh); }
+      this.ball = { from, t: 0, dur: Math.max(0.35, Math.min(0.8, from.distanceTo(ctx.head) / 7)) }; this.ballMesh.visible = true; sfx('whoosh', from, 0.9);
+    }
+    if (!this.ball) return;
+    const b = this.ball; b.t += dt; const k = Math.min(1, b.t / b.dur);
+    this.ballMesh.position.copy(b.from).lerp(ctx.head, k); this.ballMesh.position.y += Math.sin(Math.PI * k) * 0.5;
+    this.ballMesh.scale.setScalar(1 + Math.sin(this.t * 14) * 0.15); this.ballMesh.rotation.x += dt * 9;
+    if (k >= 1) { this.ball = null; this.ballMesh.visible = false; sfx('boing', ctx.head, 1); this.say(BALL_LINES[1 + Math.floor(Math.random() * 3)], 4); this.onTrip && this.onTrip(this); }
+  }
 
   onSpeechEnd() { if (this.speakPri >= 2 && !this.down && Math.random() < 0.5) this.flashTeeth(); }
   flashTeeth() { sfx('ting', this.headPos(_v), 0.8); }      // (no sparkle on his mouth any more, just the ting)
 
   afterUpdate(dt, ctx) {
     this.updateEyes(dt, ctx.head);
+    if (this._ballEm) this._ballEm.place(); this.updateBall(dt, ctx);
     if (this.fallback) this.fallback.forEach((m, i) => { const b = this.rag.list[i].body; m.position.copy(b.position); m.quaternion.copy(b.quaternion); });
     const pos = this.pos;
     this.spot.position.set(pos.x, 2.55, pos.z + 0.01);

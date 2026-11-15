@@ -861,7 +861,8 @@ export function buildPub(scene) {
       for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; k.box(0.015, 0.34, 0.015, lx + Math.cos(a) * 0.12, H - 0.71, lz + Math.sin(a) * 0.12, 0xb8923a); }
       k.parts.push(part(new THREE.CylinderGeometry(0.11, 0.11, 0.32, 4, 1, true), 0xf4ecd0, [lx, H - 0.71, lz], [0, Math.PI / 4, 0])); k.cyl(0.13, 0.1, 0.05, lx, H - 0.9, lz, 0x2a2a2a, 4); k.lamp(lx, H - 0.72, lz, 0xffd8a0, 0.06); k.pool(lx, 0, lz, 2.4, 0xffd8a0); }
     // a "please wait to be seated" stand on the way into the pub
-    { const sx = 3.45, sz = -9.6;        // (by the angled wall, out of the way in) k.cyl(0.18, 0.2, 0.03, sx, 0.015, sz, 0x222222, 14); k.cyl(0.015, 0.015, 1.3, sx, 0.65, sz, 0xc9a24a, 8); R(sx - 0.24, sz - 0.015, sx + 0.24, sz + 0.015, 0.34, 1.3, 0x1b3a2a);
+    // (by the angled wall, out of the way in)
+    { const sx = 3.45, sz = -9.6; k.cyl(0.18, 0.2, 0.03, sx, 0.015, sz, 0x222222, 14); k.cyl(0.015, 0.015, 1.3, sx, 0.65, sz, 0xc9a24a, 8); R(sx - 0.24, sz - 0.015, sx + 0.24, sz + 0.015, 0.34, 1.3, 0x1b3a2a);
       k.label('PLEASE WAIT TO BE SEATED', 0.44, 0.3, [sx, 1.3, sz - 0.017], [0, Math.PI, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 44 }); blk(sx - 0.22, sz - 0.22, sx + 0.22, sz + 0.22, 1.5); }
     // a big coir mat inside the front doors
     { const mx = (door.x0 + door.x1) / 2 - door.uz * 0.75, mz = (door.z0 + door.z1) / 2 + door.ux * 0.75; k.box(door.L - 0.3, 0.012, 1.1, mx, 0.006, mz, 0x8a6a3a, { rot: [0, door.ry, 0] });

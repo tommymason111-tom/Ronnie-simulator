@@ -194,14 +194,19 @@ export class AttackFX {
   updateComing(dt) {
     if (!this.comeWho) { if (this.comeMesh) this.comeMesh.visible = this.comeArrow.visible = false; return; }
     const w = this.comeWho; this.comeT += dt;
-    if (this.cardShowing || w.down || w.disposed || this.comeT > 12 || (!w.netDriven && !(w.state === 'act' && w.approach))) { this.comeWho = null; return; }
+    const coming = w.id === 'tommy' ? (w.tripping > 0 || w.balling) : (w.state === 'act' && w.approach);
+    if (w.down || w.disposed || this.comeT > 12 || (!w.netDriven && !coming)) { this.comeWho = null; return; }
     const u = Math.min(1, this.comeT / 0.25);
-    this.comeMesh.visible = true; this.comeMesh.material.opacity = u; this.comeMesh.position.set(0, this.vr ? 0.12 : 0.16, -0.8); this.comeMesh.scale.setScalar((this.vr ? 0.75 : 1) * (0.9 + 0.1 * u));
+    // the tag: who's coming (a small note low in your view in the headset; it gives way to the attack card), and the
+    // arrow keeps pointing at them the whole time they're on their way
+    this.comeMesh.visible = !this.cardShowing; this.comeMesh.material.opacity = u;
+    if (this.vr) { this.comeMesh.position.set(0, -0.17, -0.8); this.comeMesh.scale.setScalar(0.5 * (0.9 + 0.1 * u)); }
+    else { this.comeMesh.position.set(0, 0.16, -0.8); this.comeMesh.scale.setScalar(0.9 + 0.1 * u); }
     // the arrow: towards them, round the edge of a small circle in the middle of your view (hidden when they're in front)
     _v.copy(w.pos); _v.y += 1.2; this.camera.worldToLocal(_v);
     const ang = Math.atan2(_v.x, -_v.z), inFront = _v.z < 0 && Math.abs(ang) < 0.35 && Math.abs(Math.atan2(_v.y, -_v.z)) < 0.3;
     this.comeArrow.visible = !inFront;
-    if (!inFront) { const a = Math.atan2(_v.y, _v.x); this.comeArrow.position.set(Math.cos(a) * 0.14, Math.sin(a) * 0.1 + 0.02, -0.8); this.comeArrow.rotation.set(0, 0, a - Math.PI / 2); this.comeArrow.scale.setScalar(1 + Math.sin(this.comeT * 10) * 0.12); }
+    if (!inFront) { const a = Math.atan2(_v.y, _v.x), R = this.vr ? 0.2 : 0.14; this.comeArrow.position.set(Math.cos(a) * R, Math.sin(a) * R * 0.75 + 0.02, -0.8); this.comeArrow.rotation.set(0, 0, a - Math.PI / 2); this.comeArrow.scale.setScalar(1 + Math.sin(this.comeT * 10) * 0.12); }
   }
   endCutscene() { if (!this.cut) return; this.camera.remove(this.cut.back); this.camera.remove(this.cut.screen); this.cut = null; }
   get inCutscene() { return !!(this.cut && !this.cut.overlay); }

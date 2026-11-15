@@ -68,7 +68,6 @@ const SPEC = {
   pancakes: { rest: [0, -0.025, 0], fwd: nZ },
   churros:  { axis: nY, up: Z, at: [0, -0.03, 0], r: 0.026 },          // the cup
   cupcake:  { axis: nY, up: Z, at: [0, -0.022, 0], r: 0.027 },
-  brownie:  { rest: [0, -0.015, 0], fwd: nZ },
   baconbap: { rest: [0, -0.04, 0], fwd: nZ },
   crisps:   { axis: nY, up: Z, at: [0, -0.045, 0], r: 0.016 },  // bag upright, bottom in the fist
   // round things: in the palm

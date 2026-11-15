@@ -14,6 +14,10 @@
 // The visual model can be Tommy's scanned mesh (auto-skinned to one bone per
 // body) or a procedural character built from shapes (see squad.js).
 import * as THREE from 'three';
+const _hm = new THREE.Matrix4(), _hm2 = new THREE.Matrix4(), _hm3 = new THREE.Matrix4(), _hp = new THREE.Vector3(), _hq = new THREE.Quaternion(), _hq2 = new THREE.Quaternion(), _hs = new THREE.Vector3();
+// a rotation q about the point p, as a matrix
+const _pmR = new THREE.Matrix4(), _pmT = new THREE.Matrix4();
+const pivotM = (p, q) => _hm3.makeTranslation(p.x, p.y, p.z).multiply(_pmR.makeRotationFromQuaternion(q)).multiply(_pmT.makeTranslation(-p.x, -p.y, -p.z));
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { characterGroup, GROUP } from './physics.js';
@@ -372,9 +376,10 @@ export class Ragdoll {
         return Math.hypot(cx - j.x, cy - j.y, cz - j.z) < 0.11 * kH;
       };
       const isArm = this.defs.map(d => d.name.includes('Arm'));
+      const shoulder = (a, b) => this.defs[a].name.startsWith('uArm') && this.defs[b].name === 'chest';
       const core = this.defs.map(d => d.name === 'pelvis' || d.name === 'chest' || d.name.startsWith('uLeg'));
       const hipTop = this.defs.find(d => d.name === 'pelvis').a.y + 0.02 * kH;
-      let cut = 0;
+      let cut = 0; this._cutTris = [];
       for (let f = 0; f < idx.length; f += 3) {
         const a = skinIndex[idx[f] * 4], b = skinIndex[idx[f + 1] * 4], c = skinIndex[idx[f + 2] * 4];
         let ok = true;
@@ -385,23 +390,26 @@ export class Ragdoll {
           for (const [p, q] of [[a, b], [b, c], [a, c]]) {
             if (p === q) continue;
             if (core[p] && core[q] && !(sideOf[p] && sideOf[q] && sideOf[p] !== sideOf[q])) continue;   // shirt hems over the hips stay joined (but the two legs come apart)
+            if (adjacent(p, q) && (shoulder(p, q) || shoulder(q, p))) continue;        // the armpit: the skin stretches with the arm, never tears open
             if (!adjacent(p, q) || ((isArm[p] || isArm[q]) && !near(p, q, cx, cy, cz))) { ok = false; break; }
           }
         }
-        if (ok) keep.push(idx[f], idx[f + 1], idx[f + 2]); else cut++;
+        if (ok) keep.push(idx[f], idx[f + 1], idx[f + 2]); else { cut++; this._cutTris.push(idx[f], idx[f + 1], idx[f + 2]); }
       }
       if (cut) geo.setIndex(keep);
       this.cutTriangles = cut;
     }
     this.solidifyPieces(geo, skinIndex, skinWeight);
     this.measureHands(geo, skinIndex, skinWeight);
-    this.splitHands(geo, skinIndex);
-    geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndex, 4));
-    geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeight, 4));
+    this.splitHands(geo, skinIndex, skinWeight);
+    this.weldWeights(geo, skinIndex, skinWeight);
+    const sk = this.capCuts(geo, skinIndex, skinWeight);
+    geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(sk.skinIndex, 4));
+    geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sk.skinWeight, 4));
 
     // ---- one bone per body, all siblings, bind = T-pose ----
     this.bones = this.defs.map(d => { const b = new THREE.Bone(); b.position.copy(d.center); this.group.add(b); return b; });
-    for (const name of Object.keys(this.handBone || {})) { const b = new THREE.Bone(); b.position.copy(this.parts[name].def.center); this.group.add(b); this.bones.push(b); }
+    for (const eb of this.extraBones || []) { const b = new THREE.Bone(); b.position.copy(this.parts[eb.name].def.center); this.group.add(b); this.bones.push(b); }
     this.addBellyMorph(geo);
     this.mesh = new THREE.SkinnedMesh(geo, mat);
     this.mesh.frustumCulled = false;
@@ -412,8 +420,9 @@ export class Ragdoll {
     this.ready = true;
     this.modelLoaded = true;
     this.sync();
-    if (this.wantUniform) this.wearUniform();
-    if (this.wantShoes) this.wearShoes(this.wantShoes);
+    // (clothes going wrong must never fail the model: that used to put a second, made-up body inside this one)
+    if (this.wantUniform) try { this.wearUniform(); } catch (e) { console.warn('uniform', e); }
+    if (this.wantShoes) try { this.wearShoes(this.wantShoes); } catch (e) { console.warn('shoes', e); }
   }
 
   // A Lidl staff uniform: a navy polo shirt (short sleeves, yellow trim) and navy trousers made from
@@ -464,7 +473,8 @@ export class Ragdoll {
     const kind = new Uint8Array(n), trim = new Uint8Array(n);
     for (let i = 0; i < n; i++) {
       v.fromBufferAttribute(pos, i);
-      const b = si.getX(i), d = D[b], nm = d.name;
+      const b = si.getX(i), d = D[b]; if (!d) continue;      // (the hands have their own bones now: no uniform on them)
+      const nm = d.name;
       if (b === head) continue;
       if (b === chest) {       // everything but a round neck opening (the shoulders stay covered right up to the top)
         const r = Math.hypot(v.x - D[head].a.x, v.z - D[head].a.z);
@@ -495,8 +505,9 @@ export class Ragdoll {
     const idx = src.index ? src.index.array : Array.from({ length: n }, (_, i) => i), keep = [];
     for (let f = 0; f < idx.length; f += 3) { const a = idx[f], b = idx[f + 1], cc = idx[f + 2]; if ((kind[a] ? 1 : 0) + (kind[b] ? 1 : 0) + (kind[cc] ? 1 : 0) >= 2) keep.push(a, b, cc); }   // (2 of 3: smoother edges)
     geo.setIndex(keep);
+    if (src.morphAttributes.position) { geo.morphAttributes.position = src.morphAttributes.position; geo.morphTargetsRelative = src.morphTargetsRelative; }     // (the shirt grows with the belly)
     const mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x0b0f1c, side: THREE.DoubleSide });
-    const shell = new THREE.SkinnedMesh(geo, mat); shell.frustumCulled = false;
+    const shell = new THREE.SkinnedMesh(geo, mat); shell.frustumCulled = false; if (geo.morphAttributes.position) shell.updateMorphTargets();
     this.group.add(shell); shell.bind(this.mesh.skeleton, this.mesh.bindMatrix);
     // badges on the chest: the Lidl logo over the heart, a name badge on the other side
     const front = (sx) => {     // the front of the chest at this side, just under the collar
@@ -550,6 +561,54 @@ export class Ragdoll {
   // A "fat" shape for the scanned model (used for players getting bigger in multiplayer): the lower front of the
   // torso swells into a round belly that pushes out and sags a little, the waist and hips widen, love handles at the
   // sides. Stored as a morph (0 = as scanned, 1 = the biggest) so it rides along with the skinning.
+  // The skin that joined two parts that move apart (an arm pressed against the side, the palm on the thigh) used to be
+  // cut out, which left holes in the body when the arms swung. Instead it's put back, stuck fast to the body (the
+  // chest, the hips, or a thigh): the body stays whole and the limb just moves away from it.
+  // Copies of the same point (where the texture has a seam) must move together, or the skin splits open along the
+  // seam when a limb moves: every copy gets the same (averaged) bone weights.
+  weldWeights(geo, skinIndex, skinWeight) {
+    const pos = geo.attributes.position, n = pos.count, groups = new Map();
+    for (let i = 0; i < n; i++) { const key = `${Math.round(pos.getX(i) * 4000)},${Math.round(pos.getY(i) * 4000)},${Math.round(pos.getZ(i) * 4000)}`; const g = groups.get(key); if (g) g.push(i); else groups.set(key, [i]); }
+    let fixed = 0;
+    for (const g of groups.values()) {
+      if (g.length < 2) continue;
+      let same = true; for (const i of g) for (let j = 0; j < 4; j++) if (skinIndex[i * 4 + j] !== skinIndex[g[0] * 4 + j] || Math.abs(skinWeight[i * 4 + j] - skinWeight[g[0] * 4 + j]) > 1e-3) same = false;
+      if (same) continue;
+      const acc = new Map(); for (const i of g) for (let j = 0; j < 4; j++) { const w = skinWeight[i * 4 + j]; if (w > 0) acc.set(skinIndex[i * 4 + j], (acc.get(skinIndex[i * 4 + j]) || 0) + w); }
+      const top = [...acc].sort((a, b) => b[1] - a[1]).slice(0, 4), tot = top.reduce((t, x) => t + x[1], 0);
+      for (const i of g) for (let j = 0; j < 4; j++) { skinIndex[i * 4 + j] = top[j] ? top[j][0] : 0; skinWeight[i * 4 + j] = top[j] ? top[j][1] / tot : 0; }
+      fixed++;
+    }
+    this.weldedSeams = fixed;
+  }
+  capCuts(geo, skinIndex, skinWeight) {
+    const tris = this._cutTris || []; this._cutTris = null; if (!tris.length || !geo.index) return { skinIndex, skinWeight };
+    const D = this.defs, n = geo.attributes.position.count, rank = (b) => { const nm = D[b] ? D[b].name : ''; return nm === 'chest' ? 5 : nm === 'pelvis' ? 4 : nm.startsWith('uLeg') ? 3 : nm === 'head' ? 2 : nm.startsWith('lLeg') ? 1 : 0; };
+    const dup = new Map(), extra = [], newTris = [];
+    for (let f = 0; f < tris.length; f += 3) {
+      const vs = [tris[f], tris[f + 1], tris[f + 2]], ls = vs.map(v => skinIndex[v * 4]);
+      let target = ls[0]; for (const l of ls) if (rank(l) > rank(target)) target = l;
+      if (rank(target) === 0) { target = ls.find((l, i) => ls.indexOf(l) !== i) ?? ls[0]; }        // (no body part in it: whichever two of them share)
+      for (const v of vs) {
+        if (skinIndex[v * 4] === target && skinWeight[v * 4] > 0.99) { newTris.push(v); continue; }
+        const key = v * 64 + target; let nv = dup.get(key); if (nv === undefined) { nv = n + extra.length; dup.set(key, nv); extra.push([v, target]); }
+        newTris.push(nv);
+      }
+    }
+    const m = n + extra.length;
+    for (const name of Object.keys(geo.attributes)) {
+      const at = geo.attributes[name], k = at.itemSize, arr = new at.array.constructor(m * k);
+      for (let v = 0; v < n; v++) for (let c = 0; c < k; c++) arr[v * k + c] = at.getComponent(v, c);          // (works for interleaved data too)
+      extra.forEach(([v], j) => { for (let c = 0; c < k; c++) arr[(n + j) * k + c] = at.getComponent(v, c); });
+      geo.setAttribute(name, new THREE.BufferAttribute(arr, k, at.normalized));
+    }
+    const si = new Uint16Array(m * 4), sw = new Float32Array(m * 4); si.set(skinIndex); sw.set(skinWeight);
+    extra.forEach(([, t], j) => { si[(n + j) * 4] = t; sw[(n + j) * 4] = 1; });
+    geo.setIndex(Array.from(geo.index.array).concat(newTris));
+    this.cappedTriangles = tris.length / 3;
+    return { skinIndex: si, skinWeight: sw };
+  }
+
   addBellyMorph(geo) {
     const ch = this.parts.chest && this.parts.chest.def, pe = this.parts.pelvis && this.parts.pelvis.def; if (!ch || !pe) return;
     const pos = geo.attributes.position, d = new Float32Array(pos.count * 3), v = new THREE.Vector3(), kH = this.height / 1.68;
@@ -567,20 +626,64 @@ export class Ragdoll {
   }
   // Give each scanned hand (wrist to fingertips) its own bone that normally just follows the forearm, so a hand
   // can be tucked away inside the forearm (scaled to nothing) while a posed gesture hand stands in for it (emotes).
-  splitHands(geo, skinIndex) {
+  splitHands(geo, skinIndex, skinWeight) {
     const pos = geo.attributes.position, kH = this.height / 1.68, v = new THREE.Vector3(), dir = new THREE.Vector3();
     this.handBone = {}; this.handHide = { lArmL: false, lArmR: false }; this.handLen = 0.165 * kH;
-    ['lArmL', 'lArmR'].forEach((name, j) => {
-      const k = this.defs.findIndex(d => d.name === name); if (k < 0) return; const d = this.defs[k], nb = this.defs.length + Object.keys(this.handBone).length;
-      dir.subVectors(d.b, d.a).normalize(); let n = 0;
+    this.extraBones = []; this.handAxes = {}; this.handPose = {};
+    const handVerts = {};
+    ['lArmL', 'lArmR'].forEach((name) => {
+      const k = this.defs.findIndex(d => d.name === name); if (k < 0) return; const d = this.defs[k], nb = this.defs.length + this.extraBones.length;
+      dir.subVectors(d.b, d.a).normalize(); const list = [];
       for (let i = 0; i < pos.count; i++) {
         if (skinIndex[i * 4] !== k) continue;
         v.fromBufferAttribute(pos, i); if (v.clone().sub(d.b).dot(dir) < -this.handLen) continue;      // (up the arm from the wrist)
         for (let sl = 0; sl < 4; sl++) if (skinIndex[i * 4 + sl] === k) skinIndex[i * 4 + sl] = nb;
-        n++;
+        list.push(i);
       }
-      if (n) this.handBone[name] = nb; void j;
+      if (list.length) { this.handBone[name] = nb; this.extraBones.push({ kind: 'hand', name }); handVerts[name] = list; }
     });
+    // the fingers of the model's own hand: two more bones per hand (the middle finger, and the rest), hinged across
+    // the knuckles, so a hand can make a fist or flip someone off with its own fingers
+    for (const name of Object.keys(handVerts)) try { this.splitFingers(geo, name, handVerts[name], pos, skinIndex, skinWeight, dir.subVectors(this.parts[name].def.b, this.parts[name].def.a).normalize().clone()); } catch (e) { console.warn('fingers', e); }
+  }
+  splitFingers(geo, name, list, pos, skinIndex, skinWeight, armDir) {
+    const kH = this.height / 1.68, v = new THREE.Vector3(), hc = new THREE.Vector3();
+    for (const i of list) hc.add(v.fromBufferAttribute(pos, i)); hc.multiplyScalar(1 / list.length);
+    // the hand's shape: longest spread = along the fingers, next = across the knuckles, least = through the palm
+    const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (const i of list) { v.fromBufferAttribute(pos, i).sub(hc); const a = [v.x, v.y, v.z]; for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) C[r][c] += a[r] * a[c]; }
+    const mul = (x) => new THREE.Vector3(C[0][0] * x.x + C[0][1] * x.y + C[0][2] * x.z, C[1][0] * x.x + C[1][1] * x.y + C[1][2] * x.z, C[2][0] * x.x + C[2][1] * x.y + C[2][2] * x.z);
+    const eig = (seed, not) => { let x = seed.clone(); for (let it = 0; it < 60; it++) { if (not) x.addScaledVector(not, -x.dot(not)); x = mul(x).normalize(); } if (not) { x.addScaledVector(not, -x.dot(not)).normalize(); } return x; };
+    const along = eig(armDir.clone().add(new THREE.Vector3(0.1, 0.05, 0.02)).normalize()); if (along.dot(armDir) < 0) along.negate();
+    let width = eig(new THREE.Vector3(0.3, 0.2, 1).normalize(), along), palm = new THREE.Vector3().crossVectors(along, width).normalize();
+    // which way the palm faces: in towards the body (arms down) or down (arms out)
+    const inward = new THREE.Vector3(-Math.sign(hc.x) || 1, 0, 0);
+    if (Math.abs(palm.y) > Math.abs(palm.x)) { if (palm.y > 0) palm.negate(); } else if (palm.dot(inward) < 0) palm.negate();
+    width.crossVectors(palm, along).normalize();
+    if (width.z < 0) { width.negate(); }           // (+width = the thumb / index finger side: forwards, for arms hanging down)
+    let aMin = 1e9, aMax = -1e9; for (const i of list) { const t = v.fromBufferAttribute(pos, i).sub(hc).dot(along); aMin = Math.min(aMin, t); aMax = Math.max(aMax, t); }
+    const fl = Math.min(0.085 * kH, (aMax - aMin) * 0.47), knA = aMax - fl, blend = 0.012 * kH;
+    const fing = list.filter(i => v.fromBufferAttribute(pos, i).sub(hc).dot(along) > knA - blend);
+    let uMin = 1e9, uMax = -1e9; for (const i of fing) { const u = v.fromBufferAttribute(pos, i).sub(hc).dot(width); uMin = Math.min(uMin, u); uMax = Math.max(uMax, u); }
+    const hb = this.handBone[name], restB = this.defs.length + this.extraBones.length, midB = restB + 1;
+    for (const i of fing) {
+      v.fromBufferAttribute(pos, i).sub(hc); const t = v.dot(along), un = (v.dot(width) - uMin) / Math.max(1e-6, uMax - uMin);
+      const w = THREE.MathUtils.smoothstep(t, knA - blend, knA + blend), fb = un > 0.5 && un < 0.73 ? midB : restB;
+      skinIndex[i * 4] = fb; skinWeight[i * 4] = w; skinIndex[i * 4 + 1] = hb; skinWeight[i * 4 + 1] = 1 - w; skinIndex[i * 4 + 2] = skinIndex[i * 4 + 3] = 0; skinWeight[i * 4 + 2] = skinWeight[i * 4 + 3] = 0;
+    }
+    // the middle finger comes away from the ones either side of it (scanned fingers are often joined up)
+    if (geo.index) { const idx = geo.index.array, keep = [], isF = new Set(fing);
+      for (let f = 0; f < idx.length; f += 3) { const a = idx[f], b = idx[f + 1], c = idx[f + 2];
+        if (isF.has(a) && isF.has(b) && isF.has(c)) { const ba = skinIndex[a * 4], bb = skinIndex[b * 4], bc = skinIndex[c * 4];
+          if ((ba === midB || bb === midB || bc === midB) && !(ba === midB && bb === midB && bc === midB) && [a, b, c].every(q => v.fromBufferAttribute(pos, q).sub(hc).dot(along) > knA + blend * 0.4)) continue; }
+        keep.push(a, b, c); }
+      geo.setIndex(keep); }
+    const knuckle = hc.clone().addScaledVector(along, knA).addScaledVector(palm, 0.006 * kH), wristP = hc.clone().addScaledVector(along, aMin + 0.01 * kH);
+    // which way round the knuckle line curls the fingers in towards the palm
+    const curlSign = new THREE.Vector3().crossVectors(width, along).dot(palm) > 0 ? 1 : -1;
+    this.handAxes[name] = { along, width, palm, knuckle, wrist: wristP, curlSign };
+    this.handPose[name] = { q: new THREE.Quaternion(), curl: 0, mid: 0 };
+    this.extraBones.push({ kind: 'fingers', name }, { kind: 'middle', name });
   }
   // world position of the middle of a hand (falls back to just short of the fingertips)
   grip(name, out) {
@@ -766,11 +869,22 @@ export class Ragdoll {
     });
     // getting fatter (players in multiplayer, as they go up the stages): the belly and waist swell, mostly forwards,
     // the hips and thighs thicken; 0 = as they are, 1 = the biggest
-    if (this.mesh && this.mesh.morphTargetInfluences) this.mesh.morphTargetInfluences[0] = Math.max(0, this.fat || 0);     // (the belly: see addBellyMorph)
+    if (this.mesh && this.mesh.morphTargetInfluences) this.mesh.morphTargetInfluences[0] = Math.max(0, this.fat || 0);
+    if (this.uniform && this.uniform.morphTargetInfluences) this.uniform.morphTargetInfluences[0] = Math.max(0, this.fat || 0);     // (the belly: see addBellyMorph)
     if (this.fat > 0.001) for (const name of ['uLegL', 'uLegR']) { const part = this.parts[name]; if (!part) continue; const k = 1 + 0.22 * this.fat; this.bones[this.list.indexOf(part)].scale.set(k, 1, k); }   // thicker thighs
     if (this.hideHead) { const hb = this.bones[this.list.indexOf(this.parts.head)]; hb && hb.scale.setScalar(0.001); }   // (your own body, seen from inside your head)
-    if (this.handBone) for (const name in this.handBone) { const b = this.parts[name].body, bone = this.bones[this.handBone[name]]; if (!bone) continue;
-      bone.position.set(b.position.x, b.position.y, b.position.z); bone.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w); bone.scale.setScalar(this.handHide[name] ? 0.001 : 1); }
+    // the hands (and their fingers) ride on the forearms, turned at the wrist and curled at the knuckles as posed
+    if (this.extraBones) this.extraBones.forEach((eb, j) => {
+      const bone = this.bones[this.defs.length + j]; if (!bone) return; const b = this.parts[eb.name].body, c = this.parts[eb.name].def.center, ax = this.handAxes && this.handAxes[eb.name], hp = this.handPose && this.handPose[eb.name];
+      _hm.compose(_hp.set(b.position.x, b.position.y, b.position.z), _hq.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w), _hs.set(1, 1, 1)).multiply(_hm2.makeTranslation(-c.x, -c.y, -c.z));
+      if (ax && hp) {
+        if (hp.q.w < 0.99999) _hm.multiply(pivotM(ax.wrist, hp.q));
+        const curl = eb.kind === 'fingers' ? hp.curl : eb.kind === 'middle' ? hp.mid : 0;
+        if (curl) _hm.multiply(pivotM(ax.knuckle, _hq2.setFromAxisAngle(ax.width, curl * 1.55 * ax.curlSign)));
+      }
+      _hm.multiply(_hm2.makeTranslation(c.x, c.y, c.z)); _hm.decompose(bone.position, bone.quaternion, bone.scale);
+      bone.scale.setScalar(this.handHide[eb.name] ? 0.001 : 1);
+    });
   }
   // the wrist (where the hand starts) and the way the forearm points, in the world
   wrist(name, out, dirOut) {

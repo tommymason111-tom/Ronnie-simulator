@@ -46,7 +46,7 @@ export function modesFor(place) {
   });
 }
 const ATTACKS = {
-  tommy:  [{ key: 'trip', icon: '🦶', title: 'TOMMY TRIPS YOU UP!', sub: 'DOWN FOR 5 SECONDS' }],
+  tommy:  [{ key: 'trip', icon: '🟤', title: 'TOMMY HAS ATTACKED YOU WITH HIS FINAL BALL', sub: 'DOWN FOR 2.5 SECONDS' }],
   noah:   [{ key: 'tackle', icon: '🏉', title: 'TACKLED BY NOAH!', sub: 'FLOORED!' }],
   aidan:  [{ key: 'beer', icon: '🍺', title: 'AIDAN FORCES YOU TO HAVE ONE MORE BEER!', sub: 'DIZZY!', sfx: 'clink' }],
   harry:  [{ key: 'dating', icon: '💘', title: 'HARRY DISTRACTS YOU WITH HIS DATING HISTORY', sub: 'STUCK LISTENING!', sfx: 'ting' }],
@@ -467,7 +467,7 @@ export class Director {
     const away = { x: P.head.x - who.pos.x, z: P.head.z - who.pos.z };
     const P3 = (x, y, z) => new THREE.Vector3(x, y, z);
     switch (key) {
-      case 'trip': P.dropAll(); P.knockDown(away, 5); fx.cutscene('trip', 2.6); break;
+      case 'trip': P.dropAll(); P.knockDown(away, 2.5); break;          // (Tommy's final ball: flat on your back for a couple of seconds)
       case 'tackle': P.dropAll(); P.knockDown(away, 2); fx.cutscene('tackle', 1.9); break;
       case 'beer': {          // a pint appears at your lips and gets tipped down your throat
         P.dropAll();
@@ -563,7 +563,7 @@ export class Director {
   launch(pick) {
     const { c, attack } = pick;
     const ok = c === this.g.tommy ? c.startTrip() : c.intervene(attack.key);
-    if (ok && c !== this.g.tommy) { if (this.mp && this.mp.on && this.mp.host) this.mp.pickTarget(c); else if (this.g.fx && this.g.fx.coming) this.g.fx.coming(c); }
+    if (ok) { if (this.mp && this.mp.on && this.mp.host) this.mp.pickTarget(c); else if (this.g.fx && this.g.fx.coming) this.g.fx.coming(c); }
     if (ok) this.markUsed(c, attack.key);      // counts as their go from the moment they're picked
     return ok;
   }

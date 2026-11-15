@@ -23,7 +23,7 @@ import { buildGarden } from './levels/garden.js';
 import { Net, newCode } from './net.js';
 import { MPSync } from './mpsync.js';
 import { foodGlow } from './foods.js';
-import { EMOTES, EmotePlayer } from './emotes.js';
+import { EMOTES, CHAR_EMOTES, EmotePlayer } from './emotes.js';
 import { Music } from './music.js';
 import { TVs } from './tv.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
@@ -38,7 +38,7 @@ const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'pub', mode: 'e
   await Promise.race([MODEL_LOAD, new Promise(r => setTimeout(r, 25000))]); done = true; }
 
 // ---------------- renderer / scene ----------------
-const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -68,6 +68,7 @@ const player = new Player(renderer, scene, camera);
 player.rig.position.set(room.start.x, 0, room.start.z);
 player.rig.rotation.y = room.start.yaw;
 const items = new ItemManager(scene, room);
+{ const t0 = performance.now(), n = items.densify(); console.log('food spots', room.spawns.length, '(+' + n + ')', Math.round(performance.now() - t0) + 'ms'); }
 player.items = items;
 for (const gm of room.games || []) gm.attach(items, player);     // darts, table tennis... (words hooked up below)
 const physics = createPhysics(room);
@@ -116,7 +117,7 @@ if (room.big) {
   // spread round every table, counter and bench in the place (each spot used once before any doubles up)
   const spots = room.spawns.slice().sort(() => Math.random() - 0.5);
   items.topUpEvery = 0.4;
-  for (let i = 0; i < 140; i++) items.spawn(JUNK_TYPES[i % JUNK_TYPES.length], i < spots.length && items.items.every(it => it.pos.distanceToSquared(spots[i]) > 0.15 * 0.15) ? spots[i] : items.freeSpawn());
+  for (let i = 0; i < 140; i++) items.spawn(JUNK_TYPES[i % JUNK_TYPES.length], i < spots.length && items.items.every(it => it.pos.distanceToSquared(spots[i]) > 0.3 * 0.3) ? spots[i] : items.freeSpawn());
   items.respawnDelay = 1.5;
   items.minFood = 150;
 }
@@ -203,14 +204,16 @@ tommy.onTrip = (t) => director.stun(t, 'tommy');
 tommy.onTripAnnounce = (t) => director.announce(t, 'trip');
 tommy.canTrip = () => director.canAttack(tommy, 'trip');   // he waits his turn like everyone else
 
-const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish', hotdog: 'chomp', fries: 'crunch', kebab: 'chomp', chicken: 'crunch', taco: 'crunch', crisps: 'crunch', choc: 'crunch', cookie: 'crunch', icecream: 'squish', sausageroll: 'chomp', croissant: 'crunch', baguette: 'crunch', muffin: 'squish', painchoc: 'crunch', swirl: 'squish', icedbun: 'squish', pretzel: 'crunch' };
+const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish', hotdog: 'chomp', fries: 'crunch', kebab: 'chomp', chicken: 'crunch', taco: 'crunch', crisps: 'crunch', choc: 'crunch', cookie: 'crunch', icecream: 'squish', sausageroll: 'chomp', croissant: 'crunch', baguette: 'crunch', muffin: 'squish', painchoc: 'crunch', swirl: 'squish', icedbun: 'squish', pretzel: 'crunch', nuggets: 'crunch', pasty: 'chomp', onionrings: 'crunch', burrito: 'chomp', waffle: 'crunch', pancakes: 'squish', churros: 'crunch', cupcake: 'squish', baconbap: 'chomp' };
 const SNACK_WORD = { burger: ['CHOMP!', 'MUNCH!', 'NOM!'], pizza: ['CRUNCH!', 'MUNCH!'], doughnut: ['SQUISH!', 'NOM NOM!'],
   hotdog: ['CHOMP!', 'DOG DOWN!'], fries: ['CRUNCH!', 'CHIPPY!'], kebab: ['DONER!', 'CHOMP!', '3AM VIBES!'], chicken: ['CRUNCH!', 'FINGER LICKIN!'], taco: ['CRUNCH!', 'TACO TIME!'],
   crisps: ['CRUNCH!', 'RUSTLE!'], choc: ['SNAP!', 'NOM!'], cookie: ['CRUNCH!', 'NOM!'], icecream: ['BRAIN FREEZE!', 'SLURP!'], sausageroll: ['FLAKY!', 'CHOMP!'],
-  croissant: ['FLAKY!', 'OUI OUI!'], baguette: ['CRUNCH!', 'OH LA LA!'], muffin: ['SQUISH!', 'CHOC!'], painchoc: ['FLAKY!', 'MAGNIFIQUE!'], swirl: ['SWIRL!', 'NOM!'], icedbun: ['STICKY!', 'NOM!'], pretzel: ['TWISTED!', 'CRUNCH!'] };
+  croissant: ['FLAKY!', 'OUI OUI!'], baguette: ['CRUNCH!', 'OH LA LA!'], muffin: ['SQUISH!', 'CHOC!'], painchoc: ['FLAKY!', 'MAGNIFIQUE!'], swirl: ['SWIRL!', 'NOM!'], icedbun: ['STICKY!', 'NOM!'], pretzel: ['TWISTED!', 'CRUNCH!'],
+  nuggets: ['NUGGIES!', 'CRUNCH!'], pasty: ['PROPER PASTY!', 'CHOMP!'], onionrings: ['RING RING!', 'CRUNCH!'], burrito: ['BURRITO!', 'CHOMP!'], waffle: ['WAFFLE!', 'CRUNCH!'],
+  pancakes: ['STACKED!', 'SYRUPY!'], churros: ['OLE!', 'CRUNCH!'], cupcake: ['SQUISH!', 'SPRINKLES!'], baconbap: ['BACON!', 'BAP!'] };
 const CRUMB_COLORS = {
   nuggets: [0xd9902e, 0xf0c070, 0xa86020], pasty: [0xe0a050, 0xf2cf90, 0x8a5a3a], onionrings: [0xe0a040, 0xf6d080, 0xfaf6e8], burrito: [0xf2dcae, 0x5a2a1a, 0xd8352a, 0x6fbf3f],
-  waffle: [0xe0a050, 0xd8102e, 0xfffcf4], pancakes: [0xe8b060, 0x9a4a10, 0x2a2a6a], churros: [0xc98a3a, 0xf4e6c8, 0x3a1a08], cupcake: [0xffb0d8, 0xc98a4a, 0x3fa3ff], brownie: [0x3a1e0e, 0x4e2a14, 0xc8a070], baconbap: [0xe8c890, 0xd9707a, 0xf6e6d8],
+  waffle: [0xe0a050, 0xd8102e, 0xfffcf4], pancakes: [0xe8b060, 0x9a4a10, 0x2a2a6a], churros: [0xc98a3a, 0xf4e6c8, 0x3a1a08], cupcake: [0xffb0d8, 0xc98a4a, 0x3fa3ff], baconbap: [0xe8c890, 0xd9707a, 0xf6e6d8],
   burger: [0xd9933f, 0x5a2e14, 0x4caf3c, 0xffc21a, 0xe0a04a],
   pizza: [0xf2b233, 0xc9852f, 0xb3261e, 0xffe08a],
   doughnut: [0xff6fae, 0xd9a05b, 0x3fc1ff, 0xfff04a, 0xffffff],
@@ -245,9 +248,9 @@ function bite(it, hand) {
   if (it.def.poop) { poopOver(it); return; }
   it.bitesLeft--;
   if (it.nid && mp.on && !mp.host && it.bitesLeft > 0) net.send({ t: 'bite', nid: it.nid, left: it.bitesLeft });
-  sfx(SNACK_SFX[it.type], fx, 1);
+  sfx(SNACK_SFX[it.type] || 'chomp', fx, 1);
   crumbs.burst(fx, CRUMB_COLORS[it.type] || CRUMB_COLORS.burger, 26, 1.5, player.fwd);     // (anything without its own crumbs gets burger crumbs: never nothing)
-  const w = SNACK_WORD[it.type];
+  const w = SNACK_WORD[it.type] || SNACK_WORD.burger;      // (every food says something, even ones without their own words: a missing one stopped the game)
   words.show(w[Math.floor(Math.random() * w.length)], _b.copy(player.head).addScaledVector(player.fwd, 0.7 * player.scale).add({ x: 0, y: 0.05, z: 0 }), '#ffd400', 0.12 * player.scale);
   hand && hand.pulse(0.9, 70);
   const amount = (it.def.chonk / it.def.bites) * chonkMul();
@@ -578,7 +581,7 @@ const touch = setupTouch({
     player.flatGrab(best);
   },
 });
-touch.setEmotes(EMOTES);
+touch.setEmotes(EMOTES, () => charEmotes(), () => charEmoteTitle());
 // darts: zoom in on the board (button, wheel or Z) while you're holding a dart: your view leans in towards it
 let zoomShown = null;
 function updateZoom() {
@@ -625,6 +628,9 @@ async function setupVR() {
       else session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] });
       session.addEventListener('end', () => { session = null; vrBtn.textContent = 'ENTER VR'; document.body.classList.remove('in-vr'); camera.position.set(0, 1.6, 0); });
       await renderer.xr.setSession(session);
+      // a session carried on from the menu already has its controllers: they never "connect" again, so the hands
+      // wouldn't show until a controller went to sleep and woke up. Tell the game about them straight away.
+      if (session.inputSources && session.inputSources.length) { try { const ev = new Event('inputsourceschange'); ev.added = [...session.inputSources]; ev.removed = []; session.dispatchEvent(ev); } catch (e) { console.warn('controllers', e); } }
       if (player.flatMode) { player.flatDrop(); player.flatMode = false; if (player.flatGrip) player.flatGrip.visible = false; touch.show(false); document.body.classList.remove('flat'); }
       vrBtn.textContent = 'EXIT VR';
       document.body.classList.add('in-vr');
@@ -709,7 +715,8 @@ function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t 
 let paused = false;
 const pauseEl = document.getElementById('pause');
 function setPaused(on) {
-  paused = on; player.menuLock = on;      // (a menu open: you stay put until you close it, even in multiplayer where the game carries on) pauseEl.classList.toggle('on', on); pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-ctrls', 'show-modes', 'show-music', 'show-tv'); vrPause && vrPause.close(); }
+  // (a menu open: you stay put until you close it, even in multiplayer where the game carries on)
+  paused = on; player.menuLock = on; pauseEl.classList.toggle('on', on); pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-ctrls', 'show-modes', 'show-music', 'show-tv'); vrPause && vrPause.close(); }
   if (on) { const guest = !!(net.connected && !net.host);   // multiplayer: only the host changes the game or restarts it
     document.getElementById('pause-mode').style.display = guest ? 'none' : ''; document.getElementById('pause-restart').style.display = guest ? 'none' : '';
     const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = (t ? t.textContent : '') + (guest ? ' · the host picks the game' : ''); try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
@@ -807,6 +814,15 @@ var vrPause = (() => {
     }
     tex.needsUpdate = true;
   }
+  const _fp = new THREE.Vector3(), _fd = new THREE.Vector3();
+  function follow(snap) {
+    if (!renderer.xr.isPresenting) return;
+    const cam = renderer.xr.getCamera(); cam.getWorldPosition(_a); if (_a.lengthSq() < 1e-8) _a.copy(player.head);     // (no head pose yet: use the player's)
+    _fd.set(0, 0, -1).applyQuaternion(cam.getWorldQuaternion(_q)); _fd.y = 0; if (_fd.lengthSq() < 1e-6) _fd.set(player.fwd.x, 0, player.fwd.z); _fd.normalize();
+    _fp.copy(_a).addScaledVector(_fd, 0.85); _fp.y = _a.y - 0.05;
+    if (snap || panel.position.distanceTo(_fp) > 1.5) panel.position.copy(_fp); else panel.position.lerp(_fp, 0.12);
+    panel.lookAt(_a.x, panel.position.y, _a.z); back.position.copy(_a);
+  }
   function press(i) { if (hover < 0 || !rows[hover]) { pick(i); } const r = rows[hover]; if (!r) return; sfx('pop', null, 0.6); r.el.click(); key = ''; setTimeout(() => { key = ''; }, 50); }
   function pick(i) { aim(); }
   function aim() {
@@ -820,14 +836,13 @@ var vrPause = (() => {
     });
   }
   return {
+    // always in front of you: it follows your head (gently), wherever you are and whichever way you turn
     open() {
       if (panel.visible) return;
-      renderer.xr.getCamera().getWorldPosition(_a); const d = new THREE.Vector3(0, 0, -1).applyQuaternion(renderer.xr.getCamera().getWorldQuaternion(_q)); d.y = 0; d.normalize();
-      panel.position.copy(_a).addScaledVector(d, 0.85); panel.position.y = _a.y - 0.05; panel.lookAt(_a.x, panel.position.y, _a.z);
-      back.position.copy(_a); panel.visible = back.visible = true; key = '';
+      panel.visible = back.visible = true; key = ''; follow(true);
     },
     close() { panel.visible = back.visible = false; lines.forEach(l => { l.visible = false; }); },
-    update() { if (!panel.visible) return; aim(); draw(); },
+    update() { if (!panel.visible) return; follow(false); aim(); draw(); },
     get open_() { return panel.visible; },
   };
 })();
@@ -840,31 +855,50 @@ function vrMenuButtons() {
   if (down && !menuHeld) { if (paused) { initAudio(); setPaused(false); } else setPaused(true); }
   menuHeld = down;
 }
+// leaving the headset with the game paused: the headset menu goes (and its dark backdrop), the phone/computer pause
+// menu shows instead; coming back in, the menu's in front of you again
+renderer.xr.addEventListener('sessionend', () => { vrPause.close(); pauseEl.classList.remove('in-vr'); player.menuLock = paused; player.noTurn = false; player.wheelOpen = false; });
+renderer.xr.addEventListener('sessionstart', () => { if (paused) pauseEl.classList.add('in-vr'); });
 renderer.xr.addEventListener('sessionstart', () => { const s = renderer.xr.getSession(); s.addEventListener('visibilitychange', () => { if (s.visibilityState !== 'visible' && !paused && director.running) setPaused(true); }); });
 
-// VR emote wheel (multiplayer): hold B on the right controller, push the right stick towards an emote, let go of B
+// VR emote wheel (multiplayer): press B once to open it (it stays open in front of you), push the right stick at an
+// emote and press A or the trigger to do it. One slot flips between DEFAULT EMOTES and your character's own. B again
+// closes it.
+const charEmotes = () => CHAR_EMOTES[net.char] || [];
+const charEmoteTitle = () => `${((SQUAD[net.char] && SQUAD[net.char].name) || 'MY').toUpperCase()}'S EMOTES`;
 const vrEmote = (() => {
   const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d');
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
   mesh.renderOrder = 61; mesh.visible = false; scene.add(mesh);
-  let held = false, sel = -1, drawn = -2;
-  const draw = () => { if (drawn === sel) return; drawn = sel; g.clearRect(0, 0, S, S); const n = EMOTES.length, c = S / 2;
-    g.fillStyle = 'rgba(20,28,90,0.88)'; g.beginPath(); g.arc(c, c, 250, 0, Math.PI * 2); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ffd400'; g.stroke();
-    EMOTES.forEach((e, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n, x = c + Math.cos(a) * 160, y = c + Math.sin(a) * 160;
-      g.fillStyle = i === sel ? '#ff4fa3' : '#1c2c8c'; g.beginPath(); g.arc(x, y, 84, 0, Math.PI * 2); g.fill(); g.lineWidth = 6; g.strokeStyle = i === sel ? '#fff' : '#ffd400'; g.stroke();
-      g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '64px serif'; g.fillText(e.icon, x, y - 14); g.fillStyle = '#fff'; g.font = '900 20px Arial'; g.fillText(e.name, x, y + 46); });
-    g.fillStyle = '#fff'; g.font = '900 22px Arial'; g.textAlign = 'center'; g.fillText(sel < 0 ? 'PUSH THE STICK' : 'LET GO OF B', c, c); tex.needsUpdate = true; };
+  let open = false, sel = -1, drawn = '', page = 0, bWas = false, okWas = false;
+  const slots = () => { const own = charEmotes(), list = page === 0 ? EMOTES : own; return own.length ? [...list, { id: '__page', icon: '⇄', name: page === 0 ? charEmoteTitle() : 'DEFAULT EMOTES' }] : list; };
+  const draw = () => { const L = slots(), key = page + '|' + sel + '|' + L.length; if (drawn === key) return; drawn = key; g.clearRect(0, 0, S, S); const n = L.length, c = S / 2;
+    g.fillStyle = 'rgba(20,28,90,0.9)'; g.beginPath(); g.arc(c, c, 250, 0, Math.PI * 2); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ffd400'; g.stroke();
+    const r = n > 6 ? 72 : 84;
+    L.forEach((e, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n, x = c + Math.cos(a) * 165, y = c + Math.sin(a) * 165, pg = e.id === '__page';
+      g.fillStyle = i === sel ? '#ff4fa3' : pg ? '#3a2a7a' : '#1c2c8c'; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.lineWidth = 6; g.strokeStyle = i === sel ? '#fff' : '#ffd400'; g.stroke();
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `${r * 0.7}px serif`; g.fillText(e.icon, x, y - 14); g.fillStyle = '#fff';
+      let f = 20; do { g.font = `900 ${f}px Arial`; f--; } while (g.measureText(e.name).width > r * 1.8 && f > 10); g.fillText(e.name, x, y + r * 0.52); });
+    g.fillStyle = '#ffd400'; g.font = '900 24px Arial'; g.textAlign = 'center'; g.fillText(page === 0 ? 'DEFAULT EMOTES' : charEmoteTitle(), c, c - 22);
+    g.fillStyle = '#fff'; g.font = '900 17px Arial'; g.fillText(sel < 0 ? 'STICK TO PICK' : 'A / TRIGGER TO GO', c, c + 10); g.fillText('B TO CLOSE', c, c + 34); tex.needsUpdate = true; };
+  const place = () => { const f = new THREE.Vector3(player.fwd.x, 0, player.fwd.z).normalize(); mesh.position.copy(player.head).addScaledVector(f, 0.55).add({ x: 0, y: -0.08, z: 0 }); mesh.lookAt(player.head); };
+  const close = () => { open = false; mesh.visible = false; player.noTurn = false; player.wheelOpen = false; };
   return { update() {
     const h = player.hands.find(h => h.source && h.handedness === 'right' && h.source.gamepad), gp = h && h.source.gamepad;
-    const down = !!(gp && gp.buttons[5] && gp.buttons[5].pressed) && net.connected;
-    if (down) {
-      if (!held) { held = true; sel = -1; drawn = -2; const f = new THREE.Vector3(player.fwd.x, 0, player.fwd.z).normalize(); mesh.position.copy(player.head).addScaledVector(f, 0.55).add({ x: 0, y: -0.08, z: 0 }); mesh.lookAt(player.head); }
-      const ax = gp.axes.length >= 4 ? gp.axes[2] : gp.axes[0] || 0, ay = gp.axes.length >= 4 ? gp.axes[3] : gp.axes[1] || 0;
-      if (Math.hypot(ax, ay) > 0.55) { let a = Math.atan2(ay, ax) + Math.PI / 2; const n = EMOTES.length; a = ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); const i = Math.round(a / (2 * Math.PI / n)) % n; if (i !== sel) { sel = i; h.pulse && h.pulse(0.3, 20); } }
-      mesh.visible = true; player.noTurn = true; draw();
-    } else if (held) { held = false; mesh.visible = false; player.noTurn = false; if (sel >= 0) mp.emote(EMOTES[sel].id); }
-  }, get open() { return held; } };
+    const bDown = !!(gp && gp.buttons[5] && gp.buttons[5].pressed), ok = !!(gp && ((gp.buttons[4] && gp.buttons[4].pressed) || (gp.buttons[0] && gp.buttons[0].pressed)));
+    if (!net.connected || !renderer.xr.isPresenting || paused) { if (open) close(); bWas = bDown; okWas = ok; return; }
+    if (bDown && !bWas) { if (open) close(); else { open = true; sel = -1; drawn = ''; page = 0; player.noTurn = true; player.wheelOpen = true; } }
+    bWas = bDown;
+    if (open) {
+      place(); mesh.visible = true; const L = slots();
+      const ax = gp && (gp.axes.length >= 4 ? gp.axes[2] : gp.axes[0]) || 0, ay = gp && (gp.axes.length >= 4 ? gp.axes[3] : gp.axes[1]) || 0;
+      if (Math.hypot(ax, ay) > 0.55) { let a = Math.atan2(ay, ax) + Math.PI / 2; const n = L.length; a = ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); const i = Math.round(a / (2 * Math.PI / n)) % n; if (i !== sel) { sel = i; h && h.pulse && h.pulse(0.3, 20); } }
+      if (ok && !okWas && sel >= 0) { const e = L[sel]; if (e.id === '__page') { page = 1 - page; sel = -1; h && h.pulse && h.pulse(0.5, 30); } else { close(); mp.emote(e.id); } }
+      if (open) draw();
+    }
+    okWas = ok;
+  }, get open() { return open; } };
 })();
 // multiplayer as one of the squad (or Tommy): you see your own character's body when you look down, not Ronnie's belly
 let selfBody = null;
@@ -1010,7 +1044,9 @@ function frame(simDt) {
 
   if (simDt == null) renderer.render(scene, camera);
 }
-renderer.setAnimationLoop(() => frame());
+// (one bad frame must never stop the game: log it, still draw, carry on with the next)
+let frameErrs = 0;
+renderer.setAnimationLoop(() => { try { frame(); } catch (e) { if (frameErrs++ < 5) console.error('frame', e); try { renderer.render(scene, camera); } catch (e2) {} } });
 
 // Debug handle for testing in a desktop browser console.
 // ---------------- multiplayer: the room was set up on the menu (SOLO / MULTIPLAYER), this carries it on ----------------

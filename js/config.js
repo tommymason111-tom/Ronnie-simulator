@@ -40,7 +40,6 @@ export const FOODS = {
   pancakes: { label: 'Pancake stack', chonk: 15, bites: 3, radius: 0.055, mass: 0.25 },
   churros:  { label: 'Churros', chonk: 12, bites: 2, radius: 0.05, mass: 0.15 },
   cupcake:  { label: 'Cupcake', chonk: 10, bites: 2, radius: 0.04, mass: 0.1 },
-  brownie:  { label: 'Brownie', chonk: 12, bites: 2, radius: 0.045, mass: 0.12 },
   baconbap: { label: 'Bacon bap', chonk: 15, bites: 3, radius: 0.06, mass: 0.25 },
   apple:    { label: 'Apple',       chonk: -6, bites: 1, radius: 0.038, mass: 0.15, veg: true },
   pear:     { label: 'Pear',        chonk: -6, bites: 1, radius: 0.04, mass: 0.15, veg: true },
@@ -109,7 +108,7 @@ export const ROOM = { w: 5, d: 4.5, h: 2.6 };
 // Everything healthy the squad can lob at Ronnie, and the junk food that lies around.
 export const VEG_TYPES = ['broccoli', 'carrot', 'celery', 'sprout', 'apple', 'pear', 'orange', 'banana', 'tomato', 'cucumber', 'pepper', 'cauliflower'];
 export const BAKERY_TYPES = ['croissant', 'baguette', 'muffin', 'painchoc', 'swirl', 'icedbun', 'pretzel', 'doughnut', 'cookie', 'sausageroll'];
-export const JUNK_TYPES = ['burger', 'pizza', 'doughnut', 'hotdog', 'fries', 'kebab', 'chicken', 'taco', 'crisps', 'choc', 'cookie', 'icecream', 'sausageroll', 'nuggets', 'pasty', 'onionrings', 'burrito', 'waffle', 'pancakes', 'churros', 'cupcake', 'brownie', 'baconbap'];
+export const JUNK_TYPES = ['burger', 'pizza', 'doughnut', 'hotdog', 'fries', 'kebab', 'chicken', 'taco', 'crisps', 'choc', 'cookie', 'icecream', 'sausageroll', 'nuggets', 'pasty', 'onionrings', 'burrito', 'waffle', 'pancakes', 'churros', 'cupcake', 'baconbap'];
 // a thrower's favourite about a third of the time, otherwise anything healthy
 export function pickVeg(fav) { return fav && Math.random() < 0.35 ? fav : VEG_TYPES[Math.floor(Math.random() * VEG_TYPES.length)]; }
 export function pickJunk() { return JUNK_TYPES[Math.floor(Math.random() * JUNK_TYPES.length)]; }
