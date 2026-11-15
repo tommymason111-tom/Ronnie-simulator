@@ -34,7 +34,7 @@ export class Net {
       case 'leave': this.drop(m.id); this.emit('leave', m); break;
       case 'host': if (m.id === this.id) this.host = true; for (const p of this.players.values()) p.host = p.id === m.id; this.emit('host', m); break;
       case 'pong': break;
-      default: { const p = this.players.get(m.f); if (m.t === 'p' && p) { p.pose = m; p.at = performance.now(); } this.emit(m.t, m, p); }
+      default: { const p = this.players.get(m.f); if (m.t === 'p' && p) { p.pose = m; p.at = performance.now(); (p.buf || (p.buf = [])).push({ t: p.at, m }); if (p.buf.length > 10) p.buf.shift(); } this.emit(m.t, m, p); }
     }
   }
   drop(id) { const p = this.players.get(id); if (p && p.avatar) p.avatar.dispose(); this.players.delete(id); }

@@ -243,11 +243,11 @@ export class Player {
 
     if (xr) {
       for (const h of this.hands) this.updateHand(h, dt, t);
-      if (!this.stunned) this.locomotion(dt, this.fx.slow > 0 ? 0.45 : 1);
+      if (!this.stunned && !this.menuLock) this.locomotion(dt, this.fx.slow > 0 ? 0.45 : 1);     // (not while a menu's open)
     } else {
       for (const h of this.hands) { if (h.body) h.body.position.set(0, -10, 0); if (h.ctrlHand) h.ctrlHand.root.visible = false; }
       const mv = this.flatMove;
-      if (this.stunned && mv) this.flatMove = { x: 0, z: 0 };
+      if ((this.stunned || this.menuLock) && mv) this.flatMove = { x: 0, z: 0 };
       else if (this.fx.slow > 0 && mv) this.flatMove = { x: mv.x * 0.45, z: mv.z * 0.45 };
       this.updateFlat(dt, t);
       if (mv) this.flatMove = mv;
@@ -333,12 +333,10 @@ export class Player {
   }
 
   grab(h) {
-    if (!h.tracked || h.held || h.heldPart || !this.items) return;
+    if (!h.tracked || h.held || h.heldPart || h.remoteGrab || !this.items) return;
     const r = TUNING.grabRadius * Math.max(1, this.scale);
     const it = this.items.nearest(h.pos, r);
     if (!it) { this.grabTommy(h); return; }
-    const other = this.hands.find(o => o !== h && o.held && !o.held.dead);          // one thing at a time
-    if (other && other.held !== it) { this.onBlocked && this.onBlocked(other.held, h); h.pulse(0.2, 40); return; }
     if (it.heldBy && it.heldBy !== h) { it.heldBy.held = null; }
     it.heldBy = h; h.held = it; it.resting = false;
     it.vel.set(0, 0, 0);
@@ -356,6 +354,8 @@ export class Player {
     let part = null, who = null;
     for (const c of this.cast) { part = c.partAt(h.pos, 0.07 * this.scale); if (part) { who = c; break; } }
     if (!part) return;
+    // one of the host's people (a joining player's game): the host's game does the holding, following this hand
+    if (who.netDriven && this.remoteGrab) { h.remoteGrab = { who, part }; h.pulse(0.8, 60); this.remoteGrab(h, who, part, 'start'); return; }
     h.heldWho = who;
     const b = part.body;
     _q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w).invert();
@@ -370,6 +370,7 @@ export class Player {
   }
 
   releaseTommy(h) {
+    if (h.remoteGrab) { const g = h.remoteGrab; h.remoteGrab = null; this.remoteGrab && this.remoteGrab(h, g.who, g.part, 'end'); return; }
     if (!h.heldPart) return;
     this.physics.world.removeConstraint(h.joint);
     h.joint = null;
@@ -382,7 +383,7 @@ export class Player {
   }
 
   release(h, silent = false) {
-    if (h.heldPart) { this.releaseTommy(h); return; }
+    if (h.heldPart || h.remoteGrab) { this.releaseTommy(h); return; }
     const it = h.held;
     if (!it) return;
     h.held = null;

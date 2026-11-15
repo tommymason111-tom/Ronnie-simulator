@@ -390,11 +390,15 @@ const _v = new THREE.Vector3(), _c = new THREE.Vector3();
 export const FOOD_BIG = 1.6;
 const bigFor = (def) => (def.prop || def.drink || def.poop) ? 1 : FOOD_BIG;
 const sizedMesh = (type, v) => { const m = meshFor(type, v), k = bigFor(FOODS[type]); if (k !== 1) m.scale.multiplyScalar(k); return m; };
+const outlineMat = (color, w) => new THREE.ShaderMaterial({ uniforms: { c: { value: new THREE.Color(color) }, w: { value: w } }, side: THREE.BackSide,
+  vertexShader: 'uniform float w; void main(){ vec3 p = position + normalize(normal) * w; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }',
+  fragmentShader: 'uniform vec3 c; void main(){ gl_FragColor = vec4(c, 1.0); }' });
+const OUTLINE_MATS = [outlineMat(0x0a0a0a, 0.0048)];      // a bold black outline (picked out of white, yellow, black and black+white); in the food's own size (it's drawn 1.6x)
 const HALO_MAT = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
   r.addColorStop(0, 'rgba(255,245,190,1)'); r.addColorStop(0.3, 'rgba(255,220,100,0.6)'); r.addColorStop(0.65, 'rgba(255,200,60,0.18)'); r.addColorStop(1, 'rgba(255,200,60,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   return new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 }); })();
-export const foodGlow = (t) => { HALO_MAT.opacity = 0.62 + Math.sin(t * 2.6) * 0.2; };
+export const foodGlow = (t) => { HALO_MAT.opacity = 0.34 + Math.sin(t * 2.6) * 0.12; };
 export class Item {
   constructor(type, v = 0) {
     this.type = type;
@@ -404,7 +408,7 @@ export class Item {
     this.obj.add(sizedMesh(type, v));
     this.radius = this.def.radius * bigFor(this.def);
     // food you can pick up glows a little (a soft warm halo round it, gently pulsing) so it stands out
-    if (bigFor(this.def) !== 1) { this.halo = new THREE.Sprite(HALO_MAT); this.halo.scale.setScalar(this.radius * 7); this.halo.renderOrder = 2; this.obj.add(this.halo); }
+    if (bigFor(this.def) !== 1) { this.halo = new THREE.Sprite(HALO_MAT); this.halo.scale.setScalar(this.radius * 7); this.halo.renderOrder = 2; this.obj.add(this.halo); this.addOutline(); }
     this.vel = new THREE.Vector3();
     this.prev = new THREE.Vector3();   // position last frame (for swept hit tests)
     this.spin = new THREE.Vector3();
@@ -432,7 +436,14 @@ export class Item {
     this.vel.set(0, 0, 0); this.spin.set(0, 0, 0);
     this.obj.visible = true;
   }
-  setVariant(v) { if (this.variant === v) return; this.variant = v; const s = this.obj.scale.x; this.obj.clear(); this.obj.add(sizedMesh(this.type, v)); this.obj.scale.setScalar(s); }
+  // a black outline round the food so it stands out on any floor or table (white, yellow, black and black+white
+  // were all tried on carpet, wood, tablecloths, grass, the Lidl floor and the booths: black was the favourite)
+  addOutline() {
+    const ms = []; this.obj.children[0].traverse(m => { if (m.isMesh) ms.push(m); });
+    this.outline = [];
+    for (const m of ms) for (const mat of OUTLINE_MATS) { const h = new THREE.Mesh(m.geometry, mat); h.renderOrder = -1; h.frustumCulled = true; m.add(h); this.outline.push(h); }
+  }
+  setVariant(v) { if (this.variant === v) return; this.variant = v; const s = this.obj.scale.x; this.obj.clear(); this.obj.add(sizedMesh(this.type, v)); this.obj.scale.setScalar(s); if (this.halo) { this.obj.add(this.halo); this.addOutline(); this.outlineOn = undefined; } }
   get pos() { return this.obj.position; }
   get eatFraction() { return this.bitesLeft / this.def.bites; }
 }
@@ -474,9 +485,11 @@ export class ItemManager {
   queueRespawn(type, delay = this.respawnDelay || TUNING.respawnDelay) { this.respawnQueue.push({ type, t: delay }); }
 
   freeSpawn() {
-    const sp = this.room.spawns;
-    for (let tries = 0; tries < 20; tries++) {
+    const sp = this.room.spawns, avoid = this.avoid ? this.avoid() : [];
+    // new food never pops up right next to a player (it looked like eating made more appear in front of you)
+    for (let tries = 0; tries < 40; tries++) {
       const p = sp[Math.floor(Math.random() * sp.length)];
+      if (tries < 30 && avoid.some(a => Math.hypot(a.x - p.x, a.z - p.z) < 4)) continue;
       if (this.items.every(it => it.pos.distanceToSquared(p) > 0.15 * 0.15)) return p;
     }
     return sp[Math.floor(Math.random() * sp.length)];
@@ -503,7 +516,9 @@ export class ItemManager {
       for (const it of this.items) if (!it.def.veg && !it.def.prop && !it.temp && !it.empty && !it.incoming) food++;
       if (food < this.minFood) { const veg = this.vegShare && Math.random() < this.vegShare; const it = this.spawn(veg ? ['apple', 'banana', 'orange', 'broccoli', 'carrot', 'pear', 'tomato'][Math.floor(Math.random() * 7)] : pickJunk(), this.freeSpawn()); if (veg) it.shelf = true; }
     }
-    for (const it of this.items) if (it.halo) it.halo.visible = !it.heldBy && !it.empty;
+    const eye = this.viewer;
+    for (const it of this.items) { if (it.halo) it.halo.visible = !it.heldBy && !it.empty;
+      if (it.outline) { const on = !it.heldBy && !it.empty && (!eye || it.pos.distanceToSquared(eye) < 81); if (it.outlineOn !== on) { it.outlineOn = on; for (const h of it.outline) h.visible = on; } } }      // (only nearby food: cheap on the Quest)
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
       const r = this.respawnQueue[i];
       r.t -= dt;

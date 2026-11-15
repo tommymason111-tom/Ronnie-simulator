@@ -92,7 +92,7 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   let fi = Math.floor(Math.random() * FOODS.length);
   const nextType = () => FOODS[fi++ % FOODS.length];
   const makeFood = (type) => { const it = new Item(type); const o = it.obj;
-    if (it.halo) o.remove(it.halo); if (o.children[0]) o.children[0].scale.setScalar(1);   // (no in-game glow or extra size on the title screen)
+    if (it.halo) o.remove(it.halo); for (const h of it.outline || []) h.visible = false; if (o.children[0]) o.children[0].scale.setScalar(1);   // (no in-game glow or extra size on the title screen)
     o.scale.setScalar(TRAY_SCALE); o.userData.type = type; o.userData.bites = type === 'can' ? 1 : 3; world.add(o); return o; };
   const tray = SPOTS.map((p, i) => { const o = makeFood(nextType()); o.position.copy(p); o.userData.home = p; o.userData.pop = 1; return o; });
 
@@ -225,36 +225,90 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     const logo = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 1.4), new THREE.MeshBasicMaterial({ map: lt, transparent: true }));
     logo.name = 'logo'; vrRoom.add(logo);
   }
-  // the menu panel
-  const PW = 512, PH = 640;
+  // the menu panel: a live copy of whichever page of the phone menu is showing (same buttons, same steps, same
+  // order), so VR and the phone are always the same menu. Point at a row and pull the trigger to press the real
+  // button. Boxes you type in (your name, a room code) bring up a keyboard on the panel.
+  const PW = 640, PH = 1000;
   const pc = document.createElement('canvas'); pc.width = PW; pc.height = PH; const pg = pc.getContext('2d');
   const ptex = new THREE.CanvasTexture(pc); ptex.colorSpace = THREE.SRGBColorSpace;
-  const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5), new THREE.MeshBasicMaterial({ map: ptex, transparent: true }));
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5 * PH / PW), new THREE.MeshBasicMaterial({ map: ptex, transparent: true }));
   panel.visible = false; scene.add(panel);
-  const BTN = { pp: [16, 128, 96, 82], pn: [400, 128, 96, 82], mp: [16, 262, 96, 82], mn: [400, 262, 96, 82], play: [40, 384, 432, 110], exit: [136, 528, 240, 76] };
-  let hover = null, drawnKey = '';
-  function drawPanel() {
-    const info = (window.menuVR && window.menuVR.info()) || { place: 'THE OYSTERFLEET', mode: 'THE WHOLE SQUAD' };
-    const key = info.place + '|' + info.mode + '|' + hover; if (key === drawnKey) return; drawnKey = key;
-    const g = pg; g.clearRect(0, 0, PW, PH);
-    const rr = (x, y, w, h, r, fill, stroke) => { g.beginPath(); g.roundRect(x, y, w, h, r); g.fillStyle = fill; g.fill(); if (stroke) { g.lineWidth = 6; g.strokeStyle = stroke; g.stroke(); } };
-    rr(4, 4, PW - 8, PH - 8, 34, 'rgba(20,14,48,0.92)', '#ffd400');
+  let hover = -1, drawnKey = '', rows = [], scroll = 0, maxScroll = 0, kb = null;
+  const SEL = 'h2, .sub, .scene.cur, .flip, .mate, .rp, input, button, #mp-status2, #room-msg, #name-msg, #mus-msg, #room-code, .where';
+  const txt = (el) => (el.tagName === 'INPUT' ? (el.value || el.placeholder || '') : el.textContent || '').trim().replace(/\s+/g, ' ');
+  function items() {
+    const scr = document.querySelector('#start .screen.on') || document.querySelector('.screen.on'); if (!scr) return [];
+    const out = [];
+    for (const el of scr.querySelectorAll(SEL)) {
+      if (el.id === 'title-vr' || el.type === 'file' || el.closest('[hidden]')) continue;
+      if (el.closest('.scene') && !el.closest('.scene.cur')) continue;
+      if (out.some(o => o.contains(el))) continue;            // (a button inside a card that's already listed)
+      if (!el.getClientRects().length) continue;              // hidden on the phone page too
+      if (!txt(el) && el.tagName !== 'INPUT') continue;
+      out.push(el);
+    }
+    return out;
+  }
+  const KEYS = ['1234567890', 'QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+  function drawPanel(force) {
+    const els = kb ? [] : items();
+    const sig = kb ? 'kb|' + kb.el.value + '|' + hover : els.map(e => txt(e).slice(0, 50) + (e.matches('.sel, .cur, .on, .picked') ? '*' : '')).join('|') + '|' + hover + '|' + scroll;
+    if (!force && sig === drawnKey) return; drawnKey = sig;
+    const g = pg; g.clearRect(0, 0, PW, PH); rows = [];
+    const rr = (x, y, w, h, r, fill, stroke, lw = 5) => { g.beginPath(); g.roundRect(x, y, w, h, r); g.fillStyle = fill; g.fill(); if (stroke) { g.lineWidth = lw; g.strokeStyle = stroke; g.stroke(); } };
+    const fit = (t, max, size, w = 900) => { let f = size; do { g.font = `${w} ${f}px "Arial Black", Arial, sans-serif`; f -= 2; } while (g.measureText(t).width > max && f > 11); };
+    rr(4, 4, PW - 8, PH - 8, 34, 'rgba(22,30,110,0.96)', '#ffd400', 7);
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    const fit = (txt, max, size) => { let f = size; do { g.font = `900 ${f}px "Arial Black", Impact, sans-serif`; f -= 2; } while (g.measureText(txt).width > max && f > 12); };
-    const row = (label, y, val, a, b) => {
-      g.fillStyle = '#9fb4ff'; fit(label, 400, 24); g.fillText(label, PW / 2, y - 22);
-      for (const id of [a, b]) { const [x, yy, w, h] = BTN[id]; rr(x, yy, w, h, 18, hover === id ? '#ffd400' : '#3b2f7a'); g.fillStyle = hover === id ? '#2a1208' : '#fff'; fit(id.endsWith('p') ? '◀' : '▶', 80, 44); g.fillText(id.endsWith('p') ? '◀' : '▶', x + w / 2, yy + h / 2 + 2); }
-      g.fillStyle = '#fff'; fit(val, 270, 34); g.fillText(val, PW / 2, y + 41);
-    };
-    g.fillStyle = '#ffd400'; fit('PICK AND PLAY', 440, 40); g.fillText('PICK AND PLAY', PW / 2, 50);
-    row('PLACE', 128, info.place, 'pp', 'pn');
-    row('MODE', 262, info.mode, 'mp', 'mn');
-    { const [x, y, w, h] = BTN.play; rr(x, y, w, h, 26, hover === 'play' ? '#ffe866' : '#ffd400', '#ff7a00'); g.fillStyle = '#2a1208'; fit('PLAY ➜', 380, 64); g.fillText('PLAY ➜', x + w / 2, y + h / 2 + 3); }
-    { const [x, y, w, h] = BTN.exit; rr(x, y, w, h, 20, hover === 'exit' ? '#ff6a6a' : '#5a2030'); g.fillStyle = '#fff'; fit('EXIT VR', 200, 30); g.fillText('EXIT VR', x + w / 2, y + h / 2 + 2); }
-    g.fillStyle = '#9fb4ff'; fit('grab the food and feed him!', 440, 22); g.fillText('grab the food and feed him!', PW / 2, PH - 14 - 2);
+    const btn = (r, label, hot, col) => { rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 18, hot ? '#ffe866' : col, hot ? null : '#fff', 3); g.fillStyle = hot || col === '#39ff14' || col === '#ffd400' ? '#111' : '#fff'; fit(label, r.x1 - r.x0 - 24, 30); g.fillText(label, (r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2 + 1); };
+    if (kb) {                                                        // the keyboard
+      g.fillStyle = '#ffd400'; fit('TYPE IT IN', PW - 60, 44); g.fillText('TYPE IT IN', PW / 2, 60);
+      rr(40, 110, PW - 80, 90, 18, '#fff'); g.fillStyle = '#111'; fit(kb.el.value || ' ', PW - 120, 46); g.fillText(kb.el.value || '', PW / 2, 156);
+      let y = 240; const kw = (PW - 60) / 10;
+      for (const line of KEYS) { const x0 = (PW - line.length * kw) / 2; [...line].forEach((ch, i) => { const r = { x0: x0 + i * kw + 3, y0: y, x1: x0 + (i + 1) * kw - 3, y1: y + 86, key: ch }; rows.push(r); btn(r, ch, hover === rows.length - 1, '#3b2f9a'); }); y += 96; }
+      for (const [k, l, x0, x1, col] of [['SPACE', '␣ SPACE', 30, 250, '#3b2f9a'], ['DEL', '⌫ DELETE', 262, 452, '#7a2a3a'], ['DONE', '✓ DONE', 464, PW - 30, '#39ff14']]) { const r = { x0, y0: y + 10, x1, y1: y + 106, key: k }; rows.push(r); btn(r, l, hover === rows.length - 1, col); }
+      ptex.needsUpdate = true; return;
+    }
+    // the page, top to bottom (scrolls if it's long)
+    const top = 16, bottom = PH - 120;
+    g.save(); g.beginPath(); g.rect(0, top, PW, bottom - top); g.clip();
+    let y = top + 10 - scroll, col = 0, tileY = 0;
+    const tiles = (el) => el.matches('.mate, .flip');
+    for (const el of els) {
+      if (!tiles(el) && col) { col = 0; y = tileY + 128; }
+      const t = txt(el), on = el.matches('.sel, .cur, .on, .picked');
+      if (tiles(el)) {                                             // cards in a grid, three across
+        const w = (PW - 60) / 3; if (col === 0) tileY = y; const r = { x0: 30 + col * w + 4, y0: tileY, x1: 30 + (col + 1) * w - 4, y1: tileY + 118, el };
+        rows.push(r); const hot = hover === rows.length - 1;
+        rr(r.x0, r.y0, r.x1 - r.x0, 118, 16, hot ? '#ffe866' : on ? '#39ff14' : 'rgba(255,255,255,0.12)', on ? '#fff' : null, 3);
+        const name = (el.querySelector("b, h3, .name") || el).textContent.trim(), sub = el.matches(".mate") ? (el.querySelector(".atk") || { textContent: "" }).textContent.trim() : "";
+        g.fillStyle = hot || on ? '#111' : '#fff'; fit(name, w - 20, 26); g.fillText(name, (r.x0 + r.x1) / 2, r.y0 + 44);
+        if (sub) { g.fillStyle = hot || on ? '#333' : '#c9d3ff'; fit(sub, w - 20, 16, 700); g.fillText(sub, (r.x0 + r.x1) / 2, r.y0 + 84); }
+        col = (col + 1) % 3; if (!col) y = tileY + 128; continue;
+      }
+      if (el.tagName === 'H2') { g.fillStyle = '#ffd400'; fit(t, PW - 60, 52); g.fillText(t, PW / 2, y + 34); y += 74; continue; }
+      if (el.id === 'room-code') { g.fillStyle = '#ffd400'; fit(t, PW - 60, 64); g.fillText(t, PW / 2, y + 40); y += 84; continue; }
+      if (el.matches('.scene')) { const h3 = (el.querySelector('h3') || el).textContent.trim(), p = (el.querySelector('p') || { textContent: '' }).textContent.trim();
+        rr(30, y, PW - 60, 150, 20, 'rgba(255,255,255,0.14)', '#ffd400', 4); g.fillStyle = '#fff'; fit(h3, PW - 100, 40); g.fillText(h3, PW / 2, y + 48);
+        g.fillStyle = '#c9d3ff'; fit(p.length > 70 ? p.slice(0, 68) + '…' : p, PW - 100, 20, 700); g.fillText(p.length > 70 ? p.slice(0, 68) + '…' : p, PW / 2, y + 104); y += 164; continue; }
+      if (el.matches('.rp')) { rr(30, y, PW - 60, 60, 14, 'rgba(255,255,255,0.1)'); g.fillStyle = '#fff'; fit(t, PW - 100, 24, 700); g.fillText(t, PW / 2, y + 30); y += 68; continue; }
+      if (el.tagName === 'INPUT') { const r = { x0: 40, y0: y, x1: PW - 40, y1: y + 84, el }; rows.push(r); const hot = hover === rows.length - 1;
+        rr(r.x0, r.y0, r.x1 - r.x0, 84, 18, '#fff', hot ? '#ffd400' : '#999', hot ? 7 : 3); g.fillStyle = el.value ? '#111' : '#888'; fit(t || '…', PW - 120, 36); g.fillText(t || '…', PW / 2, y + 44); y += 96; continue; }
+      if (el.tagName === 'BUTTON') { const big = el.matches('.bigbtn, .playbtn, #go, .resume'); const h = big ? 104 : 78, r = { x0: 30, y0: y, x1: PW - 30, y1: y + h, el }; rows.push(r);
+        btn(r, t, hover === rows.length - 1, big ? '#39ff14' : el.matches('.backbtn') ? '#2a2a5a' : '#4a3aa8'); y += h + 12; continue; }
+      // plain text
+      if (!t) continue; g.fillStyle = el.matches('#name-msg, #mus-msg') ? '#ff9a9a' : '#c9d3ff'; fit(t.length > 90 ? t.slice(0, 88) + '…' : t, PW - 60, 22, 700); g.fillText(t.length > 90 ? t.slice(0, 88) + '…' : t, PW / 2, y + 16); y += 38;
+    }
+    if (col) y = tileY + 128;
+    g.restore();
+    maxScroll = Math.max(0, y + scroll - bottom + 10); scroll = Math.min(scroll, maxScroll);
+    rows = rows.filter(r => r.y1 > top && r.y0 < bottom);      // (only what's on the panel can be pressed)
+    // along the bottom: scroll, and leave VR
+    const by = PH - 104;
+    if (maxScroll > 0) { for (const [k, l, x0, x1] of [['UP', '▲', 30, 150], ['DOWN', '▼', 162, 282]]) { const r = { x0, y0: by, x1, y1: by + 84, key: k }; rows.push(r); btn(r, l, hover === rows.length - 1, '#3b2f9a'); } }
+    { const r = { x0: maxScroll > 0 ? 300 : 160, y0: by, x1: PW - (maxScroll > 0 ? 30 : 160), y1: by + 84, key: 'EXIT' }; rows.push(r); btn(r, 'EXIT VR', hover === rows.length - 1, '#7a2a3a'); }
     ptex.needsUpdate = true;
   }
-  const btnAt = (uv) => { const x = uv.x * PW, y = (1 - uv.y) * PH; for (const id in BTN) { const [bx, by, w, h] = BTN[id]; if (x >= bx && x <= bx + w && y >= by && y <= by + h) return id; } return null; };
+  const btnAt = (uv) => { const x = uv.x * PW, y = (1 - uv.y) * PH; return rows.findIndex(r => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1); };
   // something to point at for "tap him to talk" (cheaper than raycasting the skinned scan)
   const headProxy = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 8), new THREE.MeshBasicMaterial({ visible: false }));
   headProxy.position.set(0, 0.52, 0.06); bust.add(headProxy);
@@ -289,7 +343,7 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
       xray.setFromXRController(c);
       const hits = xray.intersectObjects([...(select ? [panel] : []), ...freeFood(), headProxy], true);
       const h = hits[0];
-      if (h && h.object === panel) { const id = btnAt(h.uv); if (id) panelPress(id); return; }
+      if (h && h.object === panel) { const i = btnAt(h.uv); if (i >= 0) panelPress(i); return; }
       if (h && h.object === headProxy) { talkT = 1.4; say(onTap && onTap()); return; }
       if (h) best = foodOf(h.object);
     }
@@ -299,28 +353,34 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     const o = c.userData.held; if (!o) return;
     c.userData.held = null; o.userData.held = null; world.attach(o);
   }
-  function panelPress(id) {
-    const m = window.menuVR; if (!m) return;
-    if (id === 'pp') m.step('place', -1); else if (id === 'pn') m.step('place', 1);
-    else if (id === 'mp') m.step('mode', -1); else if (id === 'mn') m.step('mode', 1);
-    else if (id === 'play') { handing = true; window.__menuVRSession = renderer.xr.getSession(); m.play(); }
-    else if (id === 'exit') renderer.xr.getSession() && renderer.xr.getSession().end();
-    drawnKey = ''; drawPanel();
+  function panelPress(i) {
+    const r = rows[i]; if (!r) return; sfx && sfx('pop');
+    if (r.key === 'EXIT') { renderer.xr.getSession() && renderer.xr.getSession().end(); return; }
+    if (r.key === 'UP') scroll = Math.max(0, scroll - 320); else if (r.key === 'DOWN') scroll = Math.min(maxScroll, scroll + 320);
+    else if (kb && r.key) { const el = kb.el, max = el.maxLength > 0 ? el.maxLength : 20;
+      if (r.key === 'DONE') { kb = null; el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); }
+      else { if (r.key === 'DEL') el.value = el.value.slice(0, -1); else if (el.value.length < max) el.value += r.key === 'SPACE' ? ' ' : r.key; el.dispatchEvent(new Event('input', { bubbles: true })); } }
+    else if (r.el) { if (r.el.tagName === 'INPUT') kb = { el: r.el }; else { r.el.click(); scroll = 0; } }
+    hover = -1; drawnKey = ''; drawPanel(true);
   }
-  let vrPlace = false, handing = false, vrSession = null;
+  let vrPlace = false, handing = false, vrSession = null, pollT = 0, placeWait = 0;
   function placeVR() {
     const cam = renderer.xr.getCamera(); cam.updateMatrixWorld();
     const p = new THREE.Vector3().setFromMatrixPosition(cam.matrixWorld);
+    // the headset only reports where your head is after a frame or two: until then it says the floor, which put
+    // Ronnie and the menu under the floor. Wait for a real height (or ~1s, then assume a standing 1.6m)
+    if (p.y < 0.5 && placeWait++ < 60) return;
+    if (p.y < 0.5) p.y = 1.6;
     const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion); dir.y = 0; if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1); dir.normalize();
     const right = new THREE.Vector3(-dir.z, 0, dir.x);
-    const floorY = p.y > 0.6 ? 0 : p.y - 1.5;      // no floor tracking: assume ~1.5m eyes
+    const floorY = 0;
     world.scale.setScalar(S);
     world.position.copy(p).addScaledVector(dir, 0.75); world.position.y = p.y - 0.56 * S;
     world.rotation.set(0, Math.atan2(-dir.x, -dir.z), 0);
     vrRoom.position.set(p.x, floorY, p.z);
     const ring = vrRoom.getObjectByName('ring'); ring.position.set(world.position.x - p.x, 0.005, world.position.z - p.z);
     const logo = vrRoom.getObjectByName('logo'); logo.position.set(dir.x * 5, (p.y - floorY) + 1.5, dir.z * 5); logo.lookAt(0, logo.position.y, 0);
-    panel.position.copy(p).addScaledVector(dir, 0.62).addScaledVector(right, 0.42); panel.position.y = p.y - 0.12;
+    panel.position.copy(p).addScaledVector(dir, 0.72).addScaledVector(right, 0.5); panel.position.y = p.y - 0.08;
     panel.lookAt(p.x, panel.position.y, p.z); panel.rotateX(-0.15);
     vrPlace = false;
   }
@@ -331,7 +391,7 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     lookX = THREE.MathUtils.clamp(Math.atan2(v1.x, v1.z) / 0.35, -1.5, 1.5);
     lookY = THREE.MathUtils.clamp(0.1 + Math.atan2(v1.y - 0.56, v1.z) / 0.15, -1, 1);
     const mouthW = world.localToWorld(MOUTH.clone());
-    let hv = null;
+    let hv = -1;
     for (const c of ctrls) {
       const o = c.userData.held, line = c.userData.line, dot = c.userData.dot;
       dot.visible = false; line.scale.z = 2;
@@ -346,9 +406,10 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
       line.visible = true;
       xray.setFromXRController(c);
       const h = xray.intersectObject(panel)[0];
-      if (h) { line.scale.z = h.distance; dot.position.copy(h.point); dot.visible = true; hv = hv || btnAt(h.uv); }
+      if (h) { line.scale.z = h.distance; dot.position.copy(h.point); dot.visible = true; if (hv < 0) hv = btnAt(h.uv); }
     }
     if (hv !== hover) { hover = hv; drawPanel(); }
+    if ((pollT -= dt) <= 0) { pollT = 0.2; drawPanel(); }        // (keep up with the menu page)
   }
   async function enterVR() {
     if (!navigator.xr || renderer.xr.isPresenting) return;
@@ -366,7 +427,7 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     });
     renderer.xr.setReferenceSpaceType('local-floor');
     await renderer.xr.setSession(s);
-    vrRoom.visible = true; panel.visible = true; vrPlace = true; drawnKey = ''; drawPanel();
+    vrRoom.visible = true; panel.visible = true; vrPlace = true; placeWait = 0; drawnKey = ''; kb = null; scroll = 0; drawPanel(true);
     fadeU.value.set(BOTTOM_Y, BOTTOM_Y + 0.12);
     document.body.classList.add('hero-vr');
     running = true; renderer.setAnimationLoop(frame);
@@ -441,6 +502,8 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     },
     pause, resume,
     enterVR,
+    _vrPanel: () => { drawPanel(true); return { png: pc.toDataURL(), rows: rows.map(r => r.key || (r.el && (r.el.id || r.el.className || r.el.tagName))) }; }, _vrPress: (i) => panelPress(i),   // (for testing the VR menu without a headset)
+    handOff() { if (!renderer.xr.isPresenting) return; handing = true; window.__menuVRSession = renderer.xr.getSession(); panel.visible = false; },
     get inVR() { return renderer.xr.isPresenting; },
     talk(sec = 1.4) { talkT = sec; },
     eatNow() { if (!eating) eat(tray[0]); },

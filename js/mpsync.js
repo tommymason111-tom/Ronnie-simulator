@@ -7,6 +7,7 @@
 // everyone gets told who's going for who. Whoever you picked to play as is left out of the squad, and everyone
 // sees you as them.
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 import { FOODS } from './config.js';
 import { SquadMember, SQUAD } from './squad.js';
 import { Character, KO_IMPULSE } from './character.js';
@@ -23,9 +24,11 @@ export class MPSync {
     Object.assign(this, o);            // { net, scene, room, physics, player, items, cast, director, words, fx, G, tommy }
     this.seq = 0; this.byNid = new Map(); this.dead = new Map(); this.snapT = 0; this.fullT = 0; this.dirT = 0;
     this.sentDefs = new Set(); this.remoteHolds = new Map(); this.lastSay = new Map();
-    this.charSnap = new Map(); this.punchCool = 0;
+    this.charSnap = new Map(); this.punchCool = 0; this.rgrabs = new Map();
+    // VR on a joining player's game: grabbing one of the host's people sends it to the host
+    if (this.player) this.player.remoteGrab = (h, who, part, ph) => this.sendGrab(h, who, part, ph);
     const net = this.net;
-    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc', 'emote', 'swing', 'sfx'])
+    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc', 'emote', 'swing', 'sfx', 'rgrab'])
       net.on[k] = (m, p) => this['on_' + k] && this['on_' + k](m, p);
   }
   get host() { return this.net.host; }
@@ -83,6 +86,43 @@ export class MPSync {
   // hit sounds: sent to everyone, played where it happened (so you hear the ones near you louder)
   sfxOut(n, p, v = 1) { if (!this.net.connected) return; const t = performance.now(), at = this.sfxAt || (this.sfxAt = {}); if (t - (at[n] || 0) < 60) return; at[n] = t; this.net.send({ t: 'sfx', n, p: [q2(p.x), q2(p.y), q2(p.z)], v: q2(v) }); }
   on_sfx(m) { if (!['splat', 'thwack', 'boing', 'whoosh'].includes(m.n)) return; sfx(m.n, new THREE.Vector3(...m.p), m.v || 1); }
+  // ---- grabbing the host's people from a joining player's VR game: the host holds them with a stand-in hand
+  sendGrab(h, who, part, ph) {
+    if (!this.on) return; const p = h.palm, v = h.vel || { x: 0, y: 0, z: 0 };
+    this.net.send({ t: 'rgrab', ph, id: who.id, part: part.name, side: h.handedness === 'left' ? 'L' : 'R', p: [q3(p.x), q3(p.y), q3(p.z)], v: [q2(v.x), q2(v.y), q2(v.z)] });
+  }
+  grabMoves(dt) {        // (joining player) where my grabbing hands are
+    if ((this.grabT = (this.grabT || 0) - dt) > 0) return; this.grabT = 0.05;
+    for (const h of this.player.hands || []) if (h.remoteGrab) this.sendGrab(h, h.remoteGrab.who, h.remoteGrab.part, 'move');
+  }
+  on_rgrab(m) {
+    if (!this.host) return; const key = m.f + m.side, W = this.physics && this.physics.world; if (!W) return;
+    let g = this.rgrabs.get(key);
+    if (m.ph === 'start') {
+      if (g) this.dropGrab(key, g, [0, 0, 0]);
+      const c = this.cast.find(x => x.id === m.id), part = c && c.rag.parts[m.part]; if (!part) return;
+      const hb = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, shape: new CANNON.Sphere(0.04) }); hb.collisionResponse = false; hb.position.set(...m.p); W.addBody(hb);
+      const b = part.body, q = new THREE.Quaternion(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w).invert();
+      const off = new THREE.Vector3(m.p[0] - b.position.x, m.p[1] - b.position.y, m.p[2] - b.position.z).applyQuaternion(q);
+      const joint = new CANNON.PointToPointConstraint(hb, new CANNON.Vec3(0, 0, 0), b, new CANNON.Vec3(off.x, off.y, off.z), 4000); W.addConstraint(joint);
+      part.grabbed = true; c.grabbed(part);
+      this.rgrabs.set(key, { hb, joint, part, c, target: new THREE.Vector3(...m.p) });
+    } else if (g && m.ph === 'move') g.target.set(...m.p);
+    else if (g && m.ph === 'end') this.dropGrab(key, g, m.v);
+  }
+  dropGrab(key, g, v) {
+    const W = this.physics.world; W.removeConstraint(g.joint); W.removeBody(g.hb);
+    const b = g.part.body; b.velocity.x += (v[0] || 0) * 0.5; b.velocity.y += (v[1] || 0) * 0.5; b.velocity.z += (v[2] || 0) * 0.5;
+    g.part.grabbed = false; g.c.released(); this.rgrabs.delete(key);
+  }
+  holdGrabs(dt) {        // (host) the stand-in hands follow the real ones
+    for (const [key, g] of this.rgrabs) {
+      if (!this.net.players.has(key.slice(0, -1))) { this.dropGrab(key, g, [0, 0, 0]); continue; }
+      const hb = g.hb, t = g.target, k = Math.min(1, dt * 20);
+      const nx = hb.position.x + (t.x - hb.position.x) * k, ny = hb.position.y + (t.y - hb.position.y) * k, nz = hb.position.z + (t.z - hb.position.z) * k;
+      hb.velocity.set((nx - hb.position.x) / Math.max(dt, 1e-3), (ny - hb.position.y) / Math.max(dt, 1e-3), (nz - hb.position.z) / Math.max(dt, 1e-3)); hb.position.set(nx, ny, nz);
+    }
+  }
   on_hitc(m) {
     if (!this.host) return; const c = this.cast.find(x => x.id === m.id); if (!c || c.disposed) return;
     const part = c.rag.parts[m.part] || c.rag.parts.chest, p = new THREE.Vector3(...m.p), v = new THREE.Vector3(...m.v);
@@ -111,7 +151,7 @@ export class MPSync {
     if (bench !== !!T.benched) { T.benched = bench; T.rag.group.visible = !bench; T.bubble && (T.bubble.visible = false);
       if (bench) { T.attacks = false; T.directed = false; T.rag.placeAt(0, -60, 0); } else { const sp = this.room.tommySpots[0]; T.rag.placeAt(sp.x, sp.y, 0); } }
     if (bench) { T.attacks = false; T.directed = false; }
-    if (this.host) this.hostUpdate(dt); else this.clientUpdate(dt);
+    if (this.host) { this.hostUpdate(dt); this.holdGrabs(dt); } else { this.clientUpdate(dt); this.grabMoves(dt); }
     this.punches();
   }
 

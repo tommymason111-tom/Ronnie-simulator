@@ -94,6 +94,9 @@ const G = {
 const clock = new THREE.Clock();
 let time = 0;
 
+// food never appears right next to a player (you, or anyone in the room)
+items.viewer = player.head;   // (food outlines show near you)
+items.avoid = () => { const out = [player.head]; try { for (const p of net.players.values()) if (p.pose && p.pose.h) out.push({ x: p.pose.h[0], z: p.pose.h[2] }); } catch (e) {} return out; };   // (net isn't set up yet while the first food goes out)
 // starting food: one of each on the snack station, more around the room
 if (room.startFood) room.startFood.forEach(t => items.spawn(t, items.freeSpawn()));
 // special things placed by the level (the poop in the Oysterfleet toilet)
@@ -186,7 +189,7 @@ function openBag(bag) {
 function holdingMsg(it) { const n = (it.def.label || it.type).replace(/^Bottle off the back bar$/, 'bottle').toLowerCase(), a = /^[aeiou]/.test(n) ? 'an' : 'a';
   const t = `You're already holding ${/s$/.test(n) && !/ss$/.test(n) ? 'some' : a} ${n}!`; touch.hint(t); words.show(t.toUpperCase(), player.head.clone().addScaledVector(player.fwd, 0.8).add({ x: 0, y: -0.15, z: 0 }), '#ffd400', 0.07 * player.scale, 1.4); }
 player.onBlocked = (it) => holdingMsg(it);
-player.onRelease = (it, h, sp) => { if (sp > 2.5) sfx('whoosh', it.pos, Math.min(1, sp / 6)); if (sp > 1.2 && typeof mp !== 'undefined') mp.swing(h && h.handedness === 'left' ? 'L' : 'R'); };
+player.onRelease = (it, h, sp) => { if (sp > 2.5) sfx('whoosh', it.pos, Math.min(1, sp / 6)); if (sp > 1.2) try { mp.swing(h && h.handedness === 'left' ? 'L' : 'R'); } catch (e) {} };
 
 // anyone throwing anything at Ronnie
 function onThrow(start, vel, type, who, spec) {
@@ -251,7 +254,7 @@ function bite(it, hand) {
   if (it.bitesLeft <= 0) {
     setTimeout(() => sfx('gulp', null, 1), 220);
     items.remove(it);
-    if (!it.foodPass && !it.fromClutter) items.queueRespawn(it.type);
+    if (!it.foodPass && !it.fromClutter && !room.big) items.queueRespawn(it.type);     // (big places top themselves up, away from everyone)
     G.eaten++;
     director.onFinished(it);
     if (time - G.lastEatLine > 7 && Math.random() < 0.6) { G.lastEatLine = time; setTimeout(() => tommy.say('eat'), 700); }
@@ -467,7 +470,7 @@ function vegAndHits(dt) {
 }
 
 // a hit sound here that the other players hear too, from where it happened (louder the nearer they are)
-function hitSfx(name, pos, vol = 1) { sfx(name, pos, vol); if (typeof mp !== 'undefined') mp.sfxOut(name, pos, vol); }
+function hitSfx(name, pos, vol = 1) { sfx(name, pos, vol); try { mp.sfxOut(name, pos, vol); } catch (e) {} }
 // ---------------- slaps (VR hands swinging into Tommy) ----------------
 function slaps() {
   for (const h of player.hands) {
@@ -582,7 +585,7 @@ function updateZoom() {
   if (zoomShown !== can + '|' + !!player.zoom) { zoomShown = can + '|' + !!player.zoom; touch.setZoomAvailable(can, !!player.zoom); }
 }
 // in multiplayer the stages are named after who you're playing as (Snacky Lewis, Chunky Chloe...)
-function stageNameOf(i) { const base = STAGES[i].name, c = typeof net !== 'undefined' && net.connected && net.char && net.char !== 'ronnie' ? (net.char === 'tommy' ? 'Tommy' : (SQUAD_MP[net.char] && SQUAD_MP[net.char].name)) : null; return c ? base.replace('Ronnie', c) : base; }
+function stageNameOf(i) { let on = false; try { on = net.connected; } catch (e) {} const base = STAGES[i].name, c = on && net.char && net.char !== 'ronnie' ? (net.char === 'tommy' ? 'Tommy' : (SQUAD_MP[net.char] && SQUAD_MP[net.char].name)) : null; return c ? base.replace('Ronnie', c) : base; }
 function updateTouchUI() {
   const held = player.flatHolder?.held;
   touch.setEatLabel(held && held.def.drink ? 'DRINK' : 'EAT', !!held && !held.empty);
@@ -701,7 +704,7 @@ function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t 
 let paused = false;
 const pauseEl = document.getElementById('pause');
 function setPaused(on) {
-  paused = on; pauseEl.classList.toggle('on', on); pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-ctrls', 'show-modes', 'show-music', 'show-tv'); vrPause && vrPause.close(); }
+  paused = on; player.menuLock = on;      // (a menu open: you stay put until you close it, even in multiplayer where the game carries on) pauseEl.classList.toggle('on', on); pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-ctrls', 'show-modes', 'show-music', 'show-tv'); vrPause && vrPause.close(); }
   if (on) { const guest = !!(net.connected && !net.host);   // multiplayer: only the host changes the game or restarts it
     document.getElementById('pause-mode').style.display = guest ? 'none' : ''; document.getElementById('pause-restart').style.display = guest ? 'none' : '';
     const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = (t ? t.textContent : '') + (guest ? ' · the host picks the game' : ''); try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
@@ -1031,8 +1034,20 @@ class SquadPuppet {
     this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; scene.add(this.tag); this.drawTag();
     this.down = 0; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0;
     this.emote = new EmotePlayer(this.c, scene, (txt, at, snd) => { if (snd) sfx(snd, this.c.headPos(new THREE.Vector3()), 0.8); if (txt && at) words.show(txt, at.clone().add({ x: 0, y: 0.15, z: 0 }), '#ffd400', 0.22, 0.8); }); }
+  // where they were ~0.11s ago, blended between the two updates either side of then (updates come in a few
+  // times a second, unevenly: following the latest one made hands and heads jump about)
+  smoothPose(pose) {
+    const buf = this.p.buf; if (!buf || buf.length < 2) return pose;
+    const rt = performance.now() - 110; let a = null, b = null;
+    for (let i = buf.length - 1; i > 0; i--) if (buf[i - 1].t <= rt) { a = buf[i - 1]; b = buf[i]; break; }
+    if (!a) return buf[0].m;
+    const k = Math.min(1, Math.max(0, (rt - a.t) / Math.max(1, b.t - a.t))), A = a.m, B = b.m, L = (x, y) => x.map((v, i) => v + (y[i] - v) * k);
+    const q = new THREE.Quaternion(...A.q).slerp(new THREE.Quaternion(...B.q), k);
+    return { ...B, h: L(A.h, B.h), rh: L(A.rh, B.rh), l: L(A.l, B.l), q: [q.x, q.y, q.z, q.w] };
+  }
   update(dt, pose) {
-    const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * 12);
+    pose = this.smoothPose(pose);
+    const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * 25);
     const prev = this.pos.clone(); this.pos.lerp(_a.set(...pose.h), k); this.rh.lerp(_b.set(...pose.rh), k); this.lh.lerp(_b.set(...pose.l), k);
     // knocked flat: a limp ragdoll (like the NPCs), then up again where they landed
     if (this.down > 0) { this.down -= dt; r.sync(); const pl = r.parts.pelvis.body.position; c.fx.position.set(pl.x, 0, pl.z);
@@ -1087,7 +1102,11 @@ class SquadPuppet {
     const hint = new THREE.Vector3(0, -1, 0).addScaledVector(outw, 0.6).addScaledVector(fwd, -0.35);         // elbows go down, out and back
     const perp = hint.addScaledVector(dir, -hint.dot(dir)); if (perp.lengthSq() < 1e-6) perp.copy(outw); perp.normalize();
     const E = S.clone().addScaledVector(dir, a).addScaledVector(perp, hh), T = S.clone().addScaledVector(dir, D);
-    const du = E.clone().sub(S).applyAxisAngle(Yax, -this.yaw).normalize(), dl = T.clone().sub(E).applyAxisAngle(Yax, -this.yaw).normalize();
+    let du = E.clone().sub(S).applyAxisAngle(Yax, -this.yaw).normalize(), dl = T.clone().sub(E).applyAxisAngle(Yax, -this.yaw).normalize();
+    // (eased from last frame, so the elbow never flicks from one side to the other)
+    const ik = this.ik || (this.ik = {}), prev = ik[side];
+    if (prev) { du = prev.u.lerp(du, 0.35).normalize(); dl = prev.l.lerp(dl, 0.35).normalize(); }
+    ik[side] = { u: du.clone(), l: dl.clone() };
     for (const [n, d] of [['uArm' + side, du], ['lArm' + side, dl]]) { const rest = r.pose[n].clone(); r.aim(n, d.x, d.y, d.z); r.pose[n].copy(rest.slerp(r.pose[n], w)); }
   }
   swing(side = 'R') { this.swingT = 0.38; this.swingSide = side; }
