@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { part, cyl as CYL } from '../geo.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { streetViewTex } from './kit.js';
-import { skyDome, waterMaterial, updateOutdoor, leafyHedge, leafyBall, pottedPlant } from './outdoor.js';
+import { skyDome, waterMaterial, updateOutdoor, leafyHedge, leafyBall, pottedPlant, terrace, HAZE } from './outdoor.js';
 import { REST, REST_BOUNDS, REST_H, inRestaurant, inNewArea, buildRestaurant } from './oysterRestaurant.js';
 import { Kit, carpetTex, tileTex, canvasTex, FONT, brickTex, booksWallTex, tngTex, oakPanelTex, woodTex } from './kit.js';
 
@@ -26,7 +26,8 @@ const S = 0.024;
 const X = (px) => (px - 600) * S, Z = (py) => (py - 975) * S;
 const GZ = Z(1645), GZ1 = GZ + 26, GX0 = -10, GX1 = X(1045);          // the beer garden behind the pub (metres)
 const CONS_WIN = [-8.22, -5.42, -2.62, 0.18], WIN_Y0 = 0.75, WIN_Y1 = 2.45;   // the conservatory's windows (centres, sill, head)
-const B = { x0: REST_BOUNDS.x0, x1: X(1045) + 7, z0: REST_BOUNDS.z0, z1: GZ1 };          // (out to the left for the restaurant)
+const DW = 1.0;                                                         // the deck outside the back door was widened by this much (everything beyond moved back)
+const B = { x0: REST_BOUNDS.x0, x1: X(1045) + 7, z0: REST_BOUNDS.z0, z1: GZ1 + DW };          // (out to the left for the restaurant)
 // the walkable rooms on the plan (pixels); everything else inside the bounds is solid
 const INSIDE = [
   [[175, 305], [415, 305], [415, 465], [175, 465]],                                    // men's
@@ -43,7 +44,7 @@ const INSIDE = [
   [[25, 605], [195, 605], [195, 1060], [25, 1060]],                                    // kitchen
   [[15, 1060], [195, 1060], [195, 1190], [15, 1190]],                                  // restaurant entrance
 ].map(poly => poly.map(([x, y]) => [X(x), Z(y)]));
-INSIDE.push([[GX0, GZ], [GX1, GZ], [GX1, GZ1], [GX0, GZ1]]);                   // the beer garden
+INSIDE.push([[GX0, GZ], [GX1, GZ], [GX1, GZ1 + DW], [GX0, GZ1 + DW]]);                   // the beer garden
 for (const poly of Object.values(REST)) INSIDE.push(poly);                          // the restaurant, its side room, toilets, the kitchen extension
 const inPoly = (poly, x, z) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, zi] = poly[i], [xj, zj] = poly[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
 const inside = (x, z) => INSIDE.some(p => inPoly(p, x, z));
@@ -54,9 +55,9 @@ export function pubFloorAt(x, z) {
   if (inPoly(RAISED, x, z)) return RAISE;
   if (x > X(300) && x < X(370) && z > Z(965) && z < Z(965) + 0.32) return RAISE / 2;    // the step
   const mx = GX0 + GX1 - x;                                                              // (the garden is built mirrored)
-  if (mx > 5.4 && mx < 7.0 && z > 19.4 && z < 22.9) return 0.2 * Math.sin(Math.PI * (z - 19.4) / 3.5);   // the bridge over the stream
-  if (mx > 7.6 && mx < GX1 && z > 22.6 && z < GZ1 - 2) return 0.3;                      // the raised deck along the river
-  if (mx > 7.3 && mx < 7.6 && z > 22.6 && z < GZ1 - 2) return 0.15;                    // its step
+  if (mx > 5.4 && mx < 7.0 && z > 19.4 + DW && z < 22.9 + DW) return 0.2 * Math.sin(Math.PI * (z - 19.4 - DW) / 3.5);   // the bridge over the stream
+  if (mx > 7.6 && mx < GX1 && z > 22.6 + DW && z < GZ1 - 2 + DW) return 0.3;                      // the raised deck along the river
+  if (mx > 7.3 && mx < 7.6 && z > 22.6 + DW && z < GZ1 - 2 + DW) return 0.15;                    // its step
   return 0;
 }
 
@@ -1178,10 +1179,10 @@ export function buildPub(scene) {
     const mark = { p: k.parts.length, c: k.colliders.length, b: k.blockers.length, s: k.spawns.length, l: (k.lights || []).length, o: scene.children.length, r: (k.boxRec || []).length,
       lamps: new Map([...(k.lamps || new Map())].map(([c, l]) => [c, l.length])), halos: k.halos ? k.halos.list.length : 0, pools: k.pools ? k.pools.list.length : 0, inst: new Map([...(k.inst || new Map())].map(([key, v]) => [key, v.list.length])) };
     // ---- the deck along the back of the pub, its railing, picnic benches and the colourful cube seats
-    flr(GX0, GZ, GX1, 19.4, DECK, 0.6);
+    flr(GX0, GZ, GX1, 19.4 + DW, DECK, 0.6);
     const railX = (x0, x1, z, h = 1.0) => { R(x0, z - 0.04, x1, z + 0.04, 0.07, h, FENCE); R(x0, z - 0.03, x1, z + 0.03, 0.06, 0.15, FENCE); for (let x = x0; x <= x1 + 1e-3; x += 0.12) k.box(0.05, h - 0.12, 0.025, x, (h + 0.12) / 2, z, FENCE); for (let x = x0; x <= x1 + 1e-3; x += 1.8) k.box(0.1, h + 0.08, 0.1, x, (h + 0.08) / 2, z, DKW); blk(x0, z - 0.06, x1, z + 0.06, h); };
     const railZ = (x, z0, z1, h = 1.0, y0 = 0) => { R(x - 0.04, z0, x + 0.04, z1, 0.07, h + y0, FENCE); for (let z = z0; z <= z1 + 1e-3; z += 0.12) k.box(0.025, h - 0.12, 0.05, x, (h + 0.12) / 2 + y0, z, FENCE); for (let z = z0; z <= z1 + 1e-3; z += 1.8) k.box(0.1, h + 0.08 + y0, 0.1, x, (h + 0.08 + y0) / 2, z, DKW); blk(x - 0.06, z0, x + 0.06, z1, h + y0); };
-    railX(GX0, 5.4, 19.4); railX(7.0, GX1, 19.4); railZ(GX0, GZ, 19.4);
+    railX(GX0, 5.4, 19.4); railX(7.0, GX1, 19.4); railZ(GX0, GZ, 19.28);
     // picnic bench: top of five planks, two seats, A-frame legs, cross braces (local x along the table)
     const UMB = canvasTex(128, 256, (g, w, h) => { g.fillStyle = '#f2c81a'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,0.18)'; for (let x = 0; x < w; x += 32) g.fillRect(x, 0, 4, h); g.fillStyle = '#7a1a2a'; g.font = '900 54px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('B', w / 2, h * 0.38); g.font = '900 20px Georgia, serif'; g.save(); g.translate(w / 2, h * 0.68); g.rotate(-Math.PI / 2); g.fillText('BULMERS', 0, 0); g.restore(); });
     const umbM = new THREE.MeshLambertMaterial({ map: UMB }), poleM = new THREE.MeshLambertMaterial({ color: 0xd8d8d8 });
@@ -1193,22 +1194,52 @@ export function buildPub(scene) {
       if (open) { MM.compose(V3.set(x, y0 + 2.05, z), QQ.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 8), S1); k.instance(openG, umbM, MM.clone()); k.halo(x, y0 + 1.9, z, 0.01, 0xffffff); }
       else { MM.compose(V3.set(x, y0 + 1.05, z), QQ.setFromAxisAngle(new THREE.Vector3(0, 1, 0), (x * 7 + z * 3) % 6), S1); k.instance(closedG, umbM, MM.clone()); } };
     const WOODP = 0x5a3e2e, WOODL = 0x6e4a34;
+    // weathered, stained timber: every plank a slightly different shade, rounded edges, gaps between the boards,
+    // galvanised coach bolts at the joints, a little cracking/greying at the plank ends
+    const TIMBER = [0x7a5638, 0x6e4c30, 0x83603e, 0x705034, 0x664628, 0x7e5a3a, 0x5e422a];
+    let tn = 0; const tcol = () => TIMBER[(tn++ * 5 + 3) % TIMBER.length];
+    const plank = (len, wd, th) => new RoundedBoxGeometry(len, th, wd, 1, Math.min(0.009, th / 2 - 0.001));
+    const BOLT = 0x9aa0a4;
     const bench = (x, z, ry, y0 = 0, umb = null) => {
-      for (let i = -2; i <= 2; i++) put(new THREE.BoxGeometry(1.8, 0.04, 0.14), i % 2 ? WOODP : WOODL, x, z, ry, 0, 0.74 + y0, i * 0.15);
-      for (const s2 of [-1, 1]) { for (const o of [-0.07, 0.07]) put(new THREE.BoxGeometry(1.8, 0.04, 0.13), WOODP, x, z, ry, 0, 0.44 + y0, s2 * 0.62 + o);
-        for (const lx of [-0.65, 0.65]) put(new THREE.BoxGeometry(0.07, 0.95, 0.09), WOODL, x, z, ry, lx, 0.4 + y0, s2 * 0.32, s2 * 0.62); }
-      for (const lx of [-0.65, 0.65]) put(new THREE.BoxGeometry(0.06, 0.08, 1.45), WOODP, x, z, ry, lx, 0.42 + y0, 0);
-      put(new THREE.BoxGeometry(1.2, 0.06, 0.06), WOODP, x, z, ry, 0, 0.28 + y0, 0);
+      // the top: five boards with gaps, two cleats underneath
+      for (let i = -2; i <= 2; i++) { const L = 1.8 + ((i * 7 + 9) % 3) * 0.008, c = tcol(); put(plank(L, 0.132, 0.044), c, x, z, ry, 0, 0.748 + y0, i * 0.145);
+        for (const e of [-1, 1]) put(new THREE.BoxGeometry(0.012, 0.045, 0.13), 0x4a3424, x, z, ry, e * (L / 2 - 0.004), 0.748 + y0, i * 0.145); }   // end grain
+      for (const lx of [-0.62, 0.62]) put(new THREE.BoxGeometry(0.045, 0.06, 0.74), 0x5a3e28, x, z, ry, lx, 0.697 + y0, 0);
+      // the seats: two boards each side, on long bearers
+      for (const s2 of [-1, 1]) for (const o of [-0.072, 0.072]) { const c = tcol(); put(plank(1.8, 0.132, 0.042), c, x, z, ry, 0, 0.452 + y0, s2 * 0.6 + o);
+        for (const e of [-1, 1]) put(new THREE.BoxGeometry(0.012, 0.043, 0.128), 0x4a3424, x, z, ry, e * 0.896, 0.452 + y0, s2 * 0.6 + o); }
+      // the A-frames: a seat bearer right across, two splayed legs crossing it, bolted through
+      for (const lx of [-0.62, 0.62]) {
+        put(new THREE.BoxGeometry(0.048, 0.085, 1.5), 0x5a3e28, x, z, ry, lx, 0.39 + y0, 0);
+        for (const s2 of [-1, 1]) { put(new THREE.BoxGeometry(0.05, 0.86, 0.095), tcol(), x, z, ry, lx + (lx > 0 ? 0.05 : -0.05), 0.37 + y0, s2 * 0.25, s2 * 0.47);
+          for (const [yy, zz] of [[0.39, s2 * 0.25], [0.7, s2 * 0.1]]) put(CYL(0.014, 0.014, 0.012, 8), BOLT, x, z, ry, lx + (lx > 0 ? 0.081 : -0.081), yy + y0, zz, 0, Math.PI / 2); }
+        put(CYL(0.014, 0.014, 0.012, 8), BOLT, x, z, ry, lx + (lx > 0 ? 0.031 : -0.031), 0.39 + y0, 0.62, 0, Math.PI / 2); put(CYL(0.014, 0.014, 0.012, 8), BOLT, x, z, ry, lx + (lx > 0 ? 0.031 : -0.031), 0.39 + y0, -0.62, 0, Math.PI / 2);
+      }
+      // a stretcher between the frames and two diagonal braces up to the top
+      put(new THREE.BoxGeometry(1.24, 0.07, 0.05), 0x5a3e28, x, z, ry, 0, 0.27 + y0, 0);
+      for (const sx of [-1, 1]) put(new THREE.BoxGeometry(0.62, 0.05, 0.045), 0x5a3e28, x, z, ry, sx * 0.3, 0.5 + y0, 0, 0, sx * 0.62);
+      // what's on it: sometimes a tin ashtray, a half-drunk pint, a condiment caddy
+      const r = ((x * 13 + z * 7) % 1 + 1) % 1;
+      if (r < 0.35) { put(CYL(0.055, 0.045, 0.03, 12), 0x9aa0a6, x, z, ry, 0.35, 0.785 + y0, 0.1); put(CYL(0.006, 0.006, 0.05, 6), 0xf0e8d8, x, z, ry, 0.36, 0.8 + y0, 0.12, 0, 1.4); }
+      if (r > 0.25 && r < 0.7) { put(CYL(0.04, 0.032, 0.15, 12), 0xd8eef2, x, z, ry, -0.3, 0.845 + y0, -0.12); put(CYL(0.037, 0.031, 0.08, 12), 0xc87a1a, x, z, ry, -0.3, 0.812 + y0, -0.12); put(CYL(0.038, 0.038, 0.02, 12), 0xf4ecd8, x, z, ry, -0.3, 0.86 + y0, -0.12); }
+      if (r > 0.6) { put(new THREE.BoxGeometry(0.16, 0.07, 0.1), 0x2a2a2a, x, z, ry, 0.0, 0.805 + y0, 0.0); for (const [dx, c] of [[-0.05, 0xc8202a], [0, 0xf4c020], [0.05, 0x6a3a1a]]) put(CYL(0.018, 0.02, 0.13, 8), c, x, z, ry, dx, 0.875 + y0, 0.0); }
       const c = Math.abs(Math.cos(ry)), sx = c > 0.5 ? 0.95 : 0.8, sz = c > 0.5 ? 0.8 : 0.95;
-      k.colliders.push({ min: new THREE.Vector3(x - (c > 0.5 ? 0.9 : 0.4), 0.72 + y0, z - (c > 0.5 ? 0.4 : 0.9)), max: new THREE.Vector3(x + (c > 0.5 ? 0.9 : 0.4), 0.76 + y0, z + (c > 0.5 ? 0.4 : 0.9)) });
-      blk(x - sx, z - sz, x + sx, z + sz, 0.76 + y0); k.spawns.push(new THREE.Vector3(x + 0.3, 0.84 + y0, z + 0.05));
+      k.colliders.push({ min: new THREE.Vector3(x - (c > 0.5 ? 0.9 : 0.36), 0.72 + y0, z - (c > 0.5 ? 0.36 : 0.9)), max: new THREE.Vector3(x + (c > 0.5 ? 0.9 : 0.36), 0.77 + y0, z + (c > 0.5 ? 0.9 : 0.36)) });
+      blk(x - sx, z - sz, x + sx, z + sz, 0.77 + y0); k.spawns.push(new THREE.Vector3(x + (c > 0.5 ? 0.3 : 0.05), 0.85 + y0, z + (c > 0.5 ? 0.05 : 0.3)));
       if (umb !== null) parasol(x, z, y0, umb);
     };
-    // a round picnic table with its ring of curved bench seats
+    // a round picnic table: a planked top cut to a circle, a ring of four curved two-board seats, a cross frame
+    const arcSeat = (r0, r1, a0, a1, th) => { const sh = new THREE.Shape(); sh.absarc(0, 0, r1, a0, a1, false); sh.absarc(0, 0, r0, a1, a0, true); const g = new THREE.ExtrudeGeometry(sh, { depth: th, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 1, curveSegments: 10 }); g.rotateX(Math.PI / 2); return g; };
     const roundT = (x, z, y0 = 0, umb = null) => {
-      put(CYL(0.6, 0.6, 0.05, 16), WOODL, x, z, 0, 0, 0.74 + y0, 0); for (let i = 0; i < 6; i++) put(new THREE.BoxGeometry(1.15, 0.02, 0.012), 0x3a2a20, x, z, i * 0.52, 0, 0.766 + y0, 0);
-      for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.4; put(new THREE.BoxGeometry(0.6, 0.04, 0.22), WOODP, x, z, -a, 0, 0.44 + y0, 0.92); put(new THREE.BoxGeometry(0.06, 0.42, 0.06), 0x2a1a10, x, z, -a, 0, 0.21 + y0, 0.92); }
-      put(CYL(0.05, 0.05, 0.72, 8), 0x2a1a10, x, z, 0, 0, 0.36 + y0, 0); for (const a of [0, Math.PI / 2]) put(new THREE.BoxGeometry(2.0, 0.06, 0.08), 0x2a1a10, x, z, a, 0, 0.03 + y0, 0);
+      const RT = 0.62;
+      for (let i = -4; i <= 4; i++) { const zz = i * 0.138; if (Math.abs(zz) > RT - 0.04) continue; const L = 2 * Math.sqrt(RT * RT - zz * zz); put(plank(L, 0.128, 0.042), tcol(), x, z, 0.3, 0, 0.75 + y0, zz); }
+      for (const a of [0.3, 0.3 + Math.PI / 2]) put(new THREE.BoxGeometry(1.1, 0.05, 0.05), 0x5a3e28, x, z, a, 0, 0.705 + y0, 0);
+      for (let i = 0; i < 4; i++) { const a0 = i * Math.PI / 2 + 0.25, a1 = a0 + Math.PI / 2 - 0.5;
+        for (const [r0, r1] of [[0.86, 0.99], [1.005, 1.135]]) put(arcSeat(r0, r1, a0, a1, 0.038), tcol(), x, z, 0, 0, 0.47 + y0, 0);
+        const am = (a0 + a1) / 2; put(new THREE.BoxGeometry(1.2, 0.07, 0.05), 0x5a3e28, x, z, -am, 0.55, 0.4 + y0, 0);              // the arm out to each seat
+        put(new THREE.BoxGeometry(0.06, 0.42, 0.06), 0x4a3020, x, z, -am, 1.0, 0.21 + y0, 0); put(CYL(0.014, 0.014, 0.012, 8), BOLT, x, z, -am, 1.0, 0.4 + y0, 0.035, Math.PI / 2); }
+      put(CYL(0.06, 0.06, 0.72, 10), 0x4a3020, x, z, 0, 0, 0.36 + y0, 0); for (const a of [0.3, 0.3 + Math.PI / 2]) put(new THREE.BoxGeometry(1.4, 0.06, 0.08), 0x4a3020, x, z, a, 0, 0.03 + y0, 0);
+      for (let i = 0; i < 4; i++) put(new THREE.BoxGeometry(0.5, 0.05, 0.045), 0x5a3e28, x, z, i * Math.PI / 2 + 0.3, 0.2, 0.5 + y0, 0, 0, 0.75);
       k.colliders.push({ min: new THREE.Vector3(x - 0.55, 0.72 + y0, z - 0.55), max: new THREE.Vector3(x + 0.55, 0.77 + y0, z + 0.55) }); blk(x - 1.0, z - 1.0, x + 1.0, z + 1.0, 0.77 + y0); k.spawns.push(new THREE.Vector3(x + 0.25, 0.85 + y0, z));
       if (umb !== null) parasol(x, z, y0, umb);
     };
@@ -1216,9 +1247,9 @@ export function buildPub(scene) {
     const hedge = (x0, z0, x1, z1, h = 1.3) => leafyHedge(k, x0, z0, x1, z1, h);
     const lattice = (x0, x1, z) => { R(x0, z - 0.03, x1, z + 0.03, 0.45, 0.225, FENCE); for (let x = x0; x < x1; x += 0.15) for (const sd of [1, -1]) k.box(0.02, 0.62, 0.012, x + 0.075, 0.27, z + sd * 0.02, 0x4a3a30, { rot: [0, 0, sd * 0.78] }); };
     const lampPost = (x, z, y0 = 0) => { k.cyl(0.04, 0.06, 2.6, x, 1.3 + y0, z, 0x111111, 8); k.cyl(0.12, 0.12, 0.1, x, 0.05 + y0, z, 0x111111, 10); for (const sd of [-1, 1]) { k.box(0.4, 0.03, 0.03, x + sd * 0.2, 2.55 + y0, z, 0x111111); k.cyl(0.07, 0.1, 0.18, x + sd * 0.38, 2.42 + y0, z, 0x1a1a1a, 8); k.lamp(x + sd * 0.38, 2.36 + y0, z, 0xfff0d0, 0.05); } blk(x - 0.08, z - 0.08, x + 0.08, z + 0.08, 2.7); };
-    bench(-8.0, 18.2, 0, 0, false); bench(-5.5, 18.2, 0, 0, false);   // (the deck in front of the door is kept clear)
-    for (const [x, c] of [[7.6, 0x7e57c2], [8.3, 0x43a047], [9.0, 0x43a047], [9.7, 0xe53935]]) { R(x - 0.32, 18.3, x + 0.32, 18.95, 0.42, 0.21, c, { collide: true, block: true }); R(x - 0.32, 18.3, x + 0.32, 18.95, 0.05, 0.445, 0xffffff); }
-    { const px = 10.0, pz = 17.2; roundT(px, pz); const pm = new THREE.MeshLambertMaterial({ color: 0xc8189a }); MM.compose(V3.set(px, 2.05, pz), QQ.identity(), S1); k.instance(openG, pm, MM.clone()); MM.compose(V3.set(px, 0, pz), QQ.identity(), S1); k.instance(poleG, poleM, MM.clone()); }
+    for (const x of [-8.6, -6.6, -1.6, 0.4, 2.4, 4.4]) bench(x, 18.95, Math.PI / 2, 0, x === 0.4 ? true : false);   // longways, out from the building: a clear walkway in front of them (none in front of the door)
+    for (const [x, c] of [[7.9, 0x7e57c2], [8.6, 0x43a047], [9.3, 0x43a047]]) { R(x - 0.3, 19.68, x + 0.3, 20.28, 0.42, 0.21, c, { collide: true, block: true }); R(x - 0.3, 19.68, x + 0.3, 20.28, 0.05, 0.445, 0xffffff); }
+    { const px = 8.7, pz = 18.45; roundT(px, pz); const pm = new THREE.MeshLambertMaterial({ color: 0xc8189a }); MM.compose(V3.set(px, 2.05, pz), QQ.identity(), S1); k.instance(openG, pm, MM.clone()); MM.compose(V3.set(px, 0, pz), QQ.identity(), S1); k.instance(poleG, poleM, MM.clone()); }
     lampPost(7.4, 19.0);
     // ---- the stream: slate chippings, sleeper edges, bright green water, mooring posts, reeds; the bridge over it
     flr(GX0, 19.4, GX1, 20.02, SLATE, 0.6, 0.003); flr(GX0, 21.98, GX1, 22.9, SLATE, 0.6, 0.003);   // slate chippings either side of the water
@@ -1308,13 +1339,14 @@ export function buildPub(scene) {
       for (const [x, z, r] of [[GX1 + 23, 8, 2.2], [GX1 + 25, 20, 2.8], [GX1 + 23.5, 33, 2.4], [GX1 + 26, 45, 3.0], [GX1 + 24, 56, 2.2]]) { k.cyl(0.2, 0.3, 3.6, x, 1.8, z, 0x5a4030, 8); leafyBall(k, x, 4.2, z, r); } }
     // ---- the far end: hedges and a fence, the houses beyond, trees
     hedge(GX0 + 0.1, GZ1 - 0.9, 7.6, GZ1 - 0.1, 1.7); railX(GX0, GX1, GZ1 - 0.05, 1.8);
-    for (let i = 0; i < 9; i++) { const x = -12 + i * 3.6, d = 3 + (i % 3), col = [0xa85a3a, 0x9a4a2a, 0xe8e2d8, 0xb86a4a, 0x8aa0b8][i % 5]; k.box(3.2, 4.2, d, x, 2.1, GZ1 + 3 + d / 2 + (i % 2) * 1.5, col);
-      const rg = new THREE.ConeGeometry(2.4, 1.6, 4); rg.rotateY(Math.PI / 4); rg.scale(1, 1, d / 3.4); k.parts.push(part(rg, [0x5a3a2a, 0x3a3a3a, 0x6a4030][i % 3], [x, 5.0, GZ1 + 3 + d / 2 + (i % 2) * 1.5]));
-      for (const wx of [-0.8, 0.8]) for (const wy of [1.3, 3.1]) k.box(0.7, 0.8, 0.04, x + wx, wy, GZ1 + 2.98 + (i % 2) * 1.5, 0xf4f4f0); }
+    // the houses round the garden: a terrace across the end (their back gardens run up to the pub's fence), another down the left
+    terrace(k, scene, { ox: -18.4, oz: GZ1 + 8.5, ry: 0, n: 6, w: 4.9, D: 7.6, garden: 8.3, brick: brickO, seed: 2 });
+    terrace(k, scene, { ox: -19.0, oz: 16.4, ry: -Math.PI / 2, n: 6, w: 4.6, D: 7.4, garden: 8.8, brick: brickO, seed: 5 });
     for (const [x, z, r] of [[-11.5, 30, 2.4], [-12, 40, 2.8], [6, GZ1 + 2.0, 1.8], [12, GZ1 + 4, 2.6], [-6, GZ1 + 2.5, 1.6]]) { k.cyl(0.18, 0.25, 3.4, x, 1.7, z, 0x5a4030, 8); for (let i = 0; i < 3; i++) k.cyl(0.06, 0.1, 1.4, x + Math.cos(i * 2.1) * 0.5, 3.3, z + Math.sin(i * 2.1) * 0.5, 0x5a4030, 6); leafyBall(k, x, 3.9, z, r); leafyBall(k, x + r * 0.45, 3.5, z - r * 0.3, r * 0.65); leafyBall(k, x - r * 0.4, 3.7, z + r * 0.35, r * 0.6); }
     // ---- sunshine
     k.light(-2, 9, 28, 0xfff4e0, 3.2, 26); k.light(6, 8, 21, 0xfff4e0, 2.4, 16); k.light(9, 7, 34, 0xfff4e0, 2.2, 16);
     for (const [x, z] of [[-2, 28], [6, 22], [9, 33], [-6, 36]]) k.pool(x, 0, z, 8, 0xfff8e0);
+    shiftGarden(k, scene, mark, 19.3, DW); railZ(GX0, 19.28, 19.4 + DW);
     mirrorGarden(k, scene, mark, GX0 + GX1);
   }
   // ---------------- the walls: dark wood skirting, embossed burgundy anaglypta to the dado, a dark dado rail,
@@ -1351,6 +1383,10 @@ export function buildPub(scene) {
   buildRestaurant(k, scene, { chairsAt });
   k.splitX = -14.0;                                   // (the restaurant's furniture merges separately from the pub's, so it can be skipped)
   const sky = skyDome(scene);
+  scene.fog = new THREE.Fog(HAZE.clone(), 1e4, 2e4);                 // haze outdoors only (set as you go out: see onBeforeRender)
+  { const gt = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#5e8a3a'; g.fillRect(0, 0, w, h); for (let i = 0; i < 2200; i++) { g.fillStyle = ['#4e7a30', '#6e9a44', '#557f34', '#7aa04c', '#486e2c'][i % 5]; g.fillRect(Math.random() * w, Math.random() * h, 2, 3 + Math.random() * 3); } });
+    gt.wrapS = gt.wrapT = THREE.RepeatWrapping; gt.repeat.set(80, 80);
+    const gm = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), new THREE.MeshLambertMaterial({ map: gt })); gm.rotation.x = -Math.PI / 2; gm.position.set(0, -0.33, 30); scene.add(gm); }   // the land all round
   const room = k.finish({
     name: 'The Oysterfleet',
     sky: 0xffe2c0, ground: 0x6a4a3a, hemiI: 1.55, sun: 0xfff0d8, sunI: 0.45, sunPos: [-6, 10, 5], ambient: 0.32,
@@ -1368,9 +1404,10 @@ export function buildPub(scene) {
     for (const o of scene.children.slice(sceneStart)) if (o.isMesh && !o.isInstancedMesh && o.geometry) { o.geometry.computeBoundingBox(); bx.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); if (bx.max.x < -13.6) west.push({ o, x0: bx.min.x, x1: bx.max.x, z0: bx.min.z, z1: bx.max.z }); }
     scene.onBeforeRender = (r, sc, camera) => {
       cam.setFromMatrixPosition(camera.matrixWorld);
-      const inPub = cam.x > DX + 0.05;
+      const outside = cam.z > Z(1305); scene.fog.near = outside ? 27 : 1e4; scene.fog.far = outside ? 39.5 : 2e4;
+      const inPub = cam.x > DX + 0.05 && cam.z < Z(1305);          // (only from inside the pub itself is the restaurant hidden behind walls)
       for (const w of west) {
-        if (!inPub) { w.o.visible = true; continue; }
+        if (!inPub) { w.o.visible = !(cam.z > GZ && w.z1 < GZ - 0.3); continue; }      // (out in the garden the restaurant is behind the pub's solid back wall)
         // the wedge from the eye through the doorway, at the near and far x of this piece
         let lo = Infinity, hi = -Infinity;
         for (const x of [w.x0, w.x1]) { const t = (x - cam.x) / (DX - cam.x); for (const dz of [DZ0, DZ1]) { const z = cam.z + (dz - cam.z) * t; lo = Math.min(lo, z); hi = Math.max(hi, z); } }
@@ -1602,6 +1639,21 @@ function paintingTex(i) {
 }
 
 // mirror everything added since `mark` across x = c2 / 2 (geometry, meshes, instances, colliders, blockers, spawns, lights)
+// move everything of the garden beyond z = zc back by dz (to widen the deck without re-laying the whole garden)
+function shiftGarden(k, scene, mark, zc, dz) {
+  const T = new THREE.Matrix4().makeTranslation(0, 0, dz), c = new THREE.Vector3();
+  for (let i = mark.p; i < k.parts.length; i++) { const g = k.parts[i]; g.computeBoundingBox(); g.boundingBox.getCenter(c); if (c.z > zc) { g.applyMatrix4(T); g.computeBoundingBox(); g.computeBoundingSphere(); } }
+  for (const o of scene.children.slice(mark.o)) if (o.position.z > zc) o.position.z += dz;
+  for (let i = mark.c; i < k.colliders.length; i++) { const cc = k.colliders[i]; if ((cc.min.z + cc.max.z) / 2 > zc) { cc.min.z += dz; cc.max.z += dz; } }
+  for (let i = mark.b; i < k.blockers.length; i++) { const b = k.blockers[i]; if ((b.z0 + b.z1) / 2 > zc) { b.z0 += dz; b.z1 += dz; } }
+  for (let i = mark.r; i < (k.boxRec || []).length; i++) { const r = k.boxRec[i]; if ((r.min[2] + r.max[2]) / 2 > zc) { r.min[2] += dz; r.max[2] += dz; } }
+  for (let i = mark.s; i < k.spawns.length; i++) if (k.spawns[i].z > zc) k.spawns[i].z += dz;
+  for (let i = mark.l; i < (k.lights || []).length; i++) { const p = k.lights[i].l.position; if (p.z > zc) p.z += dz; }
+  for (const [col, l] of k.lamps || []) for (let i = mark.lamps.get(col) || 0; i < l.length; i++) if (l[i][2] > zc) l[i][2] += dz;
+  if (k.halos) for (let i = mark.halos; i < k.halos.list.length; i++) if (k.halos.list[i][2] > zc) k.halos.list[i][2] += dz;
+  if (k.pools) for (let i = mark.pools; i < k.pools.list.length; i++) if (k.pools.list[i][2] > zc) k.pools.list[i][2] += dz;
+  for (const [key, v] of k.inst || []) for (let i = mark.inst.get(key) || 0; i < v.list.length; i++) if (v.list[i].elements[14] > zc) v.list[i] = new THREE.Matrix4().multiplyMatrices(T, v.list[i]);
+}
 function mirrorGarden(k, scene, mark, c2) {
   const S = new THREE.Matrix4().makeScale(-1, 1, 1), T = new THREE.Matrix4().makeTranslation(c2, 0, 0), M = new THREE.Matrix4().multiplyMatrices(T, S);
   for (let i = mark.p; i < k.parts.length; i++) { const g = k.parts[i]; g.applyMatrix4(M);

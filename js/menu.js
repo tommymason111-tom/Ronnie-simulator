@@ -1,7 +1,8 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '1.8.0', GAME_DATE = '15 Nov 2026';
+var GAME_VERSION = '1.8.1', GAME_DATE = '15 Nov 2026';
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['1.8.1', ['The distance outside looks real: a painted 360° view of the town, wooded hills, the estuary with ships and the oil terminal, all fading into a summer haze', 'Real terraced houses round the beer garden: brick and render, uPVC windows with curtains, back doors, kitchen extensions, tiled roofs with chimney pots and satellite dishes, and long back gardens with fences, sheds, trampolines and washing out', 'Grass and fields all round instead of nothing', 'Picnic benches and round tables rebuilt: separate weathered boards with gaps, bolted A-frames, braces, curved seats; pints, ashtrays and sauce caddies on some', 'The deck outside the garden door is wider, with a clear walkway, and its tables now run out from the building']],
   ['1.8.0', ['A real sky over the beer garden: blue overhead, soft drifting clouds, the sun', 'The stream and the river ripple, reflect the sky and sparkle in the sun; a wide river with bushes and trees on the far bank', 'Hedges, bushes, trees and planters are full of leaves', 'Indoor plants are full leafy palms', 'The conservatory has real windows: look out at the beer garden (and in from it), and real sky through the glass roof', 'The garden doors fold right back and the first bench is gone, so the deck is easy to walk out on; no gap beside the garden door', 'Walking and sprinting are faster']],
   ['1.7.4', ['Reception desk: the end return is gone and the desk is slimmer, further from the front doors; the red armchair now sits in the corner by the doors']],
   ['1.7.3', ['The restaurant dining room has a much higher ceiling (4.2m): deep cream beams wall to wall, bigger plaster roses, chandeliers on long drops, taller curtained windows']],
