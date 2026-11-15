@@ -22,6 +22,7 @@ import { SQUAD } from './squad.js';
 import { buildGarden } from './levels/garden.js';
 import { Net, newCode } from './net.js';
 import { MPSync } from './mpsync.js';
+import { foodGlow } from './foods.js';
 import { EMOTES, EmotePlayer } from './emotes.js';
 import { Music } from './music.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
@@ -110,9 +111,10 @@ room.onPayout = (m) => {
 if (room.big) {
   // spread round every table, counter and bench in the place (each spot used once before any doubles up)
   const spots = room.spawns.slice().sort(() => Math.random() - 0.5);
-  for (let i = 0; i < 56; i++) items.spawn(JUNK_TYPES[i % JUNK_TYPES.length], i < spots.length && items.items.every(it => it.pos.distanceToSquared(spots[i]) > 0.15 * 0.15) ? spots[i] : items.freeSpawn());
+  items.topUpEvery = 0.4;
+  for (let i = 0; i < 140; i++) items.spawn(JUNK_TYPES[i % JUNK_TYPES.length], i < spots.length && items.items.every(it => it.pos.distanceToSquared(spots[i]) > 0.15 * 0.15) ? spots[i] : items.freeSpawn());
   items.respawnDelay = 1.5;
-  items.minFood = 78;
+  items.minFood = 150;
 }
 else {
   [['burger', 0], ['pizza', 1], ['doughnut', 2], ['can', 3]].forEach(([t, i]) => items.spawn(t, room.spawns[i]));
@@ -851,6 +853,7 @@ const vrEmote = (() => {
   }, get open() { return held; } };
 })();
 function frame(simDt) {
+  foodGlow(performance.now() / 1000);
   music.update(Math.min(0.05, 1 / 60)); pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
   if (renderer.xr.isPresenting && simDt == null) { vrMenuButtons(); vrEmote.update(); }
   if (paused && simDt == null && net.connected) { if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } }

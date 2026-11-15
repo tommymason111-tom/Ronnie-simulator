@@ -624,7 +624,7 @@ export class Director {
     if (aw) { aw.active = false; setTimeout(() => aw.say('I\'m on shift too, Ron. I\'ll catch you. Slowly. It\'s the knee.', 5), 5200); }
     this.sweep.awCool = 3;
   }
-  removeTrolley() { if (this.trolley) { this.trolley.visible = false; this.g.scene.remove(this.trolley); } if (this.g.items) { this.g.items.minFood = this.g.room.big ? 78 : 0; this.g.items.topUpEvery = 1; this.g.items.vegShare = 0; } if (this.g.player) this.g.player.speedMul = 1; this.clearGlows(); }
+  removeTrolley() { if (this.trolley) { this.trolley.visible = false; this.g.scene.remove(this.trolley); } if (this.g.items) { this.g.items.minFood = this.g.room.big ? 150 : 0; this.g.items.topUpEvery = 1; this.g.items.vegShare = 0; } if (this.g.player) this.g.player.speedMul = 1; this.clearGlows(); }
   // the game calls this when Ronnie picks something up during the sweep
   sweepGrab(it) {
     if (!this.running || this.mode !== 'sweep') return false;

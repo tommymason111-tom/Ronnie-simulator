@@ -387,9 +387,14 @@ export function itemParts(type, v = 0) {
 const _v = new THREE.Vector3(), _c = new THREE.Vector3();
 
 // food comes bigger than life (easier to see, grab and throw); drinks and props stay their real size
-export const FOOD_BIG = 1.3;
+export const FOOD_BIG = 1.6;
 const bigFor = (def) => (def.prop || def.drink || def.poop) ? 1 : FOOD_BIG;
 const sizedMesh = (type, v) => { const m = meshFor(type, v), k = bigFor(FOODS[type]); if (k !== 1) m.scale.multiplyScalar(k); return m; };
+const HALO_MAT = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(255,245,190,1)'); r.addColorStop(0.3, 'rgba(255,220,100,0.6)'); r.addColorStop(0.65, 'rgba(255,200,60,0.18)'); r.addColorStop(1, 'rgba(255,200,60,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 }); })();
+export const foodGlow = (t) => { HALO_MAT.opacity = 0.62 + Math.sin(t * 2.6) * 0.2; };
 export class Item {
   constructor(type, v = 0) {
     this.type = type;
@@ -398,6 +403,8 @@ export class Item {
     this.obj = new THREE.Group();
     this.obj.add(sizedMesh(type, v));
     this.radius = this.def.radius * bigFor(this.def);
+    // food you can pick up glows a little (a soft warm halo round it, gently pulsing) so it stands out
+    if (bigFor(this.def) !== 1) { this.halo = new THREE.Sprite(HALO_MAT); this.halo.scale.setScalar(this.radius * 7); this.halo.renderOrder = 2; this.obj.add(this.halo); }
     this.vel = new THREE.Vector3();
     this.prev = new THREE.Vector3();   // position last frame (for swept hit tests)
     this.spin = new THREE.Vector3();
@@ -496,6 +503,7 @@ export class ItemManager {
       for (const it of this.items) if (!it.def.veg && !it.def.prop && !it.temp && !it.empty && !it.incoming) food++;
       if (food < this.minFood) { const veg = this.vegShare && Math.random() < this.vegShare; const it = this.spawn(veg ? ['apple', 'banana', 'orange', 'broccoli', 'carrot', 'pear', 'tomato'][Math.floor(Math.random() * 7)] : pickJunk(), this.freeSpawn()); if (veg) it.shelf = true; }
     }
+    for (const it of this.items) if (it.halo) it.halo.visible = !it.heldBy && !it.empty;
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {
       const r = this.respawnQueue[i];
       r.t -= dt;
