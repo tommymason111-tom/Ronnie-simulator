@@ -330,7 +330,7 @@ export class Player {
       }
     }
     const f = this.flatHolder;
-    if (this.flatMode && f && f.held && !f.held.dead) {
+    if (this.flatMode && f && f.held && !f.held.dead && !f.held.filling) {      // (not while it's standing under the tap being filled)
       this.camera.updateMatrixWorld(true);
       this.flatGrip.updateMatrixWorld(true);
       this.flatGrip.matrixWorld.decompose(_v, _q, _s);
@@ -612,19 +612,24 @@ export class Player {
   // ---------------- wrist Chonk Meter ----------------
   buildWrist() {
     this.wristCanvas = document.createElement('canvas');
-    this.wristCanvas.width = 512; this.wristCanvas.height = 320;
+    this.wristCanvas.width = 512; this.wristCanvas.height = 384;
     this.wristTex = new THREE.CanvasTexture(this.wristCanvas);
     this.wristTex.colorSpace = THREE.SRGBColorSpace;
     this.wristTex.generateMipmaps = false; this.wristTex.minFilter = THREE.LinearFilter;
     const mat = new THREE.MeshBasicMaterial({ map: this.wristTex, transparent: true, toneMapped: false });
-    this.wrist = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.0625), mat);
+    this.wrist = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.075), mat);
     this.wrist.renderOrder = 5;
     this.wristParent = null;
   }
 
   drawWrist(state) {
-    const g = this.wristCanvas.getContext('2d'), w = 512, h = 320;
-    g.clearRect(0, 0, w, h);
+    const g = this.wristCanvas.getContext('2d'), w = 512, H = 384, h = 320;
+    g.clearRect(0, 0, w, H);
+    // which game you're in, above the box (always on show)
+    { const t = (state.title || '').toUpperCase(); g.textAlign = 'left'; g.textBaseline = 'middle'; let f = 40; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(t).width > w - 40 && f > 16);
+      g.lineWidth = 9; g.strokeStyle = '#111'; g.lineJoin = 'round'; g.strokeText(t, 14, 32); g.fillStyle = '#ffd400'; g.fillText(t, 14, 32); }
+    g.save(); g.translate(0, 64);
+    if (state.pub) { this.drawPubBox(g, w, h, state); g.restore(); this.wristTex.needsUpdate = true; return; }
     g.fillStyle = '#111827'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill();
     g.lineWidth = 8; g.strokeStyle = state.loco > 0 ? '#ff9a1f' : '#39ff14'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();
     g.textAlign = 'left'; g.textBaseline = 'middle';
@@ -668,7 +673,22 @@ export class Player {
     g.textAlign = 'right'; g.font = `900 24px ${FONT}`;
     g.fillStyle = state.fps >= 70 ? '#39ff14' : state.fps >= 60 ? '#ffe600' : '#ff4d4d';
     g.fillText(`${state.fps} fps`, w - 30, 296);
+    g.restore();
     this.wristTex.needsUpdate = true;
+  }
+  // Run the Pub: no eat meter, just the shift: time left, takings, how many you've served, the star rating
+  drawPubBox(g, w, h, st) {
+    const p = st.pub;
+    g.fillStyle = '#1a0f0a'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill(); g.lineWidth = 8; g.strokeStyle = p.time < 30 ? '#ff4d4d' : '#d4af37'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();
+    const m = Math.max(0, Math.floor(p.time / 60)), sec = Math.max(0, Math.floor(p.time % 60));
+    g.textBaseline = 'middle'; g.textAlign = 'left';
+    g.fillStyle = '#9ca3af'; g.font = `900 26px ${FONT}`; g.fillText('TIME LEFT', 34, 46); g.fillText('TAKINGS', 280, 46);
+    g.fillStyle = p.time < 30 ? '#ff6b6b' : '#ffffff'; g.font = `900 64px ${FONT}`; g.fillText(`${m}:${String(sec).padStart(2, '0')}`, 30, 104);
+    g.fillStyle = '#39ff14'; g.font = `900 60px ${FONT}`; let f = 60; while (g.measureText('£' + p.money.toFixed(2)).width > 210 && f > 30) { f -= 4; g.font = `900 ${f}px ${FONT}`; } g.fillText('£' + p.money.toFixed(2), 276, 104);
+    g.fillStyle = 'rgba(255,255,255,0.1)'; roundRect(g, 26, 150, w - 52, 74, 22); g.fill();
+    g.fillStyle = '#fff'; g.font = `900 40px ${FONT}`; g.fillText(`🍺 SERVED ${p.served}`, 44, 188);
+    g.textAlign = 'right'; g.fillStyle = '#ffd400'; g.font = `900 36px ${FONT}`; g.fillText(p.stars, w - 44, 188);
+    g.textAlign = 'left'; g.fillStyle = p.waiting ? '#ffb050' : '#7cff6a'; g.font = `900 28px ${FONT}`; g.fillText(p.waiting ? `${p.waiting} WAITING AT THE BAR` : 'NOBODY WAITING', 34, 262);
   }
 
   updateWristParent(xr) {
@@ -682,7 +702,7 @@ export class Player {
     if (mode === 'flat' && parent) {   // pin to the top-left corner of the screen, whatever its shape
       const d = 0.3, hh = d * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)), hw = hh * this.camera.aspect;
       const sc = Math.min(1.15, hw * 0.9 / 0.1);
-      this.wrist.position.set(-hw + 0.05 * sc + 0.008, hh - 0.031 * sc - 0.03, -d);
+      this.wrist.position.set(-hw + 0.05 * sc + 0.008, hh - 0.0375 * sc - 0.024, -d);
       this.wrist.scale.setScalar(sc);
     }
     if (parent === this.wristParent) return;

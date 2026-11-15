@@ -28,7 +28,7 @@ export class MPSync {
     // VR on a joining player's game: grabbing one of the host's people sends it to the host
     if (this.player) this.player.remoteGrab = (h, who, part, ph) => this.sendGrab(h, who, part, ph);
     const net = this.net;
-    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc', 'emote', 'swing', 'sfx', 'rgrab', 'chat'])
+    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc', 'emote', 'swing', 'sfx', 'rgrab', 'chat', 'char'])
       net.on[k] = (m, p) => this['on_' + k] && this['on_' + k](m, p);
   }
   get host() { return this.net.host; }
@@ -81,6 +81,9 @@ export class MPSync {
   }
   on_emote(m, p) { const e = emoteInfo(m.e); if (!e || !p || !p.avatar) return;
     if (p.avatar.doEmote) p.avatar.doEmote(m.e); else this.words.show(e.icon, p.avatar.headPos().add({ x: 0, y: 0.45, z: 0 }), '#ffd400', 0.3, e.dur); }
+  // someone's switched character mid-game: their old body goes, the new one turns up with their next move
+  setChar(c) { if (!this.net.connected) return; this.net.char = c; this.net.send({ t: 'char', c }); }
+  on_char(m, p) { if (!p || !m.c) return; p.char = String(m.c).slice(0, 20); if (p.avatar) { p.avatar.dispose(); p.avatar = null; } this.words.show(`${p.name || 'A mate'} IS NOW ${(SQUAD[p.char] || { name: p.char === 'tommy' ? 'Tommy' : 'Ronnie' }).name.toUpperCase()}`, this.player.head.clone().addScaledVector(this.player.fwd, 1.2), '#ffd400', 0.1, 1.6); }
   // chat (multiplayer): a message to everyone; it shows over your character's head and in everyone's chat log
   chat(text) { if (!this.net.connected) return false; text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 90); if (!text) return false; this.net.send({ t: 'chat', s: text }); this.onChat && this.onChat(text, null); return true; }
   on_chat(m, p) { const s = String(m.s || '').slice(0, 90); if (!s) return; if (p && p.avatar && p.avatar.chat) p.avatar.chat(s); this.onChat && this.onChat(s, p); }
@@ -258,7 +261,7 @@ export class MPSync {
   on_say(m) { if (this.host) return; const c = this.cast.find(x => x.id === m.id); if (c && c.rag.mesh) { c.drawBubble(m.text); c.bubble.visible = true; c.speakT = 2.2 + m.text.length * 0.055; } }
   on_dir(m) { if (this.host) return; const d = this.director; d.hostHud = m.hud; d.timeLeft = m.left; if (m.mode && m.mode !== d.mode && d.startRemote) d.startRemote(m.mode); }
   on_woke(m) { const D = this.room.dormant; if (!D) return; const e = D.entries[m.i]; if (e && !e.woken) { e.woken = true; for (const im of e.group.meshes) { im.setMatrixAt(e.index, new THREE.Matrix4().makeScale(0, 0, 0)); im.instanceMatrix.needsUpdate = true; } } }
-  on_end(m) { if (this.host) return; this.director.running = false; this.director.showReceipt && this.director.showReceipt(m.lines); }
+  on_end(m) { if (this.host) return; this.director.running = false; this.director.showReceipt && this.director.showReceipt(m.lines); this.director.receiptT = 1e9; this.director.g.onGameOver && this.director.g.onGameOver(m.lines); }
 
   // ------------------------------------------------------------------ the squad picks on one of you at a time
   // everyone who can be attacked: me, and each other player with a body in the game
@@ -268,7 +271,11 @@ export class MPSync {
     return list;
   }
   pickTarget(c) {
-    const t = this.targets(), pick = t[Math.floor(Math.random() * t.length)];
+    // players only (the squad never go for Tommy or each other), taking turns so everyone gets attacked: whoever's
+    // gone longest without one is next
+    const t = this.targets(); this.lastHit = this.lastHit || new Map();
+    t.sort((a, b) => (this.lastHit.get(a.id || 'host') || 0) - (this.lastHit.get(b.id || 'host') || 0) + (Math.random() - 0.5) * 0.001);
+    const pick = t[0]; this.lastHit.set(pick.id || 'host', performance.now());
     c.mpTarget = pick.id ? pick : null;
     const label = pick.id ? pick.name : (this.net.name || 'the host');
     this.net.send({ t: 'coming', who: c.id, target: pick.id, name: label });

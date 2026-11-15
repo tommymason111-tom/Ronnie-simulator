@@ -53,7 +53,7 @@ export const FOODS = {
   beer:     { label: 'Bottle of lager', chonk: 15, bites: 1, radius: 0.035, mass: 0.4, drink: true, beer: true, booze: true },
   dart:     { label: 'Dart', chonk: 0, bites: 1, radius: 0.025, mass: 0.02, dart: true, prop: true },
   bat:      { label: 'Table tennis bat', chonk: 0, bites: 1, radius: 0.02, mass: 0.1, bat: true, prop: true },
-  pint:     { label: 'BLACK LIFFEY STOUT', chonk: 20, bites: 1, radius: 0.045, mass: 0.6, drink: true, stout: true, booze: true },
+  pint:     { label: 'GUINNESS STOUT', chonk: 20, bites: 1, radius: 0.045, mass: 0.6, drink: true, stout: true, booze: true },
   shake:    { label: 'Protein shake', chonk: 25, bites: 1, radius: 0.04, mass: 0.5, drink: true, shake: true },
   // the Lidl bakery
   croissant: { label: 'Croissant', chonk: 11, bites: 2, radius: 0.05, mass: 0.1, bake: true },

@@ -311,6 +311,7 @@ export class Director {
       }
     }
     this.showReceipt(lines);
+    if (!this.player2) { this.receiptT = 1e9; this.g.onGameOver && this.g.onGameOver(lines); }      // (the final scoreboard: stays up till you leave; not between the two players' goes of an eat-off)
     if (this.mp && this.mp.on && this.mp.host) this.mp.net.send({ t: 'end', lines });
     g.tommy.say({
       intervention: 'Another intervention, another failure. I\'ll tell your mum you were good. I\'ll lie.',
@@ -1110,8 +1111,8 @@ export class Director {
     for (const [k, v] of lines) {
       if (y > h - 120) break;
       if (v === '') { fitText(c, k, 24, y - 18, w - 48, 44, 20, { color: '#333', font: 'monospace', align: 'left' }); y += 44; continue; }
-      c.font = 'bold 21px monospace'; c.fillStyle = '#111'; c.fillText(String(k).slice(0, 30), 24, y);
-      c.textAlign = 'right'; c.fillText(String(v), w - 24, y); c.textAlign = 'left';
+      c.font = 'bold 21px monospace'; c.fillStyle = '#111'; const vw = c.measureText(String(v)).width; let fs = 21; while (c.measureText(String(k)).width > w - 64 - vw && fs > 12) { fs--; c.font = `bold ${fs}px monospace`; } c.fillText(String(k), 24, y);      // (the whole label, smaller if it's long)
+      c.font = 'bold 21px monospace'; c.textAlign = 'right'; c.fillText(String(v), w - 24, y); c.textAlign = 'left';
       y += 34;
     }
     c.textAlign = 'center'; c.font = '20px monospace'; c.fillStyle = '#111';
@@ -1127,6 +1128,7 @@ export class Director {
     this.receipt.lookAt(p.head.x, this.receipt.position.y, p.head.z);
     this.receipt.visible = true;
     this.receiptT = 25;
+    this.lastLines = lines;
   }
 
   hud() {

@@ -76,7 +76,7 @@ function celeryGeo() {
 function sproutGeo() {
   return merge([part(new THREE.IcosahedronGeometry(0.028, 1), 0x7cb342), part(new THREE.IcosahedronGeometry(0.02, 1), 0x9ccc65, [0.01, 0.012, 0.01]), part(cyl(0.006, 0.008, 0.012, 6), 0xc5e1a5, [0, -0.028, 0])]);
 }
-// a pint of (parody) BLACK LIFFEY STOUT with a creamy head
+// a pint of (parody) GUINNESS STOUT with a creamy head
 function pintGeo() {
   return merge([
     part(cyl(0.042, 0.034, 0.12, 18), 0x140c08, [0, -0.01, 0]),
@@ -615,7 +615,7 @@ export class ItemManager {
   }
 
   update(dt) {
-    if (this.clientMode) { for (const it of this.items) { it.age += dt; if (it.spawnScale < 1) { it.spawnScale = Math.min(1, it.spawnScale + dt * 4); } if (it.netMirror && !it.heldBy) it.prev.copy(it.pos); else if (!it.netMirror) {} } this.items.filter(it => !it.netMirror && !it.heldBy).forEach(() => {}); }
+    if (this.clientMode) { for (const it of this.items) { it.age += dt; if (it.spawnScale < 1) { it.spawnScale = Math.min(1, it.spawnScale + dt * 4); } if (it.obj.scale.x < 0.05 && !it.heldBy) it.obj.scale.setScalar(Math.max(0.05, it.spawnScale) * (0.55 + 0.45 * it.eatFraction)); if (it.netMirror && !it.heldBy) it.prev.copy(it.pos); else if (!it.netMirror) {} } this.items.filter(it => !it.netMirror && !it.heldBy).forEach(() => {}); }
     // big places never run dry: top up with random junk food every so often
     if (!this.clientMode && this.minFood && (this.topUpT = (this.topUpT || 0) - dt) <= 0) {
       this.topUpT = this.topUpEvery || 1.0;
@@ -635,6 +635,7 @@ export class ItemManager {
       const it = this.items[i];
       it.age += dt;
       if (it.spawnScale < 1) { it.spawnScale = Math.min(1, it.spawnScale + dt * 4); it.obj.scale.setScalar(easeOutBack(it.spawnScale) * (0.55 + 0.45 * it.eatFraction)); }
+      else if (it.obj.scale.x < 0.05 && !it.heldBy) it.obj.scale.setScalar(0.55 + 0.45 * it.eatFraction);      // (put out full-size straight away, e.g. the glasses behind the bar: they were left tiny, so invisible)
       if (it.heldBy) { it.resting = false; it.restTime = 0; continue; }
       if (it.netMirror) continue;                    // (multiplayer: the host's game moves this one)
       if (it.resting) {

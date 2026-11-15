@@ -5,6 +5,7 @@
 // them). Quick service gets tips, slow service gets walk-outs. Now and then it kicks off: a fight, an old boy
 // singing on the bar, a kid running riot. Sort it out. Takings, a star rating and a shift report at the end.
 import * as THREE from 'three';
+import { PubJobs } from './pubjobs.js';
 import { SquadMember, SQUAD, makeProp } from './squad.js';
 import { sfx } from './audio.js';
 import { Bar } from './barstations.js';
@@ -14,7 +15,7 @@ const STAFF_SPOTS = { aidan: [3.45, -8.0, -Math.PI / 2], connor: [3.45, -4.9, -M
 const RONNIE_SPOT = { x: 3.6, z: -6.45 };
 // what people order: where it comes from (the station), what counts, and what it costs
 const ORDERS = {
-  guinness: { name: 'BLACK LIFFEY', icon: '🍺', price: 5.8, booze: true, lines: ['Pint of the black stuff.', 'A BLACK LIFFEY, please. Let it settle.', 'Stout, landlord. Proper pour.'], ok: (it) => it.type === 'pint', from: 'glasses', make: 'tap', vessel: 'glass', how: 'pint glass → hold it under the BLACK LIFFEY tap' },
+  guinness: { name: 'GUINNESS', icon: '🍺', guin: true, price: 5.8, booze: true, lines: ['Pint of the black stuff.', 'A GUINNESS, please. Let it settle.', 'Stout, landlord. Proper pour.'], ok: (it) => it.type === 'pint', from: 'glasses', make: 'tap', vessel: 'glass', how: 'pint glass → hold it under the GUINNESS tap' },
   lager: { name: 'LAGER', icon: '🍺', price: 4.8, booze: true, lines: ['Bottle of lager please, son.', 'Lager. A cold one.', 'Lager, landlord.'], ok: (it) => it.type === 'beer', from: 'lager', how: 'take a bottle from the LAGER fridge' },
   cider: { name: 'CIDER', icon: '🍏', price: 5.0, booze: true, lines: ['Cider please. Over ice if you\'ve got it.', 'Bottle of cider, mate.', 'Cider. It\'s basically fruit.'], ok: (it) => it.type === 'cider', from: 'cider', how: 'take a bottle from the CIDER fridge' },
   wine: { name: 'WINE', icon: '🍷', price: 6.5, booze: true, lines: ['Large glass of wine please, love.', 'Glass of red, please.', 'White wine. Large. It\'s been a week.'], ok: (it) => it.type === 'wine', from: 'wine', how: 'grab a glass off the back counter' },
@@ -87,16 +88,28 @@ function makePunter(kind, extra = {}) {
 }
 
 // a floating "what I want" tag over someone waiting at the bar, with how patient they still are
+// the Guinness logo: a black pint with its creamy head (so it's never mistaken for a lager)
+const GUIN_HTML = '<span style="display:inline-block;width:11px;height:15px;vertical-align:-2px;margin-right:2px;background:linear-gradient(#f4ead0 0 26%,#120a06 26%);border:1.5px solid #d8d8d8;border-radius:2px 2px 4px 4px"></span>';
+function drawGuin(g, x, y, s) {
+  g.save(); g.translate(x, y); g.scale(s / 64, s / 64);
+  g.fillStyle = '#120a06'; g.beginPath(); g.moveTo(10, 8); g.lineTo(54, 8); g.lineTo(48, 62); g.lineTo(16, 62); g.closePath(); g.fill();
+  g.fillStyle = '#f4ead0'; g.beginPath(); g.moveTo(9, 2); g.lineTo(55, 2); g.lineTo(54, 18); g.lineTo(10, 18); g.closePath(); g.fill();
+  g.strokeStyle = '#e0e0e0'; g.lineWidth = 3; g.beginPath(); g.moveTo(9, 2); g.lineTo(16, 62); g.lineTo(48, 62); g.lineTo(55, 2); g.stroke();
+  g.fillStyle = '#d4af37'; g.beginPath(); g.arc(32, 38, 6, 0, 7); g.fill(); g.restore();
+}
 function orderTag() {
   const c = document.createElement('canvas'); c.width = 256; c.height = 128;
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false, depthWrite: false })); s.renderOrder = 13; s.scale.set(0.5, 0.25, 1);
   s.draw = (o, k, kid) => { s.kid = kid; const g = c.getContext('2d'); g.clearRect(0, 0, 256, 128);
     g.fillStyle = 'rgba(10,14,30,0.85)'; g.beginPath(); g.roundRect(4, 4, 248, 120, 22); g.fill(); g.lineWidth = 6; g.strokeStyle = k > 0.5 ? '#39ff14' : k > 0.25 ? '#ffd400' : '#ff3a3a'; g.stroke();
-    g.font = '64px serif'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(o.icon, 14, 54);
+    g.font = '64px serif'; g.textAlign = 'left'; g.textBaseline = 'middle'; if (o.guin) drawGuin(g, 14, 22, 64); else g.fillText(o.icon, 14, 54);
     if (s.kid) { g.fillStyle = '#ff3a3a'; g.font = '900 18px Arial'; g.fillText('🧒 UNDER 18!', 150, 112); }
     g.fillStyle = '#fff'; g.font = '900 26px Arial'; g.fillText(o.name, 88, 40); g.fillStyle = '#ffd400'; g.font = '900 24px Arial'; g.fillText('£' + o.price.toFixed(2), 88, 76);
-    g.fillStyle = 'rgba(255,255,255,0.2)'; g.fillRect(14, 100, 228, 12); g.fillStyle = k > 0.5 ? '#39ff14' : k > 0.25 ? '#ffd400' : '#ff3a3a'; g.fillRect(14, 100, 228 * Math.max(0, k), 12);
+    // the patience meter: green to red as they wait; empty = FUMING (they stay, but they're furious)
+    g.fillStyle = 'rgba(255,255,255,0.2)'; g.fillRect(14, 100, 190, 12); g.fillStyle = k > 0.5 ? '#39ff14' : k > 0.25 ? '#ffd400' : '#ff3a3a'; g.fillRect(14, 100, 190 * Math.max(0, k), 12);
+    g.font = '30px serif'; g.textAlign = 'center'; g.fillText(k > 0.5 ? '🙂' : k > 0.25 ? '😠' : k > 0 ? '😡' : '🤬', 228, 106); g.textAlign = 'left';
+    if (k <= 0) { g.fillStyle = '#ff3a3a'; g.font = '900 18px Arial'; g.fillText('FUMING!', 150, 76); }
     t.needsUpdate = true; };
   return s;
 }
@@ -127,6 +140,7 @@ export class RunPub {
     for (const it of its.items.slice()) if (!it.dead && !it.def.drink && !it.def.prop) its.remove(it);
     this.bar = new Bar(this);
     this.buildOrdersUI();
+    this.jobs = new PubJobs(this);
     g.showBanner('RUN THE PUB', 'SERVE THE PUNTERS');
   }
 
@@ -190,12 +204,11 @@ export class RunPub {
     for (const c of this.cast) if (c.dropIn) this.dropInTick(c, dt);
     // the punters
     for (const c of this.punters.slice()) this.punterTick(c, dt, P);
-    // staff help out with anyone who's been waiting too long
-    if ((this.staffT -= dt) <= 0) { this.staffT = 3;
-      const wait = this.punters.filter(c => c.rp.phase === 'waiting' && c.rp.wait > 16).sort((a, b) => b.rp.wait - a.rp.wait)[0];
-      const st = wait && this.cast.find(s => s.rpJob === 'bar' && !s.down && (s.serveCool || 0) <= 0);
-      if (st) { st.serveCool = 18; st.say(R(['I\'ve got this one, Ron!', 'Here you go, mate.', 'Ronnie, you\'re SLOW.', 'Served. Again. By me.']), 3); this.deliver(wait, null, st); } }
-    for (const s of this.cast) if (s.serveCool > 0) s.serveCool -= dt;
+    // the other staff don't serve for you (it's your shift): they just give you jobs (see pubjobs.js) and nag
+    if ((this.staffT -= dt) <= 0) { this.staffT = 14 + Math.random() * 10;
+      const wait = this.punters.filter(c => c.rp.phase === 'waiting' && c.rp.wait > 20)[0], st = wait && R(this.cast.filter(s => s.rpJob === 'bar' && !s.down));
+      if (st) st.say(R([`Ron! ${wait.name}'s been waiting AGES!`, 'Ronnie, customers! CUSTOMERS!', 'Don\'t look at me, Ron, I\'m on my break.', 'Chop chop, Ronnie!']), 3); }
+    if (this.jobs) this.jobs.update(dt);
     // events
     if (!this.event && (this.eventT -= dt) <= 0) { this.eventT = 55 + Math.random() * 35; this.startEvent(); }
     if (this.event) this.eventTick(dt);
@@ -259,7 +272,9 @@ export class RunPub {
           else ok = it.pos.distanceTo(chest) < 0.6;                                                                     // VR: hold it out to them
           if (ok) { this.deliver(c, it, null, false); return; } }
         for (const it of this.g.items.items) if (isDrink(it) && !it.heldBy && !it.shelf && it.pos.distanceTo(chest) < 0.55) { this.deliver(c, it, null, true); return; }      // (thrown at them)
-        if (rp.wait >= rp.patience) { this.walkouts++; this.rating -= 0.35; sfx('sadviolin', c.pos, 0.5); if (Math.random() < 0.45) this.leave(c, 'angry'); else { c.say('angry', 4); this.release(c); this.dropTag(c); rp.thirst = 25 + Math.random() * 20; this.goHome(c); } }
+        // out of patience: they don't leave, they just get angrier and angrier (and louder), right there at the bar
+        if (rp.wait >= rp.patience) { if (!rp.fuming) { rp.fuming = true; this.walkouts++; this.rating -= 0.25; sfx('sadviolin', c.pos, 0.5); c.say('angry', 4); }
+          this.rating -= dt * 0.006; if ((rp.moanT = (rp.moanT || 6) - dt) <= 0) { rp.moanT = 7 + Math.random() * 5; c.say(R(['STILL WAITING, RONNIE!', 'Any time TONIGHT, mate!', 'I\'ve grown a beard waiting here!', 'Is anyone actually WORKING?', 'I could\'ve brewed it myself by now!']), 3); } }
         break;
       }
       case 'served':
@@ -277,7 +292,7 @@ export class RunPub {
     if (kid && Math.random() < 0.3) { key = R(['lager', 'cider', 'guinness']); rp.kidBooze = true; }       // a kid trying their luck
     const o = ORDERS[key];
     rp.order = o; rp.orderKey = key; rp.wait = 0; rp.patience = rp.kind === 'old' ? 46 : 56; rp.moaned = false; rp.phase = 'waiting';
-    c.state = 'idle'; c.faceYaw = rp.spot.yaw; c.say(rp.kidBooze ? R(['Pint of lager please. I\'m eighteen. Honest.', 'A cider. For my... dad.', 'Can I get a BLACK LIFFEY? I\'ve got ID. At home.']) : R(o.lines), 4);
+    c.state = 'idle'; c.faceYaw = rp.spot.yaw; c.say(rp.kidBooze ? R(['Pint of lager please. I\'m eighteen. Honest.', 'A cider. For my... dad.', 'Can I get a GUINNESS? I\'ve got ID. At home.']) : R(o.lines), 4);
     let tag = this.tags.get(c); if (!tag) { tag = orderTag(); this.tags.set(c, tag); this.g.scene.add(tag); } tag.visible = true; rp.tagT = 0;
   }
   dropTag(c) { const tag = this.tags.get(c); if (tag) tag.visible = false; }
@@ -326,16 +341,16 @@ export class RunPub {
   drawOrders(dt) {
     if ((this.ordersT = (this.ordersT || 0) - dt) > 0) return; this.ordersT = 0.25;
     const list = this.waiting().slice(0, 6), vr = !this.g.player.flatMode;
-    const rows = list.map((c, i) => { const rp = c.rp, o = rp.order, k = 1 - rp.wait / rp.patience; return { icon: o.icon, name: o.name, who: c.name, k, kid: rp.kidBooze, how: i === 0 ? (rp.kidBooze ? 'they\'re a KID: give them a soft drink' : o.how) : '' }; });
+    const rows = list.map((c, i) => { const rp = c.rp, o = rp.order, k = 1 - rp.wait / rp.patience; return { icon: o.icon, guin: o.guin, name: o.name, who: c.name, k, kid: rp.kidBooze, how: i === 0 ? (rp.kidBooze ? 'they\'re a KID: give them a soft drink' : o.how) : '' }; });
     this.ordersEl.style.display = vr ? 'none' : 'block';
-    this.ordersEl.innerHTML = '<div style="font:900 13px Arial Black,Arial;color:#ffd400;margin-bottom:3px">🧾 ORDERS</div>' + (rows.length ? rows.map(r => `<div style="margin:3px 0"><div style="display:flex;justify-content:space-between"><span>${r.icon} ${r.name}${r.kid ? ' <b style="color:#ff5a5a">🧒</b>' : ''}</span><span style="color:#c9d3ff">${r.who}</span></div><div style="height:4px;background:rgba(255,255,255,0.2);border-radius:2px"><div style="height:4px;width:${Math.max(0, r.k) * 100}%;background:${r.k > 0.5 ? '#39ff14' : r.k > 0.25 ? '#ffd400' : '#ff3a3a'};border-radius:2px"></div></div>${r.how ? `<div style="color:#9fe;font-size:11px">➜ ${r.how}</div>` : ''}</div>`).join('') : '<div style="color:#c9d3ff">Nobody waiting. Wipe the bar.</div>');
+    this.ordersEl.innerHTML = '<div style="font:900 13px Arial Black,Arial;color:#ffd400;margin-bottom:3px">🧾 ORDERS</div>' + (rows.length ? rows.map(r => `<div style="margin:3px 0"><div style="display:flex;justify-content:space-between"><span>${r.guin ? GUIN_HTML : r.icon} ${r.name}${r.kid ? ' <b style="color:#ff5a5a">🧒</b>' : ''}</span><span style="color:#c9d3ff">${r.who}</span></div><div style="height:4px;background:rgba(255,255,255,0.2);border-radius:2px"><div style="height:4px;width:${Math.max(0, r.k) * 100}%;background:${r.k > 0.5 ? '#39ff14' : r.k > 0.25 ? '#ffd400' : '#ff3a3a'};border-radius:2px"></div></div>${r.how ? `<div style="color:#9fe;font-size:11px">➜ ${r.how}</div>` : ''}</div>`).join('') : '<div style="color:#c9d3ff">Nobody waiting. Wipe the bar.</div>');
     // VR wrist
     const P = this.g.player, h = (P.hands || []).find(h => h.handedness === 'left' && h.tracked);
     this.wrist.visible = vr && !!h; if (!this.wrist.visible) return;
     const g = this.wristCv.getContext('2d'); g.clearRect(0, 0, 256, 320); g.fillStyle = 'rgba(10,14,40,0.9)'; g.beginPath(); g.roundRect(4, 4, 248, 312, 18); g.fill(); g.lineWidth = 5; g.strokeStyle = '#ffd400'; g.stroke();
     g.fillStyle = '#ffd400'; g.font = '900 24px Arial'; g.textAlign = 'center'; g.fillText('🧾 ORDERS', 128, 34); g.textAlign = 'left';
-    rows.forEach((r, i) => { const y = 64 + i * 42; g.fillStyle = r.kid ? '#ff8a8a' : '#fff'; g.font = '700 20px Arial'; g.fillText(`${r.icon} ${r.name}`, 14, y); g.fillStyle = 'rgba(255,255,255,0.2)'; g.fillRect(14, y + 8, 228, 6); g.fillStyle = r.k > 0.5 ? '#39ff14' : r.k > 0.25 ? '#ffd400' : '#ff3a3a'; g.fillRect(14, y + 8, 228 * Math.max(0, r.k), 6); });
-    if (rows[0]) { g.fillStyle = '#9fe'; g.font = '700 15px Arial'; const t = '➜ ' + rows[0].how; g.fillText(t.length > 30 ? t.slice(0, 30) : t, 14, 300); }
+    rows.forEach((r, i) => { const y = 64 + i * 42; g.fillStyle = r.kid ? '#ff8a8a' : '#fff'; g.font = '700 20px Arial'; if (r.guin) { drawGuin(g, 12, y - 14, 22); g.fillText(r.name, 40, y); } else g.fillText(`${r.icon} ${r.name}`, 14, y); g.fillStyle = 'rgba(255,255,255,0.2)'; g.fillRect(14, y + 8, 228, 6); g.fillStyle = r.k > 0.5 ? '#39ff14' : r.k > 0.25 ? '#ffd400' : '#ff3a3a'; g.fillRect(14, y + 8, 228 * Math.max(0, r.k), 6); });
+    if (rows[0]) { g.fillStyle = '#9fe'; const t = '➜ ' + rows[0].how; let f = 15; do { g.font = `700 ${f}px Arial`; f--; } while (g.measureText(t).width > 228 && f > 9); g.fillText(t, 14, 300); }
     this.wristTex.needsUpdate = true;
     h.grip.updateMatrixWorld(true); this.wrist.position.set(0, 0.03, 0.09).applyMatrix4(h.grip.matrixWorld); this.wrist.quaternion.setFromRotationMatrix(h.grip.matrixWorld).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)));
   }
@@ -429,6 +444,7 @@ export class RunPub {
   }
 
   // ------------------------------------------------------------------ the report
+  hudState(time) { const stars = '★'.repeat(Math.floor(this.rating)) + (this.rating % 1 >= 0.5 ? '½' : ''); return { time, money: this.money, served: this.served, stars: stars || '0★', waiting: this.punters.filter(c => c.rp.phase === 'waiting').length }; }
   hud() {
     const stars = '★'.repeat(Math.floor(this.rating)) + (this.rating % 1 >= 0.5 ? '½' : '');
     const waiting = this.punters.filter(c => c.rp.phase === 'waiting').length;
@@ -439,18 +455,18 @@ export class RunPub {
     return [
       ['TAKINGS', '£' + this.money.toFixed(2)],
       ['DRINKS SERVED BY RONNIE', this.served],
-      ['SERVED BY THE STAFF (SHAME)', this.staffServed],
+      ['JOBS DONE FOR THE STAFF', this.jobs ? this.jobs.done : 0],
       ['WRONG DRINKS', this.wrong],
       ['THROWN AT PEOPLE', this.thrown || 0],
       ['KIDS SERVED BOOZE (!!)', this.kidBooze || 0],
       ['KIDS SPOTTED', this.carded || 0],
-      ['WALK-OUTS', this.walkouts],
+      ['LEFT FUMING', this.walkouts],
       ['FIGHTS BROKEN UP', this.fights],
       ['TVS SMASHED', this.g.G.tvsSmashed || 0],
       ['PUB RATING', '★'.repeat(Math.floor(stars)) + (stars % 1 ? '½' : '') + ` (${stars}/5)`],
       [stars >= 4 ? 'Lewis: "Bro. Landlord of the year, bro."' : stars >= 2.5 ? 'Aidan: "Not bad. Let it settle next time."' : 'Chloe: "Babe. You ate the profits."', ''],
     ];
   }
-  cleanup() { const its = this.g.items; if (its) { its.drinksOnly = false; its.minFood = this.g.room.big ? 150 : 0; }
+  cleanup() { if (this.jobs) { this.jobs.dispose(); this.jobs = null; } const its = this.g.items; if (its) { its.drinksOnly = false; its.minFood = this.g.room.big ? 150 : 0; }
     if (this.bar) this.bar.dispose(); if (this.ordersEl) this.ordersEl.remove(); if (this.wrist) this.g.scene.remove(this.wrist); for (const id of Object.keys(SQUAD)) if (/^p\d+$/.test(id)) delete SQUAD[id]; for (const t of this.tags.values()) this.g.scene.remove(t); this.tags.clear(); for (const c of this.cast) if (c.plate) { this.g.scene.remove(c.plate); c.plate = null; } }
 }

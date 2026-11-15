@@ -321,6 +321,16 @@
     #pause .ctrls { display: none; max-height: calc(100% - 40px); overflow-y: auto; }
     #pause.show-ctrls .ctrls { display: block; } #pause.show-ctrls .box:not(.ctrls) { display: none; }
     #pause .modes { display: none; max-height: calc(100% - 40px); overflow-y: auto; }
+    #pause .charbox { display: none; } #pause.show-chars .charbox { display: block; } #pause.show-chars .box:not(.charbox) { display: none; }
+    #pause-char-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+    #pause-char-grid button { margin: 0 !important; padding: 6px 2px !important; font: 900 11px Arial, sans-serif !important; display: flex; flex-direction: column; align-items: center; gap: 3px; border-radius: 12px; }
+    #pause-char-grid img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 2px solid #ffd400; } #pause-char-grid button.cur { background: #39ff14 !important; color: #111 !important; } #pause-char-grid button:disabled { opacity: 0.35; }
+    #pause .endbox { display: none; } #pause.show-end .endbox { display: block; } #pause.show-end .box:not(.endbox) { display: none; }
+    /* the end of a game: nothing but the receipt and the way out */
+    body.gameover #touch, body.gameover #menu-btn, body.gameover #chat-btn, body.gameover #chat-log, body.gameover #rp-orders, body.gameover #rp-events, body.gameover #rp-jobpop, body.gameover #rp-note, body.gameover #mp-chip, body.gameover .hud-top { display: none !important; }
+    #over { display: none; position: fixed; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom)); z-index: 60; text-align: center; }
+    body.gameover.flat #over { display: block; }
+    #over button { font: 900 20px "Arial Black", Arial, sans-serif; padding: 14px 26px; border-radius: 18px; border: 4px solid #111; background: #39ff14; color: #111; box-shadow: 0 6px 0 rgba(0,0,0,0.4); }
     #pause.show-modes .modes { display: block; } #pause.show-modes .box:not(.modes) { display: none; }
     #pause .music { display: none; width: min(440px, calc(100% - 24px)); background: linear-gradient(160deg, #1a0f3a 0%, #1c2c8c 55%, #0e4a6a 100%); border-image: none; border-color: #ff4fa3; box-shadow: 0 0 40px rgba(255,79,163,0.45), 0 12px 30px rgba(0,0,0,0.5); }
     #pause.show-music .music { display: block; } #pause.show-music .box:not(.music) { display: none; }
@@ -364,7 +374,7 @@
   <script>
     // Always run the newest version: if this page is an old cached copy, reload it once (the import map below loads
     // every script with the version on it, so old and new files can never get mixed up on a phone)
-    window.GAME_BUILD = '2.13.0';
+    window.GAME_BUILD = '2.14.0';
     (() => { try { fetch('./version.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json()).then(j => {
       if (!j || !j.v || j.v === window.GAME_BUILD) return; const k = 'rs_reload_' + j.v; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1');
       const u = new URL(location.href); u.searchParams.set('v', j.v); location.replace(u.toString()); }).catch(() => {}); } catch (e) {} })();
@@ -375,57 +385,58 @@
     "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
     "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
     "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
-    "./js/attackfx.js": "./js/attackfx.js?v=2.13.0",
-    "./js/audio.js": "./js/audio.js?v=2.13.0",
-    "./js/barstations.js": "./js/barstations.js?v=2.13.0",
-    "./js/belly.js": "./js/belly.js?v=2.13.0",
-    "./js/character.js": "./js/character.js?v=2.13.0",
-    "./js/config.js": "./js/config.js?v=2.13.0",
-    "./js/cutscenes.js": "./js/cutscenes.js?v=2.13.0",
-    "./js/darts.js": "./js/darts.js?v=2.13.0",
-    "./js/dialogue.js": "./js/dialogue.js?v=2.13.0",
-    "./js/emotes.js": "./js/emotes.js?v=2.13.0",
-    "./js/foodmodels.js": "./js/foodmodels.js?v=2.13.0",
-    "./js/foods.js": "./js/foods.js?v=2.13.0",
-    "./js/fx.js": "./js/fx.js?v=2.13.0",
-    "./js/geo.js": "./js/geo.js?v=2.13.0",
-    "./js/hands.js": "./js/hands.js?v=2.13.0",
-    "./js/hold.js": "./js/hold.js?v=2.13.0",
-    "./js/howto.js": "./js/howto.js?v=2.13.0",
-    "./js/levels/clutter.js": "./js/levels/clutter.js?v=2.13.0",
-    "./js/levels/dormant.js": "./js/levels/dormant.js?v=2.13.0",
-    "./js/levels/furniture.js": "./js/levels/furniture.js?v=2.13.0",
-    "./js/levels/garage.js": "./js/levels/garage.js?v=2.13.0",
-    "./js/levels/garden.js": "./js/levels/garden.js?v=2.13.0",
-    "./js/levels/glow.js": "./js/levels/glow.js?v=2.13.0",
-    "./js/levels/kit.js": "./js/levels/kit.js?v=2.13.0",
-    "./js/levels/outdoor.js": "./js/levels/outdoor.js?v=2.13.0",
-    "./js/levels/oysterRestaurant.js": "./js/levels/oysterRestaurant.js?v=2.13.0",
-    "./js/levels/pub.js": "./js/levels/pub.js?v=2.13.0",
-    "./js/levels/restaurant.js": "./js/levels/restaurant.js?v=2.13.0",
-    "./js/levels/stock.js": "./js/levels/stock.js?v=2.13.0",
-    "./js/levels/supermarket.js": "./js/levels/supermarket.js?v=2.13.0",
-    "./js/main.js": "./js/main.js?v=2.13.0",
-    "./js/menu.js": "./js/menu.js?v=2.13.0",
-    "./js/modes.js": "./js/modes.js?v=2.13.0",
-    "./js/mpsync.js": "./js/mpsync.js?v=2.13.0",
-    "./js/music.js": "./js/music.js?v=2.13.0",
-    "./js/nav.js": "./js/nav.js?v=2.13.0",
-    "./js/net.js": "./js/net.js?v=2.13.0",
-    "./js/physics.js": "./js/physics.js?v=2.13.0",
-    "./js/pingpong.js": "./js/pingpong.js?v=2.13.0",
-    "./js/playbutton.js": "./js/playbutton.js?v=2.13.0",
-    "./js/player.js": "./js/player.js?v=2.13.0",
-    "./js/portraits.js": "./js/portraits.js?v=2.13.0",
-    "./js/ragdoll.js": "./js/ragdoll.js?v=2.13.0",
-    "./js/ronnieHero.js": "./js/ronnieHero.js?v=2.13.0",
-    "./js/room.js": "./js/room.js?v=2.13.0",
-    "./js/runpub.js": "./js/runpub.js?v=2.13.0",
-    "./js/squad.js": "./js/squad.js?v=2.13.0",
-    "./js/textures.js": "./js/textures.js?v=2.13.0",
-    "./js/tommy.js": "./js/tommy.js?v=2.13.0",
-    "./js/touch.js": "./js/touch.js?v=2.13.0",
-    "./js/tv.js": "./js/tv.js?v=2.13.0"
+    "./js/attackfx.js": "./js/attackfx.js?v=2.14.0",
+    "./js/audio.js": "./js/audio.js?v=2.14.0",
+    "./js/barstations.js": "./js/barstations.js?v=2.14.0",
+    "./js/belly.js": "./js/belly.js?v=2.14.0",
+    "./js/character.js": "./js/character.js?v=2.14.0",
+    "./js/config.js": "./js/config.js?v=2.14.0",
+    "./js/cutscenes.js": "./js/cutscenes.js?v=2.14.0",
+    "./js/darts.js": "./js/darts.js?v=2.14.0",
+    "./js/dialogue.js": "./js/dialogue.js?v=2.14.0",
+    "./js/emotes.js": "./js/emotes.js?v=2.14.0",
+    "./js/foodmodels.js": "./js/foodmodels.js?v=2.14.0",
+    "./js/foods.js": "./js/foods.js?v=2.14.0",
+    "./js/fx.js": "./js/fx.js?v=2.14.0",
+    "./js/geo.js": "./js/geo.js?v=2.14.0",
+    "./js/hands.js": "./js/hands.js?v=2.14.0",
+    "./js/hold.js": "./js/hold.js?v=2.14.0",
+    "./js/howto.js": "./js/howto.js?v=2.14.0",
+    "./js/levels/clutter.js": "./js/levels/clutter.js?v=2.14.0",
+    "./js/levels/dormant.js": "./js/levels/dormant.js?v=2.14.0",
+    "./js/levels/furniture.js": "./js/levels/furniture.js?v=2.14.0",
+    "./js/levels/garage.js": "./js/levels/garage.js?v=2.14.0",
+    "./js/levels/garden.js": "./js/levels/garden.js?v=2.14.0",
+    "./js/levels/glow.js": "./js/levels/glow.js?v=2.14.0",
+    "./js/levels/kit.js": "./js/levels/kit.js?v=2.14.0",
+    "./js/levels/outdoor.js": "./js/levels/outdoor.js?v=2.14.0",
+    "./js/levels/oysterRestaurant.js": "./js/levels/oysterRestaurant.js?v=2.14.0",
+    "./js/levels/pub.js": "./js/levels/pub.js?v=2.14.0",
+    "./js/levels/restaurant.js": "./js/levels/restaurant.js?v=2.14.0",
+    "./js/levels/stock.js": "./js/levels/stock.js?v=2.14.0",
+    "./js/levels/supermarket.js": "./js/levels/supermarket.js?v=2.14.0",
+    "./js/main.js": "./js/main.js?v=2.14.0",
+    "./js/menu.js": "./js/menu.js?v=2.14.0",
+    "./js/modes.js": "./js/modes.js?v=2.14.0",
+    "./js/mpsync.js": "./js/mpsync.js?v=2.14.0",
+    "./js/music.js": "./js/music.js?v=2.14.0",
+    "./js/nav.js": "./js/nav.js?v=2.14.0",
+    "./js/net.js": "./js/net.js?v=2.14.0",
+    "./js/physics.js": "./js/physics.js?v=2.14.0",
+    "./js/pingpong.js": "./js/pingpong.js?v=2.14.0",
+    "./js/playbutton.js": "./js/playbutton.js?v=2.14.0",
+    "./js/player.js": "./js/player.js?v=2.14.0",
+    "./js/portraits.js": "./js/portraits.js?v=2.14.0",
+    "./js/pubjobs.js": "./js/pubjobs.js?v=2.14.0",
+    "./js/ragdoll.js": "./js/ragdoll.js?v=2.14.0",
+    "./js/ronnieHero.js": "./js/ronnieHero.js?v=2.14.0",
+    "./js/room.js": "./js/room.js?v=2.14.0",
+    "./js/runpub.js": "./js/runpub.js?v=2.14.0",
+    "./js/squad.js": "./js/squad.js?v=2.14.0",
+    "./js/textures.js": "./js/textures.js?v=2.14.0",
+    "./js/tommy.js": "./js/tommy.js?v=2.14.0",
+    "./js/touch.js": "./js/touch.js?v=2.14.0",
+    "./js/tv.js": "./js/tv.js?v=2.14.0"
   }
 }
   </script>
@@ -650,6 +661,7 @@
   </div>
   <div id="countdown"></div>
   <button id="menu-btn">⏸ PAUSE</button>
+  <div id="over"><button id="over-leave">🏠 MAIN MENU</button></div>
   <div id="mp-chip"></div>
   <div id="pause">
     <div class="box">
@@ -659,6 +671,7 @@
       <button class="alt" id="pause-controls">🎮 CONTROLS</button>
       <button class="alt" id="pause-mode">🎲 GAME MODE</button>
       <button class="alt" id="pause-restart">🔄 RESTART ROUND</button>
+      <button class="alt" id="pause-char" style="display:none">🎭 CHANGE CHARACTER</button>
       <button class="alt" id="pause-sound">🔊 SOUND: ON</button>
       <button class="alt" id="pause-quit">🏠 MAIN MENU</button>
     </div>
@@ -720,6 +733,17 @@
       <input type="file" id="tv-file" accept="video/*,.mp4,.webm,.mov,.m4v" multiple hidden>
       <button class="resume" id="tv-close">✓ DONE</button>
     </div>
+    <div class="box charbox" id="pause-chars">
+      <h2>WHO ARE YOU NOW?</h2>
+      <p class="where">You stay in the game: new body, new emotes</p>
+      <div id="pause-char-grid"></div>
+      <button class="resume" id="pause-chars-back">⬅ BACK</button>
+    </div>
+    <div class="box endbox" id="pause-end">
+      <h2>GAME OVER</h2>
+      <p class="where" id="end-where">Here's how you did</p>
+      <button class="resume" id="end-leave">🏠 MAIN MENU</button>
+    </div>
     <div class="box modes" id="pause-modes">
       <h2>GAME MODE</h2>
       <p class="where">Pick a game to play here</p>
@@ -756,7 +780,7 @@
     window.addEventListener('unhandledrejection', (e) => { const s = document.getElementById('status'); if (s) s.textContent = 'Error: ' + (e.reason && e.reason.message || e.reason); });
   </script>
   <script type="module">import * as h from './js/howto.js'; window.__howto = h; window.dispatchEvent(new Event('howto-ready'));</script>
-  <script src="./js/menu.js?v=2.13.0"></script>
+  <script src="./js/menu.js?v=2.14.0"></script>
   <script type="module">
     // the 3D Ronnie on the title screen (falls back to the drawing if it can't load)
     import { startHero } from './js/ronnieHero.js';   // (through the import map, so it's the stamped version)

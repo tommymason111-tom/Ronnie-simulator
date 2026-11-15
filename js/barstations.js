@@ -1,5 +1,5 @@
 // RUN THE PUB: everything behind the bar for making drinks.
-//   BLACK LIFFEY TAP   hold a pint glass under it (phone: tap it while you're holding one) and it pours a pint
+//   GUINNESS TAP   hold a pint glass under it (phone: tap it while you're holding one) and it pours a pint
 //   LAGER / CIDER      open-fronted fridges: take a bottle
 //   MONSTOR            its own glowing fridge: take a can
 //   WINE               poured and waiting on the back counter (red and white)
@@ -30,14 +30,14 @@ export class Bar {
     const S = this.st = {};
     const station = (key, o) => { S[key] = o; o.key = key; o.sign = sign(o.name, o.how); o.sign.position.copy(o.signAt || o.at.clone().add(V(0, 0.32, 0))); this.grp.add(o.sign); return o; };
 
-    // ---- the BLACK LIFFEY tap, on the bar (staff side)
+    // ---- the GUINNESS tap, on the bar (staff side)
     { const x = 2.62, z = -5.9;
       add(C(0.045, 0.05, 0.04), 0x111111, x, 1.1, z); add(C(0.03, 0.03, 0.34), 0x111111, x, 1.27, z);
       add(C(0.045, 0.045, 0.012, 24), 0xd4af37, x + 0.035, 1.38, z, [0, 0, Math.PI / 2]);                 // the gold harp badge
       add(B(0.02, 0.012, 0.12), 0xd8dce0, x + 0.06, 1.3, z, [0, Math.PI / 2, 0]); add(C(0.008, 0.006, 0.05), 0xd8dce0, x + 0.12, 1.27, z);   // spout
       add(B(0.016, 0.07, 0.016), 0x111111, x + 0.04, 1.47, z, [0, 0, 0.3]);                               // the handle
       add(B(0.16, 0.012, 0.12), 0x2a2a2a, x + 0.12, 1.088, z);                                            // drip tray
-      station('tap', { name: 'BLACK LIFFEY TAP', how: 'hold a pint glass under it', at: V(x + 0.12, 1.17, z), signAt: V(x + 0.05, 1.72, z), fill: { from: 'glass', to: 'pint', time: 2.4, word: 'POURING… LET IT SETTLE' } }); }
+      station('tap', { name: 'GUINNESS TAP', how: 'hold a pint glass under it', at: V(x + 0.12, 1.17, z), signAt: V(x + 0.05, 1.72, z), fill: { from: 'glass', to: 'pint', time: 2.4, word: 'POURING… LET IT SETTLE' } }); }
     // ---- open fridges in the back bar: lager, cider, MONSTOR
     const fridge = (key, name, z, glow, type, v) => {
       add(B(0.36, 0.7, 0.5), 0x0c0e10, 5.66, 0.4, z); add(B(0.02, 0.72, 0.52), 0x9aa0a6, 5.47, 0.4, z);
@@ -52,7 +52,7 @@ export class Bar {
     // ---- pint glasses, wine, mugs + coffee machine on the back counter
     { const z = -5.55; add(B(0.32, 0.02, 0.36), 0x3a3a3a, 5.66, 0.91, z);
       const spots = []; for (const dx of [-0.06, 0.06]) for (const dz of [-0.12, 0, 0.12]) spots.push(V(5.62 + dx, 0.99, z + dz));
-      station('glasses', { name: 'PINT GLASSES', how: 'for the BLACK LIFFEY tap', at: V(5.6, 1.0, z), stock: { type: 'glass', spots } }); }
+      station('glasses', { name: 'PINT GLASSES', how: 'for the GUINNESS tap', at: V(5.6, 1.0, z), stock: { type: 'glass', spots } }); }
     { const z = -4.75, spots = []; for (const dz of [-0.16, -0.06, 0.04, 0.14]) spots.push(V(5.6, 0.995, z + dz));
       station('wine', { name: 'WINE', how: 'poured and ready: red or white', at: V(5.6, 1.0, z), stock: { type: 'wine', alt: true, spots } }); }
     { const z = -3.75;
@@ -106,9 +106,13 @@ export class Bar {
     for (const s of [this.st.tap, this.st.coffee]) {
       const it = held.find(i => i.type === s.fill.from && (this.autoFill && this.autoFill.st === s ? this.autoFill.it === i : i.pos.distanceTo(s.at) < 0.13));
       let f = this.fill.get(s.key) || 0;
-      if (it) { f += dt; if (this.autoFill && this.autoFill.st === s) { this.autoFill.it.pos.lerp(s.at, 0.2); }
+      // what's being filled stands right under the spout where you can see it, the drink rising in it
+      const fx = s.fx || (s.fx = this.fillFx(s)); fx.visible = !!it;
+      for (const o of held) if (o.filling === s && o !== it) o.filling = null;
+      if (it) { f += dt; if (this.autoFill && this.autoFill.st === s) { it.filling = s; it.pos.copy(s.at).add(V(0, -0.06, 0)); it.obj.position.copy(it.pos); it.obj.quaternion.identity(); }
+        const k = Math.min(1, f / s.fill.time); fx.position.copy(it.pos); fx.children[1].scale.y = Math.max(0.02, k); fx.children[1].position.y = -0.05 + 0.05 * k; fx.children[0].visible = k < 0.98;
         if (Math.floor((f - dt) * 2) !== Math.floor(f * 2)) { this.g.words.show(f >= s.fill.time ? 'DONE!' : s.fill.word, s.at.clone().add(V(0, 0.22, 0)), '#ffd400', 0.08, 0.5); sfx('fizz', s.at, 0.5); }
-        if (f >= s.fill.time) { this.swap(it, s.fill.to); f = 0; this.autoFill = null; sfx('ting', s.at, 0.7); } }
+        if (f >= s.fill.time) { it.filling = null; fx.visible = false; this.swap(it, s.fill.to); f = 0; this.autoFill = null; sfx('ting', s.at, 0.7); } }
       else f = 0;
       this.fill.set(s.key, f);
     }
@@ -129,6 +133,13 @@ export class Bar {
     if (gun && !gun.heldBy) { if (gun.pos.distanceTo(this.gunHome) > 0.3) { this.gunAway = (this.gunAway || 0) + dt; if (this.gunAway > 3) { gun.pos.copy(this.gunHome); gun.prev.copy(gun.pos); gun.vel.set(0, 0, 0); gun.resting = true; gun.shelf = true; this.gunAway = 0; } } else this.gunAway = 0; }
     // the arrow: bobbing over wherever you need to go next
     if (this.arrowAt) { this.arrow.visible = true; this.arrow.position.copy(this.arrowAt).add(V(0, 0.42 + Math.sin(performance.now() / 180) * 0.04, 0)); this.arrow.rotation.y += dt * 2; } else this.arrow.visible = false;
+  }
+  // the pour: a stream from the spout and the drink rising in the glass / mug
+  fillFx(s) {
+    const g = new THREE.Group(), dark = s.key === 'tap', col = dark ? 0x140a06 : 0x5a3418;
+    const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.14, 6), new THREE.MeshLambertMaterial({ color: col })); stream.position.y = 0.09; g.add(stream);
+    const liquid = new THREE.Mesh(new THREE.CylinderGeometry(dark ? 0.033 : 0.03, dark ? 0.028 : 0.03, 0.1, 14), new THREE.MeshLambertMaterial({ color: col })); liquid.position.y = -0.05; g.add(liquid);
+    g.visible = false; this.grp.add(g); return g;
   }
   toggleFlavour() { this.gunFlavour = 1 - this.gunFlavour; sfx('pop', this.gun ? this.gun.pos : null, 0.6); if (this.gun) this.g.words.show(this.gunFlavour ? 'FANTA' : 'COKE', this.gun.pos.clone().add(V(0, 0.12, 0)), this.gunFlavour ? '#ff8a00' : '#c8102e', 0.07, 0.7); }
   // phone / PC: a tap on the tap or the coffee machine (holding the right glass), or on a cup (holding the gun)

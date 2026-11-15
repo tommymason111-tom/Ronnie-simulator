@@ -341,6 +341,18 @@ export class Ragdoll {
       for (const s of slots) total += s[1];
       slots.forEach((s, j) => { skinIndex[i * 4 + j] = s[0]; skinWeight[i * 4 + j] = s[1] / total; });
     }
+    // Elbows and knees bend smoothly: across a band either side of the joint the skin blends from the upper bone to
+    // the lower one by how far along the limb it is (nearest-bone weights left sharp creases and spikes there)
+    for (const [up, lo] of [['uArmL', 'lArmL'], ['uArmR', 'lArmR'], ['uLegL', 'lLegL'], ['uLegR', 'lLegR']]) {
+      const iu = this.defs.findIndex(d => d.name === up), il = this.defs.findIndex(d => d.name === lo); if (iu < 0 || il < 0) continue;
+      const J = this.defs[il].a, dir = this.defs[il].dir.clone().add(this.defs[iu].dir).normalize(), r = (up.startsWith('uArm') ? 0.075 : 0.085) * kH;
+      for (let i = 0; i < n; i++) { const b0 = skinIndex[i * 4]; if (b0 !== iu && b0 !== il) continue;
+        _v.fromBufferAttribute(pos, i); const sAlong = _v.clone().sub(J).dot(dir); if (Math.abs(sAlong) > r * 1.6) continue;
+        const w = THREE.MathUtils.smoothstep(sAlong, -r, r);
+        skinIndex[i * 4] = il; skinWeight[i * 4] = w; skinIndex[i * 4 + 1] = iu; skinWeight[i * 4 + 1] = 1 - w; skinIndex[i * 4 + 2] = skinIndex[i * 4 + 3] = 0; skinWeight[i * 4 + 2] = skinWeight[i * 4 + 3] = 0;
+        if (w > 0.5) continue; skinIndex[i * 4] = iu; skinWeight[i * 4] = 1 - w; skinIndex[i * 4 + 1] = il; skinWeight[i * 4 + 1] = w;      // (the bigger share first)
+      }
+    }
     // Scans made with arms down have the arms fused to the torso/hips where they
     // touched. Cut triangles that bridge body parts which aren't joined (e.g.
     // forearm↔hip), and joined parts away from their joint (upper arm↔side of

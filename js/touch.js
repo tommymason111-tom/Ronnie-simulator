@@ -17,7 +17,7 @@ export function setupTouch(cb) {
     <div id="hint"></div>`;
   document.body.appendChild(root);
   // (the emote button's and wheel's look lives here with them, so a page cached from before can't leave them unstyled)
-  const st = document.createElement('style'); st.textContent = `#btn-emote { display: none; left: max(36px, calc(env(safe-area-inset-left) + 20px)); bottom: max(256px, calc(env(safe-area-inset-bottom) + 236px)); width: 92px; height: 44px; border-radius: 22px; background: #ff4fa3; color: #fff; font-size: 13px; }
+  const st = document.createElement('style'); st.textContent = `#btn-emote { display: none; left: calc(max(36px, calc(env(safe-area-inset-left) + 20px)) + 102px); bottom: max(200px, calc(env(safe-area-inset-bottom) + 180px)); width: 92px; height: 44px; border-radius: 22px; background: #ff4fa3; color: #fff; font-size: 13px; }
 #btn-emote.show { display: block; }
 #emote-wheel { display: none; position: absolute; inset: 0; pointer-events: auto; background: radial-gradient(circle at 50% 50%, rgba(10,14,40,0.55) 0, rgba(10,14,40,0.35) 160px, rgba(0,0,0,0) 260px); }
 #emote-wheel.open { display: block; animation: ewin .18s ease-out; } @keyframes ewin { from { opacity: 0; transform: scale(0.85); } }

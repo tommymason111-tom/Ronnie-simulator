@@ -6,7 +6,7 @@ import { Character } from './character.js';
 import { canvasTex, beamTex } from './textures.js';
 import { sfx } from './audio.js';
 import { TUNING, pickVeg } from './config.js';
-import { EmotePlayer } from './emotes.js';
+import { EmotePlayer, hairyBall } from './emotes.js';
 
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion();
 const MODEL_URL = './assets/tommy.glb';
@@ -160,6 +160,8 @@ export class Tommy extends Character {
     this.say(ANNOY_LINES[Math.floor(Math.random() * ANNOY_LINES.length)], 3);
     return true;
   }
+  // (a Tommy played by someone in multiplayer goes when they switch character or leave)
+  dispose() { this.disposed = true; Character.ALL && Character.ALL.delete(this); this.rag.dispose(); for (const o of [this.fx, this.bubble, this.spot, this.spot && this.spot.target, this.cone, this.sparkle, this.ballMesh, ...(this.stars || []), ...(this.fallback || [])]) if (o) this.scene.remove(o); if (this._ballEm) this._ballEm.dispose(); }
   get busyAttacking() { return this.tripping > 0 || !!this.balling || !!this.ball; }
   ballEm() { return this._ballEm || (this._ballEm = new EmotePlayer(this, this.scene, () => {})); }
   talkPose(t) { if (!this.balling) super.talkPose(t); }      // (no waving his arms about mid-throw)
@@ -169,7 +171,7 @@ export class Tommy extends Character {
     const em = this._ballEm;
     if (em && em.active && em.id === 'ballthrow' && em.t >= 1.25 && !this.ballThrown) {
       this.ballThrown = true; const from = new THREE.Vector3(); this.rag.grip('lArmR', from);
-      if (!this.ballMesh) { this.ballMesh = new THREE.Mesh(new THREE.SphereGeometry(0.075, 24, 16), new THREE.MeshLambertMaterial({ color: 0xd8c3a0, emissive: 0x3a2a10 })); this.scene.add(this.ballMesh); }
+      if (!this.ballMesh) { this.ballMesh = hairyBall(0.05); this.scene.add(this.ballMesh); }
       this.ball = { from, t: 0, dur: Math.max(0.35, Math.min(0.8, from.distanceTo(ctx.head) / 7)) }; this.ballMesh.visible = true; sfx('whoosh', from, 0.9);
     }
     if (!this.ball) return;

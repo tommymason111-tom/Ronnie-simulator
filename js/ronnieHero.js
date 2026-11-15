@@ -304,7 +304,9 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
         const h = ls.length * 36 + 24; rr(30, y, PW - 60, h, 16, 'rgba(255,255,255,0.12)'); g.fillStyle = '#fff'; g.textAlign = 'left';
         ls.forEach((l, j) => g.fillText(l, 52, y + 30 + j * 36)); g.textAlign = 'center'; y += h + 10; continue; }
       // plain text
-      if (!t) continue; g.fillStyle = el.matches('#name-msg, #mus-msg') ? '#ff9a9a' : '#c9d3ff'; fit(t.length > 90 ? t.slice(0, 88) + '…' : t, PW - 60, 22, 700); g.fillText(t.length > 90 ? t.slice(0, 88) + '…' : t, PW / 2, y + 16); y += 38;
+      // plain text: wrapped onto as many lines as it needs (long lines used to be cut short with "…")
+      if (!t) continue; g.fillStyle = el.matches('#name-msg, #mus-msg') ? '#ff9a9a' : '#c9d3ff'; g.font = '700 22px "Arial Black", Arial, sans-serif';
+      { const ws = t.split(' '), ls = []; let ln = ''; for (const w of ws) { const tr = ln ? ln + ' ' + w : w; if (g.measureText(tr).width > PW - 60 && ln) { ls.push(ln); ln = w; } else ln = tr; } if (ln) ls.push(ln); ls.forEach((l, j) => g.fillText(l, PW / 2, y + 16 + j * 28)); y += 10 + ls.length * 28; }
     }
     if (col) y = tileY + 128;
     g.restore();

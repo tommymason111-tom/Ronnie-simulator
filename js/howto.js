@@ -36,7 +36,7 @@ function pubMap(g, W, H, focus) {
   label(g, 'PUNTERS', X(1.85), Y(-8.15), { size: 15, border: '#fff' });
   // the stations
   const st = [
-    ['tap', 2.62, -5.9, '🍺', 'BLACK LIFFEY TAP', '#111'], ['gun', 2.78, -3.6, '🔫', 'SODA GUN', '#c8102e'], ['cups', 2.78, -3.25, '🥤', 'CUPS', '#fff'],
+    ['tap', 2.62, -5.9, '🍺', 'GUINNESS TAP', '#111'], ['gun', 2.78, -3.6, '🔫', 'SODA GUN', '#c8102e'], ['cups', 2.78, -3.25, '🥤', 'CUPS', '#fff'],
     ['lager', 5.66, -7.65, '🍺', 'LAGER', '#6ad06a'], ['cider', 5.66, -7.05, '🍏', 'CIDER', '#ffb050'], ['monstor', 5.66, -6.45, '⚡', 'MONSTOR', '#39ff14'],
     ['glasses', 5.66, -5.55, '🥛', 'PINT GLASSES', '#cfe8ff'], ['wine', 5.66, -4.75, '🍷', 'WINE', '#c2185b'], ['coffee', 5.66, -3.75, '☕', 'COFFEE', '#b8bcc2'], ['mugs', 5.66, -3.25, '🫖', 'MUGS', '#fff'],
   ];

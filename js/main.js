@@ -500,7 +500,7 @@ const touch = setupTouch({
   canvas: renderer.domElement,
   onUserGesture: () => initAudio(),
   onMove: (x, z) => { if (player.flatMode) { player.flatMove.x = x; player.flatMove.z = z; } },
-  onLook: (dx, dy) => {
+  onLook: (dx, dy) => { if (G.over) return;      // (the game's over: you're looking at your receipt)
     if (!player.flatMode) return;
     player.flatYaw -= dx; player.flatPitch = THREE.MathUtils.clamp(player.flatPitch - dy, -1.35, 1.35);
   },
@@ -676,6 +676,7 @@ function resetRonnie() {
 const director = new Director({
   scene, room, physics, player, items, words, G, tommy, cast, onThrow, addChonk, resetRonnie, fx: attackFx, crumbs,
   showBanner: (a, b) => showBanner(a, b),
+  onGameOver: (lines) => gameOver(lines),
   hint: (t) => touch.hint(t),
   stageName: () => stageNameOf(G.stage),
   // points that pop bubbles / press board buttons: palms, fingertips and held food
@@ -750,11 +751,28 @@ function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t 
 // ---------------- pause menu (the ⏸ button on phones / computers) ----------------
 let paused = false;
 const pauseEl = document.getElementById('pause');
+// ---------------- the end of a game: you're held looking at the receipt (your final score), everything else goes,
+// and the only way on is MAIN MENU (or, in multiplayer, back to the room's lobby with the same people)
+function gameOver(lines) {
+  if (G.over) return; G.over = true; player.menuLock = true; player.noTurn = true; player.flatMove = { x: 0, z: 0 };
+  document.body.classList.add('gameover'); touch.show(false); if (player.wrist) player.wrist.visible = false;
+  const leaveTxt = net.connected ? '↩ RETURN TO LOBBY' : '🏠 MAIN MENU';
+  document.getElementById('over-leave').textContent = leaveTxt; document.getElementById('end-leave').textContent = leaveTxt;
+  const best = (lines || []).find(l => l[1] !== '' && l[1] !== undefined); document.getElementById('end-where').textContent = best ? `${best[0]}: ${best[1]}` : 'Here\'s how you did';
+  const rc = director.receipt; if (rc) { camera.add(rc); rc.renderOrder = 62; rc.material.depthTest = false; rc.material.depthWrite = false; rc.rotation.set(0, 0, 0);
+    const vr = renderer.xr.isPresenting; rc.position.set(vr ? -0.3 : 0, vr ? -0.05 : 0.02, vr ? -0.8 : -0.62); rc.scale.setScalar(vr ? 0.62 : 0.78); rc.visible = true; }
+  if (renderer.xr.isPresenting) { setPaused(true); pauseEl.classList.add('show-end'); }
+}
+const leaveGame = () => { location.href = location.pathname + (net.connected && net.code ? '?lobby=' + encodeURIComponent(net.code) : ''); };
+document.getElementById('over-leave').addEventListener('click', leaveGame);
+document.getElementById('end-leave').addEventListener('click', leaveGame);
+renderer.xr.addEventListener('sessionend', () => { if (G.over) { setPaused(false); } });
 function setPaused(on) {
+  if (!on && G.over && renderer.xr.isPresenting) return;        // (no un-pausing back into a finished game)
   // (a menu open: you stay put until you close it, even in multiplayer where the game carries on)
-  paused = on; player.menuLock = on; pauseEl.classList.toggle('on', on); pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-ctrls', 'show-modes', 'show-music', 'show-tv'); vrPause && vrPause.close(); }
+  paused = on; player.menuLock = on; pauseEl.classList.toggle('on', on); pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-chars', 'show-ctrls', 'show-modes', 'show-music', 'show-tv'); vrPause && vrPause.close(); }
   if (on) { const guest = !!(net.connected && !net.host);   // multiplayer: only the host changes the game or restarts it
-    document.getElementById('pause-mode').style.display = guest ? 'none' : ''; document.getElementById('pause-restart').style.display = guest ? 'none' : '';
+    document.getElementById('pause-mode').style.display = guest ? 'none' : ''; document.getElementById('pause-restart').style.display = guest ? 'none' : ''; document.getElementById('pause-char').style.display = net.connected ? '' : 'none';
     const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = (t ? t.textContent : '') + (guest ? ' · the host picks the game' : ''); try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
   setMuted(on || soundOff);
 }
@@ -785,6 +803,7 @@ const PAUSE_MODES = {
   runpub: ['🍺', 'RUN THE PUB', 'Behind the bar: serve the punters, sort out the trouble'],
 };
 const PLACE_GAMES = { pub: ['everyone', 'runpub', 'chonkoff', 'chonkoff2', 'roam'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
+const modeTitle = () => { const m = director.mode; return (PAUSE_MODES[m] && PAUSE_MODES[m][1]) || (m === 'classic' ? 'CLASSIC' : m === 'intervention' ? 'THE SQUAD' : (m || '').toUpperCase()); };
 function showPauseModes() {
   const list = document.getElementById('pause-mode-list'), cur = director.mode;
   list.innerHTML = (PLACE_GAMES[room.placeId] || PLACE_GAMES.bedroom).map(id => { const [ico, name, desc] = PAUSE_MODES[id];
@@ -799,6 +818,19 @@ function showPauseModes() {
   pauseEl.classList.add('show-modes');
 }
 document.getElementById('pause-mode').addEventListener('click', showPauseModes);
+// multiplayer: change who you're playing as without leaving the game (body, name on the HUD, emotes all switch)
+function showPauseChars() {
+  const grid = document.getElementById('pause-char-grid'), taken = new Set([...net.players.values()].map(p => p.char).filter(c => c && c !== 'ronnie'));
+  const ids = ['ronnie', 'tommy', ...Object.keys(SQUAD).filter(id => id !== 'ronnie' && !/^p\d+$/.test(id) && SQUAD[id].model)];
+  const nm = (id) => id === 'tommy' ? 'Tommy' : (SQUAD[id] && SQUAD[id].name) || id;
+  grid.innerHTML = ids.map(id => `<button class="alt${id === net.char ? ' cur' : ''}" data-id="${id}" ${taken.has(id) && id !== net.char ? 'disabled' : ''}><img src="./assets/portraits/${id}.webp" alt="">${nm(id).toUpperCase()}</button>`).join('');
+  grid.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { if (b.disabled) return; const id = b.dataset.id; if (id === net.char) { pauseEl.classList.remove('show-chars'); return; }
+    mp.setChar(id); try { localStorage.setItem('rs_mp_char', id); } catch (e) {} if (selfBody) { selfBody.dispose(); selfBody = null; } G.wristDirty = true;
+    words.show(`YOU'RE ${nm(id).toUpperCase()} NOW`, player.head.clone().addScaledVector(player.fwd, 1.1), '#ffd400', 0.1, 1.6); pauseEl.classList.remove('show-chars'); initAudio(); setPaused(false); }));
+  pauseEl.classList.add('show-chars');
+}
+document.getElementById('pause-char').addEventListener('click', showPauseChars);
+document.getElementById('pause-chars-back').addEventListener('click', () => pauseEl.classList.remove('show-chars'));
 document.getElementById('pause-modes-back').addEventListener('click', () => pauseEl.classList.remove('show-modes'));
 document.getElementById('pause-ctrls-back').addEventListener('click', () => pauseEl.classList.remove('show-ctrls'));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && player.flatMode) setPaused(!paused); });
@@ -1075,7 +1107,8 @@ function frame(simDt) {
     player.drawWrist({
       stage: G.stage, stages: STAGES.length, name: stageNameOf(G.stage), chonk: G.chonk, next, max,
       fill: max ? 1 : (G.chonk - cur) / (next - cur), loco: G.locoT, stout: G.stoutT, eaten: G.eaten, swats: G.swats, fps: G.fps,
-      modeLine: director.hud(),
+      modeLine: director.hud(), title: modeTitle(),
+      pub: director.runpub ? director.runpub.hudState(director.timeLeft) : null,
     });
   }
 
@@ -1097,6 +1130,18 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
   // the host tells anyone who joins late which place and game to load
   net.on.join = (m) => { chip(); if (net.host) net.send({ t: 'setup', to: m.id, place: room.placeId, mode: director.mode || SEL.mode }); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
   net.on.leave = () => chip(); net.on.host = () => chip(); net.on.status = () => chip();
+  // tap the room chip: who's in the room, and who each of them is playing as
+  { const pop = document.createElement('div'); pop.id = 'roster-pop'; document.body.appendChild(pop);
+    const st = document.createElement('style'); st.textContent = `#mp-chip { cursor: pointer; pointer-events: auto; } #mp-chip::after { content: ' ▾'; }
+#roster-pop { display: none; position: fixed; z-index: 46; top: calc(max(10px, env(safe-area-inset-top)) + 34px); left: 50%; transform: translateX(-50%); width: min(300px, 86vw); background: rgba(12,16,52,0.96); border: 3px solid #ffd400; border-radius: 16px; padding: 10px; color: #fff; font: 700 13px Arial, sans-serif; }
+#roster-pop.on { display: block; } #roster-pop h4 { margin: 0 0 6px; font: 900 14px "Arial Black", Arial; color: #ffd400; text-align: center; }
+#roster-pop .p { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 10px; background: rgba(255,255,255,0.08); margin: 4px 0; }
+#roster-pop img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid #ffd400; flex: none; } #roster-pop b { display: block; } #roster-pop small { color: #c9d3ff; }`; document.head.appendChild(st);
+    const charName = (c) => (c === 'tommy' ? 'Tommy' : (SQUAD[c] && SQUAD[c].name) || 'Ronnie'), esc = (t) => String(t || '').replace(/</g, '&lt;');
+    const row = (name, c, tags) => `<div class="p"><img src="./assets/portraits/${c || 'ronnie'}.webp" onerror="this.style.visibility='hidden'"><div><b>${esc(name)}${tags}</b><small>playing as ${esc(charName(c))}</small></div></div>`;
+    const draw = () => { pop.innerHTML = `<h4>👥 ROOM ${esc(net.code)}</h4>` + row(net.name || 'You', net.char, ' (you)' + (net.host ? ' · HOST' : '')) + [...net.players.values()].map(p => row(p.name || 'Player', p.char, p.host ? ' · HOST' : '')).join(''); };
+    $('mp-chip').addEventListener('click', (e) => { e.stopPropagation(); draw(); pop.classList.toggle('on'); });
+    document.addEventListener('pointerdown', (e) => { if (pop.classList.contains('on') && !pop.contains(e.target) && e.target.id !== 'mp-chip') pop.classList.remove('on'); }, true); }
   net.on.setup = () => {};
   if (net.connected) chip();
 }

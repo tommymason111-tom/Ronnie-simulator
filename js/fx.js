@@ -65,11 +65,14 @@ function wordTex(word, color) {
   const key = word + color;
   if (wordTexCache.has(key)) return wordTexCache.get(key);
   const t = canvasTex(512, 192, (g, w, h) => {
-    g.font = `900 120px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.lineJoin = 'round';
-    g.lineWidth = 26; g.strokeStyle = '#111'; g.strokeText(word, w / 2, h / 2 + 6);
-    g.lineWidth = 12; g.strokeStyle = '#fff'; g.strokeText(word, w / 2, h / 2);
-    g.fillStyle = color; g.fillText(word, w / 2, h / 2);
+    // always the whole thing: shrink to fit, and a long line goes onto two (it used to be cut off at the sides)
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+    let f = 120, lines = [word]; g.font = `900 ${f}px ${FONT}`;
+    while (g.measureText(word).width > w - 36 && f > 60) { f -= 4; g.font = `900 ${f}px ${FONT}`; }
+    if (g.measureText(word).width > w - 36) { const ws = word.split(' '); let best = [word], bw = Infinity; for (let i = 1; i < ws.length; i++) { const a = ws.slice(0, i).join(' '), b = ws.slice(i).join(' '), m = Math.max(a.length, b.length); if (m < bw) { bw = m; best = [a, b]; } } lines = best;
+      f = 84; g.font = `900 ${f}px ${FONT}`; while (Math.max(...lines.map(l => g.measureText(l).width)) > w - 36 && f > 22) { f -= 3; g.font = `900 ${f}px ${FONT}`; } }
+    const lh = f * 1.05, y0 = h / 2 - (lines.length - 1) * lh / 2, sw = Math.max(8, f * 0.22);
+    lines.forEach((l, i) => { const y = y0 + i * lh; g.lineWidth = sw; g.strokeStyle = '#111'; g.strokeText(l, w / 2, y + sw * 0.23); g.lineWidth = sw * 0.46; g.strokeStyle = '#fff'; g.strokeText(l, w / 2, y); g.fillStyle = color; g.fillText(l, w / 2, y); });
   }, { mips: false });
   wordTexCache.set(key, t);
   return t;
