@@ -29,7 +29,8 @@ Every update bumps the version.
   - The code is `FATTY` (not case-sensitive). A wrong code locks it on that device (`localStorage rs_dev_locked`).
   - It's free roam with no random attacks. The dev panel (`js/devmode.js`) triggers emotes, attacks, Imposter jobs, cameras and power-ups.
   - It has a map picker, including a blank test grid (`js/levels/grid.js`).
-- The 12-player server (`server/worker.js`, Cloudflare) must be deployed by the owner. You can't deploy it.
+- **Servers (Cloudflare Workers):** `ronnie-mp` (live branch, 6 players) and `ronnie-mp12` (12-player branch), both at `<name>.ronnie-sim.workers.dev`. Each branch's `server/worker.js` is its server (deploy steps in `server/README.md`). Ask the owner before deploying a server. Test a relay from a browser (Playwright): Node's own WebSocket skips the session's proxy.
+- **Real voices (ElevenLabs):** `js/voices.js`. Characters in `VOICED` speak their lines from pre-made clips (`assets/voices/<char>/<hash>.mp3`, made with `python3 tools/voices.py <char> "<ElevenLabs voice name>"` from `tools/voice_lines/<char>.json`). Typed chat and lines without a clip go to the server's `/tts`, which needs the Worker secret `ELEVENLABS_KEY` (added by the owner) and the voice id in `VOICES` in `server/worker.js`.
 
 ## Where things are
 

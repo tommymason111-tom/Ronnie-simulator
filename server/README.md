@@ -35,3 +35,11 @@ Or with the API (metadata in `meta.json`):
 
 `node dohost.mjs ./worker.js 8788` (a stand-in for Durable Objects on top of the `ws` package) runs this exact file;
 open the game with `?relay=ws://localhost:8788`.
+
+## Voices (`GET /tts?v=<character>&t=<text>`)
+
+Reads a line out in a character's ElevenLabs voice (used for typed chat, and any line without a pre-made clip).
+Needs a Worker secret `ELEVENLABS_KEY` (Cloudflare dashboard → Workers & Pages → the worker → Settings →
+Variables and Secrets → Add → Secret) and the character's voice id in `VOICES` at the top of `worker.js`.
+Each line is made once and then served from Cloudflare's cache; lines are cut at 160 characters and each person
+can ask for 12 a minute.
