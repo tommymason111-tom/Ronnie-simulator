@@ -273,7 +273,7 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
     for (let i = 0; i < perSide; i++) { const t = (i + 0.5) / perSide - 0.5; for (const sd of [-1, 1]) seats.push([t * w, sd * (d / 2 + 0.34), 0, -sd]); }
     if (ends) for (const sd of [-1, 1]) seats.push([sd * (w / 2 + 0.34), 0, -sd, 0]);
     for (const [lx, lz, fx, fz] of seats) {
-      const [cx, cz] = tf(x, z, ry, lx, lz); chair(cx, cz, Math.atan2(cx - x, cz - z));
+      const [cx, cz] = tf(x, z, ry, lx, lz), [bx, bz] = tf(0, 0, ry, -fx, -fz); chair(cx, cz, Math.atan2(bx, bz));      // (square on to the table's edge, facing in: not splayed out from its middle)
       const [px, pz] = tf(x, z, ry, lx + fx * 0.5, lz + fz * 0.5), wf = [fx * Math.cos(ry) + fz * Math.sin(ry), -fx * Math.sin(ry) + fz * Math.cos(ry)];
       setting(px, pz, wf[0], wf[1], TY);
     }
@@ -354,7 +354,7 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
   };
   // tall windows with heavy drapes (street outside)
   let wn = 0;
-  const tallWindow = (e, s, w = 1.25, hgt = 2.0, cy = 1.4) => { const [x, z] = e.at(s, 0.1), ry = Math.atan2(e.nx, e.nz); k.window(x, cy, z, w, hgt, ry, streetViewTex(20 + wn++), { frame: 0xf4efe4, bars: 2, curtains: 0x5a1820 });
+  const tallWindow = (e, s, w = 1.25, hgt = 2.0, cy = 1.4) => { const [x, z] = e.at(s, 0.1), ry = Math.atan2(e.nx, e.nz); k.window(x, cy, z, w, hgt, ry, streetViewTex(20 + wn++, true), { frame: 0xf4efe4, bars: 2, curtains: 0x5a1820 });
     const [vx, vz] = e.at(s, T + 0.03); const py = cy + hgt / 2 + 0.22; L(new THREE.BoxGeometry(w + 1.1, 0.32, 0.08), 0x5a1820, vx, vz, ry, 0, py, 0.06); L(new THREE.BoxGeometry(w + 1.1, 0.04, 0.09), 0xc9a24a, vx, vz, ry, 0, py - 0.15, 0.065); };   // pelmet with a gold trim
 
   // main room walls: windows, sconces, paintings

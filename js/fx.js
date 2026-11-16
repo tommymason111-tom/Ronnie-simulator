@@ -104,7 +104,9 @@ export class Words {
     s.material.opacity = 1;
     s.position.copy(pos);
     s.visible = true;
-    this.live.push({ s, t: 0, life, size, vy: 0.35 });
+    // (a long line is squeezed into the same picture, so its letters come out small: make the whole thing bigger to match)
+    const k = word.length > 12 ? Math.min(1.7, 0.55 + word.length / 26) : 1;
+    this.live.push({ s, t: 0, life, size: size * k, vy: 0.35 });
   }
   update(dt) {
     for (let i = this.live.length - 1; i >= 0; i--) {

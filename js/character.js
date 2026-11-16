@@ -46,6 +46,11 @@ export class Character {
     this.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.bubbleTex, transparent: true, depthTest: false, depthWrite: false }));
     this.bubble.renderOrder = 12;
     this.bubble.scale.set(1.2, 0.6, 1);
+    // up close (someone in your face for their attack), a full-size bubble filled the screen and ran off both edges: it's
+    // sized for the distance it's seen from as it's drawn (full size from ~2m out), and sits lower over their head
+    { const bub = this.bubble, cp = new THREE.Vector3(); bub.userData.head = new THREE.Vector3();
+      bub.onBeforeRender = (r, sc, cam) => { cam.getWorldPosition(cp); const hd = bub.userData.head, k = Math.min(1, Math.max(0.35, hd.distanceTo(cp) * 0.46));
+        bub.scale.set(1.2 * k, 0.6 * k, 1); bub.position.set(hd.x, hd.y + 0.12 + 0.43 * k, hd.z); bub.updateMatrixWorld(); }; }
     this.bubble.visible = false;
     scene.add(this.bubble);
 
@@ -461,7 +466,7 @@ export class Character {
 
     this.fx.position.set(pos.x, 0, pos.z);
     const head = this.headPos(_v);
-    this.bubble.position.set(head.x, Math.max(head.y, 0.7) + 0.55, head.z);
+    this.bubble.position.set(head.x, Math.max(head.y, 0.7) + 0.55, head.z); this.bubble.userData.head.set(head.x, Math.max(head.y, 0.7), head.z);
     this.updateStars(this.state === 'ko' || (this.state === 'recover' && this.stateT < 0.6), head);
     if (this.heldItem && this.heldItem.visible) r.grip('lArmR', this.heldItem.position);
   }

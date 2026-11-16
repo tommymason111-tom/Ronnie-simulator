@@ -109,6 +109,20 @@ export class AttackFX {
       this.cdTex.needsUpdate = true;
     }
   }
+  // the counter's place on screen: on a phone held upright the Eat Meter box takes over half the width at the top, so the
+  // counter goes just under the box instead of on top of it; and it gives way to a cut scene (it was printed over them)
+  placeCountdown() {
+    const el = this.cdEl; if (!el || !this.cdText) return;
+    const xr = this.player.renderer && this.player.renderer.xr.isPresenting;
+    el.style.visibility = this.cut ? 'hidden' : 'visible';
+    const cam = this.camera, asp = cam.aspect, key = asp.toFixed(3) + ':' + cam.fov.toFixed(1) + ':' + innerHeight;
+    if (xr || key === this.cdKey) return; this.cdKey = key;
+    if (asp >= 1) { el.style.top = 'calc(max(12px, env(safe-area-inset-top)) + 34px)'; return; }
+    // (the same sums player.js uses to pin the box to the corner: box bottom, as a fraction of the screen's height)
+    const hh = 0.3 * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), hw = hh * asp, sc = Math.min(1.25, hw * 1.12 / 0.1);
+    const below = (0.075 * sc + 0.024) / (2 * hh) * innerHeight;
+    el.style.top = Math.round(below + 8) + 'px';
+  }
   hideCard() { if (this.cardT >= 0 && this.cardOut < 0) this.cardOut = 0; }
   get cardShowing() { return this.cardT >= 0 && this.cardOut < 0; }
 
@@ -211,11 +225,14 @@ export class AttackFX {
     this.comeArrow.visible = !inFront;
     if (!inFront) { const a = Math.atan2(_v.y, _v.x), R = this.vr ? 0.2 : 0.14; this.comeArrow.position.set(Math.cos(a) * R, Math.sin(a) * R * 0.75 + 0.02, -0.8); this.comeArrow.rotation.set(0, 0, a - Math.PI / 2); this.comeArrow.scale.setScalar(1 + Math.sin(this.comeT * 10) * 0.12); }
   }
-  endCutscene() { if (!this.cut) return; this.camera.remove(this.cut.back); this.camera.remove(this.cut.screen); this.cut = null; }
+  endCutscene() { if (!this.cut) return; this.camera.remove(this.cut.back); this.camera.remove(this.cut.screen); this.cut = null;
+    const w = this.player.wrist; if (w && this.hidWrist) { this.hidWrist = false; if (!document.body.classList.contains('gameover')) w.visible = true; } }
   get inCutscene() { return !!(this.cut && !this.cut.overlay); }
   updateCutscene(dt) {
     const c = this.cut; if (!c) return;
     c.t += dt;
+    // on a screen, the Eat Meter box in the corner steps aside while a cut scene plays (it was drawn over their headlines)
+    { const w = this.player.wrist; if (w && !this.vr && w.visible && w.parent === this.camera) { w.visible = false; this.hidWrist = true; } }
     const fade = c.overlay ? 1 : Math.min(1, c.t / 0.35, (c.dur - c.t) / 0.4);
     if (c.overlay) {     // overlays exactly fill the view (phone screen or headset)
       const xr = this.player.renderer && this.player.renderer.xr.isPresenting;
@@ -251,6 +268,7 @@ export class AttackFX {
     this.updateCard(dt);
     this.updateCutscene(dt);
     this.updateComing(dt);
+    this.placeCountdown();
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i]; it.t += dt;
       if (it.update) it.update(it.t, it.obj, it.base);

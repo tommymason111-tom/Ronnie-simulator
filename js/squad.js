@@ -743,6 +743,7 @@ export class SquadMember extends Character {
     // first walk up to Ronnie and do their signature move on him (Noah charges;
     // Ian only needs to get within casting range, or barbecue-throwing range)
     this.approach = { knee: 0, tackle: 0, rod: 2.4, bbq: 2.2, flash: 1.8, dating: 1.0, oasis: 1.4, turkey: 1.0 }[this.attack] ?? (this.id === 'noah' ? 0 : 0.9);
+    this.announceNow = this.approach === 0 && this.attack !== 'tackle';      // (no walk-up, e.g. Aidan W's knee from where he sits: the pop-up and the attack straight away. It used to wait for a walk-up that never came, so it never happened)
     if (this.attack === 'bbq') { this.passes = 4; }
     else if (['rod', 'oasis', 'turkey'].includes(this.attack)) { /* the attack is the whole move */ }
     else ({
@@ -873,6 +874,9 @@ export class SquadMember extends Character {
     const r = this.rag, g = this.game;
     this.setIdlePose(this.t);
     const done = () => { this.state = 'idle'; this.stateT = 0; this.nextMove = 3; this.onEvent && this.onEvent('acted', this); };
+    if (this.announceNow) { this.announceNow = false; this.stateT = 0; this.arriveT = 0.35;
+      g.g && g.g.player && g.g.player.faceToward && g.g.player.faceToward(this.pos.x, this.pos.z, 0.45);
+      this.announceT = ANNOUNCE_T; g.announce && g.announce(this, this.attack); }
     if (this.approach) {
       // run over to Ronnie along a proper path round the furniture (re-planned as he moves), then square up
       const d = this.chaseTo(ctx.head.x, ctx.head.z, dt, 3.3, this.approach);
