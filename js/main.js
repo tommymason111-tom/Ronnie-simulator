@@ -1219,11 +1219,28 @@ function emoteCam() {
     const r = sb.c.rag, f = sb.fwd(), a = 0.3, ch = r.drawn ? r.drawn(r.pos('chest', new THREE.Vector3())) : r.pos('chest', new THREE.Vector3());
     const big = r.group ? r.group.scale.y : 1, ei = sb.emote.id && emoteInfo(sb.emote.id), dist = 2.9 * big * ((ei && ei.cam) || 1), side = new THREE.Vector3(f.z, 0, -f.x);
     const want = new THREE.Vector3(r.root.x, 0, r.root.z).addScaledVector(f, Math.cos(a) * dist).addScaledVector(side, Math.sin(a) * dist); want.y = 1.55 * big;
-    ecLock = { em: sb.emote.id, lastT: 0, want, look: new THREE.Vector3(r.root.x, Math.max(0.6, ch.y * 0.85), r.root.z) }; }
+    const look = new THREE.Vector3(r.root.x, Math.max(0.6, ch.y * 0.85), r.root.z); emoteCamSpot(look, want);
+    ecLock = { em: sb.emote.id, lastT: 0, want, look }; }
   ecLock.lastT = sb.emote.t || 0;
   const eye = camera.getWorldPosition(new THREE.Vector3()); thirdCam.position.copy(eye).lerp(ecLock.want, ecK * ecK * (3 - 2 * ecK));
   thirdCam.aspect = camera.aspect; thirdCam.fov = camera.fov; thirdCam.updateProjectionMatrix(); thirdCam.lookAt(ecLock.look);
   return thirdCam;
+}
+// the emote camera mustn't end up behind a wall or inside the furniture (a chair back filling the screen): come in along
+// the line towards you until the view's clear (walls and solid things from the room's colliders, tables and chairs from
+// its footprints), but never closer than about a metre
+const _ecBox = new THREE.Box3(), _ecHit = new THREE.Vector3(), _ecRay = new THREE.Ray();
+function emoteCamSpot(look, want) {
+  const dir = want.clone().sub(look), d = dir.length(); if (d < 1e-3) return want; dir.normalize(); _ecRay.set(look, dir); let best = d;
+  for (const c of room.colliders || []) { _ecBox.min.copy(c.min); _ecBox.max.copy(c.max); if (_ecBox.containsPoint(look)) continue;      // walls and solid things right across the line
+    if (_ecRay.intersectBox(_ecBox, _ecHit)) { const t = _ecHit.distanceTo(look); if (t < best) best = t - 0.15; } }
+  // furniture right where the lens would be (it fills the bottom of the picture): step in until there's half a metre clear
+  const near = (x, z) => (room.blockers || []).some(b => (b.y1 ?? 2) > 0.3 && x > b.x0 - 0.45 && x < b.x1 + 0.45 && z > b.z0 - 0.45 && z < b.z1 + 0.45)
+    || (room.dormant ? room.dormant.entries : []).some(e => !e.woken && e.type === 'chair' && Math.hypot(e.pos.x - x, e.pos.z - z) < 0.75)      // (the pub's stools and chairs: pick-up-able, so not in the footprints)
+    || items.items.some(it => !it.dead && it.type === 'chair' && Math.hypot(it.pos.x - x, it.pos.z - z) < 0.75);
+  let t = best; while (t > 0.9 && near(look.x + dir.x * t, look.z + dir.z * t)) t -= 0.1;
+  t = Math.max(0.9, t); if (t < d) want.copy(look).addScaledVector(dir, t);
+  return want;
 }
 // (one bad frame must never stop the game: log it, still draw, carry on with the next)
 let frameErrs = 0;
@@ -1295,7 +1312,7 @@ class SquadPuppet {
     this.down = 0; this.hT = {}; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0;
     if (p.self) {               // your own body (seen from inside it): no head in the way, no name tag, no bumping into it
       this.tag.visible = false; this.c.rag.hideHead = true; for (const pt of this.c.rag.list) { pt.body.collisionResponse = false; } }
-    this.emote = new EmotePlayer(this.c, scene, (txt, at, snd) => { if (snd) sfx(snd, this.c.headPos(new THREE.Vector3()), 0.8); if (txt && at) words.show(txt, at.clone().add({ x: 0, y: 0.15, z: 0 }), '#ffd400', 0.22, 0.8); }); }
+    this.emote = new EmotePlayer(this.c, scene, (txt, at, snd) => { if (snd) sfx(snd, this.c.headPos(new THREE.Vector3()), 0.8); if (txt && at) words.show(txt, at.clone().add({ x: 0, y: this.p.self ? 0.15 : 0.38, z: 0 }), '#ffd400', 0.22, 0.8); }); }      // (above the name tag, never on it)
   // where they were ~0.11s ago, blended between the two updates either side of then (updates come in a few
   // times a second, unevenly: following the latest one made hands and heads jump about)
   smoothPose(pose) {
@@ -1422,7 +1439,7 @@ class SquadPuppet {
     this.chatT.needsUpdate = true; this.chatS.scale.set(0.9, 0.9 * 200 / 512, 1); this.chatS.visible = true; this.chatUntil = performance.now() + 2500 + text.length * 70;
   }
   placeTag() { if (this.chatS) { const on = performance.now() < this.chatUntil; this.chatS.visible = on; if (on) { const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())); this.chatS.position.set(h.x, h.y + (this.p.self ? 0.4 : 0.6), h.z); } }
-    if (this.p.self) return; if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())); this.tag.position.set(h.x, h.y + 0.36, h.z); }
+    if (this.p.self) return; if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())); this.tag.position.set(h.x, h.y + 0.42, h.z); }
   flinch(v) { this.c.flinch(v.clone ? v.clone() : new THREE.Vector3(v.x, 0, v.z), 1); }
   // a proper hit: go limp and fly, same as the NPCs (a light one is just a flinch)
   knock(v, s, at) {
@@ -1436,4 +1453,4 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { newGame: (m) => newGame(m), time: () => time, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)

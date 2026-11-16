@@ -605,7 +605,7 @@ export function drawOasis(g, t, dur) {
     g.fillStyle = gr; g.beginPath(); g.moveTo(-10, 0); g.lineTo(10, 0); g.lineTo(120, H); g.lineTo(-120, H); g.fill(); g.restore();
   }
   for (let i = 0; i < 14; i++) { const nx = (rnd(i) * W + t * 40 * (i % 2 ? 1 : -1)) % W, ny = H - ((t * 110 + i * 60) % H); text(g, i % 2 ? '♪' : '♫', nx, ny, 40 + (i % 3) * 10, ['#ffd400', '#7cff6a', '#ff6bd5'][i % 3], { lw: 5 }); }
-  text(g, 'DYLAN — LIVE AT THE OYSTERFLEET', W / 2, 60, 34, '#fff', { lw: 7, maxW: W - 80 });
+  text(g, 'DYLAN — LIVE AT THE OYSTERFLEET', W / 2, H > W ? 130 : 60, 34, '#fff', { lw: 7, maxW: W - 80 });      // (upright phone: clear of the PAUSE button)
   const LY = ['Today is gonna be the day', 'that you put down the pie', 'and all the roads we have to walk', 'are leading to the chippy', 'don\'t look back in anger, Ron', 'look back at the buffet'];
   const li = Math.floor(t / (dur / LY.length)) % LY.length, k = (t % (dur / LY.length)) / (dur / LY.length);
   g.fillStyle = 'rgba(0,0,0,0.6)'; rr(g, 80, H - 120, W - 160, 86, 20); g.fill();
@@ -645,8 +645,9 @@ export function drawTackle(g, t, dur) {
   g.fillStyle = '#e53935'; g.beginPath(); for (let i = 0; i < 28; i++) { const ang = i / 28 * Math.PI * 2 + 0.1, r = i % 2 ? 100 : 190; g.lineTo(Math.cos(ang) * r, Math.sin(ang) * r); } g.closePath(); g.fill();
   g.restore();
   bigWord(g, 'THWACK!', W / 2, H / 2 + 26, 110, '#fff', '#7a0e0e', -0.1, 1);
-  g.fillStyle = 'rgba(0,0,0,0.7)'; rr(g, W / 2 - 230, 26, 460, 70, 12); g.fill();
-  text(g, 'NOAH 7 — 0 RONNIE', W / 2, 74, 40, '#fff');
+  { const top = H > W ? 110 : 26, bw = Math.min(460, W - 24);      // (a phone held upright: below the PAUSE button, and no wider than the screen)
+    g.fillStyle = 'rgba(0,0,0,0.7)'; rr(g, W / 2 - bw / 2, top, bw, 70, 12); g.fill();
+    text(g, 'NOAH 7 — 0 RONNIE', W / 2, top + 48, 40, '#fff', { maxW: bw - 24 }); }
   text(g, 'TRY! (Ronnie is the ball)', W / 2, H - 24, 28, '#ffd400', { lw: 6 });
   g.restore();
 }

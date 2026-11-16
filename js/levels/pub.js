@@ -22,7 +22,7 @@ import { Dormant } from './dormant.js';
 import { skyDome, waterMaterial, updateOutdoor, leafyHedge, leafyBall, pottedPlant, figTree, terrace, HAZE } from './outdoor.js';
 import { REST, REST_BOUNDS, REST_H, inRestaurant, inNewArea, buildRestaurant } from './oysterRestaurant.js';
 import { buildCarPark, inCarPark } from './carpark.js';
-import { buildExterior } from './oysterExterior.js';
+import { buildExterior, photoBrickTex } from './oysterExterior.js';
 import { Kit, carpetTex, tileTex, canvasTex, FONT, brickTex, booksWallTex, tngTex, oakPanelTex, woodTex } from './kit.js';
 
 const H = 3.0;
@@ -128,10 +128,15 @@ export function buildPub(scene) {
   k.floor(X(175), Z(305), X(415), Z(605), tileTex('#d8d8d8', '#cfcfcf', '#9a9a9a', 40), 0.003, 0.6);   // men's, disabled, corridor
   k.floor(X(415), Z(345), X(615), Z(605), tileTex('#e8dfe4', '#ddd3d8', '#b0a4aa', 40), 0.003, 0.6);   // women's
   const ROOF = [[B.x0, B.z0], [-16.7, B.z0], [-16.7, -14.45], [-10.2, -14.45], [-10.2, -16.08], [-4.44, -16.08], [-4.44, -15.12], [0.36, -15.12], [0.36, -12.24], [2.28, -14.16], [4.2, -14.16], [5.64, -13.2], [5.64, -11.28], [3.72, -8.88], [6.12, -8.88], [6.12, -6.84], [X(1045), -6.84], [X(1045), GZ], [B.x0, GZ]];   // (the building: out the front is open sky)
-  const underRoof = (x, z) => inPoly(ROOF, x, z);
-  { const sh = new THREE.Shape(ROOF.map(([x, z]) => new THREE.Vector2(x, z)));   // ceiling (the building only: sky over the garden;
-    sh.holes.push(new THREE.Path(REST.main.map(([x, z]) => new THREE.Vector2(x, z))));
-    const g = new THREE.ShapeGeometry(sh); g.rotateX(Math.PI / 2);
+  // (west of the pub the outline above takes in the whole width out to the restaurant: the restaurant's rooms have their
+  // own outlines, so a ceiling there would hang out over the lawn beside them)
+  const PUBX = -13.8, LOW = ['side', 'hall', 'ladies', 'gents'];
+  const clipX = (P, keepEast) => { const out = [], inS = (q) => keepEast ? q[0] >= PUBX : q[0] <= PUBX;
+    for (let i = 0; i < P.length; i++) { const a2 = P[i], b2 = P[(i + 1) % P.length], ia = inS(a2), ib = inS(b2); if (ia) out.push(a2); if (ia !== ib) { const t = (PUBX - a2[0]) / (b2[0] - a2[0]); out.push([PUBX, a2[1] + t * (b2[1] - a2[1])]); } } return out; };
+  const PUB_ROOF = clipX(ROOF, true), KITCHEN_W = clipX(REST.kitchen, false);
+  const underRoof = (x, z) => inPoly(PUB_ROOF, x, z) || LOW.some(n => inPoly(REST[n], x, z)) || (KITCHEN_W.length > 2 && inPoly(KITCHEN_W, x, z));
+  { const shapes = [PUB_ROOF, ...LOW.map(n => REST[n]), ...(KITCHEN_W.length > 2 ? [KITCHEN_W] : [])].map(P => new THREE.Shape(P.map(([x, z]) => new THREE.Vector2(x, z))));   // ceiling (the building only: sky over the garden;
+    const g = mergeGeometries(shapes.map(sh => { const q = new THREE.ShapeGeometry(sh); q.deleteAttribute('uv'); return q; }), false); g.rotateX(Math.PI / 2);
     const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0xf7f3ea, emissive: 0xbdb5a2 })); m.position.y = H; scene.add(m);
     // and a solid ceiling at 3m everywhere but the dining room, so thrown food bounces off it
     const inMain = (x, z) => { let c = false; const P = REST.main; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, zi] = P[i], [xj, zj] = P[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
@@ -584,7 +589,7 @@ export function buildPub(scene) {
     { const [x, z] = b.at(0.5, 0.42); for (let i = 0; i < 5; i++) k.cyl(0.045, 0.035, 0.15, x, 1.18 + i * 0.12, z, 0xe8f4f8, 10); }       // a tower of pint glasses
   }
   { const W2 = X(855) - 0.62;
-    for (const [z, col, lbl] of [[Z(640), 0xc8102e, 'CRISPS'], [Z(660), 0x1e5aa8, 'S&V'], [Z(680), 0xd4a017, 'NUTS']]) { R(W2 - 0.3, z - 0.18, W2, z + 0.18, 0.3, 1.05, col); }
+    for (const [z, col, lbl] of [[Z(640), '#c8102e', 'READY SALTED'], [Z(660), '#1e5aa8', 'SALT & VINEGAR'], [Z(680), '#d4a017', 'DRY ROASTED']]) k.texBox(0.3, 0.3, 0.36, W2 - 0.15, 1.05, z, caseTex(lbl, col));      // printed cardboard cases of crisps and nuts
     for (let i = 0; i < 8; i++) R(W2 - 0.3, Z(700) - 0.18, W2, Z(700) + 0.18, 0.012, 0.92 + i * 0.014, i % 2 ? 0x2a2a2a : 0x3a3a3a);   // a stack of round trays
     R(W2 - 0.25, Z(720) - 0.1, W2 - 0.05, Z(720) + 0.1, 0.12, 0.98, 0x8a1a1a); k.cyl(0.03, 0.03, 0.01, W2 - 0.15, 1.04, Z(720) - 0.1, 0xc8c8c8, 8);   // a radio
   }
@@ -839,7 +844,7 @@ export function buildPub(scene) {
       const at = (s, d) => [dx0 + ux * s + nx * d, dz0 + uz * s + nz * d];
       const piece = (s0, s1, y0, y1, d0, d1, color) => { const [x, z] = at((s0 + s1) / 2, (d0 + d1) / 2); k.box(s1 - s0, y1 - y0, d1 - d0, x, (y0 + y1) / 2, z, color, { rot: [0, ry, 0] }); };
       const OAKDR = 0x5a3418, OAKDL = 0x7a4a24, BR = 0xc9a24a;
-      const st = new THREE.Mesh(new THREE.PlaneGeometry(LL - 0.2, 2.2), new THREE.MeshBasicMaterial({ map: streetViewTex(1), color: 0xd8d8d8 }));
+      const st = new THREE.Mesh(new THREE.PlaneGeometry(LL - 0.2, 2.2), new THREE.MeshBasicMaterial({ map: streetViewTex(1, true), color: 0xd8d8d8 }));
       void st;      // (no photo of a street: the real car park's out there now)
       piece(0, 0.12, 0, H, 0.05, 0.16, OAKDR); piece(LL - 0.12, LL, 0, H, 0.05, 0.16, OAKDR);                 // the frame
       piece(0.12, LL - 0.12, 2.28, 2.4, 0.05, 0.16, OAKDR); piece(0.12, LL - 0.12, H - 0.1, H, 0.05, 0.16, OAKDR);
@@ -1141,7 +1146,7 @@ export function buildPub(scene) {
         R(x - w / 2, z1 + sd * 0.005, x + w / 2, z1 + sd * 0.05, 0.035, WIN_Y0 + h * 0.72, WHITE); }                                                                  // transom
       R(x - w / 2 - 0.15, z1 - 0.3, x + w / 2 + 0.15, z1 - 0.08, 0.05, WIN_Y0 - 0.02, WHITE, { collide: true });                                                       // inside sill
       R(x - w / 2 - 0.1, z1 + 0.08, x + w / 2 + 0.1, z1 + 0.22, 0.05, WIN_Y0 - 0.06, 0xd8d4cc); }                                                                    // outside sill
-    for (const [i, z] of [z0 + 2.2, z0 + 4.6].entries()) k.window(x1 - 0.1, 1.6, z, 1.8, 1.7, -Math.PI / 2, streetViewTex(i + 2, true), { frame: WHITE, bars: 2 });
+    for (const [i, z] of [z0 + 2.2, z0 + 4.6].entries()) k.window(x1 - 0.1, 1.6, z, 1.8, 1.7, -Math.PI / 2, leadedTex(), { frame: WHITE, bars: 2 });      // (onto the passage beside it: leaded glass, not a street)
     k.light((x0 + x1) / 2, 2.5, (z0 + z1) / 2, 0xfff4e0, 4, 10);
     k.pool((x0 + x1) / 2, 0, (z0 + z1) / 2, 7, 0xfff8e8);
     k.label('THE CONSERVATORY — PLEASE DO NOT TAP ON THE GLASS (RONNIE: OR LICK IT)', 2.2, 0.4, [x0 + 0.12, 2.35, z1 - 1.8], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#2e7d32', border: '#2e7d32', size: 36 });
@@ -1581,23 +1586,59 @@ export function buildPub(scene) {
   // anything of the restaurant's outside that line of sight is behind walls, so it isn't drawn.
   { const west = [], bx = new THREE.Box3(), DX = X(195), DZ0 = Z(1090), DZ1 = Z(1145), cam = new THREE.Vector3();
     for (const o of scene.children.slice(sceneStart)) if (o.isMesh && !o.isInstancedMesh && o.geometry) { o.geometry.computeBoundingBox(); bx.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); if (bx.max.x < -13.6) west.push({ o, x0: bx.min.x, x1: bx.max.x, z0: bx.min.z, z1: bx.max.z }); }
-    // from out the front the restaurant's only its outside: a light brick shell of it stands in (one mesh), so going out
-    // into the car park doesn't suddenly load the whole restaurant (every table, chair, glass and picture in it) on to
-    // the phone at once: that sudden load was making phones give up and reload the game
-    const shell = (() => { const t = oldBrickTex(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 1.2, 1 / 1.2);
-      const geos = []; for (const [n, h] of [['main', REST_H], ['side', 3.0], ['hall', 3.0], ['ladies', 3.0], ['gents', 3.0]]) {
-        const sh = new THREE.Shape(REST[n].map(([x, z]) => new THREE.Vector2(x, -z))), g = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false }); g.rotateX(-Math.PI / 2); geos.push(g); }
-      const g = mergeGeometries(geos.map(x => x.toNonIndexed()), false); const uv = g.attributes.uv, P = g.attributes.position, N = g.attributes.normal;
-      for (let i = 0; i < uv.count; i++) { const nx = Math.abs(N.getX(i)), along = nx > 0.5 ? P.getZ(i) : P.getX(i); uv.setXY(i, along, P.getY(i)); }      // (bricks the right way up, the right size)
-      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: t })); m.visible = false; scene.add(m);
-      const roofs = []; for (const n of ['main', 'side', 'hall', 'ladies', 'gents']) { const sh = new THREE.Shape(REST[n].map(([x, z]) => new THREE.Vector2(x, -z))), rg = new THREE.ShapeGeometry(sh); rg.rotateX(-Math.PI / 2); rg.translate(0, (n === 'main' ? REST_H : 3.0) + 0.02, 0); roofs.push(rg.toNonIndexed()); }
-      const roof = new THREE.Mesh(mergeGeometries(roofs.map(x => { x.deleteAttribute('uv'); return x; }), false), new THREE.MeshLambertMaterial({ color: 0x3a3e44 })); m.add(roof); roof.position.set(0, 0, 0);
-      return m; })();
+    // The restaurant from outside, all the way round (it's the same building as the pub): brick walls with white
+    // windows, a white coping along the top, and a flat roof (it's a single-storey extension). Built once and always
+    // there; every face points outwards, so from inside none of it is seen. Edges that join another room or the pub get
+    // no wall (the doorways stay open), and where a taller room rises above a lower one's roof, its wall carries on up.
+    { const BRK = photoBrickTex(); BRK.wrapS = BRK.wrapT = THREE.RepeatWrapping;
+      const HT = { main: REST_H, side: 3.0, hall: 3.0, ladies: 3.0, gents: 3.0, kitchen: 3.0 }, names = ['main', 'side', 'hall', 'ladies', 'gents'];
+      const whereIs = (x, z) => { for (const [n, P] of Object.entries(REST)) if (inPoly(P, x, z)) return HT[n]; return inside(x, z) || x > -10.25 ? Infinity : 0; };   // (the height of whatever's there: 0 = open air)
+      const wpos = [], wuv = [], bits = [], roofs = [], WH = 0xf4f4f0, GL = 0x2a3640;
+      const quad = (xa, za, xb, zb, y0, y1, nx, nz) => { const o = 0.1, A = [xa + nx * o, y0, za + nz * o], B = [xb + nx * o, y0, zb + nz * o], C = [xb + nx * o, y1, zb + nz * o], D = [xa + nx * o, y1, za + nz * o];
+        const ux = xb - xa, uz = zb - za, cx = -uz, cz = ux, flip = cx * nx + cz * nz < 0, tri = flip ? [A, C, B, A, D, C] : [A, B, C, A, C, D];
+        const s0 = Math.abs(xa) + Math.abs(za); for (const v of tri) { wpos.push(...v); wuv.push((s0 + Math.hypot(v[0] - A[0], v[2] - A[2])) / 1.2, v[1] / 1.2); } };
+      for (const n of names) { const P = REST[n], h = HT[n];
+        let area = 0; for (let i = 0; i < P.length; i++) { const [ax, az] = P[i], [bx2, bz2] = P[(i + 1) % P.length]; area += ax * bz2 - bx2 * az; }
+        // a corner that turns in (the wall face is round the inside of it): the brick stops short; one that turns out: it carries on to meet the next
+        const reflex = (i) => { const [ax, az] = P[(i - 1 + P.length) % P.length], [bx2, bz2] = P[i], [cx2, cz2] = P[(i + 1) % P.length]; return Math.sign((bx2 - ax) * (cz2 - bz2) - (bz2 - az) * (cx2 - bx2)) !== Math.sign(area); };
+        for (let i = 0; i < P.length; i++) { const [x0, z0] = P[i], [x1, z1] = P[(i + 1) % P.length], L = Math.hypot(x1 - x0, z1 - z0); if (L < 0.05) continue;
+          const ux = (x1 - x0) / L, uz = (z1 - z0) / L; let nx = uz, nz = -ux; if (inPoly(P, (x0 + x1) / 2 + nx * 0.2, (z0 + z1) / 2 + nz * 0.2)) { nx = -nx; nz = -nz; }
+          const N = Math.max(1, Math.round(L / 0.2)), runs = []; let cur = null;
+          for (let k2 = 0; k2 < N; k2++) { const t = (k2 + 0.5) / N * L, nb = whereIs(x0 + ux * t + nx * 0.35, z0 + uz * t + nz * 0.35), ok = nb < h;
+            if (ok && cur && cur.nb === nb) continue; if (cur) { cur.b = k2 / N * L; runs.push(cur); cur = null; } if (ok) cur = { a: k2 / N * L, nb }; }
+          if (cur) { cur.b = L; runs.push(cur); }
+          const ry = Math.atan2(nx, nz);
+          for (const r of runs) { const len = r.b - r.a; if (len < 0.15) continue; const xa = x0 + ux * r.a, za = z0 + uz * r.a, xb = x0 + ux * r.b, zb = z0 + uz * r.b;
+            const open = (x, z) => whereIs(x, z) === 0 && !inPoly(P, x, z);      // (only carry on round a corner into open air, never into the next room)
+            const ea = r.a > 0.01 ? 0 : reflex(i) ? -0.35 : open(xa - ux * 0.3 + nx * 0.05, za - uz * 0.3 + nz * 0.05) ? 0.1 : 0,
+              eb = r.b < L - 0.01 ? 0 : reflex((i + 1) % P.length) ? -0.35 : open(xb + ux * 0.3 + nx * 0.05, zb + uz * 0.3 + nz * 0.05) ? 0.1 : 0;
+            quad(xa - ux * ea, za - uz * ea, xb + ux * eb, zb + uz * eb, r.nb, h, nx, nz);
+            const mx = (xa + xb) / 2, mz = (za + zb) / 2;
+            bits.push(part(new THREE.BoxGeometry(len + 0.02, 0.14, 0.26), 0xe8e4dc, [mx + nx * 0.06, h + 0.05, mz + nz * 0.06], [0, ry, 0]));      // the coping
+            if (r.nb > 0) continue;
+            bits.push(part(new THREE.BoxGeometry(len, 0.16, 0.05), 0x3a3a3a, [mx + nx * 0.13, 0.08, mz + nz * 0.13], [0, ry, 0]));                // a dark plinth along the bottom
+            // windows: tall dining-room ones, smaller in the hall, high frosted ones in the toilets
+            const loo = n === 'ladies' || n === 'gents', ww = loo ? 0.8 : n === 'hall' ? 1.0 : 1.3, wh = loo ? 0.5 : n === 'main' ? 1.9 : 1.5, wy = loo ? 2.2 : n === 'main' ? 1.75 : 1.5, gap = loo ? 1.6 : 2.6;
+            const cnt = Math.floor((len - 0.7) / gap) + (len >= ww + 0.7 ? 1 : 0); if (cnt <= 0) continue;
+            for (let w = 0; w < cnt; w++) { const t = (w - (cnt - 1) / 2) * gap; if (Math.abs(t) + ww / 2 > len / 2 - 0.3) continue; const wx = mx + ux * t, wz = mz + uz * t, at = (d) => [wx + nx * d, 0, wz + nz * d];
+              const F = (g, c, d, y) => { const [px, , pz] = at(d); bits.push(part(g, c, [px, y, pz], [0, ry, 0])); };
+              F(new THREE.BoxGeometry(ww + 0.12, wh + 0.12, 0.06), WH, 0.13, wy);                                  // frame
+              F(new THREE.BoxGeometry(ww - 0.04, wh - 0.04, 0.065), loo ? 0xc4d0d8 : GL, 0.135, wy);              // glass
+              F(new THREE.BoxGeometry(0.05, wh - 0.04, 0.075), WH, 0.135, wy);                                      // mullion
+              if (!loo) F(new THREE.BoxGeometry(ww - 0.04, 0.05, 0.075), WH, 0.135, wy + wh / 2 - 0.42);           // top openers
+              F(new THREE.BoxGeometry(ww + 0.2, 0.05, 0.16), 0xd8d4cc, 0.16, wy - wh / 2 - 0.08);                  // sill
+            } } }
+        // the flat roof, with a little upstand round it
+        const sh = new THREE.Shape(P.map(([x, z]) => new THREE.Vector2(x, -z))), rg = new THREE.ShapeGeometry(sh); rg.rotateX(-Math.PI / 2); rg.translate(0, h + 0.1, 0); rg.deleteAttribute('uv'); roofs.push(rg); }
+      const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3)); wg.setAttribute('uv', new THREE.Float32BufferAttribute(wuv, 2)); wg.computeVertexNormals();
+      scene.add(new THREE.Mesh(wg, new THREE.MeshLambertMaterial({ map: BRK })));
+      scene.add(new THREE.Mesh(mergeGeometries(roofs, false), new THREE.MeshLambertMaterial({ color: 0x45484e })));
+      scene.add(new THREE.Mesh(mergeGeometries(bits, false), new THREE.MeshLambertMaterial({ vertexColors: true }))); }
     scene.onBeforeRender = (r, sc, camera) => {
       cam.setFromMatrixPosition(camera.matrixWorld);
-      const outFront = inCarPark(cam.x, cam.z) || cam.z < -15.2, outside = cam.z > Z(1305) || outFront; if (scene.fog && !scene.userData.fogLock) { scene.fog.near = outside ? 27 : 1e4; scene.fog.far = outside ? 39.5 : 2e4; }   // (Imposter sets its own: how far you can see)
+      const indoors = inside(cam.x, cam.z) || Object.values(REST).some(P => inPoly(P, cam.x, cam.z)), outFront = !indoors && (inCarPark(cam.x, cam.z) || cam.z < -15.2),      // (the restaurant's entrance hall and toilets reach out past the front: in there you're inside)
+      outside = cam.z > Z(1305) || outFront; if (scene.fog && !scene.userData.fogLock) { scene.fog.near = outside ? 27 : 1e4; scene.fog.far = outside ? 39.5 : 2e4; }   // (Imposter sets its own: how far you can see)
       const inPub = cam.x > DX + 0.05 && cam.z < Z(1305) && !outFront;          // (only from inside the pub itself is the restaurant hidden behind walls)
-      shell.visible = outFront;
       if (outFront) { for (const w of west) w.o.visible = false; return; }
       for (const w of west) {
         if (!inPub) { w.o.visible = !(cam.z > GZ && w.z1 < GZ - 0.3); continue; }      // (out in the garden the restaurant is behind the pub's solid back wall)
@@ -1656,6 +1697,18 @@ function bottleTex() {
       g.fillStyle = c; g.globalAlpha = 0.85; g.fillRect(x, base - bh, 18, bh); g.fillRect(x + 6, base - bh - 18, 6, 18); g.globalAlpha = 1;
       g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(x + 3, base - bh + 4, 3, bh - 8);
     }
+  });
+}
+// a cardboard case of crisps or nuts behind the bar: brand colour, the flavour, packets pictured on the side
+function caseTex(label, col) {
+  return canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = col; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(255,255,255,0.14)'; for (let i = -h; i < w; i += 28) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + h, h); g.lineTo(i + h + 10, h); g.lineTo(i + 10, 0); g.fill(); }
+    g.fillStyle = '#fff'; g.fillRect(0, 86, w, 84);
+    g.fillStyle = col; g.font = `900 30px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(label.includes('ROAST') ? 'NUTS' : 'CRISPS', w / 2, 112, w - 20);
+    g.fillStyle = '#222'; g.font = `900 19px ${FONT}`; g.fillText(label, w / 2, 148, w - 20);
+    for (let i = 0; i < 3; i++) { const x = 40 + i * 88; g.fillStyle = '#ffe9a8'; g.beginPath(); g.ellipse(x, 218, 26, 16, 0, 0, 7); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 2; g.stroke(); }
+    g.fillStyle = '#fff'; g.font = `900 16px ${FONT}`; g.fillText('36 x 32.5g', w / 2, 30); g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);
   });
 }
 function crispsTex() {
@@ -1823,7 +1876,10 @@ function paintingTex(i) {
       () => { g.fillStyle = '#4a5a3a'; g.fillRect(0, 0, w, h); g.fillStyle = '#7a8a5a'; g.fillRect(0, h * 0.6, w, h); g.fillStyle = '#6a3a1a'; g.beginPath(); g.ellipse(70, 80, 28, 12, 0, 0, 7); g.fill(); g.fillRect(50, 85, 4, 18); g.fillRect(86, 85, 4, 18); g.beginPath(); g.ellipse(100, 70, 9, 8, 0, 0, 7); g.fill(); g.fillStyle = '#c84a2a'; g.fillRect(60, 56, 10, 18); g.beginPath(); g.arc(65, 52, 5, 0, 7); g.fill(); },   // a hunting scene
       () => { g.fillStyle = '#d8c8a0'; g.fillRect(0, 0, w, h); g.fillStyle = '#7a3020'; g.fillRect(30, 40, 100, 70); g.fillStyle = '#3a2416'; g.beginPath(); g.moveTo(25, 40); g.lineTo(80, 14); g.lineTo(135, 40); g.fill(); g.fillStyle = '#f2d880'; for (const x of [42, 70, 98]) g.fillRect(x, 58, 16, 18); g.fillStyle = '#1b3a2a'; g.fillRect(60, 88, 40, 10); g.fillStyle = '#d4af37'; g.font = 'bold 8px Georgia'; g.textAlign = 'center'; g.fillText('OYSTERFLEET', 80, 96); },   // the pub, long ago
       () => { const gr = g.createRadialGradient(80, 64, 10, 80, 64, 90); gr.addColorStop(0, '#6a4a3a'); gr.addColorStop(1, '#1a120c'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = '#e0b890'; g.beginPath(); g.ellipse(80, 56, 24, 30, 0, 0, 7); g.fill(); g.fillStyle = '#3a2416'; g.beginPath(); g.ellipse(80, 34, 24, 12, 0, 0, 7); g.fill(); g.fillStyle = '#2a2a3a'; g.beginPath(); g.ellipse(80, 128, 50, 40, 0, 0, 7); g.fill(); g.fillStyle = '#c9a24a'; g.font = 'italic 9px Georgia'; g.textAlign = 'center'; g.fillText('The Landlord, 1893', 80, 122); },   // a portrait
-      () => { g.fillStyle = '#e8dcc0'; g.fillRect(0, 0, w, h); g.fillStyle = '#2a1a10'; g.font = 'bold 16px Georgia'; g.textAlign = 'center'; g.fillText('OYSTER STOUT', 80, 40); g.font = 'italic 11px Georgia'; g.fillText('a meal in itself', 80, 60); g.fillStyle = '#1a1a1a'; g.fillRect(64, 70, 32, 46); g.fillStyle = '#f4ecd8'; g.fillRect(64, 70, 32, 8); },   // an old advert
+      () => { g.fillStyle = '#e8dcc0'; g.fillRect(0, 0, w, h); g.fillStyle = '#2a1a10'; g.font = 'bold 16px Georgia'; g.textAlign = 'center'; g.fillText('OYSTER STOUT', 80, 40); g.font = 'italic 11px Georgia'; g.fillText('a meal in itself', 80, 60); const pint = () => { g.beginPath(); g.moveTo(62, 70); g.lineTo(98, 70); g.lineTo(94, 118); g.lineTo(66, 118); g.closePath(); };
+        g.fillStyle = '#1c0d0a'; pint(); g.fill(); g.fillStyle = 'rgba(120,30,20,0.55)'; g.fillRect(70, 84, 6, 30);                       // the stout (ruby where the light gets in)
+        g.fillStyle = '#fff6dc'; g.beginPath(); g.moveTo(62, 70); g.lineTo(98, 70); g.lineTo(97.3, 80); g.lineTo(62.7, 80); g.closePath(); g.fill();      // the creamy head
+        g.strokeStyle = '#2a1a10'; g.lineWidth = 1.5; pint(); g.stroke(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(90, 82, 2.5, 30); },   // an old advert
       () => { g.fillStyle = '#9ab0c0'; g.fillRect(0, 0, w, h); g.fillStyle = '#5a7a4a'; g.beginPath(); g.moveTo(0, 90); g.quadraticCurveTo(50, 60, 100, 85); g.quadraticCurveTo(130, 95, w, 80); g.lineTo(w, h); g.lineTo(0, h); g.fill(); g.fillStyle = '#e8e4d8'; g.fillRect(100, 60, 18, 26); g.fillStyle = '#5a2a1a'; g.beginPath(); g.moveTo(96, 60); g.lineTo(109, 50); g.lineTo(122, 60); g.fill(); },   // a cottage
     ];
     scenes[i % scenes.length]();
