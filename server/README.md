@@ -12,3 +12,11 @@ Deployed with the Cloudflare API (script name `ronnie-mp`, metadata in `meta.jso
       -F "worker.js=@worker.js;type=application/javascript+module"
 
 (After the first deploy, drop the `migrations` block from `meta.json` or bump its tag.)
+
+## Voices (`GET /tts?v=<character>&t=<text>`)
+
+Reads a line out in a character's ElevenLabs voice (used for typed chat, and any line without a pre-made clip).
+Needs a Worker secret `ELEVENLABS_KEY` (Cloudflare dashboard → Workers & Pages → the worker → Settings →
+Variables and Secrets → Add → Secret) and the character's voice id in `VOICES` at the top of `worker.js`.
+Each line is made once and then served from Cloudflare's cache; lines are cut at 160 characters and each person
+can ask for 12 a minute.
