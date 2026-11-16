@@ -16,14 +16,14 @@ import { pottedPlant } from './outdoor.js';
 const H = 3.0, T = 0.08;
 export const REST_H = 4.2;          // the main dining room is taller than the rest of the building
 const RH = REST_H;
-// ---- the rooms (metres; the pub's restaurant entrance corridor is x -14.04..-9.72, z 2.04..5.16)
+// ---- the rooms (metres; the pub's restaurant entrance corridor is x -14.4..-9.72, z 2.04..5.16; the pub kitchen x -14.4..-9.72, z -8.88..2.04)
 export const REST = {
-  main: [[-26.26, -14.45], [-16.88, -14.45], [-13.8, -9.78], [-13.8, -8.88], [-13.8, 2.04], [-14.04, 5.16], [-17.6, 10.24], [-27.38, 10.24], [-29.2, 6.74], [-29.2, -10.9]],
+  main: [[-26.26, -14.45], [-16.88, -14.45], [-13.8, -9.78], [-14.4, -8.88], [-14.4, 2.04], [-14.4, 5.16], [-17.6, 10.24], [-27.38, 10.24], [-29.2, 6.74], [-29.2, -10.9]],
   side: [[-39.0, -8.52], [-29.2, -8.52], [-29.2, 3.24], [-39.0, 3.24]],
   hall: [[-20.38, -14.45], [-16.74, -14.45], [-16.74, -19.72], [-23.94, -19.72], [-20.38, -16.22]],
   ladies: [[-23.94, -21.8], [-20.38, -21.8], [-20.38, -19.72], [-23.94, -19.72]],
   gents: [[-20.38, -23.8], [-16.74, -23.8], [-16.74, -19.72], [-20.38, -19.72]],
-  kitchen: [[-16.88, -14.45], [-10.2, -14.45], [-10.2, -8.88], [-13.8, -8.88], [-13.8, -9.78]],
+  kitchen: [[-16.88, -14.45], [-10.2, -14.45], [-10.2, -8.88], [-14.4, -8.88], [-13.8, -9.78]],
 };
 export const REST_BOUNDS = { x0: -39.4, z0: -24.2 };
 const inPoly = (poly, x, z) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, zi] = poly[i], [xj, zj] = poly[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
@@ -199,13 +199,13 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
   for (const [i, g] of [[0, [HALLDOOR]], [1, [KDOOR]], [2, []], [5, []], [6, []], [7, []], [8, [SIDEOPEN]], [9, []]]) wall(me[i], g, RW, 0, me[i].len, RH);
   for (const [i, g] of [[0, [HALLDOOR]], [1, [KDOOR]], [2, []], [3, []], [5, []], [6, []], [7, []], [8, [SIDEOPEN]], [9, []]]) dress(me[i], 'cream', g, 0, me[i].len, RH);
   // the pub's walls only go to 3m: carry the kitchen wall behind the bar, and the wall over the way in, up to the high ceiling
-  R(-13.88, -9.78, -13.72, 2.04, RH - H, (H + RH) / 2, RW); R(-14.06, 2.0, -13.76, 5.2, RH - H, (H + RH) / 2, RW);
-  { const e4 = edge([[-14.0, 5.16], [-14.0, 2.04], [-15.0, 2.04], [-15.0, 5.16]], 0); slab(e4, 0, 3.12, H, RH - H - 0.16, 0.065, 0.004, 0, CREAM_PAPER, 0.6); slab(e4, 0, 3.12, RH - 0.16, 0.07, 0.065, 0.05, 0xf7f2e6); slab(e4, 0, 3.12, RH - 0.09, 0.09, 0.065, 0.09, 0xf7f2e6); }
+  R(-14.48, -8.88, -14.32, 2.04, RH - H, (H + RH) / 2, RW); R(-14.55, 2.0, -14.25, 5.2, RH - H, (H + RH) / 2, RW);
+  { const e4 = edge([[-14.5, 5.16], [-14.5, 2.04], [-15.5, 2.04], [-15.5, 5.16]], 0); slab(e4, 0, 3.12, H, RH - H - 0.16, 0.065, 0.004, 0, CREAM_PAPER, 0.6); slab(e4, 0, 3.12, RH - 0.16, 0.07, 0.065, 0.05, 0xf7f2e6); slab(e4, 0, 3.12, RH - 0.09, 0.09, 0.065, 0.09, 0xf7f2e6); }
   // the high ceiling of the dining room: a flat plaster ceiling cut to the room, with a deep cove round it
   { const sh = new THREE.Shape(M.map(([x, z]) => new THREE.Vector2(x, z))), g = new THREE.ShapeGeometry(sh); g.rotateX(Math.PI / 2);
     const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0xf7f3ea, emissive: 0xbdb5a2 })); m.position.y = RH; scene.add(m); }
   // the bar's end wall (closing off behind the bar at the top), dressed both sides
-  { const e1 = edge([[-17.58, -7.54], [-13.8, -7.54], [-13.8, -9.0], [-17.58, -9.0]], 0), e2 = edge([[-13.8, -7.54], [-17.58, -7.54], [-17.58, -6.0], [-13.8, -6.0]], 0); wall(e1, [], RW, 0, e1.len, RH); dress(e1, 'cream', [], 0, e1.len, RH); dress(e2, 'cream', [], 0, e2.len, RH); }
+  { const e1 = edge([[-17.58, -7.54], [-14.4, -7.54], [-14.4, -9.0], [-17.58, -9.0]], 0), e2 = edge([[-14.4, -7.54], [-17.58, -7.54], [-17.58, -6.0], [-14.4, -6.0]], 0); wall(e1, [], RW, 0, e1.len, RH); dress(e1, 'cream', [], 0, e1.len, RH); dress(e2, 'cream', [], 0, e2.len, RH); }
 
   // ---- the side room (through the wide opening on the left)
   const SD = REST.side, se = SD.map((_, i) => edge(SD, i));
@@ -414,7 +414,7 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
     for (let z = z0 + 0.8; z < z1 - 1.3; z += 0.17) for (const dx of [0.15, 0.3, 0.45]) G(wineGlassGeo(), fx + dx, 2.3, z, 0, Math.PI);
     for (const z of [-5.5, -2.7, 0.1]) { k.cyl(0.005, 0.005, RH - 2.3, (fx + bx) / 2 - 0.4, (RH + 2.3) / 2, z, 0x222222, 4); P(new THREE.CylinderGeometry(0.05, 0.16, 0.18, 18, 1, true), BRASS, [(fx + bx) / 2 - 0.4, 2.21, z]); k.lamp((fx + bx) / 2 - 0.4, 2.14, z, 0xffd8a0, 0.05); k.pool(fx - 0.2, TOPY, z, 1.3, 0xffc070); }
     // behind: the back counter (under-counter fridges with lit glass doors), the coffee machine, the till, a sink
-    const wx = -13.88, cx0 = wx - 0.62;
+    const wx = -14.48, cx0 = wx - 0.62;      // (the kitchen wall behind: moved back 0.6m when the kitchen was widened)
     R(cx0, z0, wx, z1 - 0.1, 0.9, 0.45, 0x3a1a0c, { collide: true, block: true }); R(cx0 - 0.03, z0, wx, z1 - 0.1, 0.04, 0.92, 0x2a2a2a, { collide: true });
     for (let z = z0 + 0.2; z < z1 - 0.8; z += 0.72) { R(cx0 - 0.01, z, cx0, z + 0.66, 0.66, 0.42, 0x222222); R(cx0 - 0.015, z + 0.04, cx0 - 0.005, z + 0.62, 0.58, 0.42, 0x9ad0e8);
       for (let r = 0; r < 2; r++) for (let i = 0; i < 4; i++) P(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8), [0x3a7a2a, 0xd8b020, 0x8a1a1a, 0xe8e0c8][(i + r) % 4], [cx0 + 0.15, 0.25 + r * 0.3, z + 0.12 + i * 0.14]); }
@@ -536,7 +536,7 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
   }
 
   // ---------------------------------------------------------------- the sign over the way in from the pub
-  k.label('THE OYSTERFLEET — THE PUB & THE BAR', 1.9, 0.36, [-14.145, 2.68, 3.6], [0, -Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 44 });
+  k.label('THE OYSTERFLEET — THE PUB & THE BAR', 1.9, 0.36, [-14.635, 2.68, 3.6], [0, -Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 44 });
   // ---------------------------------------------------------------- downlights, two real lamps for a warm glow, food spots on some tables
   for (let x = -28.5; x < -14; x += 2.4) for (let z = -13.5; z < 10; z += 2.4) if (inPoly(REST.main, x, z) && x < -18.2) k.lamp(x, RH - 0.01, z, 0xfffbe8, 0.035);
   for (let x = -38.4; x < -29.5; x += 2.4) for (const z of [-7.8, 2.6]) k.lamp(x, H - 0.01, z, 0xfffbe8, 0.03);

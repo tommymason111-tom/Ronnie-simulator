@@ -10,7 +10,7 @@ import { Panel, makeGame } from './impgames.js';
 import { SQUAD } from './squad.js';
 import { POWERUPS } from './powerups.js';
 
-const KIND_ICON = { hold: '🍺', crank: '⚙️', swipe: '💳', wires: '🔌', collect: '🧺', plunge: '🪠', order: '📖', scrub: '🧽', code: '🔢', dial: '⏲️', switches: '💡', reels: '🍒', catch: '🧻', temp: '🍟', sort: '🍽️', whack: '🍺', simon: '🕒', place: '🍴', light: '🕯️', stacker: '🍹', sweep: '🧹', pipes: '🚧', coupler: '🛢️', raise: '⛱️' };
+const KIND_ICON = { hold: '🍺', crank: '⚙️', swipe: '💳', wires: '🔌', collect: '🧺', plunge: '🪠', order: '📖', scrub: '🧽', code: '🔢', dial: '⏲️', switches: '💡', reels: '🍒', catch: '🧻', temp: '🍟', sort: '🍽️', whack: '🍺', simon: '🕒', place: '🍴', light: '🕯️', stacker: '🍹', sweep: '🧹', pipes: '🚧', coupler: '🛢️', raise: '⛱️', wine: '🍷', fold: '🧻', bulbs: '💡', grill: '🍔', water: '🌸', net: '🥫' };
 const NAME = (id) => id === 'tommy' ? 'TOMMY' : ((SQUAD[id] && SQUAD[id].name) || id).toUpperCase();
 
 export function startDev(RS) {

@@ -14,7 +14,7 @@ const R = (a) => a[Math.floor(Math.random() * a.length)];
 const COL = { job: '#29b6ff', event: '#ff9a1f', fume: '#ff3b3b' };
 const EV_ICON = { fight: '🥊', singer: '🎤', kid: '🧒', spill: '🧽', loo: '🚽', power: '💡', hen: '👰' };
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const BEN = V(-12.75, 0, -7.4), HATCH = V(4.5, 0, -8.15);
+const BEN = V(-13.2, 0, -7.4), HATCH = V(4.5, 0, -8.15);
 const DISHES = ['scampi and chips', 'pie and mash', 'the Ronnie Platter', 'a gammon steak', 'fish and chips', 'a jacket potato', 'a mixed grill', 'the Sunday roast'];
 const ORDER_LINES = [['2x Scampi & chips', '1x Pie & mash', '1x Kids nuggets', 'NO SALAD (thanks Ron)'], ['1x Mixed grill', '1x Gammon, egg AND pineapple', '2x Garlic bread', 'Extra gravy. EXTRA.'], ['3x Fish & chips', '1x Sausage & mash', 'Mushy peas x4', 'Can Ronnie NOT touch it'], ['1x Sunday roast', '1x Veggie lasagne', '2x Chips (cheesy)', 'Ketchup on the side']];
 
