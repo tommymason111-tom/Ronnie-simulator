@@ -9,7 +9,7 @@ import { TASKS } from './imposter.js';
 import { Panel, makeGame } from './impgames.js';
 import { SQUAD } from './squad.js';
 
-const KIND_ICON = { hold: '🍺', crank: '⚙️', swipe: '💳', wires: '🔌', collect: '🧺', plunge: '🪠', order: '📖', scrub: '🧽', code: '🔢', dial: '⏲️', switches: '💡' };
+const KIND_ICON = { hold: '🍺', crank: '⚙️', swipe: '💳', wires: '🔌', collect: '🧺', plunge: '🪠', order: '📖', scrub: '🧽', code: '🔢', dial: '⏲️', switches: '💡', reels: '🍒', catch: '🧻', temp: '🍟', sort: '🍽️', whack: '🍺', simon: '🕒', place: '🍴', light: '🕯️', stacker: '🍹', sweep: '🧹', pipes: '🚧' };
 const NAME = (id) => id === 'tommy' ? 'TOMMY' : ((SQUAD[id] && SQUAD[id].name) || id).toUpperCase();
 
 export function startDev(RS) {
