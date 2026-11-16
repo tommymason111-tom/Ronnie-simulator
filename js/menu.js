@@ -1,10 +1,12 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '2.21.2';
+var GAME_VERSION = '2.21.4';
 // when each update came out (UK time)
-var GAME_WHEN = {'2.17.0': '2026-11-15T23:59', '2.16.1': '2026-11-15T23:55', '2.16.0': '2026-11-15T23:30', '2.15.0': '2026-11-15T21:30', '2.14.0': '2026-11-15T20:24', '2.13.0': '2026-11-15T19:42', '2.12.0': '2026-11-15T19:05', '2.11.0': '2026-11-15T17:55', '2.10.0': '2026-11-15T17:10', '1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.9.0': '2026-11-15T16:54', '2.8.0': '2026-11-15T16:45', '2.7.0': '2026-11-15T16:34', '2.6.3': '2026-11-15T16:15', '2.6.2': '2026-11-15T16:15', '2.6.1': '2026-11-15T16:00', '2.6.0': '2026-11-15T15:54', '2.5.3': '2026-11-15T15:48', '2.5.2': '2026-11-15T15:46', '2.5.1': '2026-11-15T15:43', '2.5.0': '2026-11-15T15:42', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
+var GAME_WHEN = {'2.21.4': '2026-11-16T03:40', '2.21.3': '2026-11-16T02:55', '2.17.0': '2026-11-15T23:59', '2.16.1': '2026-11-15T23:55', '2.16.0': '2026-11-15T23:30', '2.15.0': '2026-11-15T21:30', '2.14.0': '2026-11-15T20:24', '2.13.0': '2026-11-15T19:42', '2.12.0': '2026-11-15T19:05', '2.11.0': '2026-11-15T17:55', '2.10.0': '2026-11-15T17:10', '1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.9.0': '2026-11-15T16:54', '2.8.0': '2026-11-15T16:45', '2.7.0': '2026-11-15T16:34', '2.6.3': '2026-11-15T16:15', '2.6.2': '2026-11-15T16:15', '2.6.1': '2026-11-15T16:00', '2.6.0': '2026-11-15T15:54', '2.5.3': '2026-11-15T15:48', '2.5.2': '2026-11-15T15:46', '2.5.1': '2026-11-15T15:43', '2.5.0': '2026-11-15T15:42', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
 
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['2.21.4', ["A brand new start panel for every game: its own colour and icon, the three things to know at a glance, and one big PLAY button", "HOW TO PLAY is a button on the panel now (the pages open right there), instead of being in the way before every game", "The VR button only shows on a headset (or a computer with one): on a headset it's the main button", "CHANGE takes you straight back to picking a place and game"]],
+  ['2.21.3', ["Fixed: iPhones closing the game ('A problem repeatedly occurred') or going back to the home page when loading into the pub: the game now uses about half the memory, and looks exactly the same", "Playing one game after another no longer builds up memory"]],
   ['2.21.2', ["The Oysterfleet from outside, rebuilt from a photo of the real one: orange-red brick below, black weatherboarding above, orange tiled roofs with white fascias, the tall gabled block over the entrance, white windows, OYSTERFLEET HOTEL · PUB & RESTAURANT in gold, a blue plaque", "The entrance porch: its tiled gable with the maroon Hotel & Pub sign and ENTRANCE board, timber posts, arched leaded windows, window boxes and hanging baskets, the doors open, an A-board out front; the side door with railings and the Lighthouse Bar sign round the right", "The same look all the way round: the sides and the back (over the conservatory) too"]],
   ['2.21.1', ["Fixed: going out into the Oysterfleet car park could make phones reload the game (it was suddenly loading the whole restaurant, inside and all, which you can't see from out there)"]],
   ['2.21.0', ["The Griddy: slower steps, both arms moving together, and the OK sign over your eyes (the goggles), not peace signs", "Watching your own emote: the camera holds still (no swaying), and your floating first-person hand is hidden", "Pop-up words (emotes, notifications) are white with a thick black outline and a soft shadow: readable on every wall, floor and sky (the old yellow with a white edge was 1.4:1, this is 18.9:1)", "Imposter map: always upright (north at the top), and fills a phone held upright"]],
@@ -473,6 +475,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
         document.body.classList.add('ready');
         const p = PLACES.find(p => p.id === place), m = modeInfo(mode);
         const tag = document.getElementById('ready-tag'); if (tag) tag.textContent = `${p.name} · ${m.name}`;
+        fillCard(p, m);
         resolve({ place, mode });
       };
       if (instant !== true) chompSfx();
@@ -491,9 +494,31 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       if (window.ronnieHero && window.ronnieHero.inVR) setTimeout(finish, 60);
       else requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(finish, 60)));
     };
+    // ---- the panel over the level before you play: this game's own card (its colour, icon and the key facts)
+    const CARDS = {
+      everyone: { ac: '#ffd400', ac2: '#ff8a00', chips: [['🍔', 'Eat it all'], ['⚔️', 'Squad attacks'], ['🏆', '10 sizes']] },
+      sweep:    { ac: '#4fb3ff', ac2: '#1e4ea8', chips: [['⏱️', '90 seconds'], ['🛒', 'Fill the trolley'], ['👮', 'Dodge security']] },
+      bbq:      { ac: '#ff9a3c', ac2: '#c2410c', chips: [['🍖', 'Off the grill'], ['🥗', 'Dodge the salad'], ['⏱️', '2 minutes']] },
+      date:     { ac: '#e879f9', ac2: '#86198f', chips: [['👀', 'When she looks away'], ['❌', '3 strikes'], ['🍷', 'Date night']] },
+      chonkoff: { ac: '#facc15', ac2: '#ca8a04', chips: [['⏱️', '60 seconds'], ['🍟', 'Eat everything'], ['🏆', 'Beat your best']] },
+      chonkoff2:{ ac: '#facc15', ac2: '#ca8a04', chips: [['⏱️', '60s each'], ['📱', 'Pass and play'], ['🏆', 'Most eaten wins']] },
+      runpub:   { ac: '#39ff14', ac2: '#15803d', chips: [['⏱️', '6 min shift'], ['🍺', 'Pour the drinks'], ['💷', 'Earn tips']] },
+      imposter: { ac: '#ff3b3b', ac2: '#7f1d1d', ink: '#fff', chips: [['🔪', 'Find the imposter'], ['🔧', 'Do your jobs'], ['🔔', 'Call a meeting']] },
+      roam:     { ac: '#7dd3fc', ac2: '#0369a1', chips: [['🚶', 'Explore'], ['🕊️', 'No attacks'], ['♾️', 'No timer']] },
+    };
+    const fillCard = (p, m) => { const ui = document.getElementById('ui'); if (!ui) return;
+      const id = String(mode).replace(/^imposter.*/, 'imposter').replace(/^roam.*/, 'roam'), c = CARDS[id] || CARDS.everyone;
+      ui.style.setProperty('--ac', c.ac); ui.style.setProperty('--ac2', c.ac2); ui.style.setProperty('--ink', c.ink || '#111');
+      $('#ui-place').textContent = `${p.ico} ${p.name}`; $('#ui-ico').textContent = m.ico || '🍔'; $('#ui-mode').textContent = m.name;
+      const mpr = window.ronnieMP && window.ronnieMP.role; $('#ui-who').textContent = mpr ? '👥' : '';
+      $('#ui-chips').innerHTML = c.chips.map(([e, t]) => `<span><i>${e}</i>${t}</span>`).join('');
+      let seen = false; try { seen = !!localStorage.getItem('rs_seen_' + mode); } catch (e) {}
+      $('#ui-howto-btn').classList.toggle('fresh', !seen);      // (a game you've never played: the HOW TO PLAY button stands out)
+    };
     // ---- before it starts: a few pages on how THIS game works (arrows between them, then I'M READY)
-    const intro = (then) => {
-      const vr = !!(window.ronnieHero && window.ronnieHero.inVR), pc = !vr && !touchy;
+    const intro = (then, inUi) => {
+      const P = inUi ? '#uh-' : '#intro-';      // (on the menu's own page, or inside the panel over the level)
+      const vr = !!(window.ronnieHero && window.ronnieHero.inVR) || (inUi && document.body.classList.contains('vr-capable')), pc = !vr && !touchy;
       const C = vr ? { move: '🕹️ Left stick to walk (click it in to sprint), right stick to turn', grab: '✊ Grip or trigger to grab, with either hand (you can hold two things)', eat: '😋 Bring food up to your mouth to take a bite', throw: '🎯 Swing and let go to throw', slap: '✋ Swing your hand into someone to slap them', pause: '☰ Menu button to pause' }
         : pc ? { move: '⌨️ W A S D to walk, click and drag to look round', grab: '👆 Click food to pick it up', eat: '😋 E to eat (or drink)', throw: '🎯 Space or F to throw', slap: '✋ Click anyone nearby to slap them', pause: '⏸ Esc to pause' }
         : { move: '🕹️ Joystick to walk, drag the screen to look round', grab: '👆 Tap food to pick it up', eat: '😋 EAT button to take a bite', throw: '🎯 THROW button to chuck it', slap: '✋ Tap anyone nearby to slap them', pause: '⏸ PAUSE (top right) any time' };
@@ -539,8 +564,8 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       PAGES.imposter2 = PAGES.imposter; PAGES.roam0 = PAGES.roam;
       const pages = PAGES[mode] || PAGES.everyone; let i = 0;
       const draw = () => { const pg = pages[i];
-        $('#intro-title').textContent = pg.title; $('#intro-step').textContent = `HOW TO PLAY · PAGE ${i + 1} OF ${pages.length}`;
-        const pic = $('#intro-pic'); pic.style.animation = 'none'; void pic.offsetWidth; pic.style.animation = '';
+        $(P + 'title').textContent = pg.title; $(P + 'step').textContent = `HOW TO PLAY · PAGE ${i + 1} OF ${pages.length}`;
+        const pic = $(P + 'pic'); pic.style.animation = 'none'; void pic.offsetWidth; pic.style.animation = '';
         const squad = pg.who ? SQUAD.filter(q => pg.who.includes(q.n)) : SQUAD;
         const paint = () => window.__howto && window.__howto.drawHowPic(pic, pg.pic, { squad, device: vr ? 'vr' : pc ? 'pc' : 'phone' });
         if (window.__howto) paint();
@@ -549,16 +574,20 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
           window.addEventListener('howto-ready', () => { if (pages[i] === pg) paint(); }, { once: true });
           setTimeout(() => { if (pages[i] === pg) paint(); }, 300);
         }
-        $('#intro-lines').innerHTML = pg.lines.map(l => `<p class="sub">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`).join('');
-        $('#intro-dots').innerHTML = pages.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('');
-        $('#intro-prev').hidden = i === 0; $('#intro-next').hidden = i === pages.length - 1; $('#intro-ready').classList.toggle('last', i === pages.length - 1); };
-      $('#intro-prev').onclick = () => { if (i > 0) { i--; draw(); blip(520, 0.05); } };
-      $('#intro-next').onclick = () => { if (i < pages.length - 1) { i++; draw(); blip(620, 0.05); } };
-      $('#intro-ready').onclick = () => { $('#intro-ready').onclick = null; then(); };
-      draw(); show('intro');
+        $(P + 'lines').innerHTML = pg.lines.map(l => `<p class="sub">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`).join('');
+        $(P + 'dots').innerHTML = pages.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('');
+        $(P + 'prev').hidden = i === 0; $(P + 'next').hidden = i === pages.length - 1; $(P + 'ready').classList.toggle('last', i === pages.length - 1); };
+      $(P + 'prev').onclick = () => { if (i > 0) { i--; draw(); blip(520, 0.05); } };
+      $(P + 'next').onclick = () => { if (i < pages.length - 1) { i++; draw(); blip(620, 0.05); } };
+      $(P + 'ready').onclick = () => { $(P + 'ready').onclick = null; then(); };
+      draw(); if (inUi) document.getElementById('ui').classList.add('howto'); else show('intro');
     };
-    window.__menuIntro = (then) => intro(then);
-    $('#go').addEventListener('click', () => intro(() => go()));
+    // (the how-to-play pages aren't in the way any more: they're a button on the panel over the level)
+    window.__menuIntro = (then) => then();
+    $('#go').addEventListener('click', () => go());
+    const uiEl = document.getElementById('ui'), closeHow = () => { uiEl.classList.remove('howto'); blip(520, 0.05); };
+    $('#ui-howto-btn').addEventListener('click', () => { $('#ui-howto-btn').classList.remove('fresh'); try { localStorage.setItem('rs_seen_' + mode, '1'); } catch (e) {} blip(660, 0.06); intro(closeHow, true); });
+    $('#uh-close').addEventListener('click', closeHow);
     window.__menuGo = go;
     // the floating menu in VR (see ronnieHero.js) picks with these
     window.menuVR = {
@@ -580,12 +609,17 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       });
     }
     if (q.get('go')) { window.bootDone(); go(true); }
+    // CHANGE on the panel over the level: back to picking, with what you were playing already chosen
+    else if (q.get('pick')) { try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      if (saved.place && PLACES.some(p => p.id === saved.place)) place = saved.place; if (saved.mode && GAME_IDS.includes(saved.mode)) mode = saved.mode;
+      setTimeout(() => { drawPlace(); show('place'); }, 0); }
     // coming back from a level ("Change place or mode"): jump straight to picking
     // otherwise always open on the title screen, and tidy the address bar
     else if (location.search) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
   });
   const back = () => { location.href = location.pathname; };   // back to the title screen
   document.getElementById('back-menu').addEventListener('click', back);
+  document.getElementById('ui-change').addEventListener('click', () => { location.href = location.pathname + '?pick=mode'; });
   // keyboard: arrows on the place screen, Enter to go on
   document.addEventListener('keydown', (e) => {
     if (start.classList.contains('gone')) return;
