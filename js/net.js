@@ -78,7 +78,8 @@ export class Net {
       case 'leave': this.drop(m.id); this.emit('leave', m); break;
       case 'host': { const was = this.host; this.host = m.id === this.id; this.hostId = m.id; this.hostName = m.name || ''; for (const p of this.players.values()) p.host = p.id === m.id; this.emit('host', m, was); break; }
       case 'pong': if (m.c) { const r = performance.now() - m.c; this.rtt = this.rtt ? this.rtt * 0.7 + r * 0.3 : r; } break;
-      default: { const p = this.players.get(m.f); if (m.t === 'p' && p) { p.pose = m; p.at = performance.now(); (p.buf || (p.buf = [])).push({ t: p.at, m }); if (p.buf.length > 10) p.buf.shift(); } this.emit(m.t, m, p); }
+      default: { if (m.f && m.f !== this.id && !this.players.has(m.f) && this.status === 'on') { this.players.set(m.f, { id: m.f, name: m.name || '' }); this.emit('join', { id: m.f, name: m.name || '', quiet: true }); }      // (someone we missed coming in, e.g. while we were reconnecting: they're plainly here, so they're seen)
+        const p = this.players.get(m.f); if (m.t === 'p' && p) { p.pose = m; p.at = performance.now(); (p.buf || (p.buf = [])).push({ t: p.at, m }); if (p.buf.length > 10) p.buf.shift(); } this.emit(m.t, m, p); }
     }
   }
   drop(id) { const p = this.players.get(id); if (p && p.avatar) p.avatar.dispose(); this.players.delete(id); }
