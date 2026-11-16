@@ -1093,6 +1093,7 @@ function frame(simDt) {
   const dt = simDt ?? Math.min(clock.getDelta(), 0.05);
   try { selfBodyUpdate(dt); } catch (e) {}      // (with the real frame time: a fixed 1/60 made your own body's emotes run slow and its physics bodies run away)
   time += dt;
+  for (const f of (window.RS && window.RS.onFrame) || []) try { f(dt); } catch (e) { console.warn('onFrame', e); }      // (developer mode's test bench)
   const xr = renderer.xr.isPresenting;
   if (loadShown && time > 0.15) hideLoading();
   if (!xr) updateZoom();      // a couple of frames in: the level's there
@@ -1499,4 +1500,9 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { onFrame: [], resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+// developer mode (Settings cog -> DEVELOPER MODE): the test bench comes up once you press PLAY. (Only for this visit:
+// starting the page again goes back to normal)
+{ let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1'; sessionStorage.removeItem('rs_dev'); } catch (e) {}
+  if (dev) { let on = false; const go = () => { if (on) return; on = true; import('./devmode.js').then(m => m.startDev(window.RS)).catch(e => console.warn('dev', e)); };
+    for (const id of ['play-flat', 'enter-vr']) { const b = document.getElementById(id); if (b) b.addEventListener('click', () => setTimeout(go, 400)); } } }
