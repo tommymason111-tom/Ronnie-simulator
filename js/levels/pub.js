@@ -20,6 +20,7 @@ import { streetViewTex } from './kit.js';
 import { Dormant } from './dormant.js';
 import { skyDome, waterMaterial, updateOutdoor, leafyHedge, leafyBall, pottedPlant, figTree, terrace, HAZE } from './outdoor.js';
 import { REST, REST_BOUNDS, REST_H, inRestaurant, inNewArea, buildRestaurant } from './oysterRestaurant.js';
+import { buildCarPark, inCarPark } from './carpark.js';
 import { Kit, carpetTex, tileTex, canvasTex, FONT, brickTex, booksWallTex, tngTex, oakPanelTex, woodTex } from './kit.js';
 
 const H = 3.0;
@@ -124,20 +125,22 @@ export function buildPub(scene) {
   k.floor(X(15), Z(1060), X(195), Z(1190), tiles, 0.003, 1.0);                          // restaurant entrance
   k.floor(X(175), Z(305), X(415), Z(605), tileTex('#d8d8d8', '#cfcfcf', '#9a9a9a', 40), 0.003, 0.6);   // men's, disabled, corridor
   k.floor(X(415), Z(345), X(615), Z(605), tileTex('#e8dfe4', '#ddd3d8', '#b0a4aa', 40), 0.003, 0.6);   // women's
-  { const sh = new THREE.Shape([[B.x0, B.z0], [X(1045), B.z0], [X(1045), GZ], [B.x0, GZ]].map(([x, z]) => new THREE.Vector2(x, z)));   // ceiling (the building only: sky over the garden;
+  const ROOF = [[B.x0, B.z0], [-16.7, B.z0], [-16.7, -14.45], [-10.2, -14.45], [-10.2, -16.08], [-4.44, -16.08], [-4.44, -15.12], [0.36, -15.12], [0.36, -12.24], [2.28, -14.16], [4.2, -14.16], [5.64, -13.2], [5.64, -11.28], [3.72, -8.88], [6.12, -8.88], [6.12, -6.84], [X(1045), -6.84], [X(1045), GZ], [B.x0, GZ]];   // (the building: out the front is open sky)
+  const underRoof = (x, z) => inPoly(ROOF, x, z);
+  { const sh = new THREE.Shape(ROOF.map(([x, z]) => new THREE.Vector2(x, z)));   // ceiling (the building only: sky over the garden;
     sh.holes.push(new THREE.Path(REST.main.map(([x, z]) => new THREE.Vector2(x, z))));
     const g = new THREE.ShapeGeometry(sh); g.rotateX(Math.PI / 2);
     const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0xf7f3ea, emissive: 0xbdb5a2 })); m.position.y = H; scene.add(m);
     // and a solid ceiling at 3m everywhere but the dining room, so thrown food bounces off it
     const inMain = (x, z) => { let c = false; const P = REST.main; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, zi] = P[i], [xj, zj] = P[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
-    for (let z = B.z0; z < GZ; z += 1) { let a0 = null; for (let x = B.x0; x <= X(1045) + 1; x += 1) { const solid = x < X(1045) && !inMain(x + 0.5, z + 0.5) && !inMain(x, z) && !inMain(x + 1, z + 1) && !inMain(x + 1, z) && !inMain(x, z + 1);
+    for (let z = B.z0; z < GZ; z += 1) { let a0 = null; for (let x = B.x0; x <= X(1045) + 1; x += 1) { const solid = x < X(1045) && underRoof(x + 0.5, z + 0.5) && !inMain(x + 0.5, z + 0.5) && !inMain(x, z) && !inMain(x + 1, z + 1) && !inMain(x + 1, z) && !inMain(x, z + 1);
       if (solid && a0 === null) a0 = x; if (!solid && a0 !== null) { k.colliders.push({ min: new THREE.Vector3(a0, H, z), max: new THREE.Vector3(Math.min(x, X(1045)), H + 0.3, Math.min(z + 1, GZ)) }); a0 = null; } } }
   }
   // everything outside the rooms is solid (merged into strips so it stays cheap)
   { const C = 0.3; let prev = null;
     for (let z = B.z0; z < B.z1 - 1e-6; z += C) {
       const runs = []; let s = null;
-      for (let x = B.x0; x < B.x1 + C; x += C) { const solid = x < B.x1 && !inside(x + C / 2, z + C / 2); if (solid && s === null) s = x; if (!solid && s !== null) { runs.push([s, x]); s = null; } }
+      for (let x = B.x0; x < B.x1 + C; x += C) { const solid = x < B.x1 && !inside(x + C / 2, z + C / 2) && !inCarPark(x + C / 2, z + C / 2); if (solid && s === null) s = x; if (!solid && s !== null) { runs.push([s, x]); s = null; } }
       for (const [a, b] of runs) blk(a, z, Math.min(b, B.x1), Math.min(z + C, B.z1));
     }
   }
@@ -154,7 +157,8 @@ export function buildPub(scene) {
   WX(345, 415, 615, [], WALL); WZ(615, 345, 605); WZ(615, 605, 710, [], DARKWOOD, 1.1);   // (low beside the DJ booth, full height from the entrance)
   // entrance booking area (the front doors are on the angled top-right corner)
   WD(615, 465, 695, 385, WALL); WX(385, 695, 775, [], WALL);
-  const door = WD(775, 385, 835, 425, 0x3a2416, H, 0.1);
+  const door = (() => { const x0 = X(775), z0 = Z(385), x1 = X(835), z1 = Z(425), dx = x1 - x0, dz = z1 - z0, L = Math.hypot(dx, dz), ry = Math.atan2(-dz, dx);      // the front doorway: wide open (no wall across it), just the wall over the top
+    k.box(L + 0.1, H - 2.4, 0.16, (x0 + x1) / 2, (2.4 + H) / 2, (z0 + z1) / 2, PLASTER, { rot: [0, ry, 0] }); return { x0, z0, x1, z1, L, ry, ux: dx / L, uz: dz / L }; })();
   WZ(835, 425, 505, [], WALL); WD(835, 505, 755, 605, WALL);
   // the bar: top wall, back wall of the back bar, the corridor behind
   WX(605, 695, 855); WZ(855, 605, 925); WX(925, 835, 855);      // (a doorway from the corridor in behind the bar)      // (a door from behind the bar into the staff room)
@@ -815,7 +819,7 @@ export function buildPub(scene) {
       const piece = (s0, s1, y0, y1, d0, d1, color) => { const [x, z] = at((s0 + s1) / 2, (d0 + d1) / 2); k.box(s1 - s0, y1 - y0, d1 - d0, x, (y0 + y1) / 2, z, color, { rot: [0, ry, 0] }); };
       const OAKDR = 0x5a3418, OAKDL = 0x7a4a24, BR = 0xc9a24a;
       const st = new THREE.Mesh(new THREE.PlaneGeometry(LL - 0.2, 2.2), new THREE.MeshBasicMaterial({ map: streetViewTex(1), color: 0xd8d8d8 }));
-      { const [x, z] = at(LL / 2, 0.055); st.position.set(x, 1.15, z); st.rotation.y = ry; scene.add(st); }
+      void st;      // (no photo of a street: the real car park's out there now)
       piece(0, 0.12, 0, H, 0.05, 0.16, OAKDR); piece(LL - 0.12, LL, 0, H, 0.05, 0.16, OAKDR);                 // the frame
       piece(0.12, LL - 0.12, 2.28, 2.4, 0.05, 0.16, OAKDR); piece(0.12, LL - 0.12, H - 0.1, H, 0.05, 0.16, OAKDR);
       piece(0, LL, 0, 0.03, 0.05, 0.3, 0x8a8a8a);                                                           // the stone threshold
@@ -825,6 +829,9 @@ export function buildPub(scene) {
       // two leaves: stiles and rails, a fielded panel at the bottom, glass above with a bar, brass furniture
       const lw = (LL - 0.24) / 2;
       for (const [i, s0] of [0.12, 0.12 + lw].entries()) { const s1 = s0 + lw, D0 = 0.06, D1 = 0.11;
+        // (wedged wide open: each leaf turned 90° on its hinges, back into the reception, so the way in and out is clear)
+        const SH = i === 0 ? 0.12 : LL - 0.12, sw = (s2, d2) => i === 0 ? [SH + (d2 - 0.06), 0.06 + (s2 - SH)] : [SH - (d2 - 0.06), 0.06 + (SH - s2)];
+        const piece = (a0, a1, y0, y1, b0, b1, color) => { const [cs, cd] = sw((a0 + a1) / 2, (b0 + b1) / 2), [x, z] = at(cs, cd); k.box(b1 - b0, y1 - y0, a1 - a0, x, (y0 + y1) / 2, z, color, { rot: [0, ry, 0] }); };
         piece(s0, s0 + 0.09, 0.03, 2.27, D0, D1, OAKDL); piece(s1 - 0.09, s1, 0.03, 2.27, D0, D1, OAKDL);
         piece(s0 + 0.09, s1 - 0.09, 0.03, 0.2, D0, D1, OAKDL); piece(s0 + 0.09, s1 - 0.09, 0.8, 0.92, D0, D1, OAKDL); piece(s0 + 0.09, s1 - 0.09, 2.17, 2.27, D0, D1, OAKDL);
         piece(s0 + 0.09, s1 - 0.09, 0.2, 0.8, D0 + 0.01, D1 - 0.01, OAKDR); piece(s0 + 0.15, s1 - 0.15, 0.27, 0.73, D1 - 0.01, D1 + 0.005, OAKDL);   // fielded panel
@@ -832,14 +839,13 @@ export function buildPub(scene) {
         piece(s0 + 0.02, s1 - 0.02, 0.03, 0.2, D1, D1 + 0.004, BR);                                                // kick plate
         const hs = i === 0 ? s1 - 0.16 : s0 + 0.16;
         piece(hs - 0.05, hs + 0.05, 1.05, 1.45, D1, D1 + 0.004, BR);                                              // push plate
-        { const [x, z] = at(hs, D1 + 0.07); k.cyl(0.013, 0.013, 0.5, x, 1.1, z, BR, 10); } piece(hs - 0.015, hs + 0.015, 0.88, 0.9, D1, D1 + 0.07, BR); piece(hs - 0.015, hs + 0.015, 1.32, 1.34, D1, D1 + 0.07, BR);
-        { const [x, z] = at(s0 + lw / 2, D1 + 0.002); k.label('PUSH', 0.12, 0.04, [x, 1.5, z], [0, ry, 0], { bg: '#c9a24a', fg: '#2a1a0a', border: null, size: 60 }); }
+        { const [x, z] = at(...sw(hs, D1 + 0.07)); k.cyl(0.013, 0.013, 0.5, x, 1.1, z, BR, 10); } piece(hs - 0.015, hs + 0.015, 0.88, 0.9, D1, D1 + 0.07, BR); piece(hs - 0.015, hs + 0.015, 1.32, 1.34, D1, D1 + 0.07, BR);
+        { const [x, z] = at(...sw(s0 + lw / 2, D1 + 0.002)); k.label('PUSH', 0.12, 0.04, [x, 1.5, z], [0, ry + (i === 0 ? -Math.PI / 2 : Math.PI / 2), 0], { bg: '#c9a24a', fg: '#2a1a0a', border: null, size: 60 }); }
         const hx = i === 0 ? s0 + 0.05 : s1 - 0.05; piece(hx - 0.02, hx + 0.02, 0.4, 0.5, D1, D1 + 0.01, BR); piece(hx - 0.02, hx + 0.02, 1.8, 1.9, D1, D1 + 0.01, BR);   // hinges
         const cs = i === 0 ? s0 + 0.12 : s1 - 0.42; piece(cs, cs + 0.3, 2.3, 2.36, 0.16, 0.22, 0x2a2a2a);         // door closer
       }
-      piece(LL / 2 - 0.01, LL / 2 + 0.01, 0.03, 2.27, 0.11, 0.125, OAKDR);                                         // the meeting stile
-      { const [x, z] = at(LL / 2, 0.112); k.box(0.02, 0.18, 0.02, x, 2.12, z, BR, { rot: [0, ry, 0] }); }        // the drop bolt
-      { const [x, z] = at(0.12 + lw / 2, 0.115); k.label('OPEN DAILY 11–11 · FOOD 12–9', 0.42, 0.1, [x, 1.95, z], [0, ry, 0], { bg: '#10180f', fg: '#e8c45a', border: null, size: 40 }); }   // gilt lettering on the glass
+      // (no meeting stile or drop bolt: the doors are open)
+      // (no meeting stile or drop bolt: the doors are open)
       { const [x, z] = at(LL / 2, 0.17); k.label('EXIT', 0.36, 0.14, [x, H - 0.05 - 0.09, z + 0.0], [0, ry, 0], { bg: '#1b8a3a', fg: '#fff', border: null, size: 90, glow: true }); }
       { const [x, z] = at(LL + 0.25, 0.12); k.box(0.08, 0.12, 0.04, x, 1.25, z, 0xe8e8e8, { rot: [0, ry, 0] }); k.box(0.03, 0.03, 0.02, x, 1.25, z + 0.02, 0xd32f2f, { rot: [0, ry, 0] }); }   // the light switch / alarm panel
     }
@@ -1519,6 +1525,25 @@ export function buildPub(scene) {
     }
   }
   buildRestaurant(k, scene, { chairsAt });
+  buildCarPark(k, scene, { brick: oldBrickTex() });
+  // the pub's outside, seen from the car park: old brick on every wall that faces out the front, a stone coping along
+  // the top, frosted toilet windows, lamps either side of the doors, the name across the front
+  { const BR = oldBrickTex(), EH = H + 0.5;
+    const face = (x0, z0, x1, z1, nx, nz) => { const L = Math.hypot(x1 - x0, z1 - z0), cx = (x0 + x1) / 2 + nx * 0.1, cz = (z0 + z1) / 2 + nz * 0.1, ry = Math.atan2(-(z1 - z0), x1 - x0);
+      if (Math.abs(nx) < 0.01 || Math.abs(nz) < 0.01) { const alongX = Math.abs(z1 - z0) < 0.01; k.texBox(alongX ? L : 0.04, EH, alongX ? 0.04 : L, cx, EH / 2, cz, BR, { tile: 0.9 }); }
+      else { const t = BR.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(L / 0.9, EH / 0.9); const m = new THREE.Mesh(new THREE.PlaneGeometry(L, EH), new THREE.MeshLambertMaterial({ map: t })); m.position.set(cx + nx * 0.02, EH / 2, cz + nz * 0.02); m.rotation.y = Math.atan2(nx, nz); scene.add(m); }
+      k.box(Math.abs(nz) > 0.5 ? L + 0.1 : 0.3, 0.12, Math.abs(nz) > 0.5 ? 0.3 : L + 0.1, cx + nx * 0.05, EH + 0.06, cz + nz * 0.05, 0xc8c0b2, Math.abs(nx) > 0.01 && Math.abs(nz) > 0.01 ? { rot: [0, ry, 0] } : {}); };
+    face(-10.2, -16.08, -4.44, -16.08, 0, -1); face(-4.44, -16.08, -4.44, -15.12, 1, 0); face(-4.44, -15.12, 0.36, -15.12, 0, -1); face(0.36, -15.12, 0.36, -12.24, 1, 0);
+    face(0.36, -12.24, 2.28, -14.16, -0.7, -0.7); face(2.28, -14.16, 4.2, -14.16, 0, -1); face(5.64, -13.2, 5.64, -11.28, 1, 0); face(5.64, -11.28, 3.72, -8.88, 0.78, 0.62);
+    face(6.12, -8.88, 6.12, -6.84, 1, 0); face(6.12, -6.84, X(1045), -6.84, 0, -1); face(X(1045), -6.84, X(1045), 7.92, 1, 0); face(-16.7, -14.45, -10.2, -14.45, 0, -1); face(-10.2, -14.45, -10.2, -16.08, -1, 0);
+    // the doorway's surround from outside: brick piers, a lintel, two coach lamps, the name in gold over the top
+    { const x0 = 4.2, z0 = -14.16, x1 = 5.64, z1 = -13.2, ry = Math.atan2(-(z1 - z0), x1 - x0), nx = -0.55, nz = -0.83;
+      { const t = BR.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1.95 / 0.9, (EH - 2.42) / 0.9); const m = new THREE.Mesh(new THREE.PlaneGeometry(1.95, EH - 2.42), new THREE.MeshLambertMaterial({ map: t })); m.position.set((x0 + x1) / 2 + nx * 0.12, 2.42 + (EH - 2.42) / 2, (z0 + z1) / 2 + nz * 0.12); m.rotation.y = Math.atan2(nx, nz); scene.add(m); }
+      k.box(1.95, 0.14, 0.18, (x0 + x1) / 2 + nx * 0.1, 2.45, (z0 + z1) / 2 + nz * 0.1, 0xc8c0b2, { rot: [0, ry, 0] });
+      for (const [px, pz] of [[x0, z0], [x1, z1]]) { k.box(0.16, 0.34, 0.16, px + nx * 0.25, 2.1, pz + nz * 0.25, 0x1a1a1a, { rot: [0, ry, 0] }); k.box(0.1, 0.22, 0.1, px + nx * 0.25, 2.08, pz + nz * 0.25, 0xffe8a8, { rot: [0, ry, 0] }); k.halo(px + nx * 0.3, 2.08, pz + nz * 0.3, 0.7, 0xffd890); } }
+    k.label('THE OYSTERFLEET', 3.2, 0.5, [3.24, H + 0.05, -14.16 - 0.13], [0, Math.PI, 0], { bg: '#1b3a2a', fg: '#e8c45a', border: '#d4af37', size: 90 });
+    for (const x of [-3.2, -1.6, -8.6, -6.4]) { const z = x > -4.4 ? -15.12 - 0.13 : -16.08 - 0.13; k.box(0.75, 0.55, 0.03, x, 2.0, z, 0xdfe8ec); k.box(0.85, 0.06, 0.12, x, 1.7, z - 0.03, 0xc8c0b2); }
+    k.label('OPEN DAILY 11–11 · FOOD 12–9 · DOGS WELCOME · RONNIE: SEE BAR STAFF', 2.2, 0.24, [3.0, 1.7, -14.16 - 0.13], [0, Math.PI, 0], { bg: '#1b3a2a', fg: '#e8c45a', border: null, size: 44 }); }
   k.splitX = -14.0;                                   // (the restaurant's furniture merges separately from the pub's, so it can be skipped)
   dorm.build(scene);
   const sky = skyDome(scene);
@@ -1544,8 +1569,8 @@ export function buildPub(scene) {
     for (const o of scene.children.slice(sceneStart)) if (o.isMesh && !o.isInstancedMesh && o.geometry) { o.geometry.computeBoundingBox(); bx.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); if (bx.max.x < -13.6) west.push({ o, x0: bx.min.x, x1: bx.max.x, z0: bx.min.z, z1: bx.max.z }); }
     scene.onBeforeRender = (r, sc, camera) => {
       cam.setFromMatrixPosition(camera.matrixWorld);
-      const outside = cam.z > Z(1305); if (scene.fog && !scene.userData.fogLock) { scene.fog.near = outside ? 27 : 1e4; scene.fog.far = outside ? 39.5 : 2e4; }   // (Imposter sets its own: how far you can see)
-      const inPub = cam.x > DX + 0.05 && cam.z < Z(1305);          // (only from inside the pub itself is the restaurant hidden behind walls)
+      const outFront = inCarPark(cam.x, cam.z) || cam.z < -15.2, outside = cam.z > Z(1305) || outFront; if (scene.fog && !scene.userData.fogLock) { scene.fog.near = outside ? 27 : 1e4; scene.fog.far = outside ? 39.5 : 2e4; }   // (Imposter sets its own: how far you can see)
+      const inPub = cam.x > DX + 0.05 && cam.z < Z(1305) && !outFront;          // (only from inside the pub itself is the restaurant hidden behind walls)
       for (const w of west) {
         if (!inPub) { w.o.visible = !(cam.z > GZ && w.z1 < GZ - 0.3); continue; }      // (out in the garden the restaurant is behind the pub's solid back wall)
         // the wedge from the eye through the doorway, at the near and far x of this piece

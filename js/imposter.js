@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { sfx } from './audio.js';
 import { Panel, makeGame, rr, txt } from './impgames.js';
 import { REST } from './levels/oysterRestaurant.js';
+import { CARPARK } from './levels/carpark.js';
 
 export const IMP = { KILL_CD: 30, START_CD: 15, KILL_R: 1.8, REPORT_R: 2.6, USE_R: 1.55, MEET_T: 90, EMERG_CD: 15, TASKS_EACH: 5, SAB_CD: 30, CRIT_T: 45, MIN_PLAYERS: 3 };
 const V = (x, z) => new THREE.Vector3(x, 0, z);
@@ -44,11 +45,13 @@ export const TASKS = [
   { id: 'candles', name: 'Light the candles', room: 'RESTAURANT', at: [-16.6, 5.0], kind: 'collect', o: { title: 'LIGHT THE CANDLES', icon: '🕯️', into: '🔥', n: 5, hint: 'TAP EVERY CANDLE' } },
   { id: 'parasol', name: 'Put the parasols up', room: 'BEER GARDEN', at: [0.25, 37.0], kind: 'crank', o: { title: 'PUT THE PARASOL UP', hint: 'WIND IT UP', turns: 3 } },
   { id: 'gglasses', name: 'Clear the garden glasses', room: 'BEER GARDEN', at: [5.6, 37.0], kind: 'collect', o: { title: 'CLEAR THE GARDEN GLASSES', icon: '🍹', into: '🧺', n: 7, hint: 'TAP EVERY GLASS' } },
+  { id: 'carglass', name: 'Sweep up the glass by Lewis\'s car', room: 'CAR PARK', at: [7.9, -12.7], kit: [8.35, 0, -10.88, 0, 'none'], kind: 'collect', o: { title: 'SWEEP UP THE GLASS', icon: '💎', into: '🗑️', n: 8, hint: 'TAP EVERY BIT OF GLASS' } },
+  { id: 'barrier', name: 'Fix the car park barrier', room: 'CAR PARK', at: [8.6, -22.0], kit: [8.3, 0, -22.6, 0, 'none'], kind: 'wires' },
 ];
 const TASK = Object.fromEntries(TASKS.map(t => [t.id, t]));
 const TASK_SIGN = { guinness: '🍺 POUR A GUINNESS', barrel: '🛢️ CHANGE THE BARREL', till: '💳 CARD MACHINE', jukebox: '🎵 JUKEBOX', fruit: '🍒 FRUIT MACHINE', toilet: '🚽 BLOCKED TOILET', looroll: '🧻 LOO ROLL',
   bookings: '📖 BOOKINGS', fryer: '🍟 THE FRYER', empties: '🍺 EMPTIES', tables: '🧽 WIPE TABLES', slots: '🎰 SLOT MACHINE', keg: '⏲️ KEG PRESSURE', rota: '🕒 CLOCK IN',
-  dishes: '🍳 WASH THE POTS', cutlery: '🍴 LAY THE TABLES', candles: '🕯️ CANDLES', parasol: '⛱️ PARASOLS', gglasses: '🍹 GARDEN GLASSES' };
+  dishes: '🍳 WASH THE POTS', cutlery: '🍴 LAY THE TABLES', candles: '🕯️ CANDLES', parasol: '⛱️ PARASOLS', gglasses: '🍹 GARDEN GLASSES', carglass: '🚗 SWEEP THE GLASS', barrier: '🚧 THE BARRIER' };
 // trapdoors (the imposter's vents): hop between them unseen
 const VENTS = [{ name: 'CELLAR HATCH', at: [5.08, -7.81] }, { name: 'KITCHEN', at: [-12.5, -1.0] }, { name: 'GAMBLING ROOM', at: [6.5, 12.5] }, { name: 'MEN\'S TOILETS', at: [-6.53, -13.1] }];
 const FUSE = { name: 'FUSE BOX · STAFF ROOM', at: [9.0, -0.7], kit: [9.0, 0, -0.07, Math.PI] };      // (on the staff room's right-hand wall as you come in)
@@ -595,7 +598,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   drawMap() {
     // the whole Oysterfleet: the pub, the restaurant off to the left, the conservatory and the beer garden out the back.
     // On a landscape screen it's turned on its side (so it fills the screen), on a portrait one it's upright
-    const land = innerWidth > innerHeight, c = this.mapCv, Bx = [-29.6, 11.2], Bz = [-17, 42.6], TOP = 44, PAD = 14;
+    const land = innerWidth > innerHeight, c = this.mapCv, Bx = [-29.6, 16.8], Bz = [-24.4, 42.6], TOP = 44, PAD = 14;
     const W = land ? 1100 : 720, H = land ? 760 : 1040; if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
     const x = c.getContext('2d'), sc = land ? Math.min((W - PAD * 2) / (Bz[1] - Bz[0]), (H - TOP - PAD) / (Bx[1] - Bx[0])) : Math.min((W - PAD * 2) / (Bx[1] - Bx[0]), (H - TOP - PAD) / (Bz[1] - Bz[0]));
     const ox = land ? (W - (Bz[1] - Bz[0]) * sc) / 2 : (W - (Bx[1] - Bx[0]) * sc) / 2;
@@ -609,6 +612,10 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     room(-10, 10.68, 16.08, 42.4, '#8e8a84', ''); room(-10, 10.68, 16.08, 20.3, '#4a3a30', 'DECK', 13); room(-10, 10.68, 20.5, 23.0, '#7fc4e8', ''); room(-6.2, -5.0, 20.3, 23.2, '#6a4a30', '');
     { const cx = 1.87, cz = 32.3, r = 3.0, pts = []; for (let i = 0; i < 8; i++) { const a = (i + 0.5) * Math.PI / 4; pts.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]); } poly(pts, '#3a2a22', 'GARDEN BAR', 13); }
     { const [u, v] = P(0, 39.5); txt(x, '🌳 BEER GARDEN', u, v, 17, '#fff'); }
+    // the car park out the front: the tarmac, the bays, Lewis's car
+    poly(CARPARK, '#3d3f43', '', 12, '#1a1a1a'); { const [u, v] = P(11.5, -17.5); txt(x, '🚗 CAR PARK', u, v, 15, '#fff'); }
+    for (const zz of [-21.9, -19.4, -16.9, -14.4, -11.9, -9.4, -6.9]) { const [a1, b1] = P(12.0, zz), [a2, b2] = P(16.4, zz); x.strokeStyle = '#ddd'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(a1, b1); x.lineTo(a2, b2); x.stroke(); }
+    { const pts = [[7.3, -10.0], [9.4, -10.0], [9.4, -11.8], [7.3, -11.8]]; poly(pts, '#c8102e', '', 10, '#111'); }
     // the restaurant
     poly(REST.main, '#5a2a1e', 'RESTAURANT', 17); poly(REST.kitchen, '#e0e0e0', 'R. KITCHEN', 11); poly(REST.hall, '#b49a7a', '', 10);
     // the pub
