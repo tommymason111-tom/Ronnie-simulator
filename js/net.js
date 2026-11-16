@@ -96,6 +96,8 @@ export class Net {
       const hands = P.flatMode ? [P.flatAnchorPos(), P.head] : [(R0 || P.hands[0]).palm, (L0 || P.hands.find(h => h !== R0) || P.hands[1]).palm];
       const r2 = (v) => Math.round(v * 100) / 100;      // (head and hands to the millimetre, which way you're looking to 1/100)
       const m = { t: 'p', c: this.char || 'ronnie', h: [r(P.head.x), r(P.head.y), r(P.head.z)], q: [r2(q.x), r2(q.y), r2(q.z), r2(q.w)], l: [r(hands[1].x), r(hands[1].y), r(hands[1].z)], rh: [r(hands[0].x), r(hands[0].y), r(hands[0].z)], s: r(P.scale), st: G.stage, flat: P.flatMode ? 1 : 0 };
+      // (watching your own emote from out front in VR: everyone else still sees you where you were standing)
+      const H = P.vrEmoteHold; if (H) { m.h = H.h.map(r); m.q = H.q.map(r2); m.l = H.l.map(r); m.rh = H.rh.map(r); m.flat = 0; }
       // hand tracking (only if you're actually using it): how bent each finger is, 10 characters for both hands. (Called
       // fc: the room marks every message with who sent it as f, which would overwrite it and lose where you are)
       if (!P.flatMode && (R0 && R0.isHand || L0 && L0.isHand)) m.fc = (R0 && R0.isHand && fingerCurls(R0.hand) || '-----') + (L0 && L0.isHand && fingerCurls(L0.hand) || '-----');
