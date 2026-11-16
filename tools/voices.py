@@ -6,6 +6,7 @@
                                                           in the ElevenLabs voice called "Tommy"
   python3 tools/voices.py tommy "Tommy" --only 3          just the first 3 (to listen before doing them all)
   python3 tools/voices.py tommy "Tommy" --force           make every line again (after changing the voice on ElevenLabs)
+  ... --emphasis                                          use ElevenLabs v3 with a delivery tag per line (more acted)
 
 The lines file is written by the game (lineHash/cleanLine in voices.js, so the ids always match): [{"h": id, "t": text}].
 Clips go to assets/voices/<char>/<id>.mp3 and are listed in assets/voices/manifest.json.
@@ -56,8 +57,11 @@ def main():
     print(f'{char}: voice {name} ({vid}), {len(todo)} to make, {sum(len(l["t"]) for l in todo)} characters')
     for i, l in enumerate(todo):
         try:
-            mp3 = call(f'/v1/text-to-speech/{vid}?output_format=mp3_44100_64', {'text': delivery(l['t']) + l['t'], 'model_id': 'eleven_v3',
-                       'voice_settings': {'stability': 0.5, 'similarity_boost': 0.8}}, accept='audio/mpeg')
+            if '--emphasis' in a:      # (ElevenLabs v3 with a delivery tag per line: more acted, stresses CAPITALS)
+                body = {'text': delivery(l['t']) + l['t'], 'model_id': 'eleven_v3', 'voice_settings': {'stability': 0.5, 'similarity_boost': 0.8}}
+            else:                      # (the original: multilingual v2)
+                body = {'text': l['t'], 'model_id': 'eleven_multilingual_v2', 'voice_settings': {'stability': 0.45, 'similarity_boost': 0.8, 'style': 0.3, 'use_speaker_boost': True}}
+            mp3 = call(f'/v1/text-to-speech/{vid}?output_format=mp3_44100_64', body, accept='audio/mpeg')
         except urllib.error.HTTPError as e:
             print('  FAILED', l['h'], e.code, e.read()[:200]); break
         open(os.path.join(out, l['h'] + '.mp3'), 'wb').write(mp3); have.add(l['h'])
