@@ -77,6 +77,7 @@ export class Kit {
       const merged = new THREE.Mesh(g, list[0].material); this.scene.add(merged);
       for (const m of list) { this.scene.remove(m); m.geometry.dispose(); }
     }
+    this.texMeshes = (this.texMeshes || []).filter(m => m.parent);      // (forget the ones merged away)
   }
   // Two boxes with a face in exactly the same place flicker ("z-fighting": the GPU can't tell which is in front).
   // Find every such pair (same plane, facing the same way, overlapping) and pull the later box's face in by 1.5mm.
@@ -272,12 +273,14 @@ export class Kit {
     this.flushInstances();
     this.mergeTexBoxes();
     this.zfixed = this.separateCoplanar();
+    for (const r of this.boxRec || []) r.g = null;      // (only needed to fix the flicker above; kept the shapes alive)
     if (this.pools) this.pools.build(this.scene);
     if (this.halos) this.halos.build(this.scene);
     // merge the furniture in 12m patches (not one mesh for the whole level), so patches out of view aren't drawn
     const cells = new Map(), c = new THREE.Vector3();
     for (const p of this.parts) { p.computeBoundingBox(); p.boundingBox.getCenter(c); const w = this.splitX != null && c.x < this.splitX, cs = w ? 6 : 12, key = (w ? 'W' : '') + Math.floor(c.x / cs) + ',' + Math.floor(c.z / cs); (cells.get(key) || cells.set(key, []).get(key)).push(p); }
     for (const list of cells.values()) this.scene.add(new THREE.Mesh(merge(list), vcLambert));
+    this.parts = []; cells.clear();      // (merged: the separate pieces would otherwise sit in memory for the whole game)
     const hemi = new THREE.HemisphereLight(sky, ground, hemiI);
     this.scene.add(hemi);
     this.scene.add(new THREE.AmbientLight(0xfff0dc, ambient));     // big rooms need a little fill everywhere

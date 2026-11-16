@@ -32,7 +32,7 @@ export function fetchModel(url) {
     const p = (async () => {
       let err;
       for (let i = 0; i < 4; i++) {
-        try { return await new GLTFLoader().loadAsync(url); }
+        try { const g = await new GLTFLoader().loadAsync(url); g.parser = null; return g; }      // (the loader keeps the whole download and its pieces too: only the model's needed)
         catch (e) { err = e; await new Promise(r => setTimeout(r, 600 * (i + 1))); }
       }
       MODELS.delete(url); throw err;
@@ -40,6 +40,35 @@ export function fetchModel(url) {
     MODELS.set(url, p);
   }
   return MODELS.get(url);
+}
+// A character's picture and its cut-out mask (the eye openings; the model keeps it in its occlusion slot) made into
+// ONE picture: the mask goes in the colour picture's spare alpha channel. Drawn exactly the same (the mask is cut at
+// the same 0.5 either way, and filtered the same), but one picture on the graphics chip instead of two, and the
+// originals let go of. Done once per model, shared by everything that shows that person.
+export function skinOf(gltf, old) {
+  if (gltf.__skin) return gltf.__skin;
+  const m = old.map, a = old.aoMap, mi = m && m.image; let out = { map: m || null, alphaMap: a || null, thumb: null };
+  try {
+    if (mi && mi.width) { const th = document.createElement('canvas'); th.width = th.height = 128; th.getContext('2d').drawImage(mi, 0, 0, 128, 128); out.thumb = th; }      // (a little copy: emotes read skin colour from it)
+    const same = a && a.image && a.image.width && a.channel === m.channel && a.offset.equals(m.offset) && a.repeat.equals(m.repeat) && a.rotation === m.rotation;
+    if (mi && mi.width && same) {
+      const w = mi.width, h = mi.height, c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(mi, 0, 0); const px = g.getImageData(0, 0, w, h).data;
+      g.clearRect(0, 0, w, h); g.drawImage(a.image, 0, 0, w, h); const al = g.getImageData(0, 0, w, h).data;
+      for (let i = 3; i < px.length; i += 4) px[i] = al[i - 2];                  // (the mask's green, as three.js reads it)
+      c.width = c.height = 1;
+      const t = new THREE.DataTexture(px, w, h, THREE.RGBAFormat);
+      t.colorSpace = THREE.SRGBColorSpace; t.flipY = m.flipY; t.wrapS = m.wrapS; t.wrapT = m.wrapT; t.channel = m.channel;
+      t.offset.copy(m.offset); t.repeat.copy(m.repeat); t.rotation = m.rotation; t.center.copy(m.center);
+      t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4;
+      t.userData.keep = true; t.userData.thumb = out.thumb; t.needsUpdate = true;
+      t.onUpdate = () => { t.image = { data: null, width: w, height: h }; };      // (on the chip: the spare copy goes)
+      out = { map: t, alphaMap: null, packed: true, thumb: out.thumb };
+      for (const im of [mi, a.image]) try { im.close && im.close(); } catch (e) {}
+    }
+  } catch (e) { console.warn('skin', e); }
+  if (out.map) out.map.userData.thumb = out.thumb;
+  return (gltf.__skin = out);
 }
 export const preloadModels = (urls) => Promise.allSettled(urls.map(fetchModel));
 const legSide = (d) => d.name.includes('Leg') ? (d.name.endsWith('L') ? 1 : -1) : 0;
@@ -267,10 +296,11 @@ export class Ragdoll {
     geo.applyMatrix4(src.matrixWorld);
     const old = src.material;
     // a little self-lighting from his own texture softens the low-poly facets under harsh lights
-    const mat = new THREE.MeshLambertMaterial({ map: old.map || null, normalMap: old.normalMap || null, color: 0xe6e6e6, emissive: 0x3a3a3a, emissiveMap: old.map || null, side: old.side || THREE.FrontSide });   // (double-sided if the model says so)
+    const skin = skinOf(gltf, old);
+    const mat = new THREE.MeshLambertMaterial({ map: skin.map, normalMap: old.normalMap || null, color: 0xe6e6e6, emissive: 0x3a3a3a, emissiveMap: skin.map, side: old.side || THREE.FrontSide });   // (double-sided if the model says so)
     if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
-    // the eye openings are cut out with a smooth mask (stored in the model's occlusion slot)
-    if (old.aoMap) { mat.alphaMap = old.aoMap; mat.alphaTest = 0.5; mat.side = THREE.DoubleSide; }   // double-sided: steep views into a socket never see through his head
+    // the eye openings are cut out with a smooth mask (stored in the model's occlusion slot; packed into the picture's alpha)
+    if (old.aoMap) { mat.alphaMap = skin.alphaMap; mat.alphaTest = 0.5; mat.side = THREE.DoubleSide; }   // double-sided: steep views into a socket never see through his head
     mat.map && (mat.map.anisotropy = 4);
     // emote paint: dye the hair (dark texels on the top of the head), turn the skin orange, put a navy coat on (clothes
     // between the knees and the neck), all from the model's own texture. Heights are bind-pose fractions of the model.

@@ -2,15 +2,15 @@
 // the models have loaded, the people are posed side by side, photographed (rendered offscreen, head and
 // shoulders), and printed onto the canvas over a painted backdrop with a caption.
 import * as THREE from 'three';
-import { fetchModel } from './ragdoll.js';
+import { fetchModel, skinOf } from './ragdoll.js';
 
 async function personMesh(url) {
   const gltf = await fetchModel(url);
   let src = null; gltf.scene.traverse(o => { if (o.isMesh && !src) src = o; });
   src.updateWorldMatrix(true, false);
   const geo = src.geometry.clone(); geo.applyMatrix4(src.matrixWorld);
-  const old = src.material, mat = new THREE.MeshLambertMaterial({ map: old.map || null, color: 0xffffff, emissive: 0x2a2a2a, emissiveMap: old.map || null });
-  if (old.aoMap) { mat.alphaMap = old.aoMap; mat.alphaTest = 0.5; mat.side = THREE.DoubleSide; }
+  const old = src.material, skin = skinOf(gltf, old), mat = new THREE.MeshLambertMaterial({ map: skin.map, color: 0xffffff, emissive: 0x2a2a2a, emissiveMap: skin.map });
+  if (old.aoMap) { mat.alphaMap = skin.alphaMap; mat.alphaTest = 0.5; mat.side = THREE.DoubleSide; }
   return new THREE.Mesh(geo, mat);
 }
 

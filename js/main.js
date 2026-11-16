@@ -24,6 +24,7 @@ import { Net, newCode } from './net.js';
 import { MPSync } from './mpsync.js';
 import { foodGlow } from './foods.js';
 import { EMOTES, CHAR_EMOTES, EmotePlayer, emoteInfo } from './emotes.js';
+import { sweep, releaseLevelGeometry, releaseTextures } from './memory.js';
 import { Music } from './music.js';
 import { PowerUps } from './powerups.js';
 import { Imposter } from './imposter.js';
@@ -51,6 +52,10 @@ renderer.xr.enabled = true;
 renderer.xr.setReferenceSpaceType('local-floor');
 renderer.xr.setFoveation(1);
 document.getElementById('app').appendChild(renderer.domElement);
+// iPhones can take the graphics chip's memory back (the app in the background, or short of memory). three.js can't
+// rebuild a whole level after that, so start the page again cleanly rather than leave a black or frozen screen
+renderer.domElement.addEventListener('webglcontextlost', (e) => { e.preventDefault(); console.warn('graphics context lost'); }, false);
+renderer.domElement.addEventListener('webglcontextrestored', () => { setTimeout(() => location.reload(), 50); }, false);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9db7ff);
@@ -59,6 +64,8 @@ camera.position.set(0, 1.6, 0);
 
 const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant, garden: buildGarden };
 const room = (BUILD[SEL.place] || buildRoom)(scene);
+const levelMeshes = []; scene.traverse(o => { if (o.isMesh) levelMeshes.push(o); });      // (the level itself: see memory.js)
+releaseLevelGeometry(levelMeshes, Infinity);      // (each piece's spare copy goes the moment it's first sent to the graphics chip: the peak while loading is what phones close a page for)
 FLOOR.at = room.floorAt || null;
 if (room.familyPhotos) setTimeout(() => import('./portraits.js').then(m => m.paintPhotos(renderer, room.familyPhotos)).catch(e => console.warn('photos', e)), 400);   // family photos from the models            // (raised floors: the ragdolls stand on them)
 if (room.shadows) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }     // sunny places get real sun shadows
@@ -635,7 +642,8 @@ function newGame(id, why) {
     const rc = director.receipt; if (rc && rc.parent === camera) { camera.remove(rc); rc.visible = false; } }
   setPaused(false); attackFx.removeAll(); SEL.mode = id;
   const tag = document.getElementById('ready-tag'); if (tag && PAUSE_MODES[id]) tag.textContent = tag.textContent.replace(/·.*$/, '· ' + PAUSE_MODES[id][1]);
-  director.start(id); mpAfterStart(); if (director.imposter) director.imposter.needSpawn = 2; else respawnPlayer();      // (Imposter puts everyone round the bell)
+  director.start(id); mpAfterStart(); if (director.imposter) director.imposter.needSpawn = 2; else respawnPlayer();
+  setTimeout(() => { try { sweep(scene); } catch (e) {} }, 1500);      // (Imposter puts everyone round the bell)
   if (why) showBanner(why, (PAUSE_MODES[id] ? PAUSE_MODES[id][1] : id.toUpperCase()));
 }
 // the host changes the game (or restarts it): everyone in the room starts the new one together, from the start
@@ -704,6 +712,16 @@ function fitCamera() {
 }
 fitCamera();
 window.addEventListener('resize', fitCamera);
+// ---------------- memory (phones close a page that uses too much: see memory.js) ----------------
+{ let released = false, ticks = 0;
+  setInterval(() => {
+    if (!document.body.classList.contains('ready')) return; ticks++;
+    try {
+      if (!released && ticks > 2) { if (!releaseLevelGeometry(levelMeshes, 150)) released = true; }
+      if (ticks > 2) releaseTextures(renderer, scene);
+      sweep(scene);
+    } catch (e) { console.warn('memory', e); }
+  }, 2000); }
 
 // ---------------- modes ----------------
 function resetRonnie() {
@@ -1075,9 +1093,10 @@ function frame(simDt) {
       const spots = room.tommySpots || [];
       let s = { x: room.start.x, y: room.start.z };
       // a spot with a clear view (nothing right in front of the lens: a bush, a pillar)
-      const meshes = scene.children.filter(o => o.isMesh && !o.isInstancedMesh && o.visible && o.material && !o.material.transparent), rc = new THREE.Raycaster();
+      const meshes = scene.children.filter(o => o.isMesh && !o.isInstancedMesh && o.visible && o.material && !o.material.transparent && !o.userData.cpuFreed), rc = new THREE.Raycaster();
       for (let tries = 0; tries < 6 && spots.length; tries++) {
         const c = spots[Math.floor(Math.random() * spots.length)], y = (room.floorAt ? room.floorAt(c.x, c.y) : 0) + 1.65; let ok = true;
+        for (const b of room.blockers || []) if (c.x > b.x0 - 1 && c.x < b.x1 + 1 && c.y > b.z0 - 1 && c.y < b.z1 + 1 && (b.y1 ?? 2) > 1.2) { ok = false; break; }      // (the level's own shapes: by their footprints)
         for (let a = 0; a < 6 && ok; a++) { rc.set(_b.set(c.x, y, c.y), new THREE.Vector3(Math.sin(a * 1.047), 0, Math.cos(a * 1.047))); rc.far = 1.0; if (rc.intersectObjects(meshes, false).length) ok = false; }
         s = c; if (ok) break;
       }
@@ -1452,4 +1471,4 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { newGame: (m) => newGame(m), time: () => time, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)

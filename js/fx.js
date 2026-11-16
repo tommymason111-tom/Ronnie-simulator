@@ -82,6 +82,8 @@ function wordTex(word, color) {
       g.lineWidth = sw; g.strokeStyle = '#000'; g.strokeText(l, w / 2, y); g.fillStyle = fill; g.fillText(l, w / 2, y); });
   }, { mips: false });
   wordTexCache.set(key, t);
+  // (a long game says a lot of different words: only the last 150 are kept ready; older ones are let go)
+  if (wordTexCache.size > 150) { const [k0, t0] = wordTexCache.entries().next().value; wordTexCache.delete(k0); t0.dispose(); }
   return t;
 }
 
