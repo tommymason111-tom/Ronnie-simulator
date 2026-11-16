@@ -57,7 +57,7 @@ const mixv = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
 // folded right back up to the mouth
 const DRINK_U = [0.32, -0.42, 0.85], DRINK_L = [-0.45, 0.8, -0.35];
 // hand shapes: how far the fingers curl (the middle finger on its own), and which way the back of the hand faces
-const HANDS = { peace: { curl: 1, mid: 0 }, spidey: { curl: 1, mid: 1 }, point: { curl: 1, mid: 1 }, fist: { curl: 1, mid: 1 }, finger: { curl: 1, mid: 0 }, palm: { curl: 0.08, mid: 0.08 }, open: { curl: 0, mid: 0 }, goggle: { curl: 0.55, mid: 0.6 }, grip: { curl: 0.8, mid: 0.8 } };
+const HANDS = { ok: { curl: 0.65, mid: 0 }, peace: { curl: 1, mid: 0 }, spidey: { curl: 1, mid: 1 }, point: { curl: 1, mid: 1 }, fist: { curl: 1, mid: 1 }, finger: { curl: 1, mid: 0 }, palm: { curl: 0.08, mid: 0.08 }, open: { curl: 0, mid: 0 }, goggle: { curl: 0.55, mid: 0.6 }, grip: { curl: 0.8, mid: 0.8 } };
 const lam = (c, extra = {}) => new THREE.MeshLambertMaterial({ color: c, ...extra });
 
 // ------------------------------------------------------------------ hands for gestures
@@ -77,6 +77,7 @@ const CURLS = {
   point: { thumb: 0.8, index: 0, middle: 1, ring: 1, pinky: 1 },
   spidey: { thumb: 0.1, index: 0, middle: 1, ring: 1, pinky: 0 },
   peace: { thumb: 0.9, index: 0, middle: 0, ring: 1, pinky: 1 },
+  ok: { thumb: 0.8, index: 0.95, middle: 0.04, ring: 0.06, pinky: 0.1 },      // (the OK sign: thumb and first finger touching in a ring, the other three up)
 };
 class ModelHand {
   constructor(side, color, scene) {
@@ -206,20 +207,21 @@ export class EmotePlayer {
   // THE GRIDDY (see the top of the file). One beat = one step = 0.3 s.
   griddy(t) {
     // part one: arms straight down, just out from the sides, the forearms flicking up now and then; part two: arms bent
-    // up, both hands making peace signs at face level, bouncing. The legs never stop: quick little tiptoe steps forward
+    // up, both hands making the OK sign at face level (the goggles), bouncing. The legs never stop: steady tiptoe steps forward;
+    // both arms always move together
     const r = this.c.rag, P = r.pose, kH = this.kH, peace = ss((t - 3.0) / 0.35);
-    const s = this.walkLegs(t, 3.3, 0.26), tip = Math.abs(s);
-    const flick = Math.pow(Math.max(0, Math.sin(t * Math.PI * 1.6)), 6), pump = Math.sin(t * Math.PI * 3.3) * 0.12;
+    const s = this.walkLegs(t, 1.9, 0.24), tip = Math.abs(s);
+    const flick = Math.pow(Math.max(0, Math.sin(t * Math.PI * 1.1)), 6), pump = Math.sin(t * Math.PI * 1.9) * 0.12;
     for (const [S, sx] of [['L', 1], ['R', -1]]) {
-      const fl = S === 'L' ? flick : Math.pow(Math.max(0, Math.sin(t * Math.PI * 1.6 + 1.7)), 6);
+      const fl = flick;      // (both together)
       const du = [0.3, -1, 0.06], dl = mixv([0.32, -1, 0.08], [0.25, 0.35, 0.9], fl);
-      const pu = [0.8, -0.32 + pump, 0.42], pl = [-0.28, 0.95, 0.18];
+      const pu = [0.72, -0.3 + pump, 0.55], pl = [-0.7, 0.62, 0.34];      // (forearms up and in: the OK rings held over the eyes, like goggles)
       this.standArms(S, sx, mixv(du, pu, peace), mixv(dl, pl, peace));
     }
     P.chest.setFromAxisAngle(X, 0.12 + 0.05 * tip).multiply(_q.setFromAxisAngle(Y, s * 0.12)); P.pelvis.setFromAxisAngle(Y, -s * 0.1);
-    P.head.setFromAxisAngle(X, -0.05 + Math.sin(t * Math.PI * 3.3) * 0.08 * peace);
-    this.at(t, 0.2, 'a', () => this.say('🕺 THE GRIDDY', null, 'pop')); this.at(t, 3.1, 'b', () => this.say('✌️ ✌️', null, 'boing'));
-    return { hand: { L: peace > 0.5 ? 'peace' : 'fist', R: peace > 0.5 ? 'peace' : 'fist' }, back: peace > 0.5 ? { L: [0, 0, -1], R: [0, 0, -1] } : null, bob: (0.035 + tip * 0.025) * kH };
+    P.head.setFromAxisAngle(X, -0.05 + Math.sin(t * Math.PI * 1.9) * 0.08 * peace);
+    this.at(t, 0.2, 'a', () => this.say('🕺 THE GRIDDY', null, 'pop')); this.at(t, 3.1, 'b', () => this.say('👌 👌', null, 'boing'));
+    return { hand: { L: peace > 0.5 ? 'ok' : 'fist', R: peace > 0.5 ? 'ok' : 'fist' }, back: peace > 0.5 ? { L: [0, 0, 1], R: [0, 0, 1] } : null, bob: (0.035 + tip * 0.025) * kH };
   }
   backflip(t) {
     const r = this.c.rag, P = r.pose, kH = this.kH;

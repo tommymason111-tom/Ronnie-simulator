@@ -598,7 +598,8 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   drawMap() {
     // the whole Oysterfleet: the pub, the restaurant off to the left, the conservatory and the beer garden out the back.
     // On a landscape screen it's turned on its side (so it fills the screen), on a portrait one it's upright
-    const land = innerWidth > innerHeight, c = this.mapCv, Bx = [-29.6, 16.8], Bz = [-24.4, 42.6], TOP = 44, PAD = 14;
+    const land = false, c = this.mapCv,      // (always upright: north at the top, the long way down the screen, on phones held either way)
+      Bx = [-29.6, 16.8], Bz = [-24.4, 42.6], TOP = 44, PAD = 14;
     const W = land ? 1100 : 720, H = land ? 760 : 1040; if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
     const x = c.getContext('2d'), sc = land ? Math.min((W - PAD * 2) / (Bz[1] - Bz[0]), (H - TOP - PAD) / (Bx[1] - Bx[0])) : Math.min((W - PAD * 2) / (Bx[1] - Bx[0]), (H - TOP - PAD) / (Bz[1] - Bz[0]));
     const ox = land ? (W - (Bz[1] - Bz[0]) * sc) / 2 : (W - (Bx[1] - Bx[0]) * sc) / 2;

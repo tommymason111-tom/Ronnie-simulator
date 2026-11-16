@@ -1184,17 +1184,24 @@ function frame(simDt) {
 }
 // your own emote, on a phone or a computer: the camera swings round in front of you so you can watch your character do
 // it (your own head shows while it does), then back to your eyes when it's done
-const thirdCam = new THREE.PerspectiveCamera(55, 1, 0.05, 200); let ecK = 0;
+const thirdCam = new THREE.PerspectiveCamera(55, 1, 0.05, 200); let ecK = 0, ecHidHand = false, ecLock = null;
 function emoteCam() {
   const sb = selfBody, on = !!(sb && player.flatMode && !renderer.xr.isPresenting && sb.emote && sb.emote.active);
   ecK = on ? Math.min(1, ecK + 0.06) : 0;
   if (sb && sb.c && sb.c.rag) sb.c.rag.hideHead = !on;
-  if (!on) return null;
-  const r = sb.c.rag, f = sb.fwd(), t = performance.now() / 1000, a = Math.sin(t * 0.5) * 0.35, ch = r.drawn ? r.drawn(r.pos('chest', new THREE.Vector3())) : r.pos('chest', new THREE.Vector3());
-  const big = r.group ? r.group.scale.y : 1, ei = sb.emote.id && emoteInfo(sb.emote.id), dist = 2.9 * big * ((ei && ei.cam) || 1), side = new THREE.Vector3(f.z, 0, -f.x);
-  const want = new THREE.Vector3(r.root.x, 0, r.root.z).addScaledVector(f, Math.cos(a) * dist).addScaledVector(side, Math.sin(a) * dist); want.y = 1.55 * big;
-  const eye = camera.getWorldPosition(new THREE.Vector3()); thirdCam.position.copy(eye).lerp(want, ecK * ecK * (3 - 2 * ecK));
-  thirdCam.aspect = camera.aspect; thirdCam.fov = camera.fov; thirdCam.updateProjectionMatrix(); thirdCam.lookAt(ch.x, Math.max(0.6, ch.y * 0.85), ch.z);
+  // (your first-person hand, floating by the camera, mustn't show while you watch yourself from out front)
+  if (player.flatGrip) { if (on && player.flatGrip.visible) { player.flatGrip.visible = false; ecHidHand = true; } else if (!on && ecHidHand) { player.flatGrip.visible = true; ecHidHand = false; } }
+  if (!on) { ecLock = null; return null; }
+  // where it sits and what it looks at are worked out once, when the emote starts, then held completely still (no
+  // following the bob of the body or where your head's turned)
+  if (!ecLock || ecLock.em !== sb.emote.id || (sb.emote.t || 0) < ecLock.lastT) {
+    const r = sb.c.rag, f = sb.fwd(), a = 0.3, ch = r.drawn ? r.drawn(r.pos('chest', new THREE.Vector3())) : r.pos('chest', new THREE.Vector3());
+    const big = r.group ? r.group.scale.y : 1, ei = sb.emote.id && emoteInfo(sb.emote.id), dist = 2.9 * big * ((ei && ei.cam) || 1), side = new THREE.Vector3(f.z, 0, -f.x);
+    const want = new THREE.Vector3(r.root.x, 0, r.root.z).addScaledVector(f, Math.cos(a) * dist).addScaledVector(side, Math.sin(a) * dist); want.y = 1.55 * big;
+    ecLock = { em: sb.emote.id, lastT: 0, want, look: new THREE.Vector3(r.root.x, Math.max(0.6, ch.y * 0.85), r.root.z) }; }
+  ecLock.lastT = sb.emote.t || 0;
+  const eye = camera.getWorldPosition(new THREE.Vector3()); thirdCam.position.copy(eye).lerp(ecLock.want, ecK * ecK * (3 - 2 * ecK));
+  thirdCam.aspect = camera.aspect; thirdCam.fov = camera.fov; thirdCam.updateProjectionMatrix(); thirdCam.lookAt(ecLock.look);
   return thirdCam;
 }
 // (one bad frame must never stop the game: log it, still draw, carry on with the next)

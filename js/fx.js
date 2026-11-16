@@ -72,7 +72,14 @@ function wordTex(word, color) {
     if (g.measureText(word).width > w - 36) { const ws = word.split(' '); let best = [word], bw = Infinity; for (let i = 1; i < ws.length; i++) { const a = ws.slice(0, i).join(' '), b = ws.slice(i).join(' '), m = Math.max(a.length, b.length); if (m < bw) { bw = m; best = [a, b]; } } lines = best;
       f = 84; g.font = `900 ${f}px ${FONT}`; while (Math.max(...lines.map(l => g.measureText(l).width)) > w - 36 && f > 22) { f -= 3; g.font = `900 ${f}px ${FONT}`; } }
     const lh = f * 1.05, y0 = h / 2 - (lines.length - 1) * lh / 2, sw = Math.max(8, f * 0.22);
-    lines.forEach((l, i) => { const y = y0 + i * lh; g.lineWidth = sw; g.strokeStyle = '#111'; g.strokeText(l, w / 2, y + sw * 0.23); g.lineWidth = sw * 0.46; g.strokeStyle = '#fff'; g.strokeText(l, w / 2, y); g.fillStyle = color; g.fillText(l, w / 2, y); });
+    // readable on anything: a soft dark shadow round the whole word (lifts it off mid-tone walls, brick, grass), a thick
+    // black outline, then the letters themselves. Yellow (the old default) was nearly invisible against its own white
+    // edge (1.4:1) and washed out on the cream walls; white on black is 18.9:1. Other colours (green for good, red for
+    // bad) keep their colour but get the same black outline instead of a white one.
+    const fill = /^#ff[cde]/i.test(color) || color === '#ffd400' ? '#ffffff' : color;
+    lines.forEach((l, i) => { const y = y0 + i * lh;
+      g.save(); g.shadowColor = 'rgba(0,0,0,0.85)'; g.shadowBlur = sw * 1.4; g.lineWidth = sw * 1.15; g.strokeStyle = '#000'; g.strokeText(l, w / 2, y); g.restore();
+      g.lineWidth = sw; g.strokeStyle = '#000'; g.strokeText(l, w / 2, y); g.fillStyle = fill; g.fillText(l, w / 2, y); });
   }, { mips: false });
   wordTexCache.set(key, t);
   return t;
