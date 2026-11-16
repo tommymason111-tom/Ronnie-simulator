@@ -12,6 +12,7 @@ import { Tommy } from './tommy.js';
 import { STAGE_LINES } from './dialogue.js';
 import { AttackFX } from './attackfx.js';
 import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience, setMuted } from './audio.js';
+import { speak } from './voices.js';
 import { FONT } from './textures.js';
 import { createPhysics } from './physics.js';
 import { setupTouch } from './touch.js';
@@ -1340,7 +1341,7 @@ director.startRemote = (id) => { if (!net.host && director.mode && (PAUSE_MODES[
 powerups = new PowerUps({ scene, room, items, player, sfx, words, net, mp, eatWhole: (it) => hooverEat(it),
   enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter'].includes(director.mode) });
 mp.selfBody = () => selfBody;      // (your emotes play on your own body too)
-mp.onChat = (text, p) => chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text);
+mp.onChat = (text, p) => { chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text); if (!p) speak(net.char, text, player.head, { key: 'chat_me' }); };      // (you hear your own message in your character's voice too)
 mp.onChatBlocked = (why) => words.show(why || 'NOT NOW', player.head.clone().addScaledVector(player.fwd, 0.8), '#ff5252', 0.07, 1.4);
 // music from the speakers (the DJ booth, the hi-fi, the tannoy): only the host picks, everyone hears it
 // (switched off for now, with the TVs: MEDIA_ON brings both back. The speakers and tellies stay as scenery.)
@@ -1496,6 +1497,7 @@ class SquadPuppet {
     g.beginPath(); g.moveTo(230, h + 4); g.lineTo(256, h + 34); g.lineTo(282, h + 4); g.fill();
     g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; lines.forEach((l, i) => g.fillText(l, 256, 6 + 15 + lh / 2 + i * lh));
     this.chatT.needsUpdate = true; this.chatS.scale.set(0.9, 0.9 * 200 / 512, 1); this.chatS.visible = true; this.chatUntil = performance.now() + 2500 + text.length * 70;
+    if (!this.p.self) speak(this.p.char, text, this.c.headPos(new THREE.Vector3()), { key: 'chat_' + (this.p.id || this.p.name) });      // (read out in their character's real voice, if it has one)
   }
   placeTag() { if (this.chatS) { const on = performance.now() < this.chatUntil; this.chatS.visible = on; if (on) { const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())); this.chatS.position.set(h.x, h.y + (this.p.self ? 0.4 : 0.6), h.z); } }
     if (this.p.self) return; if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())); this.tag.position.set(h.x, h.y + 0.42, h.z); }

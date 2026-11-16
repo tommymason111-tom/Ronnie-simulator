@@ -111,10 +111,34 @@ export class Room {
   async alarm() { if (!this.live().length) { await this.state.storage.deleteAll(); this.meta = { seq: 0, host: null, orig: null, saves: {} }; } }
 }
 
+// ---- real voices (ElevenLabs) for typed chat and any line without a pre-made clip: GET /tts?v=<character>&t=<text>
+// The key is a Worker secret (ELEVENLABS_KEY), never in the game. Each line is made once and then served from the
+// cache for everyone (a whole lobby hearing one message costs one request). Short lines only, a few a minute per person.
+const VOICES = { tommy: '__TOMMY_VOICE_ID__' };
+const TTS_MAX = 160, perIP = new Map();
+async function tts(req, env, ctx, url) {
+  const v = url.searchParams.get('v') || '', t = (url.searchParams.get('t') || '').replace(/\s+/g, ' ').trim().slice(0, TTS_MAX);
+  const voice = VOICES[v]; if (!voice || voice.startsWith('__') || !t) return new Response('no such voice', { status: 404, headers: cors });
+  if (!env.ELEVENLABS_KEY) return new Response('voices not set up', { status: 503, headers: cors });
+  const dig = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v + '|' + t)))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+  const key = new Request('https://tts.ronnie-sim.cache/' + v + '/' + dig), cache = caches.default;
+  const hit = await cache.match(key); if (hit) return new Response(hit.body, { headers: { ...cors, 'content-type': 'audio/mpeg', 'cache-control': 'public, max-age=86400' } });
+  const ip = req.headers.get('CF-Connecting-IP') || '?', now = Date.now(), rec = (perIP.get(ip) || []).filter(x => now - x < 60000);
+  if (rec.length >= 12) return new Response('slow down', { status: 429, headers: cors }); rec.push(now); perIP.set(ip, rec); if (perIP.size > 5000) perIP.clear();
+  const up = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_64`, { method: 'POST',
+    headers: { 'xi-api-key': env.ELEVENLABS_KEY, 'content-type': 'application/json', accept: 'audio/mpeg' },
+    body: JSON.stringify({ text: t, model_id: 'eleven_flash_v2_5', voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.3 } }) });
+  if (!up.ok) return new Response('voice failed', { status: 502, headers: cors });
+  const audio = await up.arrayBuffer();
+  ctx.waitUntil(cache.put(key, new Response(audio, { headers: { 'content-type': 'audio/mpeg', 'cache-control': 'public, max-age=2592000' } })));
+  return new Response(audio, { headers: { ...cors, 'content-type': 'audio/mpeg', 'cache-control': 'public, max-age=86400' } });
+}
+
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+    if (url.pathname === '/tts' && req.method === 'GET') return tts(req, env, ctx, url);
     const m = url.pathname.match(/^\/room\/([A-Z0-9]{4,8})$/i);
     if (m) return env.ROOMS.get(env.ROOMS.idFromName(m[1].toUpperCase())).fetch(req);
     return new Response('Ronnie Simulator multiplayer: OK (up to ' + MAX_PLAYERS + ' players a room)', { headers: { ...cors, 'content-type': 'text/plain' } });

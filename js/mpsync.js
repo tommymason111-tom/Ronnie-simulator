@@ -13,6 +13,7 @@ import { SquadMember, SQUAD } from './squad.js';
 import { Character, KO_IMPULSE } from './character.js';
 import { sfx } from './audio.js';
 import { emoteInfo } from './emotes.js';
+import { speak } from './voices.js';
 
 const TYPES = Object.keys(FOODS);
 const SNAP_HZ = 20;             // (the host's word on everything, 20 times a second: only what's changed, the whole lot once a second)
@@ -304,7 +305,7 @@ export class MPSync {
     }
     if (m.full) for (const it of this.items.items.slice()) if (it.netMirror && !listed.has(it.nid) && !this.heldLocally(it)) { it.dropNoTell = true; this.items.remove(it); }
   }
-  on_say(m) { if (this.host) return; const c = this.cast.find(x => x.id === m.id); if (c && c.rag.mesh) { c.drawBubble(m.text); c.bubble.visible = true; c.speakT = 2.2 + m.text.length * 0.055; } }
+  on_say(m) { if (this.host) return; const c = this.cast.find(x => x.id === m.id); if (c && c.rag.mesh) { c.drawBubble(m.text); c.bubble.visible = true; c.speakT = 2.2 + m.text.length * 0.055; speak(c.id, m.text, c.headPos(new THREE.Vector3()), { key: 'npc_' + c.id }); } }      // (everyone hears their real voice: voices.js)
   on_dir(m) { if (this.host) return; const d = this.director; d.hostHud = m.hud; d.timeLeft = m.left; if (m.mode && m.mode !== (d.fullMode || d.mode) && d.startRemote) d.startRemote(m.mode); }
   on_woke(m) { const D = this.room.dormant; if (!D) return; const e = D.entries[m.i]; if (e && !e.woken) { e.woken = true; for (const im of e.group.meshes) { im.setMatrixAt(e.index, new THREE.Matrix4().makeScale(0, 0, 0)); im.instanceMatrix.needsUpdate = true; } } }
   on_end(m) { if (this.host) return; this.director.running = false; this.director.showReceipt && this.director.showReceipt(m.lines); this.director.receiptT = 1e9; this.director.g.onGameOver && this.director.g.onGameOver(m.lines); }
