@@ -1082,8 +1082,7 @@ function vrEmoteView(on, live) {
   const sb = selfBody;
   if (on && !vrEC && sb) {
     const r = sb.c.rag, f = sb.fwd(), big = r.group ? r.group.scale.y : 1, ei = sb.emote.id && emoteInfo(sb.emote.id), dist = 2.5 * big * ((ei && ei.cam) || 1), a = 0.3, side = new THREE.Vector3(f.z, 0, -f.x);
-    const look = new THREE.Vector3(r.root.x, 1.1 * big, r.root.z), want = new THREE.Vector3(r.root.x, 1.1 * big, r.root.z).addScaledVector(f, Math.cos(a) * dist).addScaledVector(side, Math.sin(a) * dist);
-    emoteCamSpot(look, want);
+    const look = new THREE.Vector3(r.root.x, 1.1 * big, r.root.z), want = emoteBestSpot(look, f, dist, 1.1 * big);
     vrEC = { pos: player.rig.position.clone(), rot: player.rig.rotation.y };
     player.vrEmoteHold = { h: live.h.slice(), q: live.q.slice(), rh: live.rh.slice(), l: live.l.slice(), flat: 0 };
     player.emoteLock = true;
@@ -1255,8 +1254,7 @@ function emoteCam() {
   if (!ecLock || ecLock.em !== sb.emote.id || (sb.emote.t || 0) < ecLock.lastT) {
     const r = sb.c.rag, f = sb.fwd(), a = 0.3, ch = r.drawn ? r.drawn(r.pos('chest', new THREE.Vector3())) : r.pos('chest', new THREE.Vector3());
     const big = r.group ? r.group.scale.y : 1, ei = sb.emote.id && emoteInfo(sb.emote.id), dist = 2.9 * big * ((ei && ei.cam) || 1), side = new THREE.Vector3(f.z, 0, -f.x);
-    const want = new THREE.Vector3(r.root.x, 0, r.root.z).addScaledVector(f, Math.cos(a) * dist).addScaledVector(side, Math.sin(a) * dist); want.y = 1.55 * big;
-    const look = new THREE.Vector3(r.root.x, Math.max(0.6, ch.y * 0.85), r.root.z); emoteCamSpot(look, want);
+    const look = new THREE.Vector3(r.root.x, Math.max(0.6, ch.y * 0.85), r.root.z), want = emoteBestSpot(look, f, dist, 1.55 * big);
     ecLock = { em: sb.emote.id, lastT: 0, want, look }; }
   ecLock.lastT = sb.emote.t || 0;
   const eye = camera.getWorldPosition(new THREE.Vector3()); thirdCam.position.copy(eye).lerp(ecLock.want, ecK * ecK * (3 - 2 * ecK));
@@ -1267,6 +1265,17 @@ function emoteCam() {
 // the line towards you until the view's clear (walls and solid things from the room's colliders, tables and chairs from
 // its footprints), but never closer than about a metre
 const _ecBox = new THREE.Box3(), _ecHit = new THREE.Vector3(), _ecRay = new THREE.Ray();
+// where to watch your own emote from: out in front, a little to one side. If a wall or the furniture is in the way there
+// (you're stood by a wall: the view came right in to your nose), try round the other side, then further round, and take
+// whichever spot sees you from furthest away (the ones nearer straight-on win if they're nearly as good)
+function emoteBestSpot(look, f, dist, y) {
+  const side = new THREE.Vector3(f.z, 0, -f.x); let best = null;
+  for (const [i, a] of [0.3, -0.3, 0.75, -0.75, 1.25, -1.25, 1.8, -1.8].entries()) {
+    const w = new THREE.Vector3(look.x, y, look.z).addScaledVector(f, Math.cos(a) * dist).addScaledVector(side, Math.sin(a) * dist);
+    emoteCamSpot(look, w); const d = Math.hypot(w.x - look.x, w.z - look.z) - i * 0.04;
+    if (!best || d > best.d) best = { d, w }; if (d >= dist * 0.97) break; }
+  return best.w;
+}
 function emoteCamSpot(look, want) {
   const dir = want.clone().sub(look), d = dir.length(); if (d < 1e-3) return want; dir.normalize(); _ecRay.set(look, dir); let best = d;
   for (const c of room.colliders || []) { _ecBox.min.copy(c.min); _ecBox.max.copy(c.max); if (_ecBox.containsPoint(look)) continue;      // walls and solid things right across the line
