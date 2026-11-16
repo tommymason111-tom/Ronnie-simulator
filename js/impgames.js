@@ -230,7 +230,7 @@ const GAMES = {
   },
   // CATCH: the loo rolls drop from the shelf: catch them in the basket. Drop three and you start again
   catch(o = {}) {
-    const need = o.n || 8, s = { title: o.title || 'RESTOCK THE LOO ROLL', bx: 256, rolls: [], got: 0, miss: 0, next: 0.6, msgT: 0, done: false };
+    const need = o.n || 8, s = { need, title: o.title || 'RESTOCK THE LOO ROLL', bx: 256, rolls: [], got: 0, miss: 0, next: 0.6, msgT: 0, done: false };
     s.down = (x) => { s.bx = Math.max(70, Math.min(442, x)); }; s.move = (x) => { s.bx = Math.max(70, Math.min(442, x)); }; s.up = () => {};
     s.update = (dt) => { if (s.done) return; if (s.msgT > 0) s.msgT -= dt;
       if ((s.next -= dt) <= 0) { s.next = Math.max(0.55, 1.15 - s.got * 0.06) * (0.8 + Math.random() * 0.4); s.rolls.push({ x: 60 + Math.random() * 392, y: 110, v: 170 + s.got * 18, r: Math.random() * 6 }); }
@@ -265,7 +265,7 @@ const GAMES = {
   // SORT: the pots come in one at a time: drag each to the right rack, before the time runs out
   sort(o = {}) {
     const K = [['🍽️', 'PLATES'], ['🥛', 'GLASSES'], ['🍴', 'CUTLERY']], need = 10;
-    const s = { title: o.title || 'WASH THE POTS', item: 0, ix: 256, iy: 170, drag: false, got: 0, time: 22, bad: 0, done: false };
+    const s = { need, title: o.title || 'WASH THE POTS', item: 0, ix: 256, iy: 170, drag: false, got: 0, time: 22, bad: 0, done: false };
     const bin = (i) => ({ x: 30 + i * 158, y: 360, w: 140, h: 110 }), next = () => { s.item = Math.floor(Math.random() * 3); s.ix = 256; s.iy = 170; };
     next();
     s.down = (x, y) => { if (Math.hypot(x - s.ix, y - s.iy) < 60) s.drag = true; }; s.move = (x, y) => { if (s.drag) { s.ix = x; s.iy = y; } };
@@ -280,7 +280,7 @@ const GAMES = {
   },
   // WHACK: empties pop up on the tables: grab them before they go. Leave the full pints alone (they're someone's)
   whack(o = {}) {
-    const need = 12, s = { title: o.title || 'COLLECT THE EMPTIES', ups: [], got: 0, miss: 0, next: 0.5, msg: '', msgT: 0, done: false };
+    const need = 12, s = { need, title: o.title || 'COLLECT THE EMPTIES', ups: [], got: 0, miss: 0, next: 0.5, msg: '', msgT: 0, done: false };
     const spot = (i) => ({ x: 106 + (i % 3) * 150, y: 170 + Math.floor(i / 3) * 150 });
     s.down = (x, y) => { for (const u of s.ups) { const p = spot(u.i); if (!u.gone && Math.hypot(x - p.x, y - p.y) < 58) { u.gone = true;
       if (u.full) { s.got = Math.max(0, s.got - 2); s.msg = 'OI! THAT\'S MY PINT!'; s.msgT = 1; sfx('error', null, 0.5); } else { s.got++; sfx('glass', null, 0.4); if (s.got >= need) s.done = true; } return; } } };
@@ -316,8 +316,8 @@ const GAMES = {
   },
   // PLACE: lay each place setting: the fork on the left of the plate, the knife on the right
   place(o = {}) {
-    const P = [106, 256, 406], s = { title: o.title || 'LAY THE TABLES', items: [], drag: null, ox: 0, oy: 0, msg: '', msgT: 0, done: false };
-    const slots = []; for (const x of P) { slots.push({ x: x - 52, y: 220, k: 'fork', f: null }); slots.push({ x: x + 52, y: 220, k: 'knife', f: null }); }
+    const P = [106, 256, 406], slots = [], s = { title: o.title || 'LAY THE TABLES', items: [], drag: null, ox: 0, oy: 0, msg: '', msgT: 0, done: false, _slots: slots };
+    for (const x of P) { slots.push({ x: x - 52, y: 220, k: 'fork', f: null }); slots.push({ x: x + 52, y: 220, k: 'knife', f: null }); }
     shuffle(['fork', 'fork', 'fork', 'knife', 'knife', 'knife']).forEach((k, i) => s.items.push({ k, x: 70 + i * 74, y: 420, hx: 70 + i * 74, hy: 420, on: null }));
     s.down = (x, y) => { for (const it of s.items) if (!it.on && Math.abs(x - it.x) < 30 && Math.abs(y - it.y) < 60) { s.drag = it; s.ox = x - it.x; s.oy = y - it.y; return; } };
     s.move = (x, y) => { if (s.drag) { s.drag.x = x - s.ox; s.drag.y = y - s.oy; } };
@@ -338,7 +338,7 @@ const GAMES = {
   },
   // LIGHT: hold the match on each wick till it catches. The wind keeps blowing them out: get them all lit at once
   light(o = {}) {
-    const C = [[96, 300], [176, 260], [256, 300], [336, 260], [416, 300]], s = { title: o.title || 'LIGHT THE CANDLES', lit: C.map(() => false), heat: C.map(() => 0), mx: -99, my: -99, hold: false, gust: 3.2, blow: 0, done: false };
+    const C = [[96, 300], [176, 260], [256, 300], [336, 260], [416, 300]], s = { _C: C, title: o.title || 'LIGHT THE CANDLES', lit: C.map(() => false), heat: C.map(() => 0), mx: -99, my: -99, hold: false, gust: 3.2, blow: 0, done: false };
     s.down = (x, y) => { s.hold = true; s.mx = x; s.my = y; }; s.move = (x, y) => { s.mx = x; s.my = y; }; s.up = () => { s.hold = false; };
     s.update = (dt) => { if (s.done) return; if (s.blow > 0) s.blow -= dt;
       C.forEach(([x, y], i) => { if (!s.lit[i] && s.hold && Math.hypot(s.mx - x, s.my - (y - 70)) < 34) { s.heat[i] += dt; if (s.heat[i] > 0.55) { s.lit[i] = true; s.heat[i] = 0; sfx('zap', null, 0.25); } } else if (!s.lit[i]) s.heat[i] = Math.max(0, s.heat[i] - dt); });
@@ -355,7 +355,7 @@ const GAMES = {
   },
   // STACKER: a tray of glasses slides back and forth: drop it on the stack. Whatever overhangs falls off
   stacker(o = {}) {
-    const need = 7, s = { title: o.title || 'CLEAR THE GARDEN GLASSES', rows: [{ x: 156, w: 200 }], cur: null, dir: 1, msg: '', msgT: 0, done: false };
+    const need = 7, s = { need, title: o.title || 'CLEAR THE GARDEN GLASSES', rows: [{ x: 156, w: 200 }], cur: null, dir: 1, msg: '', msgT: 0, done: false };
     const newRow = () => { const top = s.rows[s.rows.length - 1]; s.cur = { x: 40, w: top.w, v: 170 + s.rows.length * 34 }; s.dir = 1; };
     newRow(); const H = 40, base = 450;
     s.down = () => { if (s.msgT > 0 || s.done) return; const top = s.rows[s.rows.length - 1], c = s.cur, l = Math.max(c.x, top.x), r = Math.min(c.x + c.w, top.x + top.w);
@@ -372,7 +372,7 @@ const GAMES = {
   },
   // SWEEP: push the broken glass into the dustpan with the broom
   sweep(o = {}) {
-    const s = { title: o.title || 'SWEEP UP THE GLASS', bits: [], px: null, py: null, done: false }, PAN = { x: 196, y: 420, w: 120, h: 56 };
+    const PAN = { x: 196, y: 420, w: 120, h: 56 }, s = { title: o.title || 'SWEEP UP THE GLASS', bits: [], px: null, py: null, done: false, _pan: PAN };
     for (let i = 0; i < 12; i++) s.bits.push({ x: 70 + Math.random() * 372, y: 120 + Math.random() * 220, r: Math.random() * 6, n: 3 + Math.floor(Math.random() * 3), got: false });
     s.down = (x, y) => { s.px = x; s.py = y; }; s.up = () => { s.px = null; };
     s.move = (x, y) => { if (s.px === null) return; const dx = x - s.px, dy = y - s.py; for (const b of s.bits) if (!b.got && Math.hypot(b.x - x, b.y - y) < 46) { b.x = Math.max(30, Math.min(482, b.x + dx * 0.9)); b.y = Math.max(110, Math.min(476, b.y + dy * 0.9)); b.r += dx * 0.02;
@@ -413,7 +413,355 @@ const GAMES = {
     return s;
   },
 };
-export const makeGame = (kind, o) => GAMES[kind](o || {});
+
+// ================================================================== THE PICTURES
+// Every job is drawn as the real thing it's named after (the rules above are untouched: only what you see changes).
+// The turning-wheel jobs each get their own scene: the barrel coupler, the parasol (you watch it go up), the keg valve.
+const P = {
+  // a scene: background painted inside the rounded frame, then the border and a title band on top
+  scene(g, title, paint, col = '#ffd400') {
+    g.save(); rr(g, 4, 4, S - 8, S - 8, 30); g.clip(); paint(); g.fillStyle = 'rgba(8,10,24,0.72)'; g.fillRect(0, 0, S, 62); g.restore();
+    g.lineWidth = 8; g.strokeStyle = col; rr(g, 4, 4, S - 8, S - 8, 30); g.stroke(); txt(g, title, S / 2, 34, 28, col);
+  },
+  hint(g, s, y = 82, col = '#fff', size = 19) { g.fillStyle = 'rgba(0,0,0,0.5)'; g.font = `900 ${size}px ${FONT}`; const w = Math.min(470, g.measureText(s).width + 26); rr(g, S / 2 - w / 2, y - 15, w, 30, 15); g.fill(); txt(g, s, S / 2, y, size, col); },
+  grad(g, x0, y0, x1, y1, stops) { const gr = g.createLinearGradient(x0, y0, x1, y1); stops.forEach((c, i) => gr.addColorStop(i / (stops.length - 1), c)); return gr; },
+  wood(g, x, y, w, h, c1 = '#8a5a2b', c2 = 'rgba(60,30,10,0.35)') { g.fillStyle = c1; g.fillRect(x, y, w, h); g.strokeStyle = c2; g.lineWidth = 2; for (let i = 6; i < h; i += 13) { g.beginPath(); g.moveTo(x, y + i); g.bezierCurveTo(x + w * 0.3, y + i + 5, x + w * 0.6, y + i - 4, x + w, y + i + 2); g.stroke(); } },
+  tiles(g, x, y, w, h, sz = 42, c = '#e9eef2', l = '#c3ccd4') { g.fillStyle = c; g.fillRect(x, y, w, h); g.strokeStyle = l; g.lineWidth = 2; for (let i = x; i <= x + w; i += sz) { g.beginPath(); g.moveTo(i, y); g.lineTo(i, y + h); g.stroke(); } for (let j = y; j <= y + h; j += sz) { g.beginPath(); g.moveTo(x, j); g.lineTo(x + w, j); g.stroke(); } },
+  brick(g, x, y, w, h) { g.fillStyle = '#5a3326'; g.fillRect(x, y, w, h); for (let r = 0, j = y; j < y + h; j += 22, r++) for (let i = x - (r % 2) * 24; i < x + w; i += 48) { g.fillStyle = ['#8a4a36', '#7c4030', '#94533c'][(r + Math.floor(i / 48)) % 3]; g.fillRect(i + 2, j + 2, 44, 18); } },
+  steel(g, x, y, w, h, r = 10) { g.fillStyle = P.grad(g, x, y, x + w, y, ['#8d939a', '#e3e7ea', '#a9afb5', '#d4d8dc', '#80868c']); rr(g, x, y, w, h, r); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 2; rr(g, x, y, w, h, r); g.stroke(); },
+  pint(g, x, y, h, fill = 0, col = '#c98a1a', head = true) {      // a straight pint glass, base at (x, y)
+    const w0 = h * 0.28, w1 = h * 0.36; g.beginPath(); g.moveTo(x - w1, y - h); g.lineTo(x + w1, y - h); g.lineTo(x + w0, y); g.lineTo(x - w0, y); g.closePath();
+    g.fillStyle = 'rgba(220,240,255,0.18)'; g.fill(); if (fill > 0) { g.save(); g.clip(); g.fillStyle = col; g.fillRect(x - w1, y - h * fill, w1 * 2, h * fill); if (head) { g.fillStyle = '#fff6df'; g.fillRect(x - w1, y - h * fill - 2, w1 * 2, h * 0.12); } g.restore(); }
+    g.strokeStyle = 'rgba(235,248,255,0.9)'; g.lineWidth = 2.5; g.stroke(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(x - w1 * 0.7, y - h * 0.92, 3, h * 0.75); },
+  plate(g, x, y, r) { g.fillStyle = '#fbfbf8'; g.beginPath(); g.ellipse(x, y, r, r * 0.92, 0, 0, 7); g.fill(); g.strokeStyle = '#c9a24a'; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y, r * 0.86, r * 0.79, 0, 0, 7); g.stroke(); g.strokeStyle = 'rgba(0,0,0,0.08)'; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y, r * 0.6, r * 0.55, 0, 0, 7); g.stroke(); },
+  roll(g, x, y, r = 22, a = 0) { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = '#fbfbfb'; rr(g, -r, -r * 0.8, r * 2, r * 1.6, 8); g.fill(); g.strokeStyle = '#d8dde2'; g.lineWidth = 2; rr(g, -r, -r * 0.8, r * 2, r * 1.6, 8); g.stroke();
+    g.fillStyle = '#f0f0f0'; g.beginPath(); g.ellipse(r, 0, r * 0.35, r * 0.8, 0, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#b58a5a'; g.beginPath(); g.ellipse(r, 0, r * 0.14, r * 0.32, 0, 0, 7); g.fill(); g.restore(); },
+  flame(g, x, y, k = 1, t = 0) { const f = 1 + Math.sin(t * 22 + x) * 0.12; g.fillStyle = 'rgba(255,170,40,0.25)'; g.beginPath(); g.arc(x, y, 28 * k, 0, 7); g.fill(); g.fillStyle = '#ff9d1a'; g.beginPath(); g.ellipse(x, y, 9 * k * f, 19 * k * f, 0, 0, 7); g.fill(); g.fillStyle = '#fff2a8'; g.beginPath(); g.ellipse(x, y + 4 * k, 4 * k, 9 * k, 0, 0, 7); g.fill(); },
+};
+const ART = {
+  // ---- POUR A PERFECT GUINNESS: the back bar, the font with its harp, the drip tray, the tulip glass
+  hold(g, s, t) {
+    P.scene(g, s.title, () => { g.fillStyle = P.grad(g, 0, 0, 0, S, ['#2a1a12', '#140c08']); g.fillRect(0, 0, S, S);
+      for (let i = 0; i < 3; i++) { g.fillStyle = '#3a2416'; g.fillRect(0, 110 + i * 70, S, 6); for (let k = 0; k < 9; k++) { const x = 20 + k * 56 + (i % 2) * 24; g.fillStyle = ['#2e6a1a', '#6a3a12', '#c87a1a', '#1a4a2a', '#e8e0c8'][(k + i) % 5]; g.globalAlpha = 0.35; rr(g, x, 70 + i * 70, 14, 40, 4); g.fill(); g.globalAlpha = 1; } }
+      P.wood(g, 0, 444, S, 70, '#4a2a16'); g.fillStyle = '#1a1a1a'; rr(g, 150, 436, 212, 14, 4); g.fill(); g.fillStyle = '#333'; for (let x = 156; x < 356; x += 10) g.fillRect(x, 438, 5, 10); });
+    // the font: black column, gold harp plate, the long tap handle
+    g.fillStyle = '#111'; rr(g, 222, 46, 68, 44, 10); g.fill(); g.fillStyle = '#d4af37'; g.beginPath(); g.arc(256, 66, 13, 0, 7); g.fill(); txt(g, '♪', 256, 67, 15, '#111');
+    g.save(); g.translate(290, 76); g.rotate(s.pouring ? 1.1 : 0.35); g.fillStyle = '#111'; rr(g, -5, -10, 10, 40, 4); g.fill(); g.fillStyle = '#d4af37'; g.fillRect(-5, 22, 10, 8); g.restore();
+    g.fillStyle = '#c0c4c8'; rr(g, 248, 88, 16, 14, 4); g.fill();
+    const x0 = 176, x1 = 336, top = 110, bot = 440, fy = bot - (bot - top) * Math.min(1, s.fill);
+    g.save(); g.beginPath(); g.moveTo(x0 - 10, top); g.lineTo(x1 + 10, top); g.quadraticCurveTo(x1 + 18, top + 160, x1 - 14, bot); g.lineTo(x0 + 14, bot); g.quadraticCurveTo(x0 - 18, top + 160, x0 - 10, top); g.closePath(); g.clip();
+    g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(0, 0, S, S);
+    const k = s.settle > 0 ? s.settle : 0, br = Math.round(110 - 95 * k); g.fillStyle = `rgb(${br},${Math.round(br * 0.6)},${Math.round(br * 0.35)})`; g.fillRect(0, fy, S, bot - fy);
+    if (s.fill > 0.02) { g.fillStyle = '#f3e6c8'; g.fillRect(0, fy - 4, S, 18 + (s.settle > 0 ? 8 : 0)); }
+    if (!s.settle) for (let i = 0; i < 26; i++) { g.fillStyle = 'rgba(240,220,190,0.28)'; g.beginPath(); g.arc(x0 + ((i * 53 + t * 140) % 160), bot - ((i * 37 + t * 90) % Math.max(1, bot - fy)), 2.5, 0, 7); g.fill(); }
+    g.restore();
+    g.lineWidth = 5; g.strokeStyle = '#d8e4ff'; g.beginPath(); g.moveTo(x0 - 10, top); g.quadraticCurveTo(x0 - 18, top + 160, x0 + 14, bot); g.lineTo(x1 - 14, bot); g.quadraticCurveTo(x1 + 18, top + 160, x1 + 10, top); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(x0 + 4, top + 20, 6, 260); txt(g, 'GUINNESS', 256, 300, 20, s.fill > 0.5 ? '#d4af37' : 'rgba(212,175,55,0.6)');
+    const ly = (f) => bot - (bot - top) * f; g.setLineDash([10, 8]); g.strokeStyle = '#39ff14'; g.lineWidth = 4; for (const f of [0.84, 0.95]) { g.beginPath(); g.moveTo(x0 - 40, ly(f)); g.lineTo(x1 + 40, ly(f)); g.stroke(); } g.setLineDash([]);
+    if (s.pouring) { g.fillStyle = 'rgba(110,66,38,0.9)'; g.fillRect(251, 100, 10, fy - 100); }
+    P.hint(g, s.fail > 0 ? 'SPILT IT! AGAIN...' : s.settle > 0 ? 'LET IT SETTLE...' : s.hint, 480, s.fail > 0 ? '#ff6b6b' : '#fff');
+  },
+  // ---- the turning-wheel jobs: three different scenes
+  crank(g, s, t, o) {
+    const k = Math.min(1, s.turned / s.need), art = o.art || (/PARASOL/.test(s.title) ? 'parasol' : /VALVE/.test(s.title) ? 'valve' : 'barrel');
+    const ring = () => { g.setLineDash([8, 10]); g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 3; g.beginPath(); g.arc(256, 280, 110, 0, 7); g.stroke(); g.setLineDash([]); };
+    const bar = (lbl) => { g.fillStyle = 'rgba(0,0,0,0.55)'; rr(g, 52, 470, 408, 24, 12); g.fill(); g.fillStyle = '#39ff14'; rr(g, 54, 472, 404 * k, 20, 10); g.fill(); txt(g, lbl, 256, 482, 13, '#fff'); };
+    if (art === 'parasol') {
+      // the beer garden: sky, the fence, the table, and the parasol opening as you wind
+      P.scene(g, s.title, () => { g.fillStyle = P.grad(g, 0, 0, 0, 340, ['#5fb4ff', '#bfe4ff']); g.fillRect(0, 0, S, 340); g.fillStyle = '#ffe680'; g.beginPath(); g.arc(430, 110, 30, 0, 7); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.8)'; for (const [cx, cy] of [[90, 120], [150, 105]]) { g.beginPath(); g.arc(cx, cy, 20, 0, 7); g.arc(cx + 22, cy - 6, 24, 0, 7); g.arc(cx + 46, cy, 18, 0, 7); g.fill(); }
+        g.fillStyle = '#7a5230'; for (let x = 0; x < S; x += 26) g.fillRect(x, 300, 22, 60); g.fillStyle = '#4caf50'; g.fillRect(0, 350, S, 170); g.fillStyle = 'rgba(0,0,0,0.12)'; g.beginPath(); g.ellipse(256, 446, 60 + 140 * k, 16 + 20 * k, 0, 0, 7); g.fill(); });
+      g.fillStyle = '#7a5230'; g.fillRect(150, 418, 212, 12); for (const x of [170, 342]) g.fillRect(x - 5, 428, 10, 40); g.fillStyle = '#c9c9c9'; g.fillRect(252, 120, 8, 300);
+      const w = 26 + 196 * k, drop = 92 - 52 * k, topY = 120, cols = ['#2e7d32', '#f5f0e0'];
+      for (let i = -4; i < 4; i++) { const a = i / 4, b = (i + 1) / 4; g.fillStyle = cols[(i + 4) % 2]; g.beginPath(); g.moveTo(256, topY); g.lineTo(256 + a * w, topY + drop - Math.abs(a) * (8 - 8 * k) + (1 - k) * 20 * (1 - Math.abs(a)));
+        g.quadraticCurveTo(256 + (a + b) / 2 * w, topY + drop + 12 * k, 256 + b * w, topY + drop - Math.abs(b) * (8 - 8 * k) + (1 - k) * 20 * (1 - Math.abs(b))); g.closePath(); g.fill(); }
+      g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 2; for (let i = -4; i <= 4; i++) { g.beginPath(); g.moveTo(256, topY); g.lineTo(256 + i / 4 * w, topY + drop); g.stroke(); }
+      g.fillStyle = '#2e7d32'; for (let i = -4; i < 4; i++) { g.beginPath(); g.moveTo(256 + i / 4 * w, topY + drop); g.quadraticCurveTo(256 + (i + 0.5) / 4 * w, topY + drop + 14, 256 + (i + 1) / 4 * w, topY + drop); g.fill(); }
+      g.fillStyle = '#ddd'; g.beginPath(); g.arc(256, topY - 4, 7, 0, 7); g.fill();
+      // the winding handle on the pole
+      g.save(); g.translate(256, 280); g.fillStyle = '#9aa0a6'; g.beginPath(); g.arc(0, 0, 34, 0, 7); g.fill(); g.rotate(s.turned); g.fillStyle = '#5a5f66'; rr(g, -6, -6, 96, 12, 6); g.fill(); g.fillStyle = '#d32f2f'; g.beginPath(); g.arc(90, 0, 15, 0, 7); g.fill(); g.restore(); ring();
+      P.hint(g, k >= 1 ? '☀️ PARASOL UP!' : '↻ WIND IT ROUND · DON\'T STOP OR IT DROPS', 82); bar(Math.round(k * 100) + '% UP'); return;
+    }
+    if (art === 'valve') {
+      // the cellar: a pipe across with a red valve wheel, a pressure gauge, steam hissing out (less as you turn)
+      P.scene(g, s.title, () => { P.brick(g, 0, 0, S, S); g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, S, S); });
+      P.steel(g, 0, 262, S, 36, 6); for (const x of [120, 392]) P.steel(g, x - 14, 252, 28, 56, 6);
+      for (let i = 0; i < 8 * (1 - k); i++) { const a = (t * 2 + i * 0.37) % 1; g.fillStyle = `rgba(240,240,240,${0.5 * (1 - a)})`; g.beginPath(); g.arc(120 + Math.sin(i * 3) * 10, 250 - a * 140, 10 + a * 30, 0, 7); g.fill(); }
+      const gx = 400, gy = 150; g.fillStyle = '#ddd'; g.beginPath(); g.arc(gx, gy, 52, 0, 7); g.fill(); g.strokeStyle = '#555'; g.lineWidth = 6; g.stroke(); g.fillStyle = '#c62828'; g.beginPath(); g.moveTo(gx, gy); g.arc(gx, gy, 46, -0.5, 0.5); g.fill();
+      const na = Math.PI * 0.8 + (1 - k) * Math.PI * 1.15; g.strokeStyle = '#111'; g.lineWidth = 4; g.beginPath(); g.moveTo(gx, gy); g.lineTo(gx + Math.cos(na) * 42, gy + Math.sin(na) * 42); g.stroke(); txt(g, 'PSI', gx, gy + 26, 12, '#111'); P.steel(g, gx - 6, gy + 50, 12, 62, 3);
+      g.save(); g.translate(256, 280); g.rotate(s.turned); g.lineWidth = 20; g.strokeStyle = '#c62828'; g.beginPath(); g.arc(0, 0, 100, 0, 7); g.stroke(); for (let i = 0; i < 5; i++) { g.rotate(Math.PI * 2 / 5); g.lineWidth = 12; g.strokeStyle = '#9e1c1c'; g.beginPath(); g.moveTo(0, 0); g.lineTo(100, 0); g.stroke(); }
+      g.fillStyle = '#888'; g.beginPath(); g.arc(0, 0, 22, 0, 7); g.fill(); g.restore();
+      P.hint(g, k >= 1 ? 'PRESSURE RELEASED ✓' : '↻ TURN THE VALVE · LET THE PRESSURE OUT', 82); bar('PRESSURE ' + Math.round((1 - k) * 100) + '%'); return;
+    }
+    // the barrel: in the cellar, a steel keg; the coupler on top turned on with its handle, the beer line filling
+    P.scene(g, s.title, () => { P.brick(g, 0, 0, S, S); g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(0, 0, S, S); g.fillStyle = '#3a3a3a'; g.fillRect(0, 470, S, 50); });
+    const kx = 256; g.fillStyle = P.grad(g, kx - 120, 0, kx + 120, 0, ['#7d838a', '#dfe3e6', '#9ba1a7', '#cfd3d7', '#737a80']); g.fillRect(kx - 120, 310, 240, 162);
+    for (const y of [318, 464]) { g.fillStyle = '#9ba1a7'; g.beginPath(); g.ellipse(kx, y, 122, 14, 0, 0, 7); g.fill(); } g.fillStyle = 'rgba(0,0,0,0.15)'; g.fillRect(kx - 120, 380, 240, 10);
+    txt(g, 'OYSTER STOUT · 11G', kx, 420, 16, '#2a2a2a');
+    g.strokeStyle = '#111'; g.lineWidth = 10; g.beginPath(); g.moveTo(kx + 30, 250); g.bezierCurveTo(kx + 150, 200, 470, 160, 500, 120); g.stroke();
+    g.strokeStyle = k >= 1 ? '#3a1a0a' : 'rgba(255,255,255,0.12)'; g.lineWidth = 5; g.beginPath(); g.moveTo(kx + 30, 250); g.bezierCurveTo(kx + 150, 200, 470, 160, 500, 120); g.stroke();
+    g.strokeStyle = '#2e7d32'; g.lineWidth = 7; g.beginPath(); g.moveTo(kx - 30, 255); g.bezierCurveTo(kx - 140, 210, 60, 170, 10, 140); g.stroke();
+    g.save(); g.translate(256, 280); g.fillStyle = '#2a2a2a'; g.beginPath(); g.arc(0, 0, 44, 0, 7); g.fill(); g.rotate(s.turned); g.fillStyle = '#c62828'; rr(g, -8, -100, 16, 200, 8); g.fill(); g.fillStyle = '#ddd'; g.beginPath(); g.arc(0, 0, 18, 0, 7); g.fill(); g.restore(); ring();
+    P.hint(g, k >= 1 ? 'COUPLED ON ✓ BEER\'S FLOWING' : '↻ TURN THE COUPLER ONTO THE NEW BARREL', 82); bar(k >= 1 ? 'ON' : Math.round(k * 100) + '%');
+  },
+  // ---- TAKE A CARD PAYMENT: the bar top, the card machine with its screen, the card through the slot
+  swipe(g, s) {
+    P.scene(g, s.title, () => { P.wood(g, 0, 0, S, S, '#5a3a22'); g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, 0, S, S); });
+    g.fillStyle = '#1d1d1f'; rr(g, 316, 96, 170, 196, 18); g.fill(); g.fillStyle = s.ok > 0 ? '#1f5e2a' : '#c8d8b0'; rr(g, 330, 110, 142, 64, 8); g.fill();
+    txt(g, s.ok > 0 ? 'APPROVED' : s.msgT > 0 && !s.good ? 'DECLINED' : '£23.40', 401, 132, 20, s.ok > 0 ? '#9cff9c' : '#1a2a1a'); txt(g, s.ok > 0 ? 'THANK YOU' : 'SWIPE CARD', 401, 158, 12, s.ok > 0 ? '#9cff9c' : '#1a2a1a');
+    for (let i = 0; i < 12; i++) { g.fillStyle = i === 11 ? '#2e7d32' : i === 9 ? '#c62828' : '#3a3a3e'; rr(g, 336 + (i % 3) * 46, 186 + Math.floor(i / 3) * 24, 40, 18, 4); g.fill(); }
+    g.fillStyle = s.ok > 0 ? '#39ff14' : s.msgT > 0 ? '#ff4d4d' : '#ffb300'; g.beginPath(); g.arc(470, 104, 6, 0, 7); g.fill();
+    g.fillStyle = '#2b2b2b'; rr(g, 30, 300, 452, 64, 12); g.fill(); g.fillStyle = '#0d0d0d'; g.fillRect(30, 322, 452, 16); txt(g, '▸ SWIPE SLOT ▸', 256, 352, 12, '#888');
+    g.fillStyle = P.grad(g, s.x, 236, s.x + 160, 336, ['#1f6fd6', '#0d3c8a']); rr(g, s.x, 236, 160, 100, 12); g.fill(); g.fillStyle = '#d4af37'; rr(g, s.x + 18, 262, 34, 26, 5); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1; for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(s.x + 22, 266 + i * 7); g.lineTo(s.x + 48, 266 + i * 7); g.stroke(); }
+    txt(g, '4921  ••••  ••••  0042', s.x + 80, 304, 11, '#e8eefc'); txt(g, 'R. ONNIE', s.x + 50, 322, 10, '#e8eefc');
+    P.hint(g, s.msgT > 0 ? s.msg : 'DRAG THE CARD THROUGH · NOT TOO FAST, NOT TOO SLOW', 410, s.msgT > 0 ? (s.ok > 0 || s.good ? '#39ff14' : '#ff6b6b') : '#fff', 16);
+    if (s.need > 1) txt(g, `${s.good} / ${s.need} SWIPES`, 130, 110, 18, '#ffd400');
+  },
+  // ---- FIX THE DJ DECKS WIRING: the back of the DJ desk: mixer outputs on the left, amp inputs on the right
+  wires(g, s) {
+    const n = s.joined.length, cols = ['#ff3b3b', '#2f7bff', '#ffd400', '#e040fb', '#39ff14', '#ff8a00'], L = ['DECK 1', 'DECK 2', 'MIC', 'LIGHTS', 'SUB', 'BOOTH'];
+    P.scene(g, s.title, () => { g.fillStyle = '#121218'; g.fillRect(0, 0, S, S); for (let i = 0; i < 6; i++) { g.fillStyle = ['#ff2a6a', '#2a8aff', '#39ff14'][i % 3]; g.globalAlpha = 0.18; g.beginPath(); g.arc(40 + i * 90, 470, 60, 0, 7); g.fill(); } g.globalAlpha = 1;
+      g.fillStyle = '#222'; rr(g, 14, 96, 104, 384, 12); g.fill(); rr(g, 394, 96, 104, 384, 12); g.fill(); txt(g, 'MIXER', 66, 106, 12, '#aaa'); txt(g, 'AMP', 446, 106, 12, '#aaa'); });
+    for (let i = 0; i < n; i++) { const a = s._L(i), b = s._R(i);
+      for (const [p, side] of [[a, -1], [b, 1]]) { g.fillStyle = cols[i]; g.beginPath(); g.arc(p.x + side * 26, p.y, 15, 0, 7); g.fill(); g.fillStyle = '#c0c4c8'; g.beginPath(); g.arc(p.x + side * 26, p.y, 10, 0, 7); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(p.x + side * 26, p.y, 4, 0, 7); g.fill(); }
+      txt(g, L[i], a.x - 4, a.y + 24, 10, '#ddd'); txt(g, L[i], b.x + 4, b.y + 24, 10, '#ddd');
+      if (s.joined[i]) { g.strokeStyle = '#111'; g.lineWidth = 16; g.beginPath(); g.moveTo(a.x - 26, a.y); g.bezierCurveTo(256, a.y + 30, 256, b.y + 30, b.x + 26, b.y); g.stroke(); g.strokeStyle = cols[i]; g.lineWidth = 10; g.stroke(); } }
+    if (s.drag !== null) { const a = s._L(s.drag); g.strokeStyle = cols[s.drag]; g.lineWidth = 10; g.beginPath(); g.moveTo(a.x - 26, a.y); g.quadraticCurveTo((a.x + s.px) / 2, Math.max(a.y, s.py) + 40, s.px, s.py); g.stroke(); g.fillStyle = '#d4af37'; rr(g, s.px - 9, s.py - 9, 18, 18, 4); g.fill(); }
+    P.hint(g, 'PLUG EACH LEAD INTO ITS COLOUR', 82);
+  },
+  // ---- EMPTY THE FRUIT MACHINE: the cabinet, chasing bulbs, the reels, NUDGE/HOLD, coins into the tray
+  reels(g, s, t) {
+    P.scene(g, s.title, () => { g.fillStyle = P.grad(g, 0, 0, 0, S, ['#2c1450', '#12081f']); g.fillRect(0, 0, S, S); });
+    g.fillStyle = '#ffd400'; rr(g, 24, 100, 464, 302, 26); g.fill(); g.fillStyle = '#5a1a7a'; rr(g, 36, 120, 440, 270, 20); g.fill();
+    for (let i = 0; i < 24; i++) { const per = i < 12, x = per ? 40 + i * 39 : 40 + (i - 12) * 39, y = per ? 110 : 394; g.fillStyle = (Math.floor(t * 8) + i) % 3 === 0 ? '#fff6a0' : '#b3261e'; g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill(); }
+    txt(g, 'THE CHIP MACHINE', 256, 136, 16, '#ffd400');
+    s.reels.forEach((r, i) => { const x = 106 + i * 150; g.save(); g.fillStyle = P.grad(g, 0, 150, 0, 360, ['#d8d0b8', '#fffbe6', '#d8d0b8']); rr(g, x - 62, 150, 124, 210, 14); g.fill(); g.beginPath(); rr(g, x - 62, 150, 124, 210, 14); g.clip();
+      const N = 6, SY = ['🍒', '🍋', '🔔', '⭐', '🍇', '💎'], f = r.p - Math.floor(r.p); for (let k = -2; k <= 2; k++) { const idx = ((Math.floor(r.p) + k) % N + N) % N, y = 255 + (k - f) * 80; g.font = '58px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(SY[idx], x, y); }
+      g.fillStyle = P.grad(g, 0, 150, 0, 360, ['rgba(0,0,0,0.45)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.45)']); g.fillRect(x - 62, 150, 124, 210); g.restore();
+      g.strokeStyle = r.stop ? '#39ff14' : i === s.cur ? '#ffd400' : '#2a0a3a'; g.lineWidth = 6; rr(g, x - 62, 150, 124, 210, 14); g.stroke(); });
+    g.strokeStyle = 'rgba(255,40,40,0.85)'; g.lineWidth = 4; g.beginPath(); g.moveTo(40, 255); g.lineTo(472, 255); g.stroke();
+    if (s.win) for (let i = 0; i < 18; i++) { g.font = '30px serif'; g.fillText('🪙', 60 + (i * 37) % 400, 130 + ((t * 320 + i * 70) % 300)); }
+    btn(g, { x: 136, y: 410, w: 240, h: 66 }, s.win ? '£££ PAID OUT £££' : `STOP REEL ${Math.min(3, s.cur + 1)}`, s.win ? '#2e7d32' : '#c62828', 24);
+    for (const [x, l] of [[60, 'NUDGE'], [452, 'HOLD']]) { g.fillStyle = '#ffd400'; rr(g, x - 44, 420, 88, 44, 10); g.fill(); txt(g, l, x, 442, 14, '#5a1a7a'); }
+    P.hint(g, s.msgT > 0 ? s.msg : 'STOP EVERY REEL ON A 🍒', 82, s.msgT > 0 ? '#ff6b6b' : '#fff');
+  },
+  // ---- UNBLOCK THE TOILET: the cubicle, the cistern, the bowl brimming with brown water that drains as you plunge
+  plunge(g, s, t) {
+    P.scene(g, s.title, () => { P.tiles(g, 0, 0, S, S, 46, '#dfe9ee', '#b9c7cf'); g.fillStyle = '#8fa3ad'; g.fillRect(0, 430, S, 90); P.tiles(g, 0, 430, S, 90, 30, '#6f8590', '#5a6e78'); });
+    P.steel(g, 470, 140, 10, 200, 3);
+    g.fillStyle = '#fafafa'; rr(g, 176, 120, 160, 90, 10); g.fill(); g.strokeStyle = '#ccc'; g.lineWidth = 3; rr(g, 176, 120, 160, 90, 10); g.stroke(); g.fillStyle = '#c0c4c8'; rr(g, 300, 136, 26, 10, 4); g.fill();
+    g.fillStyle = '#f4f4f4'; g.beginPath(); g.moveTo(186, 300); g.quadraticCurveTo(186, 440, 256, 440); g.quadraticCurveTo(326, 440, 326, 300); g.fill(); g.fillStyle = '#fafafa'; g.beginPath(); g.ellipse(256, 300, 132, 50, 0, 0, 7); g.fill(); g.strokeStyle = '#ddd'; g.lineWidth = 3; g.stroke();
+    const k = s.p, lvl = 1 - k; g.fillStyle = `rgb(${Math.round(120 + 60 * k)},${Math.round(90 + 110 * k)},${Math.round(40 + 190 * k)})`; g.beginPath(); g.ellipse(256, 300 + (1 - lvl) * 10, 108 - (1 - lvl) * 22, 38 - (1 - lvl) * 10, 0, 0, 7); g.fill();
+    for (let i = 0; i < 6 * lvl; i++) { g.fillStyle = 'rgba(255,255,255,0.4)'; g.beginPath(); g.arc(200 + ((i * 41 + t * 30) % 110), 296 + Math.sin(t * 3 + i) * 10, 4 + (i % 3), 0, 7); g.fill(); }
+    const y = 150 + s.bob * 50; g.fillStyle = '#a0662a'; rr(g, 248, y - 40, 16, 190, 6); g.fill(); g.fillStyle = '#d32f2f'; g.beginPath(); g.ellipse(256, y + 156, 54, 26 - s.bob * 8, 0, Math.PI, 0, true); g.fill(); g.fillStyle = '#9e1c1c'; g.fillRect(202, y + 154, 108, 6);
+    g.fillStyle = 'rgba(0,0,0,0.55)'; rr(g, 34, 112, 38, 356, 19); g.fill(); g.fillStyle = '#39ff14'; rr(g, 39, 463 - 346 * s.p, 28, 346 * s.p, 14); g.fill(); txt(g, '💧', 53, 96, 18);
+    P.hint(g, k > 0.85 ? 'NEARLY... KEEP GOING!' : 'PLUNGE! TAP AS FAST AS YOU CAN', 82);
+  },
+  // ---- RESTOCK THE LOO ROLL: the ladies' wall, the roll holder, rolls dropping out of the cupboard into your basket
+  catch(g, s) {
+    P.scene(g, s.title, () => { P.tiles(g, 0, 0, S, S, 40, '#f3d9e4', '#e0b9ca'); g.fillStyle = '#7a4a5a'; g.fillRect(0, 96, S, 26); for (let x = 20; x < S; x += 60) { g.fillStyle = '#5a3040'; g.fillRect(x, 100, 40, 18); } txt(g, 'STOCK CUPBOARD', 256, 109, 12, '#f3d9e4'); });
+    g.fillStyle = '#c0c4c8'; rr(g, 420, 200, 70, 14, 6); g.fill(); g.fillRect(450, 200, 8, 30); if (s.got > 0) P.roll(g, 455, 236, 20);
+    for (const r of s.rolls) P.roll(g, r.x, r.y, 22, r.r);
+    g.fillStyle = '#d8d8d8'; g.strokeStyle = '#8a8a8a'; g.lineWidth = 3; g.beginPath(); g.moveTo(s.bx - 70, 416); g.lineTo(s.bx + 70, 416); g.lineTo(s.bx + 58, 474); g.lineTo(s.bx - 58, 474); g.closePath(); g.stroke();
+    for (let i = 1; i < 7; i++) { g.beginPath(); g.moveTo(s.bx - 70 + i * 20, 416); g.lineTo(s.bx - 58 + i * 16.5, 474); g.stroke(); } for (const y of [436, 456]) { g.beginPath(); g.moveTo(s.bx - 66, y); g.lineTo(s.bx + 66, y); g.stroke(); }
+    for (let i = 0; i < Math.min(s.got, 6); i++) P.roll(g, s.bx - 40 + (i % 3) * 40, 456 - Math.floor(i / 3) * 22, 15);
+    txt(g, `${s.got} / ${s.need}`, 60, 150, 24, '#7a1a3a'); txt(g, '✖'.repeat(s.miss) + '·'.repeat(3 - s.miss), 60, 180, 22, '#c62828');
+    P.hint(g, s.msgT > 0 ? 'DROPPED THREE! START AGAIN' : 'MOVE THE BASKET · CATCH THE ROLLS', 82, s.msgT > 0 ? '#ff6b6b' : '#fff');
+  },
+  // ---- SORT THE BOOKINGS: the open bookings diary on the reception desk, handwritten, ticked off in red
+  order(g, s) {
+    const cells = s._cells, box = (j) => ({ x: 36 + (j % 2) * 226, y: 96 + Math.floor(j / 2) * 94, w: 214, h: 82 });
+    P.scene(g, s.title, () => { P.wood(g, 0, 0, S, S, '#9a5e28'); g.fillStyle = '#5a1214'; rr(g, 16, 70, 480, 430, 16); g.fill();
+      g.fillStyle = '#fbf6e6'; rr(g, 26, 80, 228, 410, 8); g.fill(); rr(g, 258, 80, 228, 410, 8); g.fill(); g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(250, 80, 12, 410);
+      g.strokeStyle = 'rgba(80,120,200,0.35)'; g.lineWidth = 1; for (let y = 104; y < 486; y += 18) { g.beginPath(); g.moveTo(30, y); g.lineTo(250, y); g.moveTo(262, y); g.lineTo(482, y); g.stroke(); }
+      g.strokeStyle = 'rgba(200,60,60,0.5)'; g.beginPath(); g.moveTo(96, 80); g.lineTo(96, 490); g.moveTo(326, 80); g.lineTo(326, 490); g.stroke(); });
+    cells.forEach((c, j) => { const b = box(j), on = c.i < s.next; g.font = `700 30px "Comic Sans MS", "Bradley Hand", cursive`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = on ? 'rgba(30,30,30,0.35)' : '#1a2a6a'; g.fillText(c.tm, b.x + 50, b.y + b.h / 2);
+      g.font = `700 24px "Comic Sans MS", "Bradley Hand", cursive`; g.fillStyle = on ? 'rgba(30,30,30,0.35)' : '#222'; g.fillText(c.who.charAt(0) + c.who.slice(1).toLowerCase(), b.x + 148, b.y + b.h / 2); txt(g, `(${2 + (c.i * 3) % 5})`, b.x + 196, b.y + b.h / 2 + 18, 11, '#666');
+      if (on) { g.strokeStyle = '#d32f2f'; g.lineWidth = 5; g.beginPath(); g.moveTo(b.x + 14, b.y + b.h / 2); g.lineTo(b.x + 26, b.y + b.h / 2 + 14); g.lineTo(b.x + 46, b.y + b.h / 2 - 18); g.stroke(); txt(g, String(c.i + 1), b.x + 196, b.y + 16, 14, '#d32f2f'); } });
+    P.hint(g, s.bad > 0 ? 'WRONG ORDER! START AGAIN' : 'TICK THEM OFF · EARLIEST TABLE FIRST', 62 + 20, s.bad > 0 ? '#ff6b6b' : '#fff', 17);
+  },
+  // ---- CLEAN THE FRYER: the kitchen, a stainless twin fryer, bubbling oil, a basket of chips, the thermostat
+  temp(g, s, t) {
+    P.scene(g, s.title, () => { P.tiles(g, 0, 0, S, S, 34, '#f2f2f2', '#d6d6d6'); g.fillStyle = '#c0c4c8'; g.fillRect(0, 440, S, 80); });
+    if (s.T > 0.75 || s.fire > 0) for (let i = 0; i < 6; i++) { const a = (t * 0.6 + i * 0.17) % 1; g.fillStyle = `rgba(90,90,90,${0.35 * (1 - a) * (s.fire > 0 ? 1.6 : (s.T - 0.75) * 4)})`; g.beginPath(); g.arc(300 + Math.sin(i * 2 + t) * 30, 200 - a * 120, 20 + a * 30, 0, 7); g.fill(); }
+    P.steel(g, 160, 200, 300, 250, 12); g.fillStyle = '#2a2a2a'; rr(g, 176, 212, 268, 120, 10); g.fill(); g.fillStyle = s.fire > 0 ? '#ff5a1a' : P.grad(g, 0, 224, 0, 320, ['#e8b84a', '#b57a1a']); rr(g, 182, 222, 256, 104, 8); g.fill();
+    for (let i = 0; i < Math.round(30 * s.T); i++) { g.fillStyle = 'rgba(255,240,180,0.6)'; g.beginPath(); g.arc(190 + ((i * 47 + t * 60) % 240), 232 + ((i * 29) % 80) + Math.sin(t * 12 + i) * 3, 2 + (i % 3), 0, 7); g.fill(); }
+    const k = Math.min(1, s.cooked / s.need); g.strokeStyle = '#9aa0a6'; g.lineWidth = 3; for (let x = 230; x <= 390; x += 16) { g.beginPath(); g.moveTo(x, 240); g.lineTo(x, 316); g.stroke(); } g.strokeRect(222, 240, 176, 76); g.fillStyle = '#222'; rr(g, 398, 230, 70, 12, 6); g.fill();
+    for (let i = 0; i < 22; i++) { g.fillStyle = `rgb(${245 - k * 30},${220 - k * 80},${130 - k * 90})`; g.save(); g.translate(236 + (i % 8) * 20, 262 + Math.floor(i / 8) * 18 + Math.sin(t * 7 + i) * 2); g.rotate(i * 0.9); g.fillRect(-12, -3.5, 24, 7); g.restore(); }
+    for (const x of [210, 410]) { g.fillStyle = '#222'; g.beginPath(); g.arc(x, 380, 24, 0, 7); g.fill(); g.strokeStyle = '#ddd'; g.lineWidth = 4; g.beginPath(); g.moveTo(x, 380); g.lineTo(x + Math.cos(-2 + s.T * 4) * 18, 380 + Math.sin(-2 + s.T * 4) * 18); g.stroke(); }
+    g.fillStyle = s.heat ? '#ff3b3b' : '#550'; g.beginPath(); g.arc(310, 380, 8, 0, 7); g.fill(); txt(g, s.heat ? 'HEATING' : '', 310, 410, 12, '#ff3b3b');
+    if (s.fire > 0) { for (let i = 0; i < 5; i++) P.flame(g, 200 + i * 55, 210 - Math.sin(t * 9 + i) * 12, 2.2, t); }
+    const x = 64, y0 = 120, h = 320; g.fillStyle = '#fff'; rr(g, x - 6, y0 - 6, 52, h + 40, 26); g.fill(); g.fillStyle = '#eee'; rr(g, x, y0, 40, h, 20); g.fill();
+    g.fillStyle = 'rgba(57,255,20,0.55)'; g.fillRect(x, y0 + h * (1 - s.band - 0.09), 40, h * 0.18); g.fillStyle = s.T > 0.9 ? '#ff3b3b' : '#ff8a00'; rr(g, x + 12, y0 + h * (1 - s.T), 16, h * s.T, 8); g.fill(); g.beginPath(); g.arc(x + 20, y0 + h + 14, 18, 0, 7); g.fill();
+    txt(g, '°C', x + 20, y0 - 18, 14, '#333');
+    g.fillStyle = 'rgba(0,0,0,0.5)'; rr(g, 160, 466, 300, 22, 11); g.fill(); g.fillStyle = '#ffd400'; rr(g, 162, 468, 296 * k, 18, 9); g.fill(); txt(g, 'CHIPS ' + Math.round(k * 100) + '%', 310, 477, 12, '#fff');
+    P.hint(g, s.fire > 0 ? '🔥 FIRE! START AGAIN 🔥' : 'HOLD TO HEAT · KEEP THE OIL IN THE GREEN', 82, s.fire > 0 ? '#ff6b6b' : '#fff');
+  },
+  // ---- WASH THE POTS: the pot wash sink full of suds, and the three racks: plates, glasses, cutlery
+  sort(g, s, t) {
+    const bin = (i) => ({ x: 30 + i * 158, y: 360, w: 140, h: 110 });
+    const draw1 = (k, x, y, sc = 1) => { g.save(); g.translate(x, y); g.scale(sc, sc);
+      if (k === 0) P.plate(g, 0, 0, 44); else if (k === 1) P.pint(g, 0, 40, 80, 0); else { g.fillStyle = '#d8dce0'; g.save(); g.rotate(-0.4); g.fillRect(-4, -40, 8, 80); for (let i = 0; i < 4; i++) g.fillRect(-10 + i * 6, -58, 3, 20); g.restore(); g.save(); g.rotate(0.4); g.fillRect(-4, -10, 8, 50); g.beginPath(); g.moveTo(-6, -10); g.lineTo(-6, -58); g.quadraticCurveTo(8, -50, 6, -10); g.fill(); g.restore(); } g.restore(); };
+    P.scene(g, s.title, () => { P.tiles(g, 0, 0, S, S, 38, '#e6eef0', '#c6d2d6'); P.steel(g, 0, 330, S, 190, 0); });
+    P.steel(g, 136, 118, 240, 128, 14); g.fillStyle = '#9fc8d8'; rr(g, 148, 128, 216, 108, 10); g.fill();
+    for (let i = 0; i < 16; i++) { g.fillStyle = 'rgba(255,255,255,0.85)'; g.beginPath(); g.arc(156 + (i * 37) % 200, 132 + Math.sin(t * 2 + i) * 4 + (i % 3) * 8, 9 + (i % 4) * 3, 0, 7); g.fill(); }
+    P.steel(g, 246, 90, 20, 30, 4);
+    const L = ['PLATES', 'GLASSES', 'CUTLERY']; for (let i = 0; i < 3; i++) { const b = bin(i); g.fillStyle = '#5f6b70'; rr(g, b.x, b.y, b.w, b.h, 12); g.fill(); g.strokeStyle = '#c0c8cc'; g.lineWidth = 3;
+      if (i === 0) for (let x = b.x + 14; x < b.x + b.w - 8; x += 14) { g.beginPath(); g.moveTo(x, b.y + 20); g.lineTo(x, b.y + 80); g.stroke(); } else if (i === 1) { for (let x = b.x + 10; x < b.x + b.w; x += 30) for (let y = b.y + 14; y < b.y + 84; y += 30) g.strokeRect(x, y, 26, 26); } else for (let j = 0; j < 3; j++) { g.fillStyle = '#c0c8cc'; rr(g, b.x + 16 + j * 40, b.y + 30, 30, 52, 6); g.fill(); }
+      txt(g, L[i], b.x + b.w / 2, b.y + 98, 14, '#fff'); }
+    if (s.drag || Math.hypot(s.ix - 256, s.iy - 170) > 2) draw1(s.item, s.ix, s.iy); else draw1(s.item, 256, 180 + Math.sin(t * 2) * 3);
+    g.fillStyle = 'rgba(0,0,0,0.5)'; rr(g, 40, 98, 432, 14, 7); g.fill(); g.fillStyle = s.time < 6 ? '#ff3b3b' : '#ffd400'; rr(g, 40, 98, 432 * s.time / 22, 14, 7); g.fill();
+    txt(g, `${s.got} / ${s.need}`, 440, 150, 24, '#ffd400'); P.hint(g, s.bad > 0 ? 'WRONG RACK!' : 'DRAG EACH ONE OUT OF THE SINK TO ITS RACK', 290, s.bad > 0 ? '#ff6b6b' : '#fff', 16);
+  },
+  // ---- COLLECT THE EMPTIES: the raised booths' tables, pub carpet, beer mats; empties (with foam lacing) and full pints
+  whack(g, s) {
+    const spot = (i) => ({ x: 106 + (i % 3) * 150, y: 170 + Math.floor(i / 3) * 150 });
+    P.scene(g, s.title, () => { g.fillStyle = '#5a1420'; g.fillRect(0, 0, S, S); for (let y = 0; y < S; y += 40) for (let x = (y / 40 % 2) * 20; x < S; x += 40) { g.fillStyle = '#c9a24a'; g.beginPath(); g.moveTo(x, y + 10); g.lineTo(x + 10, y); g.lineTo(x + 20, y + 10); g.lineTo(x + 10, y + 20); g.fill(); } });
+    for (let i = 0; i < 6; i++) { const p = spot(i); g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(p.x, p.y + 54, 66, 18, 0, 0, 7); g.fill(); P.wood(g, p.x - 64, p.y + 26, 128, 34, '#6d4c33'); g.fillStyle = '#4a3020'; g.fillRect(p.x - 64, p.y + 56, 128, 6);
+      g.fillStyle = ['#c8102e', '#1e5aa8', '#f5f0e0'][i % 3]; g.beginPath(); g.ellipse(p.x + 30, p.y + 40, 16, 6, 0, 0, 7); g.fill(); }
+    for (const u of s.ups) { const p = spot(u.i), k = Math.min(1, (1.3 - u.life) * 6 + 0.3); g.save(); g.translate(p.x, p.y + 42); g.scale(k, k);
+      if (u.full) P.pint(g, 0, 0, 92, 0.86, '#c98a1a'); else { P.pint(g, 0, 0, 92, 0); g.strokeStyle = 'rgba(255,250,235,0.7)'; g.lineWidth = 2; for (let j = 0; j < 4; j++) { g.beginPath(); g.moveTo(-24 + j, -70 + j * 16); g.quadraticCurveTo(0, -62 + j * 16, 24 - j, -70 + j * 16); g.stroke(); } g.fillStyle = 'rgba(200,140,40,0.5)'; g.fillRect(-18, -8, 36, 6); }
+      g.restore(); }
+    txt(g, `${s.got} / ${s.need}`, 70, 486, 22, '#ffd400'); txt(g, '✖'.repeat(s.miss) + '·'.repeat(4 - s.miss), 440, 486, 20, '#ff6b6b');
+    P.hint(g, s.msgT > 0 ? s.msg : 'GRAB THE EMPTIES · LEAVE THE FULL PINTS', 82, s.msgT > 0 ? '#ff6b6b' : '#fff');
+  },
+  // ---- WIPE THE TABLES: a conservatory table: beer rings, ketchup, crumbs; a blue cloth
+  scrub(g, s, t) {
+    P.scene(g, s.title, () => { g.fillStyle = '#e8dcc0'; g.fillRect(0, 0, S, S); g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 6; for (let x = 0; x < S; x += 128) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 100); g.stroke(); } });
+    P.wood(g, 40, 110, 432, 360, '#a87a4a'); g.strokeStyle = '#6e4a28'; g.lineWidth = 6; rr(g, 40, 110, 432, 360, 20); g.stroke();
+    P.pint(g, 440, 160, 40, 0.3, '#c98a1a'); g.fillStyle = '#c8102e'; rr(g, 60, 128, 22, 40, 6); g.fill(); g.fillStyle = '#fff'; g.fillRect(64, 136, 14, 6);
+    s.spots.forEach((p, i) => { if (p.a <= 0) return; g.globalAlpha = Math.max(0, p.a); const kind = i % 3;
+      if (kind === 0) { g.strokeStyle = '#5a3a1a'; g.lineWidth = 7; g.beginPath(); g.ellipse(p.x, p.y, p.r, p.r * 0.85, 0, 0, 7); g.stroke(); g.strokeStyle = 'rgba(90,58,26,0.5)'; g.lineWidth = 4; g.beginPath(); g.ellipse(p.x + 8, p.y + 5, p.r * 0.9, p.r * 0.75, 0, 0, 7); g.stroke(); }
+      else if (kind === 1) { g.fillStyle = '#b3261e'; g.beginPath(); g.ellipse(p.x, p.y, p.r * 0.8, p.r * 0.55, 0.5, 0, 7); g.fill(); for (let j = 0; j < 5; j++) { g.beginPath(); g.arc(p.x + Math.cos(j * 1.3) * p.r, p.y + Math.sin(j * 1.3) * p.r * 0.8, 5, 0, 7); g.fill(); } }
+      else { g.fillStyle = '#c8a050'; for (let j = 0; j < 14; j++) { g.beginPath(); g.arc(p.x + Math.cos(j * 2.4) * p.r * (j % 4) / 3, p.y + Math.sin(j * 2.4) * p.r * (j % 3) / 2.5, 3 + (j % 3), 0, 7); g.fill(); } }
+      g.globalAlpha = 1; });
+    if (s.drag) { g.save(); g.translate(s.cx, s.cy); g.rotate(Math.sin(t * 20) * 0.15); g.fillStyle = '#2f7bff'; rr(g, -40, -28, 80, 56, 10); g.fill(); g.strokeStyle = '#1a4ab0'; g.lineWidth = 2; for (let i = -30; i < 40; i += 10) { g.beginPath(); g.moveTo(i, -28); g.lineTo(i, 28); g.stroke(); } g.restore(); }
+    const left = s.spots.filter(p => p.a > 0).length; P.hint(g, left ? `WIPE IT CLEAN · ${left} MESSES LEFT` : 'SPOTLESS ✓', 82);
+  },
+  // ---- RESET THE SLOT MACHINE: the machine's open service door, its keypad, the reset slip taped inside
+  code(g, s, t) {
+    const key = (k) => ({ x: 146 + (k === 'C' ? 0 : k === '0' ? 1 : k === 'OK' ? 2 : (Number(k) - 1) % 3) * 76, y: 200 + (k === 'C' || k === '0' || k === 'OK' ? 3 : Math.floor((Number(k) - 1) / 3)) * 70, w: 68, h: 62 });
+    P.scene(g, s.title, () => { g.fillStyle = '#1c2a6a'; g.fillRect(0, 0, S, S); g.fillStyle = '#0e1538'; rr(g, 20, 60, 472, 440, 18); g.fill();
+      g.strokeStyle = '#3a3a3a'; g.lineWidth = 4; for (let i = 0; i < 5; i++) { g.strokeStyle = ['#c62828', '#2e7d32', '#ffd400', '#1e88e5', '#111'][i]; g.beginPath(); g.moveTo(30, 200 + i * 40); g.bezierCurveTo(90, 220 + i * 40, 60, 300 + i * 30, 120, 330 + i * 28); g.stroke(); } });
+    g.fillStyle = Math.floor(t * 3) % 2 ? '#ff3b3b' : '#5a0a0a'; g.beginPath(); g.arc(450, 210, 14, 0, 7); g.fill(); txt(g, 'TILT', 450, 238, 12, '#ff6b6b');
+    g.fillStyle = '#4a4a4a'; rr(g, 404, 280, 76, 160, 10); g.fill(); for (let i = 0; i < 8; i++) { g.fillStyle = '#d4af37'; g.beginPath(); g.ellipse(442, 420 - i * 16, 26, 7, 0, 0, 7); g.fill(); } txt(g, 'HOPPER', 442, 296, 11, '#ddd');
+    if (s.show <= 0) { g.fillStyle = '#c9b48a'; g.save(); g.translate(40, 70); g.rotate(-0.06); rr(g, 0, 0, 150, 90, 6); g.fill(); txt(g, 'REMEMBER IT?', 75, 45, 14, '#5a3a1a'); g.restore(); }
+    else { g.fillStyle = '#fffbe6'; g.save(); g.translate(40, 70); g.rotate(-0.06); rr(g, 0, 0, 150, 90, 6); g.fill(); g.fillStyle = 'rgba(255,255,200,0.7)'; g.fillRect(55, -6, 40, 14); txt(g, 'RESET CODE', 75, 24, 14, '#c62828'); txt(g, s._code, 75, 60, 28, '#222'); g.restore(); g.fillStyle = '#ffd400'; g.fillRect(40, 166, 150 * Math.min(1, s.show / 3), 6); }
+    g.fillStyle = '#000'; rr(g, 220, 100, 250, 70, 10); g.fill(); g.strokeStyle = '#555'; g.lineWidth = 4; rr(g, 220, 100, 250, 70, 10); g.stroke(); txt(g, 'SERVICE MODE', 345, 114, 11, '#2a7a2a');
+    txt(g, s.bad > 0 ? 'ERROR' : (s.typed || '______'), 345, 142, 32, s.bad > 0 ? '#ff4d4d' : '#39ff14');
+    g.fillStyle = '#2a2a30'; rr(g, 136, 190, 238, 290, 14); g.fill();
+    for (const k of ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK']) { const b = key(k); g.fillStyle = k === 'OK' ? '#2e7d32' : k === 'C' ? '#c62828' : P.grad(g, 0, b.y, 0, b.y + b.h, ['#5a6aa8', '#3a4a8a']); rr(g, b.x, b.y, b.w, b.h, 12); g.fill(); g.fillStyle = 'rgba(255,255,255,0.15)'; rr(g, b.x + 4, b.y + 3, b.w - 8, 12, 6); g.fill(); txt(g, k, b.x + b.w / 2, b.y + b.h / 2 + 1, 24, '#fff'); }
+  },
+  // ---- CHECK THE KEG PRESSURE: the gas bottle, the regulator with its big pressure gauge, the line to the kegs
+  dial(g, s) {
+    P.scene(g, s.title, () => { g.fillStyle = '#8a9aa8'; g.fillRect(0, 0, S, S); P.tiles(g, 0, 0, S, S, 64, '#8a9aa8', '#7a8a98'); g.fillStyle = '#5a6670'; g.fillRect(0, 460, S, 60); });
+    g.fillStyle = '#2e7d32'; rr(g, 26, 300, 70, 180, 30); g.fill(); g.fillStyle = '#1b5e20'; g.fillRect(26, 360, 70, 20); txt(g, 'CO₂', 61, 420, 18, '#fff'); P.steel(g, 50, 270, 22, 34, 4);
+    for (const x of [430, 478]) { g.fillStyle = P.grad(g, x - 22, 0, x + 22, 0, ['#8d939a', '#e3e7ea', '#80868c']); g.fillRect(x - 22, 380, 44, 92); g.fillStyle = '#333'; g.fillRect(x - 6, 372, 12, 10); }
+    g.strokeStyle = '#111'; g.lineWidth = 6; g.beginPath(); g.moveTo(61, 270); g.bezierCurveTo(61, 230, 120, 300, 150, 300); g.moveTo(362, 300); g.bezierCurveTo(400, 300, 430, 340, 430, 372); g.stroke();
+    const cx = 256, cy = 300, r = 170, ang = (k) => Math.PI + k * Math.PI;
+    g.fillStyle = '#bfc4c9'; g.beginPath(); g.arc(cx, cy, r + 26, Math.PI, 0); g.closePath(); g.fill(); g.fillStyle = '#fbfbf6'; g.beginPath(); g.arc(cx, cy, r + 12, Math.PI, 0); g.closePath(); g.fill();
+    g.lineWidth = 26; g.strokeStyle = 'rgba(57,255,20,0.75)'; g.beginPath(); g.arc(cx, cy, r - 10, ang(s.zone[0]), ang(s.zone[1])); g.stroke(); g.strokeStyle = 'rgba(220,40,40,0.7)'; g.beginPath(); g.arc(cx, cy, r - 10, ang(0.88), ang(1)); g.stroke();
+    for (let i = 0; i <= 30; i++) { const a = ang(i / 30), L = i % 5 ? 10 : 20; g.strokeStyle = '#222'; g.lineWidth = i % 5 ? 2 : 4; g.beginPath(); g.moveTo(cx + Math.cos(a) * (r + 8), cy + Math.sin(a) * (r + 8)); g.lineTo(cx + Math.cos(a) * (r + 8 - L), cy + Math.sin(a) * (r + 8 - L)); g.stroke(); if (!(i % 5)) txt(g, String(i * 2), cx + Math.cos(a) * (r - 30), cy + Math.sin(a) * (r - 30), 14, '#222'); }
+    txt(g, 'PSI', cx, cy - 60, 16, '#555');
+    const k = (Math.sin(s.a) + 1) / 2; g.strokeStyle = '#c62828'; g.lineWidth = 6; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(ang(k)) * (r + 4), cy + Math.sin(ang(k)) * (r + 4)); g.stroke(); g.fillStyle = '#333'; g.beginPath(); g.arc(cx, cy, 16, 0, 7); g.fill();
+    btn(g, { x: 156, y: 400, w: 200, h: 70 }, 'SET!', '#c62828', 30);
+    P.hint(g, `STOP THE NEEDLE IN THE GREEN · ${s.hits}/${s.need}`, 82, s.flash < 0 ? '#ff6b6b' : s.flash > 0 ? '#39ff14' : '#fff');
+  },
+  // ---- CLOCK IN FOR YOUR SHIFT: the staff room clock-in terminal on the wall, the rota pinned beside it
+  simon(g, s) {
+    const C = ['#ff3b3b', '#2f7bff', '#39ff14', '#ffd400'], I = ['☕', '🍺', '🧾', '🔑'];
+    P.scene(g, s.title, () => { g.fillStyle = '#a8b0bd'; g.fillRect(0, 0, S, S); g.fillStyle = '#7a1f24'; g.fillRect(0, 420, S, 100); });
+    g.fillStyle = '#fffbe6'; g.save(); g.translate(14, 130); g.rotate(-0.04); g.fillRect(0, 0, 74, 120); txt(g, 'ROTA', 37, 14, 12, '#c62828'); for (let i = 0; i < 7; i++) { g.fillStyle = '#999'; g.fillRect(8, 30 + i * 12, 58, 3); } g.fillStyle = '#d32f2f'; g.beginPath(); g.arc(37, 2, 5, 0, 7); g.fill(); g.restore();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(462, 140, 34, 0, 7); g.fill(); g.strokeStyle = '#222'; g.lineWidth = 4; g.stroke(); g.beginPath(); g.moveTo(462, 140); g.lineTo(462, 116); g.moveTo(462, 140); g.lineTo(480, 146); g.stroke();
+    g.fillStyle = '#2a2d36'; rr(g, 84, 104, 344, 376, 22); g.fill(); g.fillStyle = '#3a3f4a'; rr(g, 90, 110, 332, 14, 7); g.fill();
+    for (let i = 0; i < 4; i++) { const b = { x: 96 + (i % 2) * 168, y: 130 + Math.floor(i / 2) * 168, w: 152, h: 152 }, on = s.lit === i;
+      g.fillStyle = C[i]; g.globalAlpha = on ? 1 : 0.32; rr(g, b.x, b.y, b.w, b.h, 22); g.fill(); g.globalAlpha = 1; if (on) { g.shadowColor = C[i]; g.shadowBlur = 30; rr(g, b.x, b.y, b.w, b.h, 22); g.fill(); g.shadowBlur = 0; }
+      g.fillStyle = 'rgba(255,255,255,0.2)'; rr(g, b.x + 8, b.y + 6, b.w - 16, 26, 12); g.fill(); g.font = '54px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.globalAlpha = on ? 1 : 0.6; g.fillText(I[i], b.x + b.w / 2, b.y + b.h / 2 + 4); g.globalAlpha = 1; }
+    txt(g, `${s.st === 'input' ? s.pos : 0} / ${s.len}`, S / 2, 494, 18, '#ffd400');
+    P.hint(g, s.bad > 0 ? 'WRONG! WATCH AGAIN' : s.st === 'input' ? `NOW COPY IT · ROUND ${s.len - 2} OF 3` : 'WATCH THE PATTERN...', 82, s.bad > 0 ? '#ff6b6b' : '#fff');
+  },
+  // ---- LAY THE TABLES: the restaurant table: white cloth, gold-rimmed plates, napkins, wine glasses, a candle
+  place(g, s, t) {
+    const P3 = [106, 256, 406];
+    P.scene(g, s.title, () => { g.fillStyle = '#3a1a14'; g.fillRect(0, 0, S, S); for (let x = 0; x < S; x += 24) { g.fillStyle = x % 48 ? '#4a2218' : '#3e1c14'; g.fillRect(x, 0, 24, S); } });
+    g.fillStyle = '#fbfbf6'; rr(g, 22, 110, 468, 222, 14); g.fill(); g.fillStyle = '#efefe6'; for (let y = 120; y < 330; y += 24) g.fillRect(22, y, 468, 2); g.fillStyle = '#e6e6dc'; g.fillRect(22, 318, 468, 14);
+    for (const x of P3) { g.fillStyle = '#7a1a2a'; g.beginPath(); g.moveTo(x - 18, 132); g.lineTo(x + 18, 132); g.lineTo(x + 8, 150); g.lineTo(x - 8, 150); g.fill(); P.plate(g, x, 220, 40); g.fillStyle = 'rgba(220,240,255,0.5)'; g.beginPath(); g.ellipse(x + 46, 144, 12, 14, 0, 0, 7); g.fill(); g.strokeStyle = '#dfefff'; g.lineWidth = 2; g.stroke(); g.beginPath(); g.moveTo(x + 46, 158); g.lineTo(x + 46, 172); g.stroke(); }
+    g.fillStyle = '#d4af37'; g.fillRect(250, 120, 12, 8); g.fillStyle = '#f5eedc'; g.fillRect(252, 96, 8, 26); P.flame(g, 256, 90, 0.7, t);
+    for (const q of s._slots) if (!q.f) { g.strokeStyle = q.k === 'fork' ? 'rgba(40,90,200,0.35)' : 'rgba(200,60,40,0.35)'; g.setLineDash([6, 6]); g.lineWidth = 2; g.strokeRect(q.x - 14, q.y - 62, 28, 124); g.setLineDash([]); }
+    P.wood(g, 22, 352, 468, 130, '#5a3a22'); g.strokeStyle = '#3a2416'; g.lineWidth = 4; g.strokeRect(22, 352, 468, 130); txt(g, 'CUTLERY TRAY', 256, 366, 11, '#e8d0b0');
+    const draw1 = (k, x, y) => { g.save(); g.translate(x, y); g.fillStyle = P.grad(g, -10, 0, 10, 0, ['#9aa0a6', '#eef1f3', '#9aa0a6']); g.strokeStyle = '#6a7077'; g.lineWidth = 1.5;
+      if (k === 'fork') { rr(g, -4, -12, 8, 64, 3); g.fill(); g.fillRect(-14, -50, 28, 12); for (let i = 0; i < 4; i++) g.fillRect(-14 + i * 8, -80, 4, 32); }
+      else { rr(g, -5, 0, 10, 54, 4); g.fill(); g.beginPath(); g.moveTo(-6, 0); g.lineTo(-6, -72); g.quadraticCurveTo(10, -62, 8, 0); g.closePath(); g.fill(); g.stroke(); } g.restore(); };
+    for (const it of s.items) draw1(it.k, it.x, it.y);
+    P.hint(g, s.msgT > 0 ? s.msg : 'FORK ON THE LEFT · KNIFE ON THE RIGHT', 82, s.msgT > 0 ? '#ff6b6b' : '#fff');
+  },
+  // ---- LIGHT THE CANDLES: a dark restaurant, a window with curtains (they blow when the wind gets in), brass candlesticks
+  light(g, s, t) {
+    const n = s.lit.filter(Boolean).length, glow = 0.15 + n * 0.12;
+    P.scene(g, s.title, () => { g.fillStyle = `rgb(${Math.round(30 + glow * 90)},${Math.round(16 + glow * 50)},${Math.round(12 + glow * 25)})`; g.fillRect(0, 0, S, S);
+      g.fillStyle = '#0d1a3a'; rr(g, 176, 96, 160, 110, 6); g.fill(); g.fillStyle = '#fff8c0'; g.beginPath(); g.arc(300, 124, 10, 0, 7); g.fill(); g.strokeStyle = '#6a4a2a'; g.lineWidth = 6; rr(g, 176, 96, 160, 110, 6); g.stroke(); g.beginPath(); g.moveTo(256, 96); g.lineTo(256, 206); g.stroke();
+      const sw = s.blow > 0 ? Math.sin(t * 18) * 14 * s.blow : 0; g.fillStyle = '#7a1a2a'; for (const [x, d] of [[176, -1], [336, 1]]) { g.beginPath(); g.moveTo(x, 90); g.quadraticCurveTo(x + d * 20 + sw, 160, x + d * 10 + sw * 1.5, 220); g.lineTo(x - d * 34, 220); g.lineTo(x - d * 34, 90); g.fill(); } });
+    if (s.blow > 0) { g.strokeStyle = 'rgba(200,230,255,0.6)'; g.lineWidth = 3; for (let i = 0; i < 4; i++) { const y = 160 + i * 34, x = ((t * 400 + i * 120) % 600) - 60; g.beginPath(); g.moveTo(x, y); g.bezierCurveTo(x + 40, y - 14, x + 80, y + 14, x + 120, y); g.stroke(); } }
+    P.wood(g, 20, 336, 472, 40, '#4a2a16'); g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(20, 376, 472, 110);
+    s._C.forEach(([x, y], i) => { g.fillStyle = '#c9a24a'; g.beginPath(); g.ellipse(x, y + 36, 26, 7, 0, 0, 7); g.fill(); g.fillRect(x - 5, y + 24, 10, 14); g.beginPath(); g.ellipse(x, y + 24, 18, 5, 0, 0, 7); g.fill();
+      g.fillStyle = P.grad(g, x - 14, 0, x + 14, 0, ['#e8e0c8', '#fffbee', '#e0d8c0']); g.fillRect(x - 13, y - 60, 26, 86); g.fillStyle = '#fffbee'; g.beginPath(); g.ellipse(x, y - 60, 13, 4, 0, 0, 7); g.fill();
+      g.fillStyle = '#f5eedc'; g.beginPath(); g.ellipse(x + 8, y - 50, 3, 9, 0, 0, 7); g.fill(); g.fillStyle = '#222'; g.fillRect(x - 1.5, y - 72, 3, 12);
+      if (s.lit[i]) P.flame(g, x, y - 86, 1, t); else if (s.heat[i] > 0) { g.fillStyle = '#ffd400'; g.fillRect(x - 20, y + 46, 40 * s.heat[i] / 0.55, 5); } });
+    if (s.hold) { g.save(); g.translate(s.mx, s.my); g.rotate(0.5); g.fillStyle = '#e8c48a'; g.fillRect(-3, 0, 6, 80); g.fillStyle = '#c62828'; g.beginPath(); g.arc(0, 0, 6, 0, 7); g.fill(); g.restore(); P.flame(g, s.mx, s.my - 10, 0.8, t); }
+    txt(g, `${n} / 5 LIT`, S / 2, 440, 22, '#ffd400'); P.hint(g, s.blow > 0 ? '💨 A DRAUGHT! ONE BLEW OUT' : 'HOLD THE MATCH TO EACH WICK', 82, s.blow > 0 ? '#9fd8ff' : '#fff');
+  },
+  // ---- CLEAR THE GARDEN GLASSES: the beer garden bar: stack the trays of empties on the counter
+  stacker(g, s) {
+    const H = 40, base = 450;
+    P.scene(g, s.title, () => { g.fillStyle = P.grad(g, 0, 0, 0, 300, ['#5fb4ff', '#d4ecff']); g.fillRect(0, 0, S, 300); g.fillStyle = '#7a5230'; for (let x = 0; x < S; x += 26) g.fillRect(x, 220, 22, 90); g.fillStyle = '#4caf50'; g.fillRect(0, 300, S, 220);
+      g.fillStyle = '#3a2a22'; g.beginPath(); g.moveTo(80, 110); g.lineTo(432, 110); g.lineTo(470, 160); g.lineTo(42, 160); g.fill(); g.fillStyle = '#5a3a22'; g.fillRect(70, 160, 372, 60); txt(g, 'GARDEN BAR', 256, 190, 18, '#ffd400'); });
+    P.wood(g, 30, base + H - 6, 452, 50, '#5a3a22');
+    const tray = (x, y, w) => { g.fillStyle = '#2a2a2a'; rr(g, x, y + H - 9, w, 8, 3); g.fill(); for (let gx = x + 6; gx + 18 < x + w; gx += 22) { const wine = (gx / 22) % 3 < 1; if (wine) { g.strokeStyle = '#e8f4ff'; g.lineWidth = 2; g.fillStyle = 'rgba(220,240,255,0.25)'; g.beginPath(); g.ellipse(gx + 9, y + 10, 8, 9, 0, 0, 7); g.fill(); g.stroke(); g.beginPath(); g.moveTo(gx + 9, y + 19); g.lineTo(gx + 9, y + H - 10); g.stroke(); } else P.pint(g, gx + 9, y + H - 9, 30, 0); } };
+    s.rows.forEach((r, i) => i && tray(r.x, base - i * H + 4, r.w)); g.fillStyle = '#6d4c33'; g.fillRect(s.rows[0].x, base + 4, s.rows[0].w, H - 10);
+    if (s.cur && s.msgT <= 0) tray(s.cur.x, base - s.rows.length * H + 4, s.cur.w);
+    P.hint(g, s.msgT > 0 ? s.msg : `TAP TO DROP THE TRAY · ${s.rows.length - 1}/${s.need}`, 82, s.msgT > 0 ? '#ff6b6b' : '#fff');
+  },
+  // ---- SWEEP UP THE GLASS: the car park by Lewis's car: its smashed window, the shards, a dustpan and brush
+  sweep(g, s) {
+    const PAN = s._pan;
+    P.scene(g, s.title, () => { g.fillStyle = '#3d3f43'; g.fillRect(0, 0, S, S); for (let i = 0; i < 500; i++) { g.fillStyle = i % 2 ? '#4a4c50' : '#33353a'; g.fillRect((i * 97) % S, (i * 61) % S, 3, 3); }
+      g.fillStyle = '#f5f5f5'; g.fillRect(470, 100, 8, 420); g.fillStyle = '#c8102e'; rr(g, 30, 62, 452, 70, 16); g.fill(); g.fillStyle = '#9a0c22'; g.fillRect(30, 120, 452, 12); g.fillStyle = '#111'; g.beginPath(); g.arc(120, 136, 26, Math.PI, 0); g.arc(392, 136, 26, Math.PI, 0); g.fill();
+      g.fillStyle = '#1a1a1a'; g.beginPath(); g.moveTo(170, 70); g.lineTo(330, 70); g.lineTo(312, 110); g.lineTo(184, 110); g.fill(); g.strokeStyle = 'rgba(200,235,255,0.8)'; g.lineWidth = 2; for (let i = 0; i < 8; i++) { g.beginPath(); g.moveTo(250, 90); g.lineTo(250 + Math.cos(i * 0.8) * 70, 90 + Math.sin(i * 0.8) * 22); g.stroke(); } });
+    g.fillStyle = '#d32f2f'; g.beginPath(); g.moveTo(PAN.x, PAN.y + 6); g.lineTo(PAN.x + PAN.w, PAN.y + 6); g.lineTo(PAN.x + PAN.w - 8, PAN.y + PAN.h); g.lineTo(PAN.x + 8, PAN.y + PAN.h); g.fill(); g.fillStyle = '#9a1f1f'; g.fillRect(PAN.x, PAN.y, PAN.w, 8); g.fillRect(PAN.x + PAN.w / 2 - 7, PAN.y + PAN.h, 14, 20);
+    const got = s.bits.filter(b => b.got).length; for (let i = 0; i < got; i++) { g.fillStyle = 'rgba(200,235,255,0.8)'; g.beginPath(); g.arc(PAN.x + 20 + (i * 23) % 80, PAN.y + 30 + (i % 2) * 8, 4, 0, 7); g.fill(); }
+    for (const b of s.bits) if (!b.got) { g.save(); g.translate(b.x, b.y); g.rotate(b.r); g.fillStyle = 'rgba(200,235,255,0.85)'; g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.beginPath(); for (let k = 0; k < b.n; k++) { const a = k / b.n * 6.28, r2 = 8 + (k % 2) * 7; g.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); } g.closePath(); g.fill(); g.stroke(); g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(-2, -5, 3, 3); g.restore(); }
+    if (s.px !== null) { g.save(); g.translate(s.px, s.py); g.fillStyle = '#c8a040'; rr(g, -44, -6, 88, 20, 4); g.fill(); g.strokeStyle = '#8a6a20'; g.lineWidth = 2; for (let x = -40; x < 44; x += 6) { g.beginPath(); g.moveTo(x, 14); g.lineTo(x, 24); g.stroke(); } g.fillStyle = '#5a3a22'; g.fillRect(-5, -100, 10, 96); g.restore(); }
+    txt(g, `${got} / ${s.bits.length}`, 440, 480, 20, '#ffd400'); P.hint(g, 'SWEEP EVERY BIT INTO THE DUSTPAN', 160);
+  },
+  // ---- FIX THE CAR PARK BARRIER: the control box, the cables under the tarmac, the barrier arm (it lifts when the power gets there)
+  pipes(g, s, t) {
+    const NN = 4, T = 88, X0 = 80, Y0 = 112, D = [[1, 0, -1], [2, 1, 0], [4, 0, 1], [8, -1, 0]], up = Math.min(1, (s.win || 0) * 2);
+    P.scene(g, s.title, () => { g.fillStyle = '#3d3f43'; g.fillRect(0, 0, S, S); for (let i = 0; i < 400; i++) { g.fillStyle = i % 2 ? '#47494d' : '#35373b'; g.fillRect((i * 89) % S, (i * 53) % S, 3, 3); } });
+    for (let y = 0; y < NN; y++) for (let x = 0; x < NN; x++) { const px = X0 + x * T, py = Y0 + y * T, m = s._g[y][x], live = s.on.has(y * NN + x);
+      g.fillStyle = '#6b5440'; rr(g, px + 3, py + 3, T - 6, T - 6, 8); g.fill(); g.fillStyle = 'rgba(0,0,0,0.25)'; rr(g, px + 8, py + 8, T - 16, T - 16, 6); g.fill();
+      const c = [px + T / 2, py + T / 2]; g.lineCap = 'round'; for (const [col, w] of [['#111', 18], [live ? '#ffd400' : '#555', 8]]) { g.strokeStyle = col; g.lineWidth = w; for (const [d, dx, dy] of D) if (m & d) { g.beginPath(); g.moveTo(...c); g.lineTo(c[0] + dx * T / 2, c[1] + dy * T / 2); g.stroke(); } }
+      g.lineCap = 'butt'; g.fillStyle = live ? '#ffd400' : '#333'; g.beginPath(); g.arc(c[0], c[1], 7, 0, 7); g.fill(); if (live && Math.floor(t * 6 + x + y) % 2) { g.fillStyle = 'rgba(255,240,120,0.35)'; g.beginPath(); g.arc(c[0], c[1], 22, 0, 7); g.fill(); } }
+    g.fillStyle = '#4a5560'; rr(g, 14, Y0 + s._r0 * T + 8, 58, T - 16, 8); g.fill(); g.fillStyle = '#ffd400'; g.beginPath(); g.moveTo(43, Y0 + s._r0 * T + 22); g.lineTo(33, Y0 + s._r0 * T + 46); g.lineTo(45, Y0 + s._r0 * T + 46); g.lineTo(38, Y0 + s._r0 * T + 66); g.lineTo(54, Y0 + s._r0 * T + 38); g.lineTo(42, Y0 + s._r0 * T + 38); g.fill();
+    const bx = X0 + NN * T + 22, by = Y0 + s._r1 * T + T / 2; g.fillStyle = '#ffd400'; rr(g, bx - 12, by - 28, 30, 56, 6); g.fill(); g.fillStyle = '#111'; g.fillRect(bx - 12, by - 6, 30, 6);
+    g.save(); g.translate(bx + 3, by - 20); g.rotate(-Math.PI / 2 * up); for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#c62828' : '#fff'; g.fillRect(i * 14, -5, 14, 10); } g.restore();
+    g.fillStyle = s.win ? '#39ff14' : '#c62828'; g.beginPath(); g.arc(bx + 3, by + 18, 5, 0, 7); g.fill();
+    P.hint(g, s.win ? '⚡ BARRIER UP!' : 'TURN THE TILES · GET THE POWER TO THE BARRIER', 82, s.win ? '#39ff14' : '#fff', 16);
+  },
+  // ---- FIX THE LIGHTS: the pub's fuse box (consumer unit) with labelled breakers; the room lights up when they're all on
+  switches(g, s, t) {
+    const on = s._on, all = on.every(Boolean), L = ['BAR', 'KITCHEN', 'LIGHTS', 'CELLAR', 'GARDEN'];
+    P.scene(g, s.title, () => { g.fillStyle = all ? '#a8b0bd' : '#14161c'; g.fillRect(0, 0, S, S); if (all) { g.fillStyle = 'rgba(255,240,180,0.3)'; g.beginPath(); g.arc(256, 0, 300, 0, 7); g.fill(); } });
+    g.fillStyle = all ? '#fff6c0' : '#333'; g.beginPath(); g.arc(256, 100, 16, 0, 7); g.fill(); if (all) { g.fillStyle = 'rgba(255,240,150,0.35)'; g.beginPath(); g.arc(256, 100, 40, 0, 7); g.fill(); } g.strokeStyle = '#222'; g.lineWidth = 3; g.beginPath(); g.moveTo(256, 62); g.lineTo(256, 84); g.stroke();
+    g.fillStyle = '#e6e8ea'; rr(g, 26, 132, 460, 330, 16); g.fill(); g.strokeStyle = '#9aa0a6'; g.lineWidth = 4; rr(g, 26, 132, 460, 330, 16); g.stroke(); g.fillStyle = '#c6cacd'; g.fillRect(36, 150, 440, 6); g.fillRect(36, 420, 440, 6);
+    for (let i = 0; i < 5; i++) { const b = { x: 46 + i * 86, y: 170, w: 72, h: 200 }; g.fillStyle = '#2a2a2a'; rr(g, b.x, b.y, b.w, b.h, 10); g.fill(); g.fillStyle = on[i] ? '#39ff14' : '#ff3b3b'; g.beginPath(); g.arc(b.x + b.w / 2, b.y + 14, 7, 0, 7); g.fill();
+      g.fillStyle = P.grad(g, 0, 0, 0, 1, ['#f2f2f2', '#cfcfcf']); g.fillStyle = '#f0f0f0'; rr(g, b.x + 14, on[i] ? b.y + 28 : b.y + b.h - 84, b.w - 28, 70, 8); g.fill(); g.fillStyle = '#bbb'; g.fillRect(b.x + 18, on[i] ? b.y + 36 : b.y + b.h - 28, b.w - 36, 6);
+      txt(g, on[i] ? 'ON' : 'OFF', b.x + b.w / 2, b.y + b.h - (on[i] ? 22 : 170), 12, '#ddd'); g.fillStyle = '#fffbe6'; rr(g, b.x, b.y + b.h + 12, b.w, 24, 4); g.fill(); txt(g, L[i], b.x + b.w / 2, b.y + b.h + 24, 11, '#222'); }
+    P.hint(g, all ? '💡 LIGHTS ON!' : 'ALL ON · EACH SWITCH FLIPS ITS NEIGHBOURS TOO', 478, all ? '#ffd400' : '#fff', 16);
+  },
+};
+
+export const makeGame = (kind, o) => { o = o || {}; const s = GAMES[kind](o), a = ART[kind]; if (a) s.draw = (g, t) => a(g, s, t || 0, o); return s; };
 
 // ------------------------------------------------------------------ the panel they're played on
 export class Panel {
