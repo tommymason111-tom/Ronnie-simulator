@@ -981,7 +981,7 @@ function vrMenu(getEl, width) {
     open() { if (panel.open) return; panel.show(getEl); back.visible = true; follow(true); },
     close() { if (!panel.open) return; panel.hide(); back.visible = false; vrLasers.hide(); },
     update(dt) { if (!panel.open) return; follow(false); const ptrs = vrPointers(); panel.update(dt, ptrs); vrLasers.show(ptrs); },
-    get open_() { return panel.open; },
+    get open_() { return panel.open; }, panel,
   };
 }
 var vrPause = vrMenu(() => [...document.querySelectorAll('#pause .box')].find(b => getComputedStyle(b).display !== 'none'), 0.95);
@@ -996,7 +996,7 @@ const vrDev = (() => { const m = vrMenu(() => document.getElementById('dev-panel
     const nowOn = !!(dp && dp.classList.contains('on'));
     if (nowOn && !m.open_) { m.open(); player.menuLock = true; } else if (!nowOn && m.open_) { m.close(); player.menuLock = paused; }
     void on; m.update(dt);
-  }, get open() { return m.open_; } }; })();
+  }, get open() { return m.open_; }, menu: m }; })();
 // Quest: the left menu button (or Y) pauses; so does the Quest's own menu coming up over the game
 let menuHeld = false;
 function vrMenuButtons() {
@@ -1371,19 +1371,46 @@ class SquadPuppet {
     this.p = p; this.tagC = document.createElement('canvas'); this.tagC.width = 320; this.tagC.height = 96; this.tagTex = new THREE.CanvasTexture(this.tagC); this.tagTex.colorSpace = THREE.SRGBColorSpace;
     this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; this.tag.userData.remoteRonnie = !p.self; scene.add(this.tag); this.drawTag();
     this.down = 0; this.hT = {}; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0;
+    this.c.rag.constrain = null;      // (a real player: where they are is where they are. Pushing them out of the tables made them jump about as they walked past)
     if (p.self) {               // your own body (seen from inside it): no head in the way, no name tag, no bumping into it
       this.tag.visible = false; this.c.rag.hideHead = true; for (const pt of this.c.rag.list) { pt.body.collisionResponse = false; } }
     this.emote = new EmotePlayer(this.c, scene, (txt, at, snd) => { if (snd) sfx(snd, this.c.headPos(new THREE.Vector3()), 0.8); if (txt && at) words.show(txt, at.clone().add({ x: 0, y: this.p.self ? 0.15 : 0.38, z: 0 }), '#ffd400', 0.22, 0.8); }); }      // (above the name tag, never on it)
-  // where they were ~0.11s ago, blended between the two updates either side of then (updates come in a few
-  // times a second, unevenly: following the latest one made hands and heads jump about)
+  // where they were a moment ago, played back smoothly. Every pose says when it was SENT (their clock), so it's played
+  // back with the timing it was made with, not the uneven timing it arrived with (the network bunches them up and
+  // spreads them out: following arrival times made hands and heads speed up and stall). How far behind to play grows
+  // on a jittery connection and shrinks on a steady one. Between poses it follows a smooth curve (not straight lines
+  // with a corner at every update), and if the next pose is late it carries on the way it was going for a moment.
   smoothPose(pose) {
     const buf = this.p.buf; if (!buf || buf.length < 2) return pose;
-    const rt = performance.now() - 110; let a = null, b = null;
-    for (let i = buf.length - 1; i > 0; i--) if (buf[i - 1].t <= rt) { a = buf[i - 1]; b = buf[i]; break; }
-    if (!a) return buf[0].m;
-    const k = Math.min(1, Math.max(0, (rt - a.t) / Math.max(1, b.t - a.t))), A = a.m, B = b.m, L = (x, y) => x.map((v, i) => v + (y[i] - v) * k);
-    const q = new THREE.Quaternion(...A.q).slerp(new THREE.Quaternion(...B.q), k);
-    return { ...B, h: L(A.h, B.h), rh: L(A.rh, B.rh), l: L(A.l, B.l), q: [q.x, q.y, q.z, q.w] };
+    const J = this.jit || (this.jit = { off: null, dev: 25, gap: 67, D: 110, seen: null, at: 0 }), now = performance.now(), last = buf[buf.length - 1];
+    const T = (e) => e.ts != null && J.off != null ? e.ts + J.off : e.t;          // a pose's time on our clock
+    if (last !== J.seen) {
+      if (last.ts != null) { const o = last.t - last.ts;          // (their clock -> ours: the quickest trip seen, creeping up slowly so a drifting clock can't strand it)
+        J.off = J.off == null ? o : Math.min(o, J.off + (now - (J.at || now)) * 0.002);
+        const late = o - J.off; J.dev += (late - J.dev) * (late > J.dev ? 0.25 : 0.01);
+        const prev = J.seen; if (prev && prev.ts != null && last.ts > prev.ts) J.gap += (Math.min(120, last.ts - prev.ts) - J.gap) * 0.1; }
+      J.seen = last; J.at = now; }
+    J.D += (Math.min(350, Math.max(60, J.gap * 1.1 + J.dev * 1.5 + 8)) - J.D) * 0.02;      // (eased, so the playback never jumps)
+    // the playback clock: normally just "now, a moment ago". If the poses stop coming (a stall: a lost packet holds up
+    // everything behind it), it slows down smoothly as it runs out instead of freezing, then catches up a little faster
+    // than real time when they arrive, instead of jumping
+    const want = now - J.D, Tl = T(last);
+    if (J.pt == null || Math.abs(want - J.pt) > 1500) J.pt = want;
+    else { let rate = 1 + Math.max(-0.5, Math.min(0.25, (want - J.pt) / 400)); const ahead = Tl - J.pt; if (ahead < 50) rate = Math.min(rate, Math.max(0.1, ahead / 50));
+      J.pt += Math.max(0, now - (J.pn || now)) * rate; }
+    J.pn = now;
+    const rt = J.pt, n = buf.length;
+    let i = n - 2; while (i > 0 && T(buf[i]) > rt) i--;
+    const a = buf[i], b = buf[i + 1], ta = T(a), tb = T(b), span = Math.max(1, tb - ta);
+    let k = (rt - ta) / span;
+    if (k < 0) return a.m;
+    k = Math.min(k, 1 + Math.min(100, J.gap * 1.5) / span);        // (late: carry on a little way, then wait)
+    const A = a.m, B = b.m, P0 = (buf[i - 1] || a).m, P3 = (buf[i + 2] || b).m;
+    const cr = (p0, p1, p2, p3) => k > 1 ? p1.map((v, j) => v + (p2[j] - v) * k)          // (past the last one: straight on)
+      : p1.map((v, j) => { const m1 = (p2[j] - p0[j]) * 0.5, m2 = (p3[j] - v) * 0.5, k2 = k * k, k3 = k2 * k;
+        return (2 * k3 - 3 * k2 + 1) * v + (k3 - 2 * k2 + k) * m1 + (-2 * k3 + 3 * k2) * p2[j] + (k3 - k2) * m2; });
+    const q = new THREE.Quaternion(...A.q).slerp(new THREE.Quaternion(...B.q), Math.min(1, k));
+    return { ...B, h: cr(P0.h, A.h, B.h, P3.h), rh: cr(P0.rh, A.rh, B.rh, P3.rh), l: cr(P0.l, A.l, B.l, P3.l), q: [q.x, q.y, q.z, q.w] };
   }
   // Imposter: a body (flat out where they were killed), hidden (a ghost, or down a trapdoor), or an imposter's mate (red tag)
   impVis(v) { const r = this.c.rag; if (r.group) r.group.visible = v; if (this.c.fx) this.c.fx.visible = v; if (this.c.prop) this.c.prop.visible = v && !this.emote.active; this.tag.visible = v && !this.p.self; if (!v) { if (this.chatS) this.chatS.visible = false; this.emote.active && this.emote.stop && this.emote.stop(); } }
@@ -1414,13 +1441,13 @@ class SquadPuppet {
       const sNow = this.sNow = (this.sNow || 1) + ((pose.s || 1) - (this.sNow || 1)) * Math.min(1, dt * 3), f = this.fatNow;
       this.c.rag.bulk = (sNow > 1.001 || f > 0.001) ? { h: sNow, w: sNow * (1 + 0.55 * f) } : null; }
     const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * 25);
-    const prev = this.pos.clone(); this.pos.lerp(_a.set(...pose.h), k); this.rh.lerp(_b.set(...pose.rh), k); this.lh.lerp(_b.set(...pose.l), k);
+    const prev = this.pos.clone(); this.pos.lerp(_a.set(...pose.h), k); if (pose.flat) { this.rh.lerp(_b.set(...pose.rh), k); this.lh.lerp(_b.set(...pose.l), k); } else { this.rh.set(...pose.rh); this.lh.set(...pose.l); }
     // knocked flat: a limp ragdoll (like the NPCs), then up again where they landed
     if (this.down > 0) { this.down -= dt; r.sync(); const pl = r.parts.pelvis.body.position; c.fx.position.set(pl.x, 0, pl.z);
       if (this.down <= 0) { c.state = 'idle'; c.setIdlePose(c.t); r.pose.head.identity(); r.getUp(0.9); }
       this.placeTag(); return; }
     const q = new THREE.Quaternion(...pose.q), f = new THREE.Vector3(0, 0, -1).applyQuaternion(q); const yaw = Math.atan2(f.x, f.z);
-    let dy = yaw - this.yaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; this.yaw = this.first ? yaw : this.yaw + dy * Math.min(1, dt * 6);
+    let dy = yaw - this.yaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; this.yaw = this.first ? yaw : this.yaw + dy * Math.min(1, dt * 10);
     const speed = Math.hypot(this.pos.x - prev.x, this.pos.z - prev.z) / Math.max(dt, 1e-3);
     if (this.first) { r.placeAt(this.pos.x, this.pos.z, this.yaw); this.first = false; this.prevH.R.copy(this.rh); this.prevH.L.copy(this.lh); }
     r.root.x = this.pos.x; r.root.z = this.pos.z; r.yaw = this.yaw;
@@ -1442,9 +1469,12 @@ class SquadPuppet {
       // wherever it last was, or nowhere: the arm went flying after it)
       if (!pose.flat) { const ok = h.distanceTo(head) < 1.15 * (pose.s || 1) && h.y > 0.15; const ft = this.hT[side] || (this.hT[side] = h.clone());
         if (!ok) { this.armT[side] = Math.min(this.armT[side], 0); this.armW[side] += (0 - this.armW[side]) * Math.min(1, dt * 5); continue; }
-        const dd = h.distanceTo(ft); if (dd > 0.5) ft.copy(h); else if (dd > 0.012) ft.lerp(h, Math.min(1, dt * 9));
-        // ...and eased a second time, so it glides between updates instead of stepping (no shake, however the updates come in)
-        const fs = (this.hS || (this.hS = {}))[side] || (this.hS[side] = ft.clone()); if (fs.distanceTo(ft) > 0.5) fs.copy(ft); else fs.lerp(ft, Math.min(1, dt * 14)); }
+        // (a "one euro" filter: held still, it's heavily smoothed so tracking wobble never shows; moving, the smoothing
+        // drops away with speed so a wave or a punch comes through at full size, straight away)
+        const F = this.hF || (this.hF = {}), f = F[side] || (F[side] = { v: 0 });
+        if (h.distanceTo(ft) > 0.6) { ft.copy(h); f.v = 0; }
+        else { const sp = h.distanceTo(ft) / Math.max(dt, 1e-3); f.v += (sp - f.v) * (1 - Math.exp(-dt * 2 * Math.PI * 1.0));
+          const fc = 1.6 + 6 * f.v, a = 1 - Math.exp(-dt * 2 * Math.PI * fc); ft.lerp(h, a); } }
       const hv = h.distanceTo(this.prevH[side]) / Math.max(dt, 1e-3); this.prevH[side].copy(h);
       const atMouth = h.distanceTo(head) < 0.28, swinging = !pose.flat && hv > 2.2;
       const punching = this.swingT > 0 && (side === (this.swingSide || 'R') || !pose.flat);
@@ -1452,7 +1482,7 @@ class SquadPuppet {
       else this.armT[side] -= dt;
       const want = this.armT[side] > 0 ? 1 : 0; this.armW[side] += (want - this.armW[side]) * Math.min(1, dt * (want ? 14 : 5));
       const w = this.armW[side]; if (w < 0.01) continue;
-      if (!pose.flat) { this.reachArm(side, (this.hS && this.hS[side]) || this.hT[side], w); continue; }
+      if (!pose.flat) { this.ikDt = dt; this.reachArm(side, this.hT[side], w); continue; }
       let d;
       if (pose.flat && punching && !atMouth) { const k = 1 - this.swingT / 0.38; d = new THREE.Vector3(side === 'R' ? 0.1 : -0.1, 0.2 + 0.25 * (1 - k), 0.6 + k); }   // a phone player's jab: cocked, then straight out in front
       else { d = h.clone().sub(chest).applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.yaw); if (d.length() > 1.2 || d.lengthSq() < 1e-6) continue; }
@@ -1471,8 +1501,9 @@ class SquadPuppet {
   // two-bone reach: put the palm on the target, with the elbow bending down and out like a real arm
   reachArm(side, target, w) {
     const r = this.c.rag, U = r.parts['uArm' + side], L = r.parts['lArm' + side], kH = r.height / 1.68, Yax = new THREE.Vector3(0, 1, 0);
-    const ub = U.body, q = new THREE.Quaternion(ub.quaternion.x, ub.quaternion.y, ub.quaternion.z, ub.quaternion.w);
-    const S = U.def.a.clone().sub(U.def.center).applyQuaternion(q).add(new THREE.Vector3(ub.position.x, ub.position.y, ub.position.z));   // the shoulder
+    // the shoulder: where the animation last put the upper arm (not where the physics has carried it on to since)
+    const q = r.animQuat('uArm' + side, new THREE.Quaternion());
+    const S = U.def.a.clone().sub(U.def.center).applyQuaternion(q).add(r.animPos('uArm' + side, new THREE.Vector3()));
     const L1 = U.def.a.distanceTo(U.def.b), L2 = Math.max(0.12, L.def.a.distanceTo(L.def.b) - 0.085 * kH);     // upper arm; forearm to the palm
     const toT = target.clone().sub(S), D = THREE.MathUtils.clamp(toT.length(), Math.abs(L1 - L2) + 0.02, L1 + L2 - 0.005), dir = toT.normalize();
     const a = (L1 * L1 - L2 * L2 + D * D) / (2 * D), hh = Math.sqrt(Math.max(0, L1 * L1 - a * a));
@@ -1483,7 +1514,7 @@ class SquadPuppet {
     let du = E.clone().sub(S).applyAxisAngle(Yax, -this.yaw).normalize(), dl = T.clone().sub(E).applyAxisAngle(Yax, -this.yaw).normalize();
     // (eased from last frame, so the elbow never flicks from one side to the other)
     const ik = this.ik || (this.ik = {}), prev = ik[side];
-    if (prev) { du = prev.u.lerp(du, 0.35).normalize(); dl = prev.l.lerp(dl, 0.35).normalize(); }
+    if (prev) { const ke = 1 - Math.exp(-(this.ikDt || 1 / 72) * 30); du = prev.u.lerp(du, ke).normalize(); dl = prev.l.lerp(dl, ke).normalize(); }
     ik[side] = { u: du.clone(), l: dl.clone() };
     for (const [n, d] of [['uArm' + side, du], ['lArm' + side, dl]]) { const rest = r.pose[n].clone(); r.aim(n, d.x, d.y, d.z); r.pose[n].copy(rest.slerp(r.pose[n], w)); }
   }
@@ -1522,7 +1553,7 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { onFrame: [], resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { onFrame: [], vrPanels: () => ({ pause: vrPause.panel, dev: vrDev.menu.panel }), resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
 // developer mode (Settings cog -> DEVELOPER MODE): the test bench comes up once you press PLAY. (Only for this visit:
 // starting the page again goes back to normal)
 { let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; sessionStorage.removeItem('rs_dev'); } catch (e) {} window.__devPending = dev;

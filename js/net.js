@@ -79,7 +79,7 @@ export class Net {
       case 'host': { const was = this.host; this.host = m.id === this.id; this.hostId = m.id; this.hostName = m.name || ''; for (const p of this.players.values()) p.host = p.id === m.id; this.emit('host', m, was); break; }
       case 'pong': if (m.c) { const r = performance.now() - m.c; this.rtt = this.rtt ? this.rtt * 0.7 + r * 0.3 : r; } break;
       default: { if (m.f && m.f !== this.id && !this.players.has(m.f) && this.status === 'on') { this.players.set(m.f, { id: m.f, name: m.name || '' }); this.emit('join', { id: m.f, name: m.name || '', quiet: true }); }      // (someone we missed coming in, e.g. while we were reconnecting: they're plainly here, so they're seen)
-        const p = this.players.get(m.f); if (m.t === 'p' && p) { p.pose = m; p.at = performance.now(); (p.buf || (p.buf = [])).push({ t: p.at, m }); if (p.buf.length > 10) p.buf.shift(); } this.emit(m.t, m, p); }
+        const p = this.players.get(m.f); if (m.t === 'p' && p) { p.pose = m; p.at = performance.now(); (p.buf || (p.buf = [])).push({ t: p.at, ts: typeof m.ts === 'number' ? m.ts : null, m }); if (p.buf.length > 16) p.buf.shift(); } this.emit(m.t, m, p); }
     }
   }
   drop(id) { const p = this.players.get(id); if (p && p.avatar) p.avatar.dispose(); this.players.delete(id); }
@@ -103,7 +103,7 @@ export class Net {
       if (!P.flatMode && (R0 && R0.isHand || L0 && L0.isHand)) m.fc = (R0 && R0.isHand && fingerCurls(R0.hand) || '-----') + (L0 && L0.isHand && fingerCurls(L0.hand) || '-----');
       // only what's changed: nothing new, nothing sent (but once a second anyway, so nobody thinks you've gone)
       const key = JSON.stringify(m), now = performance.now();
-      if (key !== this.lastSent || now - this.lastSentAt > 1000) { this.lastSent = key; this.lastSentAt = now; this.send(m); this.sentN = (this.sentN || 0) + 1; }
+      if (key !== this.lastSent || now - this.lastSentAt > 1000) { this.lastSent = key; this.lastSentAt = now; m.ts = Math.round(now); this.send(m); this.sentN = (this.sentN || 0) + 1; }
     }
     for (const p of this.players.values()) {
       if (!p.pose) continue;
