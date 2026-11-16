@@ -29,25 +29,25 @@ export const TASKS = [
   // or the pub's own thing (a real fruit machine) with nothing extra built ('none')
   { id: 'guinness', name: 'Pour a perfect Guinness', room: 'THE BAR', at: [1.7, -5.9], kit: [2.55, 1.08, -5.9, -Math.PI / 2], kind: 'hold' },
   { id: 'barrel', name: 'Change the barrel', room: 'CELLAR HATCH', at: [4.5, -7.6], kind: 'crank', o: { title: 'CHANGE THE BARREL', hint: 'TURN THE COUPLER ROUND', turns: 3 } },
-  { id: 'till', name: 'Take a card payment', room: 'THE BAR', at: [1.7, -4.2], kit: [2.5, 1.08, -4.2, -Math.PI / 2], kind: 'swipe', o: { title: 'TAKE A CARD PAYMENT' } },
-  { id: 'jukebox', name: 'Fix the DJ decks wiring', room: 'DJ BOOTH', at: [-1.0, -7.6], kit: [-1.26, 0, -8.45, 0, 'none'], kind: 'wires', o: { title: 'FIX THE DJ DECKS WIRING' } },      // (the pub's own DJ booth)
-  { id: 'fruit', name: 'Empty the fruit machine', room: 'PUB FLOOR', at: [0.0, -3.48], kit: [-0.63, 0, -3.48, Math.PI / 2, 'none'], kind: 'collect', o: { title: 'EMPTY THE FRUIT MACHINE', icon: '🪙', into: '💰', n: 8, hint: 'TAP EVERY COIN' } },
+  { id: 'till', name: 'Take a card payment', room: 'THE BAR', at: [1.7, -4.2], kit: [2.5, 1.08, -4.2, -Math.PI / 2], kind: 'swipe', o: { title: 'TAKE A CARD PAYMENT', need: 2 } },
+  { id: 'jukebox', name: 'Fix the DJ decks wiring', room: 'DJ BOOTH', at: [-1.0, -7.6], kit: [-1.26, 0, -8.45, 0, 'none'], kind: 'wires', o: { title: 'FIX THE DJ DECKS WIRING', n: 6 } },      // (the pub's own DJ booth)
+  { id: 'fruit', name: 'Empty the fruit machine', room: 'PUB FLOOR', at: [0.0, -3.48], kit: [-0.63, 0, -3.48, Math.PI / 2, 'none'], kind: 'reels', o: { title: 'EMPTY THE FRUIT MACHINE' } },
   { id: 'toilet', name: 'Unblock the toilet', room: 'MEN\'S TOILETS', at: [-7.97, -11.8], kind: 'plunge' },
-  { id: 'looroll', name: 'Restock the loo roll', room: 'WOMEN\'S TOILETS', at: [-2.5, -12.5], kind: 'collect', o: { title: 'RESTOCK THE LOO ROLL', icon: '🧻', into: '🚽', n: 6, hint: 'TAP EVERY ROLL' } },
+  { id: 'looroll', name: 'Restock the loo roll', room: 'WOMEN\'S TOILETS', at: [-2.5, -12.5], kind: 'catch', o: { title: 'RESTOCK THE LOO ROLL', icon: '🧻' } },
   { id: 'bookings', name: 'Sort the bookings', room: 'RECEPTION', at: [1.75, -11.65], kit: [2.27, 0.795, -11.6, -Math.PI / 2], kind: 'order' },      // (behind the desk, on the staff worktop)
-  { id: 'fryer', name: 'Clean the fryer', room: 'KITCHEN', at: [-12.35, -4.7], kind: 'scrub', o: { title: 'CLEAN THE FRYER', surface: '#9aa0a6' } },
-  { id: 'dishes', name: 'Wash the pots', room: 'KITCHEN', at: [-12.6, -0.8], kind: 'scrub', o: { title: 'WASH THE POTS', surface: '#6d6f73' } },
-  { id: 'empties', name: 'Collect the empties', room: 'RAISED BOOTHS', at: [-7, -4], kind: 'collect', o: { title: 'COLLECT THE EMPTIES', icon: '🍺', into: '🧺', n: 7, hint: 'TAP EVERY GLASS' } },
-  { id: 'tables', name: 'Wipe the tables', room: 'CONSERVATORY', at: [-4, 11], kind: 'scrub', o: { title: 'WIPE THE TABLES' } },
+  { id: 'fryer', name: 'Clean the fryer', room: 'KITCHEN', at: [-12.35, -4.7], kind: 'temp', o: { title: 'CLEAN THE FRYER' } },
+  { id: 'dishes', name: 'Wash the pots', room: 'KITCHEN', at: [-12.6, -0.8], kind: 'sort', o: { title: 'WASH THE POTS' } },
+  { id: 'empties', name: 'Collect the empties', room: 'RAISED BOOTHS', at: [-7, -4], kind: 'whack', o: { title: 'COLLECT THE EMPTIES', icon: '🍺' } },
+  { id: 'tables', name: 'Wipe the tables', room: 'CONSERVATORY', at: [-4, 11], kind: 'scrub', o: { title: 'WIPE THE TABLES', n: 10 } },
   { id: 'slots', name: 'Reset the slot machine', room: 'GAMBLING ROOM', at: [7.8, 10.32], kit: [8.42, 0, 10.32, -Math.PI / 2, 'none'], kind: 'code' },
-  { id: 'keg', name: 'Check the keg pressure', room: 'KEG ROOM', at: [9.55, 5.05], kit: [10.3, 0, 5.05, -Math.PI / 2], kind: 'dial' },      // (in the keg room, against the side wall)
-  { id: 'rota', name: 'Clock in for your shift', room: 'STAFF ROOM', at: [9.95, -3.4], kit: [10.42, 0, -3.4, -Math.PI / 2], kind: 'swipe', o: { title: 'CLOCK IN FOR YOUR SHIFT' } },
-  { id: 'cutlery', name: 'Lay the tables', room: 'RESTAURANT', at: [-16.6, -3.0], kind: 'collect', o: { title: 'LAY THE TABLES', icon: '🍴', into: '🍽️', n: 6, hint: 'TAP EVERY KNIFE AND FORK' } },
-  { id: 'candles', name: 'Light the candles', room: 'RESTAURANT', at: [-16.6, 5.0], kind: 'collect', o: { title: 'LIGHT THE CANDLES', icon: '🕯️', into: '🔥', n: 5, hint: 'TAP EVERY CANDLE' } },
-  { id: 'parasol', name: 'Put the parasols up', room: 'BEER GARDEN', at: [0.25, 37.0], kind: 'crank', o: { title: 'PUT THE PARASOL UP', hint: 'WIND IT UP', turns: 3 } },
-  { id: 'gglasses', name: 'Clear the garden glasses', room: 'BEER GARDEN', at: [5.6, 37.0], kind: 'collect', o: { title: 'CLEAR THE GARDEN GLASSES', icon: '🍹', into: '🧺', n: 7, hint: 'TAP EVERY GLASS' } },
-  { id: 'carglass', name: 'Sweep up the glass by Lewis\'s car', room: 'CAR PARK', at: [7.9, -12.7], kit: [8.35, 0, -10.88, 0, 'none'], kind: 'collect', o: { title: 'SWEEP UP THE GLASS', icon: '💎', into: '🗑️', n: 8, hint: 'TAP EVERY BIT OF GLASS' } },
-  { id: 'barrier', name: 'Fix the car park barrier', room: 'CAR PARK', at: [8.6, -22.0], kit: [8.3, 0, -22.6, 0, 'none'], kind: 'wires' },
+  { id: 'keg', name: 'Check the keg pressure', room: 'KEG ROOM', at: [9.55, 5.05], kit: [10.3, 0, 5.05, -Math.PI / 2], kind: 'dial', o: { title: 'CHECK THE KEG PRESSURE', need: 4 } },      // (in the keg room, against the side wall)
+  { id: 'rota', name: 'Clock in for your shift', room: 'STAFF ROOM', at: [9.95, -3.4], kit: [10.42, 0, -3.4, -Math.PI / 2], kind: 'simon', o: { title: 'CLOCK IN FOR YOUR SHIFT' } },
+  { id: 'cutlery', name: 'Lay the tables', room: 'RESTAURANT', at: [-16.6, -3.0], kind: 'place', o: { title: 'LAY THE TABLES', icon: '🍴' } },
+  { id: 'candles', name: 'Light the candles', room: 'RESTAURANT', at: [-16.6, 5.0], kind: 'light', o: { title: 'LIGHT THE CANDLES', icon: '🕯️' } },
+  { id: 'parasol', name: 'Put the parasols up', room: 'BEER GARDEN', at: [0.25, 37.0], kind: 'crank', o: { title: 'PUT THE PARASOL UP', hint: 'WIND IT UP', turns: 4, slip: true } },
+  { id: 'gglasses', name: 'Clear the garden glasses', room: 'BEER GARDEN', at: [5.6, 37.0], kind: 'stacker', o: { title: 'CLEAR THE GARDEN GLASSES', icon: '🍹' } },
+  { id: 'carglass', name: 'Sweep up the glass by Lewis\'s car', room: 'CAR PARK', at: [7.9, -12.7], kit: [8.35, 0, -10.88, 0, 'none'], kind: 'sweep', o: { title: 'SWEEP UP THE GLASS', icon: '💎' } },
+  { id: 'barrier', name: 'Fix the car park barrier', room: 'CAR PARK', at: [8.6, -22.0], kit: [8.3, 0, -22.6, 0, 'none'], kind: 'pipes', o: { title: 'FIX THE CAR PARK BARRIER' } },
 ];
 const TASK = Object.fromEntries(TASKS.map(t => [t.id, t]));
 const TASK_SIGN = { guinness: '🍺 POUR A GUINNESS', barrel: '🛢️ CHANGE THE BARREL', till: '💳 CARD MACHINE', jukebox: '🎧 DJ DECKS', fruit: '🍒 FRUIT MACHINE', toilet: '🚽 BLOCKED TOILET', looroll: '🧻 LOO ROLL',
