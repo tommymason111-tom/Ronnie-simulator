@@ -1,10 +1,11 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '2.22.15';
+var GAME_VERSION = '2.22.16';
 // when each update came out (UK time)
-var GAME_WHEN = {'2.22.15': '2026-11-16T22:00', '2.22.14': '2026-11-16T20:30', '2.22.13': '2026-11-16T19:30', '2.22.12': '2026-11-16T18:00', '2.22.11': '2026-11-16T16:20', '2.22.10': '2026-11-16T15:40', '2.22.9': '2026-11-16T15:00', '2.22.8': '2026-11-16T13:40', '2.22.7': '2026-11-16T12:30', '2.22.6': '2026-11-16T09:30', '2.22.5': '2026-11-16T07:15', '2.22.4': '2026-11-16T03:45', '2.22.3': '2026-11-16T03:00', '2.17.0': '2026-11-15T23:59', '2.16.1': '2026-11-15T23:55', '2.16.0': '2026-11-15T23:30', '2.15.0': '2026-11-15T21:30', '2.14.0': '2026-11-15T20:24', '2.13.0': '2026-11-15T19:42', '2.12.0': '2026-11-15T19:05', '2.11.0': '2026-11-15T17:55', '2.10.0': '2026-11-15T17:10', '1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.9.0': '2026-11-15T16:54', '2.8.0': '2026-11-15T16:45', '2.7.0': '2026-11-15T16:34', '2.6.3': '2026-11-15T16:15', '2.6.2': '2026-11-15T16:15', '2.6.1': '2026-11-15T16:00', '2.6.0': '2026-11-15T15:54', '2.5.3': '2026-11-15T15:48', '2.5.2': '2026-11-15T15:46', '2.5.1': '2026-11-15T15:43', '2.5.0': '2026-11-15T15:42', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
+var GAME_WHEN = {'2.22.16': '2026-11-17T00:30', '2.22.15': '2026-11-16T22:00', '2.22.14': '2026-11-16T20:30', '2.22.13': '2026-11-16T19:30', '2.22.12': '2026-11-16T18:00', '2.22.11': '2026-11-16T16:20', '2.22.10': '2026-11-16T15:40', '2.22.9': '2026-11-16T15:00', '2.22.8': '2026-11-16T13:40', '2.22.7': '2026-11-16T12:30', '2.22.6': '2026-11-16T09:30', '2.22.5': '2026-11-16T07:15', '2.22.4': '2026-11-16T03:45', '2.22.3': '2026-11-16T03:00', '2.17.0': '2026-11-15T23:59', '2.16.1': '2026-11-15T23:55', '2.16.0': '2026-11-15T23:30', '2.15.0': '2026-11-15T21:30', '2.14.0': '2026-11-15T20:24', '2.13.0': '2026-11-15T19:42', '2.12.0': '2026-11-15T19:05', '2.11.0': '2026-11-15T17:55', '2.10.0': '2026-11-15T17:10', '1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.9.0': '2026-11-15T16:54', '2.8.0': '2026-11-15T16:45', '2.7.0': '2026-11-15T16:34', '2.6.3': '2026-11-15T16:15', '2.6.2': '2026-11-15T16:15', '2.6.1': '2026-11-15T16:00', '2.6.0': '2026-11-15T15:54', '2.5.3': '2026-11-15T15:48', '2.5.2': '2026-11-15T15:46', '2.5.1': '2026-11-15T15:43', '2.5.0': '2026-11-15T15:42', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
 
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['2.22.16', ["Developer mode: the code is FATTY now, then you choose a map, including the new TEST GRID (an empty white and grey room). Fixed developer mode crashing on phones when you press play (it could restart the game over and over, and the squad's pictures are lighter on phones now). Attacks: the attack card is up for 2 seconds, then it goes and THEN they do their move, so the card never hides it"]],
   ['2.22.15', ["Developer mode has its own hacker look: a green terminal start card with code rain, a glitching DEVELOPER MODE title, a boot-up readout, a terminal-style dev panel and HUD. Attacks: whoever's attacking now appears right in front of you in a puff (no more running over and getting stuck on the furniture)"]],
   ['2.22.14', ["Imposter: the barrel, the parasol and the valve are all different now. Change the barrel: gas off, lift the coupler handle, carry the coupler to the new keg, handle down, gas back on. Put the parasol up: push the runner up the pole and watch it open (it slides back if you stop). The valve keeps its wheel. The slot machine code is 8 digits, and wiping the tables and unblocking the toilet both take longer"]],
   ['2.22.13', ["Imposter jobs look like the real thing now: watch the parasol open as you wind it, the Guinness pour and settle, chips brown in the fryer, the toilet water clear, the barrier arm lift, candles light up a dark restaurant (and blow out in the draught), coins pour out of the fruit machine, the bookings diary get ticked off, glasses stack up at the garden bar"]],
@@ -113,6 +114,8 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     { id: 'restaurant', ico: '🕯️', name: 'LA GRANDE PORTION', desc: 'Fancy dinner. Date night with Chloe (and the lads at the other tables).', bg: 'linear-gradient(160deg,#5a0f18,#1a0508)', props: ['🕯️', '🍷', '🦞', '🍰', '🎹'] },
     { id: 'bedroom', ico: '🛏️', name: "RONNIE'S BEDROOM", desc: 'Where it all begins. Small, cosy, full of cans.', bg: 'linear-gradient(160deg,#3a2a6a,#1f4fbf)', props: ['🛏️', '🥫', '🎮', '🍕', '🥫'] },
   ];
+  // (developer mode's own map: never on the normal place picker)
+  const ALLPLACES = PLACES.concat([{ id: 'grid', ico: '⬜', name: 'THE TEST GRID', desc: 'Developer mode: an empty white and grey room.', bg: 'linear-gradient(160deg,#e9ebee,#a9aeb6)', props: [] }]);
   const MODES = [
     { id: 'everyone', ico: '👥', name: 'THE WHOLE SQUAD', desc: 'The main game. Everyone is here, taking turns to attack you while you eat. A countdown shows the next one.', stars: 3, who: 'Everyone' },
     { id: 'sweep', ico: '🛒', name: 'SUPERMARKET SWEEP', desc: '90 seconds and a trolley in Lidl. Grab the most calories you can. Oliver and Aidan W are on security (Aidan W is slow: knee).', stars: 2, who: 'Oliver, Aidan W', place: 'shop' },
@@ -125,7 +128,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   ];
   // each place has its own games: Lidl is Supermarket Sweep, Lewis's is Ian's barbecue,
   // La Grande Portion is date night; the pub and the bedroom have the squad and the eat-off
-  const PLACE_MODES = { pub: ['everyone', 'runpub', 'imposter', 'eatoff', 'roam'], bedroom: ['everyone', 'eatoff', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
+  const PLACE_MODES = { pub: ['everyone', 'runpub', 'imposter', 'eatoff', 'roam'], bedroom: ['everyone', 'eatoff', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'], grid: ['roam'] };
   const GAME_IDS = ['everyone', 'runpub', 'sweep', 'bbq', 'date', 'chonkoff', 'chonkoff2', 'imposter', 'imposter2', 'roam', 'roam0'];
   const cardOf = (id) => id === 'chonkoff' || id === 'chonkoff2' ? 'eatoff' : id === 'imposter2' ? 'imposter' : id === 'roam0' ? 'roam' : id;      // the eat-off card covers 1P and 2P
   const modeInfo = (id) => { const m = MODES.find(x => x.id === cardOf(id)); return id === 'chonkoff' ? { ...m, ico: '⏱️', name: 'EAT-OFF · 1 PLAYER' } : id === 'chonkoff2' ? { ...m, ico: '🆚', name: 'EAT-OFF · 2 PLAYERS' } : id === 'imposter' ? { ...m, name: 'IMPOSTER · 1 IMPOSTER' } : id === 'imposter2' ? { ...m, name: 'IMPOSTER · 2 IMPOSTERS' } : id === 'roam' ? { ...m, name: 'FREE ROAM · WITH THE SQUAD' } : id === 'roam0' ? { ...m, ico: '🧍', name: 'FREE ROAM · JUST YOU', desc: 'The place to yourself: no NPCs at all. Have a proper look round.' } : m; };
@@ -156,7 +159,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   // always start at the Oysterfleet; only ?go=1 quick-starts use the address's place/mode
   const quick = !!q.get('go');
   let place = (quick && q.get('place')) || 'pub', mode = (quick && q.get('mode')) || 'everyone';
-  if (!PLACES.some(p => p.id === place)) place = 'pub';
+  if (!ALLPLACES.some(p => p.id === place)) place = 'pub';
   if (!GAME_IDS.includes(mode)) mode = 'everyone';      // old links to Classic / Squad Intervention / Catch
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   // settings cog (top corner of the title screen): shows the version you're playing
@@ -172,8 +175,12 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     if (locked()) showLocked();
     $('#set-dev').addEventListener('click', () => { if (locked()) return showLocked(); $('#dev-code').hidden = false; $('#dev-msg').textContent = ''; const i = $('#dev-pin'); i.value = ''; setTimeout(() => i.focus(), 50); });
     const tryCode = () => { if (locked()) return showLocked(); const v = $('#dev-pin').value.trim(); if (!v) return;
-      if (v === String(1458)) { try { sessionStorage.setItem('rs_dev', '1'); } catch (e) {} location.href = location.pathname + '?go=1&place=pub&mode=roam'; return; }
+      if (v.toUpperCase() === 'FATTY') { $('#dev-code').hidden = true; $('#dev-maps').hidden = false; $('#dev-msg').textContent = ''; blip(880, 0.06); try { $('#dev-pin').blur(); setTimeout(() => $('#dev-maps').scrollIntoView({ behavior: 'smooth', block: 'center' }), 60); } catch (e) {} return; }
       try { localStorage.setItem(LOCK, '1'); } catch (e) {} showLocked(); $('#dev-msg').textContent = 'WRONG CODE. DEVELOPER MODE IS NOW LOCKED.'; };
+    // ...then which map to test on (the Oysterfleet, any of the others, or the empty test grid)
+    $('#dev-maps').innerHTML = '<div class="dv-maps-h">&gt;_ CHOOSE A MAP</div>' + [['grid', '⬜', 'TEST GRID'], ['pub', '🍺', 'OYSTERFLEET'], ['garden', '🏡', "LEWIS'S HOUSE"], ['shop', '🛒', 'LIDL'], ['restaurant', '🕯️', 'LA GRANDE PORTION'], ['bedroom', '🛏️', 'BEDROOM']]
+      .map(([id, ic, nm]) => `<button data-map="${id}"><b>${ic}</b>${nm}</button>`).join('');
+    $('#dev-maps').addEventListener('click', (e) => { const b = e.target.closest('[data-map]'); if (!b) return; try { sessionStorage.setItem('rs_dev', '1'); } catch (er) {} location.href = location.pathname + '?go=1&place=' + b.dataset.map + '&mode=roam'; });
     $('#dev-go').addEventListener('click', tryCode); $('#dev-pin').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryCode(); }); }
   $('#settings').addEventListener('click', (e) => { if (e.target.id === 'settings') $('#settings').hidden = true; });
   const start = $('#start');
@@ -291,13 +298,13 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       <div class="tick">✓ PICKED</div>
       <div class="soloonly">👤 SINGLE PLAYER ONLY</div>
     </div>`).join('');
-  let pi = Math.max(0, PLACES.findIndex(p => p.id === place));
+  let pi = Math.max(0, PLACES.findIndex(p => p.id === place)); const devGrid = place === 'grid';      // (developer mode's test grid: not on the carousel, so it's kept as it is)
   // the bedroom is just for one player: in multiplayer it's greyed out and skipped
   const SOLO_ONLY = ['bedroom'], isMulti = () => !!(window.ronnieMP && window.ronnieMP.role);
   const okPlace = (i) => !(isMulti() && SOLO_ONLY.includes(PLACES[i].id));
   function drawPlace() {
     if (!okPlace(pi)) pi = PLACES.findIndex((p, i) => okPlace(i));
-    place = PLACES[pi].id;
+    place = devGrid ? 'grid' : PLACES[pi].id;
     $$('.scene', track).forEach((el, i) => el.classList.toggle('solo', !okPlace(i)));
     $$('.scene', track).forEach((el, i) => { el.classList.toggle('cur', i === pi); el.style.transform = `translateX(${(i - pi) * 104}%) scale(${i === pi ? 1 : 0.86}) rotate(${(i - pi) * 3}deg)`; el.style.opacity = Math.abs(i - pi) > 1 ? 0 : i === pi ? 1 : 0.5; });
     $$('#place-dots i').forEach((d, i) => d.classList.toggle('on', i === pi));
@@ -362,7 +369,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
 
   // ---------------------------------------------------------------- READY: summary and the countdown
   function drawReady() {
-    const p = PLACES.find(x => x.id === place), m = modeInfo(mode);
+    const p = ALLPLACES.find(x => x.id === place), m = modeInfo(mode);
     $('#ready-place').innerHTML = `<span class="lbl">📍 PLACE</span><span>${p.ico}</span><b>${p.name}</b>`;
     $('#ready-mode').innerHTML = `<span class="lbl">🎮 GAME MODE</span><span>${m.ico}</span><b>${m.name}</b>`;
     $('#ready-desc').textContent = m.desc;
@@ -494,13 +501,13 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     const go = (instant) => {
       if (going) return; going = true;
       if (window.ronnieHero && window.ronnieHero.inVR && window.ronnieHero.handOff) window.ronnieHero.handOff();   // (in the headset: the game carries on in the same VR session)
-      try { localStorage.setItem('rs_menu', JSON.stringify({ place, mode })); } catch (e) {}
+      try { if (place !== 'grid') localStorage.setItem('rs_menu', JSON.stringify({ place, mode })); } catch (e) {}
       if (window.ronnieMP && window.ronnieMP.role === 'host' && window.ronnieMP.net) window.ronnieMP.net.send({ t: 'setup', place, mode });   // everyone waiting in the lobby comes too
       const finish = () => {
         start.classList.add('gone');
         if (window.ronnieHero) window.ronnieHero.stop();
         document.body.classList.add('ready');
-        const p = PLACES.find(p => p.id === place), m = modeInfo(mode);
+        const p = ALLPLACES.find(p => p.id === place), m = modeInfo(mode);
         const tag = document.getElementById('ready-tag'); if (tag) tag.textContent = `${p.name} · ${m.name}`;
         fillCard(p, m);
         resolve({ place, mode });
@@ -510,7 +517,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       // heavy level-building starts, so the screen never just freezes on you
       const ls = document.getElementById('loadscreen');
       if (ls) {
-        const p = PLACES.find(p => p.id === place), m = modeInfo(mode);
+        const p = ALLPLACES.find(p => p.id === place), m = modeInfo(mode);
         $('#ls-place').textContent = `${p.ico} ${p.name} · ${m.name}`;
         const HINTS = ['Tip: tap the 🏃 SPRINT button to go faster', 'Tip: grab food and press EAT', 'Tip: THROW food at Tommy. He deserves it.', 'Tip: in VR, click the left stick to sprint', 'Ronnie is warming up his jaw…'];
         $('#ls-hint').textContent = HINTS[Math.floor(Math.random() * HINTS.length)];
@@ -536,10 +543,10 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     // developer mode (the code was right): its own start card, a hacker's terminal, instead of the game's
     const DEV = (() => { try { return sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; } catch (e) { return false; } })();
     const devCard = () => { const ui = document.getElementById('ui'); if (!ui) return; document.body.classList.add('devmode');
-      $('#ui-place').textContent = '>_ OYSTERFLEET'; $('#ui-ico').textContent = '💻'; $('#ui-mode').innerHTML = '<span class="dv-glitch" data-t="DEVELOPER MODE">DEVELOPER MODE</span><span class="dv-cur">█</span>';
+      $('#ui-place').textContent = '>_ ' + $('#ui-place').textContent.replace(/^>_ /, '').replace(/^\S+\s+/, ''); $('#ui-ico').textContent = '💻'; $('#ui-mode').innerHTML = '<span class="dv-glitch" data-t="DEVELOPER MODE">DEVELOPER MODE</span><span class="dv-cur">█</span>';
       $('#ui-chips').innerHTML = [['🎭', 'EMOTES'], ['💥', 'ATTACKS'], ['🔪', 'IMPOSTER JOBS'], ['🛡️', 'NO RANDOM ATTACKS']].map(([e, t]) => `<span><i>${e}</i>${t}</span>`).join('');
       if (!ui.querySelector('.dv-rain')) { const cv = document.createElement('canvas'); cv.className = 'dv-rain'; ui.prepend(cv); const g = cv.getContext('2d'); let cols = [];
-        const tick = () => { if (!document.body.classList.contains('devmode') || !cv.isConnected) return; const r = ui.getBoundingClientRect(); if (cv.width !== Math.round(r.width) || cv.height !== Math.round(r.height)) { cv.width = Math.round(r.width); cv.height = Math.round(r.height); cols = Array.from({ length: Math.ceil(cv.width / 14) }, () => Math.random() * cv.height); }
+        const tick = () => { if (!document.body.classList.contains('devmode') || !cv.isConnected || document.body.classList.contains('flat') || !ui.offsetParent) { if (document.body.classList.contains('flat')) cv.remove(); return; }      // (stops, and lets go of its canvas, once you're in the game) const r = ui.getBoundingClientRect(); if (cv.width !== Math.round(r.width) || cv.height !== Math.round(r.height)) { cv.width = Math.round(r.width); cv.height = Math.round(r.height); cols = Array.from({ length: Math.ceil(cv.width / 14) }, () => Math.random() * cv.height); }
           g.fillStyle = 'rgba(0,8,2,0.16)'; g.fillRect(0, 0, cv.width, cv.height); g.font = '13px monospace'; cols.forEach((y, i) => { g.fillStyle = Math.random() < 0.06 ? '#d8ffd8' : '#16c60c'; { const CH = '01アイウエオカキクケコサシスセソ<>/{}#$'; g.fillText(CH[Math.floor(Math.random() * CH.length)], i * 14, y); } cols[i] = y > cv.height + Math.random() * 400 ? 0 : y + 14; });
           setTimeout(() => requestAnimationFrame(tick), 55); };
         tick(); }
@@ -630,7 +637,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     window.__menuGo = go;
     // the floating menu in VR (see ronnieHero.js) picks with these
     window.menuVR = {
-      info: () => ({ place: PLACES.find(p => p.id === place).name, mode: modeInfo(mode).name }),
+      info: () => ({ place: ALLPLACES.find(p => p.id === place).name, mode: modeInfo(mode).name }),
       step(kind, d) {
         if (kind === 'place') { stepPlace(d); drawModes(); return; }
         const list = gameChoices(place); const i = list.indexOf(mode);

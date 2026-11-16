@@ -894,6 +894,9 @@ export class SquadMember extends Character {
     }
     if (this.announceT > 0) {                              // ...squaring up to Ronnie while it's on screen
       this.announceT -= dt;
+      // (the card is up for its 2 seconds and then slides away: they keep squaring up till it's completely gone, so
+      // the move itself is never hidden behind it)
+      { const fx = g.g && g.g.fx; if (this.announceT <= 0 && fx && fx.cardT >= 0 && (this.cardWait = (this.cardWait || 0) + dt) < 4) this.announceT = 0.001; else if (this.announceT <= 0) this.cardWait = 0; }
       this.turnTo(Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z), dt, 7);
       const at = ANNOUNCE_T - this.announceT;
       if (this.arriveT > 0) {                              // skidding to a stop: leaning back, arms out for balance

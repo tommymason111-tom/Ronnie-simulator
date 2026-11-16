@@ -134,7 +134,7 @@ export class Tommy extends Character {
       this.tripping -= dt;
       // his attack: the FINAL BALL. Close enough (a few metres), he stops, pulls it out of the front of his trousers
       // and lobs it at you (see ballThrow / updateBall)
-      if (!this.balling && this.distToPlayer < 3.0 && this.t - this.tripStart > 1.5) { this.balling = true; this.ballThrown = false; this.faceYaw = Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z); this.ballEm().start('ballthrow'); this.say(BALL_LINES[0], 4); }
+      if (!this.balling && this.distToPlayer < 3.0 && this.t - this.tripStart > 2.4 && !(this.cardUp && this.cardUp())) { this.balling = true; this.ballThrown = false; this.faceYaw = Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z); this.ballEm().start('ballthrow'); this.say(BALL_LINES[0], 4); }
       if (this.balling) { this.faceYaw = Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z); if (!this.ballEm().active) { this.balling = false; this.tripping = 0; this.faceYaw = null; this.attackTimer = 14; } return; }
       if (this.tripping <= 0) { this.tripping = 0; return; }
       if (!this.blinked) { this.blinked = true; this.blinkTo(ctx.head, ctx.fwd, 2.4); }      // (he appears in front of you: no long walk over)
