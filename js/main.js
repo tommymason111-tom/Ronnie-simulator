@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { STAGES, FOODS, TUNING, JUNK_TYPES, pickJunk } from './config.js';
 import { buildRoom } from './room.js';
 import { ItemManager } from './foods.js';
+import { Character } from './character.js';
 import { Crumbs, Words, Tint } from './fx.js';
 import { Player } from './player.js';
 import { Tommy } from './tommy.js';
@@ -90,6 +91,9 @@ player.cast = cast;
 player.room = room;
 const crumbs = new Crumbs(scene);
 const words = new Words(scene);
+// someone appearing in front of you for an attack: a puff where they were, a puff where they land, a zap
+Character.onBlink = (from, to) => { try { const W = ['#ffffff', '#d8e4ff', '#b8ffb0', '#ffd400']; crumbs.burst(from.clone().setY(1.0), W, 26, 1.4); crumbs.burst(to.clone().setY(1.0), W, 34, 1.6); sfx('zap', to, 0.7);
+  words.show('POOF!', to.clone().setY(2.1), '#ffffff', 0.16, 0.7); } catch (e) {} };
 for (const gm of room.games || []) gm.words = words;
 const attackFx = new AttackFX(scene, camera, player);
 const tint = new Tint(camera);
@@ -427,6 +431,11 @@ let bannerT = 0;
 function showBanner(top, big) {
   const g = bannerCanvas.getContext('2d'), w = 1024, h = 384;
   g.clearRect(0, 0, w, h);
+  // developer mode: its own start-up message, as a terminal would print it
+  if ((window.__devMode || window.__devPending) && /^FREE ROAM/.test(top)) { g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = '#39ff14'; g.shadowBlur = 24;
+    g.fillStyle = 'rgba(0,10,2,0.85)'; g.fillRect(40, 30, w - 80, 300); g.strokeStyle = '#39ff14'; g.lineWidth = 6; g.strokeRect(40, 30, w - 80, 300);
+    g.font = '900 64px "Courier New", monospace'; g.fillStyle = '#39ff14'; g.fillText('>_ DEVELOPER MODE', w / 2, 120); g.font = '900 40px "Courier New", monospace'; g.fillStyle = '#b8ffb0'; g.fillText('SYSTEM ONLINE · TAP  >_ DEV', w / 2, 230); g.shadowBlur = 0;
+    bannerTex.needsUpdate = true; bannerT = 3.2; banner.visible = true; return; }
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
   let ts = 70; g.font = `900 ${ts}px ${FONT}`; while (g.measureText(top).width > w - 60 && ts > 30) { ts -= 4; g.font = `900 ${ts}px ${FONT}`; }
   g.lineWidth = 16; g.strokeStyle = '#111'; g.strokeText(top, w / 2, 90); g.fillStyle = '#39ff14'; g.fillText(top, w / 2, 90);
@@ -1202,7 +1211,7 @@ function frame(simDt) {
     player.drawWrist({
       stage: G.stage, stages: STAGES.length, name: stageNameOf(G.stage), chonk: G.chonk, next, max,
       fill: max ? 1 : (G.chonk - cur) / (next - cur), loco: G.locoT, stout: G.stoutT, eaten: G.eaten, swats: G.swats, fps: G.fps,
-      modeLine: director.hud(), title: modeTitle(),
+      modeLine: (window.__devMode || window.__devPending) ? 'TEST BENCH · NO RANDOM ATTACKS' : director.hud(), title: (window.__devMode || window.__devPending) ? 'DEVELOPER MODE' : modeTitle(), dev: !!(window.__devMode || window.__devPending),
       pub: director.runpub ? director.runpub.hudState(director.timeLeft) : null,
       imp: director.imposter ? director.imposter.hudState() : null,
     });
@@ -1466,6 +1475,6 @@ class SquadPuppet {
 window.RS = { onFrame: [], resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
 // developer mode (Settings cog -> DEVELOPER MODE): the test bench comes up once you press PLAY. (Only for this visit:
 // starting the page again goes back to normal)
-{ let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; sessionStorage.removeItem('rs_dev'); } catch (e) {}
+{ let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; sessionStorage.removeItem('rs_dev'); } catch (e) {} window.__devPending = dev;
   if (dev) { let on = false; const go = () => { if (on) return; on = true; import('./devmode.js').then(m => m.startDev(window.RS)).catch(e => console.warn('dev', e)); };
     for (const id of ['play-flat', 'enter-vr']) { const b = document.getElementById(id); if (b) b.addEventListener('click', () => setTimeout(go, 400)); } } }

@@ -736,7 +736,7 @@ export class SquadMember extends Character {
   // ---------------------------------------------------------------------------
   intervene(key = null) {
     if (this.down || this.state === 'act') return false;
-    this.state = 'act'; this.stateT = 0; this.phase = 0;
+    this.state = 'act'; this.stateT = 0; this.phase = 0; this.blinked = false;
     this.attack = key || { ian: 'bbq', dylan: 'oasis', ben: 'turkey' }[this.id] || null;
     this.say(this.attack === 'rod' ? 'Hold still, Ronnie, I\'ve caught bigger than you up the lake! Well. No I haven\'t.' : this.attack === 'oasis' ? 'Right, Ronnie. Sit down. Wonderwall. Then the B-sides. ALL the B-sides.' : 'intervene', 4);
     this.actStart && this.actStart();
@@ -874,11 +874,16 @@ export class SquadMember extends Character {
     const r = this.rag, g = this.game;
     this.setIdlePose(this.t);
     const done = () => { this.state = 'idle'; this.stateT = 0; this.nextMove = 3; this.onEvent && this.onEvent('acted', this); };
+    // Noah's tackle (a charge: he appears a few strides away, then runs at you) and Aidan W's knee (he's suddenly right
+    // there, telling you all about it): no long walk over for them either
+    if (!this.blinked && (this.attack === 'tackle' || this.attack === 'knee')) { this.blinked = true; this.blinkTo(ctx.head, ctx.fwd, this.attack === 'tackle' ? 5 : 1.2); }
     if (this.announceNow) { this.announceNow = false; this.stateT = 0; this.arriveT = 0.35;
       g.g && g.g.player && g.g.player.faceToward && g.g.player.faceToward(this.pos.x, this.pos.z, 0.45);
       this.announceT = ANNOUNCE_T; g.announce && g.announce(this, this.attack); }
     if (this.approach) {
-      // run over to Ronnie along a proper path round the furniture (re-planned as he moves), then square up
+      // they appear right in front of whoever they're attacking (no walking over: quicker, and nothing to get stuck on)
+      if (!this.blinked) { this.blinked = true; this.blinkTo(ctx.head, ctx.fwd, this.approach); }
+      // (if there was nowhere clear to appear: run over along a proper path round the furniture, then square up)
       const d = this.chaseTo(ctx.head.x, ctx.head.z, dt, 3.3, this.approach);
       if (d > this.approach && this.stateT < 14) { if (Math.random() < dt * 0.25 && this.speakT <= 0) this.say(['RONNIE!', 'Oi! Ron!', 'Don\'t you move!', 'Stay there, Ronnie!', 'Right, you!'][Math.floor(Math.random() * 5)], 3); return; }
       this.chase = null; this.approach = 0; this.stateT = 0; this.arriveT = 0.35;

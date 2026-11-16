@@ -484,6 +484,20 @@ export class Character {
     if (sx || sz) { dir.x -= sx * 0.9; dir.z -= sz * 0.9; const l = Math.hypot(dir.x, dir.z) || 1; dir.x /= l; dir.z /= l; }
     return dir;
   }
+  // Appear right in front of someone (an attack starting): no walking over, so no time wasted and no getting stuck on the
+  // furniture on the way. The spot is the nearest clear one in front of them (then off to the sides, then behind),
+  // in sight of them, `dist` away. Returns false if there isn't one (they walk over like before)
+  blinkTo(head, fwd, dist) {
+    const nav = this.room.nav, d = Math.max(0.9, dist || 1), fx = fwd && Math.hypot(fwd.x, fwd.z) > 0.01 ? fwd.x / Math.hypot(fwd.x, fwd.z) : 0, fz = fwd && Math.hypot(fwd.x, fwd.z) > 0.01 ? fwd.z / Math.hypot(fwd.x, fwd.z) : -1;
+    const ok = (x, z) => { if (!nav) return true; const k = nav.idx(x, z); if (k < 0 || !nav.free[k]) return false; return nav.clear(new THREE.Vector2(head.x, head.z), new THREE.Vector2(x, z)); };
+    for (const dd of [d, d * 0.8, d * 1.25]) for (const a of [0, 0.45, -0.45, 0.9, -0.9, 1.4, -1.4, 2.2, -2.2, Math.PI]) {
+      const c = Math.cos(a), sn = Math.sin(a), x = head.x + (fx * c - fz * sn) * dd, z = head.z + (fx * sn + fz * c) * dd;
+      if (!ok(x, z)) continue;
+      const from = this.pos.clone(); this.rag.placeAt(x, z, Math.atan2(head.x - x, head.z - z)); this.chase = null; this.path = null;
+      Character.onBlink && Character.onBlink(from, new THREE.Vector3(x, 0, z));
+      return true; }
+    return false;
+  }
   // Follow a nav path toward a moving goal (Ronnie), re-planning a few times a second; returns the distance left.
   chaseTo(gx, gz, dt, speed, stopAt) {
     const pos = this.pos, nav = this.room.nav, r = this.rag;

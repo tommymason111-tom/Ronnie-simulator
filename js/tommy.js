@@ -137,6 +137,7 @@ export class Tommy extends Character {
       if (!this.balling && this.distToPlayer < 3.0 && this.t - this.tripStart > 1.5) { this.balling = true; this.ballThrown = false; this.faceYaw = Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z); this.ballEm().start('ballthrow'); this.say(BALL_LINES[0], 4); }
       if (this.balling) { this.faceYaw = Math.atan2(ctx.head.x - this.pos.x, ctx.head.z - this.pos.z); if (!this.ballEm().active) { this.balling = false; this.tripping = 0; this.faceYaw = null; this.attackTimer = 14; } return; }
       if (this.tripping <= 0) { this.tripping = 0; return; }
+      if (!this.blinked) { this.blinked = true; this.blinkTo(ctx.head, ctx.fwd, 2.4); }      // (he appears in front of you: no long walk over)
       _v.set(this.pos.x - ctx.head.x, 0, this.pos.z - ctx.head.z).setLength(2.4);
       this.goTo(ctx.head.x + _v.x, ctx.head.z + _v.z, 1.5, 'idle');
       return;
@@ -155,7 +156,7 @@ export class Tommy extends Character {
   // Tommy's own attack: the pop-up, then he walks over and trips you
   startTrip() {
     if (this.tripping || this.down) return false;
-    this.tripping = 12; this.tripStart = this.t;
+    this.tripping = 12; this.tripStart = this.t; this.blinked = false;
     this.onTripAnnounce && this.onTripAnnounce(this);
     this.say(ANNOY_LINES[Math.floor(Math.random() * ANNOY_LINES.length)], 3);
     return true;

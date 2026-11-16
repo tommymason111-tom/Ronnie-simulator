@@ -628,7 +628,10 @@ export class Player {
     const g = this.wristCanvas.getContext('2d'), w = 512, H = 384, h = 320;
     g.clearRect(0, 0, w, H);
     // which game you're in, above the box (always on show)
-    { const t = (state.title || '').toUpperCase(); g.textAlign = 'left'; g.textBaseline = 'middle'; let f = 40; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(t).width > w - 40 && f > 16);
+    if (state.dev) {      // developer mode: a terminal prompt, green on black, with a blinking cursor
+      const t = '>_ DEVELOPER MODE' + (Math.floor(performance.now() / 500) % 2 ? ' █' : ''); g.fillStyle = 'rgba(0,10,2,0.88)'; roundRect(g, 4, 6, 420, 54, 10); g.fill(); g.strokeStyle = '#39ff14'; g.lineWidth = 3; roundRect(g, 4, 6, 420, 54, 10); g.stroke();
+      g.textAlign = 'left'; g.textBaseline = 'middle'; g.font = '900 32px "Courier New", monospace'; g.shadowColor = '#39ff14'; g.shadowBlur = 10; g.fillStyle = '#39ff14'; g.fillText(t, 18, 34); g.shadowBlur = 0;
+    } else { const t = (state.title || '').toUpperCase(); g.textAlign = 'left'; g.textBaseline = 'middle'; let f = 40; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(t).width > w - 40 && f > 16);
       g.lineWidth = 9; g.strokeStyle = '#111'; g.lineJoin = 'round'; g.strokeText(t, 14, 32); g.fillStyle = '#ffd400'; g.fillText(t, 14, 32); }
     g.save(); g.translate(0, 64);
     if (state.pub) { this.drawPubBox(g, w, h, state); g.restore(); this.wristTex.needsUpdate = true; return; }
