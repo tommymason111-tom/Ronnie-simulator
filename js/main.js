@@ -576,6 +576,7 @@ const touch = setupTouch({
       const along = _a.subVectors(m.front, ray.origin).dot(ray.direction);
       if (along > 0 && ray.distanceSqToPoint(m.screen) < 0.4 * 0.4) {
         if (along > reach + 0.5) { touch.hint('Walk up to the machine to play it'); return; }
+        if (director.imposter) { director.imposter.useMachine && director.imposter.useMachine(); return; }      // (Imposter: it's your job, not a go on it)
         if (m.spin()) sfx('reels', m.front, 1);
         return;
       }
@@ -1148,7 +1149,7 @@ function frame(simDt) {
   // press a game's PLAY sign by touching it (headset hands)
   if (xr) for (const gm of room.games || []) if (gm.button && gm.button.visible) for (const h of player.hands) if (h.tracked && h.palm.distanceTo(gm.button.position) < 0.2) { gm.toggle(); h.pulse && h.pulse(0.6, 60); }
   // play a fruit machine by touching it (headset hands)
-  if (room.machines && xr) for (const h of player.hands) if (h.tracked) for (const m of room.machines) if (h.palm.distanceTo(m.front) < 0.35 && m.spin()) { sfx('reels', m.front, 1); h.pulse && h.pulse(0.6, 80); }
+  if (room.machines && xr && !director.imposter) for (const h of player.hands) if (h.tracked) for (const m of room.machines) if (h.palm.distanceTo(m.front) < 0.35 && m.spin()) { sfx('reels', m.front, 1); h.pulse && h.pulse(0.6, 80); }
   // eating & drinking held food (VR hands, or the on-screen hand)
   for (const h of player.flatMode ? [player.flatHolder] : player.hands) {
     const it = h.held;

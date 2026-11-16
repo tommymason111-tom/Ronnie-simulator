@@ -5,9 +5,10 @@
 // Nothing here changes the game itself: the random attacks are switched off while it's open, that's all.
 import * as THREE from 'three';
 import { EMOTES, CHAR_EMOTES, emoteInfo } from './emotes.js';
-import { TASKS } from './imposter.js';
+import { TASKS, makeCamFeeds } from './imposter.js';
 import { Panel, makeGame } from './impgames.js';
 import { SQUAD } from './squad.js';
+import { POWERUPS } from './powerups.js';
 
 const KIND_ICON = { hold: '🍺', crank: '⚙️', swipe: '💳', wires: '🔌', collect: '🧺', plunge: '🪠', order: '📖', scrub: '🧽', code: '🔢', dial: '⏲️', switches: '💡', reels: '🍒', catch: '🧻', temp: '🍟', sort: '🍽️', whack: '🍺', simon: '🕒', place: '🍴', light: '🕯️', stacker: '🍹', sweep: '🧹', pipes: '🚧', coupler: '🛢️', raise: '⛱️' };
 const NAME = (id) => id === 'tommy' ? 'TOMMY' : ((SQUAD[id] && SQUAD[id].name) || id).toUpperCase();
@@ -24,7 +25,8 @@ export function startDev(RS) {
   #dev-panel::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0 2px, transparent 2px 4px); }
   #dev-panel.on { display: flex; }
   #dev-panel .dv-tabs { display: flex; gap: 6px; padding: 10px 10px 6px; }
-  #dev-panel .dv-tabs button { flex: 1; font: 900 13px 'Courier New', monospace; padding: 9px 4px; border-radius: 10px; border: 2px solid #39ff14; background: transparent; color: #39ff14; cursor: pointer; }
+  #dev-panel .dv-tabs { flex-wrap: wrap; }
+  #dev-panel .dv-tabs button { flex: 1 1 40%; font: 900 13px 'Courier New', monospace; padding: 9px 4px; border-radius: 10px; border: 2px solid #39ff14; background: transparent; color: #39ff14; cursor: pointer; }
   #dev-panel .dv-tabs button.on { background: #39ff14; color: #111; }
   #dev-panel .dv-body { overflow-y: auto; padding: 4px 10px 12px; -webkit-overflow-scrolling: touch; }
   #dev-panel h5 { margin: 10px 2px 6px; color: #39ff14; font: 900 13px 'Courier New', monospace; letter-spacing: 1px; text-shadow: 0 0 6px #39ff14; }
@@ -107,12 +109,17 @@ export function startDev(RS) {
       body += `<div class="dv-note">Tap one: that person comes up and does it to you.</div><div class="dv-grid">`;
       for (const [who, a] of list) body += `<button class="dv-act" data-who="${who}" data-key="${a.key}"><i>${a.icon}</i>${a.title}<small>${NAME(who)}</small></button>`;
       body += `</div>`;
+    } else if (tab === 'power') {
+      body += `<div class="dv-note">Tap one: it switches on now, as if you'd picked it up.</div><div class="dv-grid">`;
+      for (const [k, P] of Object.entries(POWERUPS)) body += `<button class="dv-act" data-pu="${k}"><i>${P.icon}</i>${P.name}<small>${P.dur ? P.dur + 's' : 'NOW'}</small></button>`;
+      body += `</div>`;
     } else {
       body += `<div class="dv-note">Every Imposter job's game. Tap one to play it now.</div><div class="dv-grid">`;
       for (const t of TASKS) body += `<button class="dv-act" data-job="${t.id}"><i>${t.o && t.o.icon || KIND_ICON[t.kind] || '🔧'}</i>${t.name}<small>${t.room}</small></button>`;
       body += `</div><h5>SABOTAGE FIXES</h5><div class="dv-grid"><button class="dv-act" data-fix="lights"><i>💡</i>Fix the lights<small>FUSE BOX</small></button><button class="dv-act" data-fix="valve"><i>🛢️</i>Release a keg valve<small>KEG PRESSURE</small></button></div>`;
+      body += `<h5>SECURITY</h5><div class="dv-grid"><button class="dv-act" data-cams="1"><i>📹</i>Security cameras<small>STAFF ROOM</small></button></div>`;
     }
-    panel.innerHTML = `<div class="dv-tabs">${T('emotes', '🎭 EMOTES')}${T('attacks', '💥 ATTACKS')}${T('imposter', '🔪 IMPOSTER JOBS')}</div><div class="dv-body">${body}</div>`;
+    panel.innerHTML = `<div class="dv-tabs">${T('emotes', '🎭 EMOTES')}${T('attacks', '💥 ATTACKS')}${T('imposter', '🔪 IMPOSTER JOBS')}${T('power', '⚡ POWER-UPS')}</div><div class="dv-body">${body}</div>`;
   };
   panel.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
     if (d.tab) { tab = d.tab; render(); return; }
@@ -120,6 +127,8 @@ export function startDev(RS) {
     if (d.all) return playAll(d.all);
     if (d.em) return play(sel, d.em);
     if (d.who) return attack(d.who, d.key);
+    if (d.cams) { open(false); const game = makeCamFeeds({ renderer: RS.renderer, scene: RS.scene }); jobs.show(game, { onClose: () => game.dispose() }); return; }
+    if (d.pu) { if (!RS.powerups || !RS.powerups.give) return toast('NO POWER-UPS HERE'); RS.powerups.give(d.pu); open(false); return toast('⚡ ' + POWERUPS[d.pu].name); }
     if (d.job) { const t = TASKS.find(x => x.id === d.job); return job(t.kind, t.o, t.name); }
     if (d.fix === 'lights') return job('switches', { title: 'FIX THE LIGHTS' }, 'the lights');
     if (d.fix === 'valve') return job('crank', { title: 'KEG ROOM VALVE', hint: 'RELEASE THE PRESSURE', turns: 2 }, 'the keg valve'); });

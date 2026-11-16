@@ -238,38 +238,32 @@ const GAMES = {
   // ================================================================ the new ones (one game per job)
   // REELS: stop each reel on a cherry (the fruit machine). A reel that lands on anything else: they all spin again
   reels(o = {}) {
-    const SY = ['🍒', '🍋', '🔔', '⭐', '🍇', '💎'], N = SY.length;
-    const s = { title: o.title || 'EMPTY THE FRUIT MACHINE', reels: [], cur: 0, msg: '', msgT: 0, win: 0, done: false };
-    const spin = () => { s.reels = [2.4, 3.0, 3.6].map(v => ({ p: Math.random() * N, v, stop: false })); s.cur = 0; };
-    spin(); const B = { x: 136, y: 410, w: 240, h: 66 };
-    s.down = (x, y) => { if (s.msgT > 0 || s.win || !inside(x, y, B)) return; const r = s.reels[s.cur]; r.p = Math.round(r.p); r.stop = true; sfx('clack', null, 0.6);
-      if (((r.p % N) + N) % N !== 0) { s.msg = 'NO CHERRY! SPIN AGAIN'; s.msgT = 1.1; sfx('error', null, 0.5); return; }
-      if (++s.cur >= 3) { s.win = 0.001; sfx('jackpot', null, 0.7); } };
+    // two cherries on every reel; stop the lit reel on one (tap anywhere). A miss: just that reel spins again
+    const SY = ['🍒', '🍋', '🔔', '🍒', '🍇', '💎'], N = SY.length, CH = (p) => { const i = ((p % N) + N) % N; return i === 0 || i === 3; };
+    const s = { title: o.title || 'EMPTY THE FRUIT MACHINE', SY, reels: [1.7, 2.1, 2.5].map(v => ({ p: Math.random() * N, v, stop: false })), cur: 0, msg: '', msgT: 0, win: 0, done: false };
+    s.down = (x, y) => { if (s.msgT > 0 || s.win || s.cur > 2) return; if (x > 20 && x < 120 && y > 410) return;      // (NUDGE / HOLD are just for show)
+      const r = s.reels[s.cur]; r.p = Math.round(r.p); r.stop = true; sfx('clack', null, 0.6);
+      if (!CH(r.p)) { s.msg = `NO CHERRY ON REEL ${s.cur + 1}! IT SPINS AGAIN`; s.msgT = 0.9; s.missed = s.cur; sfx('error', null, 0.5); return; }
+      sfx('ding', null, 0.4); if (++s.cur >= 3) { s.win = 0.001; sfx('jackpot', null, 0.7); } };
     s.move = () => {}; s.up = () => {};
-    s.update = (dt) => { for (const r of s.reels) if (!r.stop) r.p += r.v * dt; if (s.msgT > 0 && (s.msgT -= dt) <= 0) spin(); if (s.win) { s.win += dt; if (s.win > 1.2) s.done = true; } };
-    s.draw = (g, t) => { frame(g, s.title); txt(g, s.msgT > 0 ? s.msg : 'STOP EVERY REEL ON A 🍒', S / 2, 82, 22, s.msgT > 0 ? '#ff6b6b' : '#fff');
-      g.fillStyle = '#5a1a7a'; rr(g, 36, 120, 440, 270, 24); g.fill();
-      s.reels.forEach((r, i) => { const x = 106 + i * 150; g.save(); g.fillStyle = '#fffbe6'; rr(g, x - 62, 150, 124, 210, 14); g.fill(); g.beginPath(); rr(g, x - 62, 150, 124, 210, 14); g.clip();
-        const f = r.p - Math.floor(r.p); for (let k = -2; k <= 2; k++) { const idx = ((Math.floor(r.p) + k) % N + N) % N, y = 255 + (k - f) * 80; g.font = '60px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(SY[idx], x, y); }
-        g.restore(); if (r.stop) { g.strokeStyle = '#39ff14'; g.lineWidth = 6; rr(g, x - 62, 150, 124, 210, 14); g.stroke(); } else if (i === s.cur) { g.strokeStyle = '#ffd400'; g.lineWidth = 6; rr(g, x - 62, 150, 124, 210, 14); g.stroke(); } });
-      g.strokeStyle = 'rgba(255,40,40,0.8)'; g.lineWidth = 4; g.beginPath(); g.moveTo(40, 255); g.lineTo(472, 255); g.stroke();
-      if (s.win) { for (let i = 0; i < 14; i++) { g.font = '34px serif'; g.fillText('🪙', 60 + (i * 37) % 400, 130 + ((t * 300 + i * 70) % 300)); } }
-      btn(g, B, s.win ? '£££ PAID OUT £££' : `STOP REEL ${Math.min(3, s.cur + 1)}`, s.win ? '#2e7d32' : '#c62828', 26); };
+    s.update = (dt) => { for (const r of s.reels) if (!r.stop) r.p += r.v * dt;
+      if (s.msgT > 0 && (s.msgT -= dt) <= 0 && s.missed !== undefined) { s.reels[s.missed].stop = false; s.reels[s.missed].p += 0.5; s.missed = undefined; }
+      if (s.win) { s.win += dt; if (s.win > 1.2) s.done = true; } };
     return s;
   },
   // CATCH: the loo rolls drop from the shelf: catch them in the basket. Drop three and you start again
   catch(o = {}) {
-    const need = o.n || 8, s = { need, title: o.title || 'RESTOCK THE LOO ROLL', bx: 256, rolls: [], got: 0, miss: 0, next: 0.6, msgT: 0, done: false };
-    s.down = (x) => { s.bx = Math.max(70, Math.min(442, x)); }; s.move = (x) => { s.bx = Math.max(70, Math.min(442, x)); }; s.up = () => {};
+    // harder: more of them, faster, a narrower basket, two drops and you start again, and soggy ones you must NOT catch
+    const need = o.n || 10, s = { need, title: o.title || 'RESTOCK THE LOO ROLL', bx: 256, bw: 54, rolls: [], got: 0, miss: 0, maxMiss: 2, next: 0.6, msg: '', msgT: 0, done: false };
+    s.down = (x) => { s.bx = Math.max(60, Math.min(452, x)); }; s.move = (x) => { s.bx = Math.max(60, Math.min(452, x)); }; s.up = () => {};
     s.update = (dt) => { if (s.done) return; if (s.msgT > 0) s.msgT -= dt;
-      if ((s.next -= dt) <= 0) { s.next = Math.max(0.55, 1.15 - s.got * 0.06) * (0.8 + Math.random() * 0.4); s.rolls.push({ x: 60 + Math.random() * 392, y: 110, v: 170 + s.got * 18, r: Math.random() * 6 }); }
-      for (const r of s.rolls) { r.y += r.v * dt; r.r += dt * 3; if (!r.gone && r.y > 410 && r.y < 450 && Math.abs(r.x - s.bx) < 66) { r.gone = true; s.got++; sfx('pickup', null, 0.5); if (s.got >= need) s.done = true; }
-        if (!r.gone && r.y > 480) { r.gone = true; if (++s.miss >= 3) { s.got = 0; s.miss = 0; s.msgT = 1.2; sfx('error', null, 0.5); } else sfx('land', null, 0.4); } }
+      if ((s.next -= dt) <= 0) { s.next = Math.max(0.42, 0.95 - s.got * 0.05) * (0.75 + Math.random() * 0.4); const wet = s.got > 1 && Math.random() < 0.22;
+        s.rolls.push({ x: 60 + Math.random() * 392, y: 110, v: 210 + s.got * 22 + Math.random() * 40, r: Math.random() * 6, wet }); }
+      for (const r of s.rolls) { r.y += r.v * dt; r.r += dt * 3;
+        if (!r.gone && r.y > 410 && r.y < 450 && Math.abs(r.x - s.bx) < s.bw + 10) { r.gone = true;
+          if (r.wet) { s.got = Math.max(0, s.got - 2); s.msg = 'SOGGY ONE! -2'; s.msgT = 1; sfx('splat', null, 0.5); } else { s.got++; sfx('pickup', null, 0.5); if (s.got >= need) s.done = true; } }
+        if (!r.gone && r.y > 480) { r.gone = true; if (r.wet) continue; if (++s.miss >= s.maxMiss) { s.got = 0; s.miss = 0; s.msg = 'DROPPED TWO! START AGAIN'; s.msgT = 1.2; sfx('error', null, 0.5); } else sfx('land', null, 0.4); } }
       s.rolls = s.rolls.filter(r => !r.gone); };
-    s.draw = (g) => { frame(g, s.title); txt(g, s.msgT > 0 ? 'DROPPED THREE! START AGAIN' : 'DRAG THE BASKET · CATCH THE ROLLS', S / 2, 80, 20, s.msgT > 0 ? '#ff6b6b' : '#fff');
-      g.font = '50px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; for (const r of s.rolls) { g.save(); g.translate(r.x, r.y); g.rotate(r.r); g.fillText('🧻', 0, 0); g.restore(); }
-      g.fillStyle = '#8d6e63'; rr(g, s.bx - 66, 420, 132, 52, 10); g.fill(); g.strokeStyle = '#5d4037'; g.lineWidth = 4; for (let i = 1; i < 6; i++) { g.beginPath(); g.moveTo(s.bx - 66 + i * 22, 420); g.lineTo(s.bx - 66 + i * 22, 472); g.stroke(); }
-      txt(g, `${s.got} / ${need}`, 70, 120, 24, '#ffd400'); txt(g, '✖'.repeat(s.miss) + '·'.repeat(3 - s.miss), 442, 120, 24, '#ff6b6b'); };
     return s;
   },
   // TEMP: hold to heat the fryer, let go to cool: keep it in the green (which moves) until the chips are done. Too hot: fire
@@ -614,14 +608,14 @@ const ART = {
     for (let i = 0; i < 24; i++) { const per = i < 12, x = per ? 40 + i * 39 : 40 + (i - 12) * 39, y = per ? 110 : 394; g.fillStyle = (Math.floor(t * 8) + i) % 3 === 0 ? '#fff6a0' : '#b3261e'; g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill(); }
     txt(g, 'THE CHIP MACHINE', 256, 136, 16, '#ffd400');
     s.reels.forEach((r, i) => { const x = 106 + i * 150; g.save(); g.fillStyle = P.grad(g, 0, 150, 0, 360, ['#d8d0b8', '#fffbe6', '#d8d0b8']); rr(g, x - 62, 150, 124, 210, 14); g.fill(); g.beginPath(); rr(g, x - 62, 150, 124, 210, 14); g.clip();
-      const N = 6, SY = ['🍒', '🍋', '🔔', '⭐', '🍇', '💎'], f = r.p - Math.floor(r.p); for (let k = -2; k <= 2; k++) { const idx = ((Math.floor(r.p) + k) % N + N) % N, y = 255 + (k - f) * 80; g.font = '58px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(SY[idx], x, y); }
+      const N = 6, SY = s.SY, f = r.p - Math.floor(r.p); for (let k = -2; k <= 2; k++) { const idx = ((Math.floor(r.p) + k) % N + N) % N, y = 255 + (k - f) * 80; g.font = '58px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(SY[idx], x, y); }
       g.fillStyle = P.grad(g, 0, 150, 0, 360, ['rgba(0,0,0,0.45)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.45)']); g.fillRect(x - 62, 150, 124, 210); g.restore();
       g.strokeStyle = r.stop ? '#39ff14' : i === s.cur ? '#ffd400' : '#2a0a3a'; g.lineWidth = 6; rr(g, x - 62, 150, 124, 210, 14); g.stroke(); });
     g.strokeStyle = 'rgba(255,40,40,0.85)'; g.lineWidth = 4; g.beginPath(); g.moveTo(40, 255); g.lineTo(472, 255); g.stroke();
     if (s.win) for (let i = 0; i < 18; i++) { g.font = '30px serif'; g.fillText('🪙', 60 + (i * 37) % 400, 130 + ((t * 320 + i * 70) % 300)); }
     btn(g, { x: 136, y: 410, w: 240, h: 66 }, s.win ? '£££ PAID OUT £££' : `STOP REEL ${Math.min(3, s.cur + 1)}`, s.win ? '#2e7d32' : '#c62828', 24);
     for (const [x, l] of [[60, 'NUDGE'], [452, 'HOLD']]) { g.fillStyle = '#ffd400'; rr(g, x - 44, 420, 88, 44, 10); g.fill(); txt(g, l, x, 442, 14, '#5a1a7a'); }
-    P.hint(g, s.msgT > 0 ? s.msg : 'STOP EVERY REEL ON A 🍒', 82, s.msgT > 0 ? '#ff6b6b' : '#fff');
+    P.hint(g, s.msgT > 0 ? s.msg : 'TAP TO STOP THE LIT REEL ON A 🍒', 82, s.msgT > 0 ? '#ff6b6b' : '#fff');
   },
   // ---- UNBLOCK THE TOILET: the cubicle, the cistern, the bowl brimming with brown water that drains as you plunge
   plunge(g, s, t) {
@@ -639,12 +633,12 @@ const ART = {
   catch(g, s) {
     P.scene(g, s.title, () => { P.tiles(g, 0, 0, S, S, 40, '#f3d9e4', '#e0b9ca'); g.fillStyle = '#7a4a5a'; g.fillRect(0, 96, S, 26); for (let x = 20; x < S; x += 60) { g.fillStyle = '#5a3040'; g.fillRect(x, 100, 40, 18); } txt(g, 'STOCK CUPBOARD', 256, 109, 12, '#f3d9e4'); });
     g.fillStyle = '#c0c4c8'; rr(g, 420, 200, 70, 14, 6); g.fill(); g.fillRect(450, 200, 8, 30); if (s.got > 0) P.roll(g, 455, 236, 20);
-    for (const r of s.rolls) P.roll(g, r.x, r.y, 22, r.r);
-    g.fillStyle = '#d8d8d8'; g.strokeStyle = '#8a8a8a'; g.lineWidth = 3; g.beginPath(); g.moveTo(s.bx - 70, 416); g.lineTo(s.bx + 70, 416); g.lineTo(s.bx + 58, 474); g.lineTo(s.bx - 58, 474); g.closePath(); g.stroke();
-    for (let i = 1; i < 7; i++) { g.beginPath(); g.moveTo(s.bx - 70 + i * 20, 416); g.lineTo(s.bx - 58 + i * 16.5, 474); g.stroke(); } for (const y of [436, 456]) { g.beginPath(); g.moveTo(s.bx - 66, y); g.lineTo(s.bx + 66, y); g.stroke(); }
-    for (let i = 0; i < Math.min(s.got, 6); i++) P.roll(g, s.bx - 40 + (i % 3) * 40, 456 - Math.floor(i / 3) * 22, 15);
-    txt(g, `${s.got} / ${s.need}`, 60, 150, 24, '#7a1a3a'); txt(g, '✖'.repeat(s.miss) + '·'.repeat(3 - s.miss), 60, 180, 22, '#c62828');
-    P.hint(g, s.msgT > 0 ? 'DROPPED THREE! START AGAIN' : 'MOVE THE BASKET · CATCH THE ROLLS', 82, s.msgT > 0 ? '#ff6b6b' : '#fff');
+    for (const r of s.rolls) { P.roll(g, r.x, r.y, 22, r.r); if (r.wet) { g.save(); g.globalAlpha = 0.55; g.fillStyle = '#7a8fa0'; g.beginPath(); g.arc(r.x, r.y, 24, 0, 7); g.fill(); g.globalAlpha = 1; g.fillStyle = '#5ab4ff'; for (let i = 0; i < 3; i++) { g.beginPath(); g.ellipse(r.x - 10 + i * 10, r.y + 26 + ((r.y + i * 13) % 14), 3, 5, 0, 0, 7); g.fill(); } g.restore(); } }
+    g.fillStyle = '#d8d8d8'; g.strokeStyle = '#8a8a8a'; g.lineWidth = 3; const bw = s.bw + 6; g.beginPath(); g.moveTo(s.bx - bw, 416); g.lineTo(s.bx + bw, 416); g.lineTo(s.bx + bw - 10, 474); g.lineTo(s.bx - bw + 10, 474); g.closePath(); g.stroke();
+    for (let i = 1; i < 6; i++) { g.beginPath(); g.moveTo(s.bx - bw + i * bw / 3, 416); g.lineTo(s.bx - bw + 10 + i * (bw - 10) / 3, 474); g.stroke(); } for (const y of [436, 456]) { g.beginPath(); g.moveTo(s.bx - bw + 4, y); g.lineTo(s.bx + bw - 4, y); g.stroke(); }
+    for (let i = 0; i < Math.min(s.got, 4); i++) P.roll(g, s.bx - 24 + (i % 2) * 48, 456 - Math.floor(i / 2) * 22, 14);
+    txt(g, `${s.got} / ${s.need}`, 60, 150, 24, '#7a1a3a'); txt(g, '✖'.repeat(s.miss) + '·'.repeat(s.maxMiss - s.miss), 60, 180, 22, '#c62828');
+    P.hint(g, s.msgT > 0 ? s.msg : 'CATCH THE ROLLS · NOT THE SOGGY ONES!', 82, s.msgT > 0 ? '#ff6b6b' : '#fff');
   },
   // ---- SORT THE BOOKINGS: the open bookings diary on the reception desk, handwritten, ticked off in red
   order(g, s) {
