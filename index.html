@@ -14,23 +14,74 @@
     html, body, button, #start, #ui, #touch { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
     html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1020; font-family: "Arial Black", Impact, Arial, sans-serif; color: #fff; }
     #app canvas { display: block; touch-action: none; }
-    #ui {
-      position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
-      width: min(560px, calc(100% - 32px)); box-sizing: border-box;
-      background: rgba(10, 14, 30, 0.86); border: 3px solid #39ff14; border-radius: 18px;
-      padding: 16px 18px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    /* ---- the panel over the level before you play: this game's own card ---- */
+    #ui { --ac: #ffd400; --ac2: #ff8a00; --ink: #111;
+      position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 5;
+      width: min(440px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto; box-sizing: border-box;
+      background: linear-gradient(170deg, rgba(22,26,64,0.94), rgba(8,10,26,0.96)); border-radius: 28px; padding: 14px 18px 16px; text-align: center;
+      border: 2px solid rgba(255,255,255,0.14); box-shadow: 0 0 0 3px var(--ac), 0 18px 50px rgba(0,0,0,0.6); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      animation: uiIn .45s cubic-bezier(.2,1.4,.4,1) both; }
+    @keyframes uiIn { from { transform: translate(-50%, 40px) scale(0.92); opacity: 0; } }
+    #ui .ui-glow { position: absolute; inset: 0; border-radius: 28px; pointer-events: none; background: radial-gradient(120% 60% at 50% 0%, color-mix(in srgb, var(--ac) 30%, transparent), transparent 70%); }
+    #ui > * { position: relative; }
+    .ui-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .ui-round { width: 42px; height: 42px; flex: none; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); color: #fff; font: 900 18px Arial, sans-serif; cursor: pointer; display: grid; place-items: center; padding: 0; }
+    .ui-round:active { transform: scale(0.9); }
+    .ui-place { font: 900 12px "Arial Black", Arial, sans-serif; letter-spacing: 1px; color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 7px 12px; border-radius: 99px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ui-who { width: 42px; flex: none; font-size: 22px; }
+    .ui-hero { display: grid; place-items: center; margin: 4px 0 2px; }
+    .ui-badge { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; font-size: 54px; line-height: 1; background: var(--ac2);
+      background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ac) 85%, #fff), var(--ac2)); box-shadow: 0 0 0 5px rgba(255,255,255,0.15), 0 0 40px color-mix(in srgb, var(--ac) 70%, transparent), inset 0 -8px 0 rgba(0,0,0,0.18);
+      animation: uiBob 2.4s ease-in-out infinite; }
+    @keyframes uiBob { 50% { transform: translateY(-6px) rotate(-4deg); } }
+    #ui h1 { margin: 8px 0 10px; font: 900 clamp(26px, 8vw, 34px)/1.05 "Arial Black", Impact, sans-serif; letter-spacing: 1px; color: var(--ac); text-shadow: 0 3px 0 #000; }
+    .ui-chips { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+    .ui-chips span { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 84px; flex: 1 1 0; max-width: 128px; padding: 9px 6px 8px; border-radius: 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14); font: 800 11px/1.15 Arial, sans-serif; color: #e6e9ff; text-transform: uppercase; letter-spacing: .3px; }
+    .ui-chips span i { font-style: normal; font-size: 24px; line-height: 1; }
+    .ui-play { display: flex; flex-direction: column; gap: 10px; }
+    #play-flat, #enter-vr { width: 100%; border: 0; cursor: pointer; font: 900 30px "Arial Black", Arial, sans-serif; letter-spacing: 2px; padding: 16px 0; border-radius: 20px; color: var(--ink);
+      background: var(--ac); box-shadow: 0 6px 0 rgba(0,0,0,0.45);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--ac) 80%, #fff), var(--ac)); box-shadow: 0 6px 0 color-mix(in srgb, var(--ac) 55%, #000), 0 0 30px color-mix(in srgb, var(--ac) 45%, transparent); animation: uiPulse 1.8s ease-in-out infinite; }
+    #play-flat:disabled { animation: none; opacity: 0.55; font-size: 20px; cursor: default; }
+    #play-flat .pi { display: inline-block; transform: scale(0.9) translateY(-1px); }
+    #play-flat:active, #enter-vr:active { transform: translateY(4px); box-shadow: 0 2px 0 color-mix(in srgb, var(--ac) 55%, #000); }
+    @keyframes uiPulse { 50% { box-shadow: 0 6px 0 color-mix(in srgb, var(--ac) 55%, #000), 0 0 46px color-mix(in srgb, var(--ac) 75%, transparent); } }
+    #enter-vr { background: linear-gradient(180deg, #8dff6a, #39ff14); box-shadow: 0 6px 0 #1d8a0a, 0 0 30px rgba(57,255,20,0.45); }
+    #enter-vr[hidden] { display: none; }
+    body.vr-capable #play-flat { font-size: 18px; padding: 11px 0; animation: none; background: rgba(255,255,255,0.12); color: #fff; box-shadow: none; border: 2px solid rgba(255,255,255,0.3); }
+    .ui-tools { display: flex; justify-content: center; gap: 12px; margin-top: 14px; }
+    .ui-tool { flex: 1 1 0; max-width: 112px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 9px 4px 7px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.06); color: #fff; cursor: pointer; }
+    .ui-tool b { font-size: 24px; line-height: 1; } .ui-tool small { font: 800 10px Arial, sans-serif; letter-spacing: .6px; color: #c9cff5; }
+    .ui-tool:active { transform: scale(0.94); }
+    #ui-howto-btn.fresh { border-color: var(--ac); box-shadow: 0 0 0 2px var(--ac); }
+    #status { margin: 10px 0 0; min-height: 0; font: 700 12px Arial, sans-serif; color: #c9cff5; } #status:empty { display: none; }
+    /* how to play, inside the panel */
+    #ui-howto { display: none; position: absolute; inset: 0; z-index: 4; border-radius: 28px; padding: 12px 14px 14px; overflow: auto; background: linear-gradient(170deg, #1d2470, #0c1030); }
+    #ui.howto #ui-howto { display: block; animation: uiIn .3s ease-out both; } #ui.howto { min-height: min(640px, calc(100% - 32px)); }
+    .uh-head { display: flex; align-items: center; justify-content: space-between; font: 800 11px Arial, sans-serif; letter-spacing: 1px; color: #c9cff5; }
+    #uh-title { margin: 4px 0 8px; font: 900 24px "Arial Black", Arial, sans-serif; color: var(--ac); text-shadow: 0 3px 0 #000; }
+    #uh-pic { display: block; width: 100%; aspect-ratio: 640 / 340; height: auto; border-radius: 16px; box-shadow: 0 0 0 3px var(--ac); }
+    #uh-lines { margin: 10px 0 0; } #uh-lines p { margin: 0 0 6px; text-align: left; font: 700 14px/1.3 Arial, sans-serif; color: #fff; background: rgba(255,255,255,0.08); border-radius: 12px; padding: 8px 11px; }
+    .uh-nav { display: flex; align-items: center; justify-content: space-between; margin: 10px 0; }
+    .uh-nav .ui-round[hidden] { visibility: hidden; display: grid; }
+    #uh-dots { display: flex; gap: 7px; } #uh-dots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.3); } #uh-dots i.on { background: var(--ac); }
+    .uh-ready { width: 100%; border: 0; border-radius: 16px; padding: 12px 0; font: 900 18px "Arial Black", Arial, sans-serif; background: var(--ac); color: var(--ink); cursor: pointer; }
+    @media (max-height: 560px) and (orientation: landscape) {      /* phones on their side: a short, wide card */
+      #ui { width: min(680px, calc(100% - 32px)); padding: 10px 16px 12px; display: grid; grid-template-columns: 120px 1fr; column-gap: 16px; row-gap: 0; align-items: center; text-align: left; }
+      #ui .ui-top { grid-column: 1 / -1; grid-row: 1; }
+      #ui .ui-hero { grid-column: 1; grid-row: 2 / span 3; margin: 0; } .ui-badge { width: 100px; height: 100px; font-size: 52px; }
+      #ui h1 { grid-column: 2; grid-row: 2; margin: 4px 0 6px; font-size: 26px; }
+      #ui .ui-chips { grid-column: 2; grid-row: 3; justify-content: flex-start; margin: 0 0 8px; flex-wrap: nowrap; } .ui-chips span { min-width: 0; flex-direction: row; gap: 6px; padding: 6px 8px; max-width: none; font-size: 10px; text-align: left; } .ui-chips span i { font-size: 18px; }
+      #ui .ui-play { grid-column: 2; grid-row: 4; flex-direction: row; } #play-flat, #enter-vr { font-size: 22px; padding: 10px 0; }
+      #ui .ui-tools { grid-column: 1 / -1; grid-row: 5; margin-top: 10px; } .ui-tool { flex-direction: row; justify-content: center; gap: 8px; padding: 7px 4px; max-width: 170px; } .ui-tool b { font-size: 18px; }
+      #status { grid-column: 1 / -1; }
+      html body.ready #ui { display: grid; } html body.flat #ui { display: none; }
+      #ui-howto { position: fixed; inset: 8px; }
+      #ui.howto #ui-howto { display: grid; grid-template-columns: 46% 1fr; column-gap: 14px; row-gap: 0; align-content: start; }
+      #ui-howto .uh-head, #ui-howto #uh-title { grid-column: 1 / -1; } #uh-title { margin: 0 0 6px; font-size: 20px; }
+      #ui-howto #uh-pic { grid-column: 1; grid-row: 3 / span 3; width: 100%; align-self: start; }
+      #uh-lines { grid-column: 2; margin: 0; } #uh-lines p { font-size: 13px; padding: 6px 10px; } .uh-nav { grid-column: 2; margin: 4px 0 8px; } .uh-ready { grid-column: 2; padding: 9px 0; font-size: 16px; }
     }
-    h1 { margin: 0 0 4px; font-size: 30px; letter-spacing: 1px; color: #ffd400; text-shadow: 3px 3px 0 #111; }
-    .tag { margin: 0 0 12px; font: 600 13px Arial, sans-serif; color: #9ca3af; }
-    #enter-vr {
-      font: 900 22px "Arial Black", Arial, sans-serif; padding: 14px 34px; border-radius: 14px; border: 0;
-      background: #39ff14; color: #111; cursor: pointer; box-shadow: 0 5px 0 #1d8a0a;
-    }
-    #enter-vr:disabled { background: #4b5563; color: #d1d5db; box-shadow: none; cursor: default; }
-    #sound { margin-left: 8px; font: 700 14px Arial, sans-serif; padding: 10px 14px; border-radius: 12px; border: 2px solid #9ca3af; background: transparent; color: #fff; cursor: pointer; }
-    #status { margin: 10px 0 0; font: 600 13px Arial, sans-serif; color: #e5e7eb; }
-    details { margin-top: 8px; text-align: left; font: 500 13px/1.45 Arial, sans-serif; color: #d1d5db; }
-    summary { cursor: pointer; color: #ffd400; font-weight: 700; }
     body.in-vr #ui { opacity: 0.25; }
     #mp-btn { margin-top: 10px; }
     #mp-panel { display: none; margin: 10px auto 0; max-width: 360px; background: rgba(10,14,40,0.85); border: 3px solid #ffd400; border-radius: 16px; padding: 12px; color: #fff; font: 700 14px Arial, sans-serif; }
@@ -42,7 +93,6 @@
     #mp-chip { display: none; position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 20; font: 900 12px Arial, sans-serif; padding: 6px 12px; border-radius: 10px; background: rgba(0,0,0,0.6); color: #ffd400; pointer-events: none; }
     #mp-chip.on { display: block; }
     #mp-chip.re { color: #fff; background: rgba(170,40,20,0.85); animation: mpre 1s ease-in-out infinite alternate; } @keyframes mpre { from { opacity: 1; } to { opacity: 0.6; } }
-    #play-flat { margin-top: 10px; font: 900 16px "Arial Black", Arial, sans-serif; padding: 12px 22px; border-radius: 14px; border: 0; background: #ffd400; color: #111; cursor: pointer; box-shadow: 0 4px 0 #a88a00; }
     body.flat #ui { display: none; }
     /* on-screen controls (phone / tablet / desktop) */
     #touch { display: none; position: fixed; inset: 0; pointer-events: none; user-select: none; -webkit-user-select: none; }
@@ -376,7 +426,7 @@
   <script>
     // Always run the newest version: if this page is an old cached copy, reload it once (the import map below loads
     // every script with the version on it, so old and new files can never get mixed up on a phone)
-    window.GAME_BUILD = '2.22.3';
+    window.GAME_BUILD = '2.22.4';
     (() => { try { fetch('./version.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json()).then(j => {
       if (!j || !j.v || j.v === window.GAME_BUILD) return; const k = 'rs_reload_' + j.v; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1');
       const u = new URL(location.href); u.searchParams.set('v', j.v); location.replace(u.toString()); }).catch(() => {}); } catch (e) {} })();
@@ -387,65 +437,65 @@
     "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
     "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
     "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
-    "./js/attackfx.js": "./js/attackfx.js?v=2.22.3",
-    "./js/audio.js": "./js/audio.js?v=2.22.3",
-    "./js/barstations.js": "./js/barstations.js?v=2.22.3",
-    "./js/belly.js": "./js/belly.js?v=2.22.3",
-    "./js/character.js": "./js/character.js?v=2.22.3",
-    "./js/config.js": "./js/config.js?v=2.22.3",
-    "./js/cutscenes.js": "./js/cutscenes.js?v=2.22.3",
-    "./js/darts.js": "./js/darts.js?v=2.22.3",
-    "./js/dialogue.js": "./js/dialogue.js?v=2.22.3",
-    "./js/emotes.js": "./js/emotes.js?v=2.22.3",
-    "./js/foodmodels.js": "./js/foodmodels.js?v=2.22.3",
-    "./js/foods.js": "./js/foods.js?v=2.22.3",
-    "./js/fx.js": "./js/fx.js?v=2.22.3",
-    "./js/geo.js": "./js/geo.js?v=2.22.3",
-    "./js/hands.js": "./js/hands.js?v=2.22.3",
-    "./js/hold.js": "./js/hold.js?v=2.22.3",
-    "./js/howto.js": "./js/howto.js?v=2.22.3",
-    "./js/impgames.js": "./js/impgames.js?v=2.22.3",
-    "./js/imposter.js": "./js/imposter.js?v=2.22.3",
-    "./js/levels/carpark.js": "./js/levels/carpark.js?v=2.22.3",
-    "./js/levels/clutter.js": "./js/levels/clutter.js?v=2.22.3",
-    "./js/levels/dormant.js": "./js/levels/dormant.js?v=2.22.3",
-    "./js/levels/furniture.js": "./js/levels/furniture.js?v=2.22.3",
-    "./js/levels/garage.js": "./js/levels/garage.js?v=2.22.3",
-    "./js/levels/garden.js": "./js/levels/garden.js?v=2.22.3",
-    "./js/levels/glow.js": "./js/levels/glow.js?v=2.22.3",
-    "./js/levels/kit.js": "./js/levels/kit.js?v=2.22.3",
-    "./js/levels/outdoor.js": "./js/levels/outdoor.js?v=2.22.3",
-    "./js/levels/oysterExterior.js": "./js/levels/oysterExterior.js?v=2.22.3",
-    "./js/levels/oysterRestaurant.js": "./js/levels/oysterRestaurant.js?v=2.22.3",
-    "./js/levels/pub.js": "./js/levels/pub.js?v=2.22.3",
-    "./js/levels/restaurant.js": "./js/levels/restaurant.js?v=2.22.3",
-    "./js/levels/stock.js": "./js/levels/stock.js?v=2.22.3",
-    "./js/levels/supermarket.js": "./js/levels/supermarket.js?v=2.22.3",
-    "./js/main.js": "./js/main.js?v=2.22.3",
-    "./js/memory.js": "./js/memory.js?v=2.22.3",
-    "./js/menu.js": "./js/menu.js?v=2.22.3",
-    "./js/modelines.js": "./js/modelines.js?v=2.22.3",
-    "./js/modes.js": "./js/modes.js?v=2.22.3",
-    "./js/mpsync.js": "./js/mpsync.js?v=2.22.3",
-    "./js/music.js": "./js/music.js?v=2.22.3",
-    "./js/nav.js": "./js/nav.js?v=2.22.3",
-    "./js/net.js": "./js/net.js?v=2.22.3",
-    "./js/physics.js": "./js/physics.js?v=2.22.3",
-    "./js/pingpong.js": "./js/pingpong.js?v=2.22.3",
-    "./js/playbutton.js": "./js/playbutton.js?v=2.22.3",
-    "./js/player.js": "./js/player.js?v=2.22.3",
-    "./js/portraits.js": "./js/portraits.js?v=2.22.3",
-    "./js/powerups.js": "./js/powerups.js?v=2.22.3",
-    "./js/pubjobs.js": "./js/pubjobs.js?v=2.22.3",
-    "./js/ragdoll.js": "./js/ragdoll.js?v=2.22.3",
-    "./js/ronnieHero.js": "./js/ronnieHero.js?v=2.22.3",
-    "./js/room.js": "./js/room.js?v=2.22.3",
-    "./js/runpub.js": "./js/runpub.js?v=2.22.3",
-    "./js/squad.js": "./js/squad.js?v=2.22.3",
-    "./js/textures.js": "./js/textures.js?v=2.22.3",
-    "./js/tommy.js": "./js/tommy.js?v=2.22.3",
-    "./js/touch.js": "./js/touch.js?v=2.22.3",
-    "./js/tv.js": "./js/tv.js?v=2.22.3"
+    "./js/attackfx.js": "./js/attackfx.js?v=2.22.4",
+    "./js/audio.js": "./js/audio.js?v=2.22.4",
+    "./js/barstations.js": "./js/barstations.js?v=2.22.4",
+    "./js/belly.js": "./js/belly.js?v=2.22.4",
+    "./js/character.js": "./js/character.js?v=2.22.4",
+    "./js/config.js": "./js/config.js?v=2.22.4",
+    "./js/cutscenes.js": "./js/cutscenes.js?v=2.22.4",
+    "./js/darts.js": "./js/darts.js?v=2.22.4",
+    "./js/dialogue.js": "./js/dialogue.js?v=2.22.4",
+    "./js/emotes.js": "./js/emotes.js?v=2.22.4",
+    "./js/foodmodels.js": "./js/foodmodels.js?v=2.22.4",
+    "./js/foods.js": "./js/foods.js?v=2.22.4",
+    "./js/fx.js": "./js/fx.js?v=2.22.4",
+    "./js/geo.js": "./js/geo.js?v=2.22.4",
+    "./js/hands.js": "./js/hands.js?v=2.22.4",
+    "./js/hold.js": "./js/hold.js?v=2.22.4",
+    "./js/howto.js": "./js/howto.js?v=2.22.4",
+    "./js/impgames.js": "./js/impgames.js?v=2.22.4",
+    "./js/imposter.js": "./js/imposter.js?v=2.22.4",
+    "./js/levels/carpark.js": "./js/levels/carpark.js?v=2.22.4",
+    "./js/levels/clutter.js": "./js/levels/clutter.js?v=2.22.4",
+    "./js/levels/dormant.js": "./js/levels/dormant.js?v=2.22.4",
+    "./js/levels/furniture.js": "./js/levels/furniture.js?v=2.22.4",
+    "./js/levels/garage.js": "./js/levels/garage.js?v=2.22.4",
+    "./js/levels/garden.js": "./js/levels/garden.js?v=2.22.4",
+    "./js/levels/glow.js": "./js/levels/glow.js?v=2.22.4",
+    "./js/levels/kit.js": "./js/levels/kit.js?v=2.22.4",
+    "./js/levels/outdoor.js": "./js/levels/outdoor.js?v=2.22.4",
+    "./js/levels/oysterExterior.js": "./js/levels/oysterExterior.js?v=2.22.4",
+    "./js/levels/oysterRestaurant.js": "./js/levels/oysterRestaurant.js?v=2.22.4",
+    "./js/levels/pub.js": "./js/levels/pub.js?v=2.22.4",
+    "./js/levels/restaurant.js": "./js/levels/restaurant.js?v=2.22.4",
+    "./js/levels/stock.js": "./js/levels/stock.js?v=2.22.4",
+    "./js/levels/supermarket.js": "./js/levels/supermarket.js?v=2.22.4",
+    "./js/main.js": "./js/main.js?v=2.22.4",
+    "./js/memory.js": "./js/memory.js?v=2.22.4",
+    "./js/menu.js": "./js/menu.js?v=2.22.4",
+    "./js/modelines.js": "./js/modelines.js?v=2.22.4",
+    "./js/modes.js": "./js/modes.js?v=2.22.4",
+    "./js/mpsync.js": "./js/mpsync.js?v=2.22.4",
+    "./js/music.js": "./js/music.js?v=2.22.4",
+    "./js/nav.js": "./js/nav.js?v=2.22.4",
+    "./js/net.js": "./js/net.js?v=2.22.4",
+    "./js/physics.js": "./js/physics.js?v=2.22.4",
+    "./js/pingpong.js": "./js/pingpong.js?v=2.22.4",
+    "./js/playbutton.js": "./js/playbutton.js?v=2.22.4",
+    "./js/player.js": "./js/player.js?v=2.22.4",
+    "./js/portraits.js": "./js/portraits.js?v=2.22.4",
+    "./js/powerups.js": "./js/powerups.js?v=2.22.4",
+    "./js/pubjobs.js": "./js/pubjobs.js?v=2.22.4",
+    "./js/ragdoll.js": "./js/ragdoll.js?v=2.22.4",
+    "./js/ronnieHero.js": "./js/ronnieHero.js?v=2.22.4",
+    "./js/room.js": "./js/room.js?v=2.22.4",
+    "./js/runpub.js": "./js/runpub.js?v=2.22.4",
+    "./js/squad.js": "./js/squad.js?v=2.22.4",
+    "./js/textures.js": "./js/textures.js?v=2.22.4",
+    "./js/tommy.js": "./js/tommy.js?v=2.22.4",
+    "./js/touch.js": "./js/touch.js?v=2.22.4",
+    "./js/tv.js": "./js/tv.js?v=2.22.4"
   }
 }
   </script>
@@ -764,35 +814,42 @@
     </div>
   </div>
   <div id="ui">
-    <h1>RONNIE SIMULATOR</h1>
-    <p class="tag" id="ready-tag">Loading…</p>
-    <button id="back-menu" class="ghost">⬅ Change place or mode</button>
-    <button id="enter-vr" disabled>CHECKING VR…</button>
-    <button id="sound">🔊 Test sound</button><br>
-    <button id="play-flat">📱 PLAY ON THIS SCREEN</button>
-    <p id="status">Loading…</p>
-    <details>
-      <summary>How to play</summary>
-      <b>Grab:</b> grip or trigger (or pinch with hand tracking).<br>
-      <b>Eat:</b> bring food to your mouth. Each touch = one bite.<br>
-      <b>Drink MONSTOR:</b> bring the can to your mouth and tip it back past 60° → MANGO LOCO MODE (x3 Eat points for 10s).<br>
-      <b>Throw:</b> let go mid-swing. Hit Tommy for a reaction.<br>
-      <b>Broccoli!</b> When Tommy winds up, swat it away with a fast hand swing — or catch it and throw it back.<br>
-      <b>Move:</b> left stick. <b>Turn:</b> right stick (30° snap).<br>
-      <b>Eat Meter:</b> look at your left wrist.<br>
-      <b>Grab anyone:</b> grip or pinch on any part of Tommy or the squad and fling them about. Slap with a fast swing.<br>
-      <b>Game modes:</b> pick one on the start screen, or press a button on the GAME MODES board in the level.<br>
-      <b>The squad:</b> everyone takes turns to attack you with their own move (a pop-up says what's coming). Meet them all on the start screen under MEET THE SQUAD.<br>
-      <b>No headset (phone / tablet / computer)?</b> Press PLAY ON THIS SCREEN. Left joystick (or WASD) to walk, drag to look, tap food to pick it up, EAT / THROW buttons (or E / Space), tap broccoli to swat it, tap Tommy to slap him.
-    </details>
+    <div class="ui-glow"></div>
+    <div class="ui-top">
+      <button id="back-menu" class="ui-round" aria-label="Change place or mode">⬅</button>
+      <span class="ui-place" id="ui-place">🍺 THE OYSTERFLEET</span>
+      <span class="ui-who" id="ui-who"></span>
+    </div>
+    <div class="ui-hero"><div class="ui-badge" id="ui-ico">🍔</div></div>
+    <h1 id="ui-mode">RONNIE SIMULATOR</h1>
+    <p class="tag" id="ready-tag" hidden>Loading…</p>
+    <div class="ui-chips" id="ui-chips"></div>
+    <div class="ui-play">
+      <button id="enter-vr" hidden>🥽 PLAY IN VR</button>
+      <button id="play-flat" disabled>LOADING…</button>
+    </div>
+    <div class="ui-tools">
+      <button id="ui-howto-btn" class="ui-tool"><b>📖</b><small>HOW TO PLAY</small></button>
+      <button id="sound" class="ui-tool"><b>🔊</b><small>SOUND</small></button>
+      <button id="ui-change" class="ui-tool"><b>🔄</b><small>CHANGE</small></button>
+    </div>
+    <p id="status"></p>
+    <div id="ui-howto">
+      <div class="uh-head"><span id="uh-step"></span><button id="uh-close" class="ui-round" aria-label="Close">✕</button></div>
+      <h2 id="uh-title"></h2>
+      <canvas id="uh-pic" class="howpic" width="640" height="340"></canvas>
+      <div id="uh-lines"></div>
+      <div class="uh-nav"><button id="uh-prev" class="ui-round">◀</button><div id="uh-dots"></div><button id="uh-next" class="ui-round">▶</button></div>
+      <button id="uh-ready" class="uh-ready">GOT IT 👍</button>
+    </div>
   </div>
   <script>
     // Show load errors on the page (handy without dev tools on the headset).
     window.addEventListener('error', (e) => { const s = document.getElementById('status'); if (s) s.textContent = 'Error: ' + e.message; });
     window.addEventListener('unhandledrejection', (e) => { const s = document.getElementById('status'); if (s) s.textContent = 'Error: ' + (e.reason && e.reason.message || e.reason); });
   </script>
-  <script src="./js/howto.js?v=2.22.3"></script>
-  <script src="./js/menu.js?v=2.22.3"></script>
+  <script src="./js/howto.js?v=2.22.4"></script>
+  <script src="./js/menu.js?v=2.22.4"></script>
   <script type="module">
     // the 3D Ronnie on the title screen (falls back to the drawing if it can't load)
     import { startHero } from './js/ronnieHero.js';   // (through the import map, so it's the stamped version)

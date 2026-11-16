@@ -660,17 +660,19 @@ function startFlat() {
 let gameBegun = false;
 function startOnce() { if (gameBegun && director.running) return; gameBegun = true; director.start(chosenMode()); mpAfterStart(); }
 function chosenMode() { const m = ['classic', 'intervention', 'veggie', 'catch'].includes(SEL.mode) || !SEL.mode ? 'everyone' : SEL.mode; return m.startsWith('imposter') && !(window.ronnieMP && window.ronnieMP.role) ? 'everyone' : m; }   // old links still work
-document.getElementById('play-flat').addEventListener('click', startFlat);
+{ const pf = document.getElementById('play-flat'); pf.addEventListener('click', startFlat); pf.disabled = false; pf.innerHTML = '<span class="pi">▶</span> PLAY'; }
 
 // ---------------- Enter VR ----------------
 const vrBtn = document.getElementById('enter-vr');
 const status = document.getElementById('status');
 async function setupVR() {
-  if (!('xr' in navigator)) { vrBtn.textContent = 'NO VR HERE'; status.textContent = 'No VR here — press PLAY ON THIS SCREEN to play with touch controls (or open this page in the Meta Quest browser for VR).'; return; }
+  // (the VR button only shows on something that can actually do VR: a headset, or a computer with one plugged in)
+  status.textContent = '';
+  if (!('xr' in navigator)) { vrBtn.hidden = true; return; }
   const ok = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
-  if (!ok) { vrBtn.textContent = 'NO VR HERE'; status.textContent = 'No VR on this device — press PLAY ON THIS SCREEN to play with touch controls.'; return; }
-  vrBtn.disabled = false; vrBtn.textContent = 'ENTER VR';
-  status.textContent = 'Ready! Put the headset on and press ENTER VR.';
+  if (!ok) { vrBtn.hidden = true; return; }
+  vrBtn.hidden = false; vrBtn.disabled = false; vrBtn.textContent = '🥽 PLAY IN VR'; document.body.classList.add('vr-capable');
+  const pf = document.getElementById('play-flat'); if (pf) pf.innerHTML = '🖥️ PLAY ON SCREEN';
   let session = null;
   const begin = async (handed) => {
     initAudio();
@@ -678,7 +680,7 @@ async function setupVR() {
     try {
       if (handed) { session = handed; if (window.__menuVRRelease) window.__menuVRRelease(); }     // already in the headset from the menu
       else session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] });
-      session.addEventListener('end', () => { session = null; vrBtn.textContent = 'ENTER VR'; document.body.classList.remove('in-vr'); camera.position.set(0, 1.6, 0); });
+      session.addEventListener('end', () => { session = null; vrBtn.textContent = '🥽 PLAY IN VR'; document.body.classList.remove('in-vr'); camera.position.set(0, 1.6, 0); });
       await renderer.xr.setSession(session);
       // a session carried on from the menu already has its controllers: they never "connect" again, so the hands
       // wouldn't show until a controller went to sleep and woke up. Tell the game about them straight away.
@@ -689,7 +691,7 @@ async function setupVR() {
       startOnce();
     } catch (err) {
       status.textContent = 'Could not start VR: ' + err.message;
-      if (handed) { try { handed.end(); } catch (e) {} status.textContent = 'Press ENTER VR to carry on in the headset.'; }
+      if (handed) { try { handed.end(); } catch (e) {} status.textContent = 'Press 🥽 PLAY IN VR to carry on in the headset.'; }
       session = null;
     }
   };
