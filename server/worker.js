@@ -39,7 +39,8 @@ export class Room {
     if (peers.length >= MAX_PLAYERS) return new Response('room full', { status: 403, headers: cors });
     const M = this.meta, back = M.saves[pid];
     // the host: the first one in, if nobody holds it (or whoever held it has gone)
-    if (!M.host || !peers.some(([, a]) => a.id === M.host)) { if (!peers.length) { M.host = pid; if (!M.orig) M.orig = pid; } else if (!peers.some(([, a]) => a.id === M.host)) M.host = this.successor(peers, null); }
+    // (the host coming straight back on a new line, after a blip, stays the host)
+    if (M.host !== pid && (!M.host || !peers.some(([, a]) => a.id === M.host))) { if (!peers.length) { M.host = pid; if (!M.orig) M.orig = pid; } else if (!peers.some(([, a]) => a.id === M.host)) M.host = this.successor(peers, null); }
     const joined = back && back.joined ? back.joined : ++M.seq;
     M.saves[pid] = { ...(back || {}), name, joined, seen: Date.now() };
     await this.state.storage.deleteAlarm();

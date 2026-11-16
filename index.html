@@ -41,6 +41,7 @@
     #mp-status b { color: #ffd400; font-size: 22px; letter-spacing: 3px; }
     #mp-chip { display: none; position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 20; font: 900 12px Arial, sans-serif; padding: 6px 12px; border-radius: 10px; background: rgba(0,0,0,0.6); color: #ffd400; pointer-events: none; }
     #mp-chip.on { display: block; }
+    #mp-chip.re { color: #fff; background: rgba(170,40,20,0.85); animation: mpre 1s ease-in-out infinite alternate; } @keyframes mpre { from { opacity: 1; } to { opacity: 0.6; } }
     #play-flat { margin-top: 10px; font: 900 16px "Arial Black", Arial, sans-serif; padding: 12px 22px; border-radius: 14px; border: 0; background: #ffd400; color: #111; cursor: pointer; box-shadow: 0 4px 0 #a88a00; }
     body.flat #ui { display: none; }
     /* on-screen controls (phone / tablet / desktop) */
@@ -520,6 +521,7 @@
       <p class="tagline">Eat everything. Grow enormous. Your mates are "just trying to help".</p>
       <div class="menu-btns">
         <button class="bigbtn playbtn" data-go="players">PLAY ➜</button>
+        <button class="midbtn" id="rejoin-btn" hidden style="background:#39ff14;color:#111">🔁 REJOIN ROOM <b></b></button>
         <button class="midbtn vrbtn" id="title-vr" hidden>🥽 SEE RONNIE IN VR</button>
         <div class="smallrow">
           <button class="midbtn" data-go="squad">👥 MEET THE SQUAD</button>

@@ -400,7 +400,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     $('#room-code').textContent = mp.net.code;
     $('#room-players').innerHTML = ps.map(p => { const c = CHARS.find(x => x.id === p.char) || CHARS[0];
       return `<div class="rp" style="--c:${c.c}">${c.img ? `<img src="./assets/portraits/${c.img}.webp" alt="">` : '<div class="em">🍔</div>'}<b>${esc(p.name || '...')}</b><small>as ${c.n}</small>${p.host ? '<span class="tag">HOST</span>' : ''}${p.me ? '<span class="tag" style="background:#39ff14">YOU</span>' : ''}</div>`; }).join('')
-      + Array.from({ length: Math.max(0, 6 - ps.length) }, () => '<div class="rp empty"><div class="em">➕</div><small>free space</small></div>').join('');
+      + Array.from({ length: Math.max(0, Math.min(mp.net.max || 12, Math.max(6, Math.ceil((ps.length + 1) / 3) * 3)) - ps.length) }, () => '<div class="rp empty"><div class="em">➕</div><small>free space</small></div>').join('');
     const boss = mp.role === 'host' || (mp.net.host && mp.role !== 'join');
     $('#room-go').style.display = boss ? '' : 'none';
     $('#room-msg').textContent = boss ? (ps.length > 1 ? 'Everyone\'s in? Choose where you\'re playing.' : 'Tell your mates the code. Start when everyone\'s in.') : 'Waiting for the host to choose the game…';
@@ -418,7 +418,8 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       // a mate on a newer version: update now (straight back into this room), so you both see the same things
       if (m.v && vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; mpStatus('Your mate has a newer version. Updating…'); setTimeout(() => { location.href = location.pathname + '?lobby=' + encodeURIComponent(code) + '&u=' + Date.now(); }, 1200); } };
     net.on.join = (m) => { hi(m.id); lobby(); }; net.on.leave = () => lobby(); net.on.host = () => lobby();
-    hi(); return w;
+    hi(); try { localStorage.setItem('rs_mp_last', JSON.stringify({ code, t: Date.now() })); } catch (e) {}      // (for the REJOIN button, if this page gets closed)
+    return w;
   }
   $('#mp-host2').addEventListener('click', async () => {
     const { newCode } = await import('./net.js'); const code = newCode();
@@ -427,7 +428,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     } catch (e) { mpStatus("Couldn't connect. Check your internet and try again."); }
   });
   $('#room-go').addEventListener('click', () => { drawPlace(); show('place'); });
-  $('#room-leave').addEventListener('click', () => { if (mp.net) mp.net.leave(); mp.net = null; mp.role = null; $('#mp-code-chip').textContent = ''; show('mp', -1); });
+  $('#room-leave').addEventListener('click', () => { try { localStorage.removeItem('rs_mp_last'); } catch (e) {} if (mp.net) mp.net.leave(); mp.net = null; mp.role = null; $('#mp-code-chip').textContent = ''; show('mp', -1); });
   $('#mp-code2').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
   $('#mp-join2').addEventListener('click', async () => {
     const code = ($('#mp-code2').value || '').toUpperCase().trim();
@@ -441,14 +442,19 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   });
 
   // back to the lobby after a game (?lobby=CODE): straight back into the same room, as the same name and character
-  if (q.get('lobby')) setTimeout(async () => {
-    const code = q.get('lobby').toUpperCase().slice(0, 6); try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  // straight back into a room: after an update (?lobby=CODE), or the REJOIN button (a phone that closed the page, or
+  // dropped out of the game). The room knows this device: name, score and progress come back
+  const rejoin = async (code) => {
     // (whoever was the host is still the host: the room hands "host" on to someone else while their page reloads)
     let was = false; try { was = sessionStorage.getItem('rs_was_host') === '1'; } catch (e) {}
     try { const w = await mpConnect(code); mp.role = w.host || was ? 'host' : 'join'; $('#mp-code-chip').textContent = `👥 ROOM ${code}`; show('room'); lobby();
       if (mp.role === 'join') mp.net.on.setup = (m) => { if (window.__setupSeen) return; window.__setupSeen = true; place = m.place; mode = m.mode; $('#room-msg').textContent = 'Off we go!'; window.__menuIntro(() => window.__menuGo(true)); };
     } catch (e) { show('mp'); mpStatus("Couldn't get back into the room. Check your internet and try again."); }
-  }, 600);
+  };
+  if (q.get('lobby')) setTimeout(() => { const code = q.get('lobby').toUpperCase().slice(0, 6); try { history.replaceState(null, '', location.pathname); } catch (e) {} rejoin(code); }, 600);
+  else { let last = null; try { last = JSON.parse(localStorage.getItem('rs_mp_last') || 'null'); } catch (e) {}
+    if (last && last.code && Date.now() - last.t < 30 * 60000) { const b = $('#rejoin-btn'); b.hidden = false; b.querySelector('b').textContent = last.code;
+      b.addEventListener('click', () => { b.hidden = true; mpStatus('Getting you back in…'); show('mp'); rejoin(last.code); }); } }
 
   // ---------------------------------------------------------------- HOW: tabs (opens on your device's tab)
   const pickTab = (id) => {

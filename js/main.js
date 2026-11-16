@@ -1224,7 +1224,9 @@ renderer.setAnimationLoop(() => { try { frame(); } catch (e) { if (frameErrs++ <
 const net = (window.ronnieMP && window.ronnieMP.net) || new Net();
 net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie';
 { const $ = (id) => document.getElementById(id);
-  const chip = () => { const n = net.players.size + 1; $('mp-chip').textContent = `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`; $('mp-chip').classList.toggle('on', net.connected); };
+  const chip = () => { const n = net.players.size + 1, re = net.status === 'reconnecting';
+    $('mp-chip').textContent = re ? `📶 RECONNECTING TO ROOM ${net.code}…` : `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`;
+    $('mp-chip').classList.toggle('on', net.connected || re); $('mp-chip').classList.toggle('re', re); };
   // the host tells anyone who joins late which place and game to load
   net.on.join = (m) => { chip(); if (net.host) net.send({ t: 'setup', to: m.id, place: room.placeId, mode: director.fullMode || director.mode || SEL.mode }); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
   net.on.leave = () => chip(); net.on.status = () => chip();
@@ -1235,6 +1237,12 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
     else if (m.id !== net.id) showBanner('👑 ' + String(m.name || 'SOMEONE').toUpperCase() + ' IS THE HOST', m.why === 'given' ? 'HOSTING WAS HANDED OVER' : 'THE HOST LEFT');
     if (was && m.id !== net.id) mp.becomeGuest && mp.becomeGuest(); };
   // your progress (how big you've got, what you've eaten), kept by the room: drop out and come back, and it's yours again
+  // the host's phone locked or went to another app: a phone stops the page, so everyone's game would stop with it.
+  // Hand hosting on to the next player before it does (the room tells everyone; it can be handed back later)
+  const handOff = () => { if (!net.connected || !net.host || !net.players.size) return; const next = [...net.players.values()][0]; if (next) net.send({ t: 'giveHost', to: next.id }); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden && !renderer.xr.isPresenting) handOff(); });
+  window.addEventListener('pagehide', handOff);
+  setInterval(() => { if (net.connected) try { localStorage.setItem('rs_mp_last', JSON.stringify({ code: net.code, t: Date.now() })); } catch (e) {} }, 5000);      // (the home screen's REJOIN button)
   setInterval(() => { if (net.connected && director.running) net.send({ t: 'save', d: { chonk: Math.round(G.chonk * 10) / 10, stage: G.stage, eaten: G.eaten, swats: G.swats }, c: net.char }); }, 2000);
   let restored = false; const restore = () => { const sv = net.saved; if (restored || !net.back || !sv || !director.running) return; restored = true;
     if (sv.chonk > G.chonk) addChonk(sv.chonk - G.chonk); G.eaten = Math.max(G.eaten, sv.eaten || 0); G.swats = Math.max(G.swats, sv.swats || 0); G.wristDirty = true;
@@ -1296,7 +1304,7 @@ class SquadPuppet {
   constructor(p) { this.c = p.char === 'tommy' ? (() => { const t = new Tommy(scene, room, physics); t.load(); return t; })() : new SquadMemberMP(scene, room, physics, p.char, [0, 0, 0], director); this.c.attacks = false; this.c.mpPuppet = true; this.c.active = false; this.pos = new THREE.Vector3(); this.yaw = 0; this.rh = new THREE.Vector3(); this.lh = new THREE.Vector3(); this.first = true; this.c.name = p.name || this.c.name;
     // a name tag over their head (so you can tell a real player from the squad): their name, and who they're playing as
     this.p = p; this.tagC = document.createElement('canvas'); this.tagC.width = 320; this.tagC.height = 96; this.tagTex = new THREE.CanvasTexture(this.tagC); this.tagTex.colorSpace = THREE.SRGBColorSpace;
-    this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; scene.add(this.tag); this.drawTag();
+    this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; this.tag.userData.remoteRonnie = !p.self; scene.add(this.tag); this.drawTag();
     this.down = 0; this.hT = {}; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0;
     if (p.self) {               // your own body (seen from inside it): no head in the way, no name tag, no bumping into it
       this.tag.visible = false; this.c.rag.hideHead = true; for (const pt of this.c.rag.list) { pt.body.collisionResponse = false; } }
@@ -1386,7 +1394,7 @@ class SquadPuppet {
     }
     if (!em) r.pose.head.setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.clamp(-Math.asin(f.y), -0.6, 0.6));
     // hand tracking: their real fingers (sent only by players using it): how bent the fingers are, and the middle one
-    if (!em && pose.f && r.handPose) for (const [side, o] of [['R', 0], ['L', 5]]) { const hp = r.handPose['lArm' + side], s5 = pose.f.slice(o, o + 5); if (!hp || s5[1] === '-') continue;
+    if (!em && pose.fc && r.handPose) for (const [side, o] of [['R', 0], ['L', 5]]) { const hp = r.handPose['lArm' + side], s5 = pose.fc.slice(o, o + 5); if (!hp || s5[1] === '-') continue;
       const d = (i) => (s5.charCodeAt(i) - 48) / 9, curl = (d(1) + d(3) + d(4)) / 3, mid = d(2); hp.curl += (curl - hp.curl) * Math.min(1, dt * 15); hp.mid += (mid - hp.mid) * Math.min(1, dt * 15); }
     r.animate(dt); r.sync(); if (em) this.emote.place(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag();
   }
