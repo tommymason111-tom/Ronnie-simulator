@@ -24,7 +24,7 @@ import { Net, newCode } from './net.js';
 import { MPSync } from './mpsync.js';
 import { foodGlow } from './foods.js';
 import { EMOTES, CHAR_EMOTES, EmotePlayer, emoteInfo } from './emotes.js';
-import { sweep, releaseLevelGeometry, releaseTextures } from './memory.js';
+import { sweep, releaseLevelGeometry, releaseTextures, noteLevelTextures, releaseLevelCanvases } from './memory.js';
 import { Music } from './music.js';
 import { PowerUps } from './powerups.js';
 import { Imposter } from './imposter.js';
@@ -65,7 +65,7 @@ camera.position.set(0, 1.6, 0);
 const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant, garden: buildGarden };
 const room = (BUILD[SEL.place] || buildRoom)(scene);
 const levelMeshes = []; scene.traverse(o => { if (o.isMesh) levelMeshes.push(o); });      // (the level itself: see memory.js)
-releaseLevelGeometry(levelMeshes, Infinity);      // (each piece's spare copy goes the moment it's first sent to the graphics chip: the peak while loading is what phones close a page for)
+releaseLevelGeometry(levelMeshes, Infinity); noteLevelTextures(levelMeshes);      // (each piece's spare copy goes the moment it's first sent to the graphics chip: the peak while loading is what phones close a page for)
 FLOOR.at = room.floorAt || null;
 if (room.familyPhotos) setTimeout(() => import('./portraits.js').then(m => m.paintPhotos(renderer, room.familyPhotos)).catch(e => console.warn('photos', e)), 400);   // family photos from the models            // (raised floors: the ragdolls stand on them)
 if (room.shadows) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }     // sunny places get real sun shadows
@@ -115,11 +115,11 @@ const placeExtras = () => (room.extraItems || []).forEach(e => { if (items.items
 placeExtras();
 // fruit machines pay out in food: a little burst of it, flying out of the tray at you
 room.onPayout = (m) => {
-  sfx('fanfare', m.front, 1); words.show('JACKPOT!', m.front.clone().add({ x: 0, y: 0.7, z: 0 }), '#ffd400', 0.22, 1.4);
+  sfx('jackpot', m.front, 1); words.show('JACKPOT!', m.front.clone().add({ x: 0, y: 0.7, z: 0 }), '#ffd400', 0.22, 1.4);
   for (let i = 0; i < 4; i++) setTimeout(() => {
     const dir = _a.set(player.head.x - m.tray.x, 0, player.head.z - m.tray.z).normalize();
     const it = items.spawn(i % 2 ? m.win.food : pickJunk(), m.tray.clone(), new THREE.Vector3(dir.x * 2.2 + (Math.random() - 0.5) * 0.8, 2.2 + Math.random(), dir.z * 2.2 + (Math.random() - 0.5) * 0.8));
-    it.spawnScale = 1; it.obj.scale.setScalar(1); sfx('pop', m.tray, 0.8);
+    it.spawnScale = 1; it.obj.scale.setScalar(1); sfx('coin', m.tray, 0.8);
   }, 150 + i * 160);
 };
 // big places: loads more food, every kind, and it keeps topping up
@@ -162,13 +162,13 @@ items.onTvSmash = (tv, p, u, v) => {
 items.onLand = (it, speed) => {
   if (time - G.lastLand < 0.08) return;
   G.lastLand = time;
-  sfx(it.type === 'can' ? 'clink' : 'thud', it.pos, Math.min(1, speed / 4));
+  sfx(it.type === 'can' ? 'can' : /pint|glass|wine|cup/.test(it.type) ? 'glass' : 'land', it.pos, Math.min(1, speed / 4));
 };
-items.onSpawn = () => sfx('pop', null, 0.15);
+items.onSpawn = () => sfx('spawn', null, 0.15);
 player.onGrab = (it) => {
   // Supermarket Sweep: straight into the trolley
   if (director.running && director.mode === 'sweep' && !it.incoming && !it.def.prop) { const h = it.heldBy; if (h) h.held = null; it.heldBy = null; director.sweepGrab(it); return; }
-  sfx('pop', it.pos, 0.3);
+  sfx('pickup', it.pos, 0.3);
   if (it.def.bag && !it.opened) openBag(it);
   if (it.incoming) {
     words.show('CAUGHT!', it.pos.clone().add(new THREE.Vector3(0, 0.15, 0)), '#7cff6a', 0.22);
@@ -189,18 +189,18 @@ function openBag(bag) {
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
     clearTimeout(openBag.t); openBag.t = setTimeout(() => el.classList.remove('show'), 2600 + n * 220);
   }
-  sfx('ting', bag.pos, 0.8);
+  sfx('rustle', bag.pos, 0.8);
   found.forEach((t, i) => setTimeout(() => {
     const from = _a.copy(player.head).addScaledVector(player.fwd, 0.55 * player.scale); from.y -= 0.25 * player.scale;
     const v = new THREE.Vector3(player.fwd.x * 0.6 + (Math.random() - 0.5) * 0.8, 2.0 + Math.random() * 0.6, player.fwd.z * 0.6 + (Math.random() - 0.5) * 0.8);
-    const it = items.spawn(t, from.clone(), v); it.spawnScale = 0.2; sfx('pop', from, 0.6);
+    const it = items.spawn(t, from.clone(), v); it.spawnScale = 0.2; sfx('spawn', from, 0.6);
   }, 700 + i * 220));
 }
 // you can only hold one thing at a time
 function holdingMsg(it) { const n = (it.def.label || it.type).replace(/^Bottle off the back bar$/, 'bottle').toLowerCase(), a = /^[aeiou]/.test(n) ? 'an' : 'a';
   const t = `You're already holding ${/s$/.test(n) && !/ss$/.test(n) ? 'some' : a} ${n}!`; touch.hint(t); words.show(t.toUpperCase(), player.head.clone().addScaledVector(player.fwd, 0.8).add({ x: 0, y: -0.15, z: 0 }), '#ffd400', 0.07 * player.scale, 1.4); }
 player.onBlocked = (it) => holdingMsg(it);
-player.onRelease = (it, h, sp) => { if (sp > 2.5) sfx('whoosh', it.pos, Math.min(1, sp / 6)); if (sp > 1.2) try { mp.swing(h && h.handedness === 'left' ? 'L' : 'R'); } catch (e) {} };
+player.onRelease = (it, h, sp) => { if (sp > 2.5) sfx('throw', it.pos, Math.min(1, sp / 6)); if (sp > 1.2) try { mp.swing(h && h.handedness === 'left' ? 'L' : 'R'); } catch (e) {} };
 
 // anyone throwing anything at Ronnie
 function onThrow(start, vel, type, who, spec) {
@@ -214,7 +214,7 @@ tommy.onTrip = (t) => director.stun(t, 'tommy');
 tommy.onTripAnnounce = (t) => director.announce(t, 'trip');
 tommy.canTrip = () => director.canAttack(tommy, 'trip');   // he waits his turn like everyone else
 
-const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish', hotdog: 'chomp', fries: 'crunch', kebab: 'chomp', chicken: 'crunch', taco: 'crunch', crisps: 'crunch', choc: 'crunch', cookie: 'crunch', icecream: 'squish', sausageroll: 'chomp', croissant: 'crunch', baguette: 'crunch', muffin: 'squish', painchoc: 'crunch', swirl: 'squish', icedbun: 'squish', pretzel: 'crunch', nuggets: 'crunch', pasty: 'chomp', onionrings: 'crunch', burrito: 'chomp', waffle: 'crunch', pancakes: 'squish', churros: 'crunch', cupcake: 'squish', baconbap: 'chomp' };
+const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish', hotdog: 'munch', fries: 'crunch', kebab: 'chomp', chicken: 'crunch', taco: 'crunch', crisps: 'crunch', choc: 'snap', cookie: 'crunch', icecream: 'lick', sausageroll: 'munch', croissant: 'munch', baguette: 'munch', muffin: 'squish', painchoc: 'munch', swirl: 'lick', icedbun: 'squish', pretzel: 'crunch', nuggets: 'crunch', pasty: 'munch', onionrings: 'crunch', burrito: 'munch', waffle: 'crunch', pancakes: 'squish', churros: 'crunch', cupcake: 'squish', baconbap: 'munch' };
 const SNACK_WORD = { burger: ['CHOMP!', 'MUNCH!', 'NOM!'], pizza: ['CRUNCH!', 'MUNCH!'], doughnut: ['SQUISH!', 'NOM NOM!'],
   hotdog: ['CHOMP!', 'DOG DOWN!'], fries: ['CRUNCH!', 'CHIPPY!'], kebab: ['DONER!', 'CHOMP!', '3AM VIBES!'], chicken: ['CRUNCH!', 'FINGER LICKIN!'], taco: ['CRUNCH!', 'TACO TIME!'],
   crisps: ['CRUNCH!', 'RUSTLE!'], choc: ['SNAP!', 'NOM!'], cookie: ['CRUNCH!', 'NOM!'], icecream: ['BRAIN FREEZE!', 'SLURP!'], sausageroll: ['FLAKY!', 'CHOMP!'],
@@ -513,7 +513,7 @@ function slaps() {
     if (!res) continue;
     mp.swing(h.handedness === 'left' ? 'L' : 'R');
     h.pulse(1, 80);
-    hitSfx(res === 'ko' ? 'splat' : 'thwack', h.palm, 1);
+    hitSfx(res === 'ko' ? 'punch' : 'slap', h.palm, 1);
     words.show(res === 'ko' ? 'WALLOP!' : 'SLAP!', h.palm.clone().add({ x: 0, y: 0.25, z: 0 }), '#ff5a36', 0.2, 1);
   }
 }
@@ -532,7 +532,7 @@ const touch = setupTouch({
   onThrow: () => player.flatThrow(),
   onEmote: (id) => mp.emote(id),
   onZoom: (dir) => { player.zoom = dir === undefined ? !player.zoom : dir; return player.zoom; },
-  onSprint: () => { player.sprint = !player.sprint; sfx(player.sprint ? 'whoosh' : 'pop', null, 0.4); return player.sprint; },
+  onSprint: () => { player.sprint = !player.sprint; sfx(player.sprint ? 'sprint' : 'walk', null, 0.4); return player.sprint; },
   onTap: (x, y) => {
     if (!player.flatMode) return;
     ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
@@ -549,7 +549,7 @@ const touch = setupTouch({
       if (along > 0 && ray.distanceSqToPoint(lp) < 0.18 * 0.18) {
         if (along > reach + 1.5) { touch.hint('Walk up to the sign to change it'); return; }
         const t = window.prompt('What should the lightbox say? (use | for a new line, 3 lines max)', lb.text.replace(/\n/g, ' | '));
-        if (t !== null) { lb.set(t.replace(/\s*\|\s*/g, '\n')); sfx('ting', lp, 0.6); }
+        if (t !== null) { lb.set(t.replace(/\s*\|\s*/g, '\n')); sfx('toggle', lp, 0.6); }
         return;
       } }
     // the PLAY / STOP signs over the little games
@@ -565,7 +565,7 @@ const touch = setupTouch({
       const along = _a.subVectors(m.front, ray.origin).dot(ray.direction);
       if (along > 0 && ray.distanceSqToPoint(m.screen) < 0.4 * 0.4) {
         if (along > reach + 0.5) { touch.hint('Walk up to the machine to play it'); return; }
-        if (m.spin()) sfx('ting', m.front, 1);
+        if (m.spin()) sfx('reels', m.front, 1);
         return;
       }
     }
@@ -592,7 +592,7 @@ const touch = setupTouch({
       if (bd > reach && who.state !== 'clinging') { touch.hint(`Get closer to slap ${who.name}!`); return; }
       const pos = part.body.position; _b.set(pos.x, pos.y, pos.z);
       const res = who.slap(part, _b, _a.copy(ray.direction).multiplyScalar(4.2)); mp.swing('R');
-      if (res) { hitSfx(res === 'ko' ? 'splat' : 'thwack', _b, 1); words.show(res === 'ko' ? 'WALLOP!' : 'SLAP!', _b.clone().add({ x: 0, y: 0.3, z: 0 }), '#ff5a36', 0.22, 1); }
+      if (res) { hitSfx(res === 'ko' ? 'punch' : 'slap', _b, 1); words.show(res === 'ko' ? 'WALLOP!' : 'SLAP!', _b.clone().add({ x: 0, y: 0.3, z: 0 }), '#ff5a36', 0.22, 1); }
       return;
     }
     if (!best) return;
@@ -715,12 +715,21 @@ function fitCamera() {
 fitCamera();
 window.addEventListener('resize', fitCamera);
 // ---------------- memory (phones close a page that uses too much: see memory.js) ----------------
+// once, just after the level's ready: draw the whole level into a single pixel, so every shape and picture is sent to the
+// graphics chip now (and their spare copies let go of straight away), instead of bit by bit as you walk round and film
+// emotes from new angles (memory creeping up the longer you played, and a stutter each time a new room came into view)
+function warmUpload() {
+  try { const was = levelMeshes.map(o => o.frustumCulled); for (const o of levelMeshes) o.frustumCulled = false;
+    renderer.setScissorTest(true); renderer.setScissor(0, 0, 1, 1); renderer.render(scene, camera);
+    renderer.setScissorTest(false); levelMeshes.forEach((o, i) => { o.frustumCulled = was[i]; }); } catch (e) { renderer.setScissorTest(false); console.warn('warm', e); }
+}
 { let released = false, ticks = 0;
   setInterval(() => {
     if (!document.body.classList.contains('ready')) return; ticks++;
     try {
+      if (ticks === 1 && !renderer.xr.isPresenting) warmUpload();
       if (!released && ticks > 2) { if (!releaseLevelGeometry(levelMeshes, 150)) released = true; }
-      if (ticks > 2) releaseTextures(renderer, scene);
+      if (ticks > 2) { releaseTextures(renderer, scene); releaseLevelCanvases(renderer); }
       sweep(scene);
     } catch (e) { console.warn('memory', e); }
   }, 2000); }
@@ -972,7 +981,7 @@ var vrPause = (() => {
     if (snap || panel.position.distanceTo(_fp) > 1.5) panel.position.copy(_fp); else panel.position.lerp(_fp, 0.12);
     panel.lookAt(_a.x, panel.position.y, _a.z); back.position.copy(_a);
   }
-  function press(i) { if (hover < 0 || !rows[hover]) { pick(i); } const r = rows[hover]; if (!r) return; sfx('pop', null, 0.6); r.el.click(); key = ''; setTimeout(() => { key = ''; }, 50); }
+  function press(i) { if (hover < 0 || !rows[hover]) { pick(i); } const r = rows[hover]; if (!r) return; sfx('tap', null, 0.6); r.el.click(); key = ''; setTimeout(() => { key = ''; }, 50); }
   function pick(i) { aim(); }
   function aim() {
     hover = -1;
@@ -1112,11 +1121,11 @@ function frame(simDt) {
   net.update(dt, player, G, scene);
 
   // touch the cabin lightbox in VR to flick to the next message
-  if (xr && room.lightbox) { const lp = room.lightbox.mesh.getWorldPosition(_b); for (const h of player.hands) if (h.tracked && h.palm.distanceTo(lp) < 0.14) { if (!room.lightbox.cool) { room.lightbox.next(); sfx('ting', lp, 0.6); h.pulse && h.pulse(0.5, 50); } room.lightbox.cool = 1; } if (room.lightbox.cool) room.lightbox.cool = Math.max(0, room.lightbox.cool - dt) || 0; }
+  if (xr && room.lightbox) { const lp = room.lightbox.mesh.getWorldPosition(_b); for (const h of player.hands) if (h.tracked && h.palm.distanceTo(lp) < 0.14) { if (!room.lightbox.cool) { room.lightbox.next(); sfx('toggle', lp, 0.6); h.pulse && h.pulse(0.5, 50); } room.lightbox.cool = 1; } if (room.lightbox.cool) room.lightbox.cool = Math.max(0, room.lightbox.cool - dt) || 0; }
   // press a game's PLAY sign by touching it (headset hands)
   if (xr) for (const gm of room.games || []) if (gm.button && gm.button.visible) for (const h of player.hands) if (h.tracked && h.palm.distanceTo(gm.button.position) < 0.2) { gm.toggle(); h.pulse && h.pulse(0.6, 60); }
   // play a fruit machine by touching it (headset hands)
-  if (room.machines && xr) for (const h of player.hands) if (h.tracked) for (const m of room.machines) if (h.palm.distanceTo(m.front) < 0.35 && m.spin()) { sfx('ting', m.front, 1); h.pulse && h.pulse(0.6, 80); }
+  if (room.machines && xr) for (const h of player.hands) if (h.tracked) for (const m of room.machines) if (h.palm.distanceTo(m.front) < 0.35 && m.spin()) { sfx('reels', m.front, 1); h.pulse && h.pulse(0.6, 80); }
   // eating & drinking held food (VR hands, or the on-screen hand)
   for (const h of player.flatMode ? [player.flatHolder] : player.hands) {
     const it = h.held;
@@ -1453,4 +1462,4 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)

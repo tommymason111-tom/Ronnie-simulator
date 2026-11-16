@@ -50,17 +50,17 @@ export function modesFor(place) {
 const ATTACKS = {
   tommy:  [{ key: 'trip', icon: '🟤', title: 'TOMMY HAS ATTACKED YOU WITH HIS FINAL BALL', sub: 'DOWN FOR 2.5 SECONDS' }],
   noah:   [{ key: 'tackle', icon: '🏉', title: 'TACKLED BY NOAH!', sub: 'FLOORED!' }],
-  aidan:  [{ key: 'beer', icon: '🍺', title: 'AIDAN FORCES YOU TO HAVE ONE MORE BEER!', sub: 'DIZZY!', sfx: 'clink' }],
-  harry:  [{ key: 'dating', icon: '💘', title: 'HARRY DISTRACTS YOU WITH HIS DATING HISTORY', sub: 'STUCK LISTENING!', sfx: 'ting' }],
+  aidan:  [{ key: 'beer', icon: '🍺', title: 'AIDAN FORCES YOU TO HAVE ONE MORE BEER!', sub: 'DIZZY!', sfx: 'glass' }],
+  harry:  [{ key: 'dating', icon: '💘', title: 'HARRY DISTRACTS YOU WITH HIS DATING HISTORY', sub: 'STUCK LISTENING!', sfx: 'kiss' }],
   ethan:  [{ key: 'pepsi', icon: '🥤', title: 'ETHAN HITS YOU WITH A PEPSI MAX ATTACK!', sub: 'FIZZED! NO EATING!', sfx: 'psst' }],
-  connor: [{ key: 'jig', icon: '☘️', title: 'CONNOR GIVES YOU AN IRISH JIG ATTACK!', sub: 'DANCE, RONNIE!', sfx: 'boing' }],
+  connor: [{ key: 'jig', icon: '☘️', title: 'CONNOR GIVES YOU AN IRISH JIG ATTACK!', sub: 'DANCE, RONNIE!', sfx: 'clap' }],
   lewis:  [{ key: 'siu', icon: '⚽', title: 'LEWIS IS RONALDO! YOU SIUUU WITH HIM!', sub: 'SIUUUUUUU!', sfx: 'siu', style: 'portugal' }],
   ian:    [{ key: 'bbq', icon: '🌽', title: 'IAN FIRES UP THE HEALTHY BARBECUE!', sub: 'INCOMING GRILLED VEG!', sfx: 'sizzle' },
            { key: 'rod', icon: '🎣', title: 'IAN CATCHES YOU ON HIS FISHING ROD!', sub: 'HOOKED FOR 5 SECONDS' }],
-  chloe:  [{ key: 'diet', icon: '🥗', title: 'CHLOE PUTS YOU ON A DIET!', sub: 'NO EATING!', sfx: 'ting' }],
+  chloe:  [{ key: 'diet', icon: '🥗', title: 'CHLOE PUTS YOU ON A DIET!', sub: 'NO EATING!', sfx: 'powerdown' }],
   aidanw: [{ key: 'knee', icon: '🦵', title: 'AIDAN W\'S KNEE IS PLAYING UP!', sub: 'YOU HAVE TO HEAR ALL ABOUT IT' }],
   oliver: [{ key: 'flash', icon: '📸', title: 'OLIVER BLINDS YOU WITH HIS CAMERA FLASH!', sub: 'GONE VIRAL!' }],
-  dylan:  [{ key: 'oasis', icon: '🎸', title: 'DYLAN PLAYS YOU OASIS SONGS', sub: 'STUCK LISTENING!', sfx: 'ting' }],
+  dylan:  [{ key: 'oasis', icon: '🎸', title: 'DYLAN PLAYS YOU OASIS SONGS', sub: 'STUCK LISTENING!', sfx: 'strum' }],
   alfie:  [{ key: 'nutmeg', icon: '⚽', title: 'ALFIE NUTMEGS YOU!', sub: 'SPUN ROUND!' }],
   ben:    [{ key: 'turkey', icon: '✈️', title: 'BEN TAKES YOU TO TURKEY!', sub: 'TO GET YOUR HAIRLINE DONE' }],
 };
@@ -363,7 +363,7 @@ export class Director {
     if (this.timeLeft > 0) {
       const before = Math.ceil(this.timeLeft);
       this.timeLeft -= dt;
-      if (Math.ceil(this.timeLeft) !== before && this.timeLeft <= 5 && this.timeLeft > 0) sfx('pop', null, 0.6);
+      if (Math.ceil(this.timeLeft) !== before && this.timeLeft <= 5 && this.timeLeft > 0) sfx('tick', null, 0.6);
       if (this.timeLeft <= 0) { this.timeLeft = 0; this.end(); return; }
     }
     const idle = (c) => c.state === 'idle' && !c.down;
@@ -439,7 +439,7 @@ export class Director {
     const st = this.g.room.spawns, free = st.slice(0, 5).find(p => this.g.items.items.every(it => it.pos.distanceToSquared(p) > 0.12 * 0.12)) || st[0];
     const it = this.g.items.spawn(type, free);
     it.temp = false; it.placedAt = performance.now(); it.placedBy = who;
-    sfx('pop', free, 0.5);
+    sfx('spawn', free, 0.5);
   }
   // Each person's signature move on Ronnie: a banner saying exactly what happened,
   // and a short stun (dizzy, frozen, thrown, hooked...).
@@ -453,7 +453,7 @@ export class Director {
     const vs = who.mpTarget && who.mpTarget.id ? who.mpTarget.name : (this.mp && this.mp.on ? (this.mp.net.name || 'the host') : null);
     if (this.mp && this.mp.on && this.mp.host) this.mp.net.send({ t: 'announce', who: who.id, key, target: vs, targetId: who.mpTarget && who.mpTarget.id });
     this.showAnnounce(who, key, who.mpTarget && who.mpTarget.id ? vs : null);
-    sfx('trumpet', null, 0.7);
+    sfx('notify', null, 0.7);
     this.markUsed(who, key);
     // the attack WILL happen once the pop-up has been up for ANNOUNCE_T seconds. Noah's
     // tackle and Tommy's trip land when they reach you, with this as a backstop.
@@ -465,7 +465,7 @@ export class Director {
     const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
     if (fx) fx.showCard({ vs: vsName, name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
     else g.showBanner(A.title, A.sub);
-    if (this.remote) { sfx('trumpet', null, 0.7); setTimeout(() => fx && fx.hideCard(), (ANNOUNCE_T + 0.3) * 1000); }
+    if (this.remote) { sfx('notify', null, 0.7); setTimeout(() => fx && fx.hideCard(), (ANNOUNCE_T + 0.3) * 1000); }
   }
   // 2) the attack itself: the pop-up goes, and the effects and animation play
   stun(who, key, fromNet = false) {
@@ -512,7 +512,7 @@ export class Director {
         setTimeout(() => { fx.cutscene('siu', 2.6); shout('Siuuuuuuu!', { rate: 0.55, pitch: 1.3, volume: 0.9 }); }, 900);
         break;
       }
-      case 'rod': P.effect('tether', 5, { r: 0.45 }); who.reeling = 5; sfx('whoosh', null, 0.8); fx.cutscene('rod', 5); break;
+      case 'rod': P.effect('tether', 5, { r: 0.45 }); who.reeling = 5; sfx('throw', null, 0.8); fx.cutscene('rod', 5); break;
       case 'bbq': break;      // Ian sets up the barbecue and throws the food himself (squad.js)
       case 'diet': {          // a sad salad held up in front of you
         P.effect('noEat', 6); tint(0x6aaa3a, 6, 0.1);
@@ -535,7 +535,7 @@ export class Director {
         setTimeout(() => { P.effect('spin', 1.4, { turns: 3, speed: 16 }); P.effect('dizzy', 6, { amp: 2.8 }); fx.dizzyStars(6); tint(0xffd400, 6, 0.08); fx.cutscene('nutmeg', 3.5); g.words.show('WHOA-OA-OA!', P.head.clone().addScaledVector(P.fwd, 0.7), '#ffd400', 0.1, 1.5); }, 450);
         break;
       }
-      case 'turkey': P.effect('frozen', TURKEY_LEN + 0.4); P.dropAll(); sfx('jet', null, 1); fx.cutscene('turkey', TURKEY_LEN); break;
+      case 'turkey': P.effect('frozen', TURKEY_LEN + 0.4); P.dropAll(); sfx('plane', null, 1); fx.cutscene('turkey', TURKEY_LEN); break;
     }
   }
   // which attack does this person do next? (not one they've done, until everyone's had a go)
@@ -564,7 +564,7 @@ export class Director {
     const pool = this.cast.filter(c => !c.down && !c.benched && (c.state === 'idle' || c.state === 'walk' || c.state === 'enter') && (c !== g.tommy || g.tommy.attacks));
     const pick = this.pickAttacker(pool);
     if (!pick || !this.launch(pick)) return;        // nobody free right now: try again next frame
-    sfx('trumpet', null, 0.6);
+    sfx('notify', null, 0.6);
     this.nextAttackT = this.mode === 'everyone' ? 14 + Math.random() * 6 : 16;
     if (this.mode === 'intervention') {
       const c = pick.c;
@@ -655,7 +655,7 @@ export class Director {
     }
     sw.items++; sw.total += price;
     g.words.show(`+${kc(price)}`, it.pos.clone().add(new THREE.Vector3(0, 0.2, 0)), '#ffd400', 0.16, 0.9);
-    sfx('ting', it.pos, 0.8);
+    sfx('coin', it.pos, 0.8);
     // a copy goes into the basket, stacking up
     const m = new Item(it.type).obj; m.scale.setScalar(0.8);
     const n = this.trolley.children.length - TROLLEY_PARTS;
@@ -693,7 +693,7 @@ export class Director {
         sw.awCool = 7; sw.caught++;
         const lose = Math.min(2, sw.list.length);
         for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; sw.total = Math.max(0, sw.total - (m.userData.kcal || 0)); }
-        g.showBanner('CAUGHT BY AIDAN W!', `-${lose} ITEMS (HE'S SITTING DOWN NOW)`); sfx('whistle', null, 1);
+        g.showBanner('CAUGHT BY AIDAN W!', `-${lose} ITEMS (HE'S SITTING DOWN NOW)`); sfx('error', null, 1);
         aw.say(['Got you! Right, I need a sit down.', 'Caught you, Ron. Worth it. Not for my knee.', 'Spurs never win anything. I just did.'][sw.caught % 3], 4);
       }
     }
@@ -705,7 +705,7 @@ export class Director {
         sw.cool = 6; sw.caught++;
         const lose = Math.min(3, sw.list.length);
         for (let i = 0; i < lose; i++) { const m = sw.list.pop(); this.trolley.remove(m); sw.items--; sw.total = Math.max(0, sw.total - (m.userData.kcal || 0)); }
-        g.showBanner('CAUGHT BY OLIVER!', `-${lose} ITEMS`); sfx('whistle', null, 1);
+        g.showBanner('CAUGHT BY OLIVER!', `-${lose} ITEMS`); sfx('error', null, 1);
         oli.say(['Bag check! These are coming with me.', 'Caught on camera, Ron. Literally. 40k views already.', 'Sir. SIR. Those aren\'t paid for.'][sw.caught % 3], 4);
       }
     }
@@ -969,7 +969,7 @@ export class Director {
         c.say(['Ooh, is that the waiter?', 'Just checking my phone, babe.', '...anyway.', 'Is that a pigeon? Inside?', 'That painting looks like a sausage roll.'][Math.floor(Math.random() * 5)], 2);
       }
     } else {
-      if (!d.warned && d.t < 0.6) { d.warned = true; sfx('ting', c.headPos(_v), 1); g.words.show('!', c.headPos(_v).add({ x: 0, y: 0.35, z: 0 }), '#B57BFF', 0.25, 0.6); }
+      if (!d.warned && d.t < 0.6) { d.warned = true; sfx('notify', c.headPos(_v), 1); g.words.show('!', c.headPos(_v).add({ x: 0, y: 0.35, z: 0 }), '#B57BFF', 0.25, 0.6); }
       if (d.t <= 0) { d.look = true; d.t = 2.5 + Math.random() * 3; d.grace = 0.5; c.lookOverride = null; }
     }
     this.g.G.wristDirty = true;
@@ -995,7 +995,7 @@ export class Director {
     grp.position.copy(pos);
     this.g.scene.add(grp);
     this.bubbles.push({ grp, word, who, t: 0, phase: Math.random() * 6, vel: new THREE.Vector3() });
-    sfx('pop', pos, 0.25);
+    sfx('spawn', pos, 0.25);
   }
   removeBubble(b) { this.g.scene.remove(b.grp); b.grp.children[1].material.dispose(); }
   updateBubbles(dt, ctx) {
@@ -1022,7 +1022,7 @@ export class Director {
         if (d < 0.2 * p.scale) {
           this.stats && this.running && this.stats.roasted++;
           g.words.show(b.word, p.head.clone().addScaledVector(p.fwd, 0.6), '#FF8FC7', 0.14, 1.2);
-          sfx('ting', null, 0.6);
+          sfx('ding', null, 0.6);
           if (b.who && Math.random() < 0.4) b.who.say('chatter', 2);
         }
         this.removeBubble(b); this.bubbles.splice(i, 1);
@@ -1091,7 +1091,7 @@ export class Director {
   pressButton(b) {
     this.boardCool = 1.5;
     b.pressedT = 0.6; this.drawButton(b, true);
-    sfx('pop', null, 1);
+    sfx('tap', null, 1);
     this.start(b.id);
     for (const o of this.buttons) if (o !== b) this.drawButton(o, false);
   }

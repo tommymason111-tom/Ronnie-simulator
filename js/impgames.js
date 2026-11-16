@@ -28,8 +28,8 @@ const GAMES = {
   hold() {
     const s = { title: 'POUR A PERFECT GUINNESS', hint: 'HOLD TO POUR · LET GO BETWEEN THE LINES', fill: 0, pouring: false, settle: 0, fail: 0, done: false };
     s.down = () => { if (s.settle > 0 || s.done) return; s.pouring = true; };
-    s.up = () => { if (!s.pouring) return; s.pouring = false; if (s.fill >= 0.84 && s.fill <= 0.95) { s.settle = 0.001; sfx('pop', null, 0.6); } else if (s.fill > 0.1) { s.fail = 1.2; sfx('splat', null, 0.6); } };
-    s.update = (dt) => { if (s.pouring) { s.fill += dt * 0.32; if ((s.pourT = (s.pourT || 0) - dt) <= 0) { s.pourT = 0.18; sfx('fizz', null, 0.15); } if (s.fill > 1.02) { s.pouring = false; s.fail = 1.2; sfx('splat', null, 0.7); } }
+    s.up = () => { if (!s.pouring) return; s.pouring = false; if (s.fill >= 0.84 && s.fill <= 0.95) { s.settle = 0.001; sfx('ding', null, 0.6); } else if (s.fill > 0.1) { s.fail = 1.2; sfx('splat', null, 0.6); } };
+    s.update = (dt) => { if (s.pouring) { s.fill += dt * 0.32; if ((s.pourT = (s.pourT || 0) - dt) <= 0) { s.pourT = 0.18; sfx('pour', null, 0.15); } if (s.fill > 1.02) { s.pouring = false; s.fail = 1.2; sfx('splat', null, 0.7); } }
       if (s.fail > 0) { s.fail -= dt; if (s.fail <= 0) s.fill = 0; } if (s.settle > 0) { s.settle += dt / 2.2; if (s.settle >= 1) { s.done = true; } } };
     s.draw = (g, t) => { frame(g, s.title);
       const x0 = 176, x1 = 336, top = 110, bot = 440, fy = bot - (bot - top) * Math.min(1, s.fill);
@@ -53,7 +53,7 @@ const GAMES = {
   // CRANK: turn the wheel round (the barrel coupler / the keg valve)
   crank(o = {}) {
     const s = { title: o.title || 'CHANGE THE BARREL', hint: o.hint || 'DRAG ROUND IN CIRCLES', turned: 0, need: Math.PI * 2 * (o.turns || 3), last: null, down: (x, y) => { s.last = Math.atan2(y - 280, x - 256); }, done: false };
-    s.move = (x, y) => { if (s.last === null) return; const a = Math.atan2(y - 280, x - 256); let d = a - s.last; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; if (d > 0) s.turned += d; s.last = a; if ((s.clk = (s.clk || 0) + Math.abs(d)) > 0.8) { s.clk = 0; sfx('clink', null, 0.3); } if (s.turned >= s.need) s.done = true; };
+    s.move = (x, y) => { if (s.last === null) return; const a = Math.atan2(y - 280, x - 256); let d = a - s.last; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; if (d > 0) s.turned += d; s.last = a; if ((s.clk = (s.clk || 0) + Math.abs(d)) > 0.8) { s.clk = 0; sfx('tick', null, 0.3); } if (s.turned >= s.need) s.done = true; };
     s.up = () => { s.last = null; }; s.update = () => {};
     s.draw = (g) => { frame(g, s.title); const k = Math.min(1, s.turned / s.need);
       g.save(); g.translate(256, 280); g.rotate(s.turned);
@@ -71,8 +71,8 @@ const GAMES = {
     s.down = (x, y) => { if (y > 230 && y < 380 && x < s.x + 170) { s.drag = true; s.t0 = performance.now(); s.dx = x - s.x; } };
     s.move = (x) => { if (s.drag) s.x = Math.max(60, Math.min(330, x - s.dx)); };
     s.up = () => { if (!s.drag) return; s.drag = false; const dt = (performance.now() - s.t0) / 1000;
-      if (s.x < 320) s.msg = 'SWIPE ALL THE WAY'; else if (dt < 0.45) s.msg = 'TOO FAST. TRY AGAIN.'; else if (dt > 1.4) s.msg = 'TOO SLOW. TRY AGAIN.'; else { s.msg = 'ACCEPTED ✓'; s.ok = 0.6; sfx('ting', null, 0.7); }
-      if (!s.ok) sfx('thud', null, 0.4); s.msgT = 1.2; s.x = 60; };
+      if (s.x < 320) s.msg = 'SWIPE ALL THE WAY'; else if (dt < 0.45) s.msg = 'TOO FAST. TRY AGAIN.'; else if (dt > 1.4) s.msg = 'TOO SLOW. TRY AGAIN.'; else { s.msg = 'ACCEPTED ✓'; s.ok = 0.6; sfx('beep', null, 0.7); }
+      if (!s.ok) sfx('error', null, 0.4); s.msgT = 1.2; s.x = 60; };
     s.update = (dt) => { if (s.msgT > 0) s.msgT -= dt; if (s.ok > 0) { s.ok -= dt; if (s.ok <= 0) s.done = true; } };
     s.draw = (g) => { frame(g, s.title);
       g.fillStyle = '#2b2b2b'; rr(g, 40, 300, 432, 60, 12); g.fill(); g.fillStyle = '#111'; g.fillRect(40, 322, 432, 14);
@@ -89,7 +89,7 @@ const GAMES = {
     const L = (i) => ({ x: 70, y: 130 + i * 90 }), Rt = (i) => ({ x: 442, y: 130 + right.indexOf(i) * 90 });
     s.down = (x, y) => { for (let i = 0; i < 4; i++) { const p = L(i); if (!s.joined[i] && Math.hypot(x - p.x, y - p.y) < 40) { s.drag = i; s.px = x; s.py = y; } } };
     s.move = (x, y) => { s.px = x; s.py = y; };
-    s.up = (x, y) => { if (s.drag === null) return; const i = s.drag, p = Rt(i); if (Math.hypot(x - p.x, y - p.y) < 45) { s.joined[i] = true; sfx('ting', null, 0.5); if (s.joined.every(Boolean)) s.done = true; } s.drag = null; };
+    s.up = (x, y) => { if (s.drag === null) return; const i = s.drag, p = Rt(i); if (Math.hypot(x - p.x, y - p.y) < 45) { s.joined[i] = true; sfx('zap', null, 0.5); if (s.joined.every(Boolean)) s.done = true; } s.drag = null; };
     s.update = () => {};
     s.draw = (g) => { frame(g, s.title); txt(g, 'DRAG EACH WIRE TO ITS COLOUR', S / 2, 82, 20);
       for (let i = 0; i < 4; i++) { const a = L(i), b = Rt(i); g.fillStyle = cols[i]; rr(g, a.x - 50, a.y - 16, 46, 32, 6); g.fill(); rr(g, b.x + 4, b.y - 16, 46, 32, 6); g.fill();
@@ -102,7 +102,7 @@ const GAMES = {
   collect(o = {}) {
     const n = o.n || 8, s = { title: o.title || 'EMPTY THE FRUIT MACHINE', icon: o.icon || '🪙', into: o.into || '💰', bits: [], done: false };
     for (let i = 0; i < n; i++) s.bits.push({ x: 70 + Math.random() * 372, y: 110 + Math.random() * 250, got: 0, r: (Math.random() - 0.5) * 0.8 });
-    s.down = (x, y) => { for (const b of s.bits) if (!b.got && Math.hypot(x - b.x, y - b.y) < 40) { b.got = 0.001; sfx('pop', null, 0.4); return; } };
+    s.down = (x, y) => { for (const b of s.bits) if (!b.got && Math.hypot(x - b.x, y - b.y) < 40) { b.got = 0.001; sfx('pickup', null, 0.4); return; } };
     s.move = () => {}; s.up = () => {};
     s.update = (dt) => { for (const b of s.bits) if (b.got > 0 && b.got < 1) b.got = Math.min(1, b.got + dt * 3); if (s.bits.every(b => b.got >= 1)) s.done = true; };
     s.draw = (g) => { frame(g, s.title); txt(g, o.hint || 'TAP EVERY ONE', S / 2, 82, 20);
@@ -132,7 +132,7 @@ const GAMES = {
     const list = times.map((tm, i) => ({ tm, who: names[i], i })), cells = shuffle(list);
     const s = { title: o.title || 'SORT THE BOOKINGS', next: 0, bad: 0, done: false };
     const box = (j) => ({ x: 36 + (j % 2) * 226, y: 96 + Math.floor(j / 2) * 94, w: 214, h: 82 });
-    s.down = (x, y) => { cells.forEach((c, j) => { if (!inside(x, y, box(j)) || c.i < s.next) return; if (c.i === s.next) { s.next++; sfx('ting', null, 0.4); if (s.next >= list.length) s.done = true; } else { s.next = 0; s.bad = 0.8; sfx('thud', null, 0.5); } }); };
+    s.down = (x, y) => { cells.forEach((c, j) => { if (!inside(x, y, box(j)) || c.i < s.next) return; if (c.i === s.next) { s.next++; sfx('beep', null, 0.4); if (s.next >= list.length) s.done = true; } else { s.next = 0; s.bad = 0.8; sfx('thud', null, 0.5); } }); };
     s.move = () => {}; s.up = () => {}; s.update = (dt) => { if (s.bad > 0) s.bad -= dt; };
     s.draw = (g) => { frame(g, s.title, s.bad > 0 ? '#ff4d4d' : '#ffd400'); txt(g, s.bad > 0 ? 'WRONG ORDER! START AGAIN' : 'TAP THE BOOKINGS: EARLIEST FIRST', S / 2, 74, 18, s.bad > 0 ? '#ff6b6b' : '#fff');
       cells.forEach((c, j) => { const b = box(j), on = c.i < s.next; g.fillStyle = on ? '#1b5e20' : '#f5f0e0'; rr(g, b.x, b.y, b.w, b.h, 10); g.fill();
@@ -145,7 +145,7 @@ const GAMES = {
     const s = { title: o.title || 'WIPE THE TABLES', spots: [], drag: false, done: false, cx: 0, cy: 0 };
     for (let i = 0; i < 7; i++) s.spots.push({ x: 100 + Math.random() * 312, y: 140 + Math.random() * 230, r: 28 + Math.random() * 26, a: 1, c: R(['#7a4a1a', '#a0522d', '#5a3a1a', '#c8a040']) });
     s.down = (x, y) => { s.drag = true; s.cx = x; s.cy = y; }; s.up = () => { s.drag = false; };
-    s.move = (x, y) => { s.cx = x; s.cy = y; if (!s.drag) return; for (const p of s.spots) if (p.a > 0 && Math.hypot(x - p.x, y - p.y) < p.r + 26) { p.a -= 0.035; if ((s.sq = (s.sq || 0) + 1) % 9 === 0) sfx('squish', null, 0.25); } if (s.spots.every(p => p.a <= 0)) s.done = true; };
+    s.move = (x, y) => { s.cx = x; s.cy = y; if (!s.drag) return; for (const p of s.spots) if (p.a > 0 && Math.hypot(x - p.x, y - p.y) < p.r + 26) { p.a -= 0.035; if ((s.sq = (s.sq || 0) + 1) % 9 === 0) sfx('scrub', null, 0.25); } if (s.spots.every(p => p.a <= 0)) s.done = true; };
     s.update = () => {};
     s.draw = (g) => { frame(g, s.title); txt(g, 'RUB THE MESS OFF', S / 2, 82, 20);
       g.fillStyle = o.surface || '#8b5a2b'; rr(g, 40, 110, 432, 360, 20); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.25)'; for (let i = 0; i < 8; i++) { g.beginPath(); g.moveTo(40, 130 + i * 44); g.lineTo(472, 140 + i * 44); g.stroke(); }
@@ -159,8 +159,8 @@ const GAMES = {
     const code = String(Math.floor(10000 + Math.random() * 89999)), s = { title: o.title || 'RESET THE SLOT MACHINE', typed: '', bad: 0, done: false };
     const key = (k) => ({ x: 146 + (k === 'C' ? 0 : k === '0' ? 1 : k === 'OK' ? 2 : (Number(k) - 1) % 3) * 76, y: 200 + (k === 'C' || k === '0' || k === 'OK' ? 3 : Math.floor((Number(k) - 1) / 3)) * 70, w: 68, h: 62 });
     const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'];
-    s.down = (x, y) => { for (const k of KEYS) if (inside(x, y, key(k))) { sfx('clink', null, 0.4);
-      if (k === 'C') s.typed = ''; else if (k === 'OK') { if (s.typed === code) { s.done = true; sfx('ting', null, 0.7); } else { s.bad = 0.9; s.typed = ''; sfx('thud', null, 0.5); } } else if (s.typed.length < 5) s.typed += k; } };
+    s.down = (x, y) => { for (const k of KEYS) if (inside(x, y, key(k))) { sfx('tap', null, 0.4);
+      if (k === 'C') s.typed = ''; else if (k === 'OK') { if (s.typed === code) { s.done = true; sfx('fixed', null, 0.7); } else { s.bad = 0.9; s.typed = ''; sfx('error', null, 0.5); } } else if (s.typed.length < 5) s.typed += k; } };
     s.move = () => {}; s.up = () => {}; s.update = (dt) => { if (s.bad > 0) s.bad -= dt; };
     s.draw = (g) => { frame(g, s.title);
       g.fillStyle = '#fffbe6'; g.save(); g.translate(40, 70); g.rotate(-0.06); rr(g, 0, 0, 150, 90, 6); g.fill(); txt(g, 'RESET CODE', 75, 24, 16, '#c62828'); txt(g, code, 75, 60, 32, '#222'); g.restore();
@@ -173,7 +173,7 @@ const GAMES = {
   dial(o = {}) {
     const s = { title: o.title || 'CHECK THE KEG PRESSURE', a: 0, v: 1.6, hits: 0, need: o.need || 3, flash: 0, zone: [0.15, 0.45], done: false };
     const B = { x: 156, y: 400, w: 200, h: 70 };
-    s.down = (x, y) => { if (!inside(x, y, B)) return; const k = (Math.sin(s.a) + 1) / 2; if (k >= s.zone[0] && k <= s.zone[1]) { s.hits++; s.flash = 0.4; sfx('ting', null, 0.6); s.v *= 1.25; const c = 0.15 + Math.random() * 0.55; s.zone = [c, c + 0.28 - s.hits * 0.04]; if (s.hits >= s.need) s.done = true; } else { s.flash = -0.4; s.hits = Math.max(0, s.hits - 1); sfx('thud', null, 0.5); } };
+    s.down = (x, y) => { if (!inside(x, y, B)) return; const k = (Math.sin(s.a) + 1) / 2; if (k >= s.zone[0] && k <= s.zone[1]) { s.hits++; s.flash = 0.4; sfx('beep', null, 0.6); s.v *= 1.25; const c = 0.15 + Math.random() * 0.55; s.zone = [c, c + 0.28 - s.hits * 0.04]; if (s.hits >= s.need) s.done = true; } else { s.flash = -0.4; s.hits = Math.max(0, s.hits - 1); sfx('thud', null, 0.5); } };
     s.move = () => {}; s.up = () => {}; s.update = (dt) => { s.a += dt * s.v; if (s.flash > 0) s.flash = Math.max(0, s.flash - dt); else if (s.flash < 0) s.flash = Math.min(0, s.flash + dt); };
     s.draw = (g) => { frame(g, s.title);
       const cx = 256, cy = 300, r = 170, ang = (k) => Math.PI + k * Math.PI;
@@ -190,7 +190,7 @@ const GAMES = {
   switches(o = {}) {
     const n = 5, on = Array.from({ length: n }, () => Math.random() < 0.3), s = { title: o.title || 'FIX THE LIGHTS', done: false };
     const box = (i) => ({ x: 46 + i * 86, y: 170, w: 72, h: 200 });
-    s.down = (x, y) => { for (let i = 0; i < n; i++) if (inside(x, y, box(i))) { on[i] = !on[i]; sfx('clink', null, 0.6); if (on.every(Boolean)) s.done = true; } };
+    s.down = (x, y) => { for (let i = 0; i < n; i++) if (inside(x, y, box(i))) { on[i] = !on[i]; sfx('toggle', null, 0.6); if (on.every(Boolean)) s.done = true; } };
     s.move = () => {}; s.up = () => {}; s.update = () => {};
     s.draw = (g) => { frame(g, s.title); txt(g, 'FLIP THEM ALL UP', S / 2, 90, 22);
       for (let i = 0; i < n; i++) { const b = box(i); g.fillStyle = '#2a2a2a'; rr(g, b.x, b.y, b.w, b.h, 10); g.fill(); g.fillStyle = on[i] ? '#39ff14' : '#ff3b3b'; g.beginPath(); g.arc(b.x + b.w / 2, b.y - 22, 12, 0, 7); g.fill();
@@ -245,7 +245,7 @@ export class Panel {
     if (vr !== this.mesh.visible) { this.wrap.style.display = vr ? 'none' : 'flex'; this.mesh.visible = vr; this.placed = false; }
     if (vr) this.vrPoint();
     c.update && c.update(dt);
-    if (c.done && this.doneT === 0) { this.doneT = 0.001; sfx('fanfare', null, 0.6); }
+    if (c.done && this.doneT === 0) { this.doneT = 0.001; sfx('fixed', null, 0.6); }
     if (this.doneT > 0) { this.doneT += dt; if (this.doneT > 0.9) { const f = this.onDone; this.close(true); f && f(); return; } }
     this.redraw();
   }

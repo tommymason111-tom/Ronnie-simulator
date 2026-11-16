@@ -6,7 +6,8 @@ let ctx = null;
 let master = null;
 let noiseBuf = null;
 let musicGain = null;
-let pitchScale = 1;            // eating sounds get deeper as Ronnie grows
+let pitchScale = 1;
+let _pv = 1;                   // this sound's own little pitch wobble (the same sound twice in a row never sounds identical)            // eating sounds get deeper as Ronnie grows
 
 export function initAudio() {
   if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
@@ -64,10 +65,15 @@ function out(pos, vol = 1) {
     p.refDistance = 1; p.rolloffFactor = 0.6;
     if (p.positionX) { p.positionX.value = pos.x; p.positionY.value = pos.y; p.positionZ.value = pos.z; }
     else p.setPosition(pos.x, pos.y, pos.z);
-    g.connect(p); p.connect(master);
+    g.connect(p); p.connect(master); g._p = p;
   } else g.connect(master);
   return g;
 }
+// when a sound's last note has finished, unplug its output (Safari never lets go of nodes still plugged into the
+// speakers: hundreds of sounds an hour piled up until the iPhone ran out of memory)
+let _endT = 0;
+function release(g) { const ms = Math.max(0.1, _endT - ctx.currentTime + 0.4) * 1000;
+  setTimeout(() => { try { g.disconnect(); if (g._p) g._p.disconnect(); } catch (e) {} }, ms); }
 
 function env(g, t, a, peak, dec) {
   g.gain.setValueAtTime(0.0001, t);
@@ -80,13 +86,14 @@ function noise(dest, t, dur, type, freq, q, peak, attack = 0.005) {
   src.playbackRate.value = 0.7 + Math.random() * 0.6;
   const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
   const g = ctx.createGain(); env(g, t, attack, peak, dur);
+  f.frequency.value = freq * _pv;
   src.connect(f); f.connect(g); g.connect(dest);
-  src.start(t, Math.random() * 0.5); src.stop(t + attack + dur + 0.05);
+  src.start(t, Math.random() * 0.5); src.stop(t + attack + dur + 0.05); _endT = Math.max(_endT, t + attack + dur + 0.05);
   return f;
 }
 
 function tone(dest, t, type, f0, f1, dur, peak, attack = 0.005) {
-  const o = ctx.createOscillator(); o.type = type;
+  const o = ctx.createOscillator(); o.type = type; f0 *= _pv; f1 *= _pv; _endT = Math.max(_endT, t + attack + dur + 0.05);
   o.frequency.setValueAtTime(f0, t);
   if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), t + attack + dur);
   const g = ctx.createGain(); env(g, t, attack, peak, dur);
@@ -206,12 +213,123 @@ const SOUNDS = {
     tone(d, t + 0.65, 'sine', 600, 720, 1.5, 0.1, 0.05);
   },
   clink(d, t) { tone(d, t, 'triangle', 1800 + Math.random() * 400, 1700, 0.15, 0.2, 0.001); },
+
+  // ================================================================ the rehaul: a sound of its own for every kind of thing
+  // ---- buttons and little interface moments
+  tap(d, t) { click(d, t, 1900, 0.7); tone(d, t, 'sine', 900, 700, 0.04, 0.3, 0.001); },                           // a button: a soft tick
+  toggle(d, t) { click(d, t, 2400, 0.8); click(d, t + 0.05, 1500, 0.7); tone(d, t + 0.05, 'square', 300, 300, 0.02, 0.1, 0.001); },                                            // a switch flicked
+  notify(d, t) { bell(d, t, 880, 0.25, 0.5); bell(d, t + 0.13, 1318, 0.25, 0.6); },                                   // someone wants you: a two-note chime
+  spawn(d, t) { for (let i = 0; i < 3; i++) tone(d, t + i * 0.04, 'sine', 1400 + i * 500, 1600 + i * 500, 0.08, 0.25, 0.003); },   // something appears: a sparkle
+  pickup(d, t) { noise(d, t, 0.05, 'bandpass', 3200, 1.5, 0.35, 0.002); tone(d, t, 'sine', 520, 820, 0.05, 0.25, 0.002); },         // grabbed: a rustle and an upward blip
+  sprint(d, t) { const f = noise(d, t, 0.32, 'bandpass', 600, 1.8, 0.45, 0.04); f.frequency.exponentialRampToValueAtTime(3200, t + 0.32); tone(d, t, 'triangle', 220, 440, 0.25, 0.12, 0.02); },
+  walk(d, t) { const f = noise(d, t, 0.25, 'bandpass', 2400, 1.8, 0.3, 0.02); f.frequency.exponentialRampToValueAtTime(500, t + 0.25); },
+  // ---- money, machines, bells
+  coin(d, t) {          // the till: ka-CHING
+    noise(d, t, 0.05, 'bandpass', 1800, 2, 0.4, 0.002); click(d, t + 0.02, 900, 0.4);
+    bell(d, t + 0.09, 2093, 0.55, 0.45); bell(d, t + 0.09, 2637, 0.5, 0.35); bell(d, t + 0.16, 3136, 0.45, 0.25);
+  },
+  jackpot(d, t) {       // the fruit machine pays out: a bright arpeggio and coins pouring into the tray
+    [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(d, t + i * 0.07, 'square', f, f, 0.1, 0.09, 0.004));
+    for (let i = 0; i < 14; i++) bell(d, t + 0.45 + i * 0.055 + Math.random() * 0.03, 2400 + Math.random() * 1600, 0.12, 0.13);
+  },
+  reels(d, t) {         // the reels spinning: a fast mechanical ratchet slowing down, then a clunk
+    let tt = t; for (let i = 0; i < 16; i++) { click(d, tt, 1300 + (i % 2) * 300, 0.22); tt += 0.035 + i * 0.006; }
+    click(d, tt + 0.05, 500, 0.5); tone(d, tt + 0.05, 'sine', 140, 90, 0.08, 0.35, 0.002);
+  },
+  bell(d, t) { bell(d, t, 1760, 1.0, 0.6); bell(d, t, 2217, 0.9, 0.3); },                                             // the service bell on the hatch: ding!
+  ding(d, t) { bell(d, t, 1568, 0.6, 0.45); },                                                                         // a glass full / ready
+  // ---- the bar: pouring, glasses, cans, the soda gun
+  pour(d, t) {          // a pint pouring: a filling gurgle that rises as the glass fills
+    const f = noise(d, t, 1.1, 'bandpass', 380, 4, 0.8, 0.08); f.frequency.exponentialRampToValueAtTime(900, t + 1.1);
+    for (let i = 0; i < 6; i++) tone(d, t + 0.1 + i * 0.15 + Math.random() * 0.05, 'sine', 300 + i * 40, 520 + i * 40, 0.05, 0.12, 0.005);
+  },
+  glass(d, t) { for (let i = 0; i < 2; i++) { const f = 2200 + Math.random() * 900; bell(d, t + i * 0.07, f, 0.35, 0.22 - i * 0.06); bell(d, t + i * 0.07, f * 1.51, 0.25, 0.08); } },   // glasses together
+  can(d, t) {           // a can landing / rolling: a hollow tinny clank
+    bell(d, t, 620 + Math.random() * 120, 0.18, 0.4); bell(d, t, 1900 + Math.random() * 300, 0.12, 0.2); noise(d, t, 0.04, 'highpass', 2500, 1, 0.3, 0.001);
+    for (let i = 1; i < 4; i++) bell(d, t + i * 0.09, 700 + Math.random() * 100, 0.07, 0.12 / i);
+  },
+  clack(d, t) { click(d, t, 700, 0.9); tone(d, t, 'square', 260, 180, 0.05, 0.3, 0.001); },                          // something plastic put back in its holder
+  // ---- things landing, being hit, being thrown
+  land(d, t) { tone(d, t, 'sine', 120, 55, 0.1, 0.55, 0.002); noise(d, t, 0.08, 'lowpass', 900, 1, 0.35, 0.002); noise(d, t + 0.01, 0.05, 'bandpass', 2400, 1, 0.12, 0.002); },   // a thing dropped on the floor
+  punch(d, t) {         // a fist landing: a meaty thump with a slap on top
+    tone(d, t, 'sine', 130, 55, 0.12, 0.8, 0.001); noise(d, t, 0.03, 'highpass', 2500, 0.8, 0.7, 0.001); noise(d, t + 0.01, 0.25, 'lowpass', 260, 2, 0.6, 0.01); tone(d, t + 0.03, 'sawtooth', 210, 120, 0.15, 0.08, 0.01);   // (and an 'oof')
+  },
+  slap(d, t) { noise(d, t, 0.07, 'highpass', 1800, 0.7, 0.9, 0.001); noise(d, t, 0.12, 'bandpass', 900, 1.5, 0.3, 0.002); },
+  throw(d, t) { const f = noise(d, t, 0.22, 'bandpass', 900, 3, 0.9, 0.03); f.frequency.exponentialRampToValueAtTime(260, t + 0.22); },     // something flung: a falling swish
+  dart(d, t) { click(d, t, 3200, 0.45); tone(d, t, 'sine', 300, 180, 0.06, 0.4, 0.001); noise(d, t + 0.005, 0.04, 'lowpass', 1200, 1, 0.25, 0.001); },   // a dart hitting the board: thunk
+  paddle(d, t) { bell(d, t, 540, 0.09, 0.55); click(d, t, 4200, 0.4); noise(d, t, 0.02, 'bandpass', 1100, 3, 0.3, 0.001); },                          // the ping pong bat: tock
+  bounce(d, t) { tone(d, t, 'sine', 1300, 1150, 0.03, 0.35, 0.001); click(d, t, 4000, 0.15); },                       // the ball on the table: tik
+  // ---- the voice of things: a dog, a grunt, a buzzer, an engine
+  bark(d, t) { for (const dt of [0, 0.26]) { tone(d, t + dt, 'sawtooth', 520, 300, 0.12, 0.3, 0.008); noise(d, t + dt, 0.1, 'bandpass', 1100, 2, 0.35, 0.005); } },
+  grunt(d, t) { const o = tone(d, t, 'sawtooth', 110, 85, 0.45, 0.35, 0.04); wobble(o, t, 0.5, 9, 8); noise(d, t, 0.4, 'bandpass', 500, 2, 0.25, 0.04); },
+  buzz(d, t) { const o = tone(d, t, 'sawtooth', 140, 150, 1.2, 0.2, 0.02); wobble(o, t, 1.3, 32, 20); noise(d, t, 1.2, 'bandpass', 3000, 2, 0.08, 0.02); },   // clippers
+  engine(d, t) {        // a van pulling away: a revving engine that drops into the distance
+    const o = tone(d, t, 'sawtooth', 55, 95, 1.6, 0.22, 0.1); wobble(o, t, 1.8, 26, 9); const f = noise(d, t, 1.6, 'lowpass', 300, 2, 0.4, 0.15); f.frequency.exponentialRampToValueAtTime(1100, t + 1.2);
+  },
+  skid(d, t) { const o = tone(d, t, 'square', 1500, 1100, 0.6, 0.08, 0.01); wobble(o, t, 0.7, 40, 60); noise(d, t, 0.6, 'bandpass', 2600, 4, 0.4, 0.02); },   // tyres screech
+  plane(d, t) { noise(d, t, 2.4, 'bandpass', 900, 0.8, 0.45, 0.7); const f = noise(d, t, 2.4, 'highpass', 2500, 0.7, 0.18, 0.9); f.frequency.exponentialRampToValueAtTime(6000, t + 2.2); tone(d, t, 'triangle', 330, 520, 2.2, 0.04, 0.6); },
+  grow(d, t) { for (let i = 0; i < 6; i++) tone(d, t + i * 0.06, 'triangle', 400 * Math.pow(1.19, i), 420 * Math.pow(1.19, i), 0.14, 0.25, 0.005); },   // something growing: a magic rising run
+  tick(d, t) { click(d, t, 2600, 0.7); tone(d, t, 'sine', 1200, 1200, 0.03, 0.3, 0.001); },                          // a countdown tick
+  stomp(d, t) { tone(d, t, 'sine', 80, 40, 0.18, 0.9, 0.002); bell(d, t, 240, 0.16, 0.35); noise(d, t, 0.04, 'bandpass', 900, 2, 0.5, 0.001); noise(d, t + 0.02, 0.15, 'bandpass', 3500, 1, 0.12, 0.01); },     // a stamping foot / kick drum
+  clap(d, t) { for (let i = 0; i < 3; i++) noise(d, t + i * 0.011, 0.05, 'bandpass', 1300, 1.2, 0.6, 0.001); },
+  drum(d, t) { tone(d, t, 'sine', 190, 105, 0.32, 0.8, 0.002); tone(d, t, 'triangle', 300, 170, 0.12, 0.25, 0.002); noise(d, t, 0.12, 'bandpass', 2600, 0.8, 0.35, 0.001); },
+  zap(d, t) { const o = tone(d, t, 'square', 1800, 200, 0.25, 0.28, 0.002); wobble(o, t, 0.3, 50, 300); },             // a jolt of energy
+  kiss(d, t) { tone(d, t, 'sine', 1200, 2600, 0.05, 0.3, 0.002); noise(d, t + 0.03, 0.03, 'highpass', 4000, 1, 0.3, 0.001); },
+  rip(d, t) { for (let i = 0; i < 12; i++) noise(d, t + i * 0.03, 0.025, 'bandpass', 900 + i * 260, 2, 0.6, 0.002); },
+  cheer(d, t) {         // a crowd going up
+    noise(d, t, 1.8, 'bandpass', 900, 0.7, 0.5, 0.25); noise(d, t + 0.1, 1.6, 'bandpass', 2100, 1, 0.22, 0.3);
+    for (let i = 0; i < 8; i++) tone(d, t + 0.1 + Math.random() * 0.6, 'sawtooth', 380 + Math.random() * 300, 520 + Math.random() * 300, 0.5 + Math.random() * 0.4, 0.025, 0.1);
+  },
+  aww(d, t) { noise(d, t, 1.2, 'bandpass', 600, 1, 0.4, 0.2); for (let i = 0; i < 5; i++) tone(d, t + Math.random() * 0.2, 'sawtooth', 340 + Math.random() * 120, 200 + Math.random() * 60, 1.0, 0.025, 0.15); },   // the crowd groans
+  snore(d, t) { const f = noise(d, t, 1.4, 'bandpass', 220, 5, 1.0, 0.6); f.frequency.linearRampToValueAtTime(140, t + 1.4); tone(d, t + 0.4, 'sawtooth', 70, 60, 0.9, 0.08, 0.4); },
+  anthem(d, t) { [392, 392, 440, 392, 523, 494].forEach((f, i) => { tone(d, t + i * 0.22, 'sawtooth', f, f, 0.2, 0.09, 0.02); tone(d, t + i * 0.22, 'triangle', f / 2, f / 2, 0.2, 0.12, 0.02); }); },   // a terrace chant
+  // ---- imposter
+  vote(d, t) { bell(d, t, 620, 0.09, 0.4); noise(d, t, 0.03, 'bandpass', 2000, 1.5, 0.6, 0.001); click(d, t + 0.01, 3500, 0.4); },        // a stamp
+  fixed(d, t) { [659, 880, 1319].forEach((f, i) => bell(d, t + i * 0.08, f, 0.35, 0.35)); },                                 // a task done
+  alarm(d, t) { for (let i = 0; i < 3; i++) { tone(d, t + i * 0.42, 'sawtooth', 620, 620, 0.18, 0.18, 0.01); tone(d, t + i * 0.42 + 0.2, 'sawtooth', 460, 460, 0.18, 0.18, 0.01); } },   // a klaxon
+  emergency(d, t) { for (let i = 0; i < 5; i++) bell(d, t + i * 0.12, 1400, 0.1, 0.4); },                                     // the emergency bell, rung hard
+  kill(d, t) { const f = noise(d, t, 0.18, 'highpass', 2500, 1, 0.8, 0.002); f.frequency.exponentialRampToValueAtTime(7000, t + 0.15); tone(d, t + 0.05, 'sine', 140, 40, 0.3, 0.9, 0.002); noise(d, t + 0.06, 0.4, 'lowpass', 700, 2, 0.4, 0.01); },
+  vent(d, t) { bell(d, t, 330, 0.7, 0.45); bell(d, t, 517, 0.6, 0.3); bell(d, t, 1210, 0.4, 0.15); for (let i = 0; i < 4; i++) noise(d, t + 0.05 + i * 0.07, 0.04, 'bandpass', 4000, 3, 0.25 / (i + 1), 0.001); },   // a metal hatch clanging
+  sinister(d, t) { tone(d, t, 'sawtooth', 55, 52, 1.6, 0.25, 0.2); tone(d, t, 'sawtooth', 82, 78, 1.6, 0.15, 0.2); tone(d, t + 0.3, 'sine', 1244, 1174, 1.2, 0.05, 0.3); },
+  crewmate(d, t) { [523, 784, 1047, 1568].forEach((f, i) => bell(d, t + i * 0.1, f, 0.6, 0.3)); },
+  lightsout(d, t) { const o = tone(d, t, 'sawtooth', 240, 30, 0.9, 0.25, 0.005); click(d, t, 1200, 0.5); noise(d, t, 0.9, 'lowpass', 900, 1, 0.2, 0.02); },
+  // ---- cleaning, cards, wires (the little imposter jobs)
+  scrub(d, t) { noise(d, t, 0.14, 'bandpass', 2600 + Math.random() * 800, 2.5, 0.35, 0.03); },
+  swipe(d, t) { const f = noise(d, t, 0.25, 'bandpass', 1500, 4, 0.5, 0.01); f.frequency.exponentialRampToValueAtTime(3800, t + 0.22); },
+  beep(d, t) { tone(d, t, 'square', 1046, 1046, 0.08, 0.22, 0.003); tone(d, t, 'sine', 2092, 2092, 0.06, 0.1, 0.003); },
+  error(d, t) { tone(d, t, 'square', 180, 180, 0.12, 0.2, 0.003); tone(d, t + 0.15, 'square', 140, 140, 0.18, 0.2, 0.003); },
+  // ---- power-ups
+  powerup(d, t) { [392, 523, 659, 784, 1047].forEach((f, i) => tone(d, t + i * 0.05, 'square', f, f * 1.02, 0.09, 0.1, 0.003)); bell(d, t + 0.27, 2093, 0.5, 0.25); },
+  powerdown(d, t) { [784, 659, 523, 392].forEach((f, i) => tone(d, t + i * 0.07, 'triangle', f, f * 0.97, 0.1, 0.16, 0.003)); },
+  hoover(d, t) { const o = tone(d, t, 'sawtooth', 90, 240, 0.8, 0.12, 0.2); wobble(o, t, 1.6, 60, 4); noise(d, t, 1.4, 'bandpass', 1400, 1, 0.5, 0.3); },
+  suck(d, t) { const f = noise(d, t, 0.25, 'bandpass', 400, 3, 0.4, 0.05); f.frequency.exponentialRampToValueAtTime(3000, t + 0.25); tone(d, t + 0.2, 'sine', 600, 1500, 0.05, 0.25, 0.002); },
+  // ---- eating: more mouths
+  munch(d, t) { const p = pitchScale; for (let i = 0; i < 3; i++) { noise(d, t + i * 0.09, 0.07, 'lowpass', 900 * p, 1.5, 0.55, 0.005); tone(d, t + i * 0.09, 'sine', 140 * p, 80 * p, 0.06, 0.4); } },   // soft bread, a sausage roll
+  snap(d, t) { const p = pitchScale; click(d, t, 2800 * p, 0.6); noise(d, t, 0.04, 'highpass', 3000 * p, 1, 0.5, 0.001); tone(d, t + 0.05, 'sine', 180 * p, 90 * p, 0.08, 0.3); },        // chocolate snapping
+  lick(d, t) { const p = pitchScale; noise(d, t, 0.18, 'bandpass', 1600 * p, 3, 0.4, 0.04); tone(d, t + 0.05, 'sine', 700 * p, 400 * p, 0.12, 0.25, 0.02); },                              // ice cream
+  rustle(d, t) { for (let i = 0; i < 5; i++) noise(d, t + i * 0.03 + Math.random() * 0.02, 0.04, 'highpass', 3500 + Math.random() * 2000, 1, 0.3, 0.002); },                               // a crisp packet
+  strum(d, t) { [196, 247, 294, 392, 494, 587].forEach((f, i) => { tone(d, t + i * 0.018, 'triangle', f, f, 0.9, 0.06, 0.002); tone(d, t + i * 0.018, 'sawtooth', f * 2, f * 2, 0.15, 0.015, 0.002); }); },   // a guitar chord
+  burp(d, t) { const o = tone(d, t, 'sawtooth', 95, 70, 0.55, 0.45, 0.03); wobble(o, t, 0.6, 22, 14); noise(d, t, 0.5, 'lowpass', 500, 4, 0.3, 0.03); },
 };
+// old names still used by a few things (kept, but pointed at the new sounds)
+const ALIAS = {};
+// a tiny click (a transient through a resonant filter)
+function click(d, t, f, peak) { noise(d, t, 0.012, 'bandpass', f, 6, peak, 0.0005); }
+// a struck bell / glass: the note plus an inharmonic partial, ringing out
+function bell(d, t, f, dur, peak) { tone(d, t, 'sine', f, f * 0.998, dur, peak, 0.002); tone(d, t, 'sine', f * 2.76, f * 2.7, dur * 0.5, peak * 0.3, 0.002); }
+// shake an oscillator's pitch (a growl, a rev, a vibrato)
+function wobble(o, t, dur, rate, depth) { const l = ctx.createOscillator(); l.frequency.value = rate; const g = ctx.createGain(); g.gain.value = depth; l.connect(g); g.connect(o.frequency); l.start(t); l.stop(t + dur); }
 
 export function sfx(name, pos = null, vol = 1) {
-  if (!ctx || ctx.state !== 'running' || !SOUNDS[name]) return;
-  SOUNDS[name](out(pos, vol), ctx.currentTime + 0.005);
+  if (!ctx || ctx.state !== 'running') return;
+  if (!SOUNDS[name]) name = ALIAS[name] || name; if (!SOUNDS[name]) return;
+  // (a busy moment can fire dozens at once: the same sound more than 6 times in a quarter second is just noise)
+  const now = ctx.currentTime, h = (_recent[name] = (_recent[name] || []).filter(x => now - x < 0.25)); if (h.length >= 6) return; h.push(now);
+  const t = now + 0.005, o = out(pos, vol); _endT = t; _pv = NOVARY.has(name) ? 1 : 0.94 + Math.random() * 0.12;
+  try { SOUNDS[name](o, t); } finally { _pv = 1; release(o); }
 }
+const _recent = {};
+const NOVARY = new Set(['fanfare', 'sadviolin', 'trumpet', 'siu', 'jackpot', 'crewmate', 'anthem']);
 
 // Tommy "speaks" in a smooth little babble while his speech bubble is up.
 export function babble(pos, syllables = 8, pitch = 1) {
@@ -227,6 +345,7 @@ export function babble(pos, syllables = 8, pitch = 1) {
     o.connect(flt); flt.connect(g); g.connect(d); o.start(t); o.stop(t + 0.15);
     t += 0.09 + Math.random() * 0.06 + (Math.random() < 0.15 ? 0.12 : 0);
   }
+  _endT = t + 0.2; release(d);
 }
 
 // ---- LOCO MODE music: a short original mariachi-flavoured loop ----
@@ -347,12 +466,14 @@ function events() {
     const p = randAround(3, 7), d = out(p, ambKind === 'pub' ? 0.22 : 0.14);
     tone(d, now + 0.02, 'triangle', 1700 + Math.random() * 600, 1650, 0.15, 0.25, 0.001);
     if (Math.random() < 0.5) tone(d, now + 0.12, 'triangle', 1900 + Math.random() * 500, 1850, 0.12, 0.18, 0.001);
+    _endT = now + 0.4; release(d);
   }
   if (ambKind === 'pub' && now > nextEvent.b) {
     nextEvent.b = now + 0.9 + Math.random() * 1.8;
     if (Math.random() < 0.12) {        // someone laughs over by the bar
       const d = out(randAround(4, 8), 0.12);
       for (let i = 0; i < 4; i++) tone(d, now + i * 0.14, 'sine', 320 - i * 18, 280 - i * 18, 0.08, 0.5, 0.01);
+      _endT = now + 0.8; release(d);
     } else babbleAt(randAround(3.5, 8), 0.07, 0.8 + Math.random() * 0.5);
   }
   if (ambKind === 'restaurant' && now > nextEvent.b) { nextEvent.b = now + 2 + Math.random() * 3; babbleAt(randAround(4, 8), 0.035, 0.9 + Math.random() * 0.4); }
@@ -367,6 +488,7 @@ function babbleAt(pos, vol, pitch) {
     o.connect(flt); flt.connect(g); g.connect(d); o.start(t); o.stop(t + 0.15);
     t += 0.09 + Math.random() * 0.07;
   }
+  _endT = t + 0.2; release(d);
 }
 // a constant low hum of a busy pub, gently rising and falling
 function pubMurmur() {

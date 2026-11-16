@@ -63,7 +63,7 @@ export class Crumbs {
 const wordTexCache = new Map();
 function wordTex(word, color) {
   const key = word + color;
-  if (wordTexCache.has(key)) return wordTexCache.get(key);
+  if (wordTexCache.has(key)) { const t = wordTexCache.get(key); wordTexCache.delete(key); wordTexCache.set(key, t); return t; }      // (most recently used last)
   const t = canvasTex(512, 192, (g, w, h) => {
     // always the whole thing: shrink to fit, and a long line goes onto two (it used to be cut off at the sides)
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
@@ -83,7 +83,8 @@ function wordTex(word, color) {
   }, { mips: false });
   wordTexCache.set(key, t);
   // (a long game says a lot of different words: only the last 150 are kept ready; older ones are let go)
-  if (wordTexCache.size > 150) { const [k0, t0] = wordTexCache.entries().next().value; wordTexCache.delete(k0); t0.dispose(); }
+  if (wordTexCache.size > 48) {      // (each is a 512x192 picture: 150 of them was 60MB on a phone)
+    const [k0, t0] = wordTexCache.entries().next().value; wordTexCache.delete(k0); t0.dispose(); }
   return t;
 }
 

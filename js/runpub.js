@@ -175,7 +175,7 @@ export class RunPub {
   goHome(c) { const h = c.rp.home; c.seated = false; c.activity = null; c.faceYaw = null; c.goTo(h.x, h.z, c.drunk ? 0.95 : 1.2); c.rp.phase = 'return'; }
   settleHome(c) { const h = c.rp.home; c.state = 'idle'; if (h.seat) { c.rag.placeAt(h.x, h.z, h.yaw); c.seated = true; } c.faceYaw = h.yaw; c.activity = c.prop ? 'drink' : (c.rp.kind === 'kid' ? null : R(['chat', 'phone', null, 'chat'])); c.rp.phase = 'settled'; }
   leave(c, line) { this.release(c); c.seated = false; c.activity = null; c.faceYaw = null; if (line) c.say(line, 4); c.goTo(DOOR.x, DOOR.z + 0.4, 0.95); c.rp.phase = 'leaving'; const tag = this.tags.get(c); if (tag) tag.visible = false; }
-  pay(amount, where, label) { this.money += amount; this.g.words.show(label || ('+£' + amount.toFixed(2)), where, '#39ff14', 0.11, 1.2); sfx('ting', where, 0.6); }
+  pay(amount, where, label) { this.money += amount; this.g.words.show(label || ('+£' + amount.toFixed(2)), where, '#39ff14', 0.11, 1.2); sfx('coin', where, 0.6); }
 
   // keep the back bar topped up with pints and bottles of lager for you to hand out
   stock(all) {
@@ -195,7 +195,7 @@ export class RunPub {
       if (c.rpJob === 'restaurant') { this.lewis(c, dt); continue; }
       if (c.state === 'idle' && c.rag.mode === 'anim' && Math.hypot(c.pos.x - c.rpSpot[0], c.pos.z - c.rpSpot[1]) > 0.5) { c.rag.placeAt(c.rpSpot[0], c.rpSpot[1], c.rpSpot[2]); }
       c.faceYaw = c.rpSpot[2]; c.active = false; c.stayPut = true;
-      if (c.id === 'ben' && Math.random() < dt / 25) { c.say(R(['SERVICE!', 'Two scampi, one pie, table nine!', 'Who ordered the Ronnie Platter? ...Ronnie did.', 'CHIPS ARE UP!', 'Ronnie, get your hands OFF the pass!']), 3); sfx('ting', c.pos, 0.6); }
+      if (c.id === 'ben' && Math.random() < dt / 25) { c.say(R(['SERVICE!', 'Two scampi, one pie, table nine!', 'Who ordered the Ronnie Platter? ...Ronnie did.', 'CHIPS ARE UP!', 'Ronnie, get your hands OFF the pass!']), 3); sfx('bell', c.pos, 0.6); }
     }
     this.bar.update(dt); this.guide(); this.drawOrders(dt);
     // new punters: fill up to 6 early on, then keep it busy (up to 10)
@@ -279,7 +279,7 @@ export class RunPub {
           if (ok) { this.deliver(c, it, null, false); return; } }
         { const head = c.headPos(new THREE.Vector3()); for (const it of this.g.items.items) if (isDrink(it) && !it.heldBy && !it.shelf && (it.pos.distanceTo(chest) < 0.8 || it.pos.distanceTo(head) < 0.6)) { this.deliver(c, it, null, true); return; } }      // (thrown at them)
         // out of patience: they don't leave, they just get angrier and angrier (and louder), right there at the bar
-        if (rp.wait >= rp.patience) { if (!rp.fuming) { rp.fuming = true; this.walkouts++; this.rating -= 0.25; sfx('sadviolin', c.pos, 0.5); c.say('angry', 4); }
+        if (rp.wait >= rp.patience) { if (!rp.fuming) { rp.fuming = true; this.walkouts++; this.rating -= 0.25; sfx('aww', c.pos, 0.5); c.say('angry', 4); }
           this.rating -= dt * 0.006; if ((rp.moanT = (rp.moanT || 6) - dt) <= 0) { rp.moanT = 7 + Math.random() * 5; c.say(R(['STILL WAITING, RONNIE!', 'Any time TONIGHT, mate!', 'I\'ve grown a beard waiting here!', 'Is anyone actually WORKING?', 'I could\'ve brewed it myself by now!']), 3); } }
         break;
       }
@@ -403,7 +403,7 @@ export class RunPub {
       hs.forEach((c, i) => { c.rp.phase = 'brawl'; const a = i / 3 * Math.PI * 2; c.rp.brawlAt = { x: spot.x + Math.sin(a) * 0.75, z: spot.z + Math.cos(a) * 0.75 }; c.goTo(c.rp.brawlAt.x, c.rp.brawlAt.z, 1.6); });
       this.event = { kind: 'fight', t: 0, who: hs, center: spot, knocked: new Set() };
       g.showBanner('IT\'S KICKING OFF!', 'BREAK UP THE FIGHT');
-      sfx('whistle', null, 0.8);
+      sfx('alarm', null, 0.8);
     } else if (r < 0.75) {                            // an old boy singing at the bar
       const c = this.punters.find(p => p.rp.kind === 'old' && !p.down && (p.rp.phase === 'settled' || p.rp.phase === 'waiting'));
       if (!c) { this.event = null; return this.startEvent(); }
@@ -426,18 +426,18 @@ export class RunPub {
       const gl = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.032, 0.15, 12), new THREE.MeshLambertMaterial({ color: 0xdfe8ee, transparent: true, opacity: 0.6 })); gl.rotation.z = Math.PI / 2; gl.position.set(-0.2, 0.05, 0.1); grp.add(gl);
       grp.position.set(sp.x, 0, sp.y); g.scene.add(grp);
       this.event = { kind, t: 0, at: V3(sp.x, 0, sp.y), need: 2.5, hold: 0, limit: 45, grp, who: [] }; g.showBanner('A PINT\'S GONE OVER!', 'MOP IT UP BEFORE SOMEONE SLIPS'); sfx('smash', this.event.at, 0.7); return true; }
-    if (kind === 'loo') { this.event = { kind, t: 0, at: V3(-7.97, 0, -11.8), need: 3, hold: 0, limit: 50, who: [] }; g.showBanner('THE TOILETS ARE BLOCKED!', 'GET IN THERE WITH THE PLUNGER'); sfx('bleurgh', null, 0.6); return true; }
+    if (kind === 'loo') { this.event = { kind, t: 0, at: V3(-7.97, 0, -11.8), need: 3, hold: 0, limit: 50, who: [] }; g.showBanner('THE TOILETS ARE BLOCKED!', 'GET IN THERE WITH THE PLUNGER'); sfx('burp', null, 0.6); return true; }
     if (kind === 'power') { const hemi = g.room.hemi; this.event = { kind, t: 0, at: V3(6.8, 0, -2.0), need: 2, hold: 0, limit: 40, who: [], hemi0: hemi ? hemi.intensity : null };
       if (hemi) hemi.intensity *= 0.3; const fb = new THREE.Group(); const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.12), new THREE.MeshLambertMaterial({ color: 0x7a7f87 })); box.position.y = 1.45; fb.add(box);
       const post = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.06), new THREE.MeshLambertMaterial({ color: 0x222222 })); post.position.y = 0.65; fb.add(post); const front = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.42), new THREE.MeshBasicMaterial({ color: 0xffd400 })); front.position.set(0, 1.45, 0.061); fb.add(front);
-      fb.position.set(6.8 + 0.6, 0, -2.0); g.scene.add(fb); this.event.grp = fb; g.showBanner('THE FUSE HAS GONE!', 'RESET IT IN THE STAFF ROOM'); sfx('thud', null, 1); return true; }
+      fb.position.set(6.8 + 0.6, 0, -2.0); g.scene.add(fb); this.event.grp = fb; g.showBanner('THE FUSE HAS GONE!', 'RESET IT IN THE STAFF ROOM'); sfx('lightsout', null, 1); return true; }
     if (kind === 'hen') { const who = []; for (let i = 0; i < 4; i++) setTimeout(() => { const c = this.arrive('mum'); c.rp.thirst = 1 + i * 0.6; c.hen = true; who.push(c); if (i === 0) c.say('WOOOO! HEN DO! FOUR PROSECCOS!', 4); }, i * 500);
-      this.event = { kind, t: 0, who, limit: 80 }; g.showBanner('HEN PARTY!', 'FOUR OF THEM. ALL WANT SERVING NOW.'); sfx('fanfare', null, 0.7); return true; }
+      this.event = { kind, t: 0, who, limit: 80 }; g.showBanner('HEN PARTY!', 'FOUR OF THEM. ALL WANT SERVING NOW.'); sfx('cheer', null, 0.7); return true; }
     return false;
   }
   // the ones you sort out by going there and staying put for a moment (mop / plunger / reset the fuse)
   holdEvent(dt) { const e = this.event, g = this.g, P = g.player, d = Math.hypot(P.head.x - e.at.x, P.head.z - e.at.z);
-    if (d < 1.3) { e.hold += dt; if (Math.floor(e.hold * 3) !== Math.floor((e.hold - dt) * 3)) { sfx(e.kind === 'power' ? 'clink' : 'squish', e.at, 0.5); g.words.show(e.kind === 'spill' ? '*MOP MOP*' : e.kind === 'loo' ? '*PLUNGE*' : '*CLICK*', e.at.clone().setY(1.4), '#29b6ff', 0.07, 0.5); } }
+    if (d < 1.3) { e.hold += dt; if (Math.floor(e.hold * 3) !== Math.floor((e.hold - dt) * 3)) { sfx(e.kind === 'power' ? 'zap' : 'scrub', e.at, 0.5); g.words.show(e.kind === 'spill' ? '*MOP MOP*' : e.kind === 'loo' ? '*PLUNGE*' : '*CLICK*', e.at.clone().setY(1.4), '#29b6ff', 0.07, 0.5); } }
     else e.hold = Math.max(0, e.hold - dt);
     if (e.hold >= e.need) { const at = P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 });
       this.pay(e.kind === 'spill' ? 4 : 6, at, e.kind === 'spill' ? 'MOPPED! +£4' : e.kind === 'loo' ? 'UNBLOCKED! +£6' : 'LIGHTS BACK ON! +£6'); this.rating += 0.25; this.endEvent2(); return; }
@@ -454,14 +454,14 @@ export class RunPub {
       const live = e.who.filter(c => !c.disposed && !e.knocked.has(c));
       for (const c of live) { if (c.down) continue;
         if (c.state === 'idle') { const o = live.filter(x => x !== c)[0] || P; const op = o.pos || o.head; c.faceYaw = Math.atan2(op.x - c.pos.x, op.z - c.pos.z); c.activity = 'fight';
-          if (Math.random() < dt * 0.9 && o.flinch) { o.flinch(new THREE.Vector3(op.x - c.pos.x, 0, op.z - c.pos.z), 0.9); sfx('thwack', op, 0.6); }
+          if (Math.random() < dt * 0.9 && o.flinch) { o.flinch(new THREE.Vector3(op.x - c.pos.x, 0, op.z - c.pos.z), 0.9); sfx('punch', op, 0.6); }
           if (Math.random() < dt * 0.3) c.say('chatter', 3); } }
       this.rating -= dt * 0.035;
       if (!live.length) { this.fights++; this.pay(20, P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 }), 'FIGHT BROKEN UP! +£20'); this.rating += 0.6; g.showBanner('FIGHT BROKEN UP!', 'THE LANDLORD IS PROUD'); this.event = null; return; }
       if (e.t > 50) { this.rating -= 0.8; this.money = Math.max(0, this.money - 40); g.showBanner('THEY SMASHED THE PLACE UP', '-£40 IN BROKEN GLASSES'); for (const c of live) this.leave(c, R(['This pub\'s a DUMP!', 'We\'re going!'])); this.event = null; }
     } else if (e.kind === 'singer') {
       const c = e.who[0]; if (c.disposed) { this.event = null; return; }
-      if (!c.down) { c.activity = 'sing'; if ((e.lineT -= dt) <= 0) { e.lineT = 3.2; c.say(R(['♪ SWEET CAROLINE! BUM BUM BUM! ♪', '♪ Sooo here it is, merry Christmas! ♪ (it\'s July)', '♪ I\'M FOREVER BLOWING BUBBLES! ♪', '♪ Come on Eileen! ♪ ...Eileen? EILEEN?', '♪ We are the champions! ♪ ...of the pub quiz, 1991!']), 5); sfx('trumpet', c.pos, 0.25); } }
+      if (!c.down) { c.activity = 'sing'; if ((e.lineT -= dt) <= 0) { e.lineT = 3.2; c.say(R(['♪ SWEET CAROLINE! BUM BUM BUM! ♪', '♪ Sooo here it is, merry Christmas! ♪ (it\'s July)', '♪ I\'M FOREVER BLOWING BUBBLES! ♪', '♪ Come on Eileen! ♪ ...Eileen? EILEEN?', '♪ We are the champions! ♪ ...of the pub quiz, 1991!']), 5); sfx('anthem', c.pos, 0.25); } }
       this.rating -= dt * 0.025;
       if (e.t > 40 && !c.down) { c.knockOut('hit'); c.say('zzz', 1); this.leaveLater(c, 5); this.event = null; g.showBanner(c.name.toUpperCase() + ' PASSED OUT', 'HE\'LL BE BACK TOMORROW'); }
     } else if (e.kind === 'kid') {

@@ -71,13 +71,13 @@ export class PowerUps {
   take(o) {
     const P = POWERUPS[o.k]; this.drop(o);
     if (this.mpOn) this.net.send({ t: 'pug', id: o.id });
-    this.sfx('fanfare', null, 0.9); this.sfx('pop', null, 1);
+    this.sfx('powerup', null, 1);
     const at = this.player.head.clone().addScaledVector(this.player.fwd, 0.8 * this.player.scale);
     this.words.show(`${P.icon} ${P.name}!`, at.clone().add({ x: 0, y: 0.12, z: 0 }), P.css, 0.13 * this.player.scale, 1.6);
     setTimeout(() => this.words.show(P.line, at, '#ffffff', 0.08 * this.player.scale, 1.2), 450);
     this.player.hands && this.player.hands.forEach(h => h.pulse && h.pulse(0.8, 160));
     if (o.k === 'rain') this.rain(); else this.active[o.k] = (this.active[o.k] || 0) + P.dur;
-    if (o.k === 'hoover') this.sfx('jet', null, 0.8);
+    if (o.k === 'hoover') this.sfx('hoover', null, 0.8);
   }
   // a shower of food dropping out of the sky all round you
   rain() {
@@ -86,7 +86,7 @@ export class PowerUps {
       const a = Math.random() * Math.PI * 2, r = 0.8 + Math.random() * 2.2, type = RAIN_FOOD[Math.floor(Math.random() * RAIN_FOOD.length)];
       const it = this.items.spawn(type, new THREE.Vector3(h.x + Math.cos(a) * r, Math.min(2.6, h.y + 0.9), h.z + Math.sin(a) * r), new THREE.Vector3(0, -1, 0));
       if (it) { it.temp = true; it.fromClutter = true; }
-      this.sfx('boing', it ? it.obj.position : null, 0.4);
+      this.sfx('suck', it ? it.obj.position : null, 0.4);
     }, i * 110);
   }
 
@@ -110,7 +110,7 @@ export class PowerUps {
     if (this.grabT <= 0) { this.grabT = 0.22; let best = null, bd = R;
       for (const it of this.items.items) { if (!this.edible(it)) continue; const d = it.obj.position.distanceTo(mouth); if (d < bd) { bd = d; best = it; } }
       if (best) { best.sucked = true; best.heldBy = 'hoover'; this.sucking.push({ it: best, t: 0, from: best.obj.position.clone(), spin: Math.random() * 6 }); } }
-    if ((this.hum -= dt) <= 0) { this.hum = 0.9; this.sfx('whoosh', null, 0.35); }
+    if ((this.hum -= dt) <= 0) { this.hum = 0.9; this.sfx('hoover', null, 0.35); }
   }
   pull(dt) {
     const P = this.player, mouth = P.mouth || P.head;
@@ -139,7 +139,7 @@ export class PowerUps {
       if (o.age > 45) { this.drop(o); continue; }
       if (Math.hypot(head.x - g.position.x, head.z - g.position.z) < reach && head.y > g.position.y - 1.6) this.take(o);
     }
-    for (const k in this.active) { this.active[k] -= dt; if (this.active[k] <= 0) { delete this.active[k]; if (k === 'hoover') this.endSuck(); this.sfx('bwoomp', null, 0.5); } }
+    for (const k in this.active) { this.active[k] -= dt; if (this.active[k] <= 0) { delete this.active[k]; if (k === 'hoover') this.endSuck(); this.sfx('powerdown', null, 0.5); } }
     if (this.active.hoover > 0) this.hoover(dt); else if (this.vortex) this.vortex.visible = false;
     this.pull(dt);
     P.puSpeed = this.active.speed > 0 ? 1.8 : 1;
