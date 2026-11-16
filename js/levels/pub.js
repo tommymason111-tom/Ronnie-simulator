@@ -432,12 +432,31 @@ export function buildPub(scene) {
       for (let s2 = Math.max(r1 + 0.2, L * 0.55); s2 < L - 0.2; s2 += 0.09) for (const o of [uc - 0.09, uc + 0.09]) { const [px, pz] = at(s2, o); k.cyl(0.032, 0.026, 0.14, px, UT + 0.085, pz, 0xd8eef2, 8); }
       { const s0 = Math.max(r1 + 0.15, L * 0.55) - 0.06, s1 = L - 0.15; if (s1 > s0) bx2(s1 - s0, 0.008, 0.36, (s0 + s1) / 2, UT + 0.019, uc, 0x1e5a32); }
     }
-    return { x0, z0, ux, uz, nx, nz, L, ry, at };
+    return { x0, z0, ux, uz, nx, nz, L, ry, at, depth };
   };
   const bar1 = counter(695, 605, 695, 845, 0.55, -1);
   const bar2 = counter(695, 845, 735, 965, 0.55, -1);
-  counter(735, 965, 795, 985, 0.55, -1);
+  const bar3 = counter(735, 965, 795, 985, 0.55, -1);
   const bar4 = counter(795, 985, 795, 1230, 0.36, -1);
+  // where two straight runs of the bar meet at an angle, the wedge between them (and the ends the underbar stops short
+  // of) is filled: the oak carcass, the polished top, the staff-side cupboard and its steel worktop, all carried round
+  // the corner so there's no gap to see into
+  const joint = (A, B) => {
+    const px = A.x0 + A.ux * A.L, pz = A.z0 + A.uz * A.L;
+    const fill = (oA0, oA1, oB0, oB1, y0, y1, col, ext = 0.1) => {
+      const pts = [[px - A.ux * ext + A.nx * oA0, pz - A.uz * ext + A.nz * oA0], [px - A.ux * ext + A.nx * oA1, pz - A.uz * ext + A.nz * oA1], [px + A.nx * oA1, pz + A.nz * oA1], [px + B.nx * oB1, pz + B.nz * oB1],
+        [px + B.ux * ext + B.nx * oB1, pz + B.uz * ext + B.nz * oB1], [px + B.ux * ext + B.nx * oB0, pz + B.uz * ext + B.nz * oB0], [px + B.nx * oB0, pz + B.nz * oB0], [px + A.nx * oA0, pz + A.nz * oA0]];
+      const sh = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+      const g = new THREE.ExtrudeGeometry(sh, { depth: y1 - y0, bevelEnabled: false }); g.rotateX(-Math.PI / 2); g.translate(0, y0, 0); k.parts.push(part(g, col)); };
+    const UD = 0.42, UT = 0.92;
+    fill(0.02, A.depth, 0.02, B.depth, 0, 1.02, OAK1, 0.02);                                                   // the oak carcass
+    fill(-0.07, A.depth + 0.04, -0.07, B.depth + 0.04, 1.03, 1.08, TOPC, 0.04);                               // the top
+    fill(A.depth, A.depth + UD, B.depth, B.depth + UD, 0, UT - 0.015, 0x2e2018, 0.1);                          // the staff-side cupboard
+    fill(A.depth, A.depth + UD + 0.025, B.depth, B.depth + UD + 0.025, UT - 0.015, UT + 0.015, 0xc8ccd2, 0.08);   // its steel worktop
+    fill(A.depth + UD - 0.005, A.depth + UD + 0.01, B.depth + UD - 0.005, B.depth + UD + 0.01, 0, 0.08, 0x161616, 0.1);   // the kick strip
+    for (let o = A.depth; o <= A.depth + UD; o += 0.18) { const x = px + (A.nx + B.nx) * 0.5 * o, z = pz + (A.nz + B.nz) * 0.5 * o; blk(x - 0.15, z - 0.15, x + 0.15, z + 0.15, 0.96); }
+  };
+  joint(bar1, bar2); joint(bar2, bar3); joint(bar3, bar4);
   // (all the underbar's bottles, and the back-bar fridges' too: one instanced body, shoulder and neck each, standing upright)
   const drawBottles = (list) => { if (!list.length) return; const m4 = new THREE.Matrix4(), col = new THREE.Color();
     for (const [geo, y0] of [[new THREE.CylinderGeometry(0.03, 0.03, 0.17, 10), 0.085], [new THREE.CylinderGeometry(0.012, 0.03, 0.05, 10), 0.195], [new THREE.CylinderGeometry(0.012, 0.012, 0.05, 8), 0.245]]) {
