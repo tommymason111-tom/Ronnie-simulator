@@ -28,7 +28,7 @@ export const TASKS = [
   // kit: where the job's kit is in the pub, when it isn't on its own little stand beside the spot: [x, y, z, facing],
   // or the pub's own thing (a real fruit machine) with nothing extra built ('none')
   { id: 'guinness', name: 'Pour a perfect Guinness', room: 'THE BAR', at: [1.7, -5.9], kit: [2.55, 1.08, -5.9, -Math.PI / 2], kind: 'hold' },
-  { id: 'barrel', name: 'Change the barrel', room: 'CELLAR HATCH', at: [4.5, -7.6], kind: 'crank', o: { title: 'CHANGE THE BARREL', hint: 'TURN THE COUPLER ROUND', turns: 3 } },
+  { id: 'barrel', name: 'Change the barrel', room: 'CELLAR HATCH', at: [4.5, -7.6], kind: 'coupler', o: { title: 'CHANGE THE BARREL' } },
   { id: 'till', name: 'Take a card payment', room: 'THE BAR', at: [1.7, -4.2], kit: [2.5, 1.08, -4.2, -Math.PI / 2], kind: 'swipe', o: { title: 'TAKE A CARD PAYMENT', need: 2 } },
   { id: 'jukebox', name: 'Fix the DJ decks wiring', room: 'DJ BOOTH', at: [-1.0, -7.6], kit: [-1.26, 0, -8.45, 0, 'none'], kind: 'wires', o: { title: 'FIX THE DJ DECKS WIRING', n: 6 } },      // (the pub's own DJ booth)
   { id: 'fruit', name: 'Empty the fruit machine', room: 'PUB FLOOR', at: [0.0, -3.48], kit: [-0.63, 0, -3.48, Math.PI / 2, 'none'], kind: 'reels', o: { title: 'EMPTY THE FRUIT MACHINE' } },
@@ -44,7 +44,7 @@ export const TASKS = [
   { id: 'rota', name: 'Clock in for your shift', room: 'STAFF ROOM', at: [9.95, -3.4], kit: [10.42, 0, -3.4, -Math.PI / 2], kind: 'simon', o: { title: 'CLOCK IN FOR YOUR SHIFT' } },
   { id: 'cutlery', name: 'Lay the tables', room: 'RESTAURANT', at: [-16.6, -3.0], kind: 'place', o: { title: 'LAY THE TABLES', icon: '🍴' } },
   { id: 'candles', name: 'Light the candles', room: 'RESTAURANT', at: [-16.6, 5.0], kind: 'light', o: { title: 'LIGHT THE CANDLES', icon: '🕯️' } },
-  { id: 'parasol', name: 'Put the parasols up', room: 'BEER GARDEN', at: [0.25, 37.0], kind: 'crank', o: { title: 'PUT THE PARASOL UP', hint: 'WIND IT UP', turns: 4, slip: true } },
+  { id: 'parasol', name: 'Put the parasols up', room: 'BEER GARDEN', at: [0.25, 37.0], kind: 'raise', o: { title: 'PUT THE PARASOL UP' } },
   { id: 'gglasses', name: 'Clear the garden glasses', room: 'BEER GARDEN', at: [5.6, 37.0], kind: 'stacker', o: { title: 'CLEAR THE GARDEN GLASSES', icon: '🍹' } },
   { id: 'carglass', name: 'Sweep up the glass by Lewis\'s car', room: 'CAR PARK', at: [7.9, -12.7], kit: [8.35, 0, -10.88, 0, 'none'], kind: 'sweep', o: { title: 'SWEEP UP THE GLASS', icon: '💎' } },
   { id: 'barrier', name: 'Fix the car park barrier', room: 'CAR PARK', at: [8.6, -22.0], kit: [8.3, 0, -22.6, 0, 'none'], kind: 'pipes', o: { title: 'FIX THE CAR PARK BARRIER' } },
