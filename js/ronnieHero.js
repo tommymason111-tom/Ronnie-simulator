@@ -17,6 +17,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Item } from './foods.js';
 import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
+import { DomPanel } from './vrdom.js';
 
 const LIP_Y = 0.4595, MOUTH_HW = 0.066, PIVOT = new THREE.Vector3(0, 0.50, 0.09);
 const lipY = (x) => LIP_Y - 0.003 * Math.min(1, (x / MOUTH_HW) ** 2);
@@ -234,6 +235,10 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
   const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5 * PH / PW), new THREE.MeshBasicMaterial({ map: ptex, transparent: true }));
   panel.visible = false; scene.add(panel);
   let hover = -1, drawnKey = '', rows = [], scroll = 0, maxScroll = 0, kb = null;
+  // THE VR MENU IS THE REAL MENU: the page itself (the same screens, carousels and buttons as on a phone or a computer),
+  // on a big panel straight in front of you (vrdom.js). Point and pull the trigger to tap, hold it and move to swipe
+  const menu = new DomPanel(scene, { width: 1.35, skip: 'canvas[data-hero], #rain', renderOrder: 6 });
+  canvas.dataset.hero = '1';
   const SEL = 'h2, #intro-pic, .sub, .scene.cur, .flip, .mate, .rp, input, button, #mp-status2, #room-msg, #name-msg, #mus-msg, #room-code, .where';
   const txt = (el) => (el.tagName === 'INPUT' ? (el.value || el.placeholder || '') : el.textContent || '').trim().replace(/\s+/g, ' ');
   function items() {
@@ -331,8 +336,9 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0xffd400, transparent: true, opacity: 0.8 }));
     line.scale.z = 2; c.add(line); c.userData.line = line;
     const dot = new THREE.Mesh(new THREE.SphereGeometry(0.008, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd400 })); dot.visible = false; scene.add(dot); c.userData.dot = dot;
-    c.addEventListener('selectstart', () => press(c, true));
-    c.addEventListener('selectend', () => release(c));
+    c.addEventListener('selectstart', () => { c.userData.sel = true; press(c, true); });
+    c.addEventListener('selectend', () => { c.userData.sel = false; release(c); });
+    c.addEventListener('connected', (e) => { c.userData.src = e.data; });
     c.addEventListener('squeezestart', () => press(c, false));
     c.addEventListener('squeezeend', () => release(c));
     c.addEventListener('disconnected', () => release(c));
@@ -351,7 +357,8 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     // ...or point at it, at the panel, or at him
     if (!best) {
       xray.setFromXRController(c);
-      const hits = xray.intersectObjects([...(select ? [panel] : []), ...freeFood(), headProxy], true);
+      if (menu.open && xray.intersectObject(menu.mesh, false).length) return;      // (the menu takes that trigger: vrdom.js)
+      const hits = xray.intersectObjects([...freeFood(), headProxy], true);
       const h = hits[0];
       if (h && h.object === panel) { const i = btnAt(h.uv); if (i >= 0) panelPress(i); return; }
       if (h && h.object === headProxy) { talkT = 1.4; say(onTap && onTap()); return; }
@@ -385,13 +392,12 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     const right = new THREE.Vector3(-dir.z, 0, dir.x);
     const floorY = 0;
     world.scale.setScalar(S);
-    world.position.copy(p).addScaledVector(dir, 0.75); world.position.y = p.y - 0.56 * S;
-    world.rotation.set(0, Math.atan2(-dir.x, -dir.z), 0);
+    world.position.copy(p).addScaledVector(dir, 0.95).addScaledVector(right, -0.95); world.position.y = p.y - 0.56 * S;      // (Ronnie off to your left...)
+    world.rotation.set(0, Math.atan2(-dir.x, -dir.z) - 0.55, 0);      // (turned to face you from the side)
     vrRoom.position.set(p.x, floorY, p.z);
     const ring = vrRoom.getObjectByName('ring'); ring.position.set(world.position.x - p.x, 0.005, world.position.z - p.z);
     const logo = vrRoom.getObjectByName('logo'); logo.position.set(dir.x * 5, (p.y - floorY) + 1.5, dir.z * 5); logo.lookAt(0, logo.position.y, 0);
-    panel.position.copy(p).addScaledVector(dir, 0.72).addScaledVector(right, 0.5); panel.position.y = p.y - 0.08;
-    panel.lookAt(p.x, panel.position.y, p.z); panel.rotateX(-0.15);
+    menu.place(p, dir, 1.3, -0.12, 0.12);      // (...and the menu straight ahead)
     vrPlace = false;
   }
   function vrFrame(dt) {
@@ -414,12 +420,18 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
         continue;
       }
       line.visible = true;
-      xray.setFromXRController(c);
-      const h = xray.intersectObject(panel)[0];
-      if (h) { line.scale.z = h.distance; dot.position.copy(h.point); dot.visible = true; if (hv < 0) hv = btnAt(h.uv); }
     }
-    if (hv !== hover) { hover = hv; drawPanel(); }
-    if ((pollT -= dt) <= 0) { pollT = 0.2; drawPanel(); }        // (keep up with the menu page)
+    void hv;
+    const ptrs = ctrls.map(c => { const gp = c.userData.src && c.userData.src.gamepad; return { obj: c, down: !!c.userData.sel && !c.userData.held, stickY: gp && gp.axes ? (gp.axes[3] || 0) : 0, c }; });
+    menu.update(dt, ptrs);
+    // Ronnie lives in the gap on the title screen made for him (exactly where he is on a phone); on the other screens
+    // he's not there (same as the phone)
+    { const onTitle = (document.querySelector('#start .screen.on') || {}).dataset?.s === 'title', hb = document.querySelector('#start .herobox');
+      world.visible = onTitle || !menu.rect;
+      if (onTitle && menu.rect && hb) { const r = hb.getBoundingClientRect(), mr = menu.rect, u = (r.left + r.width / 2 - mr.left) / mr.width, v = 1 - (r.top + r.height * 0.5 - mr.top) / mr.height;
+        menu.mesh.updateMatrixWorld(); v1.set(u - 0.5, v - 0.5, 0).applyMatrix4(menu.mesh.matrixWorld); v2.set(0, 0, 1).transformDirection(menu.mesh.matrixWorld);
+        world.position.copy(v1).addScaledVector(v2, 0.16); world.position.y -= 0.52 * S; world.rotation.set(0, Math.atan2(v2.x, v2.z), 0); } }
+    for (const p of ptrs) { const dot = p.c.userData.dot, line = p.c.userData.line; if (p.hit && !p.c.userData.held) { line.scale.z = p.hit.distance; dot.position.copy(p.hit.point); dot.visible = true; } }
   }
   async function enterVR() {
     if (!navigator.xr || renderer.xr.isPresenting) return;
@@ -430,14 +442,14 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
       if (handing) return;                     // the game has it now
       for (const c of ctrls) release(c);
       world.position.set(0, 0, 0); world.rotation.set(0, 0, 0); world.scale.setScalar(1);
-      vrRoom.visible = false; panel.visible = false; lookX = lookY = 0;
+      vrRoom.visible = false; panel.visible = false; menu.hide(); lookX = lookY = 0;
       fadeU.value.set(-1, -0.9);                // re-fit the flat fade next frame
       document.body.classList.remove('hero-vr');
       if (!holderVisible()) pause();
     });
     renderer.xr.setReferenceSpaceType('local-floor');
     await renderer.xr.setSession(s);
-    vrRoom.visible = true; panel.visible = true; vrPlace = true; placeWait = 0; drawnKey = ''; kb = null; scroll = 0; drawPanel(true);
+    vrRoom.visible = true; panel.visible = false; vrPlace = true; placeWait = 0; drawnKey = ''; kb = null; scroll = 0; menu.show(() => document.getElementById('start'));
     fadeU.value.set(BOTTOM_Y, BOTTOM_Y + 0.12);
     document.body.classList.add('hero-vr');
     running = true; renderer.setAnimationLoop(frame);
@@ -507,13 +519,14 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     canvas,
     stop() {
       canvas.remove();
-      if (handing && renderer.xr.isPresenting) { panel.visible = false; say('LOADING…', 30); return; }
+      if (handing && renderer.xr.isPresenting) { panel.visible = false; menu.hide(); say('LOADING…', 30); return; }
       running = false; renderer.setAnimationLoop(null); renderer.dispose(); renderer.forceContextLoss && renderer.forceContextLoss();
     },
     pause, resume,
     enterVR,
     _vrPanel: () => { drawPanel(true); return { png: pc.toDataURL(), rows: rows.map(r => r.key || (r.el && (r.el.id || r.el.className || r.el.tagName))) }; }, _vrPress: (i) => panelPress(i),   // (for testing the VR menu without a headset)
-    handOff() { if (!renderer.xr.isPresenting) return; handing = true; window.__menuVRSession = renderer.xr.getSession(); panel.visible = false; },
+    handOff() { if (!renderer.xr.isPresenting) return; handing = true; window.__menuVRSession = renderer.xr.getSession(); panel.visible = false; menu.hide(); },
+    _menu: menu,
     get inVR() { return renderer.xr.isPresenting; },
     talk(sec = 1.4) { talkT = sec; },
     eatNow() { if (!eating) eat(tray[0]); },

@@ -49,7 +49,9 @@ export class Net {
       // first one is often the left, which made everyone else see your arms crossed)
       const side = (k) => P.hands.find(h => h.handedness === k && h.tracked) || null, R0 = side('right'), L0 = side('left');
       const hands = P.flatMode ? [P.flatAnchorPos(), P.head] : [(R0 || P.hands[0]).palm, (L0 || P.hands.find(h => h !== R0) || P.hands[1]).palm];
-      this.send({ t: 'p', c: this.char || 'ronnie', h: [r(P.head.x), r(P.head.y), r(P.head.z)], q: [r(q.x), r(q.y), r(q.z), r(q.w)], l: [r(hands[1].x), r(hands[1].y), r(hands[1].z)], rh: [r(hands[0].x), r(hands[0].y), r(hands[0].z)], s: r(P.scale), st: G.stage, flat: P.flatMode ? 1 : 0 });
+      // (watching your own emote from out front in VR: everyone else still sees you where you were standing)
+      const H = P.vrEmoteHold; if (H) { this.send({ t: 'p', c: this.char || 'ronnie', h: H.h.map(r), q: H.q.map(r), l: H.l.map(r), rh: H.rh.map(r), s: r(P.scale), st: G.stage, flat: 0 }); }
+      else this.send({ t: 'p', c: this.char || 'ronnie', h: [r(P.head.x), r(P.head.y), r(P.head.z)], q: [r(q.x), r(q.y), r(q.z), r(q.w)], l: [r(hands[1].x), r(hands[1].y), r(hands[1].z)], rh: [r(hands[0].x), r(hands[0].y), r(hands[0].z)], s: r(P.scale), st: G.stage, flat: P.flatMode ? 1 : 0 });
     }
     for (const p of this.players.values()) {
       if (!p.pose) continue;

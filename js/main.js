@@ -13,6 +13,7 @@ import { STAGE_LINES } from './dialogue.js';
 import { AttackFX } from './attackfx.js';
 import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience, setMuted } from './audio.js';
 import { voiceLine, warmLine, VOICED } from './voices.js';
+import { DomPanel } from './vrdom.js';
 import { FONT } from './textures.js';
 import { createPhysics } from './physics.js';
 import { setupTouch } from './touch.js';
@@ -866,7 +867,7 @@ const leaveGame = () => { location.href = location.pathname + (net.connected && 
 document.getElementById('over-leave').addEventListener('click', leaveGame);
 for (const id of ['over-again', 'end-again']) document.getElementById(id).addEventListener('click', () => { if (net.connected && !net.host) return; initAudio(); const m = curMode(); if (director.mode === 'chonkoff2') SEL.mode = 'chonkoff2'; if (net.connected) hostNewGame(m); else newGame(m); });
 document.getElementById('end-leave').addEventListener('click', leaveGame);
-renderer.xr.addEventListener('sessionend', () => { if (G.over) { setPaused(false); } });
+renderer.xr.addEventListener('sessionend', () => { if (vrEC) vrEmoteView(false); if (G.over) { setPaused(false); } });
 function setPaused(on) {
   if (!on && G.over && renderer.xr.isPresenting) return;        // (no un-pausing back into a finished game)
   // (a menu open: you stay put until you close it, even in multiplayer where the game carries on)
@@ -946,77 +947,45 @@ const menuCam = new THREE.PerspectiveCamera(70, 1, 0.05, 40), menuShot = { t: 0,
 // The phone's pause menu, drawn on a panel that floats in front of you: point a controller (or your hand) at a
 // button and pull the trigger (or pinch). It mirrors whatever the phone menu is showing (main page, controls,
 // game modes), and pressing a button presses the real one, so the two never disagree.
-var vrPause = (() => {
-  const W = 640, H = 1100, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
-  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-  const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5 * H / W), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
-  panel.renderOrder = 60; panel.visible = false; scene.add(panel);
+// VR menus: the real page (the pause menu, the dev menu) on a panel in front of you, exactly as it looks on a phone or
+// a computer (vrdom.js): point and pull the trigger to tap, hold it and move to drag, the stick to scroll
+const vrPointers = () => player.hands.filter(h => h.source && h.ctrl).map(h => { const gp = h.source.gamepad; return { obj: h.ctrl, down: !!(gp && gp.buttons[0] && gp.buttons[0].pressed), stickY: gp && gp.axes ? (gp.axes[3] || 0) : 0, h }; });
+const vrLasers = (() => { const ls = [0, 1].map(() => { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0xffd400, depthTest: false })); l.renderOrder = 61; l.visible = false; return l; });
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(0.007, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd400, depthTest: false })); dot.renderOrder = 62; dot.visible = false; scene.add(dot);
+  return { show(ptrs) { dot.visible = false; ptrs.forEach((p, i) => { const l = ls[i]; if (!l) return; if (l.parent !== p.obj) p.obj.add(l); l.visible = true; l.scale.z = p.hit ? p.hit.distance : 1.5; if (p.hit) { dot.position.copy(p.hit.point); dot.visible = true; } }); },
+    hide() { ls.forEach(l => { l.visible = false; }); dot.visible = false; } }; })();
+function vrMenu(getEl, width) {
+  const panel = new DomPanel(scene, { width, renderOrder: 60 });
   const back = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 10), new THREE.MeshBasicMaterial({ color: 0x080c28, transparent: true, opacity: 0.55, side: THREE.BackSide, depthTest: false, depthWrite: false }));
   back.renderOrder = 59; back.visible = false; scene.add(back);
-  const rc = new THREE.Raycaster(); let rows = [], hover = -1, key = '';
-  const lines = [0, 1].map(() => { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0xffd400, depthTest: false })); l.renderOrder = 61; l.visible = false; return l; });
-  player.hands.forEach((h, i) => { h.ctrl.add(lines[i]); h.ctrl.addEventListener('select', () => { if (panel.visible) press(i); }); });
-  const visibleBox = () => [...document.querySelectorAll('#pause .box')].find(b => getComputedStyle(b).display !== 'none');
-  function draw() {
-    const box = visibleBox(); if (!box) return;
-    const items = [...box.querySelectorAll('h2, .where, button, .clist.on > div, #pause-mode-list button')].filter(el => el.offsetParent !== null || el.closest('.on'));
-    const sig = items.map(e => e.textContent + (e.classList.contains('cur') ? '*' : '')).join('|') + hover;
-    if (sig === key) return; key = sig;
-    g.clearRect(0, 0, W, H);
-    g.fillStyle = '#1c2c8c'; g.beginPath(); g.roundRect(6, 6, W - 12, H - 12, 34); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ffd400'; g.stroke();
-    let y = 26; rows = [];
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    const fit = (t, max, size, weight = 900) => { let f = size; do { g.font = `${weight} ${f}px "Arial Black", Arial, sans-serif`; f -= 2; } while (g.measureText(t).width > max && f > 12); };
-    for (const el of items) {
-      const t = el.textContent.trim().replace(/\s+/g, ' ');
-      if (el.tagName === 'H2') { fit(t, W - 60, 56); g.fillStyle = '#ffd400'; g.fillText(t, W / 2, y + 34); y += 76; continue; }
-      if (el.classList.contains('where')) { fit(t, W - 60, 22, 700); g.fillStyle = '#c9d3ff'; g.fillText(t, W / 2, y + 12); y += 34; continue; }
-      if (el.tagName === 'DIV') { g.fillStyle = 'rgba(255,255,255,0.1)'; g.beginPath(); g.roundRect(30, y, W - 60, 58, 14); g.fill(); g.textAlign = 'left'; fit(t, W - 100, 22, 700); g.fillStyle = '#fff'; g.fillText(t, 48, y + 29); g.textAlign = 'center'; y += 66; continue; }
-      const i = rows.length, hot = hover === i, green = el.classList.contains('resume'), cur = el.classList.contains('cur');
-      const h = el.querySelector('small') ? 92 : 74;
-      g.fillStyle = hot ? '#ffe866' : green ? '#39ff14' : cur ? '#ffd400' : 'rgba(255,255,255,0.12)'; g.beginPath(); g.roundRect(40, y, W - 80, h, 20); g.fill();
-      if (!green && !cur && !hot) { g.lineWidth = 4; g.strokeStyle = '#fff'; g.stroke(); }
-      const small = el.querySelector('small'), main = small ? t.slice(0, t.length - small.textContent.length).trim() : t;
-      g.fillStyle = green || cur || hot ? '#111' : '#fff'; fit(main, W - 120, 32); g.fillText(main, W / 2, y + (small ? 32 : h / 2));
-      if (small) { fit(small.textContent, W - 120, 18, 700); g.fillStyle = green || cur || hot ? '#333' : '#c9d3ff'; g.fillText(small.textContent, W / 2, y + 66); }
-      rows.push({ el, y0: y, y1: y + h }); y += h + 12;
-      if (y > H - 40) break;
-    }
-    tex.needsUpdate = true;
-  }
-  const _fp = new THREE.Vector3(), _fd = new THREE.Vector3();
+  const _fd = new THREE.Vector3();
+  // always in front of you: it follows your head (gently), wherever you are and whichever way you turn
   function follow(snap) {
-    if (!renderer.xr.isPresenting) return;
-    // (where your head really is in the world, like the emote wheel: the XR camera's own matrix isn't in world space
-    // between frames, which put the menu off at the far side of the map)
-    _a.copy(player.head); _fd.set(player.fwd.x, 0, player.fwd.z); if (_fd.lengthSq() < 1e-6) _fd.set(0, 0, -1); _fd.normalize();
-    _fp.copy(_a).addScaledVector(_fd, 0.85); _fp.y = _a.y - 0.05;
-    if (snap || panel.position.distanceTo(_fp) > 1.5) panel.position.copy(_fp); else panel.position.lerp(_fp, 0.12);
-    panel.lookAt(_a.x, panel.position.y, _a.z); back.position.copy(_a);
-  }
-  function press(i) { if (hover < 0 || !rows[hover]) { pick(i); } const r = rows[hover]; if (!r) return; sfx('tap', null, 0.6); r.el.click(); key = ''; setTimeout(() => { key = ''; }, 50); }
-  function pick(i) { aim(); }
-  function aim() {
-    hover = -1;
-    player.hands.forEach((h, i) => {
-      const l = lines[i]; l.visible = panel.visible && !!h.source; if (!l.visible) return;
-      h.ctrl.updateMatrixWorld(true); rc.setFromXRController(h.ctrl);
-      const hit = rc.intersectObject(panel)[0];
-      l.scale.z = hit ? hit.distance : 1.5;
-      if (hit) { const y = (1 - hit.uv.y) * H; const r = rows.findIndex(r => y >= r.y0 && y <= r.y1); if (r >= 0) hover = r; }
-    });
+    _fd.set(player.fwd.x, 0, player.fwd.z); if (_fd.lengthSq() < 1e-6) _fd.set(0, 0, -1); _fd.normalize();
+    const want = player.head.clone().addScaledVector(_fd, 1.0); want.y = player.head.y - 0.12;
+    if (snap || panel.mesh.position.distanceTo(want) > 1.5) panel.mesh.position.copy(want); else panel.mesh.position.lerp(want, 0.08);
+    panel.mesh.lookAt(player.head.x, panel.mesh.position.y, player.head.z); back.position.copy(player.head);
   }
   return {
-    // always in front of you: it follows your head (gently), wherever you are and whichever way you turn
-    open() {
-      if (panel.visible) return;
-      panel.visible = back.visible = true; key = ''; follow(true);
-    },
-    close() { panel.visible = back.visible = false; lines.forEach(l => { l.visible = false; }); },
-    update() { if (!panel.visible) return; follow(false); aim(); draw(); },
-    get open_() { return panel.visible; },
+    open() { if (panel.open) return; panel.show(getEl); back.visible = true; follow(true); },
+    close() { if (!panel.open) return; panel.hide(); back.visible = false; vrLasers.hide(); },
+    update(dt) { if (!panel.open) return; follow(false); const ptrs = vrPointers(); panel.update(dt, ptrs); vrLasers.show(ptrs); },
+    get open_() { return panel.open; },
   };
-})();
+}
+var vrPause = vrMenu(() => [...document.querySelectorAll('#pause .box')].find(b => getComputedStyle(b).display !== 'none'), 0.95);
+// developer mode in VR: B brings up the dev menu (the same one as on a phone or a computer), B again (or its CLOSE) puts it away
+const vrDev = (() => { const m = vrMenu(() => document.getElementById('dev-panel'), 1.0); let bWas = false;
+  return { update(dt) {
+    const h = player.hands.find(h => h.source && h.handedness === 'right' && h.source.gamepad), gp = h && h.source.gamepad, b = !!(gp && gp.buttons[5] && gp.buttons[5].pressed);
+    const dp = document.getElementById('dev-panel'), on = !!(dp && dp.classList.contains('on'));
+    if (!window.__devMode || !renderer.xr.isPresenting || paused) { if (m.open_) m.close(); bWas = b; return; }
+    if (b && !bWas) { const btn = document.getElementById('dev-btn'); if (btn) btn.click(); }      // (the dev button: opens / closes the dev menu, as on a phone)
+    bWas = b;
+    const nowOn = !!(dp && dp.classList.contains('on'));
+    if (nowOn && !m.open_) { m.open(); player.menuLock = true; } else if (!nowOn && m.open_) { m.close(); player.menuLock = paused; }
+    void on; m.update(dt);
+  }, get open() { return m.open_; } }; })();
 // Quest: the left menu button (or Y) pauses; so does the Quest's own menu coming up over the game
 let menuHeld = false;
 function vrMenuButtons() {
@@ -1061,7 +1030,7 @@ const vrEmote = (() => {
   return { update() {
     const h = player.hands.find(h => h.source && h.handedness === 'right' && h.source.gamepad), gp = h && h.source.gamepad;
     const bDown = !!(gp && gp.buttons[5] && gp.buttons[5].pressed), ok = !!(gp && ((gp.buttons[4] && gp.buttons[4].pressed) || (gp.buttons[0] && gp.buttons[0].pressed)));
-    if (!net.connected || !renderer.xr.isPresenting || paused) { if (open) close(); bWas = bDown; okWas = ok; return; }
+    if (!net.connected || !renderer.xr.isPresenting || paused || window.__devMode) { if (open) close(); bWas = bDown; okWas = ok; return; }      // (developer mode: B is the dev menu, which has the emotes)
     if (bDown && !bWas) { if (open) close(); else { open = true; sel = -1; drawn = ''; page = charEmotes().length ? -1 : 0; player.noTurn = true; player.wheelOpen = true; } }
     bWas = bDown;
     if (open) {
@@ -1076,24 +1045,58 @@ const vrEmote = (() => {
   }, get open() { return open; } };
 })();
 // multiplayer as one of the squad (or Tommy): you see your own character's body when you look down, not Ronnie's belly
-let selfBody = null;
+let selfBody = null, selfBodyErrs = 0;
 function selfBodyUpdate(dt) {
   const want = net.connected && net.char && net.char !== 'ronnie';
+  if (!want || !selfBody) { if (vrEC) vrEmoteView(false); }
   if (!want) { if (selfBody) { selfBody.dispose(); selfBody = null; player.hideBelly = false; } return; }
   if (!selfBody) { selfBody = net.makeAvatar({ char: net.char, name: '', self: true }); player.hideBelly = !!selfBody; if (!selfBody) return; }
   const q = camera.getWorldQuaternion(new THREE.Quaternion()), side = (k) => player.hands.find(h => h.handedness === k && h.tracked);
   const R0 = side('right'), L0 = side('left'), rh = player.flatMode ? player.flatAnchorPos() : (R0 ? R0.palm : player.head), lh = player.flatMode ? player.head : (L0 ? L0.palm : player.head);
-  selfBody.update(dt, { h: [player.head.x, player.head.y, player.head.z], q: [q.x, q.y, q.z, q.w], rh: [rh.x, rh.y, rh.z], l: [lh.x, lh.y, lh.z], flat: player.flatMode ? 1 : 0, st: G.stage });
+  const live = { h: [player.head.x, player.head.y, player.head.z], q: [q.x, q.y, q.z, q.w], rh: [rh.x, rh.y, rh.z], l: [lh.x, lh.y, lh.z], flat: player.flatMode ? 1 : 0, st: G.stage };
+  const vr = renderer.xr.isPresenting && !player.flatMode, emo = !!(selfBody.emote && selfBody.emote.active);
+  vrEmoteView(vr && emo, live);
+  selfBody.update(dt, player.vrEmoteHold ? { ...player.vrEmoteHold, st: G.stage } : live);
+  // in VR your own arms aren't drawn on your body (your real hands are right there: the body's copy of them only lagged
+  // behind and jittered about). Everyone else still sees them, smoothed. They're back for an emote, watched from out front
+  const r = selfBody.c.rag, hideArms = vr && !emo; if (!r.partHide) r.partHide = {};
+  for (const n of ['uArmL', 'lArmL', 'uArmR', 'lArmR']) r.partHide[n] = hideArms;
+  if (!r.handHide) return;
+  if (hideArms) { r.handHide.lArmL = r.handHide.lArmR = true; selfBody.armsHid = true; } else if (selfBody.armsHid) { r.handHide.lArmL = r.handHide.lArmR = false; selfBody.armsHid = false; }
+}
+// VR: your own emote, watched from out front. When it starts, your body stays where it was (and that's where everyone
+// else sees you), and you're stood a couple of metres in front of it, facing it, until it's over; then you're back in it
+let vrEC = null;
+function vrEmoteView(on, live) {
+  const sb = selfBody;
+  if (on && !vrEC && sb) {
+    const r = sb.c.rag, f = sb.fwd(), big = r.group ? r.group.scale.y : 1, ei = sb.emote.id && emoteInfo(sb.emote.id), dist = 2.5 * big * ((ei && ei.cam) || 1), a = 0.3, side = new THREE.Vector3(f.z, 0, -f.x);
+    const look = new THREE.Vector3(r.root.x, 1.1 * big, r.root.z), want = new THREE.Vector3(r.root.x, 1.1 * big, r.root.z).addScaledVector(f, Math.cos(a) * dist).addScaledVector(side, Math.sin(a) * dist);
+    emoteCamSpot(look, want);
+    vrEC = { pos: player.rig.position.clone(), rot: player.rig.rotation.y };
+    player.vrEmoteHold = { h: live.h.slice(), q: live.q.slice(), rh: live.rh.slice(), l: live.l.slice(), flat: 0 };
+    player.emoteLock = true;
+    // turn so you face your body, then slide across so your head's on the spot
+    const yawOf = (v) => Math.atan2(-v.x, -v.z), fw = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+    player.rig.rotation.y += yawOf(look.clone().sub(want)) - yawOf(fw); player.rig.updateMatrixWorld(true);
+    const eye = camera.getWorldPosition(new THREE.Vector3()); player.rig.position.x += want.x - eye.x; player.rig.position.z += want.z - eye.z;
+    player.rig.updateMatrixWorld(true); player.resetHandHistory && player.resetHandHistory();
+    if (sb.c.rag) sb.c.rag.hideHead = false;
+  } else if (!on && vrEC) {
+    player.rig.position.copy(vrEC.pos); player.rig.rotation.y = vrEC.rot; player.rig.updateMatrixWorld(true);
+    player.resetHandHistory && player.resetHandHistory();
+    vrEC = null; player.vrEmoteHold = null; player.emoteLock = false;
+  }
 }
 let powerups = null;
 function frame(simDt) {
   foodGlow(performance.now() / 1000);
   chatUI.update(); music.update(Math.min(0.05, 1 / 60)); tvs.update(1 / 60); pauseEl.classList.toggle('playing', !!(music.state.playing && music.state.key));
-  if (renderer.xr.isPresenting && simDt == null) { vrMenuButtons(); vrEmote.update(); }
-  if (paused && simDt == null && net.connected) { if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } }
-  else if (paused && simDt == null) { clock.getDelta(); if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(); } renderer.render(scene, camera); return; }    // frozen until RESUME
+  if (renderer.xr.isPresenting && simDt == null) { vrMenuButtons(); vrEmote.update(); vrDev.update(1 / 60); }
+  if (paused && simDt == null && net.connected) { if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(1 / 60); } }
+  else if (paused && simDt == null) { clock.getDelta(); if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(1 / 60); } renderer.render(scene, camera); return; }    // frozen until RESUME
   const dt = simDt ?? Math.min(clock.getDelta(), 0.05);
-  try { selfBodyUpdate(dt); } catch (e) {}      // (with the real frame time: a fixed 1/60 made your own body's emotes run slow and its physics bodies run away)
+  try { selfBodyUpdate(dt); } catch (e) { if (!selfBodyErrs++) console.warn('self body', e); }      // (with the real frame time: a fixed 1/60 made your own body's emotes run slow and its physics bodies run away)
   time += dt;
   for (const f of (window.RS && window.RS.onFrame) || []) try { f(dt); } catch (e) { console.warn('onFrame', e); }      // (developer mode's test bench)
   const xr = renderer.xr.isPresenting;
@@ -1232,7 +1235,7 @@ const thirdCam = new THREE.PerspectiveCamera(55, 1, 0.05, 200); let ecK = 0, ecH
 function emoteCam() {
   const sb = selfBody, on = !!(sb && player.flatMode && !renderer.xr.isPresenting && sb.emote && sb.emote.active);
   ecK = on ? Math.min(1, ecK + 0.06) : 0;
-  if (sb && sb.c && sb.c.rag) sb.c.rag.hideHead = !on;
+  if (sb && sb.c && sb.c.rag) sb.c.rag.hideHead = !on && !vrEC;
   // (your first-person hand, floating by the camera, mustn't show while you watch yourself from out front)
   if (player.flatGrip) { if (on && player.flatGrip.visible) { player.flatGrip.visible = false; ecHidHand = true; } else if (!on && ecHidHand) { player.flatGrip.visible = true; ecHidHand = false; } }
   if (!on) { ecLock = null; return null; }
@@ -1405,7 +1408,9 @@ class SquadPuppet {
       // wherever it last was, or nowhere: the arm went flying after it)
       if (!pose.flat) { const ok = h.distanceTo(head) < 1.15 * (pose.s || 1) && h.y > 0.15; const ft = this.hT[side] || (this.hT[side] = h.clone());
         if (!ok) { this.armT[side] = Math.min(this.armT[side], 0); this.armW[side] += (0 - this.armW[side]) * Math.min(1, dt * 5); continue; }
-        const dd = h.distanceTo(ft); if (dd > 0.5) ft.copy(h); else if (dd > 0.012) ft.lerp(h, Math.min(1, dt * 9)); }
+        const dd = h.distanceTo(ft); if (dd > 0.5) ft.copy(h); else if (dd > 0.012) ft.lerp(h, Math.min(1, dt * 9));
+        // ...and eased a second time, so it glides between updates instead of stepping (no shake, however the updates come in)
+        const fs = (this.hS || (this.hS = {}))[side] || (this.hS[side] = ft.clone()); if (fs.distanceTo(ft) > 0.5) fs.copy(ft); else fs.lerp(ft, Math.min(1, dt * 14)); }
       const hv = h.distanceTo(this.prevH[side]) / Math.max(dt, 1e-3); this.prevH[side].copy(h);
       const atMouth = h.distanceTo(head) < 0.28, swinging = !pose.flat && hv > 2.2;
       const punching = this.swingT > 0 && (side === (this.swingSide || 'R') || !pose.flat);
@@ -1413,7 +1418,7 @@ class SquadPuppet {
       else this.armT[side] -= dt;
       const want = this.armT[side] > 0 ? 1 : 0; this.armW[side] += (want - this.armW[side]) * Math.min(1, dt * (want ? 14 : 5));
       const w = this.armW[side]; if (w < 0.01) continue;
-      if (!pose.flat) { this.reachArm(side, this.hT[side], w); continue; }
+      if (!pose.flat) { this.reachArm(side, (this.hS && this.hS[side]) || this.hT[side], w); continue; }
       let d;
       if (pose.flat && punching && !atMouth) { const k = 1 - this.swingT / 0.38; d = new THREE.Vector3(side === 'R' ? 0.1 : -0.1, 0.2 + 0.25 * (1 - k), 0.6 + k); }   // a phone player's jab: cocked, then straight out in front
       else { d = h.clone().sub(chest).applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.yaw); if (d.length() > 1.2 || d.lengthSq() < 1e-6) continue; }

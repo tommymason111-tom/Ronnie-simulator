@@ -251,11 +251,11 @@ export class Player {
     if (xr) {
       for (const h of this.hands) this.updateHand(h, dt, t);
       for (const h of this.hands) this.updatePointer(h);
-      if (!this.stunned && !this.menuLock) this.locomotion(dt, this.fx.slow > 0 ? 0.45 : 1);     // (not while a menu's open)
+      if (!this.stunned && !this.menuLock && !this.emoteLock) this.locomotion(dt, this.fx.slow > 0 ? 0.45 : 1);     // (not while a menu's open)
     } else {
       for (const h of this.hands) { if (h.body) h.body.position.set(0, -10, 0); if (h.ctrlHand) h.ctrlHand.root.visible = false; if (h.ptr) h.ptr.visible = h.ptrDot.visible = false; }
       const mv = this.flatMove;
-      if ((this.stunned || this.menuLock) && mv) this.flatMove = { x: 0, z: 0 };
+      if ((this.stunned || this.menuLock || this.emoteLock) && mv) this.flatMove = { x: 0, z: 0 };
       else if (this.fx.slow > 0 && mv) this.flatMove = { x: mv.x * 0.45, z: mv.z * 0.45 };
       this.updateFlat(dt, t);
       if (mv) this.flatMove = mv;
@@ -444,7 +444,7 @@ export class Player {
       const ax = gp.axes.length >= 4 ? gp.axes[2] : gp.axes[0] || 0;
       const ay = gp.axes.length >= 4 ? gp.axes[3] : gp.axes[1] || 0;
       if (h.handedness === 'left') { mx = ax; mz = ay; const click = !!(gp.buttons[3] && gp.buttons[3].pressed); if (click && !this.sprintHeld) { this.sprint = !this.sprint; h.pulse && h.pulse(0.5, 60); } this.sprintHeld = click; }   // click the left stick: sprint on / off
-      else turn = this.noTurn ? 0 : ax;      // (not while the emote wheel is using the stick)
+      else turn = (this.noTurn || this.emoteLock) ? 0 : ax;      // (not while the emote wheel is using the stick)
     }
     if (Math.abs(mx) > 0.15 || Math.abs(mz) > 0.15) {
       _v.set(this.fwd.x, 0, this.fwd.z).normalize();
