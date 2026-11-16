@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- PROTOTYPE - NOT FOR PRODUCTION
+     Question: Is eating your way to Absolute Unit while Tommy roasts you fun in VR?
+     Date: 2026-11-16 -->
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ronnie Simulator</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0f1428; font-family: "Arial Black", Arial, sans-serif; color: #fff; }
+  canvas { display: block; }
+  .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+             background: radial-gradient(circle at 50% 35%, #1d4fd8 0%, #0f1428 70%); text-align: center; padding: 16px; box-sizing: border-box; z-index: 5; }
+  h1 { font-family: Impact, "Arial Black", sans-serif; font-size: clamp(36px, 8vw, 96px); margin: 0; letter-spacing: 2px;
+       color: #ffd54a; text-shadow: 0 6px 0 #b36b00, 0 10px 24px rgba(0,0,0,.6); }
+  .tag { margin: 0 0 10px; font-size: clamp(14px, 2.4vw, 22px); color: #cfe0f2; }
+  button { font: inherit; font-size: 22px; padding: 14px 34px; border-radius: 40px; border: 4px solid #000; cursor: pointer;
+           background: #ff8f00; color: #000; box-shadow: 0 6px 0 #000; min-width: 280px; }
+  button:disabled { background: #555; color: #aaa; cursor: default; }
+  button.alt { background: #ffd54a; }
+  .controls { font-family: Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #cfe0f2; max-width: 640px; }
+  .controls b { color: #ffd54a; }
+  label { font-family: Arial, sans-serif; font-size: 16px; }
+  #paused { display: none; cursor: pointer; background: rgba(15,20,40,.75); }
+  #hud { position: fixed; left: 12px; bottom: 12px; width: min(380px, 60vw); height: auto; z-index: 2; pointer-events: none; }
+  #crosshair { position: fixed; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px; border-radius: 50%; border: 2px solid #fff; z-index: 2; pointer-events: none; mix-blend-mode: difference; }
+  #subtitle { position: fixed; left: 50%; top: 5%; transform: translateX(-50%); max-width: 80vw; font-family: Arial, sans-serif; font-weight: bold;
+              font-size: 20px; color: #ffd54a; background: rgba(0,0,0,.6); padding: 8px 16px; border-radius: 12px; opacity: 0; transition: opacity .3s; z-index: 2; pointer-events: none; }
+</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<div id="title" class="overlay">
+  <h1>RONNIE SIMULATOR</h1>
+  <p class="tag">Level 1: Ronnie's Bedroom. Eat everything. Ignore Tommy (he's just trying to help).</p>
+  <button id="play-vr" disabled>Checking for VR…</button>
+  <button id="play-desktop" class="alt">PLAY ON THIS SCREEN</button>
+  <label id="voice-row"><input type="checkbox" id="voice" checked> Tommy speaks out loud</label>
+  <div class="controls">
+    <b>VR:</b> grip to grab · bring food to your mouth to eat · throw it at Tommy · slap him · left stick move · right stick turn · A excuse · B burp<br>
+    <b>Screen:</b> mouse to look · WASD move · click to grab, click again to eat · right-click or F to throw · Q excuse · B burp
+  </div>
+</div>
+<div id="paused" class="overlay"><h1 style="font-size:60px">PAUSED</h1><p class="tag">Click to carry on eating</p></div>
+<div id="crosshair"></div>
+<div id="subtitle"></div>
+<script src="config.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
