@@ -14,6 +14,7 @@
 // dark wood posts and beams, burgundy carpet, honey-oak bar with brass rails and burgundy stools,
 // wheelback chairs, iron chandeliers, amber pendants, street-view windows with curtains.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { part, cyl as CYL } from '../geo.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { streetViewTex } from './kit.js';
@@ -1586,10 +1587,24 @@ export function buildPub(scene) {
   // anything of the restaurant's outside that line of sight is behind walls, so it isn't drawn.
   { const west = [], bx = new THREE.Box3(), DX = X(195), DZ0 = Z(1090), DZ1 = Z(1145), cam = new THREE.Vector3();
     for (const o of scene.children.slice(sceneStart)) if (o.isMesh && !o.isInstancedMesh && o.geometry) { o.geometry.computeBoundingBox(); bx.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); if (bx.max.x < -13.6) west.push({ o, x0: bx.min.x, x1: bx.max.x, z0: bx.min.z, z1: bx.max.z }); }
+    // from out the front the restaurant's only its outside: a light brick shell of it stands in (one mesh), so going out
+    // into the car park doesn't suddenly load the whole restaurant (every table, chair, glass and picture in it) on to
+    // the phone at once: that sudden load was making phones give up and reload the game
+    const shell = (() => { const t = oldBrickTex(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 1.2, 1 / 1.2);
+      const geos = []; for (const [n, h] of [['main', REST_H], ['side', 3.0], ['hall', 3.0], ['ladies', 3.0], ['gents', 3.0]]) {
+        const sh = new THREE.Shape(REST[n].map(([x, z]) => new THREE.Vector2(x, -z))), g = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false }); g.rotateX(-Math.PI / 2); geos.push(g); }
+      const g = mergeGeometries(geos.map(x => x.toNonIndexed()), false); const uv = g.attributes.uv, P = g.attributes.position, N = g.attributes.normal;
+      for (let i = 0; i < uv.count; i++) { const nx = Math.abs(N.getX(i)), along = nx > 0.5 ? P.getZ(i) : P.getX(i); uv.setXY(i, along, P.getY(i)); }      // (bricks the right way up, the right size)
+      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: t })); m.visible = false; scene.add(m);
+      const roofs = []; for (const n of ['main', 'side', 'hall', 'ladies', 'gents']) { const sh = new THREE.Shape(REST[n].map(([x, z]) => new THREE.Vector2(x, -z))), rg = new THREE.ShapeGeometry(sh); rg.rotateX(-Math.PI / 2); rg.translate(0, (n === 'main' ? REST_H : 3.0) + 0.02, 0); roofs.push(rg.toNonIndexed()); }
+      const roof = new THREE.Mesh(mergeGeometries(roofs.map(x => { x.deleteAttribute('uv'); return x; }), false), new THREE.MeshLambertMaterial({ color: 0x3a3e44 })); m.add(roof); roof.position.set(0, 0, 0);
+      return m; })();
     scene.onBeforeRender = (r, sc, camera) => {
       cam.setFromMatrixPosition(camera.matrixWorld);
       const outFront = inCarPark(cam.x, cam.z) || cam.z < -15.2, outside = cam.z > Z(1305) || outFront; if (scene.fog && !scene.userData.fogLock) { scene.fog.near = outside ? 27 : 1e4; scene.fog.far = outside ? 39.5 : 2e4; }   // (Imposter sets its own: how far you can see)
       const inPub = cam.x > DX + 0.05 && cam.z < Z(1305) && !outFront;          // (only from inside the pub itself is the restaurant hidden behind walls)
+      shell.visible = outFront;
+      if (outFront) { for (const w of west) w.o.visible = false; return; }
       for (const w of west) {
         if (!inPub) { w.o.visible = !(cam.z > GZ && w.z1 < GZ - 0.3); continue; }      // (out in the garden the restaurant is behind the pub's solid back wall)
         // the wedge from the eye through the doorway, at the near and far x of this piece
