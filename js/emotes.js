@@ -104,7 +104,7 @@ class ModelHand {
 // the colour of a character's skin, from their own model's texture round the hands
 function skinColour(rag) {
   if (rag._skinCol) return rag._skinCol; let col = new THREE.Color(0xe2b08c);
-  try { const mesh = rag.mesh, img = mesh.material.map && mesh.material.map.image, uv = mesh.geometry.attributes.uv, si = mesh.geometry.attributes.skinIndex;
+  try { const mesh = rag.mesh, img = mesh.material.map && (mesh.material.map.userData.thumb || mesh.material.map.image), uv = mesh.geometry.attributes.uv, si = mesh.geometry.attributes.skinIndex;
     if (img && uv && si && rag.handBone) { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.drawImage(img, 0, 0, 128, 128); const d = g.getImageData(0, 0, 128, 128).data;
       const hb = new Set(Object.values(rag.handBone)); let r = 0, gg = 0, b = 0, n = 0;
       for (let i = 0; i < uv.count && n < 400; i += 3) { if (!hb.has(si.getX(i))) continue; const px = Math.min(127, Math.max(0, Math.floor(uv.getX(i) * 128))), py = Math.min(127, Math.max(0, Math.floor(uv.getY(i) * 128))), k = (py * 128 + px) * 4; r += d[k]; gg += d[k + 1]; b += d[k + 2]; n++; }
