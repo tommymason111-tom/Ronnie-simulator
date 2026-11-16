@@ -7,6 +7,7 @@ import { Ragdoll } from './ragdoll.js';
 import { canvasTex, fitText, roundRect, blobTex } from './textures.js';
 import { Dialogue, BANKS } from './dialogue.js';
 import { sfx, babble } from './audio.js';
+import { speak } from './voices.js';
 import { TUNING } from './config.js';
 import { Item } from './foods.js';
 import { MODE_LINES, modeGroup } from './modelines.js';
@@ -133,7 +134,7 @@ export class Character {
     this.speakT = 2.2 + text.length * 0.055;
     this.speakPri = pri;
     this.quietT = 0;
-    babble(this.headPos(_v), Math.min(14, 4 + Math.floor(text.length / 8)), this.cfg.voicePitch || 1);
+    if (!speak(this.id, text, this.headPos(_v), { key: 'npc_' + this.id })) babble(this.headPos(_v), Math.min(14, 4 + Math.floor(text.length / 8)), this.cfg.voicePitch || 1);      // (a real voice if they have one: voices.js)
     return true;
   }
 
