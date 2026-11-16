@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import { sfx } from './audio.js';
 import { Panel, makeGame, rr, txt } from './impgames.js';
+import { FONT } from './textures.js';
 import { REST } from './levels/oysterRestaurant.js';
 import { CARPARK } from './levels/carpark.js';
 
@@ -29,17 +30,17 @@ export const TASKS = [
   { id: 'guinness', name: 'Pour a perfect Guinness', room: 'THE BAR', at: [1.7, -5.9], kit: [2.55, 1.08, -5.9, -Math.PI / 2], kind: 'hold' },
   { id: 'barrel', name: 'Change the barrel', room: 'CELLAR HATCH', at: [4.5, -7.6], kind: 'crank', o: { title: 'CHANGE THE BARREL', hint: 'TURN THE COUPLER ROUND', turns: 3 } },
   { id: 'till', name: 'Take a card payment', room: 'THE BAR', at: [1.7, -4.2], kit: [2.5, 1.08, -4.2, -Math.PI / 2], kind: 'swipe', o: { title: 'TAKE A CARD PAYMENT' } },
-  { id: 'jukebox', name: 'Fix the jukebox wiring', room: 'DJ BOOTH', at: [-1.0, -7.6], kind: 'wires' },
+  { id: 'jukebox', name: 'Fix the DJ decks wiring', room: 'DJ BOOTH', at: [-1.0, -7.6], kit: [-1.26, 0, -8.45, 0, 'none'], kind: 'wires', o: { title: 'FIX THE DJ DECKS WIRING' } },      // (the pub's own DJ booth)
   { id: 'fruit', name: 'Empty the fruit machine', room: 'PUB FLOOR', at: [0.0, -3.48], kit: [-0.63, 0, -3.48, Math.PI / 2, 'none'], kind: 'collect', o: { title: 'EMPTY THE FRUIT MACHINE', icon: '🪙', into: '💰', n: 8, hint: 'TAP EVERY COIN' } },
   { id: 'toilet', name: 'Unblock the toilet', room: 'MEN\'S TOILETS', at: [-7.97, -11.8], kind: 'plunge' },
   { id: 'looroll', name: 'Restock the loo roll', room: 'WOMEN\'S TOILETS', at: [-2.5, -12.5], kind: 'collect', o: { title: 'RESTOCK THE LOO ROLL', icon: '🧻', into: '🚽', n: 6, hint: 'TAP EVERY ROLL' } },
-  { id: 'bookings', name: 'Sort the bookings', room: 'RECEPTION', at: [1.8, -12.4], kit: [2.64, 1.06, -12.4, -Math.PI / 2], kind: 'order' },
+  { id: 'bookings', name: 'Sort the bookings', room: 'RECEPTION', at: [1.75, -11.65], kit: [2.27, 0.795, -11.6, -Math.PI / 2], kind: 'order' },      // (behind the desk, on the staff worktop)
   { id: 'fryer', name: 'Clean the fryer', room: 'KITCHEN', at: [-12.35, -4.7], kind: 'scrub', o: { title: 'CLEAN THE FRYER', surface: '#9aa0a6' } },
   { id: 'dishes', name: 'Wash the pots', room: 'KITCHEN', at: [-12.6, -0.8], kind: 'scrub', o: { title: 'WASH THE POTS', surface: '#6d6f73' } },
   { id: 'empties', name: 'Collect the empties', room: 'RAISED BOOTHS', at: [-7, -4], kind: 'collect', o: { title: 'COLLECT THE EMPTIES', icon: '🍺', into: '🧺', n: 7, hint: 'TAP EVERY GLASS' } },
   { id: 'tables', name: 'Wipe the tables', room: 'CONSERVATORY', at: [-4, 11], kind: 'scrub', o: { title: 'WIPE THE TABLES' } },
   { id: 'slots', name: 'Reset the slot machine', room: 'GAMBLING ROOM', at: [7.8, 10.32], kit: [8.42, 0, 10.32, -Math.PI / 2, 'none'], kind: 'code' },
-  { id: 'keg', name: 'Check the keg pressure', room: 'KEG ROOM', at: [6.06, 2.83], kind: 'dial' },
+  { id: 'keg', name: 'Check the keg pressure', room: 'KEG ROOM', at: [9.55, 5.05], kit: [10.3, 0, 5.05, -Math.PI / 2], kind: 'dial' },      // (in the keg room, against the side wall)
   { id: 'rota', name: 'Clock in for your shift', room: 'STAFF ROOM', at: [9.95, -3.4], kit: [10.42, 0, -3.4, -Math.PI / 2], kind: 'swipe', o: { title: 'CLOCK IN FOR YOUR SHIFT' } },
   { id: 'cutlery', name: 'Lay the tables', room: 'RESTAURANT', at: [-16.6, -3.0], kind: 'collect', o: { title: 'LAY THE TABLES', icon: '🍴', into: '🍽️', n: 6, hint: 'TAP EVERY KNIFE AND FORK' } },
   { id: 'candles', name: 'Light the candles', room: 'RESTAURANT', at: [-16.6, 5.0], kind: 'collect', o: { title: 'LIGHT THE CANDLES', icon: '🕯️', into: '🔥', n: 5, hint: 'TAP EVERY CANDLE' } },
@@ -49,7 +50,7 @@ export const TASKS = [
   { id: 'barrier', name: 'Fix the car park barrier', room: 'CAR PARK', at: [8.6, -22.0], kit: [8.3, 0, -22.6, 0, 'none'], kind: 'wires' },
 ];
 const TASK = Object.fromEntries(TASKS.map(t => [t.id, t]));
-const TASK_SIGN = { guinness: '🍺 POUR A GUINNESS', barrel: '🛢️ CHANGE THE BARREL', till: '💳 CARD MACHINE', jukebox: '🎵 JUKEBOX', fruit: '🍒 FRUIT MACHINE', toilet: '🚽 BLOCKED TOILET', looroll: '🧻 LOO ROLL',
+const TASK_SIGN = { guinness: '🍺 POUR A GUINNESS', barrel: '🛢️ CHANGE THE BARREL', till: '💳 CARD MACHINE', jukebox: '🎧 DJ DECKS', fruit: '🍒 FRUIT MACHINE', toilet: '🚽 BLOCKED TOILET', looroll: '🧻 LOO ROLL',
   bookings: '📖 BOOKINGS', fryer: '🍟 THE FRYER', empties: '🍺 EMPTIES', tables: '🧽 WIPE TABLES', slots: '🎰 SLOT MACHINE', keg: '⏲️ KEG PRESSURE', rota: '🕒 CLOCK IN',
   dishes: '🍳 WASH THE POTS', cutlery: '🍴 LAY THE TABLES', candles: '🕯️ CANDLES', parasol: '⛱️ PARASOLS', gglasses: '🍹 GARDEN GLASSES', carglass: '🚗 SWEEP THE GLASS', barrier: '🚧 THE BARRIER' };
 // trapdoors (the imposter's vents): hop between them unseen
@@ -338,6 +339,7 @@ export class Imposter {
     else if (id === 'toilet') { kadd(C(0.18, 0.13, 0.38, 18), lam(0xf8f8f8), 0, 0.19, 0); kadd(B(0.36, 0.38, 0.16), lam(0xf8f8f8), 0, 0.52, -0.18); kadd(new THREE.TorusGeometry(0.16, 0.03, 8, 18), lam(0xf8f8f8), 0, 0.39, 0, Math.PI / 2);
       kadd(C(0.012, 0.012, 0.6, 8), lam(0xb5651d), 0.25, 0.42, 0.1); kadd(new THREE.SphereGeometry(0.07, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), lam(0xd32f2f), 0.25, 0.1, 0.1, Math.PI); }
     else if (id === 'looroll') { kadd(B(0.5, 0.04, 0.4), steel, 0, 0.3, 0); for (const yy of [0.04, 0.3, 0.56]) kadd(B(0.5, 0.02, 0.4), steel, 0, yy, 0); for (let i = 0; i < 12; i++) kadd(C(0.055, 0.055, 0.11, 14), lam(0xffffff), -0.17 + (i % 4) * 0.115, (i < 4 ? 0.1 : i < 8 ? 0.37 : 0.63), -0.09 + (Math.floor(i / 2) % 2) * 0.18); }
+    else if (id === 'bookings' && onTop) { kadd(B(0.42, 0.02, 0.28), lam(0x7a1f3d), 0, 0.01, 0); kadd(B(0.4, 0.022, 0.26), lam(0xfff8dc), 0, 0.022, 0); kadd(B(0.006, 0.024, 0.26), lam(0x5a1028), 0, 0.024, 0); for (let i = 0; i < 6; i++) kadd(B(0.15, 0.002, 0.006), lam(0x555555), -0.1 + (i % 2) * 0.2, 0.034, -0.09 + Math.floor(i / 2) * 0.07); kadd(C(0.005, 0.005, 0.14, 6), lam(0x1a1a1a), 0.12, 0.04, 0.06, 0, 0.6, Math.PI / 2); }      // (the bookings ledger, open on the worktop, a pen on it)
     else if (id === 'bookings') { kadd(B(0.08, 1.0, 0.08), wood, 0, 0.5, 0); kadd(B(0.5, 0.04, 0.36), wood, 0, 1.02, 0, -0.35); kadd(B(0.44, 0.02, 0.3), lam(0xfff8dc), 0, 1.05, 0.01, -0.35); kadd(B(0.005, 0.03, 0.3), lam(0x7a1f3d), 0, 1.06, 0.01, -0.35); }
     else if (id === 'fryer') { kadd(B(0.55, 0.9, 0.55), steel, 0, 0.45, 0); kadd(B(0.45, 0.02, 0.45), lam(0xd9a03a), 0, 0.905, 0); kadd(B(0.22, 0.12, 0.2), new THREE.MeshBasicMaterial({ color: 0x333333, wireframe: true }), 0.1, 0.98, 0); kadd(C(0.01, 0.01, 0.35, 6), dark, 0.1, 1.05, 0.25, Math.PI / 2 - 0.4); }
     else if (id === 'empties') { const y = top(); kadd(C(0.18, 0.18, 0.02, 20), steel, 0, y + 0.01, 0); for (let i = 0; i < 6; i++) kadd(C(0.035, 0.028, 0.14, 10, 1, true), new THREE.MeshPhongMaterial({ color: 0xddeeff, transparent: true, opacity: 0.5 }), Math.cos(i) * 0.1, y + 0.08, Math.sin(i) * 0.1); }
@@ -354,7 +356,7 @@ export class Imposter {
     // the sign: hanging over the spot, double-sided, the job's name
     const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128; const x = cv.getContext('2d'); x.fillStyle = '#1a0f0a'; rr(x, 4, 4, 504, 120, 26); x.fill(); x.lineWidth = 8; x.strokeStyle = '#d4af37'; rr(x, 8, 8, 496, 112, 22); x.stroke(); txt(x, label, 256, 66, 44, '#ffd400', 'center', 470);
     const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
-    const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true })); sign.scale.set(0.95, 0.24, 1); if (kit) sign.position.set(k.position.x, Math.max(2.05, kit[1] + 0.95), k.position.z); else sign.position.set(0.55, 2.05, 0); g.add(sign);
+    const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true })); sign.scale.set(0.95, 0.24, 1); if (kit) { const d = Math.hypot(k.position.x, k.position.z), pull = d > 1e-3 ? Math.min(0.45, d) / d : 0; sign.position.set(k.position.x * (1 - pull), Math.max(2.05, kit[1] + 0.95), k.position.z * (1 - pull)); } else sign.position.set(0.55, 2.05, 0); g.add(sign);
     void stand; void add; return g;
   }
   dropBody(b) { if (b.grp) this.grp.remove(b.grp); }
@@ -401,7 +403,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
 #imp-splash.on { display: flex; } #imp-splash h1 { font-size: clamp(34px, 9vw, 80px); margin: 0; letter-spacing: 2px; } #imp-splash p { font-size: clamp(15px, 3.6vw, 26px); margin: 10px 18px; } #imp-splash .imgs { display: flex; gap: 12px; margin-top: 12px; } #imp-splash img { width: 92px; height: 92px; border-radius: 50%; border: 4px solid currentColor; object-fit: cover; }
 #imp-alert { position: fixed; left: 50%; top: max(70px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 44; display: none; padding: 8px 18px; border-radius: 14px; background: rgba(150,0,0,0.85); border: 3px solid #fff; color: #fff; font: 900 16px "Arial Black", Arial; text-align: center; pointer-events: none; animation: impflash 0.8s infinite alternate; }
 #imp-alert.on { display: block; } @keyframes impflash { from { background: rgba(150,0,0,0.85); } to { background: rgba(255,40,40,0.95); } }
-#imp-map { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 70; display: none; pointer-events: none; } #imp-map.on { display: block; } #imp-map canvas { display: block; width: auto; height: auto; max-width: 94vw; max-height: calc(100vh - 24px); border-radius: 16px; border: 4px solid #ffd400; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
+#imp-map { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 70; display: none; pointer-events: none; } #imp-map-close { position: absolute; top: 6px; right: 6px; pointer-events: auto; font: 900 17px system-ui, sans-serif; color: #111; background: #ffd400; border: 3px solid #111; border-radius: 12px; padding: 7px 14px; box-shadow: 0 3px 0 #111; cursor: pointer; } #imp-map-close:active { transform: translateY(2px); box-shadow: 0 1px 0 #111; } #imp-map.on { display: block; } #imp-map canvas { display: block; width: auto; height: auto; max-width: 94vw; max-height: calc(100vh - 24px); border-radius: 16px; border: 4px solid #ffd400; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
 #imp-sabm { position: fixed; inset: 0; z-index: 67; display: none; align-items: center; justify-content: center; gap: 16px; background: rgba(0,0,0,0.55); flex-wrap: wrap; } #imp-sabm.on { display: flex; }
 #imp-sabm button { width: 150px; height: 150px; border-radius: 22px; border: 4px solid #fff; background: #6a1b9a; color: #fff; font: 900 16px "Arial Black", Arial; } #imp-sabm button b { display: block; font-size: 48px; }`;
     document.head.appendChild(st); this.style = st;
@@ -416,7 +418,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     this.splash = document.createElement('div'); this.splash.id = 'imp-splash'; document.body.appendChild(this.splash);
     this.tasksEl = document.createElement('div'); this.tasksEl.id = 'imp-tasks'; document.body.appendChild(this.tasksEl);
     this.alertEl = document.createElement('div'); this.alertEl.id = 'imp-alert'; document.body.appendChild(this.alertEl);
-    this.mapEl = document.createElement('div'); this.mapEl.id = 'imp-map'; this.mapCv = document.createElement('canvas'); this.mapCv.width = 600; this.mapCv.height = 780; this.mapEl.appendChild(this.mapCv); document.body.appendChild(this.mapEl);
+    this.mapEl = document.createElement('div'); this.mapEl.id = 'imp-map'; this.mapCv = document.createElement('canvas'); this.mapCv.width = 600; this.mapCv.height = 780; this.mapEl.appendChild(this.mapCv); { const cb = document.createElement('button'); cb.id = 'imp-map-close'; cb.textContent = '✕ CLOSE'; cb.addEventListener('click', (e) => { e.stopPropagation(); this.toggleMap(false); }); this.mapEl.appendChild(cb); } document.body.appendChild(this.mapEl);
     this.sabEl = document.createElement('div'); this.sabEl.id = 'imp-sabm'; this.sabEl.innerHTML = Object.entries(SAB).map(([k, s]) => `<button data-k="${k}"><b>${s.icon}</b>${s.name}${s.crit ? '<br><small>CRITICAL</small>' : ''}</button>`).join('') + '<button data-k="x" style="background:#444;width:90px;height:90px"><b>✕</b></button>';
     document.body.appendChild(this.sabEl);
     this.sabEl.addEventListener('pointerdown', (e) => { e.stopPropagation(); const b = e.target.closest('button'); this.sabEl.classList.remove('on'); if (b && b.dataset.k !== 'x') this.ask('imS', { k: b.dataset.k }); });
@@ -619,7 +621,18 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     const P = (X, Z) => land ? [ox + (Z - Bz[0]) * sc, TOP + (Bx[1] - X) * sc] : [ox + (X - Bx[0]) * sc, TOP + (Z - Bz[0]) * sc];
     x.fillStyle = '#2f6b33'; x.fillRect(0, 0, W, H); for (let i = 0; i < 420; i++) { x.fillStyle = i % 2 ? '#357a3a' : '#2a5f2e'; x.fillRect((i * 97) % W, (i * 53) % H, 6, 6); }
     const poly = (pts, col, name, sz = 15, edge = '#2b1a10') => { x.fillStyle = col; x.strokeStyle = edge; x.lineWidth = 4; x.beginPath(); pts.forEach(([X, Z], i) => { const [u, v] = P(X, Z); i ? x.lineTo(u, v) : x.moveTo(u, v); }); x.closePath(); x.fill(); x.stroke();
-      if (name) { let cx = 0, cz = 0; for (const [X, Z] of pts) { cx += X; cz += Z; } const [u, v] = P(cx / pts.length, cz / pts.length); txt(x, name, u, v, sz, '#fff', 'center', 200); } };
+      if (name) { let cx = 0, cz = 0, u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9; for (const [X, Z] of pts) { cx += X; cz += Z; const [u, v] = P(X, Z); u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
+        const [u, v] = P(cx / pts.length, cz / pts.length); labels.push([name, u, v, sz, u1 - u0, v1 - v0]); } };
+    // every room's name, written last (so the next room along never paints over it) and always whole: it gets smaller
+    // to fit inside its room, and goes onto two lines if it's still too wide
+    const labels = [], fitLabel = (name, u, v, sz, bw, bh) => { const maxW = Math.max(30, bw - 10), maxH = Math.max(14, bh - 6), words = name.split(' ');
+      for (let f = sz; f >= 8; f--) { x.font = `900 ${f}px ${FONT}`;
+        if (x.measureText(name).width <= maxW && f <= maxH) return draw([name], u, v, f);
+        if (words.length > 1 && f * 2.1 <= maxH) { let best = null; for (let i = 1; i < words.length; i++) { const L = [words.slice(0, i).join(' '), words.slice(i).join(' ')], w = Math.max(...L.map(l => x.measureText(l).width)); if (!best || w < best[1]) best = [L, w]; }
+          if (best[1] <= maxW) return draw(best[0], u, v, f); } }
+      x.font = `900 8px ${FONT}`; draw(words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(' '), words.slice(Math.ceil(words.length / 2)).join(' ')] : [name], u, v, 8); },
+      draw = (lines, u, v, f) => { x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round'; x.lineWidth = Math.max(3, f / 4); x.strokeStyle = 'rgba(0,0,0,0.8)'; x.fillStyle = '#fff';
+        lines.forEach((l, i) => { const y = v + (i - (lines.length - 1) / 2) * f * 1.08; x.strokeText(l, u, y); x.fillText(l, u, y); }); };
     const room = (x0, x1, z0, z1, col, name, sz) => poly([[x0, z0], [x1, z0], [x1, z1], [x0, z1]], col, name, sz);
     // the beer garden: paving, the stream with its bridge, the deck, the octagonal bar in the middle
     room(-10, 10.68, 16.08, 42.4, '#8e8a84', ''); room(-10, 10.68, 16.08, 20.3, '#4a3a30', 'DECK', 13); room(-10, 10.68, 20.5, 23.0, '#7fc4e8', ''); room(-6.2, -5.0, 20.3, 23.2, '#6a4a30', '');
@@ -640,6 +653,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     room(-13.8, -9.72, -8.88, 2.04, '#e0e0e0', 'KITCHEN', 13); room(-14.04, -9.72, 2.04, 5.16, '#c9b8a0', '', 10); room(-9.72, 4.68, 7.92, 16.08, '#e8dcc0', 'CONSERVATORY', 14); room(4.68, 9.0, 7.92, 15.48, '#2c3e8f', 'GAMBLING', 12);
     // the bar
     poly([[2.2, -8.6], [3.0, -8.6], [3.0, -0.6], [4.6, -0.6], [4.6, 6.2], [3.8, 6.2], [3.8, 0.2], [2.2, 0.2]], '#c98a48', '', 12, '#5a2e14'); { const [u, v] = P(3.6, 2.6); txt(x, 'THE BAR', u, v, 12, '#fff'); }
+    for (const L of labels) fitLabel(...L);
     const dot = (X, Z, r, col, edge, label, lsz = 13, lcol = '#111') => { const [u, v] = P(X, Z); x.fillStyle = col; x.strokeStyle = edge || '#111'; x.lineWidth = 3; x.beginPath(); x.arc(u, v, r, 0, 7); x.fill(); if (edge) x.stroke(); if (label) txt(x, label, u, v + 1, lsz, lcol); };
     // the bell, the jobs, the fixes, the trapdoors, you
     dot(CENTRE.x, CENTRE.z, 12, '#d81b2a', '#fff', '🔔', 13);
@@ -649,7 +663,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     if (this.amImp()) for (const v of VENTS) { const [u, w] = P(v.at[0], v.at[1]); x.fillStyle = '#4e342e'; x.strokeStyle = '#ff3b3b'; x.lineWidth = 3; x.fillRect(u - 8, w - 8, 16, 16); x.strokeRect(u - 8, w - 8, 16, 16); }
     const Pl = this.g.player, h = Pl.head, [hu, hv] = P(h.x, h.z), [fu, fv] = P(h.x + Pl.fwd.x, h.z + Pl.fwd.z), a = Math.atan2(fu - hu, -(fv - hv));
     x.save(); x.translate(hu, hv); x.rotate(a); x.fillStyle = '#4fc3ff'; x.strokeStyle = '#fff'; x.lineWidth = 3; x.beginPath(); x.moveTo(0, -15); x.lineTo(11, 11); x.lineTo(0, 5); x.lineTo(-11, 11); x.closePath(); x.fill(); x.stroke(); x.restore();
-    x.fillStyle = 'rgba(0,0,0,0.65)'; x.fillRect(0, 0, W, TOP - 4); txt(x, '🗺️ THE OYSTERFLEET   ·   tap MAP to close', W / 2, TOP / 2 - 1, 22, '#ffd400');
+    x.fillStyle = 'rgba(0,0,0,0.65)'; x.fillRect(0, 0, W, TOP - 4); txt(x, '🗺️ THE OYSTERFLEET', W / 2 - 60, TOP / 2 - 1, 22, '#ffd400');
   }
 
   // ------------------------------------------------------------------ every frame
