@@ -118,9 +118,9 @@ const GAMES = {
   // PLUNGE: tap tap tap as fast as you can (the blocked toilet)
   plunge(o = {}) {
     const s = { title: o.title || 'UNBLOCK THE TOILET', p: 0, bob: 0, done: false };
-    s.down = () => { s.p += 0.06; s.bob = 1; sfx(Math.random() < 0.5 ? 'squish' : 'splat', null, 0.35); if (s.p >= 1) { s.done = true; sfx('gulp', null, 0.8); } };
+    s.down = () => { s.p += 0.045; s.bob = 1; sfx(Math.random() < 0.5 ? 'squish' : 'splat', null, 0.35); if (s.p >= 1) { s.done = true; sfx('gulp', null, 0.8); } };
     s.move = () => {}; s.up = () => {};
-    s.update = (dt) => { s.p = Math.max(0, s.p - dt * (0.14 + s.p * 0.1)); s.bob = Math.max(0, s.bob - dt * 6); };
+    s.update = (dt) => { s.p = Math.max(0, s.p - dt * (0.1 + s.p * 0.08)); s.bob = Math.max(0, s.bob - dt * 6); };
     s.draw = (g) => { frame(g, s.title); txt(g, 'TAP AS FAST AS YOU CAN!', S / 2, 82, 22);
       g.fillStyle = '#f4f4f4'; g.beginPath(); g.ellipse(256, 360, 130, 60, 0, 0, 7); g.fill(); g.fillStyle = '#7a5a2a'; g.beginPath(); g.ellipse(256, 360, 100, 40, 0, 0, 7); g.fill();
       g.fillStyle = '#e0e0e0'; g.fillRect(150, 380, 212, 80);
@@ -148,7 +148,7 @@ const GAMES = {
     const s = { title: o.title || 'WIPE THE TABLES', spots: [], drag: false, done: false, cx: 0, cy: 0 };
     for (let i = 0; i < (o.n || 7); i++) s.spots.push({ x: 100 + Math.random() * 312, y: 140 + Math.random() * 230, r: 28 + Math.random() * 26, a: 1, k: i % 3 === 0 && o.n ? 0.4 : 1, c: R(['#7a4a1a', '#a0522d', '#5a3a1a', '#c8a040']) });
     s.down = (x, y) => { s.drag = true; s.cx = x; s.cy = y; }; s.up = () => { s.drag = false; };
-    s.move = (x, y) => { s.cx = x; s.cy = y; if (!s.drag) return; for (const p of s.spots) if (p.a > 0 && Math.hypot(x - p.x, y - p.y) < p.r + 26) { p.a -= 0.035 * (p.k || 1); if ((s.sq = (s.sq || 0) + 1) % 9 === 0) sfx('scrub', null, 0.25); } if (s.spots.every(p => p.a <= 0)) s.done = true; };
+    s.move = (x, y) => { s.cx = x; s.cy = y; if (!s.drag) return; for (const p of s.spots) if (p.a > 0 && Math.hypot(x - p.x, y - p.y) < p.r + 26) { p.a -= 0.018 * (p.k || 1); if ((s.sq = (s.sq || 0) + 1) % 9 === 0) sfx('scrub', null, 0.25); } if (s.spots.every(p => p.a <= 0)) s.done = true; };
     s.update = () => {};
     s.draw = (g) => { frame(g, s.title); txt(g, 'RUB THE MESS OFF', S / 2, 82, 20);
       g.fillStyle = o.surface || '#8b5a2b'; rr(g, 40, 110, 432, 360, 20); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.25)'; for (let i = 0; i < 8; i++) { g.beginPath(); g.moveTo(40, 130 + i * 44); g.lineTo(472, 140 + i * 44); g.stroke(); }
@@ -159,15 +159,15 @@ const GAMES = {
   },
   // CODE: type in the number on the slip (the slot machine)
   code(o = {}) {
-    const code = String(Math.floor(100000 + Math.random() * 899999)), s = { title: o.title || 'RESET THE SLOT MACHINE', typed: '', bad: 0, done: false, show: 3, _code: code };
+    const code = String(Math.floor(10000000 + Math.random() * 89999999)), s = { title: o.title || 'RESET THE SLOT MACHINE', typed: '', bad: 0, done: false, show: 4, _code: code };
     const key = (k) => ({ x: 146 + (k === 'C' ? 0 : k === '0' ? 1 : k === 'OK' ? 2 : (Number(k) - 1) % 3) * 76, y: 200 + (k === 'C' || k === '0' || k === 'OK' ? 3 : Math.floor((Number(k) - 1) / 3)) * 70, w: 68, h: 62 });
     const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'];
     s.down = (x, y) => { for (const k of KEYS) if (inside(x, y, key(k))) { sfx('tap', null, 0.4);
-      if (k === 'C') s.typed = ''; else if (k === 'OK') { if (s.typed === code) { s.done = true; sfx('fixed', null, 0.7); } else { s.bad = 0.9; s.typed = ''; s.show = 2.5; sfx('error', null, 0.5); } } else if (s.typed.length < 6) s.typed += k; } };
+      if (k === 'C') s.typed = ''; else if (k === 'OK') { if (s.typed === code) { s.done = true; sfx('fixed', null, 0.7); } else { s.bad = 0.9; s.typed = ''; s.show = 3.5; sfx('error', null, 0.5); } } else if (s.typed.length < 8) s.typed += k; } };
     s.move = () => {}; s.up = () => {}; s.update = (dt) => { if (s.bad > 0) s.bad -= dt; if (s.show > 0) s.show -= dt; };
     s.draw = (g) => { frame(g, s.title);
       if (s.show <= 0) { g.fillStyle = '#c9b48a'; g.save(); g.translate(40, 70); g.rotate(-0.06); rr(g, 0, 0, 150, 90, 6); g.fill(); txt(g, 'REMEMBER IT?', 75, 45, 15, '#5a3a1a'); g.restore(); } else {
-      g.fillStyle = '#fffbe6'; g.save(); g.translate(40, 70); g.rotate(-0.06); rr(g, 0, 0, 150, 90, 6); g.fill(); txt(g, 'MEMORISE IT', 75, 24, 16, '#c62828'); txt(g, code, 75, 60, 28, '#222'); g.restore(); } if (s.show > 0) { g.fillStyle = '#ffd400'; g.fillRect(40, 166, 150 * Math.min(1, s.show / 3), 6); }
+      g.fillStyle = '#fffbe6'; g.save(); g.translate(40, 70); g.rotate(-0.06); rr(g, 0, 0, 150, 90, 6); g.fill(); txt(g, 'MEMORISE IT', 75, 24, 16, '#c62828'); txt(g, code, 75, 60, 28, '#222'); g.restore(); } if (s.show > 0) { g.fillStyle = '#ffd400'; g.fillRect(40, 166, 150 * Math.min(1, s.show / 4), 6); }
       g.fillStyle = '#000'; rr(g, 220, 100, 250, 70, 10); g.fill(); txt(g, s.bad > 0 ? 'ERROR' : (s.typed || '______'), 345, 136, 36, s.bad > 0 ? '#ff4d4d' : '#39ff14');
       for (const k of KEYS) btn(g, key(k), k, k === 'OK' ? '#2e7d32' : k === 'C' ? '#c62828' : '#3a4a8a', 26);
     };
@@ -206,6 +206,35 @@ const GAMES = {
     return s;
   },
 
+  // COUPLER: change the barrel properly: gas off, lift the coupler's handle, move it from the empty keg to the new one,
+  // push the handle down, gas back on. In that order
+  coupler(o = {}) {
+    const GAS = { x: 70, y: 186 }, OLD = { x: 140, y: 292 }, NEW = { x: 372, y: 292 };
+    const s = { title: o.title || 'CHANGE THE BARREL', step: 0, gasOn: true, lifted: false, at: OLD, carry: null, grab: null, msg: '', msgT: 0, done: false, _G: GAS, _O: OLD, _N: NEW };
+    // the handle's grip: sticking out sideways when it's down, straight up when it's lifted
+    s._tip = () => { const c = s.carry || s.at; return { x: c.x + (s.lifted ? 0 : 70), y: c.y - (s.lifted ? 70 : 0) }; };
+    const nope = (m) => { s.msg = m; s.msgT = 1.2; sfx('error', null, 0.4); };
+    s.down = (x, y) => { s.grab = null;
+      if (Math.hypot(x - GAS.x, y - GAS.y) < 46) { if (s.step === 0) { s.gasOn = false; s.step = 1; sfx('toggle', null, 0.6); } else if (s.step === 4) { s.gasOn = true; s.step = 5; s.done = true; sfx('psst', null, 0.6); } else nope(s.step < 4 ? 'THE GAS IS OFF: CHANGE THE BARREL' : 'NOT YET'); return; }
+      const t2 = s._tip(); if (Math.hypot(x - t2.x, y - t2.y) < 44) { if (s.step === 1 || s.step === 3) s.grab = { k: 'handle', y }; else nope(s.step === 0 ? 'TURN THE GAS OFF FIRST' : 'MOVE THE COUPLER ACROSS'); return; }
+      if (Math.hypot(x - s.at.x, y - s.at.y) < 46) { if (s.step === 2) { s.grab = { k: 'coupler' }; s.carry = { x, y }; } else nope(s.step < 2 ? 'LIFT THE HANDLE FIRST' : 'PUSH THE HANDLE DOWN'); } };
+    s.move = (x, y) => { const gb = s.grab; if (!gb) return;
+      if (gb.k === 'handle') { if (s.step === 1 && gb.y - y > 50) { s.lifted = true; s.step = 2; s.grab = null; sfx('clack', null, 0.6); } else if (s.step === 3 && y - gb.y > 50) { s.lifted = false; s.step = 4; s.grab = null; sfx('clack', null, 0.6); } }
+      else s.carry = { x, y }; };
+    s.up = () => { const gb = s.grab; s.grab = null; if (!gb || gb.k !== 'coupler') return; const c = s.carry; s.carry = null;
+      if (c && Math.hypot(c.x - NEW.x, c.y - NEW.y) < 70) { s.at = NEW; s.step = 3; sfx('can', null, 0.6); } else if (c && Math.hypot(c.x - OLD.x, c.y - OLD.y) > 70) nope('PUT IT ON THE NEW BARREL'); };
+    s.update = (dt) => { if (s.msgT > 0) s.msgT -= dt; };
+    return s;
+  },
+  // RAISE: push the parasol's runner up the pole with long upward strokes: it slides back down if you stop, until it clicks open
+  raise(o = {}) {
+    const s = { title: o.title || 'PUT THE PARASOL UP', k: 0, last: null, done: false, click: 0 };
+    s.down = (x, y) => { if (Math.abs(x - 256) < 90) s.last = y; };
+    s.move = (x, y) => { if (s.last === null || s.done) return; const d = s.last - y; if (d > 0) { s.k = Math.min(1, s.k + d / 1100); if ((s.cr = (s.cr || 0) + d) > 60) { s.cr = 0; sfx('tick', null, 0.3); } } s.last = y; if (s.k >= 1) { s.done = true; sfx('clack', null, 0.8); } };
+    s.up = () => { s.last = null; };
+    s.update = (dt) => { if (!s.done && s.last === null && s.k > 0) s.k = Math.max(0, s.k - dt * 0.09); };
+    return s;
+  },
   // ================================================================ the new ones (one game per job)
   // REELS: stop each reel on a cherry (the fruit machine). A reel that lands on anything else: they all spin again
   reels(o = {}) {
@@ -504,6 +533,54 @@ const ART = {
     g.save(); g.translate(256, 280); g.fillStyle = '#2a2a2a'; g.beginPath(); g.arc(0, 0, 44, 0, 7); g.fill(); g.rotate(s.turned); g.fillStyle = '#c62828'; rr(g, -8, -100, 16, 200, 8); g.fill(); g.fillStyle = '#ddd'; g.beginPath(); g.arc(0, 0, 18, 0, 7); g.fill(); g.restore(); ring();
     P.hint(g, k >= 1 ? 'COUPLED ON ✓ BEER\'S FLOWING' : '↻ TURN THE COUPLER ONTO THE NEW BARREL', 82); bar(k >= 1 ? 'ON' : Math.round(k * 100) + '%');
   },
+  // ---- CHANGE THE BARREL: the cellar: the gas bottle with its tap, the empty keg and the new one, the coupler with its
+  // beer and gas lines, moved across by hand
+  coupler(g, s, t) {
+    const keg = (x, label, col) => { g.fillStyle = P.grad(g, x - 80, 0, x + 80, 0, ['#7d838a', '#dfe3e6', '#9ba1a7', '#cfd3d7', '#737a80']); g.fillRect(x - 80, 300, 160, 172);
+      for (const y of [306, 466]) { g.fillStyle = '#9ba1a7'; g.beginPath(); g.ellipse(x, y, 82, 11, 0, 0, 7); g.fill(); } g.fillStyle = 'rgba(0,0,0,0.15)'; g.fillRect(x - 80, 380, 160, 8);
+      g.fillStyle = '#3a3a3a'; g.beginPath(); g.ellipse(x, 300, 22, 6, 0, 0, 7); g.fill(); txt(g, label, x, 420, 15, col); };
+    P.scene(g, s.title, () => { P.brick(g, 0, 0, S, S); g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(0, 0, S, S); g.fillStyle = '#3a3a3a'; g.fillRect(0, 470, S, 50); });
+    keg(s._O.x, 'EMPTY', '#c62828'); keg(s._N.x, 'OYSTER STOUT', '#1a2a1a'); g.fillStyle = 'rgba(255,255,255,0.7)'; g.font = '700 16px "Comic Sans MS", cursive'; g.textAlign = 'center'; g.fillText('✗ EMPTY', s._O.x, 350);
+    // the gas bottle and its tap
+    g.fillStyle = '#2e7d32'; rr(g, 30, 220, 66, 250, 28); g.fill(); txt(g, 'CO₂', 63, 400, 16, '#fff'); P.steel(g, 52, 196, 22, 28, 4);
+    g.save(); g.translate(s._G.x, s._G.y); g.rotate(s.gasOn ? 0 : Math.PI / 2); g.fillStyle = s.gasOn ? '#2f7bff' : '#c62828'; rr(g, -30, -8, 60, 16, 8); g.fill(); g.restore(); g.fillStyle = '#ddd'; g.beginPath(); g.arc(s._G.x, s._G.y, 8, 0, 7); g.fill();
+    txt(g, s.gasOn ? 'GAS ON' : 'GAS OFF', s._G.x, s._G.y - 30, 12, s.gasOn ? '#7fb2ff' : '#ff6b6b');
+    // the coupler (on a keg, or in your hand), its lines up to the wall, its handle
+    const c = s.carry || s.at, tp = s._tip();
+    g.strokeStyle = '#2e7d32'; g.lineWidth = 6; g.beginPath(); g.moveTo(c.x - 14, c.y); g.bezierCurveTo(c.x - 60, c.y - 120, 110, 130, s._G.x, s._G.y + 10); g.stroke();
+    g.strokeStyle = '#111'; g.lineWidth = 9; g.beginPath(); g.moveTo(c.x + 10, c.y - 8); g.bezierCurveTo(c.x + 40, c.y - 160, 470, 120, 500, 110); g.stroke();
+    g.fillStyle = '#2a2a2a'; g.beginPath(); g.arc(c.x, c.y, 26, 0, 7); g.fill(); g.fillStyle = '#555'; g.beginPath(); g.arc(c.x, c.y, 14, 0, 7); g.fill();
+    g.strokeStyle = '#c62828'; g.lineWidth = 12; g.lineCap = 'round'; g.beginPath(); g.moveTo(c.x, c.y); g.lineTo(tp.x, tp.y); g.stroke(); g.lineCap = 'butt'; g.fillStyle = '#9e1c1c'; g.beginPath(); g.arc(tp.x, tp.y, 13, 0, 7); g.fill();
+    // what to do next: a pulsing ring on it
+    const nxt = s.step === 0 || s.step === 4 ? s._G : s.step === 2 ? (s.carry ? s._N : s.at) : tp; if (!s.done) { g.strokeStyle = `rgba(255,212,0,${0.5 + 0.5 * Math.sin(t * 6)})`; g.lineWidth = 4; g.beginPath(); g.arc(nxt.x, nxt.y, 40, 0, 7); g.stroke(); }
+    const STEPS = ['TURN THE GAS OFF', 'LIFT THE COUPLER HANDLE (DRAG IT UP)', 'DRAG THE COUPLER ONTO THE NEW BARREL', 'PUSH THE HANDLE DOWN (DRAG IT DOWN)', 'TURN THE GAS BACK ON', 'BARREL CHANGED ✓'];
+    for (let i = 0; i < 5; i++) { g.fillStyle = i < s.step ? '#39ff14' : i === s.step ? '#ffd400' : 'rgba(255,255,255,0.25)'; g.beginPath(); g.arc(196 + i * 30, 484, 8, 0, 7); g.fill(); }
+    P.hint(g, s.msgT > 0 ? s.msg : `${Math.min(5, s.step + 1)}/5 · ${STEPS[s.step]}`, 82, s.msgT > 0 ? '#ff6b6b' : s.done ? '#39ff14' : '#fff', 16);
+  },
+  // ---- PUT THE PARASOL UP: the beer garden; push the runner up the pole and watch the canopy open out over the table
+  raise(g, s, t) {
+    const k = s.k;
+    P.scene(g, s.title, () => { g.fillStyle = P.grad(g, 0, 0, 0, 340, ['#5fb4ff', '#bfe4ff']); g.fillRect(0, 0, S, 340); g.fillStyle = '#ffe680'; g.beginPath(); g.arc(440, 100, 30, 0, 7); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.8)'; for (const [cx, cy] of [[70, 120], [140, 100]]) { g.beginPath(); g.arc(cx, cy, 20, 0, 7); g.arc(cx + 22, cy - 6, 24, 0, 7); g.arc(cx + 46, cy, 18, 0, 7); g.fill(); }
+      g.fillStyle = '#7a5230'; for (let x = 0; x < S; x += 26) g.fillRect(x, 300, 22, 60); g.fillStyle = '#4caf50'; g.fillRect(0, 350, S, 170);
+      g.fillStyle = 'rgba(0,0,0,0.14)'; g.beginPath(); g.ellipse(256, 452, 40 + 170 * k, 10 + 24 * k, 0, 0, 7); g.fill(); });
+    // the table and benches
+    g.fillStyle = '#7a5230'; g.fillRect(140, 404, 232, 14); for (const x of [160, 352]) g.fillRect(x - 5, 414, 10, 50); g.fillStyle = '#6a4626'; g.fillRect(100, 440, 60, 10); g.fillRect(352, 440, 60, 10);
+    // the pole, the canopy (its ribs fold down when it's closed, spread right out when it's up), the runner you push
+    const topY = 112, ry = 400 - 220 * k; g.fillStyle = '#d0d0d0'; g.fillRect(252, topY, 8, 300);
+    const w = 22 + 210 * k, drop = 150 - 108 * k, cols = ['#2e7d32', '#f5f0e0'];
+    for (let i = -4; i < 4; i++) { const a = i / 4, b = (i + 1) / 4, ya = topY + drop * (0.35 + 0.65 * Math.abs(a)) * (1 - k) + (drop * 0.55) * k * (0.6 + 0.4 * Math.abs(a)), yb = topY + drop * (0.35 + 0.65 * Math.abs(b)) * (1 - k) + (drop * 0.55) * k * (0.6 + 0.4 * Math.abs(b));
+      g.fillStyle = cols[(i + 4) % 2]; g.beginPath(); g.moveTo(256, topY); g.lineTo(256 + a * w, ya); g.quadraticCurveTo(256 + (a + b) / 2 * w, (ya + yb) / 2 + 10 * k, 256 + b * w, yb); g.closePath(); g.fill(); }
+    g.fillStyle = '#2e7d32'; for (let i = -4; i < 4; i++) { const a = i / 4, ya = topY + drop * (0.35 + 0.65 * Math.abs(a)) * (1 - k) + (drop * 0.55) * k * (0.6 + 0.4 * Math.abs(a)); g.beginPath(); g.arc(256 + a * w, ya, 4, 0, 7); g.fill(); }
+    g.strokeStyle = '#9aa0a6'; g.lineWidth = 3; for (const d of [-1, 1]) { g.beginPath(); g.moveTo(256, ry); g.lineTo(256 + d * w * 0.45, topY + drop * 0.5); g.stroke(); }
+    if (k < 0.35) { const f = 1 - k / 0.35; g.globalAlpha = f; g.fillStyle = '#2e7d32'; g.beginPath(); g.moveTo(256, topY); g.quadraticCurveTo(256 + 26, topY + 70, 256 + 9, topY + 150); g.lineTo(256 - 9, topY + 150); g.quadraticCurveTo(256 - 26, topY + 70, 256, topY); g.fill();
+      g.strokeStyle = '#f5f0e0'; g.lineWidth = 3; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(256 - 14 + i * 2, topY + 30 + i * 30); g.lineTo(256 + 14 - i * 2, topY + 42 + i * 30); g.stroke(); } g.fillStyle = '#c9a24a'; g.fillRect(250, topY + 92, 12, 8); g.globalAlpha = 1; }      // (furled up, with its strap)
+    g.fillStyle = '#ddd'; g.beginPath(); g.arc(256, topY - 4, 7, 0, 7); g.fill();
+    g.fillStyle = s.done ? '#39ff14' : '#333'; rr(g, 240, ry - 12, 32, 24, 6); g.fill(); g.fillStyle = '#ffd400'; g.fillRect(244, 392 - 220, 24, 4);
+    if (!s.done) { for (let i = 0; i < 3; i++) { const y = ry + 70 - ((t * 120 + i * 40) % 120); g.fillStyle = `rgba(255,255,255,${0.6 - i * 0.15})`; g.beginPath(); g.moveTo(256, y - 14); g.lineTo(272, y + 4); g.lineTo(240, y + 4); g.fill(); } }
+    g.fillStyle = 'rgba(0,0,0,0.55)'; rr(g, 52, 470, 408, 24, 12); g.fill(); g.fillStyle = '#39ff14'; rr(g, 54, 472, 404 * k, 20, 10); g.fill(); txt(g, s.done ? 'UP ✓' : Math.round(k * 100) + '% UP', 256, 482, 13, '#fff');
+    P.hint(g, s.done ? '☀️ PARASOL UP! CLICK!' : 'SWIPE UP THE POLE · IT SLIDES BACK IF YOU STOP', 82, s.done ? '#39ff14' : '#fff', 16);
+  },
   // ---- TAKE A CARD PAYMENT: the bar top, the card machine with its screen, the card through the slot
   swipe(g, s) {
     P.scene(g, s.title, () => { P.wood(g, 0, 0, S, S, '#5a3a22'); g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, 0, S, S); });
@@ -647,9 +724,9 @@ const ART = {
     g.fillStyle = Math.floor(t * 3) % 2 ? '#ff3b3b' : '#5a0a0a'; g.beginPath(); g.arc(450, 210, 14, 0, 7); g.fill(); txt(g, 'TILT', 450, 238, 12, '#ff6b6b');
     g.fillStyle = '#4a4a4a'; rr(g, 404, 280, 76, 160, 10); g.fill(); for (let i = 0; i < 8; i++) { g.fillStyle = '#d4af37'; g.beginPath(); g.ellipse(442, 420 - i * 16, 26, 7, 0, 0, 7); g.fill(); } txt(g, 'HOPPER', 442, 296, 11, '#ddd');
     if (s.show <= 0) { g.fillStyle = '#c9b48a'; g.save(); g.translate(40, 70); g.rotate(-0.06); rr(g, 0, 0, 150, 90, 6); g.fill(); txt(g, 'REMEMBER IT?', 75, 45, 14, '#5a3a1a'); g.restore(); }
-    else { g.fillStyle = '#fffbe6'; g.save(); g.translate(40, 70); g.rotate(-0.06); rr(g, 0, 0, 150, 90, 6); g.fill(); g.fillStyle = 'rgba(255,255,200,0.7)'; g.fillRect(55, -6, 40, 14); txt(g, 'RESET CODE', 75, 24, 14, '#c62828'); txt(g, s._code, 75, 60, 28, '#222'); g.restore(); g.fillStyle = '#ffd400'; g.fillRect(40, 166, 150 * Math.min(1, s.show / 3), 6); }
+    else { g.fillStyle = '#fffbe6'; g.save(); g.translate(40, 70); g.rotate(-0.06); rr(g, 0, 0, 150, 90, 6); g.fill(); g.fillStyle = 'rgba(255,255,200,0.7)'; g.fillRect(55, -6, 40, 14); txt(g, 'RESET CODE', 75, 24, 14, '#c62828'); txt(g, s._code, 75, 60, 24, '#222', 'center', 140); g.restore(); g.fillStyle = '#ffd400'; g.fillRect(40, 166, 150 * Math.min(1, s.show / 3), 6); }
     g.fillStyle = '#000'; rr(g, 220, 100, 250, 70, 10); g.fill(); g.strokeStyle = '#555'; g.lineWidth = 4; rr(g, 220, 100, 250, 70, 10); g.stroke(); txt(g, 'SERVICE MODE', 345, 114, 11, '#2a7a2a');
-    txt(g, s.bad > 0 ? 'ERROR' : (s.typed || '______'), 345, 142, 32, s.bad > 0 ? '#ff4d4d' : '#39ff14');
+    txt(g, s.bad > 0 ? 'ERROR' : (s.typed || '________'), 345, 142, 28, s.bad > 0 ? '#ff4d4d' : '#39ff14');
     g.fillStyle = '#2a2a30'; rr(g, 136, 190, 238, 290, 14); g.fill();
     for (const k of ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK']) { const b = key(k); g.fillStyle = k === 'OK' ? '#2e7d32' : k === 'C' ? '#c62828' : P.grad(g, 0, b.y, 0, b.y + b.h, ['#5a6aa8', '#3a4a8a']); rr(g, b.x, b.y, b.w, b.h, 12); g.fill(); g.fillStyle = 'rgba(255,255,255,0.15)'; rr(g, b.x + 4, b.y + 3, b.w - 8, 12, 6); g.fill(); txt(g, k, b.x + b.w / 2, b.y + b.h / 2 + 1, 24, '#fff'); }
   },
