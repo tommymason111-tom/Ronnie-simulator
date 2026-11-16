@@ -6,34 +6,46 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-export const RELAY = 'wss://ronnie-mp.ronnie-sim.workers.dev';
-const SEND_HZ = 15;
+export const RELAY = 'wss://ronnie-mp12.ronnie-sim.workers.dev';      // (the 12-player room server; the old 6-player one is ronnie-mp)
+const SEND_HZ = 20;                  // where you are, up to 20 times a second (only when it's changed; once a second regardless)
+// this device's player ID: kept, so dropping out and coming back to the same room makes you the same player again
+export const devicePid = () => { try { let p = localStorage.getItem('rs_pid'); if (!p || !/^[a-z0-9]{8,12}$/.test(p)) { p = Array.from({ length: 10 }, () => 'abcdefghjkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 31)]).join(''); localStorage.setItem('rs_pid', p); } return p; } catch (e) { return null; } };
+// how bent each finger is (0 straight .. 9 curled), thumb first, from a tracked hand's joints: 5 characters a hand
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
+function fingerCurls(hand) {
+  const J = hand && hand.joints; if (!J || !J['index-finger-tip']) return null; let s = '';
+  for (const f of ['thumb', 'index-finger', 'middle-finger', 'ring-finger', 'pinky-finger']) {
+    const m = J[f + '-metacarpal'], p = J[f + '-phalanx-proximal'], t = J[f + '-tip']; if (!m || !p || !t) { s += '0'; continue; }
+    m.getWorldPosition(_a); p.getWorldPosition(_b); t.getWorldPosition(_c); const u = _b.clone().sub(_a).normalize(), v = _c.sub(_b).normalize();
+    s += Math.max(0, Math.min(9, Math.round(Math.acos(Math.max(-1, Math.min(1, u.dot(v)))) / 1.7 * 9))); }
+  return s;
+}
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const newCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
 
 export { RemoteRonnie };
 export class Net {
-  constructor() { this.ws = null; this.id = null; this.host = false; this.players = new Map(); this.on = {}; this.code = null; this.sendT = 0; this.status = 'off'; }
+  constructor() { this.ws = null; this.id = null; this.host = false; this.players = new Map(); this.on = {}; this.code = null; this.sendT = 0; this.status = 'off'; this.rtt = 0; this.lastSent = ''; this.lastSentAt = 0; this.max = 12; }
   get connected() { return this.ws && this.ws.readyState === 1; }
   connect(code, name, relay = RELAY) {
     this.code = code.toUpperCase(); this.name = name; this.status = 'connecting';
-    const ws = this.ws = new WebSocket(`${relay}/room/${this.code}?name=${encodeURIComponent(name)}`);
+    const pid = devicePid(); const ws = this.ws = new WebSocket(`${relay}/room/${this.code}?name=${encodeURIComponent(name)}${pid ? '&pid=' + pid : ''}`);
     ws.onmessage = (ev) => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } this.handle(m); };
-    ws.onclose = () => { if (this.ws !== ws) return; this.status = 'off'; this.emit('status', 'disconnected'); for (const id of [...this.players.keys()]) this.drop(id); };
+    ws.onclose = () => { if (this.ws !== ws) return; if (this.status === 'connecting' && this.on.welcomeFail) this.on.welcomeFail(new Error('The room is full (12 players) or couldn\'t be reached')); this.status = 'off'; this.emit('status', 'disconnected'); for (const id of [...this.players.keys()]) this.drop(id); };
     ws.onerror = () => { this.status = 'off'; this.emit('status', 'error'); };
-    clearInterval(this.ping); this.ping = setInterval(() => this.connected && this.ws.send('{"t":"ping"}'), 20000);
-    return new Promise((res, rej) => { this.on.welcome = res; setTimeout(() => this.status === 'connecting' && rej(new Error('timeout')), 8000); });
+    clearInterval(this.ping); this.ping = setInterval(() => this.connected && this.ws.send(JSON.stringify({ t: 'ping', c: Math.round(performance.now()) })), 2000);      // (every 2s: the ping display)
+    return new Promise((res, rej) => { this.on.welcome = res; this.on.welcomeFail = rej; setTimeout(() => this.status === 'connecting' && rej(new Error('timeout')), 8000); });
   }
   leave() { clearInterval(this.ping); if (this.ws) { const w = this.ws; this.ws = null; try { w.close(); } catch (e) {} } for (const id of [...this.players.keys()]) this.drop(id); this.status = 'off'; }
   send(m) { if (this.connected) this.ws.send(JSON.stringify(m)); }
   emit(k, ...a) { const f = this.on[k]; f && f(...a); }
   handle(m) {
     switch (m.t) {
-      case 'welcome': this.id = m.id; this.host = m.host; this.status = 'on'; for (const p of m.players) this.players.set(p.id, { id: p.id, name: p.name, host: p.host }); this.emit('welcome', m); this.emit('status', 'connected'); break;
+      case 'welcome': this.id = m.id; this.host = m.host; this.hostId = m.hostId || (m.host ? m.id : null); this.hostName = m.hostName || ''; this.orig = m.orig || null; this.saved = m.saved || null; this.back = !!m.back; this.max = m.max || this.max; this.status = 'on'; for (const p of m.players) this.players.set(p.id, { id: p.id, name: p.name, host: p.host, char: p.char || undefined }); this.emit('welcome', m); this.emit('status', 'connected'); break;
       case 'join': this.players.set(m.id, { id: m.id, name: m.name }); this.emit('join', m); break;
       case 'leave': this.drop(m.id); this.emit('leave', m); break;
-      case 'host': if (m.id === this.id) this.host = true; for (const p of this.players.values()) p.host = p.id === m.id; this.emit('host', m); break;
-      case 'pong': break;
+      case 'host': { const was = this.host; this.host = m.id === this.id; this.hostId = m.id; this.hostName = m.name || ''; for (const p of this.players.values()) p.host = p.id === m.id; this.emit('host', m, was); break; }
+      case 'pong': if (m.c) { const r = performance.now() - m.c; this.rtt = this.rtt ? this.rtt * 0.7 + r * 0.3 : r; } break;
       default: { const p = this.players.get(m.f); if (m.t === 'p' && p) { p.pose = m; p.at = performance.now(); (p.buf || (p.buf = [])).push({ t: p.at, m }); if (p.buf.length > 10) p.buf.shift(); } this.emit(m.t, m, p); }
     }
   }
@@ -43,13 +55,19 @@ export class Net {
   update(dt, player, G, scene) {
     if (!this.connected) return;
     if ((this.sendT -= dt) <= 0) {
-      this.sendT = 1 / SEND_HZ;
+      this.sendT += 1 / SEND_HZ; if (this.sendT < 0) this.sendT = 1 / SEND_HZ;
       const P = player, q = P.camera.getWorldQuaternion(new THREE.Quaternion()), r = (v) => Math.round(v * 1000) / 1000;
       // [right, left] by which hand each controller really is (the controllers' own order isn't fixed: on a Quest the
       // first one is often the left, which made everyone else see your arms crossed)
       const side = (k) => P.hands.find(h => h.handedness === k && h.tracked) || null, R0 = side('right'), L0 = side('left');
       const hands = P.flatMode ? [P.flatAnchorPos(), P.head] : [(R0 || P.hands[0]).palm, (L0 || P.hands.find(h => h !== R0) || P.hands[1]).palm];
-      this.send({ t: 'p', c: this.char || 'ronnie', h: [r(P.head.x), r(P.head.y), r(P.head.z)], q: [r(q.x), r(q.y), r(q.z), r(q.w)], l: [r(hands[1].x), r(hands[1].y), r(hands[1].z)], rh: [r(hands[0].x), r(hands[0].y), r(hands[0].z)], s: r(P.scale), st: G.stage, flat: P.flatMode ? 1 : 0 });
+      const r2 = (v) => Math.round(v * 100) / 100;      // (head and hands to the millimetre, which way you're looking to 1/100)
+      const m = { t: 'p', c: this.char || 'ronnie', h: [r(P.head.x), r(P.head.y), r(P.head.z)], q: [r2(q.x), r2(q.y), r2(q.z), r2(q.w)], l: [r(hands[1].x), r(hands[1].y), r(hands[1].z)], rh: [r(hands[0].x), r(hands[0].y), r(hands[0].z)], s: r(P.scale), st: G.stage, flat: P.flatMode ? 1 : 0 };
+      // hand tracking (only if you're actually using it): how bent each finger is, 10 characters for both hands
+      if (!P.flatMode && (R0 && R0.isHand || L0 && L0.isHand)) m.f = (R0 && R0.isHand && fingerCurls(R0.hand) || '-----') + (L0 && L0.isHand && fingerCurls(L0.hand) || '-----');
+      // only what's changed: nothing new, nothing sent (but once a second anyway, so nobody thinks you've gone)
+      const key = JSON.stringify(m), now = performance.now();
+      if (key !== this.lastSent || now - this.lastSentAt > 1000) { this.lastSent = key; this.lastSentAt = now; this.send(m); this.sentN = (this.sentN || 0) + 1; }
     }
     for (const p of this.players.values()) {
       if (!p.pose) continue;

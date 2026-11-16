@@ -474,7 +474,7 @@ function vegAndHits(dt) {
       if (!handled && segDist(player.head, it.prev, it.pos) < 0.17 * player.scale + it.radius) { gag(it); continue; }
     }
     // anything Ronnie throws at someone hits their ragdoll: light hits shove, hard ones knock them out
-    if (it.thrownByPlayer && it.vel.lengthSq() > 1.5 * 1.5) {
+    if (it.thrownByPlayer && !it.remoteOwner && it.vel.lengthSq() > 1.5 * 1.5) {      // (something another player threw: their game does its hits, and tells the host)
       _b.addVectors(it.prev, it.pos).multiplyScalar(0.5);
       let part = null, who = null;
       for (const c of cast) { part = c.partAt(it.pos, it.radius) || c.partAt(_b, it.radius); if (part) { who = c; break; } }
@@ -839,6 +839,17 @@ document.getElementById('menu-btn').addEventListener('click', () => setPaused(tr
 document.getElementById('pause-resume').addEventListener('click', () => { initAudio(); setPaused(false); });
 document.getElementById('pause-restart').addEventListener('click', () => { hostNewGame(curMode()); });
 function curMode() { return director.noNpc ? 'roam0' : (director.mode || chosenMode()); }
+// the FPS / ping display (switched on and off from the pause menu; remembered on this device)
+const statsEl = document.createElement('div'); statsEl.id = 'net-stats';
+statsEl.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:max(6px,env(safe-area-inset-bottom));z-index:60;pointer-events:none;background:rgba(0,0,0,0.72);color:#fff;font:700 12px/1.2 ui-monospace,Menlo,monospace;padding:4px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.35);display:none;white-space:nowrap';
+document.body.appendChild(statsEl);
+let showStats = false; try { showStats = localStorage.getItem('rs_stats') === '1'; } catch (e) {}
+const statsBtn = () => { const b = document.getElementById('pause-stats'); if (b) b.textContent = showStats ? '📶 FPS / PING: ON' : '📶 FPS / PING: OFF'; statsEl.style.display = showStats ? 'block' : 'none'; };
+document.getElementById('pause-stats')?.addEventListener('click', () => { showStats = !showStats; try { localStorage.setItem('rs_stats', showStats ? '1' : '0'); } catch (e) {} statsBtn(); });
+statsBtn();
+setInterval(() => { if (!showStats) return; const n = (window.ronnieMP && window.ronnieMP.net) || null, on = n && n.connected;
+  const ping = on ? Math.round(n.rtt || 0) : null, col = ping === null ? '#fff' : ping < 80 ? '#7cff6a' : ping < 160 ? '#ffd400' : '#ff5252';
+  statsEl.innerHTML = `FPS <b style="color:${G.fps >= 50 ? '#7cff6a' : G.fps >= 28 ? '#ffd400' : '#ff5252'}">${G.fps}</b>` + (on ? ` · PING <b style="color:${col}">${ping}ms</b> · ${n.players.size + 1} IN ROOM` : ' · SOLO'); }, 500);
 document.getElementById('pause-sound').addEventListener('click', (e) => { soundOff = !soundOff; e.currentTarget.textContent = soundOff ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'; });
 document.getElementById('pause-quit').addEventListener('click', () => {
   if (net.connected && !renderer.xr.isPresenting && !window.confirm('Leave the game? You\'ll drop out of the room.')) return;     // (multiplayer: no leaving by accident)
@@ -1216,7 +1227,19 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
   const chip = () => { const n = net.players.size + 1; $('mp-chip').textContent = `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`; $('mp-chip').classList.toggle('on', net.connected); };
   // the host tells anyone who joins late which place and game to load
   net.on.join = (m) => { chip(); if (net.host) net.send({ t: 'setup', to: m.id, place: room.placeId, mode: director.fullMode || director.mode || SEL.mode }); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
-  net.on.leave = () => chip(); net.on.host = () => chip(); net.on.status = () => chip();
+  net.on.leave = () => chip(); net.on.status = () => chip();
+  // a new host (the old one left, or handed it over): everyone's told who; if it's you, your game takes over running
+  // everything (the squad, the food, the game) from exactly where it was
+  net.on.host = (m, was) => { chip();
+    if (m.id === net.id && !was) { mp.becomeHost(); director.imposter && director.imposter.becomeHost && director.imposter.becomeHost(); showBanner('👑 YOU\'RE THE HOST NOW', m.why === 'given' ? 'HANDED BACK TO YOU' : 'THE HOST LEFT: YOU\'RE RUNNING THE GAME'); }
+    else if (m.id !== net.id) showBanner('👑 ' + String(m.name || 'SOMEONE').toUpperCase() + ' IS THE HOST', m.why === 'given' ? 'HOSTING WAS HANDED OVER' : 'THE HOST LEFT');
+    if (was && m.id !== net.id) mp.becomeGuest && mp.becomeGuest(); };
+  // your progress (how big you've got, what you've eaten), kept by the room: drop out and come back, and it's yours again
+  setInterval(() => { if (net.connected && director.running) net.send({ t: 'save', d: { chonk: Math.round(G.chonk * 10) / 10, stage: G.stage, eaten: G.eaten, swats: G.swats }, c: net.char }); }, 2000);
+  let restored = false; const restore = () => { const sv = net.saved; if (restored || !net.back || !sv || !director.running) return; restored = true;
+    if (sv.chonk > G.chonk) addChonk(sv.chonk - G.chonk); G.eaten = Math.max(G.eaten, sv.eaten || 0); G.swats = Math.max(G.swats, sv.swats || 0); G.wristDirty = true;
+    words.show('WELCOME BACK!', player.head.clone().addScaledVector(player.fwd, 1.2), '#7cff6a', 0.14, 2); };
+  setInterval(restore, 1500);
   // tap the room chip: who's in the room, and who each of them is playing as
   { const pop = document.createElement('div'); pop.id = 'roster-pop'; document.body.appendChild(pop);
     const st = document.createElement('style'); st.textContent = `#mp-chip { cursor: pointer; pointer-events: auto; } #mp-chip::after { content: ' ▾'; }
@@ -1226,7 +1249,10 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
 #roster-pop img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid #ffd400; flex: none; } #roster-pop b { display: block; } #roster-pop small { color: #c9d3ff; }`; document.head.appendChild(st);
     const charName = (c) => (c === 'tommy' ? 'Tommy' : (SQUAD[c] && SQUAD[c].name) || 'Ronnie'), esc = (t) => String(t || '').replace(/</g, '&lt;');
     const row = (name, c, tags) => `<div class="p"><img src="./assets/portraits/${c || 'ronnie'}.webp" onerror="this.style.visibility='hidden'"><div><b>${esc(name)}${tags}</b><small>playing as ${esc(charName(c))}</small></div></div>`;
-    const draw = () => { pop.innerHTML = `<h4>👥 ROOM ${esc(net.code)}</h4>` + row(net.name || 'You', net.char, ' (you)' + (net.host ? ' · HOST' : '')) + [...net.players.values()].map(p => row(p.name || 'Player', p.char, p.host ? ' · HOST' : '')).join(''); };
+    const draw = () => { const orig = net.orig && net.orig !== net.id && net.players.get(net.orig);
+      pop.innerHTML = `<h4>👥 ROOM ${esc(net.code)} · ${net.players.size + 1}/${net.max || 12}</h4>` + row(net.name || 'You', net.char, ' (you)' + (net.host ? ' · 👑 HOST' : '')) + [...net.players.values()].map(p => row(p.name || 'Player', p.char, p.host ? ' · 👑 HOST' : '')).join('')
+        + (net.host && orig ? `<button id="give-host" style="margin-top:8px;width:100%;padding:10px;border:0;border-radius:12px;background:#ffd400;color:#111;font:900 13px 'Arial Black',Arial;cursor:pointer">👑 GIVE HOST BACK TO ${esc(orig.name || 'THEM').toUpperCase()}</button>` : '');
+      const gb = pop.querySelector('#give-host'); if (gb) gb.onclick = (e) => { e.stopPropagation(); net.send({ t: 'giveHost', to: net.orig }); pop.classList.remove('on'); }; };
     $('mp-chip').addEventListener('click', (e) => { e.stopPropagation(); draw(); pop.classList.toggle('on'); });
     document.addEventListener('pointerdown', (e) => { if (pop.classList.contains('on') && !pop.contains(e.target) && e.target.id !== 'mp-chip') pop.classList.remove('on'); }, true); }
   net.on.setup = () => {};
@@ -1359,6 +1385,9 @@ class SquadPuppet {
       for (const n of ['uArm' + side, 'lArm' + side]) { const rest = r.pose[n].clone(); r.aim(n, d.x, d.y, d.z); r.pose[n].copy(rest.slerp(r.pose[n], w)); }
     }
     if (!em) r.pose.head.setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.clamp(-Math.asin(f.y), -0.6, 0.6));
+    // hand tracking: their real fingers (sent only by players using it): how bent the fingers are, and the middle one
+    if (!em && pose.f && r.handPose) for (const [side, o] of [['R', 0], ['L', 5]]) { const hp = r.handPose['lArm' + side], s5 = pose.f.slice(o, o + 5); if (!hp || s5[1] === '-') continue;
+      const d = (i) => (s5.charCodeAt(i) - 48) / 9, curl = (d(1) + d(3) + d(4)) / 3, mid = d(2); hp.curl += (curl - hp.curl) * Math.min(1, dt * 15); hp.mid += (mid - hp.mid) * Math.min(1, dt * 15); }
     r.animate(dt); r.sync(); if (em) this.emote.place(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag();
   }
   headPos() { return this.c.headPos(new THREE.Vector3()); }
