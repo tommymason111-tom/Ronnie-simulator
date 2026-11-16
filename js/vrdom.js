@@ -85,7 +85,9 @@ export class DomPanel {
   }
   // a point on the panel (uv) -> where that is on the page
   client(uv) { const r = this.rect; return r ? { x: r.left + uv.x * r.width, y: r.top + (1 - uv.y) * r.height } : null; }
-  target(p) { const e = document.elementFromPoint(p.x, p.y); return e; }
+  // what's under a point on the page: the top thing that's actually drawn on the panel. Something left off the panel
+  // (the 3D Ronnie's canvas over the title screen) mustn't take the tap: it did, and PLAY never got pressed
+  target(p) { const skip = this.skip; for (const e of document.elementsFromPoint(p.x, p.y)) { if (skip && e.closest && e.closest(skip)) continue; return e; } return null; }
   fire(type, el, p, Cls = PointerEvent) {
     if (!el) return; const o = { bubbles: true, cancelable: true, clientX: p.x, clientY: p.y, pointerId: 31, pointerType: 'touch', isPrimary: true, button: 0, buttons: type === 'pointerup' || type === 'click' ? 0 : 1 };
     try { el.dispatchEvent(new Cls(type, o)); } catch (e) { el.dispatchEvent(new MouseEvent(type, o)); }
