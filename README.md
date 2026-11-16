@@ -71,7 +71,7 @@ Each attack slams an animated card in front of your face ("AIDAN ATTACKS! AIDAN 
 
 ## Game modes
 
-Pick a mode on the start screen, or press a button on the **GAME MODES board** on the bedroom wall behind you (touch it with your hand in VR, tap it on a phone). Each mode ends with a receipt.
+Pick a mode on the start screen, or change it any time from **GAME MODE** in the pause menu. Each mode ends with a receipt.
 
 | Mode | How it plays |
 |---|---|
@@ -140,7 +140,7 @@ js/ragdoll.js     ragdoll bodies, hinge/cone joints with limits, muscles, auto-s
 js/character.js   shared character behaviour: speech, walking, poses, throwing, hits, knockouts, grabbing
 js/tommy.js       Tommy: his model, eyes, spotlight, broccoli attacks
 js/squad.js       the squad: looks (built from shapes), lines and interventions
-js/modes.js       game modes, intervention meter, roast bubbles, mode board, receipts
+js/modes.js       game modes, intervention meter, roast bubbles, receipts
 js/dialogue.js    Tommy's line banks (from §3 of the design doc)
 js/room.js        the bedroom, furniture, joke signs, lighting
 js/foods.js       food meshes + the small physics engine

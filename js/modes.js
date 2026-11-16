@@ -6,7 +6,7 @@
 //   VEGGIE WAR         — the squad attacks in waves of veg; swat, block, eat
 //   CATCH & CHONK      — Harry "throws the food away" — catch it in your mouth
 //   CHONK-OFF          — 60 seconds, eat as much as you can (1 player or 2 player pass-and-play)
-// Modes are picked on the start screen or on the MODE BOARD on the bedroom wall
+// Modes are picked on the start screen or from GAME MODE in the pause menu
 // (press a button with your hand, or tap it on a phone).
 import * as THREE from 'three';
 import { SquadMember, SQUAD } from './squad.js';
@@ -166,7 +166,6 @@ export class Director {
     this.bubbles = [];
     this.log = [];
     this.used = new Map();
-    this.buildBoard();
     this.buildReceipt();
   }
 
@@ -315,7 +314,7 @@ export class Director {
       if (score > best) { safeSet('rs_best_chonkoff', score); lines.push(['NEW RECORD!', score]); }
       else lines.push(['BEST EVER', best]);
       if (this.mode === 'chonkoff2') {
-        if (this.player2.stage === 1) { this.player2.p1 = score; lines.push(['PLAYER 1', score]); lines.push(['Pass to PLAYER 2, then press', '']); lines.push(['EAT-OFF 2P on the mode board', '']); }
+        if (this.player2.stage === 1) { this.player2.p1 = score; lines.push(['PLAYER 1', score]); lines.push(['Pass to PLAYER 2, then pause:', '']); lines.push(['GAME MODE, EAT-OFF 2 PLAYERS', '']); }
         else {
           const p1 = this.player2.p1, p2 = score;
           lines.push(['PLAYER 1', p1]); lines.push(['PLAYER 2', p2]);
@@ -347,7 +346,7 @@ export class Director {
   update(dt, ctx) {
     const g = this.g;
     if (this.imposter) { this.imposter.update(dt); return; }
-    if (this.remote) { this.updateBoard(dt, ctx); this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
+    if (this.remote) { this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
     if (this.pending) {                       // an announced attack that hasn't landed yet
       const pd = this.pending, P = g.player;
       pd.t -= dt; pd.age = (pd.age || 0) + dt;
@@ -359,7 +358,6 @@ export class Director {
         else this.stun(pd.who, pd.key);
       }
     }
-    this.updateBoard(dt, ctx);
     this.updateBubbles(dt, ctx);
     if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; }
     if (!this.running) return;
@@ -1038,75 +1036,6 @@ export class Director {
     return false;
   }
 
-  // ------------------------------------------------------------------ the mode board (on the front wall)
-  buildBoard() {
-    const g = this.g, grp = new THREE.Group();
-    const nBtn = modesFor(g.room.placeId || 'bedroom').length, W = 0.95, H = 0.45 + nBtn * 0.125;
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshLambertMaterial({ map: canvasTex(512, 620, (c, w, h) => {
-      c.fillStyle = '#1b2a1b'; c.fillRect(0, 0, w, h);
-      c.strokeStyle = '#8a6a3a'; c.lineWidth = 22; c.strokeRect(11, 11, w - 22, h - 22);
-      fitText(c, 'GAME MODES', 30, 26, w - 60, 60, 52, { color: '#ffd400' });
-      fitText(c, 'touch a button to play', 30, 78, w - 60, 30, 22, { color: '#cfe8cf' });
-    }) }));
-    grp.add(back);
-    this.buttons = modesFor(g.room.placeId || 'bedroom').map((id, i) => {
-      const tex = canvasTex(512, 96, () => {});
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(W * 0.86, 0.105, 0.03), [0, 0, 0, 0, new THREE.MeshBasicMaterial({ map: tex }), 0].map(m => m || new THREE.MeshLambertMaterial({ color: 0x333333 })));
-      mesh.position.set(0, H / 2 - 0.25 - i * 0.125, 0.02);
-      grp.add(mesh);
-      const btn = { id, mesh, tex, pressedT: 0 };
-      this.drawButton(btn, false);
-      return btn;
-    });
-    // front wall, behind where you start, between the posters
-    const bp = g.room.board || { x: 0.17, y: 1.38, z: g.room.bounds.z1 - 0.012, ry: Math.PI };
-    grp.position.set(bp.x, bp.y, bp.z);
-    grp.rotation.y = bp.ry ?? Math.PI;
-    g.scene.add(grp);
-    this.board = grp;
-    this.boardCool = 0;
-  }
-  drawButton(btn, active) {
-    const c = btn.tex.image.getContext('2d'), w = 512, h = 96;
-    c.clearRect(0, 0, w, h);
-    c.fillStyle = active ? '#39ff14' : btn.id === this.mode && this.running ? '#ffd400' : '#f5f0e6';
-    roundRect(c, 4, 4, w - 8, h - 8, 18); c.fill();
-    fitText(c, MODES[btn.id].name, 18, 6, w - 36, 52, 40, { color: '#111' });
-    fitText(c, MODES[btn.id].desc, 18, 56, w - 36, 34, 20, { color: '#444', font: 'Arial' });
-    btn.tex.needsUpdate = true;
-  }
-  updateBoard(dt, ctx) {
-    // multiplayer: the GAME MODES board is only there for the host (everyone else goes where the host says)
-    const guest = !!(this.mp && this.mp.net.connected && !this.mp.net.host);
-    if (this.board && this.board.visible === guest) this.board.visible = !guest;
-    if (guest) return;
-    this.boardCool -= dt;
-    for (const b of this.buttons) if (b.pressedT > 0) { b.pressedT -= dt; if (b.pressedT <= 0) this.drawButton(b, false); }
-    if (this.boardCool > 0) return;
-    // VR: press a button with your hand / finger
-    for (const pt of this.g.popPoints(true)) {
-      for (const b of this.buttons) {
-        b.mesh.getWorldPosition(_v);
-        const dz = Math.abs(pt.z - _v.z), dx = Math.abs(pt.x - _v.x), dy = Math.abs(pt.y - _v.y);
-        if (dz < 0.07 && dx < 0.4 && dy < 0.05) { this.pressButton(b); return; }
-      }
-    }
-  }
-  pressButton(b) {
-    this.boardCool = 1.5;
-    b.pressedT = 0.6; this.drawButton(b, true);
-    sfx('tap', null, 1);
-    this.start(b.id);
-    for (const o of this.buttons) if (o !== b) this.drawButton(o, false);
-  }
-  tapBoard(ray) {
-    if (this.board && !this.board.visible) return false;
-    for (const b of this.buttons) {
-      const hit = ray.intersectBox(new THREE.Box3().setFromObject(b.mesh), _v);
-      if (hit) { this.pressButton(b); return true; }
-    }
-    return false;
-  }
 
   // ------------------------------------------------------------------ receipt
   buildReceipt() {
