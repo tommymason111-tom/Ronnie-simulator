@@ -1354,7 +1354,7 @@ class SquadPuppet {
       if (last.ts != null) { const o = last.t - last.ts;          // (their clock -> ours: the quickest trip seen, creeping up slowly so a drifting clock can't strand it)
         J.off = J.off == null ? o : Math.min(o, J.off + (now - (J.at || now)) * 0.002);
         const late = o - J.off; J.dev += (late - J.dev) * (late > J.dev ? 0.25 : 0.01);
-        const prev = J.seen; if (prev && prev.ts != null && last.ts > prev.ts) J.gap += (Math.min(250, last.ts - prev.ts) - J.gap) * 0.1; }
+        const prev = J.seen; if (prev && prev.ts != null && last.ts > prev.ts) J.gap += (Math.min(120, last.ts - prev.ts) - J.gap) * 0.1; }
       J.seen = last; J.at = now; }
     J.D += (Math.min(350, Math.max(60, J.gap * 1.1 + J.dev * 1.5 + 8)) - J.D) * 0.02;      // (eased, so the playback never jumps)
     // the playback clock: normally just "now, a moment ago". If the poses stop coming (a stall: a lost packet holds up
