@@ -1286,10 +1286,11 @@ renderer.setAnimationLoop(() => { try { frame(); } catch (e) { if (frameErrs++ <
 const net = (window.ronnieMP && window.ronnieMP.net) || new Net();
 net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie';
 { const $ = (id) => document.getElementById(id);
-  const chip = () => { const n = net.players.size + 1; $('mp-chip').textContent = `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`; $('mp-chip').classList.toggle('on', net.connected); };
+  const chip = () => { const n = net.players.size + 1; $('mp-chip').textContent = net.status === 'reconnecting' ? `📶 ROOM ${net.code} · RECONNECTING…` : `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`; $('mp-chip').classList.toggle('on', net.connected || net.status === 'reconnecting'); };
   // the host tells anyone who joins late which place and game to load
   net.on.join = (m) => { chip(); if (net.host) net.send({ t: 'setup', to: m.id, place: room.placeId, mode: director.fullMode || director.mode || SEL.mode }); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
   net.on.leave = () => chip(); net.on.host = () => chip(); net.on.status = () => chip();
+  net.on.rejoined = () => { chip(); words.show('BACK IN!', player.head.clone().addScaledVector(player.fwd, 1.2), '#39ff14', 0.12, 1.4); };
   // tap the room chip: who's in the room, and who each of them is playing as
   { const pop = document.createElement('div'); pop.id = 'roster-pop'; document.body.appendChild(pop);
     const st = document.createElement('style'); st.textContent = `#mp-chip { cursor: pointer; pointer-events: auto; } #mp-chip::after { content: ' ▾'; }

@@ -16,20 +16,35 @@ export class Net {
   constructor() { this.ws = null; this.id = null; this.host = false; this.players = new Map(); this.on = {}; this.code = null; this.sendT = 0; this.status = 'off'; }
   get connected() { return this.ws && this.ws.readyState === 1; }
   connect(code, name, relay = RELAY) {
-    this.code = code.toUpperCase(); this.name = name; this.status = 'connecting';
-    const ws = this.ws = new WebSocket(`${relay}/room/${this.code}?name=${encodeURIComponent(name)}`);
-    ws.onmessage = (ev) => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } this.handle(m); };
-    ws.onclose = () => { if (this.ws !== ws) return; this.status = 'off'; this.emit('status', 'disconnected'); for (const id of [...this.players.keys()]) this.drop(id); };
-    ws.onerror = () => { this.status = 'off'; this.emit('status', 'error'); };
+    this.code = code.toUpperCase(); this.name = name; this.relay = relay; this.wanted = true; this.status = 'connecting';
+    this.open();
     clearInterval(this.ping); this.ping = setInterval(() => this.connected && this.ws.send('{"t":"ping"}'), 20000);
     return new Promise((res, rej) => { this.on.welcome = res; setTimeout(() => this.status === 'connecting' && rej(new Error('timeout')), 8000); });
   }
-  leave() { clearInterval(this.ping); if (this.ws) { const w = this.ws; this.ws = null; try { w.close(); } catch (e) {} } for (const id of [...this.players.keys()]) this.drop(id); this.status = 'off'; }
+  open() {
+    const ws = this.ws = new WebSocket(`${this.relay}/room/${this.code}?name=${encodeURIComponent(this.name)}`);
+    ws.onmessage = (ev) => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } this.handle(m); };
+    ws.onclose = () => { if (this.ws !== ws) return; const was = this.status; this.status = 'off'; for (const id of [...this.players.keys()]) this.drop(id);
+      // dropped out without meaning to (a phone off the Wi-Fi onto 4G, a tunnel, a blip): straight back into the same room
+      // and the same game, as the same name and character, trying again every few seconds for up to 3 minutes
+      if (this.wanted && (was === 'on' || this.retryT)) { this.retry(); this.emit('status', 'reconnecting'); } else this.emit('status', 'disconnected'); };
+    ws.onerror = () => { if (!this.retryT) { this.status = 'off'; this.emit('status', 'error'); } };
+  }
+  retry() {
+    if (!this.retryT) this.retryT = performance.now();
+    if (performance.now() - this.retryT > 180000) { this.retryT = 0; this.wanted = false; this.emit('status', 'disconnected'); return; }
+    this.tries = (this.tries || 0) + 1; clearTimeout(this.retryTimer);
+    this.retryTimer = setTimeout(() => { if (!this.wanted || this.connected) return; this.status = 'reconnecting'; this.open(); }, Math.min(5000, 400 * 2 ** Math.min(4, this.tries - 1)));
+  }
+  leave() { this.wanted = false; this.retryT = 0; clearTimeout(this.retryTimer); clearInterval(this.ping); if (this.ws) { const w = this.ws; this.ws = null; try { w.close(); } catch (e) {} } for (const id of [...this.players.keys()]) this.drop(id); this.status = 'off'; }
   send(m) { if (this.connected) this.ws.send(JSON.stringify(m)); }
   emit(k, ...a) { const f = this.on[k]; f && f(...a); }
   handle(m) {
     switch (m.t) {
-      case 'welcome': this.id = m.id; this.host = m.host; this.status = 'on'; for (const p of m.players) this.players.set(p.id, { id: p.id, name: p.name, host: p.host }); this.emit('welcome', m); this.emit('status', 'connected'); break;
+      case 'welcome': { const back = !!this.retryT; this.retryT = 0; this.tries = 0; this.id = m.id; this.host = m.host; this.status = 'on'; for (const p of m.players) this.players.set(p.id, { id: p.id, name: p.name, host: p.host });
+        if (back) { this.send({ t: 'hi', name: this.name, char: this.char, v: window.GAME_BUILD }); this.emit('rejoined', m); }      // (back in: tell everyone who we are again)
+        else this.emit('welcome', m);
+        this.emit('status', 'connected'); break; }
       case 'join': this.players.set(m.id, { id: m.id, name: m.name }); this.emit('join', m); break;
       case 'leave': this.drop(m.id); this.emit('leave', m); break;
       case 'host': if (m.id === this.id) this.host = true; for (const p of this.players.values()) p.host = p.id === m.id; this.emit('host', m); break;
@@ -53,11 +68,16 @@ export class Net {
       const H = P.vrEmoteHold; if (H) { this.send({ t: 'p', c: this.char || 'ronnie', h: H.h.map(r), q: H.q.map(r), l: H.l.map(r), rh: H.rh.map(r), s: r(P.scale), st: G.stage, flat: 0, ts: Math.round(performance.now()) }); }
       else this.send({ t: 'p', c: this.char || 'ronnie', h: [r(P.head.x), r(P.head.y), r(P.head.z)], q: [r(q.x), r(q.y), r(q.z), r(q.w)], l: [r(hands[1].x), r(hands[1].y), r(hands[1].z)], rh: [r(hands[0].x), r(hands[0].y), r(hands[0].z)], s: r(P.scale), st: G.stage, flat: P.flatMode ? 1 : 0, ts: Math.round(performance.now()) });
     }
+    const now = performance.now();
     for (const p of this.players.values()) {
       if (!p.pose) continue;
       if (p.pose.c && !p.char) p.char = p.pose.c;
       if (!p.avatar) p.avatar = (this.makeAvatar && this.makeAvatar(p)) || new RemoteRonnie(scene, p.name);
-      p.avatar.update(dt, p.pose);
+      // nothing from them for 8 seconds (their connection's gone, and the room hasn't noticed yet): hide them rather than
+      // leave a frozen ghost standing there. They're back the moment they send anything
+      const stale = now - (p.at || now) > 8000;
+      if (stale !== !!p.stale) { p.stale = stale; const a = p.avatar; if (a.impVis) { if (!a.impHidden) a.impVis(!stale); } else if (a.g) a.g.visible = !stale; }
+      if (!stale) p.avatar.update(dt, p.pose);
     }
   }
 }
