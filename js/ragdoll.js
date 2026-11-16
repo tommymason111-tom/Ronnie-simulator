@@ -851,7 +851,7 @@ export class Ragdoll {
 
   // Spawn / teleport: stand at (x, z) facing yaw, animated.
   placeAt(x, z, yaw) {
-    this.yaw = yaw; this.root.set(x, 0, z);
+    this.yaw = yaw; this.root.set(x, 0, z); this._lastP = null;
     this.setMode('anim');
     this.animate(0);
     for (const p of this.list) { p.body.velocity.setZero(); p.body.angularVelocity.setZero(); }
@@ -861,7 +861,7 @@ export class Ragdoll {
   setMode(mode, strength = 0) {
     this.strength = mode === 'ragdoll' ? strength : 0;
     if (mode === this.mode) return;
-    const dyn = mode === 'ragdoll';
+    const dyn = mode === 'ragdoll'; if (dyn) { this._lastP = null; this.fkReady = false; }
     for (const p of this.list) {
       const b = p.body;
       b.type = dyn ? CANNON.Body.DYNAMIC : CANNON.Body.KINEMATIC;
@@ -899,11 +899,17 @@ export class Ragdoll {
       const t = Math.min(1, this.blendT / this.blendDur);
       k = t * t * (3 - 2 * t);
     }
+    const last = this._lastP || (this._lastP = this.list.map(() => null)); this.fkReady = true;
     this.list.forEach((p, i) => {
       const b = p.body;
       let P = fk[i].p, Q = fk[i].q;
       if (k < 1) { P = _v.copy(this._from[i].p).lerp(fk[i].p, k); Q = _q.copy(this._from[i].q).slerp(fk[i].q, k); }
-      if (dt > 0) b.velocity.set((P.x - b.position.x) / dt, (P.y - b.position.y) / dt, (P.z - b.position.z) / dt);
+      // its speed is how far the ANIMATION moved it since last frame, never measured from where the body is now: the physics
+      // step carries a moving body on past its spot, and measuring from there fed back on itself (an arm overshooting further
+      // each frame, then swinging metres either side of the body; worst at a headset's 72/90 frames a second)
+      const L = last[i];
+      if (dt > 0 && L && L.distanceToSquared(P) < 1) b.velocity.set((P.x - L.x) / dt, (P.y - L.y) / dt, (P.z - L.z) / dt); else b.velocity.set(0, 0, 0);
+      (last[i] || (last[i] = P.clone())).copy(P);
       b.position.set(P.x, P.y, P.z);
       b.quaternion.set(Q.x, Q.y, Q.z, Q.w);
       b.angularVelocity.setZero();
@@ -994,6 +1000,8 @@ export class Ragdoll {
 
   // ---- queries ----
   pos(name, out) { const b = this.parts[name].body.position; return out.set(b.x, b.y, b.z); }
+  animPos(name, out) { const i = this.list.indexOf(this.parts[name]), L = this._lastP && this._lastP[i]; if (this.fkReady && L) return out.copy(L); return this.pos(name, out); }
+  animQuat(name, out) { const i = this.list.indexOf(this.parts[name]); if (this.fkReady && this._fk && this._fk[i]) return out.copy(this._fk[i].q); return this.partQuat(name, out); }
   vel(name, out) { const b = this.parts[name].body.velocity; return out.set(b.x, b.y, b.z); }
   // world point at the end of a limb (e.g. the hand)
   tip(name, out) {

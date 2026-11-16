@@ -34,7 +34,7 @@ export class Net {
       case 'leave': this.drop(m.id); this.emit('leave', m); break;
       case 'host': if (m.id === this.id) this.host = true; for (const p of this.players.values()) p.host = p.id === m.id; this.emit('host', m); break;
       case 'pong': break;
-      default: { const p = this.players.get(m.f); if (m.t === 'p' && p) { p.pose = m; p.at = performance.now(); (p.buf || (p.buf = [])).push({ t: p.at, m }); if (p.buf.length > 10) p.buf.shift(); } this.emit(m.t, m, p); }
+      default: { const p = this.players.get(m.f); if (m.t === 'p' && p) { p.pose = m; p.at = performance.now(); (p.buf || (p.buf = [])).push({ t: p.at, ts: typeof m.ts === 'number' ? m.ts : null, m }); if (p.buf.length > 16) p.buf.shift(); } this.emit(m.t, m, p); }
     }
   }
   drop(id) { const p = this.players.get(id); if (p && p.avatar) p.avatar.dispose(); this.players.delete(id); }
@@ -50,8 +50,8 @@ export class Net {
       const side = (k) => P.hands.find(h => h.handedness === k && h.tracked) || null, R0 = side('right'), L0 = side('left');
       const hands = P.flatMode ? [P.flatAnchorPos(), P.head] : [(R0 || P.hands[0]).palm, (L0 || P.hands.find(h => h !== R0) || P.hands[1]).palm];
       // (watching your own emote from out front in VR: everyone else still sees you where you were standing)
-      const H = P.vrEmoteHold; if (H) { this.send({ t: 'p', c: this.char || 'ronnie', h: H.h.map(r), q: H.q.map(r), l: H.l.map(r), rh: H.rh.map(r), s: r(P.scale), st: G.stage, flat: 0 }); }
-      else this.send({ t: 'p', c: this.char || 'ronnie', h: [r(P.head.x), r(P.head.y), r(P.head.z)], q: [r(q.x), r(q.y), r(q.z), r(q.w)], l: [r(hands[1].x), r(hands[1].y), r(hands[1].z)], rh: [r(hands[0].x), r(hands[0].y), r(hands[0].z)], s: r(P.scale), st: G.stage, flat: P.flatMode ? 1 : 0 });
+      const H = P.vrEmoteHold; if (H) { this.send({ t: 'p', c: this.char || 'ronnie', h: H.h.map(r), q: H.q.map(r), l: H.l.map(r), rh: H.rh.map(r), s: r(P.scale), st: G.stage, flat: 0, ts: Math.round(performance.now()) }); }
+      else this.send({ t: 'p', c: this.char || 'ronnie', h: [r(P.head.x), r(P.head.y), r(P.head.z)], q: [r(q.x), r(q.y), r(q.z), r(q.w)], l: [r(hands[1].x), r(hands[1].y), r(hands[1].z)], rh: [r(hands[0].x), r(hands[0].y), r(hands[0].z)], s: r(P.scale), st: G.stage, flat: P.flatMode ? 1 : 0, ts: Math.round(performance.now()) });
     }
     for (const p of this.players.values()) {
       if (!p.pose) continue;
