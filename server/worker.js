@@ -51,7 +51,7 @@ export class Room {
 // ---- real voices (ElevenLabs) for typed chat and any line without a pre-made clip: GET /tts?v=<character>&t=<text>
 // The key is a Worker secret (ELEVENLABS_KEY), never in the game. Each line is made once and then served from the
 // cache for everyone (a whole lobby hearing one message costs one request). Short lines only, a few a minute per person.
-const VOICES = { tommy: '__TOMMY_VOICE_ID__' };
+const VOICES = { tommy: 'aAMpOb3QMsx7SxE7WkuG' };      // (ElevenLabs voice ids: not secret)
 const TTS_MAX = 160, perIP = new Map();
 async function tts(req, env, ctx, url) {
   const v = url.searchParams.get('v') || '', t = (url.searchParams.get('t') || '').replace(/\s+/g, ' ').trim().slice(0, TTS_MAX);
