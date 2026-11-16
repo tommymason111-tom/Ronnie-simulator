@@ -1466,6 +1466,6 @@ class SquadPuppet {
 window.RS = { onFrame: [], resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
 // developer mode (Settings cog -> DEVELOPER MODE): the test bench comes up once you press PLAY. (Only for this visit:
 // starting the page again goes back to normal)
-{ let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1'; sessionStorage.removeItem('rs_dev'); } catch (e) {}
+{ let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; sessionStorage.removeItem('rs_dev'); } catch (e) {}
   if (dev) { let on = false; const go = () => { if (on) return; on = true; import('./devmode.js').then(m => m.startDev(window.RS)).catch(e => console.warn('dev', e)); };
     for (const id of ['play-flat', 'enter-vr']) { const b = document.getElementById(id); if (b) b.addEventListener('click', () => setTimeout(go, 400)); } } }
