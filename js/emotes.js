@@ -6,12 +6,8 @@
 //
 //   MIDDLE FINGER  both hands up in front of the chest, backs of the hands out, middle fingers up. Chin up, cocky hip,
 //                  two little forward pumps with a nod.
-//   THE GRIDDY     as it's really done: a bouncy hop on the standing foot every beat while the other foot is lifted
-//                  behind (heel up, knee bent) and then kicked out in front to land on its HEEL with the toes up and
-//                  the leg nearly straight, swapping feet every beat and creeping forward. The body leans forward, the
-//                  arms swing hard from the shoulders in opposition to the legs, elbows bent, loose fists, swinging
-//                  right back behind the hips. Every 8 counts: the "goggles", hands up round the eyes with the
-//                  elbows out wide and the head tipped back a touch, feet still going.
+//   THE GRIDDY     the Fortnite emote, limb by limb: heel taps out in front while hopping on the other foot, both
+//                  arms flaring out and tucking in together, a hunch, then the OK-sign goggles over the eyes (see griddy())
 //   SIX SEVEN      elbows tucked in, forearms out front palms up, see-sawing ("six" right hand, "seven" left hand)
 //   BACKFLIP       crouch, jump, tucked backwards somersault, land, arms up.
 import * as THREE from 'three';
@@ -21,7 +17,7 @@ import { FINGERS, BENDS } from './hands.js';
 
 export const EMOTES = [
   { id: 'finger', name: 'MIDDLE FINGER', icon: '🖕', dur: 3.4 },
-  { id: 'griddy', name: 'THE GRIDDY', icon: '🕺', dur: 6.8 },
+  { id: 'griddy', name: 'THE GRIDDY', icon: '🕺', dur: 6.5 },
   { id: 'sixseven', name: 'SIX SEVEN', icon: '🤲', dur: 4.0 },
   { id: 'backflip', name: 'BACKFLIP', icon: '🤸', dur: 2.6 },
 ];
@@ -179,6 +175,7 @@ export class EmotePlayer {
       mh.root.visible = swap; if (r.handHide) r.handHide[name] = swap;
       if (!swap) continue;
       const wr = new THREE.Vector3(), dir = new THREE.Vector3(); r.wrist(name, wr, dir);
+      const wantA = out.along && out.along[S]; if (wantA) dir.set(...wantA).normalize().applyAxisAngle(Y, r.yaw);      // (fingers aimed on their own, not just carrying on from the forearm)
       const fq = r.partQuat(name, new THREE.Quaternion());
       const want = out.back && out.back[S], back = want ? new THREE.Vector3(...want).applyAxisAngle(Y, r.yaw) : ax.palm.clone().negate().applyQuaternion(fq);
       const g = r.group, gk = g ? (g.scale.x + g.scale.y) / 2 : 1; r.drawn(wr);
@@ -204,24 +201,61 @@ export class EmotePlayer {
     return { hand: t > 0.25 ? { L: 'finger', R: 'finger' } : null, back: { L: [0, 0, 1], R: [0, 0, 1] }, bob: -0.012 * this.kH };
   }
 
-  // THE GRIDDY (see the top of the file). One beat = one step = 0.3 s.
+  // THE GRIDDY, keyed limb by limb from the Fortnite "Get Griddy" emote (one 6.15 s loop):
+  //   0.0-2.5 s  the shuffle: a step every 0.4 s, the right heel strikes at 0.2 s. The standing leg is bent and springs
+  //              a little hop every step; the other leg kicks its heel back (knee bent ~80°) then swings through to land
+  //              HEEL FIRST out in front, leg nearly straight, toes up ~30°, in line (no sideways step), all on the spot.
+  //              Both arms move TOGETHER: flared out wide (upper arms ~70° out, elbows bent ~90°, fists forward) as the
+  //              right heel lands, tucked in to the ribs (elbows ~80°, fists in front of the waist) as the left lands.
+  //              Loose fists. The body leans ~20° forward, the hips sway and twist with the lead leg, the head keeps
+  //              looking ahead and nods on every hop.
+  //   2.5-2.9 s  the hunch: a quick dip, knees bent, the chest down to ~45°, head dipping
+  //   2.9-3.6 s  the goggles: pop upright, both hands up over the eyes in the OK sign (thumb and first finger in a ring
+  //              round each eye, the other three fingers up and fanned), palms to the face, elbows out wide; the feet
+  //              keep hopping
+  //   3.6-6.15 s the shuffle again
   griddy(t) {
-    // part one: arms straight down, just out from the sides, the forearms flicking up now and then; part two: arms bent
-    // up, both hands making the OK sign at face level (the goggles), bouncing. The legs never stop: steady tiptoe steps forward;
-    // both arms always move together
-    const r = this.c.rag, P = r.pose, kH = this.kH, peace = ss((t - 3.0) / 0.35);
-    const s = this.walkLegs(t, 1.9, 0.24), tip = Math.abs(s);
-    const flick = Math.pow(Math.max(0, Math.sin(t * Math.PI * 1.1)), 6), pump = Math.sin(t * Math.PI * 1.9) * 0.12;
-    for (const [S, sx] of [['L', 1], ['R', -1]]) {
-      const fl = flick;      // (both together)
-      const du = [0.3, -1, 0.06], dl = mixv([0.32, -1, 0.08], [0.25, 0.35, 0.9], fl);
-      const pu = [0.72, -0.3 + pump, 0.55], pl = [-0.7, 0.62, 0.34];      // (forearms up and in: the OK rings held over the eyes, like goggles)
-      this.standArms(S, sx, mixv(du, pu, peace), mixv(dl, pl, peace));
+    const r = this.c.rag, P = r.pose, kH = this.kH, TAU = Math.PI * 2;
+    const hunch = ramp(t, 2.45, 2.66) * (1 - ramp(t, 2.84, 3.0)), gog = ramp(t, 2.86, 3.04) * (1 - ramp(t, 3.48, 3.68));
+    // ---- legs: each leg's own 0.8 s cycle (q = 0: its heel strike out in front)
+    const qR = (((t - 0.2) / 0.8) % 1 + 1) % 1, qL = (qR + 0.5) % 1;
+    // [q, thigh angle forward from straight down, knee bend] (radians)
+    const KEYS = [[0, 0.5, 0.06], [0.22, 0.42, 0.1], [0.45, 0.1, 0.32], [0.62, 0.02, 0.42], [0.76, -0.04, 0.4], [0.86, 0.3, 1.4], [0.95, 0.52, 0.55], [1, 0.5, 0.06]];
+    const legAt = (q) => { let k = 0; while (k < KEYS.length - 2 && q > KEYS[k + 1][0]) k++; const [q0, a0, b0] = KEYS[k], [q1, a1, b1] = KEYS[k + 1], u = ss((q - q0) / (q1 - q0)); return [a0 + (a1 - a0) * u, b0 + (b1 - b0) * u]; };
+    const T1 = 0.37, T2 = 0.43;      // thigh and shin (the rig's proportions)
+    let lowest = 0;
+    for (const [S, sx, q] of [['L', 1, qL], ['R', -1, qR]]) {
+      let [a, b] = legAt(q); a = a + (0.5 - a) * hunch * 0.6; b = b + (1.15 - b) * hunch;      // (the hunch: both knees well bent)
+      r.aim('uLeg' + S, sx * 0.045, -Math.cos(a), Math.sin(a)); r.aim('lLeg' + S, sx * 0.03, -Math.cos(a - b), Math.sin(a - b));
+      lowest = Math.max(lowest, T1 * Math.cos(a) + T2 * Math.cos(a - b));      // (how far down this foot reaches)
     }
-    P.chest.setFromAxisAngle(X, 0.12 + 0.05 * tip).multiply(_q.setFromAxisAngle(Y, s * 0.12)); P.pelvis.setFromAxisAngle(Y, -s * 0.1);
-    P.head.setFromAxisAngle(X, -0.05 + Math.sin(t * Math.PI * 1.9) * 0.08 * peace);
-    this.at(t, 0.2, 'a', () => this.say('🕺 THE GRIDDY', null, 'drum')); this.at(t, 3.1, 'b', () => this.say('👌 👌', null, 'clap'));
-    return { hand: { L: peace > 0.5 ? 'ok' : 'fist', R: peace > 0.5 ? 'ok' : 'fist' }, back: peace > 0.5 ? { L: [0, 0, 1], R: [0, 0, 1] } : null, bob: (0.035 + tip * 0.025) * kH };
+    // the body sits down onto the lower foot, and hops up off it once a step (landing on each heel strike)
+    const sp = (((t - 0.2) / 0.4) % 1 + 1) % 1, hop = Math.sin(Math.PI * sp) * 0.045 * (1 - hunch);
+    const bob = ((lowest - (T1 + T2)) + hop) * kH;
+    // ---- arms: together, out wide as the right heel lands, in to the ribs as the left lands
+    const o = 0.5 + 0.5 * Math.cos(TAU * qR);
+    const uOut = [0.95, -0.27, 0.16], lOut = [0.5, -0.12, 0.86], uIn = [0.2, -0.95, 0.24], lIn = [-0.5, 0.14, 0.86];
+    const uHun = [0.28, -0.9, 0.35], lHun = [-0.2, -0.1, 0.97];
+    const uGog = [0.63, 0.33, 0.7], lGog = [-0.94, 0.3, -0.16];      // (elbows out wide at shoulder height, forearms in across to the cheeks: the OK rings over the eyes)
+    // (the goggles reach for this character's own eyes, whatever their build: the wrist just under and outside each eye,
+    // in front of the face, elbows out wide at shoulder height)
+    for (const [S, sx] of [['L', 1], ['R', -1]]) {
+      let u = mixv(uIn, uOut, o), l = mixv(lIn, lOut, o);
+      let ug = uGog, lg = lGog;
+      if (gog > 0) { const got = this.reachLocal(S, r.parts.head.def.center.clone().add(_v3.set(sx * 0.088, -0.07, 0.15).multiplyScalar(kH)), this.armsDownBind(S) ? [sx * 0.55, -1, 0.35] : [sx, -0.5, 0.1]); if (got) [ug, lg] = got.map(v => [v[0] * sx, v[1], v[2]]); }      // (back into standArms' mirrored frame)
+      u = mixv(u, uHun, hunch); l = mixv(l, lHun, hunch); u = mixv(u, ug, gog); l = mixv(l, lg, gog);
+      this.standArms(S, sx, u, l);
+    }
+    // ---- body: leant forward ~20°, down to ~45° in the hunch, upright for the goggles; hips sway and twist with the
+    // lead leg; the head looks ahead, nods on each hop, dips with the hunch and snaps up for the goggles
+    const lead = Math.cos(TAU * qR), land = Math.pow(Math.cos(Math.PI * sp), 8);
+    const lean = 0.35 + (0.8 - 0.35) * hunch - 0.27 * gog;
+    P.pelvis.setFromAxisAngle(Y, -lead * 0.12).multiply(_q.setFromAxisAngle(Z, lead * 0.06));
+    P.chest.setFromAxisAngle(X, lean).multiply(_q.setFromAxisAngle(Y, lead * 0.1));
+    P.head.setFromAxisAngle(X, 0.06 + land * 0.1 * (1 - gog) + hunch * 0.35 - gog * 0.16).multiply(_q.setFromAxisAngle(Y, lead * 0.04));
+    this.at(t, 0.2, 'a', () => this.say('🕺 THE GRIDDY', null, 'drum')); this.at(t, 2.95, 'b', () => this.say('👌 👌', null, 'clap'));
+    const G = gog > 0.5;      // goggles: fingers straight up (fanned), the backs of the hands out (palms to the face)
+    return { hand: { L: G ? 'ok' : 'grip', R: G ? 'ok' : 'grip' }, back: G ? { L: [0, 0, 1], R: [0, 0, 1] } : null, along: G ? { L: [-0.1, 1, 0.04], R: [0.1, 1, 0.04] } : null, bob };
   }
   backflip(t) {
     const r = this.c.rag, P = r.pose, kH = this.kH;
@@ -606,17 +640,32 @@ export class EmotePlayer {
     return { hand: { L: 'open', R: 'open' } };
   }
 
+  // a model made with its arms hanging straight down (not half out, like most): lifting its elbows out sideways
+  // stretches its skin badly, so arm-raising moves keep those elbows lower and more in front
+  armsDownBind(S) { const U = this.c.rag.parts['uArm' + S]; if (!U) return false; const d = U.def.b.clone().sub(U.def.a).normalize(); return d.y < -0.85; }
+  // a two-bone reach worked out in the character's own frame, from its build (the rig's rest shoulder and arm lengths):
+  // the WRIST on a point given in that frame, the elbow pushed towards `hint`. Returns [upper arm, forearm] directions
+  reachLocal(S, T, hint) {
+    const r = this.c.rag, U = r.parts['uArm' + S], Lw = r.parts['lArm' + S]; if (!U || !Lw) return null;
+    const sh = U.def.a, L1 = U.def.a.distanceTo(U.def.b), L2 = Math.max(0.12, Lw.def.a.distanceTo(Lw.def.b) - (r.handLen || 0.165 * r.height / 1.68));      // (to the wrist: the forearm part runs on to the fingertips)
+    const to = T.clone().sub(sh), D = THREE.MathUtils.clamp(to.length(), Math.abs(L1 - L2) + 0.02, L1 + L2 - 0.005), dir = to.normalize();
+    const a = (L1 * L1 - L2 * L2 + D * D) / (2 * D), h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+    const perp = new THREE.Vector3(...hint); perp.addScaledVector(dir, -perp.dot(dir)).normalize();
+    const E = sh.clone().addScaledVector(dir, a).addScaledVector(perp, h), W = sh.clone().addScaledVector(dir, D);
+    return [E.clone().sub(sh).normalize().toArray(), W.sub(E).normalize().toArray()];
+  }
   // a hand (the fingertips, tip: how far short of them) put on a point, elbow down and out: a two-bone reach
-  reachTo(S, target, tip = 0) {
+  reachTo(S, target, tip = 0, opt = null) {      // (opt.hint [out, down]: which way the elbow points; opt.get: return the aims instead of setting them)
     const r = this.c.rag, U = r.parts['uArm' + S], Lw = r.parts['lArm' + S]; if (!U || !Lw) return;
     const ub = U.body, q = new THREE.Quaternion(ub.quaternion.x, ub.quaternion.y, ub.quaternion.z, ub.quaternion.w);
     const sh = U.def.a.clone().sub(U.def.center).applyQuaternion(q).add(new THREE.Vector3(ub.position.x, ub.position.y, ub.position.z));
     const L1 = U.def.a.distanceTo(U.def.b), L2 = Math.max(0.12, Lw.def.a.distanceTo(Lw.def.b) - tip);
     const to = target.clone().sub(sh), D = THREE.MathUtils.clamp(to.length(), Math.abs(L1 - L2) + 0.02, L1 + L2 - 0.005), dir = to.normalize();
     const a = (L1 * L1 - L2 * L2 + D * D) / (2 * D), h = Math.sqrt(Math.max(0, L1 * L1 - a * a)), outw = new THREE.Vector3(S === 'L' ? 1 : -1, 0, 0).applyAxisAngle(Y, r.yaw);
-    const hint = new THREE.Vector3(0, -1, 0).addScaledVector(outw, 0.7), perp = hint.addScaledVector(dir, -hint.dot(dir)); if (perp.lengthSq() < 1e-6) perp.copy(outw); perp.normalize();
+    const hint = new THREE.Vector3(0, -(opt && opt.hint ? opt.hint[1] : 1), 0).addScaledVector(outw, opt && opt.hint ? opt.hint[0] : 0.7), perp = hint.addScaledVector(dir, -hint.dot(dir)); if (perp.lengthSq() < 1e-6) perp.copy(outw); perp.normalize();
     const E = sh.clone().addScaledVector(dir, a).addScaledVector(perp, h), T = sh.clone().addScaledVector(dir, D);
     const du = E.clone().sub(sh).applyAxisAngle(Y, -r.yaw).normalize(), dl = T.sub(E).applyAxisAngle(Y, -r.yaw).normalize();
+    if (opt && opt.get) return [[du.x, du.y, du.z], [dl.x, dl.y, dl.z]];
     r.aim('uArm' + S, du.x, du.y, du.z); r.aim('lArm' + S, dl.x, dl.y, dl.z);
   }
   // something worn on the chest (a number on the back, a hi-vis vest): x, y, z from the chest centre, turned by face
