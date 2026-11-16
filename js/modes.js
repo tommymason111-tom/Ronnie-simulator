@@ -171,6 +171,7 @@ export class Director {
   }
 
   get cast() { return this.g.cast; }
+  get fullMode() { return this.noNpc && this.mode === 'roam' ? 'roam0' : this.mode; }     // (what the host tells everyone: 'roam0' isn't 'roam')
 
   // ------------------------------------------------------------------ starting / ending
   start(id) {

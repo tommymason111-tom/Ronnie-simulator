@@ -183,10 +183,13 @@ const SOUNDS = {
       tone(d, t + dt, 'square', f * 2, f * 2, 0.08, 0.05, 0.01);
     });
   },
-  sadviolin(d, t) {   // Chloe's guilt bonus: a sad little falling melody
-    [[659, 0], [622, 0.3], [587, 0.6], [523, 0.9]].forEach(([f, dt]) => {
-      const o = tone(d, t + dt, 'sawtooth', f, f * 0.98, 0.35, 0.12, 0.05);
-      const lfo = ctx.createOscillator(); lfo.frequency.value = 6; const lg = ctx.createGain(); lg.gain.value = 6; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t + dt); lfo.stop(t + dt + 0.45);
+  sadviolin(d, t) {   // the sad trombone: womp... womp... womp... wompppppp (a muted brass slide, the last one wobbling down)
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 3; lp.connect(d);
+    [[233, 0, 0.32], [220, 0.42, 0.32], [208, 0.84, 0.32], [196, 1.26, 1.25]].forEach(([f, dt, len], i) => {
+      const last = i === 3, a = tone(lp, t + dt, 'sawtooth', f * 1.02, last ? f * 0.9 : f * 0.97, len, 0.16, 0.03), b = tone(lp, t + dt, 'square', f * 0.5, last ? f * 0.45 : f * 0.485, len, 0.05, 0.03);
+      // the "wah": the mute opening and closing on each note
+      lp.frequency.setValueAtTime(500, t + dt); lp.frequency.linearRampToValueAtTime(1300, t + dt + 0.12); lp.frequency.linearRampToValueAtTime(700, t + dt + len);
+      if (last) for (const o of [a, b]) { const lfo = ctx.createOscillator(); lfo.frequency.value = 5.5; const lg = ctx.createGain(); lg.gain.value = 7; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t + dt + 0.2); lfo.stop(t + dt + len + 0.1); }
     });
   },
   thud(d, t) { tone(d, t, 'sine', 90, 40, 0.12, 0.5); noise(d, t, 0.06, 'lowpass', 500, 1, 0.3); },

@@ -196,7 +196,7 @@ export class MPSync {
       its.push([it.nid, TYPES.indexOf(it.type), it.variant || 0, q3(it.pos.x), q3(it.pos.y), q3(it.pos.z), q2(r.x), q2(r.y), q2(r.z), q2(r.w), q2(s), it.empty ? 1 : 0, it.heldBy ? (it.heldBy.remote || 'h') : 0]);
     }
     this.net.send({ t: 'snap', c: chars, i: its, full: full ? 1 : 0 });
-    if ((this.dirT -= 1 / SNAP_HZ) <= 0) { this.dirT = 0.5; const d = this.director; this.net.send({ t: 'dir', mode: d.mode, left: d.timeLeft, hud: d.hud(), running: d.running }); }
+    if ((this.dirT -= 1 / SNAP_HZ) <= 0) { this.dirT = 0.5; const d = this.director; this.net.send({ t: 'dir', mode: d.fullMode || d.mode, left: d.timeLeft, hud: d.hud(), running: d.running }); }
   }
   // food anyone throws hits the other players too
   remoteHits() {
@@ -261,7 +261,7 @@ export class MPSync {
     if (m.full) for (const it of this.items.items.slice()) if (it.netMirror && !listed.has(it.nid) && !this.heldLocally(it)) { it.dropNoTell = true; this.items.remove(it); }
   }
   on_say(m) { if (this.host) return; const c = this.cast.find(x => x.id === m.id); if (c && c.rag.mesh) { c.drawBubble(m.text); c.bubble.visible = true; c.speakT = 2.2 + m.text.length * 0.055; } }
-  on_dir(m) { if (this.host) return; const d = this.director; d.hostHud = m.hud; d.timeLeft = m.left; if (m.mode && m.mode !== d.mode && d.startRemote) d.startRemote(m.mode); }
+  on_dir(m) { if (this.host) return; const d = this.director; d.hostHud = m.hud; d.timeLeft = m.left; if (m.mode && m.mode !== (d.fullMode || d.mode) && d.startRemote) d.startRemote(m.mode); }
   on_woke(m) { const D = this.room.dormant; if (!D) return; const e = D.entries[m.i]; if (e && !e.woken) { e.woken = true; for (const im of e.group.meshes) { im.setMatrixAt(e.index, new THREE.Matrix4().makeScale(0, 0, 0)); im.instanceMatrix.needsUpdate = true; } } }
   on_end(m) { if (this.host) return; this.director.running = false; this.director.showReceipt && this.director.showReceipt(m.lines); this.director.receiptT = 1e9; this.director.g.onGameOver && this.director.g.onGameOver(m.lines); }
 

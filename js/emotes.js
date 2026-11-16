@@ -28,7 +28,7 @@ export const EMOTES = [
 // each character's own emotes
 export const CHAR_EMOTES = {
   ethan: [{ id: 'fifa', name: 'FIFA RAGE', icon: '🎮', dur: 5.2 }, { id: 'pepsi', name: 'PEPSI MAX PILE', icon: '🥤', dur: 5.0 }, { id: 'kfc', name: 'BARGAIN BUCKET', icon: '🍗', dur: 5.6 }, { id: 'hala', name: 'HALA MADRID', icon: '👑', dur: 5.2 , cam: 1.2 }],
-  ben: [{ id: 'hairline', name: 'NEW HAIRLINE', icon: '💇', dur: 4.6 }, { id: 'oldman', name: 'MY BACK', icon: '🦯', dur: 5.4 }, { id: 'turkey', name: 'TO TURKEY!', icon: '✈️', dur: 9.6 , cam: 2.3 }, { id: 'windy', name: 'HAIR IN THE WIND', icon: '💨', dur: 5.0 }],
+  ben: [{ id: 'hairline', name: 'NEW HAIRLINE', icon: '💇', dur: 4.6 }, { id: 'oldman', name: 'MY BACK', icon: '🦯', dur: 5.4 }, { id: 'turkey', name: 'TO TURKEY!', icon: '✈️', dur: 9.6 , cam: 1.5 }, { id: 'windy', name: 'HAIR IN THE WIND', icon: '💨', dur: 5.0 }],
   tommy: [{ id: 'ball', name: 'MY BALL', icon: '🟤', dur: 5.8 }, { id: 'older', name: 'ONE DAY OLDER', icon: '☝️', dur: 4.0 }, { id: 'help', name: 'JUST TRYING TO HELP', icon: '🤷', dur: 4.4 }, { id: 'broccoli', name: 'EAT YOUR GREENS', icon: '🥦', dur: 4.6 }],
   lewis: [{ id: 'siu', name: 'SIUUU', icon: '🐐', dur: 3.6 }, { id: 'tall', name: 'TOO TALL', icon: '🦒', dur: 5.0 }, { id: 'legday', name: 'LEG DAY', icon: '🏋️', dur: 5.0 }, { id: 'palace', name: 'GLAD ALL OVER', icon: '🦅', dur: 5.6 , cam: 1.3 }],
   chloe: [{ id: 'ears', name: 'UCL EARS', icon: '🏆', dur: 5.0 }, { id: 'wagamama', name: 'WAGAMAMA SPECIAL', icon: '🍜', dur: 5.4 }, { id: 'calories', name: 'COUNTING CALORIES', icon: '📝', dur: 4.8 }, { id: 'chester', name: 'CHESTER!', icon: '🐶', dur: 5.0 , cam: 1.1 }],
@@ -422,7 +422,7 @@ export class EmotePlayer {
     else if (t < 6.2) { const k = clamp01((t - 3.8) / 2.0); x = 32 * k * k; y = 10 * Math.pow(Math.max(0, k - 0.25) / 0.75, 1.6); pitch = 0.22 * Math.min(1, k * 3); spin = k * 2; }
     else { const k = clamp01((t - 6.2) / 1.9); x = -26 * Math.pow(1 - k, 2); y = 7 * Math.pow(1 - clamp01(k * 1.25), 2); pitch = -0.08 * (1 - k); spin = (1 - k) * 2; }
     // side on behind him (so the camera in front sees it), nose to his right, the door (3m along) right behind him
-    this.L(3.0 - x, 0, -5.4, pl.position); pl.position.y = y; pl.rotation.set(0, r.yaw - Math.PI / 2, 0); pl.rotateX(-pitch);
+    const PS = 0.5; this.L((3.0 - x) * PS, 0, -2.9, pl.position); pl.position.y = y * PS; pl.rotation.set(0, r.yaw - Math.PI / 2, 0); pl.rotateX(-pitch); pl.scale.setScalar(PS * kH);
     for (const w of pl.userData.wheels) w.rotation.y += spin * 0.5;
     const st = pl.getObjectByName('stairs'); st.visible = (t > 2.4 && t < 3.9) || t > 7.9;
     for (let i = 0; i < 4; i++) { const tx = this.prop('cf' + i, () => new THREE.Sprite(new THREE.SpriteMaterial({ map: trFlagTex(), transparent: true }))); const k = ((t * 0.7 + i / 4) % 1);
@@ -808,8 +808,14 @@ export class EmotePlayer {
     this.standArms('R', -1, DRINK_U, DRINK_L); this.standArms('L', 1, [0.35, -0.3, 0.85], [-0.05, 0.05, 1]); this.legsStand(0.16); P.head.setFromAxisAngle(Y, Math.sin(t * 1.3) * 0.5).multiply(_q.setFromAxisAngle(X, -talk));
     const w = this.prop('walkie', () => { const g = new THREE.Group(); g.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.03), lam(0x1a1a1a))); const a = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.08, 6), lam(0x1a1a1a)); a.position.set(0.015, 0.1, 0); g.add(a); const led = new THREE.Mesh(new THREE.SphereGeometry(0.005), new THREE.MeshBasicMaterial({ color: 0xff2222 })); led.position.set(-0.01, 0.055, 0.016); g.add(led); return g; });
     this.inHand(w, 'R', [0, 0.04, 0], [0, 0, 0]);
-    for (const [k, z, face] of [['vb', -0.155, Math.PI], ['vf', 0.15, 0]]) { const v = this.prop(k, () => { const m = signMesh(0.33, 0.4, cvTex(256, 270, (c, w2, h) => { c.fillStyle = '#e6ff00'; c.fillRect(0, 0, w2, h); c.fillStyle = '#c0c0c0'; c.fillRect(0, 110, w2, 26); c.fillRect(0, 190, w2, 26); if (face) cvTxt(c, 'SECURITY', w2 / 2, 60, 46, '#111'); })); return m; });
-      this.onChest(v, 0, 0.02, z, face); }
+    // the hi-vis: his own top painted fluorescent yellow (so it fits him exactly), the SECURITY lettering on the back,
+    // a badge on the front, sitting right on the surface of his chest
+    kitRag(this, 0xe6ff00, 0.52, 0.83);
+    const cd = ((r.parts.chest.def.half && r.parts.chest.def.half[2]) || 0.13) / kH;
+    const back = this.prop('vb', () => signMesh(0.24, 0.07, cvTex(256, 76, (c, w2, h) => { c.fillStyle = '#c0c0c0'; c.fillRect(0, 0, w2, 8); c.fillRect(0, h - 8, w2, 8); cvTxt(c, 'SECURITY', w2 / 2, h / 2 + 2, 44, '#111'); })));
+    this.onChest(back, 0, 0.1, -(cd + 0.012), Math.PI);
+    const badge = this.prop('vf', () => signMesh(0.07, 0.04, cvTex(128, 72, (c, w2, h) => { c.fillStyle = '#0050aa'; c.fillRect(0, 0, w2, h); c.fillStyle = '#ffe000'; c.fillRect(8, 8, w2 - 16, h - 16); cvTxt(c, 'LIDL', w2 / 2, h / 2 + 2, 30, '#d00'); })));
+    this.onChest(badge, -0.06, 0.12, cd + 0.012, 0);
     const L = ['📻 CODE RED. AISLE FOUR.', 'A MAN EATING CRISPS. OPEN. NOT PAID.', 'I\'M GOING IN. OVER.', '...HE\'S BIGGER THAN ME. OVER.'];
     for (let i = 0; i < 4; i++) this.at(t, 0.3 + i * 1.05, 's' + i, () => this.say(L[i], null, 'psst'));
     return { hand: { L: 'point', R: 'grip' } }; }
@@ -904,32 +910,60 @@ export class EmotePlayer {
   }
   // ---- CONNOR: the slip: running in for the big moment... banana skin, legs up, flat on his back
   slip(t) {
-    // full Liverpool kit, running in for the big moment... the slip. GERRARD HAS SLIPPED. And here comes Demba Ba, in
-    // on goal, past him
-    const r = this.c.rag, P = r.pose, kH = this.kH, slip = clamp01((t - 1.4) / 0.35), down = ramp(t, 1.5, 1.8);
+    // THE GERRARD SLIP (Anfield, April 2014): full Liverpool kit, the 8 and the armband. Sakho's pass rolls in, he goes
+    // to take it... it runs under his foot, his standing leg goes and he's down on his backside. He scrambles, can't get
+    // up, and Demba Ba is away, all the way through, and slots it. Then the long chase back that's never going to make it
+    const r = this.c.rag, P = r.pose, kH = this.kH, go = ramp(t, 0.85, 1.1), sit = ramp(t, 0.95, 1.25) * (1 - ramp(t, 2.5, 2.9)), chase = ramp(t, 2.7, 3.0);
     kitRag(this, 0xc8102e, 0.08, 0.84);
-    if (t < 1.4) { const s = this.walkLegs(t, 2.4, 0.5); for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, [0.15, -0.7, -0.6 * s * sx], [0.1, -0.2, 1]); P.chest.setFromAxisAngle(X, 0.2); }
-    else { r.aim('uLegL', 0.12, -0.3, 0.95); r.aim('lLegL', 0.1, -0.2, 1); r.aim('uLegR', -0.12, -0.5, 0.85); r.aim('lLegR', -0.1, -0.4, 0.9); for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, [0.9, 0.4, 0.1], [0.9, 0.5, 0.2]); }
-    const crest = this.prop('lfc', () => signMesh(0.1, 0.12, cvTex(80, 96, (c) => { c.fillStyle = '#c8102e'; c.fillRect(0, 0, 80, 96); cvTxt(c, '🐦', 40, 40, 44, '#f6eb61'); cvTxt(c, 'LFC', 40, 82, 18, '#f6eb61'); }))); this.onChest(crest, -0.07, 0.1, 0.16, 0);
-    const ban = this.prop('banana', () => { const g = new THREE.Group(); for (let i = 0; i < 4; i++) { const p = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6, 0, Math.PI), lam(0xffe135, { side: THREE.DoubleSide })); p.scale.set(0.5, 1.6, 0.3); p.rotation.set(Math.PI / 2, i * Math.PI / 2, 0.6); g.add(p); } return g; });
-    this.L(0, 0.02, 0.15, ban.position); ban.rotation.y = t * (slip > 0 && slip < 1 ? 10 : 0);
-    // Demba Ba: blue kit, ball at his feet, running in past
-    const ba = this.prop('ba', () => { const g = kidMesh(0x034694, 0x111111, false, 1.15); g.traverse(o => { if (o.isMesh && o.material.color && o.material.color.getHex() === 0xf0c4a4) o.material = lam(0x5a3a22); }); const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 1), lam(0xffffff)); b.position.set(0, 0.11, 0.35); b.name = 'ball'; g.add(b); return g; });
-    const k = clamp01((t - 2.0) / 2.0); ba.visible = t > 2.0; ba.position.copy(this.L(-2.5 + k * 5, 0, -1.3)); ba.rotation.y = r.yaw + Math.PI / 2; walkKid(ba, t * 14); ba.getObjectByName('ball').rotation.x = t * 10;
+    const scr = t > 1.3 && t < 2.6 ? Math.sin(t * 11) : 0;
+    if (t < 0.85) { this.legsStand(0.13); for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, [0.35, -0.85, 0.2], [0.3, -0.8, 0.4]); P.head.setFromAxisAngle(X, 0.45).multiply(_q.setFromAxisAngle(Y, -0.5 * (1 - ramp(t, 0.4, 0.8)))); }
+    else if (sit > 0.05 || t < 2.6) {
+      // the right foot goes to the ball and slides on, the left skids out: arms fly up, then back to the floor behind him
+      r.aim('uLegR', -0.12, mixv([-1, 0.3], [-0.25, 1], sit)[0], mixv([-1, 0.3], [-0.25, 1], sit)[1]); r.aim('lLegR', -0.1, -0.15 + scr * 0.08, 1);
+      r.aim('uLegL', 0.14, -0.35 - scr * 0.15, 0.95); r.aim('lLegL', 0.1, -0.6 + scr * 0.3, 0.75 - scr * 0.2);
+      const fly = ramp(t, 0.85, 1.0) * (1 - ramp(t, 1.05, 1.25));
+      for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, mixv([0.4, -0.75, -0.45 - (S === 'L' ? scr : -scr) * 0.15], [0.7, 0.6, 0.2], fly), mixv([0.3, -0.9, -0.3], [0.6, 0.75, 0.2], fly));
+      P.head.setFromAxisAngle(X, -0.2 + 0.15 * scr).multiply(_q.setFromAxisAngle(Y, 0.8 * ramp(t, 1.5, 1.9)));     // (watching Ba go)
+    } else { this.walkLegs(t, 2.6, 0.55 * chase); for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, [0.2, -0.8, 0.45 * Math.sin(t * 16) * sx], [0.15, -0.3, 0.95]); P.chest.setFromAxisAngle(X, 0.2); P.head.setFromAxisAngle(Y, 0.9).multiply(_q.setFromAxisAngle(X, 0.25)); }
+    // the 8 on his back, the captain's armband
+    const num = this.prop('lfc8', () => signMesh(0.16, 0.2, cvTex(96, 120, (c, w, h) => { cvTxt(c, 'GERRARD', w / 2, 14, 15, '#fff'); cvTxt(c, '8', w / 2, 72, 84, '#fff'); })));
+    const cd = ((r.parts.chest.def.half && r.parts.chest.def.half[2]) || 0.13) / kH; this.onChest(num, 0, 0.06, -(cd + 0.012), Math.PI);
+    const crest = this.prop('lfc', () => signMesh(0.06, 0.07, cvTex(80, 96, (c) => { cvTxt(c, '🐦', 40, 40, 50, '#f6eb61'); cvTxt(c, 'LFC', 40, 84, 20, '#f6eb61'); }))); this.onChest(crest, -0.06, 0.12, cd + 0.012, 0);
+    const band = this.prop('armband', () => new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.05, 14, 1, true), lam(0xffd400, { side: THREE.DoubleSide })));
+    r.pos('uArmL', band.position); r.partQuat('uArmL', band.quaternion); band.scale.setScalar(kH);
+    // the pass, the ball under his foot, Ba taking it on and away to the goal
+    const ball = this.prop('fball', () => { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true })); b.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.112, 0), new THREE.MeshBasicMaterial({ color: 0x111111, wireframe: true }))); return b; });
+    const ba = this.prop('ba', () => { const g = kidMesh(0x034694, 0x111111, false, 1.15); g.traverse(o => { if (o.isMesh && o.material.color && o.material.color.getHex() === 0xf0c4a4) o.material = lam(0x5a3a22); }); const n = signMesh(0.14, 0.16, cvTex(96, 110, (c, w) => { cvTxt(c, 'BA', w / 2, 14, 16, '#fff'); cvTxt(c, '19', w / 2, 70, 66, '#fff'); })); n.position.set(0, 1.25, -0.16); n.rotation.y = Math.PI; g.add(n); return g; });
+    const goal = this.prop('goal', () => { const g = new THREE.Group(), w = lam(0xffffff), W = 3.2, Hh = 1.6, D = 1.0;
+      for (const sx of [-1, 1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, Hh, 10), w); p.position.set(sx * W / 2, Hh / 2, 0); g.add(p); }
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, W, 10), w); bar.rotation.z = Math.PI / 2; bar.position.y = Hh; g.add(bar);
+      const net = new THREE.Mesh(new THREE.BoxGeometry(W, Hh, D, 16, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.45 })); net.position.set(0, Hh / 2, D / 2); net.name = 'net'; g.add(net); return g; });
+    this.L(-3.6, 0, -3.6, goal.position); goal.rotation.y = r.yaw - Math.PI * 0.75; goal.scale.setScalar(kH);
+    const pass0 = this.L(2.6, 0.11, 1.1), foot = this.L(0.05, 0.11, 0.3), under = this.L(-0.35, 0.11, -0.45), baPick = this.L(-0.6, 0, -0.8), shot = this.L(-2.6, 0, -2.6), net = this.L(-3.9, 0.3, -3.6);
+    if (t < 0.85) ball.position.copy(pass0).lerp(foot, ss(t / 0.85));
+    else if (t < 1.65) ball.position.copy(foot).lerp(under, clamp01((t - 0.85) / 0.8));
+    else if (t < 3.1) { const k = (t - 1.65) / 1.45; ball.position.copy(under).lerp(shot, k).add(this.L(0, 0, 0.3).sub(this.L(0, 0, 0)).multiplyScalar(0)); ball.position.y = 0.11; }
+    else ball.position.copy(shot).setY(0.11).lerp(net, clamp01((t - 3.1) / 0.3));
+    ball.rotation.x += 0.25; ball.scale.setScalar(kH);
+    const baFrom = this.L(1.8, 0, -1.6); let bp;
+    if (t < 1.65) bp = baFrom.clone().lerp(baPick, ss(clamp01((t - 0.9) / 0.75))); else bp = baPick.clone().lerp(shot, clamp01((t - 1.65) / 1.45));
+    ba.visible = t > 0.9; const dir = t < 1.65 ? baPick.clone().sub(baFrom) : shot.clone().sub(baPick); ba.position.copy(bp); ba.rotation.y = Math.atan2(dir.x, dir.z); walkKid(ba, t * 15); ba.scale.setScalar(kH);
+    goal.getObjectByName('net').scale.z = 1 + (t > 3.4 ? Math.max(0, 0.35 - (t - 3.4) * 0.6) : 0);
     const card = this.prop('slipcard', () => new THREE.Sprite(new THREE.SpriteMaterial({ map: cvTex(640, 200, (c, w, h) => { c.fillStyle = '#111'; c.fillRect(0, 0, w, h); c.strokeStyle = '#c8102e'; c.lineWidth = 10; c.strokeRect(5, 5, w - 10, h - 10); cvTxt(c, 'GERRARD HAS SLIPPED...', w / 2, 70, 50, '#fff'); cvTxt(c, '...DEMBA BA IS IN HERE!', w / 2, 140, 46, '#4fc3ff'); }) })));
-    card.visible = t > 1.8; this.L(0, 2.5, 0.6, card.position); card.scale.set(1.5 * kH, 0.47 * kH, 1);
-    this.at(t, 0.3, 'a', () => this.say('THIS DOES NOT SLIP...')); this.at(t, 1.45, 'b', () => this.say('WAAAH!', null, 'boing')); this.at(t, 1.8, 'c', () => this.say('', null, 'thud')); this.at(t, 2.2, 'd', () => this.say('🎙️ GERRARD HAS SLIPPED!', null, 'whistle'));
-    this.at(t, 3.0, 'e', () => this.say('🎙️ DEMBA BA IS IN HERE!!', null, 'sadviolin'));
-    const lie = this.lieBack(down);
-    return { hand: { L: 'open', R: 'open' }, bob: lie.bob + Math.sin(slip * Math.PI) * 0.3 * kH, flip: lie.flip, full: true };
+    card.visible = t > 1.4; this.L(0, 2.35, 0.2, card.position); card.scale.set(1.3 * kH, 0.41 * kH, 1);
+    this.at(t, 0.15, 'a', () => this.say('THIS DOES NOT SLIP. WE GO TO NORWICH, WE DO THE SAME.')); this.at(t, 0.95, 'b', () => this.say('WHOA—', null, 'boing')); this.at(t, 1.15, 'c', () => this.say('', null, 'thud'));
+    this.at(t, 1.5, 'd', () => this.say('🎙️ GERRARD HAS SLIPPED!', null, 'whistle')); this.at(t, 2.2, 'e', () => this.say('🎙️ ...AND DEMBA BA IS IN HERE!'));
+    this.at(t, 3.4, 'f', () => this.say('🎙️ ...AND HE SCORES. 0-1.', null, 'sadviolin'));
+    return { hand: { L: 'open', R: 'open' }, bob: (-0.7 * sit) * kH, flip: -0.55 * sit, full: true };
   }
   // ---- RONNIE: the fridge raid: the fridge, the light, everything out of it and into him
   fridge(t) { const r = this.c.rag, P = r.pose, kH = this.kH, open = ramp(t, 0.4, 0.9), cyc = (t * 0.9) % 1, eat = t > 1.2 ? Math.sin(cyc * Math.PI) : 0, n = Math.floor(t * 0.9);
-    this.standArms('R', -1, mixv([0.25, -0.2, 0.95], DRINK_U, eat), mixv([0.1, 0.05, 1], DRINK_L, eat)); this.standArms('L', 1, [0.5, 0.1, 0.8], [0.3, 0.2, 0.95]); this.legsStand(0.14); P.chest.setFromAxisAngle(X, 0.25 * (1 - eat)); P.head.setFromAxisAngle(X, 0.1 - eat * 0.2);
+    this.standArms('R', -1, DRINK_U.map((v, i) => v * eat + [0.3, -0.9, 0.2][i] * (1 - eat)), DRINK_L.map((v, i) => v * eat + [0.2, -0.95, 0.2][i] * (1 - eat))); this.standArms('L', 1, [0.95, 0.15, 0.25], [0.95, 0.25, 0.2]); this.legsStand(0.14); P.chest.setFromAxisAngle(Z, 0.12 * (1 - eat)); P.head.setFromAxisAngle(Y, 0.7 * (1 - eat)).multiply(_q.setFromAxisAngle(X, 0.1 - eat * 0.2));
     const f = this.prop('fridge', () => { const g = new THREE.Group(), white = lam(0xf2f2f2); const b = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.8, 0.65), white); b.position.y = 0.9; g.add(b); const inn = new THREE.Mesh(new THREE.BoxGeometry(0.68, 1.7, 0.02), new THREE.MeshBasicMaterial({ color: 0xfff6d0 })); inn.position.set(0, 0.92, 0.325); g.add(inn);
       ['🍔', '🍰', '🍕', '🌭', '🍗', '🧀'].forEach((e, i) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: cvTex(64, 64, (c) => { c.font = '50px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(e, 32, 36); }) })); s.scale.setScalar(0.18); s.position.set(-0.18 + (i % 3) * 0.18, 0.55 + Math.floor(i / 3) * 0.45, 0.35); s.name = 'f' + i; g.add(s); });
       const piv = new THREE.Group(); piv.position.set(0.375, 0.9, 0.33); piv.name = 'door'; const d = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.8, 0.05), white); d.position.x = -0.375; piv.add(d); g.add(piv); return g; });
-    this.L(0, 0, 0.75, f.position); f.rotation.y = r.yaw + Math.PI; f.scale.setScalar(kH); f.getObjectByName('door').rotation.y = open * 1.8;
+    this.L(0.95, 0, 0.05, f.position); f.rotation.y = r.yaw;      // (beside him, open towards whoever's watching, so you see him raid it)
+    f.scale.setScalar(kH); f.getObjectByName('door').rotation.y = open * 1.8;
     for (let i = 0; i < 6; i++) f.getObjectByName('f' + i).visible = i >= n;
     if (n !== this.lastBeat && t > 1.2) { this.lastBeat = n; this.say(['🌙 MIDNIGHT SNACK', 'AND THAT', 'AND THAT ONE', 'IS THERE MORE?'][n % 4], null, 'chomp'); }
     return { hand: { L: 'open', R: 'grip' } }; }

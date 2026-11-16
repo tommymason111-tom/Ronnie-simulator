@@ -162,7 +162,8 @@ export function buildPub(scene) {
   WX(690, 855, 1045, [], WALL); WZ(1045, 690, 1305, [], WALL); WX(975, 895, 1045); WX(975, 855, 895); WZ(855, 925, 975, [[928, 972]]);      // (the staff room's door is on its side now, off the end of the bar)
   WZ(895, 975, 1305, [[1235, 1300]]);
   WX(1305, 790, 1045);
-  WZ(795, 1305, 1645, [[1335, 1400]]);   // (right down to the back wall: no gap beside the garden door) WZ(975, 1305, 1620, [], WALL); WX(1620, 795, 975, [], WALL);
+  WZ(795, 1305, 1645, [[1335, 1400]]);   // (right down to the back wall: no gap beside the garden door)
+  WZ(975, 1305, 1620, [], WALL); WX(1620, 795, 975, [], WALL);      // the gambling room's outside wall and its back wall (these had got lost inside the comment above: you could see out)
   // the pub's left wall: kitchen door, restaurant entrance
   WZ(195, 605, 1645, [[990, 1035], [1090, 1145]], WALL);
   // kitchen + restaurant entrance
@@ -618,6 +619,17 @@ export function buildPub(scene) {
     k.box(0.6, 0.06, 0.12, x + nx * 0.05, 0.62, z + nz * 0.05, 0xc9a24a, { rot: [0, ry, 0] });                       // payout tray
     k.box(0.05, 0.3, 0.05, x - nz * 0.4, 1.25, z + nx * 0.4, 0xd32f2f);                                               // lever
     k.box(0.78, 0.2, 0.52, cx, 1.78, cz, 0xffd400, { rot: [0, ry, 0] });
+    // the detail: a plinth, chrome trim up the corners, side flashes, a row of lit hold buttons, the coin slot and note
+    // reader, the lever's red ball, the bulbs round the top sign
+    { const L = (a, b2) => [cx + Math.cos(ry) * a + nx * b2, cz - Math.sin(ry) * a + nz * b2];      // (a: across the front, b2: out from the middle)
+      k.box(0.8, 0.08, 0.55, cx, 0.04, cz, 0x111111, { rot: [0, ry, 0] });
+      for (const a2 of [-0.37, 0.37]) { const [px2, pz2] = L(a2, 0.25); k.box(0.03, 1.66, 0.03, px2, 0.85, pz2, 0xd8dce0, { rot: [0, ry, 0] }); }
+      for (const a2 of [-0.376, 0.376]) for (const yy of [0.5, 1.45]) { const [px2, pz2] = L(a2, 0); k.box(0.006, 0.12, 0.4, px2, yy, pz2, 0xffd400, { rot: [0, ry, 0] }); }
+      [0xd81b2a, 0xffd400, 0x39ff14, 0x2a6df4, 0xffffff].forEach((col, i) => { const [px2, pz2] = L(-0.2 + i * 0.1, 0.27); k.box(0.07, 0.03, 0.05, px2, 0.7, pz2, col, { rot: [0, ry, 0] }); });
+      { const [px2, pz2] = L(0.24, 0.26); k.box(0.05, 0.1, 0.02, px2, 0.82, pz2, 0x222222, { rot: [0, ry, 0] }); k.box(0.012, 0.05, 0.022, px2, 0.84, pz2, 0xc9a24a, { rot: [0, ry, 0] }); }
+      { const [px2, pz2] = L(-0.26, 0.26); k.box(0.09, 0.05, 0.02, px2, 0.82, pz2, 0x333333, { rot: [0, ry, 0] }); }
+      k.cyl(0.04, 0.04, 0.08, x - nz * 0.4, 1.42, z + nx * 0.4, 0xd32f2f, 12);
+      for (let i = 0; i < 8; i++) { const [px2, pz2] = L(-0.35 + i * 0.1, 0.27); k.cyl(0.016, 0.016, 0.02, px2, 1.88, pz2, i % 2 ? 0xffffff : 0xff5252, 8); } }
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = 320;
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
     const mesh = k.label('THE CHIP MACHINE', 0.66, 0.82, [x + nx * 0.01, 1.12, z + nz * 0.01], [0, ry, 0], { tex, glow: true });

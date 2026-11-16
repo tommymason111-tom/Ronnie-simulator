@@ -645,8 +645,12 @@ function startFlat() {
   player.enterFlat();
   document.body.classList.add('flat');
   touch.show(true);
-  director.start(chosenMode()); mpAfterStart();
+  startOnce();
 }
+// the game starts once: pressing PLAY again, or going into VR after starting flat, must never restart it (an Imposter
+// game already dealt would drop the host back to the lobby, still being asked to ring the bell)
+let gameBegun = false;
+function startOnce() { if (gameBegun && director.running) return; gameBegun = true; director.start(chosenMode()); mpAfterStart(); }
 function chosenMode() { const m = ['classic', 'intervention', 'veggie', 'catch'].includes(SEL.mode) || !SEL.mode ? 'everyone' : SEL.mode; return m.startsWith('imposter') && !(window.ronnieMP && window.ronnieMP.role) ? 'everyone' : m; }   // old links still work
 document.getElementById('play-flat').addEventListener('click', startFlat);
 
@@ -674,7 +678,7 @@ async function setupVR() {
       if (player.flatMode) { player.flatDrop(); player.flatMode = false; if (player.flatGrip) player.flatGrip.visible = false; touch.show(false); document.body.classList.remove('flat'); }
       vrBtn.textContent = 'EXIT VR';
       document.body.classList.add('in-vr');
-      director.start(chosenMode()); mpAfterStart();
+      startOnce();
     } catch (err) {
       status.textContent = 'Could not start VR: ' + err.message;
       if (handed) { try { handed.end(); } catch (e) {} status.textContent = 'Press ENTER VR to carry on in the headset.'; }
@@ -1204,7 +1208,7 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
 { const $ = (id) => document.getElementById(id);
   const chip = () => { const n = net.players.size + 1; $('mp-chip').textContent = `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`; $('mp-chip').classList.toggle('on', net.connected); };
   // the host tells anyone who joins late which place and game to load
-  net.on.join = (m) => { chip(); if (net.host) net.send({ t: 'setup', to: m.id, place: room.placeId, mode: director.mode || SEL.mode }); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
+  net.on.join = (m) => { chip(); if (net.host) net.send({ t: 'setup', to: m.id, place: room.placeId, mode: director.fullMode || director.mode || SEL.mode }); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
   net.on.leave = () => chip(); net.on.host = () => chip(); net.on.status = () => chip();
   // tap the room chip: who's in the room, and who each of them is playing as
   { const pop = document.createElement('div'); pop.id = 'roster-pop'; document.body.appendChild(pop);
@@ -1277,11 +1281,26 @@ class SquadPuppet {
   }
   // Imposter: a body (flat out where they were killed), hidden (a ghost, or down a trapdoor), or an imposter's mate (red tag)
   impVis(v) { const r = this.c.rag; if (r.group) r.group.visible = v; if (this.c.fx) this.c.fx.visible = v; if (this.c.prop) this.c.prop.visible = v && !this.emote.active; this.tag.visible = v && !this.p.self; if (!v) { if (this.chatS) this.chatS.visible = false; this.emote.active && this.emote.stop && this.emote.stop(); } }
+  // Imposter: a body, laid out on its back like the chalk outline at a crime scene: one arm up by the head, the other
+  // down by the side, the legs apart, the head lolled to one side. It drops into it (no flailing ragdoll)
+  layOut(dt) {
+    const r = this.c.rag; if (this.emote.active) this.emote.stop(); if (r.mode !== 'anim') r.setMode('anim');
+    this.layK = Math.min(1, (this.layK || 0) + dt * 2.2); const k = this.layK * this.layK * (3 - 2 * this.layK), kH = r.height / 1.68;
+    for (const n in r.pose) r.pose[n].identity();
+    r.aim('uArmL', 0.75, 0.66, 0.05); r.aim('lArmL', 0.55, 0.83, 0.05);       // (his left arm flung up by his head)
+    r.aim('uArmR', -0.82, -0.57, 0.05); r.aim('lArmR', -0.62, -0.78, 0.05);   // (the right one down and out)
+    r.aim('uLegL', 0.36, -0.93, 0.02); r.aim('lLegL', 0.42, -0.9, 0.02); r.aim('uLegR', -0.22, -0.97, 0.02); r.aim('lLegR', -0.36, -0.93, 0.05);
+    r.pose.head.setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.6);
+    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2 * k);
+    for (const n in r.pose) r.pose[n].premultiply(q);
+    r.bob = -0.8 * kH * k; r.animate(dt); r.sync();
+  }
   update(dt, pose) {
+    if (!this.impBody) this.layK = 0;
     if (this.impRed !== this.tagRed) { this.tagRed = this.impRed; this.drawTag(); }
     if (this.impHidden) { if (!this.impOff) { this.impOff = true; this.impVis(false); } return; }
     if (this.impOff) { this.impOff = false; this.impVis(true); }
-    if (this.impBody) { this.c.rag.sync(); this.tag.visible = false; return; }
+    if (this.impBody) { this.layOut(dt); this.tag.visible = false; return; }
     pose = this.smoothPose(pose);
     // fatter every stage they go up (seen by everyone)
     { const want = Math.min(1, (pose.st || 0) / (STAGES.length - 1)); this.fatNow = (this.fatNow || 0) + (want - (this.fatNow || 0)) * Math.min(1, dt * 3); this.c.rag.fat = Math.min(1, this.fatNow * 1.3);
