@@ -57,6 +57,53 @@ const TASK_SIGN = { guinness: '🍺 POUR A GUINNESS', barrel: '🛢️ CHANGE TH
 const VENTS = [{ name: 'CELLAR HATCH', at: [5.08, -7.81] }, { name: 'KITCHEN', at: [-12.5, -1.0] }, { name: 'GAMBLING ROOM', at: [6.5, 12.5] }, { name: 'MEN\'S TOILETS', at: [-6.53, -13.1] }];
 const FUSE = { name: 'FUSE BOX · STAFF ROOM', at: [9.0, -0.7], kit: [9.0, 0, -0.07, Math.PI] };      // (on the staff room's right-hand wall as you come in)
 const VALVES = [{ name: 'KEG ROOM VALVE', at: [8.1, 4.5] }, { name: 'KITCHEN VALVE', at: [-11.6, -2.0] }];
+// SECURITY (like the cameras in Among Us): a desk in the staff room with a bank of monitors. Sit at it and you watch four
+// live feeds, each a camera on a wall covering PART of an area (never the whole pub). You can't move while you watch,
+// and while anyone's watching, every camera's red light blinks for everyone (so they know they might be seen).
+export const SECURITY = { at: [7.15, -3.0], desk: [6.47, -3.0] };
+export const CAMS = [
+  { name: 'THE BAR', at: [-9.2, 2.6, 7.4], look: [0.5, 0.6, -3.0] },
+  { name: 'CAR PARK', at: [6.4, 3.0, -9.3], look: [11.5, 0, -17] },
+  { name: 'BEER GARDEN', at: [9.8, 3.2, 16.6], look: [0, 0.4, 28] },
+  { name: 'KITCHEN', at: [-13.4, 2.5, 1.7], look: [-11, 0.6, -6.5] },
+];
+// the monitors: four live feeds (each re-filmed a few times a second, in turn), with a slight security-camera look:
+// a little washed out and green, scanlines, grain, a REC light and the time. Tap a feed to blow it up, tap again to go back
+export function makeCamFeeds({ renderer, scene, cams = CAMS }) {
+  const FW = 236, FH = 152, feeds = cams.map((c, i) => { const cam = new THREE.PerspectiveCamera(64, FW / FH, 0.1, 70); cam.position.set(...c.at); cam.lookAt(...c.look); cam.updateMatrixWorld();
+    const rt = new THREE.WebGLRenderTarget(FW, FH); rt.texture.colorSpace = THREE.SRGBColorSpace; const cv = document.createElement('canvas'); cv.width = FW; cv.height = FH;
+    return { c, i, cam, rt, buf: new Uint8Array(FW * FH * 4), cv, img: cv.getContext('2d').createImageData(FW, FH), ready: false }; });
+  let next = 0, acc = 0;
+  const film = (f) => { const xr = renderer.xr.enabled, fog = scene.fog, prev = renderer.getRenderTarget();
+    try { renderer.xr.enabled = false; scene.fog = null; renderer.setRenderTarget(f.rt); renderer.clear(); renderer.render(scene, f.cam); renderer.readRenderTargetPixels(f.rt, 0, 0, FW, FH, f.buf); }
+    finally { renderer.setRenderTarget(prev); scene.fog = fog; renderer.xr.enabled = xr; }
+    const src = f.buf, d = f.img.data;
+    for (let y = 0; y < FH; y++) { const sr = (FH - 1 - y) * FW * 4, dr = y * FW * 4;
+      for (let x = 0; x < FW * 4; x += 4) { const r = src[sr + x], gg = src[sr + x + 1], b = src[sr + x + 2], l = 0.3 * r + 0.59 * gg + 0.11 * b, n = (Math.random() - 0.5) * 14;
+        d[dr + x] = r * 0.72 + l * 0.22 + n; d[dr + x + 1] = gg * 0.72 + l * 0.3 + 8 + n; d[dr + x + 2] = b * 0.7 + l * 0.2 + n; d[dr + x + 3] = 255; } }
+    f.cv.getContext('2d').putImageData(f.img, 0, 0); f.ready = true; };
+  const box = (i) => ({ x: 14 + (i % 2) * 248, y: 72 + Math.floor(i / 2) * 210, w: 236, h: 152 });
+  const s = { title: '📹 SECURITY', zoom: -1, done: false, feeds };
+  s.down = (x, y) => { if (s.zoom >= 0) { s.zoom = -1; return; } for (let i = 0; i < feeds.length; i++) { const b = box(i); if (x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h + 30) { s.zoom = i; sfx('tap', null, 0.4); } } };
+  s.move = () => {}; s.up = () => {};
+  s.update = (dt) => { acc += dt; if (acc < 0.06) return; acc = 0; if (s.zoom >= 0) { film(feeds[s.zoom]); return; } film(feeds[next]); next = (next + 1) % feeds.length; };
+  s.dispose = () => { for (const f of feeds) f.rt.dispose(); };
+  const feedDraw = (g, f, b, t) => { g.fillStyle = '#05080a'; g.fillRect(b.x, b.y, b.w, b.h);
+    if (f.ready) g.drawImage(f.cv, b.x, b.y, b.w, b.h); else { for (let i = 0; i < 400; i++) { g.fillStyle = Math.random() < 0.5 ? '#333' : '#777'; g.fillRect(b.x + Math.random() * b.w, b.y + Math.random() * b.h, 3, 2); } }
+    g.fillStyle = 'rgba(0,0,0,0.14)'; for (let y = b.y; y < b.y + b.h; y += 3) g.fillRect(b.x, y, b.w, 1);                       // scanlines
+    const vg = g.createRadialGradient(b.x + b.w / 2, b.y + b.h / 2, b.h * 0.3, b.x + b.w / 2, b.y + b.h / 2, b.w * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.5)'); g.fillStyle = vg; g.fillRect(b.x, b.y, b.w, b.h);
+    const band = (t * 40 + f.i * 37) % (b.h + 30) - 15; g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(b.x, b.y + Math.max(0, band), b.w, Math.max(0, Math.min(10, b.y + b.h - (b.y + band))));      // a slow rolling band
+    const k = b.w / 236; g.font = `700 ${Math.round(11 * k)}px "Courier New", monospace`; g.textAlign = 'left'; g.textBaseline = 'top'; g.fillStyle = 'rgba(230,255,230,0.85)';
+    const now = new Date(); g.fillText(`CAM ${f.i + 1}  ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`, b.x + 6 * k, b.y + 5 * k);
+    if (Math.floor(t * 2) % 2) { g.fillStyle = '#ff2a2a'; g.beginPath(); g.arc(b.x + b.w - 30 * k, b.y + 11 * k, 5 * k, 0, 7); g.fill(); } g.fillStyle = 'rgba(255,90,90,0.95)'; g.fillText('REC', b.x + b.w - 23 * k, b.y + 5 * k);
+    g.strokeStyle = '#3a4a3a'; g.lineWidth = 3; g.strokeRect(b.x, b.y, b.w, b.h); };
+  s.draw = (g, t) => { const bg = g.createLinearGradient(0, 0, 0, 512); bg.addColorStop(0, '#1d2128'); bg.addColorStop(1, '#0d1014'); g.fillStyle = bg; rr(g, 4, 4, 504, 504, 30); g.fill();
+    g.lineWidth = 8; g.strokeStyle = '#5a6a7a'; rr(g, 4, 4, 504, 504, 30); g.stroke(); txt(g, s.zoom >= 0 ? `📹 CAM ${s.zoom + 1} · ${feeds[s.zoom].c.name}` : '📹 SECURITY CAMERAS', 256, 36, 26, '#e8f0ff');
+    if (s.zoom >= 0) { feedDraw(g, feeds[s.zoom], { x: 16, y: 66, w: 480, h: 310 }, t); txt(g, 'TAP TO GO BACK TO ALL FOUR', 256, 410, 18, '#9fb0c0'); }
+    else feeds.forEach((f, i) => { const b = box(i); feedDraw(g, f, b, t); g.fillStyle = '#0d1014'; g.fillRect(b.x, b.y + b.h, b.w, 30); txt(g, `${f.c.name}`, b.x + b.w / 2, b.y + b.h + 15, 15, '#c8d8c8'); });
+    txt(g, 'TAP A CAMERA TO MAKE IT BIG · ✕ TO STOP WATCHING', 256, 488, 13, '#7f8f9f'); };
+  return s;
+}
 const SAB = { lights: { name: 'LIGHTS OUT', icon: '💡' }, keg: { name: 'KEG PRESSURE', icon: '🛢️', crit: true } };
 const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const now = () => performance.now() / 1000;
@@ -88,7 +135,8 @@ export class Imposter {
     // a game that starts after the deal (pressed PLAY late): ask the host for where things are
     on('imHello', (m, p) => { if (this.host && p) this.hostHello(p.id); });
     on('imVent', (m, p) => { const pl = p && this.players.get(p.id); if (pl) { pl.vent = !!m.in; } });
-    this.leaveWas = this.net.on.leave; this.net.on.leave = (m) => { this.leaveWas && this.leaveWas(m); if (this.host) this.hostLeft(m.id); };
+    this.camWatchers = new Set(); on('imCams', (m, p) => { if (!p) return; if (m.on) this.camWatchers.add(p.id); else this.camWatchers.delete(p.id); });
+    this.leaveWas = this.net.on.leave; this.net.on.leave = (m) => { this.leaveWas && this.leaveWas(m); this.camWatchers && this.camWatchers.delete(m.id); if (this.host) this.hostLeft(m.id); };
     this.respawnRing();
     // the lobby: everyone wanders round the pub until the host rings the bell (3 or more players)
     this.needSpawn = 2; this.lobbyT = 0; g.player.noGrab = true; g.player.flatDrop && g.player.flatDrop(); for (const h of g.player.hands || []) if (h.held) { h.held.heldBy = null; h.held = null; }
@@ -258,6 +306,25 @@ export class Imposter {
     // every job has its own station, so you can see where it is: the kit for the job on a little stand, and a sign
     // hanging over it with its name (the fuse box and the two keg valves too)
     for (const t of TASKS) this.grp.add(this.station(t.id, t.at, TASK_SIGN[t.id], t.kit));
+    // security: the desk against the staff room wall, four monitors on it, a chair; and the four cameras round the place
+    { const D = new THREE.Group(); D.position.set(SECURITY.desk[0], 0, SECURITY.desk[1]); D.rotation.y = Math.PI / 2; const lam = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, ...o });
+      const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); D.add(o); return o; };
+      add(new THREE.BoxGeometry(1.4, 0.05, 0.62), lam(0x3a3f48), 0, 0.76, 0); for (const x of [-0.66, 0.66]) add(new THREE.BoxGeometry(0.05, 0.74, 0.58), lam(0x2a2e35), x, 0.37, 0);
+      const scr = document.createElement('canvas'); scr.width = 256; scr.height = 160; { const g = scr.getContext('2d'); g.fillStyle = '#0b1a12'; g.fillRect(0, 0, 256, 160); for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(160,255,170,${Math.random() * 0.25})`; g.fillRect(Math.random() * 256, Math.random() * 160, 2, 1); } g.fillStyle = '#7dff8a'; g.font = '700 22px monospace'; g.fillText('CAM', 14, 34); g.fillStyle = '#ff3b3b'; g.beginPath(); g.arc(230, 22, 7, 0, 7); g.fill(); }
+      const st = new THREE.CanvasTexture(scr); st.colorSpace = THREE.SRGBColorSpace;
+      for (let i = 0; i < 4; i++) { const x = (i % 2 ? 0.27 : -0.27), y = 1.08 + Math.floor(i / 2) * 0.34; add(new THREE.BoxGeometry(0.5, 0.31, 0.05), lam(0x111111), x, y, -0.2); const m = add(new THREE.PlaneGeometry(0.46, 0.27), new THREE.MeshBasicMaterial({ map: st, toneMapped: false }), x, y, -0.172); m.userData.screen = true; }
+      add(new THREE.BoxGeometry(0.06, 0.32, 0.06), lam(0x222222), 0, 0.92, -0.22); add(new THREE.BoxGeometry(0.44, 0.02, 0.15), lam(0x222222), 0, 0.79, 0.1);
+      add(new THREE.CylinderGeometry(0.24, 0.24, 0.07, 16), lam(0x1a1a1a), 0, 0.47, 0.62); add(new THREE.BoxGeometry(0.44, 0.48, 0.06), lam(0x1a1a1a), 0, 0.75, 0.85); add(new THREE.CylinderGeometry(0.03, 0.03, 0.44, 8), lam(0x555555), 0, 0.22, 0.62);
+      this.grp.add(D); this.secDesk = D;
+      this.grp.add(this.station('security', SECURITY.at, '📹 SECURITY', [SECURITY.desk[0], 0, SECURITY.desk[1], Math.PI / 2, 'none']));
+      this.camLeds = CAMS.map(c => { const g = new THREE.Group(); g.position.set(...c.at); g.lookAt(...c.look);
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.13, 0.3), lam(0xe8e8e8)); body.position.z = 0.05; g.add(body);
+        const hood = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.03, 0.36), lam(0xd0d0d0)); hood.position.set(0, 0.08, 0.06); g.add(hood);
+        const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.04, 16), lam(0x111111)); lens.rotation.x = Math.PI / 2; lens.position.z = 0.21; g.add(lens);
+        const glass = new THREE.Mesh(new THREE.CircleGeometry(0.035, 16), new THREE.MeshBasicMaterial({ color: 0x1a3a5a })); glass.position.z = 0.232; g.add(glass);
+        const led = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), new THREE.MeshBasicMaterial({ color: 0x330000 })); led.position.set(0.055, 0.035, 0.205); g.add(led);
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.22, 8), lam(0x9aa0a6)); arm.position.set(0, 0.04, -0.18); arm.rotation.x = Math.PI / 2; g.add(arm);
+        this.grp.add(g); return led; }); }
     this.grp.add(this.station('fuse', FUSE.at, '⚡ FUSE BOX', FUSE.kit)); VALVES.forEach((v, i) => this.grp.add(this.station('valve', v.at, '🛢️ ' + v.name)));
     // a frying pan for the kill (it comes down on their head)
     this.pan = new THREE.Group(); { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.14, 0.04, 22), lam(0x222222)); this.pan.add(p); const h = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.32, 8), lam(0x5a2e14)); h.rotation.z = Math.PI / 2; h.position.x = 0.32; this.pan.add(h); }
@@ -423,6 +490,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     if (this.sab && me.alive) { if (this.sab.k === 'lights' && this.hd(h, V(...FUSE.at)) < IMP.USE_R) out.use = { kind: 'fix', k: 'lights' };
       if (this.sab.k === 'keg') VALVES.forEach((v, i) => { if (!this.sab.fixed[i] && this.hd(h, V(...v.at)) < IMP.USE_R) out.use = { kind: 'fix', k: 'keg', part: i }; }); }
     if (!out.use) for (const id of me.tasks) { if (me.done.has(id)) continue; if (this.hd(h, V(...TASK[id].at)) < IMP.USE_R) { out.use = { kind: 'task', id }; break; } }
+    if (!out.use && me.alive && this.hd(h, V(...SECURITY.at)) < IMP.USE_R) out.use = { kind: 'cams' };
     if (!out.use && me.alive && this.hd(h, CENTRE) < 1.6) out.use = { kind: 'bell' };
     if (me.alive) for (const b of this.bodies) if (!b.found && !b.cleared && this.hd(h, b.at) < IMP.REPORT_R) { out.body = b; break; }
     if (me.imp && me.alive) { let best = null, bd = IMP.KILL_R; for (const p of this.players.values()) { if (p.id === this.me || !p.alive || p.realImp || p.vent) continue; const q = this.posOf(p.id); if (!q) continue; const d = this.hd(h, q); if (d < bd) { bd = d; best = p; } } out.victim = best;
@@ -437,9 +505,18 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     if (u.kind === 'bell') { if (this.emergLeft <= 0) return this.toast('YOU\'VE USED YOUR EMERGENCY MEETING'); if (this.emergCD > 0) return this.toast(`THE BELL'S READY IN ${Math.ceil(this.emergCD)}s`); if (this.sab && SAB[this.sab.k].crit) return this.toast('NOT DURING AN EMERGENCY! FIX THE KEG!'); for (let i = 0; i < 4; i++) setTimeout(() => sfx('alarm', null, 1), i * 160); this.toast('🔔 DING DING DING!'); this.ask('imM', {}); return; }
     if (u.kind === 'fix') { const game = u.k === 'lights' ? makeGame('switches', { title: 'FIX THE LIGHTS' }) : makeGame('crank', { title: VALVES[u.part].name, hint: 'RELEASE THE PRESSURE', turns: 2 }); game.sabFix = true;
       this.panel.show(game, { onDone: () => this.ask('imF', { k: u.k, part: u.part }) }); return; }
+    if (u.kind === 'cams') { this.openCams(); return; }
     if (u.kind === 'task') { const t = TASK[u.id];
       this.panel.show(makeGame(t.kind, t.o), { onDone: () => { if (me.imp) { me.done.add(u.id); this.toast('(FAKE JOB: YOU\'RE THE IMPOSTER)'); return; } this.ask('imT', { task: u.id }); this.toast(`✓ ${t.name.toUpperCase()}`); } }); }
   }
+  // tapping the pub's real fruit machine in Imposter: if emptying it is one of your jobs (and you're close), that opens it
+  useMachine() { const me = this.mine(); if (!me || this.phase !== 'play') return; if (!me.tasks.includes('fruit') || me.done.has('fruit')) return this.toast('NOT YOUR JOB');
+    const n = this.near(); if (n.use && n.use.kind === 'task' && n.use.id === 'fruit') this.doUse(); else this.toast('GET A BIT CLOSER TO THE MACHINE'); }
+  // sit at the security desk: the four feeds, until you close them (or a meeting's called, or you die)
+  openCams() { if (this.camsGame) return; const game = this.camsGame = makeCamFeeds({ renderer: this.g.renderer, scene: this.g.scene });
+    this.camWatchers.add(this.me); this.net.send({ t: 'imCams', on: true }); sfx('toggle', null, 0.6);
+    this.panel.show(game, { onClose: () => this.closeCams() }); }
+  closeCams() { const g = this.camsGame; if (!g) return; this.camsGame = null; g.dispose(); this.camWatchers.delete(this.me); this.net.send({ t: 'imCams', on: false }); }
   doReport() { if (this.phase !== 'play') return; const n = this.near(); if (n.body) this.ask('imM', { body: n.body.id }); }
   doKill() { const n = this.near(); if (!this.amImp() || this.phase !== 'play') return; if (this.killCD > 0) { this.toast(`KILL READY IN ${Math.ceil(this.killCD)}s`); return; } if (!n.victim) { this.toast('NOBODY CLOSE ENOUGH'); return; } this.ask('imK', { v: n.victim.id }); }
   openSab() { if (!this.amImp() || this.phase !== 'play') return; if (this.sab) return this.toast('ALREADY SABOTAGED'); if (this.sabCD > 0) return this.toast(`SABOTAGE READY IN ${Math.ceil(this.sabCD)}s`);
@@ -648,6 +725,9 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     const me = this.mine();
     if (me) for (const id of me.tasks) { const t = TASK[id], d = me.done.has(id); dot(t.at[0], t.at[1], 11, d ? '#39ff14' : '#ffd400', '#111', d ? '✓' : '!'); }
     if (this.sab) for (const pnt of this.sab.k === 'lights' ? [FUSE] : VALVES) dot(pnt.at[0], pnt.at[1], 13, '#ff3b3b', '#fff', '⚠', 14, '#fff');
+    for (const c of CAMS) { const [u, w] = P(c.at[0], c.at[2]), [lu, lw] = P(c.look[0], c.look[2]), a0 = Math.atan2(lw - w, lu - u), L = Math.min(70, Math.hypot(lu - u, lw - w));
+      x.fillStyle = this.camWatchers && this.camWatchers.size ? 'rgba(255,60,60,0.28)' : 'rgba(255,255,255,0.16)'; x.beginPath(); x.moveTo(u, w); x.arc(u, w, L, a0 - 0.5, a0 + 0.5); x.closePath(); x.fill(); x.fillStyle = '#222'; x.fillRect(u - 5, w - 4, 10, 8); }
+    { const [u, w] = P(SECURITY.at[0], SECURITY.at[1]); x.font = '18px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('📹', u, w); }
     if (this.amImp()) for (const v of VENTS) { const [u, w] = P(v.at[0], v.at[1]); x.fillStyle = '#4e342e'; x.strokeStyle = '#ff3b3b'; x.lineWidth = 3; x.fillRect(u - 8, w - 8, 16, 16); x.strokeRect(u - 8, w - 8, 16, 16); }
     const Pl = this.g.player, h = Pl.head, [hu, hv] = P(h.x, h.z), [fu, fv] = P(h.x + Pl.fwd.x, h.z + Pl.fwd.z), a = Math.atan2(fu - hu, -(fv - hv));
     x.save(); x.translate(hu, hv); x.rotate(a); x.fillStyle = '#4fc3ff'; x.strokeStyle = '#fff'; x.lineWidth = 3; x.beginPath(); x.moveTo(0, -15); x.lineTo(11, 11); x.lineTo(0, 5); x.lineTo(-11, 11); x.closePath(); x.fill(); x.stroke(); x.restore();
@@ -662,6 +742,8 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     if (this.host) this.hostUpdate(dt);
     if ((this.foodT = (this.foodT || 0) - dt) <= 0) { this.foodT = 1; this.clearFood(); }
     this.panel.update(dt);
+    if (this.camsGame && (this.panel.cur !== this.camsGame || !(this.mine() && this.mine().alive))) { if (this.panel.cur === this.camsGame) this.panel.close(true); this.closeCams(); }
+    if (this.camLeds) { const on = this.camWatchers.size > 0 && Math.floor(performance.now() / 450) % 2 === 0; for (const l of this.camLeds) l.material.color.setHex(on ? 0xff2020 : 0x330000); }
     if (this.phase === 'intro') { this.introT -= dt; if (this.introT <= 0) { this.phase = 'play'; this.setFog(); } }
     const me = this.mine(), alive = !!(me && me.alive);
     if (this.phase === 'play') { if (this.killCD > 0) this.killCD -= dt; if (this.sabCD > 0 && !this.sab) this.sabCD -= dt; if (this.emergCD > 0) this.emergCD -= dt; }
@@ -717,7 +799,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   }
   drawButtons(me, alive) {
     const n = this.near(), B = this.B, play = this.phase === 'play', imp = this.amImp();
-    B.use.classList.toggle('off', !n.use || !(play || this.phase === 'waiting')); B.use.querySelector('b').textContent = n.use ? (n.use.kind === 'bell' ? '🔔' : n.use.kind === 'fix' ? '🔧' : '✋') : '✋';
+    B.use.classList.toggle('off', !n.use || !(play || this.phase === 'waiting')); B.use.querySelector('b').textContent = n.use ? (n.use.kind === 'bell' ? '🔔' : n.use.kind === 'fix' ? '🔧' : n.use.kind === 'cams' ? '📹' : '✋') : '✋';
     B.rep.hidden = !(n.body && alive && play);
     B.kill.hidden = !(imp && alive); B.kill.classList.toggle('off', this.killCD > 0 || !n.victim || !play); B.kill.querySelector('.cd').textContent = this.killCD > 0 && play ? Math.ceil(this.killCD) : '';
     B.sab.hidden = !(imp && play); B.sab.classList.toggle('off', !!this.sab || this.sabCD > 0);
@@ -749,7 +831,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     if (this.panT === 0) this.panHit = false;
   }
   dispose() {
-    this.dim(false);
+    this.dim(false); if (this.camsGame) { this.camsGame.dispose(); this.camsGame = null; }
     this.panel.close(true); this.panel.wrap.remove(); this.g.scene.remove(this.panel.mesh, this.panel.dot); this.g.scene.remove(this.grp);
     for (const el of [this.ui, this.splash, this.alertEl, this.mapEl, this.sabEl, this.style, this.tasksEl]) el && el.remove(); if (this.g.player.wrist && this.g.player.flatMode) this.g.player.wrist.visible = true;
     document.body.classList.remove('imposter'); window.removeEventListener('keydown', this.onKey, true);

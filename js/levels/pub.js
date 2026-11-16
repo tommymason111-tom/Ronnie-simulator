@@ -806,27 +806,28 @@ export function buildPub(scene) {
     k.label('FOOD HYGIENE RATING: 5 (BEFORE RONNIE STARTED WORKING HERE)', 0.5, 0.3, [x1 - 0.025, 2.3, z0 + 5.3], [0, -Math.PI / 2, 0], { bg: '#2e7d32', fg: '#fff', border: '#fff', size: 34 });
     k.label('ALLERGENS: ASK STAFF. RONNIE IS ALLERGIC TO SALAD.', 0.5, 0.3, [x1 - 0.025, 1.9, z0 + 7.2], [0, -Math.PI / 2, 0], { bg: '#fff8e1', fg: '#c62828', border: '#c62828', size: 34 });
     // ---- the island: steel prep table with an under-shelf of pans, boards, a knife block, food prepped, a pan rack over it
-    const ix0 = x0 + 1.75, ix1 = x1 - 1.1, iz0 = z0 + 1.6, iz1 = z0 + 5.4;
+    // (narrow, and in the middle of the room: a clear walkway down both sides of it, from the door at the top to the door into the pub)
+    const icx = (x0 + 0.72 + x1 - 0.7) / 2, ix0 = icx - 0.35, ix1 = icx + 0.35, iz0 = z0 + 1.8, iz1 = z0 + 5.2;
     R(ix0, iz0, ix1, iz1, 0.04, 0.9, SSL, { collide: true }); R(ix0 + 0.05, iz0 + 0.05, ix1 - 0.05, iz1 - 0.05, 0.025, 0.3, SS);
     for (const [x, z] of [[ix0 + 0.04, iz0 + 0.04], [ix1 - 0.04, iz0 + 0.04], [ix0 + 0.04, iz1 - 0.04], [ix1 - 0.04, iz1 - 0.04], [ix0 + 0.04, (iz0 + iz1) / 2], [ix1 - 0.04, (iz0 + iz1) / 2]]) k.box(0.04, 0.88, 0.04, x, 0.44, z, SSD);
     blk(ix0, iz0, ix1, iz1, 0.92);
-    for (let i = 0; i < 4; i++) k.cyl(0.14, 0.13, 0.12, ix0 + 0.25 + (i % 2) * 0.35, 0.38, iz0 + 0.4 + Math.floor(i / 2) * 0.8, 0x9aa0a8, 14);   // pans under it
+    for (let i = 0; i < 4; i++) k.cyl(0.12, 0.11, 0.12, ix0 + 0.2 + (i % 2) * 0.3, 0.38, iz0 + 0.4 + Math.floor(i / 2) * 0.8, 0x9aa0a8, 14);   // pans under it
     R(ix0 + 0.1, iz0 + 0.2, ix0 + 0.5, iz0 + 0.5, 0.025, 0.935, 0xc89a5a); R(ix0 + 0.1, iz0 + 0.7, ix0 + 0.5, iz0 + 1.0, 0.025, 0.935, 0x2e7d32); R(ix0 + 0.1, iz0 + 1.2, ix0 + 0.5, iz0 + 1.5, 0.025, 0.935, 0xd32f2f);   // colour-coded boards
     R(ix1 - 0.2, iz0 + 0.2, ix1 - 0.05, iz0 + 0.35, 0.2, 1.02, 0x2a1a10); for (let i = 0; i < 4; i++) R(ix1 - 0.18 + i * 0.03, iz0 + 0.25, ix1 - 0.17 + i * 0.03, iz0 + 0.3, 0.12, 1.17, 0x222222);
     for (let i = 0; i < 6; i++) k.cyl(0.05, 0.05, 0.02, ix0 + 0.3, 0.95, iz0 + 1.8 + i * 0.13, 0xb0303a, 12);                             // burgers ready to cook
-    for (let i = 0; i < 3; i++) R(ix0 + 0.6, iz0 + 2.6 + i * 0.35, ix1 - 0.1, iz0 + 2.9 + i * 0.35, 0.1, 0.97, 0xd8dce0);                 // gastronorm trays
-    for (let i = 0; i < 3; i++) R(ix0 + 0.62, iz0 + 2.62 + i * 0.35, ix1 - 0.12, iz0 + 2.88 + i * 0.35, 0.01, 1.02, [0xffcf40, 0xe8e0c8, 0x6a3a1a][i]);
+    for (let i = 0; i < 3; i++) R(ix0 + 0.1, iz0 + 2.65 + i * 0.25, ix1 - 0.1, iz0 + 2.85 + i * 0.25, 0.1, 0.97, 0xd8dce0);                 // gastronorm trays
+    for (let i = 0; i < 3; i++) R(ix0 + 0.12, iz0 + 2.67 + i * 0.25, ix1 - 0.12, iz0 + 2.83 + i * 0.25, 0.01, 1.02, [0xffcf40, 0xe8e0c8, 0x6a3a1a][i]);
     for (const z of [iz0 + 1.8, iz0 + 3.2]) k.spawns.push(new THREE.Vector3((ix0 + ix1) / 2, 1.0, z));
     R(ix0, (iz0 + iz1) / 2 - 1.2, ix1, (iz0 + iz1) / 2 + 1.2, 0.03, H - 0.75, 0x2a2a2a);                                                  // pan rack overhead
     for (const z of [(iz0 + iz1) / 2 - 1.15, (iz0 + iz1) / 2 + 1.15]) for (const x of [ix0 + 0.05, ix1 - 0.05]) k.cyl(0.006, 0.006, 0.72, x, H - 0.37, z, 0x222222, 4);
     for (let i = 0; i < 6; i++) { const z = (iz0 + iz1) / 2 - 1.0 + i * 0.4, x = i % 2 ? ix0 + 0.3 : ix1 - 0.3; k.cyl(0.004, 0.004, 0.15, x, H - 0.84, z, 0x222222, 4); k.cyl(0.13, 0.11, 0.08, x, H - 0.96, z, [0x9aa0a8, 0x2a2a2a, 0xb87333][i % 3], 14); }
     // bins (food waste, general, recycling), a mop and bucket, fire extinguisher and blanket, first aid
-    for (const [x, col] of [[x1 - 0.3, 0x2e7d32], [x1 - 0.75, 0x37474f], [x1 - 1.2, 0x1565c0]]) { k.cyl(0.2, 0.18, 0.75, x, 0.375, z1 - 0.3, col, 12, { block: true }); k.cyl(0.21, 0.21, 0.04, x, 0.77, z1 - 0.3, col, 12); }
+    for (const [x, col] of [[x0 + 1.55, 0x2e7d32], [x0 + 2.0, 0x37474f], [x0 + 2.45, 0x1565c0]]) { k.cyl(0.2, 0.18, 0.75, x, 0.375, z1 - 0.25, col, 12, { block: true }); k.cyl(0.21, 0.21, 0.04, x, 0.77, z1 - 0.25, col, 12); }      // (along the end wall, out of the way)
     k.cyl(0.16, 0.14, 0.28, x1 - 0.35, 0.14, doorZ1 + 0.45, 0xffd400, 12); k.box(0.02, 1.2, 0.02, x1 - 0.3, 0.75, doorZ1 + 0.45, 0x8a5a2a, { rot: [0, 0, 0.15] });
     k.cyl(0.07, 0.07, 0.5, x1 - 0.12, 0.45, doorZ0 - 0.35, 0xd32f2f, 10); k.label('FIRE', 0.12, 0.07, [x1 - 0.12, 0.45, doorZ0 - 0.279], [0, 0, 0], { bg: '#d32f2f', fg: '#fff', border: null, size: 60 });
     R(x1 - 0.06, doorZ0 - 0.75, x1, doorZ0 - 0.5, 0.3, 1.5, 0xd32f2f);
     k.label('KITCHEN — STAFF ONLY (ESPECIALLY NOT RONNIE)', 1.1, 0.3, [X(195) + 0.1, 2.45, Z(1012)], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c0392b', border: '#c0392b', size: 40 });
-    k.box(0.32, 0.6, 0.02, (x0 + x1) / 2 + 0.6, 0.3, z1 - 1.6, 0xffd400, { rot: [0.25, 0.6, 0] });                                          // wet floor sign
+    k.box(0.32, 0.6, 0.02, x0 + 0.95, 0.3, z0 + 3.75, 0xffd400, { rot: [0.25, 0.6, 0] });      // (against the end of the cook line, not in the walkway)                                          // wet floor sign
   }
   // the restaurant entrance: outside door, mat, a menu board
   { const x0 = X(15), x1 = X(195), z0 = Z(1060), z1 = Z(1190), zc = (z0 + z1) / 2;

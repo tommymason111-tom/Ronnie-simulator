@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 
 export const POWERUPS = {
-  hoover: { name: 'HOOVER MODE', icon: '🌀', col: 0x00e5ff, css: '#00e5ff', dur: 12, line: 'SUCK IT ALL UP!' },
+  hoover: { name: 'HOOVER MODE', icon: '🌀', col: 0x00e5ff, css: '#00e5ff', dur: 7, line: 'SUCK IT ALL UP!' },
   double: { name: 'DOUBLE CHONK', icon: '×2', col: 0xffd400, css: '#ffd400', dur: 15, line: 'EVERYTHING COUNTS DOUBLE!' },
   rain:   { name: 'FOOD RAIN', icon: '🍔', col: 0xff6d00, css: '#ff8a1e', dur: 0, line: 'IT\'S RAINING BURGERS!' },
   speed:  { name: 'SUPER SPEED', icon: '⚡', col: 0x76ff03, css: '#9cff4a', dur: 12, line: 'ZOOM!' },
@@ -69,8 +69,7 @@ export class PowerUps {
   drop(o, poof) { this.scene.remove(o.obj); this.orbs.splice(this.orbs.indexOf(o), 1); }
 
   take(o) {
-    const P = POWERUPS[o.k]; this.drop(o);
-    if (this.mpOn) this.net.send({ t: 'pug', id: o.id });
+    const P = POWERUPS[o.k]; if (!o.dev) { this.drop(o); if (this.mpOn) this.net.send({ t: 'pug', id: o.id }); }
     this.sfx('powerup', null, 1);
     const at = this.player.head.clone().addScaledVector(this.player.fwd, 0.8 * this.player.scale);
     this.words.show(`${P.icon} ${P.name}!`, at.clone().add({ x: 0, y: 0.12, z: 0 }), P.css, 0.13 * this.player.scale, 1.6);
@@ -79,6 +78,8 @@ export class PowerUps {
     if (o.k === 'rain') this.rain(); else this.active[o.k] = (this.active[o.k] || 0) + P.dur;
     if (o.k === 'hoover') this.sfx('hoover', null, 0.8);
   }
+  // developer mode: switch one on straight away
+  give(k) { const P = POWERUPS[k]; if (!P) return; this.take({ k, obj: null, id: null, dev: true }); }
   // a shower of food dropping out of the sky all round you
   rain() {
     const h = this.player.head;
@@ -93,7 +94,7 @@ export class PowerUps {
   // ---------------- hoover ----------------
   edible(it) { const d = it.def; return !it.dead && !it.heldBy && !it.empty && !it.incoming && !it.sucked && !d.veg && !d.prop && !d.poop && !d.stout && !d.shake && d.chonk > 0; }
   hoover(dt) {
-    const P = this.player, s = P.scale, mouth = P.mouth || P.head, R = 4.5 * Math.max(1, s);
+    const P = this.player, s = P.scale, mouth = P.mouth || P.head, R = 2.4 * Math.max(1, Math.sqrt(s));      // (toned down: it was clearing whole rooms)
     // the vortex in front of you (just a swirl: it doesn't get in the way of seeing)
     if (!this.vortex) {
       const c = document.createElement('canvas'); c.width = 128; c.height = 128; const g = c.getContext('2d');
@@ -107,15 +108,15 @@ export class PowerUps {
     v.lookAt(v.position.clone().sub(P.fwd)); v.material.map.offset.x -= dt * 2.5;
     // grab food in range (a few a second), then pull each one into the mouth
     this.grabT = (this.grabT || 0) - dt;
-    if (this.grabT <= 0) { this.grabT = 0.22; let best = null, bd = R;
-      for (const it of this.items.items) { if (!this.edible(it)) continue; const d = it.obj.position.distanceTo(mouth); if (d < bd) { bd = d; best = it; } }
+    if (this.grabT <= 0 && !this.sucking.length) { this.grabT = 0.7; let best = null, bd = R;      // (one thing at a time, and only what's in front of you)
+      for (const it of this.items.items) { if (!this.edible(it)) continue; const d = it.obj.position.distanceTo(mouth); if (d >= bd) continue; const dx = it.obj.position.x - mouth.x, dz = it.obj.position.z - mouth.z, l = Math.hypot(dx, dz) || 1; if ((dx * P.fwd.x + dz * P.fwd.z) / l < 0.55) continue; bd = d; best = it; }
       if (best) { best.sucked = true; best.heldBy = 'hoover'; this.sucking.push({ it: best, t: 0, from: best.obj.position.clone(), spin: Math.random() * 6 }); } }
     if ((this.hum -= dt) <= 0) { this.hum = 0.9; this.sfx('hoover', null, 0.35); }
   }
   pull(dt) {
     const P = this.player, mouth = P.mouth || P.head;
     for (const s of this.sucking.slice()) {
-      const it = s.it; s.t += dt / 0.45; const k = Math.min(1, s.t), e = k * k;
+      const it = s.it; s.t += dt / 0.8; const k = Math.min(1, s.t), e = k * k;
       if (it.dead) { this.sucking.splice(this.sucking.indexOf(s), 1); continue; }
       it.obj.position.copy(s.from).lerp(mouth, e); it.obj.position.y += Math.sin(k * Math.PI) * 0.25;
       it.obj.rotation.y += dt * (8 + s.spin); it.obj.rotation.x += dt * 6; it.obj.scale.setScalar(Math.max(0.25, 1 - e * 0.7));
