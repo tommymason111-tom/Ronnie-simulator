@@ -13,36 +13,40 @@ const KIND_ICON = { hold: '🍺', crank: '⚙️', swipe: '💳', wires: '🔌',
 const NAME = (id) => id === 'tommy' ? 'TOMMY' : ((SQUAD[id] && SQUAD[id].name) || id).toUpperCase();
 
 export function startDev(RS) {
+  window.__devMode = true;
   const P = RS.player, D = RS.director;
   // ---- the look
   const st = document.createElement('style'); st.textContent = `
-  #dev-btn { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 72; font: 900 15px system-ui, sans-serif; color: #111; background: #39ff14; border: 3px solid #111; border-radius: 14px; padding: 8px 16px; box-shadow: 0 3px 0 #111; cursor: pointer; }
+  #dev-btn { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 72; font: 900 15px 'Courier New', monospace; letter-spacing: 1px; color: #39ff14; background: rgba(0,10,2,0.92); border: 2px solid #39ff14; border-radius: 10px; padding: 8px 16px; box-shadow: 0 0 16px rgba(57,255,20,0.6); cursor: pointer; text-shadow: 0 0 6px #39ff14; }
   #dev-btn:active { transform: translateX(-50%) translateY(2px); box-shadow: 0 1px 0 #111; }
   #dev-panel { position: fixed; left: 50%; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 52px); transform: translateX(-50%); width: min(94vw, 560px); max-height: min(62vh, 520px); z-index: 72; display: none; flex-direction: column;
-    background: rgba(16,20,40,0.96); border: 3px solid #39ff14; border-radius: 18px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #fff; font: 700 14px system-ui, sans-serif; overflow: hidden; }
+    background: rgba(0,10,2,0.95); border: 2px solid #39ff14; border-radius: 12px; box-shadow: 0 0 30px rgba(57,255,20,0.45), inset 0 0 40px rgba(57,255,20,0.08); color: #b8ffb0; font: 700 14px 'Courier New', monospace; overflow: hidden; }
+  #dev-panel::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0 2px, transparent 2px 4px); }
   #dev-panel.on { display: flex; }
   #dev-panel .dv-tabs { display: flex; gap: 6px; padding: 10px 10px 6px; }
-  #dev-panel .dv-tabs button { flex: 1; font: 900 13px system-ui, sans-serif; padding: 9px 4px; border-radius: 10px; border: 2px solid #39ff14; background: transparent; color: #39ff14; cursor: pointer; }
+  #dev-panel .dv-tabs button { flex: 1; font: 900 13px 'Courier New', monospace; padding: 9px 4px; border-radius: 10px; border: 2px solid #39ff14; background: transparent; color: #39ff14; cursor: pointer; }
   #dev-panel .dv-tabs button.on { background: #39ff14; color: #111; }
   #dev-panel .dv-body { overflow-y: auto; padding: 4px 10px 12px; -webkit-overflow-scrolling: touch; }
-  #dev-panel h5 { margin: 10px 2px 6px; color: #ffd400; font: 900 13px system-ui, sans-serif; letter-spacing: .5px; }
+  #dev-panel h5 { margin: 10px 2px 6px; color: #39ff14; font: 900 13px 'Courier New', monospace; letter-spacing: 1px; text-shadow: 0 0 6px #39ff14; }
+  #dev-panel h5::before { content: '> '; }
   #dev-panel .dv-row { display: flex; flex-wrap: wrap; gap: 6px; }
-  #dev-panel .dv-chip, #dev-panel .dv-act { font: 800 13px system-ui, sans-serif; padding: 8px 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; text-align: left; }
-  #dev-panel .dv-chip.on { border-color: #ffd400; background: #ffd400; color: #111; }
+  #dev-panel .dv-chip, #dev-panel .dv-act { font: 800 13px 'Courier New', monospace; padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(57,255,20,0.45); background: rgba(57,255,20,0.06); color: #c8ffc0; cursor: pointer; text-align: left; }
+  #dev-panel .dv-chip.on { border-color: #39ff14; background: #39ff14; color: #001a00; box-shadow: 0 0 12px #39ff14; }
   #dev-panel .dv-act { display: flex; align-items: center; gap: 8px; width: 100%; }
   #dev-panel .dv-act i { font-style: normal; font-size: 18px; }
-  #dev-panel .dv-act small { margin-left: auto; color: #9fb0d0; font-weight: 700; }
+  #dev-panel .dv-act small { margin-left: auto; color: #4fbf4a; font-weight: 700; }
   #dev-panel .dv-act:active, #dev-panel .dv-chip:active { transform: scale(0.97); }
   #dev-panel .dv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 6px; }
-  #dev-panel .dv-wide { background: #ffd400; color: #111; border-color: #111; justify-content: center; font-weight: 900; }
-  #dev-panel .dv-note { color: #9fb0d0; font-weight: 600; font-size: 12px; margin: 2px 2px 6px; }
-  #dev-tag { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 72; font: 900 11px system-ui, sans-serif; color: #111; background: #39ff14; padding: 3px 9px; border-radius: 8px; pointer-events: none; }`;
+  #dev-panel .dv-wide { background: #39ff14; color: #001a00; border-color: #b8ffb0; justify-content: center; font-weight: 900; box-shadow: 0 0 12px rgba(57,255,20,0.6); }
+  #dev-panel .dv-note { color: #6fdf6a; font-weight: 600; font-size: 12px; margin: 2px 2px 6px; }
+  #dev-panel .dv-note::before { content: '// '; }
+  #dev-tag { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 72; font: 900 12px 'Courier New', monospace; letter-spacing: 1px; color: #39ff14; background: rgba(0,10,2,0.9); border: 1px solid #39ff14; padding: 3px 10px; border-radius: 6px; pointer-events: none; text-shadow: 0 0 6px #39ff14; box-shadow: 0 0 12px rgba(57,255,20,0.5); }`;
   document.head.appendChild(st);
-  const btn = document.createElement('button'); btn.id = 'dev-btn'; btn.textContent = '🛠️ DEV'; document.body.appendChild(btn);
-  const tag = document.createElement('div'); tag.id = 'dev-tag'; tag.textContent = 'DEVELOPER MODE'; document.body.appendChild(tag);
+  const btn = document.createElement('button'); btn.id = 'dev-btn'; btn.textContent = '>_ DEV'; document.body.appendChild(btn);
+  const tag = document.createElement('div'); tag.id = 'dev-tag'; tag.textContent = '>_ DEVELOPER MODE'; document.body.appendChild(tag);
   const panel = document.createElement('div'); panel.id = 'dev-panel'; document.body.appendChild(panel);
   ['pointerdown', 'touchstart', 'mousedown', 'wheel'].forEach(k => { panel.addEventListener(k, (e) => e.stopPropagation()); btn.addEventListener(k, (e) => e.stopPropagation()); });
-  const open = (on) => { panel.classList.toggle('on', on); btn.textContent = on ? '✕ CLOSE DEV' : '🛠️ DEV'; };
+  const open = (on) => { panel.classList.toggle('on', on); btn.textContent = on ? '[ X ] CLOSE' : '>_ DEV'; };
   btn.addEventListener('click', () => open(!panel.classList.contains('on')));
 
   // ---- the random attacks stay off while you test
@@ -72,7 +76,7 @@ export function startDev(RS) {
     if (pup) { try { pup.dispose(); } catch (e) {} pup = null; pupChar = null; queue = []; }      // (the emote stand-in would be in their way)
     for (const o of RS.cast) if (o.state === 'act') o.state = 'idle';
     const fx = D.g.fx; fx && fx.endCutscene && fx.endCutscene(); fx && fx.hideCard && fx.hideCard(); P.clearEffects && P.clearEffects(); D.pending = null;
-    const f = new THREE.Vector3(P.fwd.x, 0, P.fwd.z).normalize(); if (c.rag && c.rag.placeAt) c.rag.placeAt(P.head.x + f.x * 2.2, P.head.z + f.z * 2.2, Math.atan2(-f.x, -f.z));
+    const f = new THREE.Vector3(P.fwd.x, 0, P.fwd.z).normalize(); 
     if (c === RS.tommy) { c.attacks = true; c.devTrip = true; c.directed = true; }
     const ok = D.launch({ c, attack: { key } }); if (!ok) return toast('THEY\'RE BUSY: TRY AGAIN IN A SECOND');
     open(false); };
