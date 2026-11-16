@@ -576,6 +576,7 @@ export class Director {
   attackClock() { return this.attackInProgress() ? 'ATTACK IN PROGRESS!' : this.nextAttackT > 0 ? `NEXT ATTACK IN ${Math.ceil(this.nextAttackT)}s` : 'NEXT ATTACK: ANY SECOND!'; }
 
   // start the picked attack: Tommy trips, the squad intervene
+  attackList() { return Object.entries(ATTACKS).flatMap(([who, l]) => l.map(a => [who, a])); }      // (developer mode)
   launch(pick) {
     const { c, attack } = pick;
     const ok = c === this.g.tommy ? c.startTrip() : c.intervene(attack.key);

@@ -1,0 +1,122 @@
+// DEVELOPER MODE (Settings cog -> DEVELOPER MODE): a test bench in the Oysterfleet.
+//   EMOTES    pick anyone in the squad: they appear in front of you and do any of their emotes (or all of them in turn)
+//   ATTACKS   set off any character's attack on you, there and then
+//   IMPOSTER  play any Imposter job (and the two sabotage fixes) straight away, without a game
+// Nothing here changes the game itself: the random attacks are switched off while it's open, that's all.
+import * as THREE from 'three';
+import { EMOTES, CHAR_EMOTES, emoteInfo } from './emotes.js';
+import { TASKS } from './imposter.js';
+import { Panel, makeGame } from './impgames.js';
+import { SQUAD } from './squad.js';
+
+const KIND_ICON = { hold: '🍺', crank: '⚙️', swipe: '💳', wires: '🔌', collect: '🧺', plunge: '🪠', order: '📖', scrub: '🧽', code: '🔢', dial: '⏲️', switches: '💡' };
+const NAME = (id) => id === 'tommy' ? 'TOMMY' : ((SQUAD[id] && SQUAD[id].name) || id).toUpperCase();
+
+export function startDev(RS) {
+  const P = RS.player, D = RS.director;
+  // ---- the look
+  const st = document.createElement('style'); st.textContent = `
+  #dev-btn { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 72; font: 900 15px system-ui, sans-serif; color: #111; background: #39ff14; border: 3px solid #111; border-radius: 14px; padding: 8px 16px; box-shadow: 0 3px 0 #111; cursor: pointer; }
+  #dev-btn:active { transform: translateX(-50%) translateY(2px); box-shadow: 0 1px 0 #111; }
+  #dev-panel { position: fixed; left: 50%; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 52px); transform: translateX(-50%); width: min(94vw, 560px); max-height: min(62vh, 520px); z-index: 72; display: none; flex-direction: column;
+    background: rgba(16,20,40,0.96); border: 3px solid #39ff14; border-radius: 18px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); color: #fff; font: 700 14px system-ui, sans-serif; overflow: hidden; }
+  #dev-panel.on { display: flex; }
+  #dev-panel .dv-tabs { display: flex; gap: 6px; padding: 10px 10px 6px; }
+  #dev-panel .dv-tabs button { flex: 1; font: 900 13px system-ui, sans-serif; padding: 9px 4px; border-radius: 10px; border: 2px solid #39ff14; background: transparent; color: #39ff14; cursor: pointer; }
+  #dev-panel .dv-tabs button.on { background: #39ff14; color: #111; }
+  #dev-panel .dv-body { overflow-y: auto; padding: 4px 10px 12px; -webkit-overflow-scrolling: touch; }
+  #dev-panel h5 { margin: 10px 2px 6px; color: #ffd400; font: 900 13px system-ui, sans-serif; letter-spacing: .5px; }
+  #dev-panel .dv-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  #dev-panel .dv-chip, #dev-panel .dv-act { font: 800 13px system-ui, sans-serif; padding: 8px 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; text-align: left; }
+  #dev-panel .dv-chip.on { border-color: #ffd400; background: #ffd400; color: #111; }
+  #dev-panel .dv-act { display: flex; align-items: center; gap: 8px; width: 100%; }
+  #dev-panel .dv-act i { font-style: normal; font-size: 18px; }
+  #dev-panel .dv-act small { margin-left: auto; color: #9fb0d0; font-weight: 700; }
+  #dev-panel .dv-act:active, #dev-panel .dv-chip:active { transform: scale(0.97); }
+  #dev-panel .dv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 6px; }
+  #dev-panel .dv-wide { background: #ffd400; color: #111; border-color: #111; justify-content: center; font-weight: 900; }
+  #dev-panel .dv-note { color: #9fb0d0; font-weight: 600; font-size: 12px; margin: 2px 2px 6px; }
+  #dev-tag { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 72; font: 900 11px system-ui, sans-serif; color: #111; background: #39ff14; padding: 3px 9px; border-radius: 8px; pointer-events: none; }`;
+  document.head.appendChild(st);
+  const btn = document.createElement('button'); btn.id = 'dev-btn'; btn.textContent = '🛠️ DEV'; document.body.appendChild(btn);
+  const tag = document.createElement('div'); tag.id = 'dev-tag'; tag.textContent = 'DEVELOPER MODE'; document.body.appendChild(tag);
+  const panel = document.createElement('div'); panel.id = 'dev-panel'; document.body.appendChild(panel);
+  ['pointerdown', 'touchstart', 'mousedown', 'wheel'].forEach(k => { panel.addEventListener(k, (e) => e.stopPropagation()); btn.addEventListener(k, (e) => e.stopPropagation()); });
+  const open = (on) => { panel.classList.toggle('on', on); btn.textContent = on ? '✕ CLOSE DEV' : '🛠️ DEV'; };
+  btn.addEventListener('click', () => open(!panel.classList.contains('on')));
+
+  // ---- the random attacks stay off while you test
+  const quiet = () => { if (D) { D.nextAttackT = Math.max(D.nextAttackT || 0, 600); } };
+
+  // ---- EMOTES: a stand-in of the character, a couple of metres in front of you, facing you
+  let pup = null, pupChar = null, queue = [], pupAt = null;
+  const spawnPup = (ch) => {
+    if (pup && pupChar === ch) return pup; if (pup) { try { pup.dispose(); } catch (e) {} pup = null; }
+    const f = new THREE.Vector3(P.fwd.x, 0, P.fwd.z).normalize(); pupAt = P.head.clone().addScaledVector(f, 2.3);
+    pup = RS.net.makeAvatar({ id: 'dev_' + ch, name: NAME(ch), char: ch }); pupChar = ch; return pup; };
+  const pose = () => { const d = new THREE.Vector3(P.head.x - pupAt.x, 0, P.head.z - pupAt.z), yaw = Math.atan2(-d.x, -d.z), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0));
+    const side = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)), fw = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+    const fy = RS.floorAt ? RS.floorAt(pupAt.x, pupAt.z) || 0 : 0, l = pupAt.clone().addScaledVector(side, -0.25).addScaledVector(fw, 0.1), rh = pupAt.clone().addScaledVector(side, 0.25).addScaledVector(fw, 0.15);
+    return { t: 'p', c: pupChar, h: [pupAt.x, fy + 1.62, pupAt.z], q: [q.x, q.y, q.z, q.w], l: [l.x, fy + 1.0, l.z], rh: [rh.x, fy + 1.05, rh.z], s: 1, st: 0, flat: 1 }; };
+  const play = (ch, id) => { const p = spawnPup(ch); if (!p) return; queue = []; setTimeout(() => p === pup && p.doEmote(id), pup && p.__ready ? 0 : 600); p.__ready = true; open(false); };
+  const playAll = (ch) => { const ids = EMOTES.map(e => e.id).concat((CHAR_EMOTES[ch] || []).map(e => e.id)); const p = spawnPup(ch); if (!p) return; queue = ids.slice(); p.__ready = true; nextQ = 0.6; open(false); };
+  let nextQ = 0;
+
+  // ---- ATTACKS: the character comes in a couple of metres in front of you and does it
+  const attack = (who, key) => {
+    const c = RS.cast.find(x => x.id === who) || (who === 'tommy' ? RS.tommy : null); if (!c) return toast('THEY\'RE NOT IN THIS GAME');
+    if (pup) { try { pup.dispose(); } catch (e) {} pup = null; pupChar = null; queue = []; }      // (the emote stand-in would be in their way)
+    for (const o of RS.cast) if (o.state === 'act') o.state = 'idle';
+    const fx = D.g.fx; fx && fx.endCutscene && fx.endCutscene(); fx && fx.hideCard && fx.hideCard(); P.clearEffects && P.clearEffects(); D.pending = null;
+    const f = new THREE.Vector3(P.fwd.x, 0, P.fwd.z).normalize(); if (c.rag && c.rag.placeAt) c.rag.placeAt(P.head.x + f.x * 2.2, P.head.z + f.z * 2.2, Math.atan2(-f.x, -f.z));
+    if (c === RS.tommy) c.attacks = true;
+    const ok = D.launch({ c, attack: { key } }); if (!ok) return toast('THEY\'RE BUSY: TRY AGAIN IN A SECOND');
+    open(false); };
+
+  // ---- IMPOSTER JOBS: the job's own game, straight away
+  const jobs = new Panel({ scene: RS.scene, player: P, renderer: RS.renderer });
+  const job = (kind, o, name) => { open(false); jobs.show(makeGame(kind, o), { onDone: () => toast('✅ ' + name.toUpperCase() + ': DONE') }); };
+
+  // ---- a little message
+  const toastEl = document.createElement('div'); Object.assign(toastEl.style, { position: 'fixed', top: '64px', left: '50%', transform: 'translateX(-50%)', zIndex: 73, background: '#111', color: '#39ff14', font: '900 14px system-ui, sans-serif', padding: '8px 14px', borderRadius: '10px', display: 'none' }); document.body.appendChild(toastEl);
+  let toastT = null; function toast(t) { toastEl.textContent = t; toastEl.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => { toastEl.style.display = 'none'; }, 2200); }
+
+  // ---- the panel's pages
+  const chars = ['tommy', ...Object.keys(CHAR_EMOTES).filter(c => c !== 'tommy')].filter(c => c === 'tommy' || SQUAD[c]);
+  let tab = 'emotes', sel = chars[0];
+  const render = () => {
+    const T = (id, label) => `<button data-tab="${id}" class="${tab === id ? 'on' : ''}">${label}</button>`;
+    let body = '';
+    if (tab === 'emotes') {
+      body += `<div class="dv-note">Pick someone, then tap an emote: they do it in front of you.</div><div class="dv-row">${chars.map(c => `<button class="dv-chip ${c === sel ? 'on' : ''}" data-ch="${c}">${NAME(c)}</button>`).join('')}</div>`;
+      body += `<h5>${NAME(sel)}'S EMOTES</h5><div class="dv-grid"><button class="dv-act dv-wide" data-all="${sel}">▶ PLAY THEM ALL IN TURN</button>`;
+      for (const e of (CHAR_EMOTES[sel] || [])) body += `<button class="dv-act" data-em="${e.id}"><i>${e.icon || '🎭'}</i>${e.name}<small>${e.dur}s</small></button>`;
+      body += `</div><h5>EVERYONE'S EMOTES</h5><div class="dv-grid">${EMOTES.map(e => `<button class="dv-act" data-em="${e.id}"><i>${e.icon || '🎭'}</i>${e.name}<small>${e.dur}s</small></button>`).join('')}</div>`;
+    } else if (tab === 'attacks') {
+      const list = D.attackList ? D.attackList() : [];
+      body += `<div class="dv-note">Tap one: that person comes up and does it to you.</div><div class="dv-grid">`;
+      for (const [who, a] of list) body += `<button class="dv-act" data-who="${who}" data-key="${a.key}"><i>${a.icon}</i>${a.title}<small>${NAME(who)}</small></button>`;
+      body += `</div>`;
+    } else {
+      body += `<div class="dv-note">Every Imposter job's game. Tap one to play it now.</div><div class="dv-grid">`;
+      for (const t of TASKS) body += `<button class="dv-act" data-job="${t.id}"><i>${t.o && t.o.icon || KIND_ICON[t.kind] || '🔧'}</i>${t.name}<small>${t.room}</small></button>`;
+      body += `</div><h5>SABOTAGE FIXES</h5><div class="dv-grid"><button class="dv-act" data-fix="lights"><i>💡</i>Fix the lights<small>FUSE BOX</small></button><button class="dv-act" data-fix="valve"><i>🛢️</i>Release a keg valve<small>KEG PRESSURE</small></button></div>`;
+    }
+    panel.innerHTML = `<div class="dv-tabs">${T('emotes', '🎭 EMOTES')}${T('attacks', '💥 ATTACKS')}${T('imposter', '🔪 IMPOSTER JOBS')}</div><div class="dv-body">${body}</div>`;
+  };
+  panel.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+    if (d.tab) { tab = d.tab; render(); return; }
+    if (d.ch) { sel = d.ch; render(); return; }
+    if (d.all) return playAll(d.all);
+    if (d.em) return play(sel, d.em);
+    if (d.who) return attack(d.who, d.key);
+    if (d.job) { const t = TASKS.find(x => x.id === d.job); return job(t.kind, t.o, t.name); }
+    if (d.fix === 'lights') return job('switches', { title: 'FIX THE LIGHTS' }, 'the lights');
+    if (d.fix === 'valve') return job('crank', { title: 'KEG ROOM VALVE', hint: 'RELEASE THE PRESSURE', turns: 2 }, 'the keg valve'); });
+  render(); open(true);
+
+  // ---- every frame
+  RS.onFrame.push((dt) => { quiet(); jobs.update(dt);
+    if (pup) { pup.update(dt, pose());
+      if (queue.length && !(pup.emote && pup.emote.active) && (nextQ -= dt) <= 0) { const id = queue.shift(); pup.doEmote(id); const e = emoteInfo(id); toast('▶ ' + (e ? e.name : id) + (queue.length ? `  (${queue.length} more)` : '')); nextQ = 0.8; } } });
+}
