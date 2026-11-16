@@ -588,11 +588,9 @@ export function buildPub(scene) {
       k.cyl(0.045, 0.04, 0.2, x + 0.25, 1.18, z, 0xc8ccd0, 10); k.cyl(0.03, 0.045, 0.08, x + 0.25, 1.32, z, 0xc8ccd0, 10); }                                                                                   // shaker
     { const [x, z] = b.at(0.5, 0.42); for (let i = 0; i < 5; i++) k.cyl(0.045, 0.035, 0.15, x, 1.18 + i * 0.12, z, 0xe8f4f8, 10); }       // a tower of pint glasses
   }
-  { const W2 = X(855) - 0.62;
-    for (const [z, col, lbl] of [[Z(640), '#c8102e', 'READY SALTED'], [Z(660), '#1e5aa8', 'SALT & VINEGAR'], [Z(680), '#d4a017', 'DRY ROASTED']]) k.texBox(0.3, 0.3, 0.36, W2 - 0.15, 1.05, z, caseTex(lbl, col));      // printed cardboard cases of crisps and nuts
-    for (let i = 0; i < 8; i++) R(W2 - 0.3, Z(700) - 0.18, W2, Z(700) + 0.18, 0.012, 0.92 + i * 0.014, i % 2 ? 0x2a2a2a : 0x3a3a3a);   // a stack of round trays
-    R(W2 - 0.25, Z(720) - 0.1, W2 - 0.05, Z(720) + 0.1, 0.12, 0.98, 0x8a1a1a); k.cyl(0.03, 0.03, 0.01, W2 - 0.15, 1.04, Z(720) - 0.1, 0xc8c8c8, 8);   // a radio
-  }
+  // on the back bar by the MONSTOR fridge: three open display boxes of crisps and nuts, a stack of round trays, a radio.
+  // (on the counter top itself: it runs from the wall at X(855) - 0.08 out 0.55, its top at 0.88)
+  barSnacks(k, R, X(855) - 0.08, [Z(640), Z(662), Z(684)], Z(708), Z(728));
   // under the counter on the staff side: drip trays, a second sink, a bin, more glasses
   // along the top wall: the MONSTOR fridge and the coffee machine, a chalkboard
   // the MONSTOR fridge behind the bar: black cabinet glowing green inside, four shelves packed with cans behind two
@@ -1700,17 +1698,6 @@ function bottleTex() {
   });
 }
 // a cardboard case of crisps or nuts behind the bar: brand colour, the flavour, packets pictured on the side
-function caseTex(label, col) {
-  return canvasTex(256, 256, (g, w, h) => {
-    g.fillStyle = col; g.fillRect(0, 0, w, h);
-    g.fillStyle = 'rgba(255,255,255,0.14)'; for (let i = -h; i < w; i += 28) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + h, h); g.lineTo(i + h + 10, h); g.lineTo(i + 10, 0); g.fill(); }
-    g.fillStyle = '#fff'; g.fillRect(0, 86, w, 84);
-    g.fillStyle = col; g.font = `900 30px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(label.includes('ROAST') ? 'NUTS' : 'CRISPS', w / 2, 112, w - 20);
-    g.fillStyle = '#222'; g.font = `900 19px ${FONT}`; g.fillText(label, w / 2, 148, w - 20);
-    for (let i = 0; i < 3; i++) { const x = 40 + i * 88; g.fillStyle = '#ffe9a8'; g.beginPath(); g.ellipse(x, 218, 26, 16, 0, 0, 7); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 2; g.stroke(); }
-    g.fillStyle = '#fff'; g.font = `900 16px ${FONT}`; g.fillText('36 x 32.5g', w / 2, 30); g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);
-  });
-}
 function crispsTex() {
   return canvasTex(512, 256, (g, w, h) => {
     g.fillStyle = '#3a2414'; g.fillRect(0, 0, w, h);
@@ -1961,4 +1948,67 @@ function mirrorGarden(k, scene, mark, c2) {
   if (k.halos) for (let i = mark.halos; i < k.halos.list.length; i++) k.halos.list[i][0] = c2 - k.halos.list[i][0];
   if (k.pools) for (let i = mark.pools; i < k.pools.list.length; i++) k.pools.list[i][0] = c2 - k.pools.list[i][0];
   for (const [key, v] of k.inst || []) for (let i = mark.inst.get(key) || 0; i < v.list.length; i++) v.list[i] = new THREE.Matrix4().multiplyMatrices(M, v.list[i]).multiply(S);
+}
+
+// ---------------------------------------------------------------- snacks on the back bar
+// W: the wall side of the counter (it faces -x, out to W - 0.55, top at 0.88); zs: the three display boxes; zt: the
+// trays; zr: the radio. Every packet is a real puffed pillow with crimped ends and a printed front, standing in an
+// open cardboard box with its printed lid folded down the front.
+function barSnacks(k, R, W, zs, zt, zr) {
+  const TOP = 0.88, xc = W - 0.27;
+  // (food doesn't turn up on top of them: the spawn points along this stretch of counter go)
+  { const z0 = zs[0] - 0.25, z1 = zr + 0.2; for (let i = k.spawns.length - 1; i >= 0; i--) { const v = k.spawns[i]; if (v.x > W - 0.6 && v.x < W && v.y < 1.2 && v.z > z0 && v.z < z1) k.spawns.splice(i, 1); } }
+  const FL = [['READY SALTED', '#c8102e', 'CRISPS'], ['SALT & VINEGAR', '#1e5aa8', 'CRISPS'], ['DRY ROASTED', '#d4a017', 'PEANUTS']];
+  const packetGeo = (w, h, t) => {            // upright: printed front on +z, crimped top and bottom
+    const g = new THREE.BoxGeometry(w, h, t, 6, 12, 2), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), e = Math.min(1, Math.abs(y) / (h / 2));
+      let q = 1 - Math.pow(e, 5); q *= 1 - 0.4 * Math.pow(Math.abs(x) / (w / 2), 4);
+      p.setZ(i, z * Math.max(0.08, q)); if (e > 0.88) p.setX(i, x * (1 + 0.05 * Math.sin(x * 700))); }
+    g.computeVertexNormals(); return g; };
+  const packTex = ([flav, col, kind]) => canvasTex(128, 192, (g, w, h) => {
+    g.fillStyle = col; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(255,255,255,0.25)'; for (let x = 0; x < w; x += 5) { g.fillRect(x, 0, 2, 14); g.fillRect(x, h - 14, 2, 14); }
+    g.fillStyle = '#fff'; g.beginPath(); g.ellipse(w / 2, 62, 54, 30, -0.12, 0, 7); g.fill();
+    g.fillStyle = col; g.font = `900 ${kind === 'PEANUTS' ? 22 : 26}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(kind, w / 2, 62, 100);
+    if (kind === 'PEANUTS') for (let i = 0; i < 6; i++) { g.fillStyle = '#c8894a'; g.beginPath(); g.ellipse(26 + (i % 3) * 38, 112 + Math.floor(i / 3) * 22, 13, 8, i, 0, 7); g.fill(); }
+    else for (let i = 0; i < 4; i++) { g.fillStyle = '#f2cf6a'; g.beginPath(); g.ellipse(24 + i * 27, 120, 14, 10, i, 0, 7); g.fill(); g.strokeStyle = 'rgba(150,100,20,0.5)'; g.lineWidth = 2; g.stroke(); }
+    g.fillStyle = '#fff'; g.font = `900 13px ${FONT}`; g.fillText(flav, w / 2, 160, 116);
+    const sh = g.createLinearGradient(0, 0, w, 0); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.25, 'rgba(255,255,255,0.3)'); sh.addColorStop(0.4, 'rgba(255,255,255,0)'); g.fillStyle = sh; g.fillRect(0, 0, w, h);
+  });
+  const lidTex = ([flav, col, kind]) => canvasTex(256, 64, (g, w, h) => {
+    g.fillStyle = '#c9a675'; g.fillRect(0, 0, w, h); g.fillStyle = col; g.fillRect(6, 6, w - 12, h - 12);
+    g.fillStyle = '#fff'; g.font = `900 24px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(kind + ' · ' + flav, w / 2, h / 2 + 1, w - 24);
+  });
+  const CARD = 0xb08a5a, CARD_IN = 0x8a6a42;
+  zs.forEach((z, i) => {
+    const f = FL[i], nuts = f[2] === 'PEANUTS', BD = 0.26, BW = 0.3, BH = 0.1;
+    // the box: a base, two sides and the back (open at the top), and the printed lid folded down over the front
+    R(xc - BD / 2, z - BW / 2, xc + BD / 2, z + BW / 2, 0.01, TOP + 0.005, CARD_IN);
+    for (const dz of [-BW / 2, BW / 2 - 0.006]) R(xc - BD / 2, z + dz, xc + BD / 2, z + dz + 0.006, BH, TOP + BH / 2, CARD);
+    R(xc + BD / 2 - 0.006, z - BW / 2, xc + BD / 2, z + BW / 2, BH + 0.06, TOP + (BH + 0.06) / 2, CARD);          // the back stands up taller
+    R(xc - BD / 2, z - BW / 2, xc - BD / 2 + 0.006, z + BW / 2, BH * 0.6, TOP + BH * 0.3, CARD);                     // a low front lip
+    { const lid = new THREE.Mesh(new THREE.PlaneGeometry(BW, 0.07), new THREE.MeshLambertMaterial({ map: lidTex(f) }));
+      lid.position.set(xc - BD / 2 - 0.002, TOP + 0.04, z); lid.rotation.y = -Math.PI / 2; lid.rotation.x = 0; lid.renderOrder = 1; k.scene.add(lid); }
+    // the packets: two rows standing in it, leaning back a touch, the back row higher
+    const geo = [], pw = nuts ? 0.075 : 0.09, ph = nuts ? 0.12 : 0.15;
+    for (let r = 0; r < 2; r++) for (let j = 0; j < 3; j++) {
+      const g = packetGeo(pw, ph, 0.035); g.rotateX(-0.22 - r * 0.05); g.rotateY(-Math.PI / 2 + (j - 1) * 0.06);
+      g.translate(xc - 0.06 + r * 0.1, TOP + 0.012 + ph / 2 + r * 0.025, z + (j - 1) * (BW - 0.03) / 3);
+      geo.push(g); }
+    const m = new THREE.Mesh(mergeGeometries(geo), new THREE.MeshLambertMaterial({ map: packTex(f) })); k.scene.add(m);
+  });
+  // a stack of round serving trays
+  for (let i = 0; i < 6; i++) { k.cyl(0.17, 0.165, 0.01, xc, TOP + 0.006 + i * 0.012, zt, i % 2 ? 0x2a2a2a : 0x3a3a3a, 24); k.cyl(0.172, 0.172, 0.004, xc, TOP + 0.011 + i * 0.012, zt, 0x555555, 24); }
+  // a little retro radio: rounded case, a printed speaker grille and dial, two knobs, a carry handle and an aerial
+  { const x = W - 0.16, rx = x - 0.07;
+    k.parts.push(part(new RoundedBoxGeometry(0.12, 0.13, 0.22, 3, 0.02), 0x8a1a1a, [x, TOP + 0.065, zr]));
+    const face = canvasTex(256, 128, (g, w, h) => { g.fillStyle = '#e8dcc0'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#3a2a1a'; for (let yy = 16; yy < h - 10; yy += 10) for (let xx = 16; xx < 128; xx += 10) { g.beginPath(); g.arc(xx, yy, 3, 0, 7); g.fill(); }
+      g.fillStyle = '#f6efd8'; g.fillRect(140, 18, 100, 44); g.strokeStyle = '#3a2a1a'; g.lineWidth = 2; g.strokeRect(140, 18, 100, 44);
+      g.fillStyle = '#3a2a1a'; for (let t = 0; t < 10; t++) g.fillRect(146 + t * 10, 24, 1, t % 2 ? 8 : 14); g.fillStyle = '#c8102e'; g.fillRect(186, 20, 3, 40);
+      g.font = `900 11px ${FONT}`; g.textAlign = 'center'; g.fillStyle = '#3a2a1a'; g.fillText('FM  88 · 92 · 96 · 100 · 104', 190, 76); });
+    const fm = new THREE.Mesh(new THREE.PlaneGeometry(0.19, 0.095), new THREE.MeshLambertMaterial({ map: face })); fm.position.set(rx - 0.001, TOP + 0.065, zr); fm.rotation.y = -Math.PI / 2; k.scene.add(fm);
+    for (const dz of [0.035, 0.07]) { const g = new THREE.CylinderGeometry(0.013, 0.013, 0.014, 12); g.rotateZ(Math.PI / 2); k.parts.push(part(g, 0x222222, [rx - 0.008, TOP + 0.03, zr + dz])); }
+    { const g = new THREE.TorusGeometry(0.06, 0.007, 6, 16, Math.PI); g.rotateY(Math.PI / 2); k.parts.push(part(g, 0x222222, [x, TOP + 0.13, zr])); }
+    { const g = new THREE.CylinderGeometry(0.003, 0.004, 0.32, 6); g.translate(0, 0.16, 0); g.rotateX(-0.45); k.parts.push(part(g, 0xc8ccd0, [x + 0.03, TOP + 0.13, zr - 0.08])); k.parts.push(part(new THREE.SphereGeometry(0.006, 6, 4), 0xc8ccd0, [x + 0.03, TOP + 0.13 + 0.32 * Math.cos(0.45), zr - 0.08 - 0.32 * Math.sin(0.45)])); } }
 }
