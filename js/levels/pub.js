@@ -22,6 +22,7 @@ import { Dormant } from './dormant.js';
 import { skyDome, waterMaterial, updateOutdoor, leafyHedge, leafyBall, pottedPlant, figTree, terrace, HAZE } from './outdoor.js';
 import { REST, REST_BOUNDS, REST_H, inRestaurant, inNewArea, buildRestaurant } from './oysterRestaurant.js';
 import { buildCarPark, inCarPark } from './carpark.js';
+import { buildExterior } from './oysterExterior.js';
 import { Kit, carpetTex, tileTex, canvasTex, FONT, brickTex, booksWallTex, tngTex, oakPanelTex, woodTex } from './kit.js';
 
 const H = 3.0;
@@ -1546,24 +1547,17 @@ export function buildPub(scene) {
   }
   buildRestaurant(k, scene, { chairsAt });
   buildCarPark(k, scene, { brick: oldBrickTex() });
-  // the pub's outside, seen from the car park: old brick on every wall that faces out the front, a stone coping along
-  // the top, frosted toilet windows, lamps either side of the doors, the name across the front
-  { const BR = oldBrickTex(), EH = H + 0.5;
-    const face = (x0, z0, x1, z1, nx, nz) => { const L = Math.hypot(x1 - x0, z1 - z0), cx = (x0 + x1) / 2 + nx * 0.1, cz = (z0 + z1) / 2 + nz * 0.1, ry = Math.atan2(-(z1 - z0), x1 - x0);
-      if (Math.abs(nx) < 0.01 || Math.abs(nz) < 0.01) { const alongX = Math.abs(z1 - z0) < 0.01; k.texBox(alongX ? L : 0.04, EH, alongX ? 0.04 : L, cx, EH / 2, cz, BR, { tile: 0.9 }); }
-      else { const t = BR.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(L / 0.9, EH / 0.9); const m = new THREE.Mesh(new THREE.PlaneGeometry(L, EH), new THREE.MeshLambertMaterial({ map: t })); m.position.set(cx + nx * 0.02, EH / 2, cz + nz * 0.02); m.rotation.y = Math.atan2(nx, nz); scene.add(m); }
-      k.box(Math.abs(nz) > 0.5 ? L + 0.1 : 0.3, 0.12, Math.abs(nz) > 0.5 ? 0.3 : L + 0.1, cx + nx * 0.05, EH + 0.06, cz + nz * 0.05, 0xc8c0b2, Math.abs(nx) > 0.01 && Math.abs(nz) > 0.01 ? { rot: [0, ry, 0] } : {}); };
+  // the pub's outside, from the photo of the real Oysterfleet (see oysterExterior.js): soft orange-red brick on every
+  // wall that faces out, up to where the black weatherboarding of the floors above starts
+  { const { BRICK: BR } = buildExterior(k, scene, { blk }), EH = 2.95;
+    const face = (x0, z0, x1, z1, nx, nz) => { const L = Math.hypot(x1 - x0, z1 - z0), cx = (x0 + x1) / 2 + nx * 0.1, cz = (z0 + z1) / 2 + nz * 0.1;
+      if (Math.abs(nx) < 0.01 || Math.abs(nz) < 0.01) { const alongX = Math.abs(z1 - z0) < 0.01; k.texBox(alongX ? L : 0.04, EH, alongX ? 0.04 : L, cx, EH / 2, cz, BR, { tile: 1.2 }); }
+      else { const t = BR.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(L / 1.2, EH / 1.2); const m = new THREE.Mesh(new THREE.PlaneGeometry(L, EH), new THREE.MeshLambertMaterial({ map: t })); m.position.set(cx + nx * 0.02, EH / 2, cz + nz * 0.02); m.rotation.y = Math.atan2(nx, nz); scene.add(m); } };
     face(-10.2, -16.08, -4.44, -16.08, 0, -1); face(-4.44, -16.08, -4.44, -15.12, 1, 0); face(-4.44, -15.12, 0.36, -15.12, 0, -1); face(0.36, -15.12, 0.36, -12.24, 1, 0);
     face(0.36, -12.24, 2.28, -14.16, -0.7, -0.7); face(2.28, -14.16, 4.2, -14.16, 0, -1); face(5.64, -13.2, 5.64, -11.28, 1, 0); face(5.64, -11.28, 3.72, -8.88, 0.78, 0.62);
     face(6.12, -8.88, 6.12, -6.84, 1, 0); face(6.12, -6.84, X(1045), -6.84, 0, -1); face(X(1045), -6.84, X(1045), 7.92, 1, 0); face(-16.7, -14.45, -10.2, -14.45, 0, -1); face(-10.2, -14.45, -10.2, -16.08, -1, 0);
-    // the doorway's surround from outside: brick piers, a lintel, two coach lamps, the name in gold over the top
-    { const x0 = 4.2, z0 = -14.16, x1 = 5.64, z1 = -13.2, ry = Math.atan2(-(z1 - z0), x1 - x0), nx = -0.55, nz = -0.83;
-      { const t = BR.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1.95 / 0.9, (EH - 2.42) / 0.9); const m = new THREE.Mesh(new THREE.PlaneGeometry(1.95, EH - 2.42), new THREE.MeshLambertMaterial({ map: t })); m.position.set((x0 + x1) / 2 + nx * 0.12, 2.42 + (EH - 2.42) / 2, (z0 + z1) / 2 + nz * 0.12); m.rotation.y = Math.atan2(nx, nz); scene.add(m); }
-      k.box(1.95, 0.14, 0.18, (x0 + x1) / 2 + nx * 0.1, 2.45, (z0 + z1) / 2 + nz * 0.1, 0xc8c0b2, { rot: [0, ry, 0] });
-      for (const [px, pz] of [[x0, z0], [x1, z1]]) { k.box(0.16, 0.34, 0.16, px + nx * 0.25, 2.1, pz + nz * 0.25, 0x1a1a1a, { rot: [0, ry, 0] }); k.box(0.1, 0.22, 0.1, px + nx * 0.25, 2.08, pz + nz * 0.25, 0xffe8a8, { rot: [0, ry, 0] }); k.halo(px + nx * 0.3, 2.08, pz + nz * 0.3, 0.7, 0xffd890); } }
-    k.label('THE OYSTERFLEET', 3.2, 0.5, [3.24, H + 0.05, -14.16 - 0.13], [0, Math.PI, 0], { bg: '#1b3a2a', fg: '#e8c45a', border: '#d4af37', size: 90 });
-    for (const x of [-3.2, -1.6, -8.6, -6.4]) { const z = x > -4.4 ? -15.12 - 0.13 : -16.08 - 0.13; k.box(0.75, 0.55, 0.03, x, 2.0, z, 0xdfe8ec); k.box(0.85, 0.06, 0.12, x, 1.7, z - 0.03, 0xc8c0b2); }
-    k.label('OPEN DAILY 11–11 · FOOD 12–9 · DOGS WELCOME · RONNIE: SEE BAR STAFF', 2.2, 0.24, [3.0, 1.7, -14.16 - 0.13], [0, Math.PI, 0], { bg: '#1b3a2a', fg: '#e8c45a', border: null, size: 44 }); }
+    face(4.68, 15.48, 9.0, 15.48, 0, 1); face(9.0, 7.92, 9.0, 15.48, 1, 0);      // (the gambling room's outside walls)
+  }
   k.splitX = -14.0;                                   // (the restaurant's furniture merges separately from the pub's, so it can be skipped)
   dorm.build(scene);
   const sky = skyDome(scene);
