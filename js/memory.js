@@ -16,7 +16,11 @@ const KEEP = new WeakSet();
 // some come and go between looks (a portrait for an attack, a sign swapped for a new one) and were never let go of
 { const d = Object.getOwnPropertyDescriptor(THREE.Texture.prototype, 'needsUpdate');
   if (d && d.set && !THREE.Texture.prototype.__memNoted) { THREE.Texture.prototype.__memNoted = true;
-    Object.defineProperty(THREE.Texture.prototype, 'needsUpdate', { configurable: true, get: d.get, set(v) { d.set.call(this, v); if (v) SEEN.tex.add(this); } }); } }           // let go of the spare copy: never dispose these (they couldn't be sent again)
+    Object.defineProperty(THREE.Texture.prototype, 'needsUpdate', { configurable: true, get: d.get, set(v) {
+      // (a level picture whose spare copy was let go of, being drawn on again: put its picture back first, if whoever
+      // draws on it still has it; if nobody does, nothing can have changed, and the chip's copy stays as it is)
+      if (v && this.__cvRef) { const c = this.__cvRef.deref(); if (!c) return; this.source.data = c; this.__cvRef = null; }
+      d.set.call(this, v); if (v) SEEN.tex.add(this); } }); } }           // let go of the spare copy: never dispose these (they couldn't be sent again)
 // a level shape whose spare copy is gone can't be sent to the chip again, so it must never be let go of (by anything)
 { const d = THREE.BufferGeometry.prototype.dispose; if (!d.__memSafe) { const f = function () { if (this.__cpuFreed) return; return d.call(this); }; f.__memSafe = true; THREE.BufferGeometry.prototype.dispose = f; } }
 const texKeys = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'alphaMap', 'aoMap', 'bumpMap', 'lightMap', 'specularMap', 'displacementMap', 'envMap', 'gradientMap'];
@@ -59,5 +63,30 @@ export function releaseTextures(renderer, scene) {
     const w = im.width, h = im.height; try { im.close(); } catch (e) {} t.source.data = { width: w, height: h };
   });
   return bytes;
+}
+// ...and the pictures the level draws for itself (signs, posters, labels, menus, wallpaper): once one is on the chip, the
+// texture stops holding its canvas. Nothing else holds most of them, so their memory goes (on an iPhone these were
+// ~150MB, and Safari also has a hard limit on canvas memory). The few that are drawn on again later (a scoreboard, the
+// fruit machine's screen, the lightbox) are still held by the code that draws them, so they're kept, and handed back
+// to the texture the moment they're redrawn (see needsUpdate above). Pictures not yet seen are sent to the chip a few
+// at a time, so their canvases can go too (and walking into a new room never stalls on uploading its pictures).
+const LEVELTEX = [];
+export function noteLevelTextures(meshes) {
+  const s = new Set(); for (const o of meshes) { const ms = o.material ? [].concat(o.material) : []; for (const m of ms) for (const k of texKeys) { const t = m[k]; if (t && t.isTexture && !s.has(t)) { s.add(t); LEVELTEX.push(t); } } }
+  return LEVELTEX.length;
+}
+const isCanvas = (im) => (typeof HTMLCanvasElement !== 'undefined' && im instanceof HTMLCanvasElement) || (typeof OffscreenCanvas !== 'undefined' && im instanceof OffscreenCanvas);
+export function releaseLevelCanvases(renderer, uploadMax = 24) {
+  if (typeof WeakRef === 'undefined') return 0;
+  const props = renderer.properties; let n = 0, up = 0;
+  for (let i = LEVELTEX.length - 1; i >= 0; i--) { const t = LEVELTEX[i], im = t.image;
+    if (!im || !isCanvas(im) || t.isRenderTargetTexture) { LEVELTEX.splice(i, 1); continue; }
+    let p = props.get(t);
+    if ((!p || !p.__webglTexture) && up < uploadMax) { try { renderer.initTexture(t); up++; } catch (e) { LEVELTEX.splice(i, 1); continue; } p = props.get(t); }
+    if (!p || !p.__webglTexture || t.version === 0 || (p.__version !== undefined && p.__version !== t.version)) continue;      // (not on the chip yet, or due an update)
+    KEEP.add(t); if (t.source) KEEP.add(t.source);
+    t.__cvRef = new WeakRef(im); t.source.data = { width: im.width, height: im.height }; LEVELTEX.splice(i, 1); n++;
+  }
+  return n;
 }
 export const keep = (r) => { if (r) KEEP.add(r); return r; };

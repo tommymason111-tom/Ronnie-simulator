@@ -221,11 +221,11 @@ export class Imposter {
       if (m.phase === 'play') { this.phase = 'play'; this.introT = 0; } if (m.sab) { this.sab = { k: m.sab.k, until: m.sab.left ? now() + m.sab.left : 0, fixed: {} }; this.sabAlert(true); } this.setFog(); this.syncPuppets(); return; }
     if (k === 'imBar') { this.bar.done = m.done; const p = this.players.get(m.who); if (p) p.done.add(m.task); if (m.who === this.me && TASK[m.task]) this.burst(V(...TASK[m.task].at).setY(1.3), [0xffd400, 0x39ff14, 0xffffff], 26); return; }
     if (k === 'imMeet') { this.startMeeting(m); return; }
-    if (k === 'imVoted') { if (this.meeting) this.meeting.voted.add(m.who); sfx('clink', null, 0.6); return; }
+    if (k === 'imVoted') { if (this.meeting) this.meeting.voted.add(m.who); sfx('vote', null, 0.6); return; }
     if (k === 'imRes') { this.showResult(m); return; }
     if (k === 'imRound') { this.endMeeting(); return; }
     if (k === 'imSabOn') { this.sab = { k: m.k, until: m.dur ? now() + m.dur : 0, fixed: {} }; this.sabCD = IMP.SAB_CD; this.sabAlert(true); return; }
-    if (k === 'imFixed') { if (this.sab) this.sab.fixed[m.part] = true; sfx('ting', null, 0.7); return; }
+    if (k === 'imFixed') { if (this.sab) this.sab.fixed[m.part] = true; sfx('fixed', null, 0.7); return; }
     if (k === 'imSabOff') { if (this.sab) { this.sab = null; this.sabAlert(false); } if (this.panel.open && this.panel.cur && this.panel.cur.sabFix) this.panel.close(true); return; }
     if (k === 'imWin') { this.win(m); return; }
     if (k === 'imNo') { this.toast(m.why); return; }
@@ -305,7 +305,7 @@ export class Imposter {
     // the pan coming down
     this.panT = 0.001; this.panAt = b.at.clone().setY(fy + 2.0);
     const w = g.words; w && w.show(['BONK!', 'CLANG!', 'DONK!'][Math.floor(Math.random() * 3)], b.at.clone().setY(fy + 1.9), '#ff5252', 0.22, 1.2);
-    sfx('thwack', b.at, 1); setTimeout(() => sfx('smash', b.at, 0.7), 120);
+    sfx('kill', b.at, 1); setTimeout(() => sfx('smash', b.at, 0.7), 120);
   }
   // one job's station: the kit for it (pub stuff), on the spot, and its sign hanging above
   station(id, at, label, kit) {
@@ -443,8 +443,8 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     if (this.panel.open || (this.phase !== 'play' && this.phase !== 'waiting')) return; const n = this.near();
     if (!n.use) { if (n.body) return this.doReport(); return; }
     const u = n.use, me = this.mine();
-    if (u.kind === 'start') { if (!this.host) return this.toast('THE HOST RINGS THE BELL TO START'); for (let i = 0; i < 3; i++) setTimeout(() => sfx('ting', null, 1), i * 220); this.hostDeal(); return; }
-    if (u.kind === 'bell') { if (this.emergLeft <= 0) return this.toast('YOU\'VE USED YOUR EMERGENCY MEETING'); if (this.emergCD > 0) return this.toast(`THE BELL'S READY IN ${Math.ceil(this.emergCD)}s`); if (this.sab && SAB[this.sab.k].crit) return this.toast('NOT DURING AN EMERGENCY! FIX THE KEG!'); for (let i = 0; i < 4; i++) setTimeout(() => sfx('ting', null, 1), i * 160); this.toast('🔔 DING DING DING!'); this.ask('imM', {}); return; }
+    if (u.kind === 'start') { if (!this.host) return this.toast('THE HOST RINGS THE BELL TO START'); for (let i = 0; i < 3; i++) setTimeout(() => sfx('emergency', null, 1), i * 220); this.hostDeal(); return; }
+    if (u.kind === 'bell') { if (this.emergLeft <= 0) return this.toast('YOU\'VE USED YOUR EMERGENCY MEETING'); if (this.emergCD > 0) return this.toast(`THE BELL'S READY IN ${Math.ceil(this.emergCD)}s`); if (this.sab && SAB[this.sab.k].crit) return this.toast('NOT DURING AN EMERGENCY! FIX THE KEG!'); for (let i = 0; i < 4; i++) setTimeout(() => sfx('alarm', null, 1), i * 160); this.toast('🔔 DING DING DING!'); this.ask('imM', {}); return; }
     if (u.kind === 'fix') { const game = u.k === 'lights' ? makeGame('switches', { title: 'FIX THE LIGHTS' }) : makeGame('crank', { title: VALVES[u.part].name, hint: 'RELEASE THE PRESSURE', turns: 2 }); game.sabFix = true;
       this.panel.show(game, { onDone: () => this.ask('imF', { k: u.k, part: u.part }) }); return; }
     if (u.kind === 'task') { const t = TASK[u.id];
@@ -459,11 +459,11 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
       down: (x, y) => { ks.forEach((k, i) => { const b = box(i); if (x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h) { this.panel.close(true); this.ask('imS', { k }); } }); } }; }
   doVent() {
     if (!this.amImp()) return;
-    if (this.vented) { const i = VENTS.indexOf(this.vented), nxt = VENTS[(i + 1) % VENTS.length]; this.teleport(nxt.at[0], nxt.at[1]); this.vented = nxt; sfx('thud', null, 0.6); return; }
+    if (this.vented) { const i = VENTS.indexOf(this.vented), nxt = VENTS[(i + 1) % VENTS.length]; this.teleport(nxt.at[0], nxt.at[1]); this.vented = nxt; sfx('vent', null, 0.6); return; }
     const n = this.near(); if (!n.vent) return; this.setVent(n.vent);
   }
   // down a trapdoor: nobody sees you; press again to pop out at the next one, USE (or walking off) to climb out
-  setVent(v) { const was = this.vented; this.vented = v; if (!!was === !!v) return; const me = this.mine(); if (me) me.vent = !!v; this.net.send({ t: 'imVent', in: !!v }); sfx('thud', null, 0.8);
+  setVent(v) { const was = this.vented; this.vented = v; if (!!was === !!v) return; const me = this.mine(); if (me) me.vent = !!v; this.net.send({ t: 'imVent', in: !!v }); sfx('vent', null, 0.8);
     this.g.player.menuLock = !!v; if (v) this.teleport(v.at[0], v.at[1]); this.syncPuppets(); }
   doSpectate() { const live = [...this.players.values()].filter(p => p.alive && p.id !== this.me); if (!live.length) { this.spect = null; return; } const i = live.findIndex(p => p.id === this.spect); this.spect = i + 1 >= live.length ? null : live[i + 1].id; this.toast(this.spect ? `WATCHING ${this.nameOf(this.spect).toUpperCase()}` : 'FREE GHOST'); }
   toast(s) { this.g.words && this.g.words.show(s, this.g.player.head.clone().addScaledVector(this.g.player.fwd, 0.8).add({ x: 0, y: 0.1, z: 0 }), '#ffd400', 0.07, 1.4); }
@@ -475,8 +475,8 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   showRole() {
     const me = this.mine(), imps = [...this.players.values()].filter(p => p.imp && p.realImp);
     const sp = this.splash, n = this.nImpsNow;
-    if (me && me.imp) { sp.style.color = '#ff3b3b'; sp.innerHTML = `<p>SHHHHH!</p><h1>IMPOSTER</h1><p>Kill the faithful without getting caught. Look busy.</p><div class="imgs">${imps.map(p => `<img src="./assets/portraits/${p.char || 'ronnie'}.webp" title="${p.name}">`).join('')}</div><p>${imps.length > 1 ? 'Your fellow imposter: ' + imps.filter(p => p.id !== this.me).map(p => p.name).join(', ') : ''}</p>`; sfx('jet', null, 0.8); }
-    else { sp.style.color = '#4fc3ff'; sp.innerHTML = `<p>YOU ARE</p><h1>THE FAITHFUL</h1><p>There ${n > 1 ? 'are' : 'is'} <b style="color:#ff3b3b">${n} IMPOSTER${n > 1 ? 'S' : ''}</b> among us</p><p>Do your jobs round the pub. Report bodies. Vote them out.</p>`; sfx('fanfare', null, 0.8); }
+    if (me && me.imp) { sp.style.color = '#ff3b3b'; sp.innerHTML = `<p>SHHHHH!</p><h1>IMPOSTER</h1><p>Kill the faithful without getting caught. Look busy.</p><div class="imgs">${imps.map(p => `<img src="./assets/portraits/${p.char || 'ronnie'}.webp" title="${p.name}">`).join('')}</div><p>${imps.length > 1 ? 'Your fellow imposter: ' + imps.filter(p => p.id !== this.me).map(p => p.name).join(', ') : ''}</p>`; sfx('sinister', null, 0.8); }
+    else { sp.style.color = '#4fc3ff'; sp.innerHTML = `<p>YOU ARE</p><h1>THE FAITHFUL</h1><p>There ${n > 1 ? 'are' : 'is'} <b style="color:#ff3b3b">${n} IMPOSTER${n > 1 ? 'S' : ''}</b> among us</p><p>Do your jobs round the pub. Report bodies. Vote them out.</p>`; sfx('crewmate', null, 0.8); }
     sp.classList.add('on'); clearTimeout(this.splashT); this.splashT = setTimeout(() => sp.classList.remove('on'), 4800);
     if (this.g.renderer.xr.isPresenting) this.g.showBanner(me && me.imp ? 'SHHH! YOU ARE' : 'YOU ARE', me && me.imp ? 'THE IMPOSTER' : 'THE FAITHFUL');
   }
@@ -498,7 +498,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     if (m.by === this.me && !m.body) this.emergLeft = m.emerg ?? 0;
     // everyone round the bell
     const s = SEATS[(m.seats && m.seats[this.me]) ?? 0]; this.teleport(s[0], s[1], Math.atan2(CENTRE.x - s[0], CENTRE.z - s[1]) + Math.PI);
-    for (let i = 0; i < 3; i++) setTimeout(() => sfx('ting', null, 1), i * 260); sfx('whistle', null, 0.6);
+    for (let i = 0; i < 3; i++) setTimeout(() => sfx('emergency', null, 1), i * 260); sfx('alarm', null, 0.6);
     const sp = this.splash; sp.style.color = m.body ? '#ffab40' : '#ffd400';
     sp.innerHTML = m.body ? `<h1>📢 BODY REPORTED</h1><p><b>${this.nameOf(m.by).toUpperCase()}</b> found <b>${this.nameOf(m.body).toUpperCase()}</b></p>` : `<h1>🔔 LAST ORDERS!</h1><p><b>${this.nameOf(m.by).toUpperCase()}</b> called an EMERGENCY MEETING</p>`;
     sp.classList.add('on'); clearTimeout(this.splashT); this.splashT = setTimeout(() => { sp.classList.remove('on'); if (this.phase === 'meeting') this.panel.show(this.voteScreen(), { canClose: false }); }, 2600);
@@ -536,16 +536,16 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
       },
       down: (x, y) => {
         if (M.res || !me || !me.alive || M.myVote) return; const In = (b) => x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h;
-        list.forEach((p, i) => { const b = card(i); if (In(b) && p.alive) { M.pick = M.pick === p.id ? null : p.id; sfx('clink', null, 0.4); } });
-        if (In(skipB)) { M.myVote = 'skip'; this.ask('imV', { v: 'skip' }); sfx('pop', null, 0.6); }
-        if (In(okB) && M.pick) { M.myVote = M.pick; this.ask('imV', { v: M.pick }); sfx('pop', null, 0.6); }
+        list.forEach((p, i) => { const b = card(i); if (In(b) && p.alive) { M.pick = M.pick === p.id ? null : p.id; sfx('tap', null, 0.4); } });
+        if (In(skipB)) { M.myVote = 'skip'; this.ask('imV', { v: 'skip' }); sfx('vote', null, 0.6); }
+        if (In(okB) && M.pick) { M.myVote = M.pick; this.ask('imV', { v: M.pick }); sfx('vote', null, 0.6); }
       },
     };
   }
   showResult(m) {
     const M = this.meeting; if (!M) return; M.res = m; this.phase = 'eject';
     if (!this.panel.open) this.panel.show(this.voteScreen(), { canClose: false });
-    setTimeout(() => { if (this.phase !== 'eject') return; this.panel.show(this.ejectScreen(m), { canClose: false }); sfx(m.ej ? 'whoosh' : 'boing', null, 0.8); }, 2600);
+    setTimeout(() => { if (this.phase !== 'eject') return; this.panel.show(this.ejectScreen(m), { canClose: false }); sfx(m.ej ? 'throw' : 'aww', null, 0.8); }, 2600);
     if (m.ej) { const p = this.players.get(m.ej); if (p) { p.alive = false; p.realImp = m.wasImp; if (m.ej === this.me) setTimeout(() => this.iDied(null, 'ejected'), 7000); } }
   }
   // thrown out of the pub: the night street outside, them flying out of the door, spinning off into the distance
@@ -572,7 +572,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   }
   sabAlert(on) {
     const el = this.alertEl; if (!on) { el.classList.remove('on'); this.setFog(); this.toast('FIXED ✓'); return; }
-    sfx('thud', null, 1); this.setFog();
+    sfx('lightsout', null, 1); this.setFog();
     if (this.g.renderer.xr.isPresenting) this.g.showBanner(SAB[this.sab.k].icon + ' SABOTAGE', SAB[this.sab.k].name);
   }
   setFog() { const me = this.mine(), f = this.g.scene.fog || (this.g.scene.fog = new THREE.Fog(0x05060a, 5, 13)); if (!me || !me.alive || this.phase === 'over' || this.phase === 'waiting') { f.near = 1e4; f.far = 2e4; this.dim(false); return; } const dark = this.sab && this.sab.k === 'lights' && !me.imp; f.near = dark ? 0.6 : me.imp ? 7 : 5; f.far = dark ? 2.8 : me.imp ? 18 : 13; this.dim(dark); }
@@ -690,7 +690,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     // the critical sabotage: alarm, countdown
     if (this.sab) { const crit = this.sab.until, left = crit ? Math.max(0, Math.ceil(this.sab.until - now())) : 0;
       this.alertEl.classList.add('on'); this.alertEl.innerHTML = crit ? `🛢️ KEG PRESSURE! ${left}s<br><small>FIX BOTH VALVES: KEG ROOM ${this.sab.fixed[0] ? '✓' : '✗'} · KITCHEN ${this.sab.fixed[1] ? '✓' : '✗'}</small>` : '💡 LIGHTS OUT!<br><small>FIX THE FUSE BOX IN THE STAFF ROOM</small>';
-      if (crit && (this.alarmT -= dt) <= 0) { this.alarmT = 1.1; sfx('whistle', null, 0.5); } }
+      if (crit && (this.alarmT -= dt) <= 0) { this.alarmT = 1.1; sfx('alarm', null, 0.5); } }
     this.syncTick = (this.syncTick || 0) - dt; if (this.syncTick <= 0) { this.syncTick = 0.5; this.syncPuppets(); }
     // VR buttons: right A = use / report, left X = kill, left Y = sabotage, left grip-click (stick) = trapdoor
     if (xr) { const pad = (hand) => { const h = (P.hands || []).find(h => h.source && h.handedness === hand); return h && h.source.gamepad; }, R = pad('right'), L = pad('left');

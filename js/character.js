@@ -608,7 +608,7 @@ export class Character {
     if (spec.target === 'chest') target.y -= 0.35;
     if (spec.spread) { target.x += (Math.random() - 0.5) * spec.spread; target.z += (Math.random() - 0.5) * spec.spread; }
     const vel = ballistic(start, target, spec.speed || TUNING.broccoliSpeed, this.room.bounds.y1);
-    sfx('whoosh', start, 0.8);
+    sfx('throw', start, 0.8);
     this.onThrow && this.onThrow(start, vel, spec.item, this, spec);
   }
 }

@@ -63,7 +63,7 @@ export class PingPong {
     this.playing = true; this.button.set(true); this.mesh.visible = true; this.ai.grip.visible = true;
     this.score = { P: 0, A: 0 }; this.server = 'P'; this.serves = 0; this.resetServe(); this.drawBoard();
     if (!this.bat || this.bat.dead) this.spawnBat();
-    sfx('ting', this.c, 0.6);
+    sfx('bell', this.c, 0.6);
   }
   stop() {
     this.playing = false; this.button.set(false); this.mesh.visible = false; this.ai.grip.visible = false; this.ball.live = false;
@@ -150,7 +150,7 @@ export class PingPong {
   onBounce(side) {
     if (!this.hitter || this.state !== 'play') return;
     const other = this.hitter === 'P' ? 'A' : 'P';
-    sfx('thud', this.ball.p, 0.35);
+    sfx('bounce', this.ball.p, 0.35);
     if (this.serving) {
       if (side === this.hitter) { if (this.serveOwn) return this.point(other, 'DOUBLE BOUNCE'); this.serveOwn = true; return; }   // a proper serve bounces on your side first (casual: optional)
       this.serving = false; this.bouncedOther = true; return;
@@ -162,12 +162,12 @@ export class PingPong {
   onHit(who) {
     const b = this.ball;
     if (this.t - this.lastHitT < 0.12 && this.hitter === who) return true;       // same swing
-    if (this.state === 'serve') { if (who !== this.server) return false; this.state = 'play'; b.held = false; b.live = true; this.hitter = who; this.lastHitT = this.t; sfx('clink', b.p, 0.5); return true; }
+    if (this.state === 'serve') { if (who !== this.server) return false; this.state = 'play'; b.held = false; b.live = true; this.hitter = who; this.lastHitT = this.t; sfx('paddle', b.p, 0.5); return true; }
     if (this.state !== 'play') return false;
     if (this.hitter === who) { this.point(who === 'P' ? 'A' : 'P', 'DOUBLE HIT'); return false; }
     if (!this.bouncedOther) { this.point(this.hitter, 'VOLLEY'); return false; }
     this.hitter = who; this.bouncedOther = false; this.serving = false; this.lastHitT = this.t; this.rally++;
-    sfx('clink', b.p, 0.6);
+    sfx('paddle', b.p, 0.6);
     if (this.rally === 8) this.say('WHAT A RALLY', '#ffd400');
     return true;
   }
@@ -207,7 +207,7 @@ export class PingPong {
         const prevP = _p.copy(b.p);
         const ev = this.step(b, h);
         if (ev === 'P' || ev === 'A') this.onBounce(ev);
-        else if (ev === 'net') sfx('thud', b.p, 0.15);
+        else if (ev === 'net') sfx('land', b.p, 0.15);
         if (bp && !flat) this.batContact(bp, i / n, (i + 1) / n, prevP);
         // Lewy: hit it when it gets to him
         const ai = this.ai.plan;

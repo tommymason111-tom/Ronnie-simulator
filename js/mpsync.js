@@ -94,7 +94,7 @@ export class MPSync {
   on_swing(m, p) { p && p.avatar && p.avatar.swing && p.avatar.swing(m.s || 'R'); }
   // hit sounds: sent to everyone, played where it happened (so you hear the ones near you louder)
   sfxOut(n, p, v = 1) { if (!this.net.connected) return; const t = performance.now(), at = this.sfxAt || (this.sfxAt = {}); if (t - (at[n] || 0) < 60) return; at[n] = t; this.net.send({ t: 'sfx', n, p: [q2(p.x), q2(p.y), q2(p.z)], v: q2(v) }); }
-  on_sfx(m) { if (!['splat', 'thwack', 'boing', 'whoosh'].includes(m.n)) return; sfx(m.n, new THREE.Vector3(...m.p), m.v || 1); }
+  on_sfx(m) { if (!['splat', 'thwack', 'boing', 'whoosh', 'slap', 'punch', 'throw'].includes(m.n)) return; sfx(m.n, new THREE.Vector3(...m.p), m.v || 1); }
   // ---- grabbing the host's people from a joining player's VR game: the host holds them with a stand-in hand
   sendGrab(h, who, part, ph) {
     if (!this.on) return; const p = h.palm, v = h.vel || { x: 0, y: 0, z: 0 };
@@ -359,7 +359,7 @@ export class MPSync {
     this.punchCool = 0.5;
     // (sent to everyone: the one who got hit falls over on their own screen, everyone else sees them go flying)
     this.net.send({ t: 'punch', side: vel.side || 'R', target: p.id, v: [q2(vel.x), q2(vel.z)], s: q2(vel.length()), at: [q2(at.x), q2(at.y), q2(at.z)] });
-    sfx('thwack', at, 1); this.sfxOut('thwack', at, 1); this.words.show(vel.length() > 3.5 ? 'KAPOW!' : 'POW!', at.clone().add({ x: 0, y: 0.25, z: 0 }), '#ff5a36', 0.2, 1);
+    sfx('punch', at, 1); this.sfxOut('thwack', at, 1); this.words.show(vel.length() > 3.5 ? 'KAPOW!' : 'POW!', at.clone().add({ x: 0, y: 0.25, z: 0 }), '#ff5a36', 0.2, 1);
     this.knockAvatar(p, vel, vel.length(), at);
   }
   knockAvatar(p, v, s, at) { const av = p && p.avatar; if (!av) return; if (av.knock) av.knock(v, s, at); else av.flinch && av.flinch(v); }
@@ -368,7 +368,7 @@ export class MPSync {
     if (from && from.avatar && from.avatar.swing) from.avatar.swing(m.side || 'R');          // the puncher throws the punch
     if (m.target && m.target !== this.net.id) { this.knockAvatar(this.net.players.get(m.target), v, m.s || 3, m.at && new THREE.Vector3(...m.at)); return; }
     const P = this.player, s = m.s || 3, d = { x: m.v[0] || 0, z: m.v[1] || 0 };
-    sfx('thwack', P.head, 1); this.words.show('OOF!', P.head.clone().addScaledVector(P.fwd, 0.5), '#ff5a36', 0.16, 1);
+    sfx('punch', P.head, 1); this.words.show('OOF!', P.head.clone().addScaledVector(P.fwd, 0.5), '#ff5a36', 0.16, 1);
     if (s > 3.2 && P.knockDown) P.knockDown(d, 2.4);
     else { const l = Math.hypot(d.x, d.z) || 1; P.rig.position.x += d.x / l * 0.25; P.rig.position.z += d.z / l * 0.25; P.effect && P.effect('dizzy', 1.2); }
   }

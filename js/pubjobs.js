@@ -80,7 +80,7 @@ export class PubJobs {
       j = { kind, from, icon: '🍺', title: 'EMPTIES!', said: R(['Ron! We\'re out of glasses! Grab the empties off the tables!', 'Empties, Ronnie! The tables are covered in them!', 'Can you do a glass collection? I\'m stuck on the tap.']),
         glasses: spots.map(p => this.emptyGlass(p)), got: 0,
         steps: [{ text: `Collect the empties off the tables (0/${spots.length})`, multi: true },
-          { text: 'Put them in the GLASS WASHER (back room)', at: () => this.g.room.glassWasher || this.rp.bar.st.glasses.at.clone().setY(0), r: 1.6, act: '🫧 LOAD THE GLASS WASHER', then: () => sfx('clink', null, 0.8) }] };
+          { text: 'Put them in the GLASS WASHER (back room)', at: () => this.g.room.glassWasher || this.rp.bar.st.glasses.at.clone().setY(0), r: 1.6, act: '🫧 LOAD THE GLASS WASHER', then: () => sfx('glass', null, 0.8) }] };
     } else if (kind === 'ice') { const from = R(bar);
       j = { kind, from, icon: '🧊', title: 'ICE!', said: R(['Ron, the ice well\'s empty! Ice machine\'s in the back room!', 'No ice, Ronnie! Fill the bucket!']),
         steps: [{ text: 'Fill the ice bucket at the ice machine (back room)', at: () => this.iceAt, r: 1.5, act: '🧊 FILL THE ICE BUCKET' }, { text: 'Tip it into the ice well behind the bar', at: () => V(3.6, 0, -4.4), r: 1.5, act: '🧊 TIP IT IN' }] };
@@ -93,11 +93,11 @@ export class PubJobs {
     } else {
       const from = R(bar), hatch = this.hatch();
       j = { kind, from, icon: '🛢️', title: 'CHANGE THE BARREL', said: R(['The lager\'s gone! Change the barrel, Ron, the hatch is behind the bar!', 'Barrel\'s empty! Down the hatch, Ronnie, quick!', 'It\'s all FROTH, Ron. Barrel needs changing!']),
-        steps: [{ text: 'Go to the hatch behind the bar', at: () => HATCH, r: 1.0 }, { text: 'Change the barrel: stay put', at: () => HATCH, r: 1.1, hold: 3, then: () => { hatch.visible = false; sfx('ting', HATCH, 0.8); } }] };
+        steps: [{ text: 'Go to the hatch behind the bar', at: () => HATCH, r: 1.0 }, { text: 'Change the barrel: stay put', at: () => HATCH, r: 1.1, hold: 3, then: () => { hatch.visible = false; sfx('bell', HATCH, 0.8); } }] };
       j.cleanup = () => { hatch.visible = false; };
     }
     j.step = 0; j.t = 0; j.limit = 100; this.job = j;
-    j.from.say(j.said, 5); sfx('ting', j.from.pos, 0.8); this.popCard(j);
+    j.from.say(j.said, 5); sfx('notify', j.from.pos, 0.8); this.popCard(j);
   }
   flagTex(n) { const c = document.createElement('canvas'); c.width = 128; c.height = 80; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 128, 80); x.font = '900 52px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#c62828'; x.fillText(String(n), 64, 44); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; }
   emptySpots(n) {
@@ -125,13 +125,13 @@ export class PubJobs {
     if (j) {
       j.t += dt; const s = j.steps[j.step];
       if (s.multi) {           // the empties: walk up to each
-        for (const gl of j.glasses) if (gl.visible && Math.hypot(gl.position.x - here.x, gl.position.z - here.z) < 1.3) { gl.visible = false; j.got++; sfx('clink', gl.position, 0.7); this.g.words.show(`EMPTIES ${j.got}/${j.glasses.length}`, gl.position.clone().add(V(0, 0.3, 0)), '#29b6ff', 0.08, 0.9); }
+        for (const gl of j.glasses) if (gl.visible && Math.hypot(gl.position.x - here.x, gl.position.z - here.z) < 1.3) { gl.visible = false; j.got++; sfx('glass', gl.position, 0.7); this.g.words.show(`EMPTIES ${j.got}/${j.glasses.length}`, gl.position.clone().add(V(0, 0.3, 0)), '#29b6ff', 0.08, 0.9); }
         s.text = `Collect the empties (${j.got}/${j.glasses.length})`;
         if (j.got >= j.glasses.length) this.nextStep();
       } else if (s.gone && s.gone()) { this.finish(false, 'They left!'); return; }
       else { const at = s.at(), d = Math.hypot(at.x - here.x, at.z - here.z);
         if (d < s.r && s.act) { this.actReady = s; }
-        else if (d < s.r) { if (s.hold) { s.held = (s.held || 0) + dt; if (Math.floor(s.held * 2) !== Math.floor((s.held - dt) * 2)) sfx('thud', HATCH, 0.4); const b = this.hatchMesh && this.hatchMesh.getObjectByName('barrel'); if (b) b.rotation.y += dt * 3; if (s.held >= s.hold) this.nextStep(); } else this.nextStep(); }
+        else if (d < s.r) { if (s.hold) { s.held = (s.held || 0) + dt; if (Math.floor(s.held * 2) !== Math.floor((s.held - dt) * 2)) sfx('tick', HATCH, 0.4); const b = this.hatchMesh && this.hatchMesh.getObjectByName('barrel'); if (b) b.rotation.y += dt * 3; if (s.held >= s.hold) this.nextStep(); } else this.nextStep(); }
         else if (s.hold) s.held = 0; }
       if (this.job && j.t > j.limit) this.finish(false);
     }
@@ -169,7 +169,7 @@ export class PubJobs {
       if (Math.floor(performance.now() / 1500) !== this.vrHintT) { this.vrHintT = Math.floor(performance.now() / 1500); this.g.words.show(s.act + ' (A)', P.head.clone().addScaledVector(P.fwd, 0.9), '#29b6ff', 0.06, 1.2); } }
     else this.actWait = 0; }
   target() { const j = this.job; if (!j) return null; const s = j.steps[j.step]; if (s.multi) { const gl = j.glasses.find(g => g.visible); return gl ? gl.position.clone().setY(0) : null; } return s.at().clone().setY(0); }
-  nextStep() { const j = this.job, s = j.steps[j.step]; s.then && s.then(); s.done = true; j.step++; sfx('pop', null, 0.5); if (j.step >= j.steps.length) this.finish(true); }
+  nextStep() { const j = this.job, s = j.steps[j.step]; s.then && s.then(); s.done = true; j.step++; sfx('fixed', null, 0.5); if (j.step >= j.steps.length) this.finish(true); }
   finish(ok, why) {
     const j = this.job; this.job = null; this.nextT = 25 + Math.random() * 25; j.cleanup && j.cleanup(); if (j.glasses) for (const gl of j.glasses) this.grp.remove(gl); this.showPlate(false);
     const P = this.g.player, at = P.head.clone().addScaledVector(P.fwd, 1).add(V(0, 0.25, 0));
@@ -222,7 +222,7 @@ export class PubJobs {
   }
   showNote(lines, tbl) {
     this.note.innerHTML = `<b>ORDER · ${tbl.toUpperCase()}</b>` + lines.map(l => `<div>${l.replace(/</g, '&lt;')}</div>`).join('');
-    this.note.classList.add('on'); sfx('shutter', null, 0.4); clearTimeout(this.noteT); this.noteT = setTimeout(() => this.note.classList.remove('on'), 3200);
+    this.note.classList.add('on'); sfx('notify', null, 0.4); clearTimeout(this.noteT); this.noteT = setTimeout(() => this.note.classList.remove('on'), 3200);
     if (!this.g.player.flatMode) this.g.showBanner('ORDER TAKEN!', lines.slice(0, 2).join(' · ').toUpperCase());
   }
   stampIt(txt, col) { this.stamp.textContent = txt; this.stamp.style.color = col; this.stamp.style.borderColor = col; this.stamp.classList.add('on'); clearTimeout(this.stT); this.stT = setTimeout(() => this.stamp.classList.remove('on'), 1400); }

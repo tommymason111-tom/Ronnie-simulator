@@ -82,7 +82,7 @@ export class DartGame {
     this.left = 501; this.hist = []; this.visit = []; this.lastVisit = []; this.msg = 'GAME ON!'; this.collectT = 0;
     for (const d of this.darts) if (!d.dead) this.items.remove(d);
     this.darts = []; for (let i = 0; i < 3; i++) this.darts.push(this.spawn(i));
-    sfx('ting', this.c, 0.6); this.draw();
+    sfx('bell', this.c, 0.6); this.draw();
   }
   stop() {
     this.playing = false; this.button.set(false); this.marker.visible = false;
@@ -119,7 +119,7 @@ export class DartGame {
     it.pos.copy(p).addScaledVector(d, -TIP + 0.014);                  // tip buried a little
     it.obj.quaternion.setFromUnitVectors(_z.set(0, 0, -1), d);
     it.vel.set(0, 0, 0); it.spin.set(0, 0, 0); it.resting = true; it.stuck = true;
-    sfx('thwack', p, 0.6);
+    sfx('dart', p, 0.6);
     if (it.flying) { it.flying = false; this.score(scoreAt(u, v), p); }
     return true;
   }
@@ -164,7 +164,7 @@ export class DartGame {
     }
     if (this.collectT > 0 && (this.collectT -= dt) <= 0) {
       for (let i = 0; i < this.darts.length; i++) { const it = this.darts[i]; if (!it.heldBy) { if (!it.dead) this.items.remove(it); this.darts[i] = this.spawn(i); } }
-      sfx('pop', this.c, 0.4);
+      sfx('pickup', this.c, 0.4);
     }
   }
   // the chalkboards inside the doors

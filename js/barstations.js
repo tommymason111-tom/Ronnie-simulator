@@ -121,8 +121,8 @@ export class Bar {
       for (const o of held) if (o.filling === s && o !== it) o.filling = null;
       if (it) { f += dt; if (this.autoFill && this.autoFill.st === s) { it.filling = s; it.pos.copy(s.at).add(V(0, -0.06, 0)); it.obj.position.copy(it.pos); it.obj.quaternion.identity(); }
         const k = Math.min(1, f / s.fill.time); fx.position.copy(it.pos); fx.children[1].scale.y = Math.max(0.02, k); fx.children[1].position.y = -0.05 + 0.05 * k; fx.children[0].visible = k < 0.98;
-        if (Math.floor((f - dt) * 2) !== Math.floor(f * 2)) { this.g.words.show(f >= s.fill.time ? 'DONE!' : s.fill.word, s.at.clone().add(V(0, 0.22, 0)), '#ffd400', 0.08, 0.5); sfx('fizz', s.at, 0.5); }
-        if (f >= s.fill.time) { it.filling = null; fx.visible = false; const n = this.swap(it, s.fill.to); if (af) { n.pos.copy(s.at).add(V(0, -0.06, 0)); n.prev.copy(n.pos); n.obj.position.copy(n.pos); n.vel && n.vel.set(0, 0, 0); n.resting = true; n.shelf = true; this.g.words.show('READY! PICK IT UP', s.at.clone().add(V(0, 0.3, 0)), '#39ff14', 0.07, 1.2); } f = 0; this.autoFill = null; sfx('ting', s.at, 0.7); } }
+        if (Math.floor((f - dt) * 2) !== Math.floor(f * 2)) { this.g.words.show(f >= s.fill.time ? 'DONE!' : s.fill.word, s.at.clone().add(V(0, 0.22, 0)), '#ffd400', 0.08, 0.5); sfx('pour', s.at, 0.5); }
+        if (f >= s.fill.time) { it.filling = null; fx.visible = false; const n = this.swap(it, s.fill.to); if (af) { n.pos.copy(s.at).add(V(0, -0.06, 0)); n.prev.copy(n.pos); n.obj.position.copy(n.pos); n.vel && n.vel.set(0, 0, 0); n.resting = true; n.shelf = true; this.g.words.show('READY! PICK IT UP', s.at.clone().add(V(0, 0.3, 0)), '#39ff14', 0.07, 1.2); } f = 0; this.autoFill = null; sfx('ding', s.at, 0.7); } }
       else f = 0;
       this.fill.set(s.key, f);
     }
@@ -170,8 +170,8 @@ export class Bar {
   quickSoda(cup) { const P = this.g.player; P.flatDrop(); cup.heldBy = null; const at = this.gunHome.clone().add(V(0.06, -0.1, 0)); cup.pos.copy(at); cup.prev.copy(at); cup.obj.position.copy(at); cup.vel && cup.vel.set(0, 0, 0); cup.resting = true; cup.shelf = true;
     const want = this.rp.waiting && this.rp.waiting().find(c => c.rp.order && c.rp.order.make === 'gun'); if (want) this.gunFlavour = want.rp.orderKey === 'fanta' ? 1 : 0;
     this.sodaCup = { it: cup, t: 0 }; sfx('fizz', at, 0.6); }
-  holster() { const P = this.g.player, gun = this.gun; if (!gun) return; P.flatDrop(); gun.heldBy = null; gun.pos.copy(this.gunHome); gun.prev.copy(gun.pos); gun.obj.position.copy(gun.pos); gun.vel && gun.vel.set(0, 0, 0); gun.resting = true; gun.shelf = true; sfx('clink', this.gunHome, 0.6); this.g.words.show('GUN BACK IN ITS HOLDER', this.gunHome.clone().add(V(0, 0.25, 0)), '#ffd400', 0.06, 0.9); }
-  toggleFlavour() { this.gunFlavour = 1 - this.gunFlavour; sfx('pop', this.gun ? this.gun.pos : null, 0.6); if (this.gun) this.g.words.show(this.gunFlavour ? 'FANTA' : 'COKE', this.gun.pos.clone().add(V(0, 0.12, 0)), this.gunFlavour ? '#ff8a00' : '#c8102e', 0.07, 0.7); }
+  holster() { const P = this.g.player, gun = this.gun; if (!gun) return; P.flatDrop(); gun.heldBy = null; gun.pos.copy(this.gunHome); gun.prev.copy(gun.pos); gun.obj.position.copy(gun.pos); gun.vel && gun.vel.set(0, 0, 0); gun.resting = true; gun.shelf = true; sfx('clack', this.gunHome, 0.6); this.g.words.show('GUN BACK IN ITS HOLDER', this.gunHome.clone().add(V(0, 0.25, 0)), '#ffd400', 0.06, 0.9); }
+  toggleFlavour() { this.gunFlavour = 1 - this.gunFlavour; sfx('toggle', this.gun ? this.gun.pos : null, 0.6); if (this.gun) this.g.words.show(this.gunFlavour ? 'FANTA' : 'COKE', this.gun.pos.clone().add(V(0, 0.12, 0)), this.gunFlavour ? '#ff8a00' : '#c8102e', 0.07, 0.7); }
   // phone / PC: a tap on the tap or the coffee machine (holding the right glass), or on a cup (holding the gun)
   tap(ray) {
     const P = this.g.player, held = P.flatHolder && P.flatHolder.held;

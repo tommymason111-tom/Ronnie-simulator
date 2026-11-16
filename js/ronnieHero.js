@@ -357,14 +357,14 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
       if (h && h.object === headProxy) { talkT = 1.4; say(onTap && onTap()); return; }
       if (h) best = foodOf(h.object);
     }
-    if (best) { best.userData.held = c; c.userData.held = best; c.attach(best); sfx && sfx('pop'); }
+    if (best) { best.userData.held = c; c.userData.held = best; c.attach(best); sfx && sfx('tap'); }
   }
   function release(c) {
     const o = c.userData.held; if (!o) return;
     c.userData.held = null; o.userData.held = null; world.attach(o);
   }
   function panelPress(i) {
-    const r = rows[i]; if (!r) return; sfx && sfx('pop');
+    const r = rows[i]; if (!r) return; sfx && sfx('tap');
     if (r.key === 'EXIT') { renderer.xr.getSession() && renderer.xr.getSession().end(); return; }
     if (r.key === 'UP') scroll = Math.max(0, scroll - 320); else if (r.key === 'DOWN') scroll = Math.min(maxScroll, scroll + 320);
     else if (kb && r.key) { const el = kb.el, max = el.maxLength > 0 ? el.maxLength : 20;
