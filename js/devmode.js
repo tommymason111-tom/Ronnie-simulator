@@ -46,7 +46,11 @@ export function startDev(RS) {
   btn.addEventListener('click', () => open(!panel.classList.contains('on')));
 
   // ---- the random attacks stay off while you test
-  const quiet = () => { if (D) { D.nextAttackT = Math.max(D.nextAttackT || 0, 600); } };
+  // ---- nobody attacks you unless you ask: always free roam (the squad wandering about, no attack countdown), and Tommy
+  // never starts anything himself (he's only "on" while he's doing the attack you set off, then he's off again)
+  if (D && D.fullMode !== 'roam') RS.newGame('roam');
+  const quiet = () => { if (D) { D.nextAttackT = Math.max(D.nextAttackT || 0, 600); if (D.fullMode !== 'roam' && !D.__devSwitching) { D.__devSwitching = true; RS.newGame('roam'); setTimeout(() => { D.__devSwitching = false; }, 1000); } }
+    const t = RS.tommy; if (t) { t.directed = true; t.attacks = !!(t.devTrip && t.busyAttacking); if (t.devTrip && !t.attacks) t.devTrip = false; } };
 
   // ---- EMOTES: a stand-in of the character, a couple of metres in front of you, facing you
   let pup = null, pupChar = null, queue = [], pupAt = null;
@@ -69,7 +73,7 @@ export function startDev(RS) {
     for (const o of RS.cast) if (o.state === 'act') o.state = 'idle';
     const fx = D.g.fx; fx && fx.endCutscene && fx.endCutscene(); fx && fx.hideCard && fx.hideCard(); P.clearEffects && P.clearEffects(); D.pending = null;
     const f = new THREE.Vector3(P.fwd.x, 0, P.fwd.z).normalize(); if (c.rag && c.rag.placeAt) c.rag.placeAt(P.head.x + f.x * 2.2, P.head.z + f.z * 2.2, Math.atan2(-f.x, -f.z));
-    if (c === RS.tommy) c.attacks = true;
+    if (c === RS.tommy) { c.attacks = true; c.devTrip = true; c.directed = true; }
     const ok = D.launch({ c, attack: { key } }); if (!ok) return toast('THEY\'RE BUSY: TRY AGAIN IN A SECOND');
     open(false); };
 
