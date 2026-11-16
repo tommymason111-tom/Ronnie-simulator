@@ -117,7 +117,7 @@ export function buildPub(scene) {
   const carpet = weaveCarpetTex(), tiles = tileTex('#8f8574', '#837a69', '#5e574b', 85);
   k.floor(X(195), Z(605), X(855), Z(1305), carpet, 0.002, 1.2);                          // the pub floor
   k.floor(X(615), Z(385), X(835), Z(605), tiles, 0.003, 1.0);                            // entrance (tiled)
-  k.floor(X(855), Z(690), X(1045), Z(975), tileTex('#b8b4aa', '#aca89e', '#8a867c', 48), 0.004, 0.9);   // staff room
+  { const st = tileTex('#b8b4aa', '#aca89e', '#8a867c', 48); k.floor(X(855), Z(690), X(1045), Z(925), st, 0.004, 0.9); k.floor(X(895), Z(925), X(1045), Z(975), st, 0.004, 0.9); }   // staff room (less its cut-back corner)
   k.floor(X(895), Z(925), X(1045), Z(1305), tileTex('#9a9a96', '#8e8e8a', '#6e6e6a', 64), 0.005, 1.5);  // back room (concrete) — not under the bar: the quarry tiles and slate there would fight with it and flicker
   k.floor(X(195), Z(1305), X(795), Z(1645), tileTex('#d8c8a8', '#ccbc9c', '#a89878', 72), 0.003, 1.0);  // conservatory (stone tiles)
   k.floor(X(795), Z(1305), X(975), Z(1620), carpetTex('#2a3a5a', '#1a2440', '#c9a24a'), 0.003, 1.2);   // gambling room
@@ -163,7 +163,7 @@ export function buildPub(scene) {
   // the bar: top wall, back wall of the back bar, the corridor behind
   WX(605, 695, 855); WZ(855, 605, 925); WX(925, 835, 855);      // (a doorway from the corridor in behind the bar)      // (a door from behind the bar into the staff room)
   // staff room, back room, gambling room
-  WX(690, 855, 1045, [], WALL); WZ(1045, 690, 1305, [], WALL); WX(975, 895, 1045); WX(975, 855, 895); WZ(855, 925, 975, [[928, 972]]);      // (the staff room's door is on its side now, off the end of the bar)
+  WX(690, 855, 1045, [], WALL); WZ(1045, 690, 1305, [], WALL); WX(975, 895, 1045); WX(925, 855, 895); WZ(895, 925, 975, [[928, 972]]);      // (the staff room's corner set back: the passage behind the bar runs full width to its door)      // (the staff room's door is on its side now, off the end of the bar)
   WZ(895, 975, 1305, [[1235, 1300]]);
   WX(1305, 790, 1045);
   WZ(795, 1305, 1645, [[1335, 1400]]);   // (right down to the back wall: no gap beside the garden door)
@@ -685,7 +685,7 @@ export function buildPub(scene) {
     k.spawns.push(new THREE.Vector3(x0 + 1.2, 1.0, z0 + 0.35));
     R(x1 - 2.4, z1 - 0.9, x1 - 0.6, z1 - 0.1, 0.45, 0.225, 0x37474f, { block: true }); R(x1 - 2.4, z1 - 0.3, x1 - 0.6, z1 - 0.1, 0.9, 0.45, 0x37474f);   // battered sofa
     k.label("STAFF FOOD ALLOWANCE: ONE (1) BAG OF CRISPS. RONNIE THIS MEANS YOU. — THE GAFFER", 1.3, 0.7, [x0 + 1.0, 1.6, z0 + 0.09], [0, 0, 0], { bg: '#fff', fg: '#111' });
-    k.label('STAFF ROOM', 0.9, 0.2, [X(855) - 0.09, 2.45, Z(950)], [0, -Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: null, size: 60 });
+    k.label('STAFF ROOM', 0.9, 0.2, [X(895) - 0.09, 2.45, Z(950)], [0, -Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: null, size: 60 });
     k.lamp((x0 + x1) / 2, H - 0.02, (z0 + z1) / 2, 0xffffff, 0.12);
   }
   { const x0 = X(895), x1 = X(1045), z0 = Z(975), z1 = Z(1305);
