@@ -35,8 +35,8 @@ export const TASKS = [
   { id: 'toilet', name: 'Unblock the toilet', room: 'MEN\'S TOILETS', at: [-7.97, -11.8], kind: 'plunge' },
   { id: 'looroll', name: 'Restock the loo roll', room: 'WOMEN\'S TOILETS', at: [-2.5, -12.5], kind: 'catch', o: { title: 'RESTOCK THE LOO ROLL', icon: '🧻' } },
   { id: 'bookings', name: 'Sort the bookings', room: 'RECEPTION', at: [1.75, -11.65], kit: [2.27, 0.795, -11.6, -Math.PI / 2], kind: 'order' },      // (behind the desk, on the staff worktop)
-  { id: 'fryer', name: 'Clean the fryer', room: 'KITCHEN', at: [-12.35, -4.7], kind: 'temp', o: { title: 'CLEAN THE FRYER' } },
-  { id: 'dishes', name: 'Wash the pots', room: 'KITCHEN', at: [-12.6, -0.8], kind: 'sort', o: { title: 'WASH THE POTS' } },
+  { id: 'fryer', name: 'Clean the fryer', room: 'KITCHEN', at: [-12.95, -4.7], kind: 'temp', o: { title: 'CLEAN THE FRYER' } },
+  { id: 'dishes', name: 'Wash the pots', room: 'KITCHEN', at: [-13.2, -1.3], kind: 'sort', o: { title: 'WASH THE POTS' } },
   { id: 'empties', name: 'Collect the empties', room: 'RAISED BOOTHS', at: [-7, -4], kind: 'whack', o: { title: 'COLLECT THE EMPTIES', icon: '🍺' } },
   { id: 'tables', name: 'Wipe the tables', room: 'CONSERVATORY', at: [-4, 11], kind: 'scrub', o: { title: 'WIPE THE TABLES', n: 10 } },
   { id: 'slots', name: 'Reset the slot machine', room: 'GAMBLING ROOM', at: [7.8, 10.32], kit: [8.42, 0, 10.32, -Math.PI / 2, 'none'], kind: 'code' },
@@ -48,13 +48,21 @@ export const TASKS = [
   { id: 'gglasses', name: 'Clear the garden glasses', room: 'BEER GARDEN', at: [5.6, 37.0], kind: 'stacker', o: { title: 'CLEAR THE GARDEN GLASSES', icon: '🍹' } },
   { id: 'carglass', name: 'Sweep up the glass by Lewis\'s car', room: 'CAR PARK', at: [7.9, -12.7], kit: [8.35, 0, -10.88, 0, 'none'], kind: 'sweep', o: { title: 'SWEEP UP THE GLASS', icon: '💎' } },
   { id: 'barrier', name: 'Fix the car park barrier', room: 'CAR PARK', at: [8.6, -22.0], kit: [8.3, 0, -22.6, 0, 'none'], kind: 'pipes', o: { title: 'FIX THE CAR PARK BARRIER' } },
+  // (the restaurant and the garden)
+  { id: 'wine', name: 'Open the wine', room: 'RESTAURANT', at: [-15.5, -2.2], kit: [-14.85, 0.94, -2.2, -Math.PI / 2], kind: 'wine', o: { title: 'OPEN THE WINE' } },      // (behind the restaurant bar, on the back counter)
+  { id: 'napkins', name: 'Fold the napkins', room: 'RESTAURANT', at: [-19.6, -13.25], kit: [-19.73, 0.95, -14.1, 0], kind: 'fold', o: { title: 'FOLD THE NAPKINS' } },      // (at the waiter's station)
+  { id: 'bulbs', name: 'Change the chandelier bulbs', room: 'RESTAURANT', at: [-23.0, -2.1], kit: [-22.25, 0, -2.05, 0], kind: 'bulbs', o: { title: 'CHANGE THE BULBS' } },
+  { id: 'bbq', name: 'Flip the burgers on the BBQ', room: 'BEER GARDEN', at: [-5.0, 41.3], kit: [-5.0, 0, 41.95, Math.PI], kind: 'grill', o: { title: 'FLIP THE BURGERS', need: 6 } },
+  { id: 'baskets', name: 'Water the hanging baskets', room: 'BEER GARDEN', at: [6.3, 17.3], kit: [6.3, 0, 16.12, 0], kind: 'water', o: { title: 'WATER THE HANGING BASKETS' } },
+  { id: 'stream', name: 'Fish the litter out of the stream', room: 'BEER GARDEN', at: [3.8, 19.9], kit: [4.6, 0, 19.95, 0], kind: 'net', o: { title: 'FISH OUT THE LITTER', need: 8 } },
 ];
 const TASK = Object.fromEntries(TASKS.map(t => [t.id, t]));
 const TASK_SIGN = { guinness: '🍺 POUR A GUINNESS', barrel: '🛢️ CHANGE THE BARREL', till: '💳 CARD MACHINE', jukebox: '🎧 DJ DECKS', fruit: '🍒 FRUIT MACHINE', toilet: '🚽 BLOCKED TOILET', looroll: '🧻 LOO ROLL',
   bookings: '📖 BOOKINGS', fryer: '🍟 THE FRYER', empties: '🍺 EMPTIES', tables: '🧽 WIPE TABLES', slots: '🎰 SLOT MACHINE', keg: '⏲️ KEG PRESSURE', rota: '🕒 CLOCK IN',
-  dishes: '🍳 WASH THE POTS', cutlery: '🍴 LAY THE TABLES', candles: '🕯️ CANDLES', parasol: '⛱️ PARASOLS', gglasses: '🍹 GARDEN GLASSES', carglass: '🚗 SWEEP THE GLASS', barrier: '🚧 THE BARRIER' };
+  dishes: '🍳 WASH THE POTS', cutlery: '🍴 LAY THE TABLES', candles: '🕯️ CANDLES', parasol: '⛱️ PARASOLS', gglasses: '🍹 GARDEN GLASSES', carglass: '🚗 SWEEP THE GLASS', barrier: '🚧 THE BARRIER',
+  wine: '🍷 OPEN THE WINE', napkins: '🧻 FOLD NAPKINS', bulbs: '💡 CHANDELIER BULBS', bbq: '🍔 THE BBQ', baskets: '🌸 HANGING BASKETS', stream: '🥫 LITTER IN THE STREAM' };
 // trapdoors (the imposter's vents): hop between them unseen
-const VENTS = [{ name: 'CELLAR HATCH', at: [5.08, -7.81] }, { name: 'KITCHEN', at: [-12.5, -1.0] }, { name: 'GAMBLING ROOM', at: [6.5, 12.5] }, { name: 'MEN\'S TOILETS', at: [-6.53, -13.1] }];
+const VENTS = [{ name: 'CELLAR HATCH', at: [5.08, -7.81] }, { name: 'KITCHEN', at: [-12.6, -0.4] }, { name: 'GAMBLING ROOM', at: [6.5, 12.5] }, { name: 'MEN\'S TOILETS', at: [-6.53, -13.1] }];
 const FUSE = { name: 'FUSE BOX · STAFF ROOM', at: [9.0, -0.7], kit: [9.0, 0, -0.07, Math.PI] };      // (on the staff room's right-hand wall as you come in)
 const VALVES = [{ name: 'KEG ROOM VALVE', at: [8.1, 4.5] }, { name: 'KITCHEN VALVE', at: [-11.6, -2.0] }];
 // SECURITY (like the cameras in Among Us): a desk in the staff room with a bank of monitors. Sit at it and you watch four
@@ -65,7 +73,7 @@ export const CAMS = [
   { name: 'THE BAR', at: [-9.2, 2.6, 7.4], look: [0.5, 0.6, -3.0] },
   { name: 'CAR PARK', at: [6.4, 3.0, -9.3], look: [11.5, 0, -17] },
   { name: 'BEER GARDEN', at: [9.8, 3.2, 16.6], look: [0, 0.4, 28] },
-  { name: 'KITCHEN', at: [-13.4, 2.5, 1.7], look: [-11, 0.6, -6.5] },
+  { name: 'KITCHEN', at: [-14.0, 2.5, 1.7], look: [-11.6, 0.6, -6.5] },
 ];
 // the monitors: four live feeds (each re-filmed a few times a second, in turn), with a slight security-camera look:
 // a little washed out and green, scanlines, grain, a REC light and the time. Tap a feed to blow it up, tap again to go back
@@ -82,9 +90,9 @@ export function makeCamFeeds({ renderer, scene, cams = CAMS }) {
       for (let x = 0; x < FW * 4; x += 4) { const r = src[sr + x], gg = src[sr + x + 1], b = src[sr + x + 2], l = 0.3 * r + 0.59 * gg + 0.11 * b, n = (Math.random() - 0.5) * 14;
         d[dr + x] = r * 0.72 + l * 0.22 + n; d[dr + x + 1] = gg * 0.72 + l * 0.3 + 8 + n; d[dr + x + 2] = b * 0.7 + l * 0.2 + n; d[dr + x + 3] = 255; } }
     f.cv.getContext('2d').putImageData(f.img, 0, 0); f.ready = true; };
-  const box = (i) => ({ x: 14 + (i % 2) * 248, y: 72 + Math.floor(i / 2) * 210, w: 236, h: 152 });
-  const s = { title: '📹 SECURITY', zoom: -1, done: false, feeds };
-  s.down = (x, y) => { if (s.zoom >= 0) { s.zoom = -1; return; } for (let i = 0; i < feeds.length; i++) { const b = box(i); if (x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h + 30) { s.zoom = i; sfx('tap', null, 0.4); } } };
+  const box = (i) => ({ x: 14 + (i % 2) * 248, y: 62 + Math.floor(i / 2) * 188, w: 236, h: 152 }), STOP = { x: 56, y: 436, w: 400, h: 64 };
+  const s = { title: '📹 SECURITY', zoom: -1, done: false, feeds, bigClose: '✕ STOP WATCHING' };
+  s.down = (x, y) => { if (x > STOP.x - 10 && x < STOP.x + STOP.w + 10 && y > STOP.y - 8 && y < STOP.y + STOP.h + 8) { s.quit = true; sfx('tap', null, 0.4); return; } if (s.zoom >= 0) { s.zoom = -1; return; } for (let i = 0; i < feeds.length; i++) { const b = box(i); if (x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h + 30) { s.zoom = i; sfx('tap', null, 0.4); } } };
   s.move = () => {}; s.up = () => {};
   s.update = (dt) => { acc += dt; if (acc < 0.06) return; acc = 0; if (s.zoom >= 0) { film(feeds[s.zoom]); return; } film(feeds[next]); next = (next + 1) % feeds.length; };
   s.dispose = () => { for (const f of feeds) f.rt.dispose(); };
@@ -98,10 +106,13 @@ export function makeCamFeeds({ renderer, scene, cams = CAMS }) {
     if (Math.floor(t * 2) % 2) { g.fillStyle = '#ff2a2a'; g.beginPath(); g.arc(b.x + b.w - 30 * k, b.y + 11 * k, 5 * k, 0, 7); g.fill(); } g.fillStyle = 'rgba(255,90,90,0.95)'; g.fillText('REC', b.x + b.w - 23 * k, b.y + 5 * k);
     g.strokeStyle = '#3a4a3a'; g.lineWidth = 3; g.strokeRect(b.x, b.y, b.w, b.h); };
   s.draw = (g, t) => { const bg = g.createLinearGradient(0, 0, 0, 512); bg.addColorStop(0, '#1d2128'); bg.addColorStop(1, '#0d1014'); g.fillStyle = bg; rr(g, 4, 4, 504, 504, 30); g.fill();
-    g.lineWidth = 8; g.strokeStyle = '#5a6a7a'; rr(g, 4, 4, 504, 504, 30); g.stroke(); txt(g, s.zoom >= 0 ? `📹 CAM ${s.zoom + 1} · ${feeds[s.zoom].c.name}` : '📹 SECURITY CAMERAS', 256, 36, 26, '#e8f0ff');
-    if (s.zoom >= 0) { feedDraw(g, feeds[s.zoom], { x: 16, y: 66, w: 480, h: 310 }, t); txt(g, 'TAP TO GO BACK TO ALL FOUR', 256, 410, 18, '#9fb0c0'); }
-    else feeds.forEach((f, i) => { const b = box(i); feedDraw(g, f, b, t); g.fillStyle = '#0d1014'; g.fillRect(b.x, b.y + b.h, b.w, 30); txt(g, `${f.c.name}`, b.x + b.w / 2, b.y + b.h + 15, 15, '#c8d8c8'); });
-    txt(g, 'TAP A CAMERA TO MAKE IT BIG · ✕ TO STOP WATCHING', 256, 488, 13, '#7f8f9f'); };
+    g.lineWidth = 8; g.strokeStyle = '#5a6a7a'; rr(g, 4, 4, 504, 504, 30); g.stroke(); txt(g, s.zoom >= 0 ? `📹 CAM ${s.zoom + 1} · ${feeds[s.zoom].c.name}` : '📹 SECURITY CAMERAS', 256, 30, 26, '#e8f0ff'); if (s.zoom < 0) txt(g, 'TAP A CAMERA TO MAKE IT BIG', 256, 52, 12, '#7f8f9f');
+    if (s.zoom >= 0) { feedDraw(g, feeds[s.zoom], { x: 16, y: 62, w: 480, h: 310 }, t); txt(g, 'TAP THE PICTURE TO GO BACK TO ALL FOUR', 256, 396, 17, '#9fb0c0'); }
+    else { feeds.forEach((f, i) => { const b = box(i); feedDraw(g, f, b, t); g.fillStyle = '#0d1014'; g.fillRect(b.x, b.y + b.h, b.w, 26); txt(g, `${f.c.name}`, b.x + b.w / 2, b.y + b.h + 13, 15, '#c8d8c8'); }); }
+    // the big red STOP WATCHING button along the bottom (easy to see and to hit, on a phone and in VR)
+    const pulse = 0.5 + 0.5 * Math.sin(t * 4); g.fillStyle = '#7a1010'; rr(g, STOP.x, STOP.y + 5, STOP.w, STOP.h, 32); g.fill();
+    g.fillStyle = '#d32f2f'; rr(g, STOP.x, STOP.y, STOP.w, STOP.h, 32); g.fill(); g.lineWidth = 4; g.strokeStyle = `rgba(255,212,0,${0.6 + 0.4 * pulse})`; rr(g, STOP.x, STOP.y, STOP.w, STOP.h, 32); g.stroke();
+    txt(g, '✕  STOP WATCHING', 256, STOP.y + STOP.h / 2 + 1, 28, '#ffffff'); };
   return s;
 }
 const SAB = { lights: { name: 'LIGHTS OUT', icon: '💡' }, keg: { name: 'KEG PRESSURE', icon: '🛢️', crit: true } };
@@ -420,6 +431,42 @@ export class Imposter {
     else if (id === 'candles') { const y = top(); kadd(C(0.1, 0.12, 0.02, 18), lam(0xd4af37), 0, y + 0.01, 0); kadd(C(0.012, 0.015, 0.2, 10), lam(0xd4af37), 0, y + 0.11, 0); for (let i = 0; i < 3; i++) { const a = i * 2.09; kadd(C(0.008, 0.008, 0.08, 8), lam(0xd4af37), Math.cos(a) * 0.06, y + 0.22, Math.sin(a) * 0.06, 0, 0, Math.cos(a) * 0.6); kadd(C(0.016, 0.016, 0.12, 12), lam(0xfdf6e3), Math.cos(a) * 0.09, y + 0.31, Math.sin(a) * 0.09); } }
     else if (id === 'parasol') { kadd(C(0.22, 0.25, 0.08, 18), lam(0x333333), 0, 0.04, 0); kadd(C(0.02, 0.02, 2.2, 10), lam(0xc8c8c8), 0, 1.1, 0); kadd(C(0.07, 0.02, 1.2, 12), lam(0x2e7d32), 0, 1.6, 0); kadd(new THREE.TorusGeometry(0.07, 0.01, 6, 16), lam(0xffffff), 0, 1.2, 0, Math.PI / 2); kadd(C(0.008, 0.008, 0.18, 6), lam(0x555555), 0.05, 1.0, 0, 0, 0, 1.2); }
     else if (id === 'gglasses') { kadd(B(1.2, 0.05, 0.5), wood, 0, 0.74, 0); for (const sx of [-0.5, 0.5]) kadd(B(0.05, 0.74, 0.5), wood, sx, 0.37, 0); for (let i = 0; i < 5; i++) kadd(C(0.035, 0.028, 0.14, 10, 1, true), new THREE.MeshPhongMaterial({ color: 0xddeeff, transparent: true, opacity: 0.5, side: THREE.DoubleSide }), -0.4 + i * 0.2, 0.84, (i % 2) * 0.12 - 0.06); kadd(B(0.36, 0.12, 0.26), lam(0x6d4c2a), 0.3, 0.83, 0.1); }
+    else if (id === 'wine') {      // on the back counter: an open bottle of red, the waiter's friend corkscrew beside it, three glasses, a cloth
+      kadd(C(0.036, 0.036, 0.22, 14), lam(0x16341a), -0.12, 0.11, -0.02); kadd(C(0.013, 0.032, 0.08, 12), lam(0x16341a), -0.12, 0.26, -0.02); kadd(C(0.014, 0.014, 0.05, 10), lam(0x7a1020), -0.12, 0.31, -0.02);
+      kadd(B(0.062, 0.07, 0.004), lam(0xf4ecd8), -0.12, 0.1, 0.016); kadd(B(0.012, 0.012, 0.11), steel, 0.02, 0.006, 0.07, 0, 0.4); kadd(B(0.02, 0.012, 0.05), lam(0x5a2e18), 0.04, 0.008, 0.03, 0, 0.4);
+      const gm = new THREE.MeshPhongMaterial({ color: 0xe6f2f4, transparent: true, opacity: 0.45, shininess: 90, side: THREE.DoubleSide });
+      for (let i = 0; i < 3; i++) { const x = 0.06 + i * 0.09, z = -0.06; kadd(C(0.03, 0.03, 0.004, 14), gm, x, 0.002, z); kadd(C(0.004, 0.004, 0.08, 6), gm, x, 0.044, z); kadd(C(0.034, 0.018, 0.07, 14, 1, true), gm, x, 0.12, z); if (i === 0) kadd(C(0.026, 0.02, 0.025, 14), lam(0x6a0f22), x, 0.1, z); }
+      kadd(B(0.16, 0.006, 0.1), lam(0xf8f8f4), -0.02, 0.003, 0.12, 0, 0.3); }
+    else if (id === 'napkins') {      // on the waiter's station: a burgundy napkin folded into a bishop's mitre, two more lying flat waiting
+      const lin = lam(0x7a1424); kadd(B(0.1, 0.012, 0.1), lin, 0, 0.006, 0.02); kadd(B(0.1, 0.012, 0.1), lin, 0, 0.018, 0.02, 0, 0.3);
+      kadd(new THREE.ConeGeometry(0.05, 0.14, 4), lin, 0, 0.1, -0.05, 0, Math.PI / 4); }
+    else if (id === 'bulbs') {      // an aluminium stepladder opened up under the chandelier, a box of new candle bulbs on the floor beside it
+      const al = new THREE.MeshPhongMaterial({ color: 0xc8ccd0, shininess: 70 });
+      for (const sx of [-0.2, 0.2]) { kadd(B(0.035, 1.5, 0.05), al, sx, 0.74, -0.18, 0.22); kadd(B(0.035, 1.5, 0.05), al, sx, 0.74, 0.18, -0.22); }      // (front and back legs lean in to meet at the top)
+      for (let i = 0; i < 4; i++) { const y = 0.3 + i * 0.32; kadd(B(0.4, 0.025, 0.11), al, 0, y, -0.18 - (0.74 - y) * 0.224 - 0.03); }      // the treads, on the front legs
+      kadd(B(0.44, 0.04, 0.26), lam(0xe0e0e0), 0, 1.47, 0); kadd(B(0.46, 0.05, 0.03), lam(0xd32f2f), 0, 1.5, 0.12);
+      kadd(B(0.24, 0.12, 0.16), lam(0xd8c090), 0.45, 0.06, 0.1); for (let i = 0; i < 4; i++) kadd(new THREE.SphereGeometry(0.022, 8, 6), lam(0xf4f0e0), 0.37 + i * 0.05, 0.13, 0.1); }
+    else if (id === 'bbq') {      // a big black barbecue: the firebox on legs, the lid propped open, the grill with burgers on, glowing coals, a side shelf with buns, the gas bottle
+      const blk2 = lam(0x1a1a1a), glow = new THREE.MeshBasicMaterial({ color: 0xff5a10 });
+      kadd(B(0.9, 0.3, 0.5), blk2, 0, 0.85, 0); for (const sx of [-0.4, 0.4]) for (const sz of [-0.2, 0.2]) kadd(C(0.02, 0.02, 0.7, 8), blk2, sx, 0.35, sz);
+      kadd(B(0.8, 0.02, 0.4), glow, 0, 0.96, 0); for (let i = 0; i < 12; i++) kadd(B(0.008, 0.012, 0.42), lam(0x555555), -0.38 + i * 0.07, 1.0, 0);
+      kadd(B(0.9, 0.42, 0.05), blk2, 0, 1.2, -0.27, -0.25); kadd(B(0.3, 0.03, 0.03), steel, 0, 1.38, -0.3);
+      for (let i = 0; i < 5; i++) kadd(C(0.05, 0.05, 0.022, 14), lam(i % 2 ? 0x5a2e14 : 0x7a3e1a), -0.3 + i * 0.15, 1.02, (i % 2) * 0.12 - 0.04);
+      kadd(B(0.3, 0.03, 0.4), wood, 0.62, 0.92, 0); for (let i = 0; i < 3; i++) kadd(new THREE.SphereGeometry(0.05, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), lam(0xe0a050), 0.6, 0.94, -0.12 + i * 0.12);
+      kadd(C(0.11, 0.11, 0.45, 14), lam(0x2e6ad8), -0.62, 0.23, 0.05); kadd(C(0.03, 0.03, 0.06, 8), steel, -0.62, 0.48, 0.05); kadd(B(0.12, 0.2, 0.012), lam(0x111111), 0.0, 0.85, 0.256); }
+    else if (id === 'baskets') {      // on the pub's back wall: a black bracket, a hanging basket full of trailing flowers, the outside tap, a green watering can
+      kadd(B(0.04, 0.3, 0.04), dark, 0, 1.85, 0.02); kadd(B(0.04, 0.04, 0.42), dark, 0, 2.0, 0.21); for (const a of [0, 2.1, 4.2]) kadd(C(0.004, 0.004, 0.4, 4), lam(0x555555), Math.cos(a) * 0.08, 1.8, 0.4 + Math.sin(a) * 0.08, Math.sin(a) * 0.2, 0, Math.cos(a) * 0.2);
+      kadd(new THREE.SphereGeometry(0.2, 14, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), lam(0x3a2a1a), 0, 1.62, 0.42); kadd(new THREE.SphereGeometry(0.21, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), lam(0x3a8a2a), 0, 1.6, 0.42);
+      for (let i = 0; i < 12; i++) { const a = i * 0.52; kadd(new THREE.SphereGeometry(0.04, 8, 6), lam([0xe8407a, 0xffffff, 0xa040e8, 0xff8a20][i % 4]), Math.cos(a) * 0.17, 1.68 + (i % 3) * 0.03, 0.42 + Math.sin(a) * 0.17); }
+      for (let i = 0; i < 6; i++) { const a = i; kadd(C(0.008, 0.004, 0.35, 4), lam(0x2e7a1e), Math.cos(a) * 0.18, 1.42, 0.42 + Math.sin(a) * 0.18); }
+      kadd(B(0.08, 0.05, 0.08), steel, 0.55, 0.6, 0.04); kadd(C(0.012, 0.012, 0.08, 8), steel, 0.55, 0.55, 0.09); kadd(B(0.07, 0.02, 0.02), lam(0xc62828), 0.55, 0.64, 0.04);
+      kadd(C(0.1, 0.11, 0.24, 14), lam(0x2e7d32), 0.45, 0.12, 0.42); kadd(C(0.015, 0.015, 0.3, 8), lam(0x2e7d32), 0.6, 0.22, 0.42, 0, 0, -0.9); kadd(C(0.04, 0.03, 0.04, 10), lam(0x1b5e20), 0.73, 0.32, 0.42, 0, 0, -0.9);
+      kadd(new THREE.TorusGeometry(0.08, 0.012, 6, 14, Math.PI), lam(0x1b5e20), 0.45, 0.24, 0.42); }
+    else if (id === 'stream') {      // a long-handled litter net leaning on the rail, a green wheelie bin, a couple of cans already fished out
+      kadd(C(0.012, 0.012, 2.0, 8), lam(0x8a6a3a), 0, 0.9, 0.2, 0.5, 0, 0); kadd(new THREE.TorusGeometry(0.16, 0.012, 6, 18), lam(0xdddddd), 0, 1.75, 0.65, 0.5 + Math.PI / 2, 0, 0);
+      kadd(new THREE.ConeGeometry(0.15, 0.25, 12, 1, true), new THREE.MeshLambertMaterial({ color: 0xeeeeee, transparent: true, opacity: 0.5, side: THREE.DoubleSide }), 0, 1.78, 0.75, 0.5 + Math.PI, 0, 0);
+      kadd(B(0.5, 0.9, 0.55), lam(0x2e7d32), 0.65, 0.48, -0.1); kadd(B(0.54, 0.05, 0.6), lam(0x1b5e20), 0.65, 0.95, -0.15, -0.3); for (const sx of [0.45, 0.85]) kadd(C(0.07, 0.07, 0.05, 12), dark, sx, 0.07, -0.37, 0, 0, Math.PI / 2);
+      kadd(C(0.03, 0.03, 0.11, 10), lam(0xc62828), 0.25, 0.03, 0.15, 0, 0, Math.PI / 2); kadd(C(0.03, 0.03, 0.11, 10), lam(0x1e88e5), 0.3, 0.03, 0.3, 0, 0.8, Math.PI / 2); }
     // the sign: hanging over the spot, double-sided, the job's name
     const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128; const x = cv.getContext('2d'); x.fillStyle = '#1a0f0a'; rr(x, 4, 4, 504, 120, 26); x.fill(); x.lineWidth = 8; x.strokeStyle = '#d4af37'; rr(x, 8, 8, 496, 112, 22); x.stroke(); txt(x, label, 256, 66, 44, '#ffd400', 'center', 470);
     const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
@@ -727,7 +774,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     room(-10.2, -4.44, -16.08, -12.24, '#9fb7c9', "MEN'S", 13); room(-9.24, -5.88, -12.24, -8.88, '#b4c6d6', 'DISABLED', 10); room(-5.88, -4.44, -12.24, -8.88, '#c9b8a0', '', 10);
     room(-4.44, 0.36, -15.12, -8.88, '#d9b8cc', "WOMEN'S", 13); room(0.36, 5.64, -14.16, -8.88, '#c8c0a8', 'RECEPTION', 13);
     room(6.12, 10.68, -6.84, 0, '#a8b0bd', 'STAFF ROOM', 12); room(7.08, 10.68, 0, 7.92, '#8a9aa8', 'KEG ROOM', 12); room(5.64, 7.08, -1.2, 7.92, '#9a8a7a', '', 10);
-    room(-13.8, -9.72, -8.88, 2.04, '#e0e0e0', 'KITCHEN', 13); room(-14.04, -9.72, 2.04, 5.16, '#c9b8a0', '', 10); room(-9.72, 4.68, 7.92, 16.08, '#e8dcc0', 'CONSERVATORY', 14); room(4.68, 9.0, 7.92, 15.48, '#2c3e8f', 'GAMBLING', 12);
+    room(-14.4, -9.72, -8.88, 2.04, '#e0e0e0', 'KITCHEN', 13); room(-14.4, -9.72, 2.04, 5.16, '#c9b8a0', '', 10); room(-9.72, 4.68, 7.92, 16.08, '#e8dcc0', 'CONSERVATORY', 14); room(4.68, 9.0, 7.92, 15.48, '#2c3e8f', 'GAMBLING', 12);
     // the bar
     poly([[2.2, -8.6], [3.0, -8.6], [3.0, -0.6], [4.6, -0.6], [4.6, 6.2], [3.8, 6.2], [3.8, 0.2], [2.2, 0.2]], '#c98a48', '', 12, '#5a2e14'); { const [u, v] = P(3.6, 2.6); txt(x, 'THE BAR', u, v, 12, '#fff'); }
     for (const L of labels) fitLabel(...L);

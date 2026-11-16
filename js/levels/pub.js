@@ -49,8 +49,8 @@ const INSIDE = [
   [[895, 975], [1045, 975], [1045, 1305], [895, 1305]],                                // back room
   [[195, 1305], [795, 1305], [795, 1645], [195, 1645]],                                // conservatory + passage to the garden
   [[795, 1305], [975, 1305], [975, 1620], [795, 1620]],                                // gambling room
-  [[25, 605], [195, 605], [195, 1060], [25, 1060]],                                    // kitchen
-  [[15, 1060], [195, 1060], [195, 1190], [15, 1190]],                                  // restaurant entrance
+  [[0, 605], [195, 605], [195, 1060], [0, 1060]],                                      // kitchen (widened west into the restaurant's back-bar aisle)
+  [[0, 1060], [195, 1060], [195, 1190], [0, 1190]],                                    // restaurant entrance
 ].map(poly => poly.map(([x, y]) => [X(x), Z(y)]));
 INSIDE.push([[GX0, GZ], [GX1, GZ], [GX1, GZ1 + DW], [GX0, GZ1 + DW]]);                   // the beer garden
 for (const poly of Object.values(REST)) INSIDE.push(poly);                          // the restaurant, its side room, toilets, the kitchen extension
@@ -123,14 +123,14 @@ export function buildPub(scene) {
   k.floor(X(895), Z(925), X(1045), Z(1305), tileTex('#9a9a96', '#8e8e8a', '#6e6e6a', 64), 0.005, 1.5);  // back room (concrete) — not under the bar: the quarry tiles and slate there would fight with it and flicker
   k.floor(X(195), Z(1305), X(795), Z(1645), tileTex('#d8c8a8', '#ccbc9c', '#a89878', 72), 0.003, 1.0);  // conservatory (stone tiles)
   k.floor(X(795), Z(1305), X(975), Z(1620), carpetTex('#2a3a5a', '#1a2440', '#c9a24a'), 0.003, 1.2);   // gambling room
-  k.floor(X(25), Z(605), X(195), Z(1060), tileTex('#c9c9c4', '#bdbdb7', '#8f8f8a', 48), 0.003, 0.8);   // kitchen
-  k.floor(X(15), Z(1060), X(195), Z(1190), tiles, 0.003, 1.0);                          // restaurant entrance
+  k.floor(X(0), Z(605), X(195), Z(1060), tileTex('#c9c9c4', '#bdbdb7', '#8f8f8a', 48), 0.003, 0.8);   // kitchen
+  k.floor(X(0), Z(1060), X(195), Z(1190), tiles, 0.003, 1.0);                          // restaurant entrance
   k.floor(X(175), Z(305), X(415), Z(605), tileTex('#d8d8d8', '#cfcfcf', '#9a9a9a', 40), 0.003, 0.6);   // men's, disabled, corridor
   k.floor(X(415), Z(345), X(615), Z(605), tileTex('#e8dfe4', '#ddd3d8', '#b0a4aa', 40), 0.003, 0.6);   // women's
   const ROOF = [[B.x0, B.z0], [-16.7, B.z0], [-16.7, -14.45], [-10.2, -14.45], [-10.2, -16.08], [-4.44, -16.08], [-4.44, -15.12], [0.36, -15.12], [0.36, -12.24], [2.28, -14.16], [4.2, -14.16], [5.64, -13.2], [5.64, -11.28], [3.72, -8.88], [6.12, -8.88], [6.12, -6.84], [X(1045), -6.84], [X(1045), GZ], [B.x0, GZ]];   // (the building: out the front is open sky)
   // (west of the pub the outline above takes in the whole width out to the restaurant: the restaurant's rooms have their
   // own outlines, so a ceiling there would hang out over the lawn beside them)
-  const PUBX = -13.8, LOW = ['side', 'hall', 'ladies', 'gents'];
+  const PUBX = X(0), LOW = ['side', 'hall', 'ladies', 'gents'];
   const clipX = (P, keepEast) => { const out = [], inS = (q) => keepEast ? q[0] >= PUBX : q[0] <= PUBX;
     for (let i = 0; i < P.length; i++) { const a2 = P[i], b2 = P[(i + 1) % P.length], ia = inS(a2), ib = inS(b2); if (ia) out.push(a2); if (ia !== ib) { const t = (PUBX - a2[0]) / (b2[0] - a2[0]); out.push([PUBX, a2[1] + t * (b2[1] - a2[1])]); } } return out; };
   const PUB_ROOF = clipX(ROOF, true), KITCHEN_W = clipX(REST.kitchen, false);
@@ -178,8 +178,8 @@ export function buildPub(scene) {
   // the pub's left wall: kitchen door, restaurant entrance
   WZ(195, 605, 1645, [[990, 1035], [1090, 1145]], WALL);
   // kitchen + restaurant entrance
-  WX(605, 25, 195, [[95, 143]], WALL); WZ(25, 605, 1060, [], WALL); WX(1060, 15, 195); WX(1190, 15, 195, [], WALL);   // (a door up into the kitchen extension; the corridor opens into the restaurant)
-  R(X(15) - T2, Z(1060), X(15) + T2, Z(1190), H - 2.35, 2.35 + (H - 2.35) / 2, PLASTER); R(X(15) - 0.1, Z(1060), X(15) + 0.1, Z(1190), 0.08, 2.39, DARKWOOD);   // the header over the way into the restaurant
+  WX(605, 0, 195, [[95, 143]], WALL); WZ(0, 605, 1060, [], WALL); WX(1060, 0, 195); WX(1190, 0, 195, [], WALL);   // (a door up into the kitchen extension; the corridor opens into the restaurant)
+  R(X(0) - T2, Z(1060), X(0) + T2, Z(1190), H - 2.35, 2.35 + (H - 2.35) / 2, PLASTER); R(X(0) - 0.1, Z(1060), X(0) + 0.1, Z(1190), 0.08, 2.39, DARKWOOD);   // the header over the way into the restaurant
   // conservatory + the passage to the beer garden
   WZ(715, 1305, 1645);
   // the corridor down the left of the conservatory: its wall (papered both sides by the wall dressing further down),
@@ -729,7 +729,7 @@ export function buildPub(scene) {
   }
 
   // ================================================================ kitchen: a proper working pub kitchen
-  { const x0 = X(25) + 0.08, x1 = X(195) - 0.08, z0 = Z(605) + 0.08, z1 = Z(1060) - 0.08, SS = 0xc8ccd2, SSD = 0x9aa0a8, SSL = 0xdfe2e6;
+  { const x0 = X(0) + 0.08, x1 = X(195) - 0.08, z0 = Z(605) + 0.08, z1 = Z(1060) - 0.08, SS = 0xc8ccd2, SSD = 0x9aa0a8, SSL = 0xdfe2e6;
     const doorZ0 = Z(990), doorZ1 = Z(1035);
     // red quarry tiles with a coved skirting, white tiles to 1.8m on every wall, steel kick strips, the strip lights
     k.floor(x0 - 0.08, z0 - 0.08, x1 + 0.08, z1 + 0.08, tileTex('#a04a32', '#94442e', '#6a2e1e', 48), 0.004, 0.5);
@@ -773,7 +773,37 @@ export function buildPub(scene) {
     R(x0, z0 + 7.6, x0 + 0.12, z0 + 7.72, 0.2, 1.25, 0xffffff); R(x0, z0 + 7.8, x0 + 0.15, z0 + 8.05, 0.32, 1.3, 0xe8e8e8);
     k.label('NOW WASH YOUR HANDS (RONNIE: BEFORE, NOT AFTER)', 0.4, 0.22, [x0 + 0.03, 1.62, z0 + 7.85], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#1f4fbf', border: '#1f4fbf', size: 36 });
     // two tall upright fridges and a chest freezer at the far end
-    for (const [z, lbl] of [[z1 - 1.9, 'MEAT'], [z1 - 1.15, 'DAIRY & VEG']]) { R(x0, z - 0.35, x0 + 0.72, z + 0.35, 2.0, 1.0, SSL, { collide: true, block: true }); R(x0 + 0.72, z - 0.33, x0 + 0.74, z + 0.33, 1.94, 1.0, SS); k.box(0.03, 0.7, 0.03, x0 + 0.77, 1.05, z + 0.25, 0x888888); k.box(0.02, 0.08, 0.3, x0 + 0.75, 1.75, z, 0x1a2a3a); k.label(lbl, 0.28, 0.07, [x0 + 0.745, 1.62, z], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#111', border: null, size: 50 }); }
+    // two proper upright fridges: a solid steel MEAT fridge (digital thermometer, a big bar handle, hinges, the vent grille, its
+    // feet), and a glass-door DAIRY & VEG fridge, lit inside, with what's on its wire shelves showing through the glass
+    { const glassM = new THREE.MeshLambertMaterial({ color: 0xdff0f4, transparent: true, opacity: 0.18, depthWrite: false });
+      const fridge = (z, lbl, glassy) => { const fx = x0 + 0.72;
+        if (glassy) { R(x0, z - 0.35, x0 + 0.04, z + 0.35, 1.92, 1.04, SSL); for (const dz of [-0.33, 0.33]) R(x0, z + dz - 0.02, x0 + 0.7, z + dz + 0.02, 1.92, 1.04, SSL);   // hollow: back, sides,
+          R(x0, z - 0.35, x0 + 0.7, z + 0.35, 0.2, 0.18, SSL); R(x0, z - 0.35, x0 + 0.7, z + 0.35, 0.12, 1.94, SSL);                                                  // plinth and top
+          k.colliders.push({ min: new THREE.Vector3(x0, 0.08, z - 0.35), max: new THREE.Vector3(x0 + 0.72, 2.0, z + 0.35) }); blk(x0, z - 0.35, x0 + 0.72, z + 0.35, 2.0); }
+        else R(x0, z - 0.35, x0 + 0.7, z + 0.35, 1.92, 1.04, SSL, { collide: true, block: true });                // the carcass
+        for (const dz of [-0.3, 0.3]) for (const dx of [0.08, 0.62]) k.cyl(0.025, 0.025, 0.08, x0 + dx, 0.04, z + dz, 0x222222, 8);   // feet
+        R(fx - 0.02, z - 0.33, fx + 0.005, z + 0.33, 0.14, 0.15, 0x555b62); for (let i = 0; i < 9; i++) R(fx + 0.004, z - 0.3 + i * 0.07, fx + 0.008, z - 0.27 + i * 0.07, 0.1, 0.15, 0x2a2e33);   // vent grille
+        R(fx - 0.02, z - 0.34, fx + 0.01, z + 0.34, 0.12, 1.94, 0x37474f);                                        // the controller strip at the top
+        k.label(lbl, 0.3, 0.075, [fx + 0.012, 1.94, z - 0.08], [0, Math.PI / 2, 0], { bg: '#37474f', fg: '#fff', border: null, size: 50 });
+        k.label(glassy ? '3°C' : '1°C', 0.1, 0.06, [fx + 0.012, 1.94, z + 0.22], [0, Math.PI / 2, 0], { bg: '#071a0a', fg: '#39ff14', border: null, size: 60 });
+        for (const dz of [-0.31, 0.31]) for (const y of [0.4, 1.6]) k.box(0.03, 0.08, 0.03, fx + 0.01, y, z + dz * (dz > 0 ? 1 : 1), 0x888888);   // hinges / the door's corners
+        k.box(0.04, 0.9, 0.035, fx + 0.06, 1.1, z + 0.26, 0xd0d4d8); for (const y of [0.68, 1.52]) k.box(0.05, 0.03, 0.03, fx + 0.035, y, z + 0.26, 0xd0d4d8);   // the bar handle
+        if (!glassy) { R(fx - 0.01, z - 0.33, fx + 0.015, z + 0.33, 1.62, 1.04, SS); R(fx + 0.012, z - 0.29, fx + 0.016, z + 0.29, 1.5, 1.04, SSL);   // the solid door, a pressed panel
+          k.label('RAW MEAT ONLY — BOTTOM SHELF', 0.3, 0.1, [fx + 0.02, 1.62, z - 0.08], [0, Math.PI / 2, 0], { bg: '#c62828', fg: '#fff', border: null, size: 40 }); return; }
+        // glass door: a black frame round a lit inside, wire shelves, tubs, milk, veg, eggs, a cheese wheel
+        R(x0 + 0.04, z - 0.3, x0 + 0.06, z + 0.3, 1.56, 1.04, 0xf4fbff); k.lamp(fx - 0.06, 1.8, z, 0xeaf6ff, 0.06); k.pool(fx - 0.3, 0.98, z, 0.6, 0xeaf6ff);
+        for (const y of [0.3, 0.65, 1.0, 1.35, 1.7]) { R(x0 + 0.06, z - 0.3, fx - 0.05, z + 0.3, 0.012, y, 0xc0c4c8); for (let i = 0; i < 7; i++) R(x0 + 0.06, z - 0.29 + i * 0.096, fx - 0.05, z - 0.285 + i * 0.096, 0.006, y + 0.008, 0x9aa0a8); }
+        let n = 0; for (const y of [0.3, 0.65, 1.0, 1.35]) for (let zz = z - 0.22; zz < z + 0.25; zz += 0.15, n++) { const t = n % 6, cx = x0 + 0.38;
+          if (t === 0) { k.cyl(0.04, 0.04, 0.24, cx, y + 0.13, zz, 0xfafafa, 10); k.cyl(0.02, 0.02, 0.03, cx, y + 0.26, zz, [0x1565c0, 0x2e7d32, 0xc62828][n % 3], 8); }   // milk
+          else if (t === 1) { R(cx - 0.12, zz - 0.06, cx + 0.12, zz + 0.06, 0.1, y + 0.06, 0xf4f4f4); R(cx - 0.12, zz - 0.06, cx + 0.12, zz + 0.06, 0.012, y + 0.115, [0xd32f2f, 0x1e88e5, 0xffd400][n % 3]); }   // tubs
+          else if (t === 2) for (let e = 0; e < 3; e++) k.box(0.05, 0.05, 0.05, cx - 0.06 + e * 0.06, y + 0.035, zz, [0xd84315, 0xf9a825, 0x7cb342][e]);          // peppers, onions, limes
+          else if (t === 3) { R(cx - 0.1, zz - 0.06, cx + 0.1, zz + 0.06, 0.04, y + 0.03, 0xc8a878); for (let e = 0; e < 6; e++) k.cyl(0.018, 0.018, 0.03, cx - 0.06 + (e % 3) * 0.06, y + 0.06, zz - 0.025 + Math.floor(e / 3) * 0.05, 0xf2e8d8, 6); }   // eggs
+          else if (t === 4) k.cyl(0.07, 0.07, 0.07, cx, y + 0.045, zz, 0xf2c94c, 14);                                    // a cheese
+          else for (let e = 0; e < 4; e++) k.cyl(0.012, 0.03, 0.1, cx - 0.08 + e * 0.05, y + 0.06, zz, 0x43a047, 6); }       // lettuces / herbs
+        R(fx - 0.02, z - 0.33, fx + 0.015, z - 0.27, 1.62, 1.04, 0x222222); R(fx - 0.02, z + 0.27, fx + 0.015, z + 0.33, 1.62, 1.04, 0x222222);
+        R(fx - 0.02, z - 0.33, fx + 0.015, z + 0.33, 0.06, 0.26, 0x222222); R(fx - 0.02, z - 0.33, fx + 0.015, z + 0.33, 0.06, 1.82, 0x222222);
+        const gd = new THREE.Mesh(new THREE.BoxGeometry(0.008, 1.5, 0.54), glassM); gd.position.set(fx, 1.04, z); gd.renderOrder = 3; scene.add(gd); };
+      fridge(z1 - 1.9, 'MEAT', false); fridge(z1 - 1.15, 'DAIRY & VEG', true); }
     R(x0, z1 - 0.72, x0 + 1.2, z1, 0.85, 0.425, 0xf4f4f4, { collide: true, block: true }); R(x0 - 0.01, z1 - 0.72, x0 + 1.21, z1, 0.04, 0.87, 0xd8d8d8);
     k.label("RONNIE'S SHELF (EMPTY)", 0.9, 0.3, [x0 + 0.6, 1.3, z1 - 0.025], [0, Math.PI, 0], { bg: '#fff', fg: '#c0392b', border: null, size: 40 });
     // ---- the far wall (by the pub): the pass, heat lamps, the ticket rail, plates, the bell
@@ -806,8 +836,8 @@ export function buildPub(scene) {
     k.label('FOOD HYGIENE RATING: 5 (BEFORE RONNIE STARTED WORKING HERE)', 0.5, 0.3, [x1 - 0.025, 2.3, z0 + 5.3], [0, -Math.PI / 2, 0], { bg: '#2e7d32', fg: '#fff', border: '#fff', size: 34 });
     k.label('ALLERGENS: ASK STAFF. RONNIE IS ALLERGIC TO SALAD.', 0.5, 0.3, [x1 - 0.025, 1.9, z0 + 7.2], [0, -Math.PI / 2, 0], { bg: '#fff8e1', fg: '#c62828', border: '#c62828', size: 34 });
     // ---- the island: steel prep table with an under-shelf of pans, boards, a knife block, food prepped, a pan rack over it
-    // (narrow, and in the middle of the room: a clear walkway down both sides of it, from the door at the top to the door into the pub)
-    const icx = (x0 + 0.72 + x1 - 0.7) / 2, ix0 = icx - 0.35, ix1 = icx + 0.35, iz0 = z0 + 1.8, iz1 = z0 + 5.2;
+    // (in the middle of the widened room: a good 1m walkway down both sides of it, from the door at the top to the door into the pub)
+    const icx = (x0 + 0.72 + x1 - 0.7) / 2, ix0 = icx - 0.4, ix1 = icx + 0.4, iz0 = z0 + 1.8, iz1 = z0 + 5.2;
     R(ix0, iz0, ix1, iz1, 0.04, 0.9, SSL, { collide: true }); R(ix0 + 0.05, iz0 + 0.05, ix1 - 0.05, iz1 - 0.05, 0.025, 0.3, SS);
     for (const [x, z] of [[ix0 + 0.04, iz0 + 0.04], [ix1 - 0.04, iz0 + 0.04], [ix0 + 0.04, iz1 - 0.04], [ix1 - 0.04, iz1 - 0.04], [ix0 + 0.04, (iz0 + iz1) / 2], [ix1 - 0.04, (iz0 + iz1) / 2]]) k.box(0.04, 0.88, 0.04, x, 0.44, z, SSD);
     blk(ix0, iz0, ix1, iz1, 0.92);
@@ -828,9 +858,67 @@ export function buildPub(scene) {
     R(x1 - 0.06, doorZ0 - 0.75, x1, doorZ0 - 0.5, 0.3, 1.5, 0xd32f2f);
     k.label('KITCHEN — STAFF ONLY (ESPECIALLY NOT RONNIE)', 1.1, 0.3, [X(195) + 0.1, 2.45, Z(1012)], [0, Math.PI / 2, 0], { bg: '#fff', fg: '#c0392b', border: '#c0392b', size: 40 });
     k.box(0.32, 0.6, 0.02, x0 + 0.95, 0.3, z0 + 3.75, 0xffd400, { rot: [0.25, 0.6, 0] });      // (against the end of the cook line, not in the walkway)                                          // wet floor sign
+    // ---- more of a real kitchen: the salamander grill over the range, a glowing chargrill, a combi oven on its stand, under-counter
+    // fridges in the pass, the cutlery caddy and ticket printer, a utensil rail over the sinks, a stick blender, a fly killer
+    { const glowM = new Map(), glow = (w, h, d, x, y, z, col) => { if (!glowM.has(col)) glowM.set(col, []); const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); glowM.get(col).push(g); };
+      // the salamander: a steel box on wall brackets over the burners, red-hot elements in its roof, a slice of cheese on toast under it
+      const sx0 = x0, sx1 = x0 + 0.46, sz0 = z0 + 0.12, sz1 = z0 + 0.88;
+      R(sx0, sz0, sx1, sz1, 0.32, 1.56, SS); R(sx1 - 0.02, sz0 + 0.03, sx1 + 0.002, sz1 - 0.03, 0.2, 1.52, 0x1a1a1a);       // the open mouth
+      for (let i = 0; i < 4; i++) glow(0.34, 0.012, 0.02, sx0 + 0.24, 1.63, sz0 + 0.18 + i * 0.13, 0xff3a10);
+      R(sx0 + 0.1, sz0 + 0.12, sx1 - 0.04, sz1 - 0.12, 0.012, 1.44, 0x777777); for (let i = 0; i < 2; i++) { R(sx0 + 0.2, sz0 + 0.2 + i * 0.26, sx0 + 0.36, sz0 + 0.38 + i * 0.26, 0.02, 1.46, 0xd8a24a); R(sx0 + 0.21, sz0 + 0.21 + i * 0.26, sx0 + 0.35, sz0 + 0.37 + i * 0.26, 0.006, 1.475, 0xf2b630); }
+      for (const z of [sz0 + 0.1, sz1 - 0.1]) R(sx0, z - 0.02, sx0 + 0.3, z + 0.02, 0.04, 1.38, SSD);                        // its brackets
+      for (let i = 0; i < 2; i++) k.cyl(0.02, 0.02, 0.025, sx1 + 0.01, 1.66, sz0 + 0.12 + i * 0.08, 0x111111, 8);
+      k.lamp(sx1 - 0.05, 1.5, (sz0 + sz1) / 2, 0xff5020, 0.04, false); k.pool(sx0 + 0.3, 1.45, (sz0 + sz1) / 2, 0.5, 0xff6a30);
+      // the chargrill: a bed of red-hot coals glowing up through the bars, little flames, a steak and two burgers on it
+      glow(0.56, 0.006, 0.34, x0 + 0.37, 0.928, z0 + 1.68, 0xff4a10); for (let i = 0; i < 7; i++) glow(0.03, 0.06, 0.03, x0 + 0.14 + i * 0.075, 0.96, z0 + 1.56 + (i % 3) * 0.1, i % 2 ? 0xffb020 : 0xff6a10);
+      k.lamp(x0 + 0.37, 1.0, z0 + 1.68, 0xff5a20, 0.05);
+      R(x0 + 0.18, z0 + 1.56, x0 + 0.36, z0 + 1.66, 0.025, 0.955, 0x6a2a14); for (let i = 0; i < 3; i++) R(x0 + 0.19 + i * 0.06, z0 + 1.56, x0 + 0.2 + i * 0.06, z0 + 1.66, 0.003, 0.969, 0x1a0a04);   // the steak and its bar marks
+      for (const z of [z0 + 1.72, z0 + 1.8]) k.cyl(0.045, 0.045, 0.02, x0 + 0.5, 0.955, z, 0x5a2e14, 12);
+      k.label('CHARGRILL', 0.22, 0.05, [x0 + 0.745, 0.86, z0 + 1.45], [0, Math.PI / 2, 0], { bg: '#222', fg: '#ff8a40', border: null, size: 50 });
+      // the combi oven on its stand against the pass-side wall: glass door with racks of trays inside, the control panel, the core probe
+      const cz0 = -2.28, cz1 = -1.38, cx1 = x1, cx0 = x1 - 0.78;
+      R(cx0 + 0.05, cz0 + 0.04, cx1, cz1 - 0.04, 0.03, 0.62, SSD); for (const z of [cz0 + 0.07, cz1 - 0.07]) for (const x of [cx0 + 0.08, cx1 - 0.06]) k.box(0.035, 0.62, 0.035, x, 0.31, z, SSD);
+      for (let i = 0; i < 3; i++) R(cx0 + 0.12, cz0 + 0.12, cx1 - 0.06, cz1 - 0.12, 0.012, 0.15 + i * 0.16, 0xb8bcc2);           // trays stored under it
+      R(cx0, cz0, cx1, cz1, 0.86, 1.07, SS, { collide: true, block: true }); blk(cx0, cz0, cx1, cz1, 1.5);
+      R(cx0 - 0.02, cz0 + 0.04, cx0 + 0.002, cz1 - 0.24, 0.72, 1.07, 0x1a1a1a); R(cx0 - 0.025, cz0 + 0.1, cx0 - 0.015, cz1 - 0.3, 0.58, 1.07, 0x3a4a52);   // the door and its dark glass
+      for (let i = 0; i < 5; i++) { R(cx0 - 0.026, cz0 + 0.12, cx0 - 0.02, cz1 - 0.32, 0.008, 0.84 + i * 0.1, 0x9aa0a8); R(cx0 - 0.026, cz0 + 0.16, cx0 - 0.021, cz1 - 0.36, 0.03, 0.86 + i * 0.1, [0xc8863a, 0xd8a24a, 0x6a3a1a, 0xffcf40, 0xc8863a][i]); }
+      k.lamp(cx0 - 0.03, 1.38, (cz0 + cz1 - 0.2) / 2, 0xffc070, 0.03, false);
+      k.box(0.04, 0.5, 0.03, cx0 - 0.04, 1.07, cz1 - 0.28, 0x222222);                                                       // the handle
+      R(cx0 - 0.015, cz1 - 0.22, cx0 + 0.002, cz1 - 0.04, 0.72, 1.07, 0x263238); k.label('180°', 0.14, 0.07, [cx0 - 0.018, 1.32, cz1 - 0.13], [0, -Math.PI / 2, 0], { bg: '#04121a', fg: '#40c4ff', border: null, size: 60 });
+      for (let i = 0; i < 3; i++) k.cyl(0.025, 0.025, 0.02, cx0 - 0.018, 1.18 - i * 0.1, cz1 - 0.13, [0x111111, 0xd32f2f, 0x111111][i], 10);
+      k.label('COMBI', 0.2, 0.05, [cx0 - 0.018, 1.44, (cz0 + cz1) / 2], [0, -Math.PI / 2, 0], { bg: '#c8ccd2', fg: '#263238', border: null, size: 60 });
+      // the pass's under-counter fridges: four doors with handles and a kick grille, along its front
+      for (let i = 0; i < 4; i++) { const zc = z0 + 1.0 + i * 0.8; R(px0 - 0.012, zc - 0.36, px0 - 0.002, zc + 0.36, 0.62, 0.48, SSL); R(px0 - 0.03, zc - 0.25, px0 - 0.012, zc + 0.25, 0.025, 0.74, 0x9aa0a8);
+        R(px0 - 0.014, zc - 0.36, px0 - 0.002, zc + 0.36, 0.1, 0.07, 0x3a3e44); }
+      k.label('2°C', 0.09, 0.05, [px0 - 0.013, 0.84, z0 + 2.6], [0, -Math.PI / 2, 0], { bg: '#071a0a', fg: '#39ff14', border: null, size: 60 });
+      // the cutlery caddy on the pass: four steel pots of knives, forks, spoons and steak knives, a stack of napkins; the ticket printer
+      const cc = [px0 + 0.16, z0 + 2.75];
+      for (let i = 0; i < 4; i++) { const x = cc[0] + (i % 2) * 0.1, z = cc[1] + Math.floor(i / 2) * 0.1; k.cyl(0.04, 0.035, 0.12, x, 0.995, z, 0xb8bcc2, 12);
+        for (let c = 0; c < 6; c++) { const a = c * 1.05, ox = Math.cos(a) * 0.018, oz = Math.sin(a) * 0.018; k.box(0.006, 0.18, 0.012, x + ox, 1.1, z + oz, 0xdfe2e6, { rot: [oz * 6, 0, -ox * 6] });
+          if (i === 1) k.box(0.02, 0.03, 0.004, x + ox, 1.2, z + oz, 0xdfe2e6); else if (i === 2) k.cyl(0.012, 0.012, 0.006, x + ox, 1.2, z + oz, 0xdfe2e6, 8); else if (i === 3) k.box(0.01, 0.06, 0.016, x + ox, 1.06, z + oz, 0x2a1a10); } }
+      for (let i = 0; i < 6; i++) R(cc[0] - 0.08, cc[1] - 0.32, cc[0] + 0.08, cc[1] - 0.16, 0.012, 0.94 + i * 0.012, i % 2 ? 0xfdfdfb : 0xf2f2ee);
+      R(x1 - 0.3, z0 + 3.4, x1 - 0.12, z0 + 3.62, 0.12, 0.995, 0x263238); R(x1 - 0.28, z0 + 3.45, x1 - 0.26, z0 + 3.57, 0.004, 1.06, 0x111111);   // ticket printer
+      R(x1 - 0.32, z0 + 3.47, x1 - 0.26, z0 + 3.55, 0.14, 1.12, 0xffffff, { rot: [0, 0, 0.5] });
+      // a utensil rail over the sinks: ladles, a slotted spoon, a whisk, tongs, a sieve, a fish slice
+      { const ry = z0 + 4.7, rz = z0 + 5.85; R(x0 + 0.02, ry, x0 + 0.05, rz, 0.02, 1.78, 0xb8bcc2); for (const z of [ry + 0.04, rz - 0.04]) R(x0, z - 0.015, x0 + 0.05, z + 0.015, 0.04, 1.78, SSD);
+        for (let i = 0; i < 7; i++) { const z = ry + 0.1 + i * 0.16, hx = x0 + 0.06; k.box(0.005, 0.05, 0.005, hx, 1.75, z, 0x888888); const t = i % 6;
+          if (t === 0 || t === 3) { k.box(0.012, 0.3, 0.012, hx, 1.58, z, 0xd0d4d8); k.cyl(0.045, 0.03, 0.04, hx + 0.02, 1.42, z, 0xd0d4d8, 10); }                 // ladle
+          else if (t === 1) { k.box(0.012, 0.22, 0.012, hx, 1.62, z, 0x222222); for (let w = 0; w < 4; w++) k.box(0.004, 0.14, 0.04 - w * 0.008, hx, 1.45, z, 0xd0d4d8, { rot: [0, w * 0.8, 0] }); }   // whisk
+          else if (t === 2) { k.box(0.015, 0.34, 0.02, hx, 1.56, z - 0.015, 0xd0d4d8, { rot: [0.06, 0, 0] }); k.box(0.015, 0.34, 0.02, hx, 1.56, z + 0.015, 0xd0d4d8, { rot: [-0.06, 0, 0] }); }      // tongs
+          else if (t === 4) { k.box(0.012, 0.18, 0.012, hx, 1.64, z, 0x222222); k.cyl(0.07, 0.04, 0.05, hx + 0.03, 1.52, z, 0xc0c4c8, 12); }                           // sieve
+          else { k.box(0.012, 0.22, 0.012, hx, 1.62, z, 0x222222); k.box(0.006, 0.12, 0.09, hx + 0.005, 1.46, z, 0xd0d4d8); } } }                                     // fish slice
+      // a stick blender and a big stock pot by the sinks, a tin-opener on the end of the island
+      k.cyl(0.2, 0.19, 0.42, x0 + 0.35, 0.21, z0 + 3.75, 0x9aa0a8, 18); k.cyl(0.205, 0.205, 0.02, x0 + 0.35, 0.43, z0 + 3.75, 0x777b80, 18);
+      k.cyl(0.03, 0.03, 0.5, x0 + 0.66, 1.18, z0 + 4.2, 0x37474f, 10); k.cyl(0.018, 0.018, 0.3, x0 + 0.66, 0.84, z0 + 4.2, 0xd0d4d8, 8);
+      R(ix1 - 0.12, iz1 - 0.14, ix1 - 0.02, iz1 - 0.04, 0.06, 0.95, 0x555b62); k.box(0.12, 0.02, 0.02, ix1 - 0.07, 1.0, iz1 - 0.09, 0x222222);
+      // a blue fly killer high on the end wall
+      R(-11.6, z1 - 0.06, -11.0, z1, 0.22, 2.35, 0xeeeeee); for (const y of [2.3, 2.4]) glow(0.5, 0.025, 0.025, -11.3, y, z1 - 0.07, 0x5a7aff); k.lamp(-11.3, 2.35, z1 - 0.1, 0x6a8aff, 0.06);
+      for (let i = 0; i < 6; i++) k.box(0.004, 0.2, 0.004, -11.55 + i * 0.1, 2.35, z1 - 0.1, 0xcccccc);
+      // the hot glows, merged: one mesh a colour
+      for (const [col, list] of glowM) { const m = new THREE.Mesh(mergeGeometries(list, false), new THREE.MeshBasicMaterial({ color: col })); scene.add(m); } }
   }
   // the restaurant entrance: outside door, mat, a menu board
-  { const x0 = X(15), x1 = X(195), z0 = Z(1060), z1 = Z(1190), zc = (z0 + z1) / 2;
+  { const x0 = X(0), x1 = X(195), z0 = Z(1060), z1 = Z(1190), zc = (z0 + z1) / 2;
     R(x0 + 0.2, zc - 0.8, x0 + 1.4, zc + 0.8, 0.01, 0.006, 0x3a3a3a);
     k.label('THE RESTAURANT — WAIT TO BE SEATED (RONNIE: WAIT TO BE STOPPED)', 1.9, 0.4, [x0 + 0.105, 2.68, zc], [0, Math.PI / 2, 0], { bg: '#1b3a2a', fg: '#d4af37', border: '#d4af37', size: 34 });
     R(x1 - 0.7, z0 + 0.2, x1 - 0.2, z0 + 0.5, 1.6, 0.8, DARKWOOD, { block: true }); k.label('TODAY\'S MENU: PIE. PIE AND CHIPS. CHIPS. (RONNIE: ALL OF IT)', 0.45, 0.6, [x1 - 0.45, 1.05, z0 + 0.51], [0, 0, 0], { bg: '#1b2a1b', fg: '#fff', border: '#8a6a3a', size: 30 });

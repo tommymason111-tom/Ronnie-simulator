@@ -11,7 +11,7 @@ import { sfx } from './audio.js';
 import { Bar } from './barstations.js';
 
 const DOOR = { x: 4.45, z: -12.95 };
-const STAFF_SPOTS = { aidan: [3.45, -8.0, -Math.PI / 2], connor: [3.45, -4.9, -Math.PI / 2], chloe: [4.1, -2.7, -Math.PI / 2], ben: [-12.75, -7.4, -Math.PI / 2] };
+const STAFF_SPOTS = { aidan: [3.45, -8.0, -Math.PI / 2], connor: [3.45, -4.9, -Math.PI / 2], chloe: [4.1, -2.7, -Math.PI / 2], ben: [-13.2, -7.4, -Math.PI / 2] };
 const RONNIE_SPOT = { x: 3.6, z: -6.45 };
 // what people order: where it comes from (the station), what counts, and what it costs
 const ORDERS = {

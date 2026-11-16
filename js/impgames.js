@@ -832,6 +832,291 @@ const ART = {
   },
 };
 
+// ================================================================ the restaurant and garden jobs (each its own game, drawn in full)
+const NEW_GAMES = {
+  // WINE: screw the waiter's friend in (twist it back and forth), push its wings down to draw the cork, then tip the bottle to
+  // pour three glasses to the line. Tip it too far, too long, and it overflows: wipe up and pour that one again
+  wine(o = {}) {
+    const s = { title: o.title || 'OPEN THE WINE', ph: 0, screw: 0, need: 9, lastX: null, acc: 0, dir: 0, wing: 0, wy: null, pop: 0, tilt: 0, ty: null, gi: 0, fill: [0, 0, 0], ok: [false, false, false], spill: 0, msg: '', msgT: 0, done: false, LINE: [0.56, 0.7] };
+    s.down = (x, y) => { if (s.done || s.spill > 0) return;
+      if (s.ph === 0 && Math.abs(x - 256) < 170 && y < 300) { s.lastX = x; s.acc = 0; }
+      else if (s.ph === 1 && y < 330) s.wy = y;
+      else if (s.ph === 2) s.ty = y; };
+    s.move = (x, y) => {
+      if (s.ph === 0 && s.lastX !== null) { const dx = x - s.lastX; s.lastX = x; if (!dx) return; const d = Math.sign(dx); if (d !== s.dir && Math.abs(s.acc) > 36) { s.screw++; s.acc = 0; sfx('tick', null, 0.35); if (s.screw >= s.need) { s.ph = 1; s.lastX = null; sfx('clack', null, 0.5); } } if (d !== s.dir) s.acc = 0; s.dir = d; s.acc += dx; }
+      else if (s.ph === 1 && s.wy !== null) { const d = y - s.wy; s.wy = y; if (d > 0) s.wing = Math.min(1, s.wing + d / 230); if (s.wing >= 1) { s.ph = 2; s.pop = 1; s.wy = null; sfx('pop', null, 0.9); } }
+      else if (s.ph === 2 && s.ty !== null) s.tilt = Math.max(0, Math.min(1, (y - s.ty) / 170)); };
+    s.up = () => { s.lastX = null; s.wy = null;
+      if (s.ph === 2 && s.ty !== null) { s.ty = null; s.tilt = 0; const f = s.fill[s.gi];
+        if (f >= s.LINE[0] && f <= s.LINE[1]) { s.ok[s.gi] = true; sfx('clink', null, 0.6); s.gi++; if (s.gi >= 3) s.done = true; }
+        else if (f > 0.05) { s.msg = 'NOT ENOUGH — TOP IT UP TO THE LINE'; s.msgT = 1.4; } } };
+    s.update = (dt) => { if (s.pop > 0) s.pop -= dt * 1.5; if (s.msgT > 0) s.msgT -= dt;
+      if (s.spill > 0) { s.spill -= dt; if (s.spill <= 0) s.fill[s.gi] = 0; return; }
+      if (s.ph === 1 && s.wy === null && s.wing > 0 && s.wing < 1) s.wing = Math.max(0, s.wing - dt * 0.6);
+      if (s.ph === 2 && s.gi < 3) { const flow = Math.max(0, s.tilt - 0.3) / 0.7; if (flow > 0) { s.fill[s.gi] += flow * dt * 0.42; if ((s.pt = (s.pt || 0) - dt) <= 0) { s.pt = 0.2; sfx('pour', null, 0.12); } }
+        if (s.fill[s.gi] > 0.86) { s.spill = 1.3; s.tilt = 0; s.ty = null; s.msg = 'OVERFLOWED! WIPE IT UP · POUR THAT ONE AGAIN'; s.msgT = 1.6; sfx('splat', null, 0.6); } } };
+    const glass = (g, x, y, f, ok, cur) => { const w = 44, h = 70;
+      if (cur) { g.fillStyle = 'rgba(255,212,0,0.18)'; g.beginPath(); g.ellipse(x, y + 4, 54, 12, 0, 0, 7); g.fill(); }
+      g.save(); g.beginPath(); g.moveTo(x - w, y - 130); g.quadraticCurveTo(x - w - 6, y - 70, x, y - 60); g.quadraticCurveTo(x + w + 6, y - 70, x + w, y - 130); g.closePath(); g.clip();
+      g.fillStyle = 'rgba(220,240,255,0.12)'; g.fillRect(x - 60, y - 140, 120, 90); const fy = y - 60 - h * Math.min(1, f); g.fillStyle = '#6a0f22'; g.fillRect(x - 60, fy, 120, 200); g.fillStyle = 'rgba(160,30,60,0.6)'; g.fillRect(x - 60, fy, 120, 5); g.restore();
+      g.strokeStyle = 'rgba(235,248,255,0.9)'; g.lineWidth = 3; g.beginPath(); g.moveTo(x - w, y - 130); g.quadraticCurveTo(x - w - 6, y - 70, x, y - 60); g.quadraticCurveTo(x + w + 6, y - 70, x + w, y - 130); g.stroke();
+      g.beginPath(); g.moveTo(x, y - 60); g.lineTo(x, y - 6); g.stroke(); g.beginPath(); g.ellipse(x, y - 3, 30, 6, 0, 0, 7); g.stroke(); g.fillStyle = 'rgba(255,255,255,0.4)'; g.fillRect(x - w + 10, y - 124, 3, 40);
+      if (cur || !ok) { g.setLineDash([6, 5]); g.strokeStyle = '#39ff14'; g.lineWidth = 2; for (const L of s.LINE) { const ly = y - 60 - h * L; g.beginPath(); g.moveTo(x - 50, ly); g.lineTo(x + 50, ly); g.stroke(); } g.setLineDash([]); }
+      if (ok) txt(g, '✓', x, y - 150, 28, '#39ff14'); };
+    s.draw = (g, t) => {
+      P.scene(g, s.title, () => { g.fillStyle = P.grad(g, 0, 0, 0, S, ['#2e1408', '#140804']); g.fillRect(0, 0, S, S);
+        for (let r = 0; r < 4; r++) for (let i = 0; i < 12; i++) { g.fillStyle = ['#2a5a22', '#6a1020', '#d8c890', '#5a0a18'][(i + r) % 4]; g.globalAlpha = 0.28; rr(g, 8 + i * 42, 70 + r * 46, 14, 38, 4); g.fill(); g.globalAlpha = 1; g.fillStyle = 'rgba(255,216,144,0.2)'; g.fillRect(0, 108 + r * 46, S, 3); }
+        P.wood(g, 0, 440, S, 80, '#4a2010'); g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(0, 440, S, 4); });
+      if (s.ph < 2) {      // the bottle stood on the bar, the corkscrew going in
+        const bx = 256, top = 160 + s.wing * 0;
+        g.fillStyle = '#16341a'; rr(g, bx - 46, 250, 92, 190, 22); g.fill(); g.beginPath(); g.moveTo(bx - 46, 270); g.quadraticCurveTo(bx - 46, 220, bx - 16, 200); g.lineTo(bx - 16, top + 20); g.lineTo(bx + 16, top + 20); g.lineTo(bx + 16, 200); g.quadraticCurveTo(bx + 46, 220, bx + 46, 270); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(bx - 32, 262, 8, 160);
+        g.fillStyle = '#f4ecd8'; rr(g, bx - 40, 300, 80, 92, 6); g.fill(); g.strokeStyle = '#8a6a2a'; g.lineWidth = 2; rr(g, bx - 36, 304, 72, 84, 4); g.stroke();
+        txt(g, 'CHÂTEAU', bx, 322, 12, '#5a0a18'); txt(g, 'RONNIE', bx, 342, 17, '#5a0a18'); txt(g, '2019', bx, 362, 12, '#8a6a2a'); g.fillStyle = '#8a1a2a'; g.beginPath(); g.arc(bx, 378, 6, 0, 7); g.fill();
+        g.fillStyle = s.ph === 0 && s.screw === 0 ? '#7a1020' : '#c9a24a'; rr(g, bx - 18, top + 14, 36, 34, 4); g.fill();      // the foil (cut back once you've started)
+        g.fillStyle = '#c8a070'; g.fillRect(bx - 13, top + 6, 26, 12);       // the cork top
+        // the corkscrew: the worm (screws down into the cork), the body, the arms (wings) that rise as it goes in and you push down
+        const sink = s.screw / s.need, wy = top - 40 + sink * 24, wa = s.ph === 1 ? (1 - s.wing) * 1.1 : sink * 1.1;
+        g.strokeStyle = '#b8bcc0'; g.lineWidth = 3; g.beginPath(); for (let i = 0; i <= 40; i++) { const yy = wy + 40 + i * 1.3, xx = bx + Math.sin(i * 0.9 + t * (s.lastX !== null ? 8 : 0)) * 6; i ? g.lineTo(xx, yy) : g.moveTo(xx, yy); } g.stroke();
+        P.steel(g, bx - 10, wy - 50, 20, 92, 6); g.fillStyle = '#5a2e18'; rr(g, bx - 70, wy - 70, 140, 22, 10); g.fill();          // the handle
+        for (const sd of [-1, 1]) { g.save(); g.translate(bx + sd * 10, wy + 10); g.rotate(sd * (Math.PI / 2 - wa)); P.steel(g, -6, -70, 12, 72, 5); g.restore(); }
+        txt(g, s.ph === 0 ? `TWIST IT IN: SWIPE LEFT ↔ RIGHT ON THE HANDLE · ${s.screw}/${s.need}` : 'NOW PUSH THE WINGS DOWN ↓', S / 2, 478, 19, '#fff');
+        if (s.ph === 0) { g.fillStyle = '#ffd400'; g.fillRect(156, 455, 200 * sink, 8); g.strokeStyle = '#ffd400'; g.lineWidth = 2; g.strokeRect(156, 455, 200, 8); }
+      } else {             // pouring: the open bottle tips over the glass
+        const xs = [116, 256, 396]; xs.forEach((x, i) => glass(g, x, 440, s.fill[i], s.ok[i], i === s.gi));
+        const gx = xs[Math.min(2, s.gi)], ang = -0.25 - s.tilt * 1.6; g.save(); g.translate(gx + 70, 150); g.rotate(ang);
+        g.fillStyle = '#16341a'; rr(g, -26, -20, 52, 160, 14); g.fill(); g.fillRect(-10, -70, 20, 56); g.fillStyle = '#c9a24a'; g.fillRect(-11, -70, 22, 18); g.fillStyle = '#f4ecd8'; rr(g, -22, 40, 44, 56, 4); g.fill(); txt(g, 'RONNIE', 0, 68, 11, '#5a0a18'); g.restore();
+        const flow = Math.max(0, s.tilt - 0.3) / 0.7; if (flow > 0 && s.spill <= 0) { const mx = gx + 70 + Math.sin(ang) * 70, my = 150 - Math.cos(ang) * 70; g.strokeStyle = '#7a1028'; g.lineWidth = 3 + flow * 5; g.beginPath(); g.moveTo(mx, my); g.quadraticCurveTo(gx + 10, my + 40, gx, 440 - 60 - 70 * Math.min(1, s.fill[s.gi])); g.stroke(); }
+        if (s.spill > 0) { g.fillStyle = 'rgba(110,10,30,0.8)'; g.beginPath(); g.ellipse(gx, 446, 80, 14, 0, 0, 7); g.fill(); }
+        if (s.pop > 0) { g.fillStyle = '#c8a070'; g.fillRect(380 + (1 - s.pop) * 60, 90 - (1 - s.pop) * 40, 22, 14); txt(g, 'POP!', 420, 70, 26 * (0.6 + s.pop), '#ffd400'); }
+        txt(g, s.msgT > 0 ? s.msg : 'DRAG DOWN TO TIP · LET GO ON THE LINE', S / 2, 82, 19, s.msgT > 0 ? '#ff8a8a' : '#fff');
+      } };
+    return s;
+  },
+  // FOLD: the napkin folds are shown, then hidden: swipe them from memory (bishop's mitre, four folds each, three napkins)
+  fold(o = {}) {
+    const D = { U: [0, -1, '↑'], D: [0, 1, '↓'], L: [-1, 0, '←'], R: [1, 0, '→'] }, K = Object.keys(D);
+    const s = { title: o.title || 'FOLD THE NAPKINS', n: 0, need: 3, seq: [], step: 0, st: 'show', T: 2.4, sx: null, sy: null, msg: '', msgT: 0, crumple: 0, done: false };
+    const fresh = () => { s.seq = []; for (let i = 0; i < 4; i++) { let k; do k = K[Math.floor(Math.random() * 4)]; while (i && k === s.seq[i - 1]); s.seq.push(k); } s.step = 0; s.st = 'show'; s.T = 2.4; }; fresh();
+    s.down = (x, y) => { if (s.st !== 'input') return; s.sx = x; s.sy = y; };
+    s.move = () => {};
+    s.up = (x, y) => { if (s.st !== 'input' || s.sx === null) return; const dx = x - s.sx, dy = y - s.sy; s.sx = null; if (Math.hypot(dx, dy) < 45) return;
+      const k = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
+      if (k === s.seq[s.step]) { s.step++; sfx('rustle', null, 0.5); if (s.step >= 4) { s.n++; sfx('ding', null, 0.5); if (s.n >= s.need) s.done = true; else { s.st = 'next'; s.T = 0.9; } } }
+      else { s.crumple = 1; s.st = 'crumple'; s.T = 1.1; sfx('error', null, 0.5); s.msg = `WRONG FOLD (THAT WAS ${D[k][2]}) — NEW NAPKIN`; s.msgT = 1.6; } };
+    s.update = (dt) => { if (s.msgT > 0) s.msgT -= dt; if (s.crumple > 0) s.crumple = Math.max(0, s.crumple - dt); if (s.st === 'input') return; if ((s.T -= dt) <= 0) { if (s.st === 'show') s.st = 'input'; else fresh(); } };
+    s.draw = (g, t) => {
+      P.scene(g, s.title, () => { g.fillStyle = '#fbfaf6'; g.fillRect(0, 0, S, S); g.strokeStyle = 'rgba(0,0,0,0.04)'; g.lineWidth = 1; for (let i = 0; i < S; i += 8) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, S); g.stroke(); }
+        // the place setting either side: a plate, the knife and fork, a wine glass
+        P.plate(g, 256, 300, 150); g.fillStyle = '#c0c4c8'; rr(g, 60, 180, 10, 240, 4); g.fill(); for (let i = 0; i < 4; i++) g.fillRect(56 + i * 5, 168, 3, 30); rr(g, 442, 180, 12, 240, 5); g.fill(); });
+      // the napkin, folded as far as you've got: a burgundy linen square, halved, quartered, a triangle, stood up as a mitre
+      const f = s.st === 'next' ? 4 : s.step, cx = 256, cy = 300, cr = s.crumple;
+      g.save(); g.translate(cx, cy); if (cr > 0) g.rotate(Math.sin(t * 40) * 0.08 * cr);
+      const lin = (pts) => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fillStyle = '#7a1424'; g.fill(); g.strokeStyle = '#4a0a14'; g.lineWidth = 3; g.stroke(); };
+      if (cr > 0) { g.fillStyle = '#7a1424'; for (let i = 0; i < 7; i++) { g.beginPath(); g.arc(Math.cos(i * 2.1) * 30, Math.sin(i * 1.7) * 26, 34, 0, 7); g.fill(); } g.strokeStyle = '#4a0a14'; g.lineWidth = 2; for (let i = 0; i < 9; i++) { g.beginPath(); g.moveTo(Math.cos(i) * 40, Math.sin(i * 2) * 30); g.lineTo(Math.cos(i + 2) * 30, Math.sin(i * 3) * 34); g.stroke(); } }
+      else if (f === 0) { lin([[-110, -110], [110, -110], [110, 110], [-110, 110]]); }
+      else if (f === 1) { lin([[-110, -55], [110, -55], [110, 55], [-110, 55]]); g.strokeStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.moveTo(-110, 0); g.lineTo(110, 0); g.stroke(); }
+      else if (f === 2) { lin([[-60, -55], [60, -55], [60, 55], [-60, 55]]); g.strokeStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.moveTo(0, -55); g.lineTo(0, 55); g.stroke(); }
+      else if (f === 3) { lin([[-70, 50], [70, 50], [0, -70]]); g.strokeStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.moveTo(0, -70); g.lineTo(0, 50); g.stroke(); }
+      else { lin([[-50, 70], [50, 70], [56, -30], [20, -10], [0, -90], [-20, -10], [-56, -30]]); g.strokeStyle = 'rgba(255,255,255,0.2)'; g.beginPath(); g.moveTo(0, -90); g.lineTo(0, 70); g.stroke(); }
+      if (cr <= 0) { g.strokeStyle = '#d4af37'; g.lineWidth = 2; g.setLineDash([4, 4]); g.strokeRect(-100 + f * 6, -100 + f * 6, 200 - f * 12, 200 - f * 12); g.setLineDash([]); }
+      g.restore();
+      // the fold card: the four folds, shown, then hidden
+      g.fillStyle = 'rgba(20,24,40,0.85)'; rr(g, 96, 72, 320, 64, 14); g.fill();
+      for (let i = 0; i < 4; i++) { const x = 136 + i * 80, show = s.st === 'show' || i < s.step || s.st === 'next'; g.fillStyle = i < s.step ? '#2e7d32' : i === s.step && s.st === 'input' ? '#ffd400' : '#3a3f55'; rr(g, x - 28, 80, 56, 48, 10); g.fill(); txt(g, show ? D[s.seq[i]][2] : '?', x, 105, 32, i === s.step && s.st === 'input' ? '#111' : '#fff'); }
+      txt(g, s.msgT > 0 ? s.msg : s.st === 'show' ? `REMEMBER THE FOLDS... ${Math.ceil(s.T)}` : s.st === 'next' ? 'LOVELY. NEXT ONE' : 'SWIPE EACH FOLD FROM MEMORY', S / 2, 160, 19, s.msgT > 0 ? '#c62828' : '#2a2a2a');
+      for (let i = 0; i < s.need; i++) { g.fillStyle = i < s.n ? '#7a1424' : 'rgba(0,0,0,0.15)'; g.beginPath(); g.moveTo(218 + i * 38, 486); g.lineTo(238 + i * 38, 486); g.lineTo(228 + i * 38, 462); g.closePath(); g.fill(); }
+    };
+    return s;
+  },
+  // BULBS: power OFF at the wall first (or ZAP), hold on each blown bulb to unscrew it, drag a new one from the box into the
+  // socket, then the power back on
+  bulbs(o = {}) {
+    const N = 6, arms = [...Array(N)].map((_, i) => { const a = -Math.PI / 2 + (i + 0.5) / N * Math.PI * 2; return { x: 256 + Math.cos(a) * 150, y: 250 + Math.sin(a) * 70 - 30 }; });
+    const blown = shuffle([0, 1, 2, 3, 4, 5]).slice(0, 3);
+    const s = { title: o.title || 'CHANGE THE BULBS', arms, st: arms.map((_, i) => blown.includes(i) ? 'blown' : 'ok'), power: true, hold: -1, ht: 0, drag: null, mx: 0, my: 0, zap: 0, msg: '', msgT: 0, win: 0, done: false, SW: { x: 418, y: 380, w: 70, h: 96 }, BOX: { x: 26, y: 392, w: 120, h: 86 } };
+    const hit = (x, y) => arms.findIndex(a => Math.hypot(a.x - x, a.y + 26 - y) < 40);
+    s.down = (x, y) => { if (s.win > 0 || s.zap > 0) return; s.mx = x; s.my = y;
+      if (inside(x, y, s.SW)) { const all = s.st.every(v => v === 'ok'); if (!s.power && s.st.some(v => v === 'empty')) { s.msg = 'A SOCKET\'S STILL EMPTY'; s.msgT = 1.2; sfx('error', null, 0.4); return; }
+        s.power = !s.power; sfx('toggle', null, 0.6); if (s.power && all) { s.win = 0.001; sfx('ding', null, 0.6); } return; }
+      if (inside(x, y, s.BOX)) { s.drag = { x, y }; return; }
+      const i = hit(x, y); if (i < 0) return; if (s.st[i] === 'blown') { if (s.power) { s.zap = 0.9; s.msg = 'ZZZT! TURN THE POWER OFF FIRST'; s.msgT = 1.4; sfx('zap', null, 0.9); return; } s.hold = i; s.ht = 0; } };
+    s.move = (x, y) => { s.mx = x; s.my = y; if (s.hold >= 0 && hit(x, y) !== s.hold) { s.hold = -1; s.ht = 0; } };
+    s.up = (x, y) => { s.hold = -1; s.ht = 0; if (!s.drag) return; s.drag = null; const i = hit(x ?? s.mx, y ?? s.my); if (i >= 0 && s.st[i] === 'empty') { s.st[i] = 'new'; sfx('clack', null, 0.5); } };
+    s.update = (dt) => { if (s.zap > 0) s.zap -= dt; if (s.msgT > 0) s.msgT -= dt; if (s.win > 0) { s.win += dt; if (s.win > 0.8) s.done = true; return; }
+      for (let i = 0; i < N; i++) if (s.st[i] === 'new') s.st[i] = 'ok';
+      if (s.hold >= 0) { s.ht += dt; if ((s.tk = (s.tk || 0) - dt) <= 0) { s.tk = 0.15; sfx('tick', null, 0.2); } if (s.ht >= 0.7) { s.st[s.hold] = 'empty'; s.hold = -1; s.ht = 0; sfx('glass', null, 0.4); } } };
+    const bulb = (g, x, y, lit, dead, t) => { if (lit) { const gr = g.createRadialGradient(x, y + 28, 2, x, y + 28, 50); gr.addColorStop(0, 'rgba(255,230,150,0.9)'); gr.addColorStop(1, 'rgba(255,200,80,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y + 28, 50, 0, 7); g.fill(); }
+      g.fillStyle = lit ? '#fff4c0' : dead ? '#5a5a5a' : '#e8e4d8'; g.beginPath(); g.moveTo(x - 9, y + 10); g.quadraticCurveTo(x - 14, y + 30, x, y + 50); g.quadraticCurveTo(x + 14, y + 30, x + 9, y + 10); g.fill();          // a candle bulb
+      if (dead) { g.strokeStyle = '#222'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x - 4, y + 22); g.lineTo(x - 1, y + 30); g.moveTo(x + 4, y + 22); g.lineTo(x + 2, y + 34); g.stroke(); g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.arc(x, y + 34, 6, 0, 7); g.fill(); }
+      g.fillStyle = '#b8a060'; g.fillRect(x - 7, y + 2, 14, 10); for (let i = 0; i < 3; i++) { g.fillStyle = '#8a7040'; g.fillRect(x - 7, y + 4 + i * 3, 14, 1); } };
+    s.draw = (g, t) => {
+      const lights = s.power && s.win >= 0 && !s.st.some(v => v === 'empty') ? 1 : 0;
+      P.scene(g, s.title, () => { g.fillStyle = P.grad(g, 0, 0, 0, S, s.power ? ['#3a2a1a', '#1a120a'] : ['#141018', '#08060a']); g.fillRect(0, 0, S, S);
+        g.fillStyle = s.power ? '#f2ead8' : '#4a4640'; g.fillRect(0, 60, S, 40); g.fillStyle = 'rgba(0,0,0,0.2)'; for (let x = 0; x < S; x += 64) g.fillRect(x, 60, 2, 40); });
+      // the chandelier: the drop rod from the rose, the brass body, curling arms out to six candle-bulb sockets with drip pans
+      g.strokeStyle = '#8a6a2a'; g.lineWidth = 6; g.beginPath(); g.moveTo(256, 96); g.lineTo(256, 210); g.stroke(); g.fillStyle = '#c9a24a'; g.beginPath(); g.ellipse(256, 100, 34, 8, 0, 0, 7); g.fill();
+      for (let i = 0; i < 3; i++) { g.fillStyle = ['#d4af37', '#a8862a', '#c9a24a'][i]; g.beginPath(); g.ellipse(256, 180 + i * 22, 22 - i * 4, 14, 0, 0, 7); g.fill(); }
+      arms.forEach((a, i) => { g.strokeStyle = '#b8902e'; g.lineWidth = 7; g.beginPath(); g.moveTo(256, 222); g.bezierCurveTo((256 + a.x) / 2, 290, a.x, a.y + 90, a.x, a.y + 50); g.stroke();
+        g.fillStyle = '#d4af37'; g.beginPath(); g.ellipse(a.x, a.y + 52, 20, 6, 0, 0, 7); g.fill(); g.fillStyle = '#efe6d0'; g.fillRect(a.x - 8, a.y + 14, 16, 36);      // the drip pan and the candle sleeve
+        const st = s.st[i]; if (st !== 'empty') bulb(g, a.x, a.y - 38, st === 'ok' && s.power, st === 'blown', t); else { g.fillStyle = '#222'; g.fillRect(a.x - 7, a.y + 4, 14, 12); }
+        if (s.hold === i) { g.strokeStyle = '#ffd400'; g.lineWidth = 5; g.beginPath(); g.arc(a.x, a.y - 12, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * s.ht / 0.7); g.stroke(); }
+        if (st === 'blown' && !s.power) { g.strokeStyle = 'rgba(255,90,90,0.8)'; g.lineWidth = 2; g.setLineDash([4, 4]); g.beginPath(); g.arc(a.x, a.y - 12, 34, 0, 7); g.stroke(); g.setLineDash([]); }
+        if (st === 'empty' && s.drag) { g.strokeStyle = '#39ff14'; g.lineWidth = 3; g.beginPath(); g.arc(a.x, a.y + 4, 26, 0, 7); g.stroke(); } });
+      // the box of new bulbs, the wall switch
+      g.fillStyle = '#d8c090'; rr(g, s.BOX.x, s.BOX.y, s.BOX.w, s.BOX.h, 8); g.fill(); g.fillStyle = '#b89a60'; g.fillRect(s.BOX.x, s.BOX.y, s.BOX.w, 16); txt(g, 'NEW BULBS', s.BOX.x + s.BOX.w / 2, s.BOX.y + 8, 11, '#3a2a10');
+      for (let i = 0; i < 4; i++) bulb(g, s.BOX.x + 22 + i * 25, s.BOX.y + 16, false, false, t);
+      const SW = s.SW; g.fillStyle = '#f4f0e6'; rr(g, SW.x, SW.y, SW.w, SW.h, 8); g.fill(); g.strokeStyle = '#a89a80'; g.lineWidth = 2; rr(g, SW.x, SW.y, SW.w, SW.h, 8); g.stroke();
+      g.fillStyle = '#e0dccc'; rr(g, SW.x + 22, SW.y + 18, 26, 60, 6); g.fill(); g.fillStyle = s.power ? '#c62828' : '#555'; rr(g, SW.x + 24, s.power ? SW.y + 20 : SW.y + 48, 22, 28, 5); g.fill();
+      txt(g, s.power ? 'ON' : 'OFF', SW.x + SW.w / 2, SW.y - 12, 16, s.power ? '#ffd400' : '#9fb0c0');
+      if (s.drag) bulb(g, s.mx, s.my - 30, false, false, t);
+      if (s.zap > 0) { g.strokeStyle = `rgba(160,220,255,${s.zap})`; g.lineWidth = 3; for (let k = 0; k < 4; k++) { g.beginPath(); let x = s.mx, y = s.my; g.moveTo(x, y); for (let j = 0; j < 6; j++) { x += (Math.random() - 0.5) * 50; y += 18; g.lineTo(x, y); } g.stroke(); } g.fillStyle = `rgba(200,230,255,${s.zap * 0.25})`; g.fillRect(0, 0, S, S); }
+      const left = s.st.filter(v => v !== 'ok').length;
+      P.hint(g, s.msgT > 0 ? s.msg : s.win > 0 ? '✨ LET THERE BE LIGHT' : left ? (s.power ? 'POWER OFF AT THE SWITCH FIRST' : 'HOLD A BLOWN BULB · DRAG A NEW ONE IN') : 'POWER BACK ON', 82, s.msgT > 0 ? '#ff8a8a' : '#fff');
+      void lights;
+    };
+    return s;
+  },
+  // GRILL: the BBQ: burgers go on, tap to flip each one when the underside's browned, tap again when the other side's done
+  // to serve it in its bun. Leave one too long and it's charcoal (three in the bin and you start again). Flare-ups cook faster
+  grill(o = {}) {
+    const need = o.need || 6, SL = [...Array(6)].map((_, i) => ({ x: 104 + (i % 3) * 120, y: 230 + Math.floor(i / 3) * 110 }));
+    const s = { title: o.title || 'FLIP THE BURGERS', need, served: 0, burnt: 0, slots: SL.map(() => null), spawnT: 0.3, flare: SL.map(() => 0), msg: '', msgT: 0, plate: [], done: false, _SL: SL };
+    s.down = (x, y) => { if (s.done) return; const i = SL.findIndex(p => Math.hypot(p.x - x, p.y - y) < 52); if (i < 0) return; const b = s.slots[i]; if (!b) return;
+      const c = b.side ? b.c1 : b.c0; if (c < 0.6) { s.msg = 'NOT BROWNED YET'; s.msgT = 0.8; sfx('tap', null, 0.3); return; }
+      if (!b.side) { b.side = 1; b.flip = 1; sfx('sizzle', null, 0.6); } else { s.slots[i] = null; s.served++; s.plate.push(1); sfx('ding', null, 0.5); if (s.served >= need) s.done = true; } };
+    s.move = () => {}; s.up = () => {};
+    s.update = (dt) => { if (s.done) return; if (s.msgT > 0) s.msgT -= dt;
+      if ((s.spawnT -= dt) <= 0) { const free = s.slots.map((b, i) => b ? -1 : i).filter(i => i >= 0); if (free.length && s.slots.filter(Boolean).length < 4) { const i = free[Math.floor(Math.random() * free.length)]; s.slots[i] = { c0: 0, c1: 0, side: 0, rate: 0.2 + Math.random() * 0.12, flip: 0 }; sfx('sizzle', null, 0.3); } s.spawnT = 1.4 + Math.random() * 0.8; }
+      s.slots.forEach((b, i) => { if (s.flare[i] > 0) s.flare[i] -= dt; else if (b && Math.random() < dt * 0.05) s.flare[i] = 1.4;
+        if (!b) return; if (b.flip > 0) b.flip -= dt * 3; const k = b.rate * dt * (s.flare[i] > 0 ? 2 : 1); if (b.side) b.c1 += k; else b.c0 += k;
+        if ((b.side ? b.c1 : b.c0) > 1.15) { s.slots[i] = null; s.burnt++; sfx('splat', null, 0.4); s.msg = `BURNT! ${s.burnt}/3 IN THE BIN`; s.msgT = 1.2; if (s.burnt >= 3) { s.msg = 'THREE BURNT — START AGAIN'; s.msgT = 1.8; s.burnt = 0; s.served = 0; s.plate = []; s.slots = SL.map(() => null); } } }); };
+    const col = (c) => { const k = Math.min(1.2, c); if (k < 0.6) { const u = k / 0.6; return `rgb(${Math.round(214 - 40 * u)},${Math.round(110 - 20 * u)},${Math.round(120 - 50 * u)})`; } if (k <= 1) { const u = (k - 0.6) / 0.4; return `rgb(${Math.round(150 - 50 * u)},${Math.round(84 - 34 * u)},${Math.round(40 - 16 * u)})`; } return '#1e1612'; };
+    s.draw = (g, t) => {
+      P.scene(g, s.title, () => { g.fillStyle = P.grad(g, 0, 0, 0, S, ['#8fd0ff', '#d8f0ff']); g.fillRect(0, 0, S, 200); g.fillStyle = '#5aa83a'; g.fillRect(0, 160, S, 360);
+        for (let i = 0; i < 30; i++) { g.fillStyle = 'rgba(40,90,20,0.4)'; g.fillRect((i * 97) % S, 170 + (i * 53) % 330, 3, 8); } });
+      // the BBQ: a black kettle-ish box on legs, the glowing coals under the grill bars, the lid propped open behind, the side shelf with the buns
+      g.fillStyle = '#1a1a1a'; rr(g, 30, 120, 382, 46, 12); g.fill(); g.fillStyle = '#2a2a2a'; rr(g, 40, 126, 362, 30, 10); g.fill(); txt(g, 'RONNIE-Q', 221, 141, 15, '#c62828');
+      g.fillStyle = '#222'; rr(g, 30, 170, 382, 270, 18); g.fill(); g.fillStyle = '#3a1a0a'; rr(g, 44, 180, 354, 248, 12); g.fill();
+      for (let i = 0; i < 70; i++) { const x = 54 + (i * 37) % 334, y = 190 + (i * 53) % 228, gl = 0.5 + 0.5 * Math.sin(t * 3 + i); g.fillStyle = `rgba(${200 + 55 * gl},${60 + 60 * gl},20,0.9)`; g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); g.fillStyle = 'rgba(40,40,40,0.6)'; g.beginPath(); g.arc(x + 3, y + 2, 5, 0, 7); g.fill(); }
+      g.strokeStyle = '#555'; g.lineWidth = 4; for (let x = 54; x < 396; x += 16) { g.beginPath(); g.moveTo(x, 182); g.lineTo(x, 426); g.stroke(); }
+      for (const x of [56, 386]) { g.fillStyle = '#1a1a1a'; g.fillRect(x - 6, 440, 12, 60); }
+      g.fillStyle = '#6a4a2a'; rr(g, 418, 230, 82, 200, 8); g.fill(); g.fillStyle = '#fbfbf8'; g.beginPath(); g.ellipse(459, 300, 34, 26, 0, 0, 7); g.fill();
+      s.plate.forEach((_, i) => { if (i > 5) return; const y = 330 - i * 14; g.fillStyle = '#e0a050'; rr(g, 432, y, 54, 10, 5); g.fill(); g.fillStyle = '#4a2a14'; g.fillRect(434, y - 4, 50, 5); g.fillStyle = '#e8b060'; g.beginPath(); g.ellipse(459, y - 6, 27, 9, 0, Math.PI, 0); g.fill(); });
+      for (let i = 0; i < 3; i++) { g.fillStyle = '#e8b060'; g.beginPath(); g.ellipse(459, 400 - i * 16, 26, 9, 0, 0, 7); g.fill(); }
+      // the burgers
+      SL.forEach((p, i) => { const b = s.slots[i]; if (s.flare[i] > 0) { for (let k = 0; k < 5; k++) P.flame(g, p.x - 30 + k * 15, p.y + 26 - Math.random() * 6, 1.1, t + k); }
+        if (!b) { g.strokeStyle = 'rgba(255,255,255,0.15)'; g.lineWidth = 2; g.setLineDash([5, 5]); g.beginPath(); g.ellipse(p.x, p.y, 42, 30, 0, 0, 7); g.stroke(); g.setLineDash([]); return; }
+        const up = b.side ? b.c0 : 0, face = b.side ? b.c0 : 0; void face; const sq = b.flip > 0 ? Math.abs(Math.cos(b.flip * Math.PI)) : 1;
+        g.save(); g.translate(p.x, p.y - (b.flip > 0 ? Math.sin(b.flip * Math.PI) * 40 : 0)); g.scale(1, sq);
+        g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(4, 6, 44, 30, 0, 0, 7); g.fill();
+        g.fillStyle = b.side ? col(b.c0) : '#d06e78'; g.beginPath(); g.ellipse(0, 0, 42, 30, 0, 0, 7); g.fill();       // the top you can see (raw pink, or the side you've cooked)
+        g.fillStyle = col(b.side ? b.c1 : b.c0); g.fillRect(-42, 0, 84, 0); g.strokeStyle = col(b.side ? b.c1 : b.c0); g.lineWidth = 6; g.beginPath(); g.ellipse(0, 0, 42, 30, 0, 0.2, Math.PI - 0.2); g.stroke();      // the edge shows the underside cooking
+        if (b.side && up >= 0.6) { g.strokeStyle = 'rgba(30,15,5,0.7)'; g.lineWidth = 4; for (let k = -2; k <= 2; k++) { g.beginPath(); g.moveTo(-30, k * 9 - 8); g.lineTo(30, k * 9 + 8); g.stroke(); } }
+        g.restore();
+        const c = b.side ? b.c1 : b.c0; g.fillStyle = '#222'; g.fillRect(p.x - 34, p.y + 36, 68, 7); g.fillStyle = c < 0.6 ? '#ff8a8a' : c <= 1 ? '#39ff14' : '#111'; g.fillRect(p.x - 34, p.y + 36, 68 * Math.min(1, c / 1.15), 7); g.fillStyle = '#fff'; g.fillRect(p.x - 34 + 68 * 0.6 / 1.15, p.y + 34, 2, 11); g.fillRect(p.x - 34 + 68 / 1.15, p.y + 34, 2, 11);
+        if (c > 0.85) { g.fillStyle = `rgba(80,80,80,${Math.min(0.6, (c - 0.85))})`; g.beginPath(); g.arc(p.x + Math.sin(t * 3) * 8, p.y - 50 - (t * 30 % 30), 16, 0, 7); g.fill(); } });
+      P.hint(g, s.msgT > 0 ? s.msg : `TAP TO FLIP WHEN BROWNED · TAP AGAIN TO SERVE · ${s.served}/${need}`, 82, s.msgT > 0 ? '#ff8a8a' : '#fff', 17);
+    };
+    return s;
+  },
+  // WATER: four hanging baskets, swinging in the breeze: hold the can over each one and pour till its gauge is in the green, then
+  // stop (overwater it and it pours out the bottom). The can runs dry: hold it under the outside tap to fill it
+  water(o = {}) {
+    const B = [...Array(4)].map((_, i) => ({ x0: 92 + i * 110, y: 200, ph: Math.random() * 6, w: 1.1 + Math.random() * 0.7, A: 22 + Math.random() * 18, m: 0.08 + Math.random() * 0.22, ok: false, still: 0, drip: 0 }));
+    const s = { title: o.title || 'WATER THE HANGING BASKETS', B, tank: 1, hold: false, mx: 256, my: 320, t: 0, msg: '', msgT: 0, done: false, BAND: [0.6, 0.82], TAP: { x: 22, y: 370, w: 92, h: 110 } };
+    s.bx = (b) => b.x0 + Math.sin(s.t * b.w + b.ph) * b.A;
+    const spout = () => [s.mx - 46, s.my - 34];
+    s.down = (x, y) => { s.hold = true; s.mx = x; s.my = y; }; s.move = (x, y) => { s.mx = x; s.my = y; }; s.up = () => { s.hold = false; };
+    s.update = (dt) => { if (s.done) return; s.t += dt; if (s.msgT > 0) s.msgT -= dt; const [sx, sy] = spout();
+      s.filling = s.hold && inside(s.mx, s.my, s.TAP); if (s.filling) { s.tank = Math.min(1, s.tank + dt * 0.7); if ((s.ft = (s.ft || 0) - dt) <= 0) { s.ft = 0.25; sfx('pour', null, 0.12); } }
+      s.pouring = s.hold && !s.filling && s.tank > 0 && s.my > 120; s.target = -1;
+      if (s.pouring) { s.tank = Math.max(0, s.tank - dt * 0.16); if (s.tank <= 0) { s.msg = 'THE CAN\'S EMPTY — FILL IT AT THE TAP'; s.msgT = 1.5; }
+        const i = B.findIndex(b => !b.ok && Math.abs(s.bx(b) - sx) < 30 && sy < b.y + 30); s.target = i; if (i >= 0) { const b = B[i]; b.m += dt * 0.3; b.still = 0; if ((s.pt = (s.pt || 0) - dt) <= 0) { s.pt = 0.22; sfx('pour', null, 0.1); } if (b.m > 1) { b.m = 0.35; b.drip = 1.6; s.msg = 'DROWNED IT! IT ALL POURED OUT'; s.msgT = 1.4; sfx('splat', null, 0.5); } } }
+      B.forEach((b, i) => { if (b.drip > 0) b.drip -= dt; if (b.ok) return; if (i !== s.target) { b.m = Math.max(0, b.m - dt * 0.012); if (b.m >= s.BAND[0] && b.m <= s.BAND[1]) { b.still += dt; if (b.still > 0.8) { b.ok = true; sfx('ding', null, 0.4); } } else b.still = 0; } });
+      if (B.every(b => b.ok)) s.done = true; };
+    s.draw = (g, t) => {
+      P.scene(g, s.title, () => { g.fillStyle = '#1e2228'; g.fillRect(0, 0, S, S); for (let y = 60; y < 420; y += 18) { g.fillStyle = '#2a2e36'; g.fillRect(0, y, S, 4); g.fillStyle = '#121418'; g.fillRect(0, y + 16, S, 2); }   // black weatherboard
+        P.brick(g, 0, 420, S, 100); g.fillStyle = '#7a7470'; g.fillRect(0, 414, S, 8); });
+      // the outside tap on the wall (and a hose reel)
+      const T = s.TAP; g.fillStyle = '#3a6a2a'; g.beginPath(); g.arc(T.x + 46, T.y + 70, 34, 0, 7); g.fill(); g.strokeStyle = '#2a5a1a'; g.lineWidth = 6; g.beginPath(); g.arc(T.x + 46, T.y + 70, 24, 0, 7); g.stroke();
+      P.steel(g, T.x + 30, T.y + 4, 40, 18, 6); P.steel(g, T.x + 56, T.y + 18, 14, 26, 4); g.fillStyle = '#c62828'; g.fillRect(T.x + 38, T.y - 6, 24, 10); txt(g, 'TAP', T.x + 46, T.y - 18, 14, '#9fd8ff');
+      if (s.filling) { g.fillStyle = 'rgba(160,210,255,0.85)'; g.fillRect(T.x + 60, T.y + 44, 6, s.my - T.y - 44); }
+      // the baskets: a wall bracket, the chains, the wire basket full of trailing flowers that droop when dry and perk up watered
+      B.forEach((b) => { const x = s.bx(b), y = b.y; g.fillStyle = '#111'; g.fillRect(b.x0 - 4, 80, 8, 24); g.fillRect(b.x0 - 4, 80, 40, 6);
+        g.strokeStyle = '#555'; g.lineWidth = 2; for (const d of [-30, 0, 30]) { g.beginPath(); g.moveTo(b.x0, 104); g.lineTo(x + d, y); g.stroke(); }
+        g.fillStyle = '#3a2a1a'; g.beginPath(); g.moveTo(x - 38, y); g.quadraticCurveTo(x, y + 70, x + 38, y); g.fill(); g.strokeStyle = '#222'; g.lineWidth = 2; for (let k = -3; k <= 3; k++) { g.beginPath(); g.moveTo(x + k * 11, y); g.lineTo(x + k * 5, y + 34); g.stroke(); }
+        const perk = Math.min(1, b.m / 0.6), dry = b.m < 0.3;
+        for (let k = 0; k < 9; k++) { const fx = x - 32 + k * 8, fy = y - 6 - perk * 14 + Math.sin(k * 2) * 4; g.fillStyle = dry ? '#8a7a3a' : '#3a8a2a'; g.beginPath(); g.ellipse(fx, fy, 7, 5, 0, 0, 7); g.fill();
+          g.fillStyle = dry ? '#a08060' : ['#e8407a', '#ffffff', '#a040e8', '#ff8a20'][k % 4]; g.beginPath(); g.arc(fx + 2, fy - 4 * perk, 4 + perk * 2, 0, 7); g.fill(); }
+        for (let k = 0; k < 4; k++) { g.strokeStyle = dry ? '#7a6a2a' : '#2e7a1e'; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 30 + k * 20, y + 10); g.quadraticCurveTo(x - 36 + k * 20, y + 40, x - 30 + k * 22, y + 50 + (1 - perk) * 20); g.stroke(); }
+        if (b.drip > 0) { g.fillStyle = 'rgba(160,210,255,0.8)'; for (let k = 0; k < 6; k++) g.fillRect(x - 20 + k * 8, y + 36 + ((t * 120 + k * 17) % 80), 3, 8); }
+        // its gauge
+        const gx = b.x0 - 9, gy = 256, gh = 92; g.fillStyle = '#111'; rr(g, gx, gy, 18, gh, 6); g.fill(); g.fillStyle = 'rgba(57,255,20,0.35)'; g.fillRect(gx, gy + gh * (1 - s.BAND[1]), 18, gh * (s.BAND[1] - s.BAND[0]));
+        g.fillStyle = b.ok ? '#39ff14' : '#4aa8ff'; g.fillRect(gx + 3, gy + gh * (1 - Math.min(1, b.m)), 12, gh * Math.min(1, b.m)); if (b.ok) txt(g, '✓', b.x0, gy + gh + 16, 22, '#39ff14'); });
+      // the watering can (in your hand), its water level, and the water coming out of the rose
+      const [sx, sy] = spout(); g.save(); g.translate(s.mx, s.my); g.rotate(s.pouring ? -0.5 : 0);
+      g.fillStyle = '#2e7d32'; rr(g, -26, -30, 60, 52, 8); g.fill(); g.fillStyle = 'rgba(160,210,255,0.6)'; g.fillRect(-22, 18 - 44 * s.tank, 6, 44 * s.tank); g.strokeStyle = '#1b5e20'; g.lineWidth = 6; g.beginPath(); g.arc(4, -32, 18, Math.PI, 0); g.stroke();
+      g.strokeStyle = '#2e7d32'; g.lineWidth = 8; g.beginPath(); g.moveTo(-24, 0); g.lineTo(-46, -30); g.stroke(); g.fillStyle = '#1b5e20'; g.beginPath(); g.arc(-48, -33, 8, 0, 7); g.fill(); g.restore();
+      if (s.pouring) { g.fillStyle = 'rgba(160,210,255,0.8)'; for (let k = 0; k < 8; k++) g.fillRect(sx - 14 + k * 4 + Math.sin(t * 30 + k) * 2, sy, 2, 60 + ((t * 200 + k * 23) % 40)); }
+      g.fillStyle = '#111'; rr(g, 372, 452, 120, 14, 6); g.fill(); g.fillStyle = s.tank < 0.2 ? '#ff6b6b' : '#4aa8ff'; rr(g, 372, 452, 120 * s.tank, 14, 6); g.fill(); txt(g, 'CAN', 432, 438, 12, '#9fd8ff');
+      P.hint(g, s.msgT > 0 ? s.msg : 'HOLD THE CAN OVER A BASKET · STOP IN THE GREEN', 82, s.msgT > 0 ? '#ff8a8a' : '#fff', 18);
+    };
+    return s;
+  },
+  // NET: litter floats down the stream: hold the net in the water to scoop it up (three at a time), then let go over the bin on
+  // the bank. Don't net a duck (it flaps, quacks and you drop the lot)
+  net(o = {}) {
+    const need = o.need || 8, Y0 = 170, Y1 = 350, BIN = { x: 380, y: 384, w: 100, h: 110 };
+    const s = { title: o.title || 'FISH OUT THE LITTER', need, got: 0, items: [], spawnT: 0, hold: false, mx: 256, my: 260, inNet: [], stun: 0, msg: '', msgT: 0, done: false, BIN, Y0, Y1 };
+    const KIND = ['can', 'packet', 'bottle', 'cup', 'bag'];
+    const spawn = () => { const duck = Math.random() < 0.18; s.items.push({ x: -40, y: Y0 + 26 + Math.random() * (Y1 - Y0 - 52), v: duck ? 45 + Math.random() * 20 : 55 + Math.random() * 50, k: duck ? 'duck' : KIND[Math.floor(Math.random() * KIND.length)], r: Math.random() * 6, b: Math.random() * 6 }); };
+    for (let i = 0; i < 4; i++) { spawn(); s.items[i].x = 40 + i * 110; }
+    s.down = (x, y) => { if (s.stun > 0) return; s.hold = true; s.mx = x; s.my = y; }; s.move = (x, y) => { s.mx = x; s.my = y; };
+    s.up = (x, y) => { if (!s.hold) return; s.hold = false; if (x != null) { s.mx = x; s.my = y; } if (!s.inNet.length) return;
+      if (inside(s.mx, s.my, BIN)) { s.got += s.inNet.length; sfx('can', null, 0.6); s.inNet = []; if (s.got >= need) s.done = true; }
+      else { for (const it of s.inNet) { it.x = s.mx; it.y = Math.max(Y0 + 20, Math.min(Y1 - 20, s.my)); s.items.push(it); } s.inNet = []; sfx('splat', null, 0.3); s.msg = 'DROPPED IT BACK IN! EMPTY THE NET IN THE BIN'; s.msgT = 1.3; } };
+    s.update = (dt) => { if (s.done) return; if (s.msgT > 0) s.msgT -= dt; if (s.stun > 0) s.stun -= dt;
+      if ((s.spawnT -= dt) <= 0) { if (s.items.length < 7) spawn(); s.spawnT = 0.9 + Math.random() * 0.7; }
+      const wet = s.hold && s.my > Y0 && s.my < Y1;
+      for (let i = s.items.length - 1; i >= 0; i--) { const it = s.items[i]; it.x += it.v * dt; it.b += dt * 3; it.r += dt * (it.k === 'duck' ? 0 : 0.6);
+        if (it.x > S + 50) { s.items.splice(i, 1); continue; }
+        if (wet && Math.hypot(it.x - s.mx, it.y - s.my) < 40) { if (it.k === 'duck') { s.items.splice(i, 1); for (const q of s.inNet) { q.x = s.mx; s.items.push(q); } s.inNet = []; s.hold = false; s.stun = 0.9; s.msg = 'QUACK! YOU NETTED A DUCK — DROPPED THE LOT'; s.msgT = 1.6; sfx('aww', null, 0.5); s.flap = { x: it.x, y: it.y, t: 1 }; continue; }
+          if (s.inNet.length < 3) { s.inNet.push(it); s.items.splice(i, 1); sfx('splat', null, 0.25); } } }
+      if (s.flap) { s.flap.t -= dt; s.flap.x += dt * 160; s.flap.y -= dt * 120; if (s.flap.t <= 0) s.flap = null; } };
+    const litter = (g, it, x, y) => { g.save(); g.translate(x, y); g.rotate(it.k === 'duck' ? 0 : Math.sin(it.r) * 0.6);
+      if (it.k === 'can') { g.fillStyle = '#c62828'; rr(g, -9, -16, 18, 32, 4); g.fill(); g.fillStyle = '#ddd'; g.fillRect(-9, -16, 18, 4); g.fillStyle = '#fff'; g.fillRect(-5, -4, 10, 6); }
+      else if (it.k === 'packet') { g.fillStyle = '#1e88e5'; g.beginPath(); g.moveTo(-16, -12); g.lineTo(16, -14); g.lineTo(14, 12); g.lineTo(-14, 14); g.closePath(); g.fill(); g.fillStyle = '#ffd400'; g.fillRect(-8, -4, 16, 8); }
+      else if (it.k === 'bottle') { g.fillStyle = 'rgba(160,220,200,0.85)'; rr(g, -22, -8, 34, 16, 6); g.fill(); g.fillRect(12, -4, 12, 8); g.fillStyle = '#2e7d32'; g.fillRect(-12, -8, 12, 16); }
+      else if (it.k === 'cup') { g.fillStyle = '#fafafa'; g.beginPath(); g.moveTo(-10, -14); g.lineTo(10, -14); g.lineTo(7, 14); g.lineTo(-7, 14); g.closePath(); g.fill(); g.fillStyle = '#c62828'; g.fillRect(-9, -4, 18, 5); }
+      else if (it.k === 'bag') { g.fillStyle = 'rgba(240,240,240,0.8)'; g.beginPath(); g.ellipse(0, 0, 20, 13, 0.3, 0, 7); g.fill(); g.strokeStyle = '#aaa'; g.lineWidth = 2; g.beginPath(); g.arc(-6, -12, 6, Math.PI, 0); g.stroke(); }
+      else { g.fillStyle = '#8a6a3a'; g.beginPath(); g.ellipse(0, 4, 24, 13, 0, 0, 7); g.fill(); g.fillStyle = '#2e6a2a'; g.beginPath(); g.arc(18, -10, 10, 0, 7); g.fill(); g.fillStyle = '#ffb300'; g.beginPath(); g.moveTo(26, -10); g.lineTo(36, -7); g.lineTo(26, -5); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(20, -12, 2, 0, 7); g.fill(); g.fillStyle = '#fff'; g.fillRect(14, -4, 8, 3); }
+      g.restore(); };
+    s.draw = (g, t) => {
+      P.scene(g, s.title, () => { g.fillStyle = '#5aa83a'; g.fillRect(0, 0, S, Y0); g.fillStyle = '#8a8a8a'; g.fillRect(0, Y0 - 16, S, 16);      // the far bank, its edging
+        const wg = P.grad(g, 0, Y0, 0, Y1, ['#3a7aa8', '#2a6090', '#3a7aa8']); g.fillStyle = wg; g.fillRect(0, Y0, S, Y1 - Y0);
+        g.strokeStyle = 'rgba(255,255,255,0.25)'; g.lineWidth = 2; for (let i = 0; i < 14; i++) { const y = Y0 + 10 + (i * 37) % (Y1 - Y0 - 20), x = ((i * 113 + t * 70) % (S + 80)) - 40; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 18, y - 4, x + 36, y); g.stroke(); }
+        g.fillStyle = '#8a8a8a'; g.fillRect(0, Y1, S, 14); g.fillStyle = '#5aa83a'; g.fillRect(0, Y1 + 14, S, S);
+        for (let i = 0; i < 18; i++) { g.strokeStyle = '#3a7a2a'; g.lineWidth = 3; const x = (i * 61) % S; g.beginPath(); g.moveTo(x, Y0 - 16); g.quadraticCurveTo(x + 4, Y0 - 50, x + 10, Y0 - 66); g.stroke(); }
+        g.fillStyle = '#6a4a2a'; for (let i = 0; i < 4; i++) g.fillRect(150 + i * 4, Y1 - 6 + i, 3, 3); });
+      for (const it of s.items) litter(g, it, it.x, it.y + Math.sin(it.b) * 3);
+      if (s.flap) { g.globalAlpha = Math.max(0, s.flap.t); litter(g, { k: 'duck', r: 0 }, s.flap.x, s.flap.y); txt(g, 'QUACK!', s.flap.x, s.flap.y - 34, 22, '#ffd400'); g.globalAlpha = 1; }
+      // the bin on the bank: a green wheelie bin, lid up
+      g.fillStyle = '#2e7d32'; rr(g, BIN.x + 8, BIN.y + 20, BIN.w - 16, BIN.h - 20, 8); g.fill(); g.fillStyle = '#1b5e20'; g.fillRect(BIN.x + 2, BIN.y + 10, BIN.w - 4, 14); g.save(); g.translate(BIN.x + 2, BIN.y + 10); g.rotate(-0.9); g.fillRect(0, -6, BIN.w - 4, 8); g.restore();
+      txt(g, `${s.got}/${need}`, BIN.x + BIN.w / 2, BIN.y + 66, 22, '#fff'); for (const x of [BIN.x + 20, BIN.x + BIN.w - 20]) { g.fillStyle = '#111'; g.beginPath(); g.arc(x, BIN.y + BIN.h, 8, 0, 7); g.fill(); }
+      // the net on its long pole: in the water when you hold it down
+      const wet = s.hold && s.my > Y0 && s.my < Y1; g.strokeStyle = '#8a6a3a'; g.lineWidth = 7; g.beginPath(); g.moveTo(s.mx + 30, s.my + 30); g.lineTo(s.mx + 170, s.my + 240); g.stroke();
+      g.strokeStyle = '#ddd'; g.lineWidth = 4; g.beginPath(); g.ellipse(s.mx, s.my, 38, wet ? 14 : 26, 0, 0, 7); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1; for (let k = -3; k <= 3; k++) { g.beginPath(); g.moveTo(s.mx + k * 10, s.my - 12); g.lineTo(s.mx + k * 5, s.my + 26); g.stroke(); }
+      s.inNet.forEach((it, i) => litter(g, it, s.mx - 16 + i * 16, s.my + 4));
+      if (wet) { g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 2; g.beginPath(); g.ellipse(s.mx, s.my + 6, 50 + Math.sin(t * 8) * 4, 18, 0, 0, 7); g.stroke(); }
+      P.hint(g, s.msgT > 0 ? s.msg : s.inNet.length >= 3 ? 'NET\'S FULL — LET GO OVER THE BIN' : 'HOLD THE NET IN THE STREAM · LET GO OVER THE BIN', 82, s.msgT > 0 ? '#ff8a8a' : '#fff', 17);
+    };
+    return s;
+  },
+};
+Object.assign(GAMES, NEW_GAMES);
+
 export const makeGame = (kind, o) => { o = o || {}; const s = GAMES[kind](o), a = ART[kind]; if (a) s.draw = (g, t) => a(g, s, t || 0, o); return s; };
 
 // ------------------------------------------------------------------ the panel they're played on
@@ -863,6 +1148,9 @@ export class Panel {
   show(thing, { onDone, onClose, canClose = true } = {}) {
     this.cur = thing; this.onDone = onDone; this.onClose = onClose; this.canClose = canClose; this.t = 0; this.doneT = 0;
     this.x.style.display = canClose ? '' : 'none';
+    // (a screen can ask for a big, labelled close button, e.g. the security cameras: '✕ STOP WATCHING')
+    Object.assign(this.x.style, thing.bigClose ? { width: 'auto', height: '64px', padding: '0 22px', borderRadius: '32px', border: '4px solid #ffd400', font: '900 22px Arial', boxShadow: '0 0 0 4px rgba(0,0,0,0.5), 0 6px 18px rgba(0,0,0,0.6)' } : { width: '54px', height: '54px', padding: '0', borderRadius: '50%', border: '3px solid #fff', font: '900 24px Arial', boxShadow: 'none' });
+    this.x.textContent = thing.bigClose || '✕';
     const vr = this.renderer.xr.isPresenting;
     this.wrap.style.display = vr ? 'none' : 'flex'; this.mesh.visible = vr; this.placed = false;
     this.player.menuLock = true; if (this.player.flatMove) this.player.flatMove = { x: 0, z: 0 };
@@ -877,6 +1165,7 @@ export class Panel {
     if (vr !== this.mesh.visible) { this.wrap.style.display = vr ? 'none' : 'flex'; this.mesh.visible = vr; this.placed = false; }
     if (vr) this.vrPoint();
     c.update && c.update(dt);
+    if (c.quit) { c.quit = false; this.close(); return; }          // (a screen's own close button)
     if (c.done && this.doneT === 0) { this.doneT = 0.001; sfx('fixed', null, 0.6); }
     if (this.doneT > 0) { this.doneT += dt; if (this.doneT > 0.9) { const f = this.onDone; this.close(true); f && f(); return; } }
     this.redraw();
