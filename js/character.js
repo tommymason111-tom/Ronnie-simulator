@@ -7,7 +7,8 @@ import { Ragdoll } from './ragdoll.js';
 import { canvasTex, fitText, roundRect, blobTex } from './textures.js';
 import { Dialogue, BANKS } from './dialogue.js';
 import { sfx, babble } from './audio.js';
-import { speak } from './voices.js';
+import { voiceLine, cancelLine } from './voices.js';
+const MAX_TALKERS = 2;      // (how many people can be talking at once)
 import { TUNING } from './config.js';
 import { Item } from './foods.js';
 import { MODE_LINES, modeGroup } from './modelines.js';
@@ -126,16 +127,27 @@ export class Character {
     const isBank = !!(this.banks[bankOrText] || (this.cfg.globalBanks && BANKS[bankOrText]));
     const pri = priority ?? (isBank && BANKS[bankOrText] ? BANKS[bankOrText].pri : 3);
     if (!this.rag.mesh) return false;          // not here yet (still loading): no floating speech bubbles
-    if (this.speakT > 0.6 && pri < this.speakPri) return false;
+    if ((this.speakT > 0.6 || this.voicePending) && pri < this.speakPri) return false;
+    // only a couple of people talk at once (no wall of bubbles and voices, e.g. everyone greeting you as you join);
+    // the important lines (attacks, being hit, the game's own announcements: priority 4+) always get through
+    if (pri < 4 && !this.mpPuppet) { let n = 0; for (const c of (Character.ALL || [])) if (c !== this && !c.disposed && (c.speakT > 0 || c.voicePending) && !c.mpPuppet) n++; if (n >= MAX_TALKERS) return false; }
     const text = isBank ? this.line(bankOrText) : (BANKS[bankOrText] || this.banks[bankOrText] ? null : bankOrText);
     if (!text) return false;
+    this.speakPri = pri; this.quietT = 0;
+    // a real voice (voices.js): the bubble comes up the moment the sound starts. Otherwise, the bubble and the babble now
+    if (voiceLine(this.id, text, this.headPos(_v), { key: 'npc_' + this.id, onStart: (dur) => this.showLine(text, pri, dur) })) { this.voicePending = true; return true; }
+    this.showLine(text, pri, 0);
+    babble(this.headPos(_v), Math.min(14, 4 + Math.floor(text.length / 8)), this.cfg.voicePitch || 1);
+    return true;
+  }
+  // the bubble up, for as long as the line takes to say (or read)
+  showLine(text, pri, dur = 0) {
+    this.voicePending = false;
     this.drawBubble(text);
     this.bubble.visible = true;
-    this.speakT = 2.2 + text.length * 0.055;
+    this.speakT = Math.max(2.2 + text.length * 0.055, dur + 0.6);
     this.speakPri = pri;
     this.quietT = 0;
-    if (!speak(this.id, text, this.headPos(_v), { key: 'npc_' + this.id })) babble(this.headPos(_v), Math.min(14, 4 + Math.floor(text.length / 8)), this.cfg.voicePitch || 1);      // (a real voice if they have one: voices.js)
-    return true;
   }
 
   drawBubble(text) {
@@ -188,7 +200,7 @@ export class Character {
     this.rag.setMode('ragdoll', 0);
     this.rag.moveVel.set(0, 0, 0);
     this.pendingLine = line;
-    this.bubble.visible = false; this.speakT = 0;
+    this.bubble.visible = false; this.speakT = 0; if (this.voicePending) { this.voicePending = false; cancelLine('npc_' + this.id); }      // (a line still getting ready isn't said now)
     sfx('boing', this.headPos(_v), 1);
     this.onEvent && this.onEvent('ko', this);
   }

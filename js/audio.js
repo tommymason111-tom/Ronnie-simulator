@@ -565,19 +565,18 @@ export function playTune(kind, seconds) {
   sched();
 }
 
-// ---- real voice clips (ElevenLabs lines, see voices.js): fetched, decoded, played from where the speaker stands.
-// A few recent clips are kept decoded (a line often comes round again); one line at a time per speaker (`key`).
-const VCACHE = new Map(), VPLAY = new Map(), VMAX = 10;
-export function playVoice(url, pos = null, vol = 1, key = null, onFail = null) {
-  if (!ctx || ctx.state !== 'running') return;
-  const go = (buf) => { if (!buf || !ctx) return; if (key) stopVoice(key);
-    const src = ctx.createBufferSource(); src.buffer = buf; const g = out(pos, 1.6 * vol); src.connect(g); src.start();
-    if (key) VPLAY.set(key, src); src.onended = () => { try { src.disconnect(); g.disconnect(); if (g._p) g._p.disconnect(); } catch (e) {} if (key && VPLAY.get(key) === src) VPLAY.delete(key); }; };
-  const hit = VCACHE.get(url); if (hit) { VCACHE.delete(url); VCACHE.set(url, hit); go(hit); return; }
-  fetch(url).then(r => { if (!r.ok) { onFail && onFail(r.status); return null; } return r.arrayBuffer(); })
-    .then(ab => ab && new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)))
-    .then(buf => { if (!buf) return; VCACHE.set(url, buf); while (VCACHE.size > VMAX) VCACHE.delete(VCACHE.keys().next().value); go(buf); })
-    .catch(() => { onFail && onFail(0); });
+// ---- real voice clips (ElevenLabs lines, see voices.js): decoded, then played from where the speaker stands, one
+// line at a time per speaker (`key`)
+const VPLAY = new Map();
+export const audioCtx = () => ctx;
+export function decodeClip(ab) { return ctx ? new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)) : Promise.resolve(null); }
+// starts it now; returns how long it lasts (seconds)
+export function playBuffer(buf, pos = null, vol = 1, key = null) {
+  if (!ctx || !buf) return 0; if (key) stopVoice(key);
+  const src = ctx.createBufferSource(); src.buffer = buf; const g = out(pos, 1.6 * vol); src.connect(g); src.start();
+  if (key) VPLAY.set(key, src);
+  src.onended = () => { try { src.disconnect(); g.disconnect(); if (g._p) g._p.disconnect(); } catch (e) {} if (key && VPLAY.get(key) === src) VPLAY.delete(key); };
+  return buf.duration;
 }
 export function stopVoice(key) { const s = VPLAY.get(key); if (s) { try { s.stop(); } catch (e) {} VPLAY.delete(key); } }
 

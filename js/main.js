@@ -12,7 +12,7 @@ import { Tommy } from './tommy.js';
 import { STAGE_LINES } from './dialogue.js';
 import { AttackFX } from './attackfx.js';
 import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience, setMuted } from './audio.js';
-import { speak } from './voices.js';
+import { voiceLine, warmLine, VOICED } from './voices.js';
 import { FONT } from './textures.js';
 import { createPhysics } from './physics.js';
 import { setupTouch } from './touch.js';
@@ -1307,7 +1307,8 @@ director.startRemote = (id) => { if (!net.host && director.mode && (PAUSE_MODES[
 powerups = new PowerUps({ scene, room, items, player, sfx, words, net, mp, eatWhole: (it) => hooverEat(it),
   enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter'].includes(director.mode) });
 mp.selfBody = () => selfBody;      // (your emotes play on your own body too)
-mp.onChat = (text, p) => { chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text); if (!p) speak(net.char, text, player.head, { key: 'chat_me' }); };      // (you hear your own message in your character's voice too)
+mp.onChat = (text, p) => { chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text); if (!p) voiceLine(net.char, text, player.head, { key: 'chat_me' }); };      // (you hear your own message in your character's voice too)
+mp.voiceWarm = (text) => VOICED.has(net.char) ? warmLine(net.char, text) : null;      // (voices.js)
 mp.onChatBlocked = (why) => words.show(why || 'NOT NOW', player.head.clone().addScaledVector(player.fwd, 0.8), '#ff5252', 0.07, 1.4);
 // music from the speakers (the DJ booth, the hi-fi, the tannoy): only the host picks, everyone hears it
 // (switched off for now, with the TVs: MEDIA_ON brings both back. The speakers and tellies stay as scenery.)
@@ -1450,7 +1451,10 @@ class SquadPuppet {
     x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; let f = 40; do { x.font = `900 ${f}px Arial`; f -= 2; } while (x.measureText(nm).width > 290 && f > 16); x.fillText(nm, 160, 38);
     x.fillStyle = this.tagRed ? '#ff6b6b' : '#c9d3ff'; x.font = '700 20px Arial'; x.fillText((this.tagRed ? '🔪 IMPOSTER · ' : '👤 PLAYER · ') + 'as ' + (this.p.char === 'tommy' ? 'Tommy' : SQUAD_MP[this.p.char]?.name || this.c.name), 160, 74); this.tagTex.needsUpdate = true; }
   // a chat message: a black speech bubble over their head (black, so you can tell it from the squad's white ones)
-  chat(text) {
+  chat(text) {      // (a real voice: the bubble comes up as their voice starts; voices.js)
+    if (this.p.self || !voiceLine(this.p.char, text, this.c.headPos(new THREE.Vector3()), { key: 'chat_' + (this.p.id || this.p.name), onStart: (dur) => this.drawChat(text, dur) })) this.drawChat(text, 0);
+  }
+  drawChat(text, dur = 0) {
     if (!this.chatS) { const c = document.createElement('canvas'); c.width = 512; c.height = 200; this.chatC = c; this.chatT = new THREE.CanvasTexture(c); this.chatT.colorSpace = THREE.SRGBColorSpace;
       this.chatS = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.chatT, depthTest: false, transparent: true })); this.chatS.renderOrder = 13; scene.add(this.chatS); }
     const g = this.chatC.getContext('2d'); g.clearRect(0, 0, 512, 200);
@@ -1459,8 +1463,7 @@ class SquadPuppet {
     g.fillStyle = 'rgba(12,12,16,0.94)'; g.beginPath(); g.roundRect(6, 6, 500, h, 26); g.fill(); g.lineWidth = 4; g.strokeStyle = '#fff'; g.stroke();
     g.beginPath(); g.moveTo(230, h + 4); g.lineTo(256, h + 34); g.lineTo(282, h + 4); g.fill();
     g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; lines.forEach((l, i) => g.fillText(l, 256, 6 + 15 + lh / 2 + i * lh));
-    this.chatT.needsUpdate = true; this.chatS.scale.set(0.9, 0.9 * 200 / 512, 1); this.chatS.visible = true; this.chatUntil = performance.now() + 2500 + text.length * 70;
-    if (!this.p.self) speak(this.p.char, text, this.c.headPos(new THREE.Vector3()), { key: 'chat_' + (this.p.id || this.p.name) });      // (read out in their character's real voice, if it has one)
+    this.chatT.needsUpdate = true; this.chatS.scale.set(0.9, 0.9 * 200 / 512, 1); this.chatS.visible = true; this.chatUntil = performance.now() + Math.max(2500 + text.length * 70, dur * 1000 + 600);
   }
   placeTag() { if (this.chatS) { const on = performance.now() < this.chatUntil; this.chatS.visible = on; if (on) { const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())); this.chatS.position.set(h.x, h.y + (this.p.self ? 0.4 : 0.6), h.z); } }
     if (this.p.self) return; if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())); this.tag.position.set(h.x, h.y + 0.42, h.z); }
