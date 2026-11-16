@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { STAGES, FOODS, TUNING, JUNK_TYPES, pickJunk } from './config.js';
 import { buildRoom } from './room.js';
+import { buildGrid } from './levels/grid.js';
 import { ItemManager } from './foods.js';
 import { Character } from './character.js';
 import { Crumbs, Words, Tint } from './fx.js';
@@ -63,7 +64,7 @@ scene.background = new THREE.Color(0x9db7ff);
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 40);
 camera.position.set(0, 1.6, 0);
 
-const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant, garden: buildGarden };
+const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant, garden: buildGarden, grid: buildGrid };
 const room = (BUILD[SEL.place] || buildRoom)(scene);
 const levelMeshes = []; scene.traverse(o => { if (o.isMesh) levelMeshes.push(o); });      // (the level itself: see memory.js)
 releaseLevelGeometry(levelMeshes, Infinity); noteLevelTextures(levelMeshes);      // (each piece's spare copy goes the moment it's first sent to the graphics chip: the peak while loading is what phones close a page for)
@@ -216,6 +217,7 @@ function onThrow(start, vel, type, who, spec) {
 tommy.onThrow = onThrow;
 tommy.onTrip = (t) => director.stun(t, 'tommy');
 tommy.onTripAnnounce = (t) => director.announce(t, 'trip');
+tommy.cardUp = () => !!(attackFx && attackFx.cardT >= 0);      // (his throw waits till the attack card's gone)
 tommy.canTrip = () => director.canAttack(tommy, 'trip');   // he waits his turn like everyone else
 
 const SNACK_SFX = { burger: 'chomp', pizza: 'crunch', doughnut: 'squish', hotdog: 'munch', fries: 'crunch', kebab: 'chomp', chicken: 'crunch', taco: 'crunch', crisps: 'crunch', choc: 'snap', cookie: 'crunch', icecream: 'lick', sausageroll: 'munch', croissant: 'munch', baguette: 'munch', muffin: 'squish', painchoc: 'munch', swirl: 'lick', icedbun: 'squish', pretzel: 'crunch', nuggets: 'crunch', pasty: 'munch', onionrings: 'crunch', burrito: 'munch', waffle: 'crunch', pancakes: 'squish', churros: 'crunch', cupcake: 'squish', baconbap: 'munch' };

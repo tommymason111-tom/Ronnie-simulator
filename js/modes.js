@@ -37,7 +37,7 @@ export const MODES = {
 };
 // which modes each place offers (also used by the start screen)
 export function modesFor(place) {
-  const only = { shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] }[place];     // these places have one game each (and free roam)
+  const only = { shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'], grid: ['roam'] }[place];     // these places have one game each (and free roam)
   if (only) return only;
   return Object.keys(MODES).filter(id => {
     const m = MODES[id];
@@ -350,8 +350,11 @@ export class Director {
     if (this.remote) { this.updateBoard(dt, ctx); this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
     if (this.pending) {                       // an announced attack that hasn't landed yet
       const pd = this.pending, P = g.player;
-      pd.t -= dt;
-      if (pd.t <= 0) {
+      pd.t -= dt; pd.age = (pd.age || 0) + dt;
+      // the card: up for 2 seconds, then away. The attack only lands once it's completely gone (never hidden behind it)
+      if (pd.age >= ANNOUNCE_T && g.fx && g.fx.cardShowing) g.fx.hideCard();
+      if (pd.t <= 0 && g.fx && g.fx.cardT >= 0 && pd.age < ANNOUNCE_T + 3) { /* still sliding away */ }
+      else if (pd.t <= 0) {
         if (P.knock || P.throwAnim || (g.fx && g.fx.inCutscene)) { if ((pd.wait += dt) > 12) { this.pending = null; g.fx && g.fx.hideCard(); } }
         else this.stun(pd.who, pd.key);
       }

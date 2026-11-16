@@ -10,6 +10,7 @@ import { sfx, babble } from './audio.js';
 import { TUNING } from './config.js';
 import { Item } from './foods.js';
 import { MODE_LINES, modeGroup } from './modelines.js';
+const PHONE_UI = typeof navigator !== 'undefined' && (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)));
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
 export const KO_IMPULSE = 6;          // N·s — anything harder than this knocks someone out
@@ -39,7 +40,7 @@ export class Character {
 
     // speech bubble
     this.bubbleCanvas = document.createElement('canvas');
-    this.bubbleCanvas.width = 1024; this.bubbleCanvas.height = 512;
+    this.bubbleK = PHONE_UI ? 0.75 : 1; this.bubbleCanvas.width = 1024 * this.bubbleK; this.bubbleCanvas.height = 512 * this.bubbleK;      // (a phone: 3/4 size, still sharp at phone size; ~1MB less each, with a whole squad that adds up)
     this.bubbleTex = new THREE.CanvasTexture(this.bubbleCanvas);
     this.bubbleTex.colorSpace = THREE.SRGBColorSpace;
     this.bubbleTex.generateMipmaps = false; this.bubbleTex.minFilter = THREE.LinearFilter;
@@ -137,7 +138,7 @@ export class Character {
   }
 
   drawBubble(text) {
-    const g = this.bubbleCanvas.getContext('2d'), w = 1024, h = 512;
+    const g = this.bubbleCanvas.getContext('2d'), w = 1024, h = 512; g.setTransform(this.bubbleK || 1, 0, 0, this.bubbleK || 1, 0, 0);
     g.clearRect(0, 0, w, h);
     g.fillStyle = 'rgba(0,0,0,0.25)'; roundRect(g, 26, 26, w - 40, h - 130, 60); g.fill();
     g.fillStyle = '#ffffff'; roundRect(g, 16, 16, w - 40, h - 130, 60); g.fill();

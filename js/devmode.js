@@ -52,8 +52,10 @@ export function startDev(RS) {
   // ---- the random attacks stay off while you test
   // ---- nobody attacks you unless you ask: always free roam (the squad wandering about, no attack countdown), and Tommy
   // never starts anything himself (he's only "on" while he's doing the attack you set off, then he's off again)
-  if (D && D.fullMode !== 'roam') RS.newGame('roam');
-  const quiet = () => { if (D) { D.nextAttackT = Math.max(D.nextAttackT || 0, 600); if (D.fullMode !== 'roam' && !D.__devSwitching) { D.__devSwitching = true; RS.newGame('roam'); setTimeout(() => { D.__devSwitching = false; }, 1000); } }
+  if (D && D.fullMode !== 'roam' && D.fullMode !== 'roam0') { try { RS.newGame('roam'); } catch (e) { console.warn('dev', e); } }
+  // (only ever switched once: it used to try every second if the game wasn't plain free roam, which could restart
+  // the game over and over until a phone ran out of memory)
+  const quiet = () => { if (D) D.nextAttackT = Math.max(D.nextAttackT || 0, 600);
     const t = RS.tommy; if (t) { t.directed = true; t.attacks = !!(t.devTrip && t.busyAttacking); if (t.devTrip && !t.attacks) t.devTrip = false; } };
 
   // ---- EMOTES: a stand-in of the character, a couple of metres in front of you, facing you

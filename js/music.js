@@ -51,6 +51,7 @@ const STATIONS = {
   pub: { name: 'DJ BOOTH', button: [-1.26, 1.2, -8.47], source: [-1.26, 1.4, -8.5], speakers: [] },           // (the booth already has its speakers)
   garden: { name: 'HI-FI', button: [-6.22, 1.3, 10.72], source: [-5.9, 1.0, 11.4], speakers: [[-6.22, 0, 10.72, Math.PI * 0.75, 1.0], [-5.22, 0, 11.72, Math.PI * 0.75, 1.0]] },   // either side of Lewis's corner telly, facing into the room
   restaurant: { name: 'SPEAKER', button: [-2.2, 1.3, -8.55], source: [-2.2, 2.2, -8.6], speakers: [[-2.2, 0, -8.62, 0, 1.15], [2.2, 0, -8.62, 0, 1.15]] },
+  grid: { name: 'SPEAKER', button: [1.2, 1.3, 19.7], source: [1.2, 1.4, 19.7], speakers: [[1.2, 0, 19.75, Math.PI, 1.0]] },     // (the test grid: one speaker by the back wall)
   bedroom: { name: 'SPEAKER', button: [2.18, 1.3, -0.62], source: [2.18, 1.0, -0.62], speakers: [[2.18, 0, -0.62, -Math.PI / 2, 0.95]] },     // on the end of the desk
   shop: { name: 'TANNOY', button: [11.35, 1.35, 8.35], source: null, intercom: [11.35, 8.35, Math.PI / 2], ceiling: true },
 };

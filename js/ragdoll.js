@@ -45,6 +45,20 @@ export function fetchModel(url) {
 // ONE picture: the mask goes in the colour picture's spare alpha channel. Drawn exactly the same (the mask is cut at
 // the same 0.5 either way, and filtered the same), but one picture on the graphics chip instead of two, and the
 // originals let go of. Done once per model, shared by everything that shows that person.
+// phones (an iPhone above all) get the characters' skins at 1024 x 1024: still sharper than a phone screen ever shows a
+// character, and less than half the memory each (with the whole squad about, 1536 x 1536 was ~95MB more than this)
+const PHONE = typeof navigator !== 'undefined' && (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)));
+const SKIN_MAX = PHONE ? 1024 : 4096;
+// ...and their surface detail (the normal map) at 512 on a phone: you can't tell at phone size, and it's a quarter of the memory
+function phoneNormal(gltf, n) {
+  if (!n || !PHONE) return n || null; if (gltf.__normal) return gltf.__normal;
+  try { const im = n.image; if (!im || !im.width || im.width <= 512) return (gltf.__normal = n);
+    const c = document.createElement('canvas'); c.width = c.height = 512; c.getContext('2d').drawImage(im, 0, 0, 512, 512);
+    const t = new THREE.CanvasTexture(c); t.flipY = n.flipY; t.wrapS = n.wrapS; t.wrapT = n.wrapT; t.channel = n.channel; t.colorSpace = n.colorSpace;
+    t.offset.copy(n.offset); t.repeat.copy(n.repeat); t.rotation = n.rotation; t.center.copy(n.center); t.anisotropy = 4; t.userData.keep = true;
+    try { im.close && im.close(); } catch (e) {} n.dispose();
+    return (gltf.__normal = t); } catch (e) { return (gltf.__normal = n); }
+}
 export function skinOf(gltf, old) {
   if (gltf.__skin) return gltf.__skin;
   const m = old.map, a = old.aoMap, mi = m && m.image; let out = { map: m || null, alphaMap: a || null, thumb: null };
@@ -52,8 +66,8 @@ export function skinOf(gltf, old) {
     if (mi && mi.width) { const th = document.createElement('canvas'); th.width = th.height = 128; th.getContext('2d').drawImage(mi, 0, 0, 128, 128); out.thumb = th; }      // (a little copy: emotes read skin colour from it)
     const same = a && a.image && a.image.width && a.channel === m.channel && a.offset.equals(m.offset) && a.repeat.equals(m.repeat) && a.rotation === m.rotation;
     if (mi && mi.width && same) {
-      const w = mi.width, h = mi.height, c = document.createElement('canvas'); c.width = w; c.height = h;
-      const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(mi, 0, 0); const px = g.getImageData(0, 0, w, h).data;
+      const k = Math.min(1, SKIN_MAX / Math.max(mi.width, mi.height)), w = Math.round(mi.width * k), h = Math.round(mi.height * k), c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(mi, 0, 0, w, h); const px = g.getImageData(0, 0, w, h).data;
       g.clearRect(0, 0, w, h); g.drawImage(a.image, 0, 0, w, h); const al = g.getImageData(0, 0, w, h).data;
       for (let i = 3; i < px.length; i += 4) px[i] = al[i - 2];                  // (the mask's green, as three.js reads it)
       c.width = c.height = 1;
@@ -297,7 +311,7 @@ export class Ragdoll {
     const old = src.material;
     // a little self-lighting from his own texture softens the low-poly facets under harsh lights
     const skin = skinOf(gltf, old);
-    const mat = new THREE.MeshLambertMaterial({ map: skin.map, normalMap: old.normalMap || null, color: 0xe6e6e6, emissive: 0x3a3a3a, emissiveMap: skin.map, side: old.side || THREE.FrontSide });   // (double-sided if the model says so)
+    const mat = new THREE.MeshLambertMaterial({ map: skin.map, normalMap: phoneNormal(gltf, old.normalMap), color: 0xe6e6e6, emissive: 0x3a3a3a, emissiveMap: skin.map, side: old.side || THREE.FrontSide });   // (double-sided if the model says so)
     if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
     // the eye openings are cut out with a smooth mask (stored in the model's occlusion slot; packed into the picture's alpha)
     if (old.aoMap) { mat.alphaMap = skin.alphaMap; mat.alphaTest = 0.5; mat.side = THREE.DoubleSide; }   // double-sided: steep views into a socket never see through his head
