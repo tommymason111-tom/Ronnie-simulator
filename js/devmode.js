@@ -132,7 +132,7 @@ export function startDev(RS) {
     if (d.job) { const t = TASKS.find(x => x.id === d.job); return job(t.kind, t.o, t.name); }
     if (d.fix === 'lights') return job('switches', { title: 'FIX THE LIGHTS' }, 'the lights');
     if (d.fix === 'valve') return job('crank', { title: 'KEG ROOM VALVE', hint: 'RELEASE THE PRESSURE', turns: 2 }, 'the keg valve'); });
-  render(); open(true);
+  render(); open(!(RS.renderer && RS.renderer.xr && RS.renderer.xr.isPresenting));      // (in the headset it starts closed: walk about, B brings it up)
 
   // ---- every frame
   RS.onFrame.push((dt) => { quiet(); jobs.update(dt);
