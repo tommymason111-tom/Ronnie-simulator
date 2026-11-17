@@ -65,6 +65,9 @@ export class DomPanel {
           // (a menu centred with a CSS transform, like the dev menu, came out shifted half off the picture: the copy's put
           // exactly where the real one is, without the transform)
           if (ce && ce.style && getComputedStyle(el).transform !== 'none') Object.assign(ce.style, { transform: 'none', left: r.left + 'px', top: r.top + 'px', right: 'auto', bottom: 'auto', margin: '0' }); } });
+      // (a page with no size for a moment, half way through changing: keep the last good picture. A 0x0 one broke the
+      // drawing for that frame and the texture on the graphics card)
+      if (!shot || !shot.width || !shot.height || !r.width || !r.height) { this.busy = false; this.lastShot = performance.now(); return; }
       this.base = shot; this.rect = { left: r.left, top: r.top, width: r.width, height: r.height };
       // (a new size needs a new texture on the graphics card: the old one can't grow, the picture just didn't update)
       if (this.cv.width !== shot.width || this.cv.height !== shot.height) { this.cv.width = shot.width; this.cv.height = shot.height; this.tex.dispose(); }
@@ -76,7 +79,7 @@ export class DomPanel {
   }
   // the picture plus the outline round what you're pointing at
   compose() {
-    if (!this.base) return; const g = this.g; g.clearRect(0, 0, this.cv.width, this.cv.height); g.drawImage(this.base, 0, 0);
+    if (!this.base || !this.base.width || !this.base.height || !this.cv.width || !this.cv.height) return; const g = this.g; g.clearRect(0, 0, this.cv.width, this.cv.height); g.drawImage(this.base, 0, 0);
     const el = this.hoverEl; if (el && this.rect && el.isConnected) { const b = el.getBoundingClientRect(), k = this.cv.width / this.rect.width;
       const x = (b.left - this.rect.left) * k, y = (b.top - this.rect.top) * k, w = b.width * k, h = b.height * k;
       g.save(); g.lineWidth = Math.max(4, 5 * k); g.strokeStyle = '#ffe866'; g.shadowColor = '#ffd400'; g.shadowBlur = 18 * k; g.fillStyle = 'rgba(255,232,102,0.16)';
