@@ -1010,6 +1010,9 @@ function vrMenuButtons() {
 // menu shows instead; coming back in, the menu's in front of you again
 renderer.xr.addEventListener('sessionend', () => { vrPause.close(); pauseEl.classList.remove('in-vr'); player.menuLock = paused; player.noTurn = false; player.wheelOpen = false; });
 renderer.xr.addEventListener('sessionstart', () => { if (paused) pauseEl.classList.add('in-vr'); });
+// developer mode, putting the headset on: the dev menu (which opens by itself on a phone or computer) starts closed, so
+// you can walk about straight away. B brings it up
+renderer.xr.addEventListener('sessionstart', () => { if (!window.__devMode) return; const dp = document.getElementById('dev-panel'), btn = document.getElementById('dev-btn'); if (dp && btn && dp.classList.contains('on')) btn.click(); });
 renderer.xr.addEventListener('sessionstart', () => { const s = renderer.xr.getSession(); s.addEventListener('visibilitychange', () => { if (s.visibilityState !== 'visible' && !paused && director.running) setPaused(true); }); });
 
 // VR emote wheel (multiplayer): press B once to open it (it stays open in front of you), push the right stick at an
