@@ -262,7 +262,7 @@ const CRUMB_COLORS = {
   cucumber: [0x2f6b2a, 0xc5e1a5], pepper: [0xd32f2f, 0xffffff], cauliflower: [0xf5f0dc, 0x6aaa3a],
   croissant: [0xd99a3a, 0xf0c878, 0xb8742a], baguette: [0xc98a3c, 0xf6efe0], muffin: [0x5a2e14, 0x2a140a, 0xf2f0ea], painchoc: [0xd99a3a, 0x3a1a0a], swirl: [0xd99a3a, 0x7a4018, 0xffffff], icedbun: [0xf0c878, 0xfff8f0, 0xd32f2f], pretzel: [0x8a4a1a, 0xffffff],
 };
-const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion();
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _q = new THREE.Quaternion();
 
 function addChonk(n) {
   G.chonk = Math.max(STAGES[G.stage].chonk, G.chonk + n);
@@ -1444,6 +1444,10 @@ mp.start();
 if (window.ronnieMP && window.ronnieMP.role === 'join') director.remote = true;
 // someone playing as a squad member: their own body, moved by where their head and hands are
 net.makeAvatar = (p) => { if (!p.char || (p.char !== 'tommy' && !SQUAD_MP[p.char])) return null; return new SquadPuppet(p); };   // (Ronnie too: his full-body model)
+// which way a pose faces (its yaw), and a phone player's hand as it sits relative to them: [right-ish, up, forward-ish]
+const _Y = new THREE.Vector3(0, 1, 0);
+function yawOfQ(q) { const f = new THREE.Vector3(0, 0, -1).applyQuaternion(new THREE.Quaternion(q[0], q[1], q[2], q[3])); return Math.atan2(f.x, f.z); }
+function localHand(m) { const v = new THREE.Vector3(m.rh[0] - m.h[0], m.rh[1] - m.h[1], m.rh[2] - m.h[2]).applyAxisAngle(_Y, -yawOfQ(m.q)); return [v.x, v.y, v.z]; }
 class SquadPuppet {
   constructor(p) { this.c = p.char === 'tommy' ? (() => { const t = new Tommy(scene, room, physics); t.load(); return t; })() : new SquadMemberMP(scene, room, physics, p.char, [0, 0, 0], director); this.c.attacks = false; this.c.mpPuppet = true; this.c.active = false; this.pos = new THREE.Vector3(); this.yaw = 0; this.rh = new THREE.Vector3(); this.lh = new THREE.Vector3(); this.first = true; this.c.name = p.name || this.c.name;
     // a name tag over their head (so you can tell a real player from the squad): their name, and who they're playing as
@@ -1466,42 +1470,58 @@ class SquadPuppet {
     if (last !== J.seen) {
       if (last.ts != null) { const o = last.t - last.ts;          // (their clock -> ours: the quickest trip seen, creeping up slowly so a drifting clock can't strand it)
         J.off = J.off == null ? o : Math.min(o, J.off + (now - (J.at || now)) * 0.002);
-        const late = o - J.off; J.dev += (late - J.dev) * (late > J.dev ? 0.25 : 0.01);
+        const late = o - J.off, L = J.lt || (J.lt = []); L.push(late); if (L.length > 60) L.shift();
+        // (how late a pose usually is: most of the last 3 seconds' worth, not the worst. A phone network's odd hiccup (a 4G
+        // handover) is ridden out by the catching up below, not by drawing everyone a third of a second behind from then on)
+        if (L.length >= 8) { const so = L.slice().sort((x, y) => x - y); J.dev = so[Math.floor(so.length * 0.85)]; }
         const prev = J.seen; if (prev && prev.ts != null && last.ts > prev.ts) J.gap += (Math.min(120, last.ts - prev.ts) - J.gap) * 0.1; }
       J.seen = last; J.at = now; }
-    J.D += (Math.min(350, Math.max(60, J.gap * 1.1 + J.dev * 1.5 + 8)) - J.D) * 0.02;      // (eased, so the playback never jumps)
+    J.D += (Math.min(300, Math.max(55, J.gap * 1.05 + J.dev + 10)) - J.D) * 0.02;      // (eased, so the playback never jumps)
     // the playback clock: normally just "now, a moment ago". If the poses stop coming (a stall: a lost packet holds up
     // everything behind it), it slows down smoothly as it runs out instead of freezing, then catches up a little faster
     // than real time when they arrive, instead of jumping
     const want = now - J.D, Tl = T(last);
-    if (J.pt == null || Math.abs(want - J.pt) > 1500) J.pt = want;
-    else { let rate = 1 + Math.max(-0.5, Math.min(0.25, (want - J.pt) / 400)); const ahead = Tl - J.pt; if (ahead < 50) rate = Math.min(rate, Math.max(0.1, ahead / 50));
+    if (J.pt == null || Math.abs(want - J.pt) > 3000) J.pt = want;
+    // (behind after a hiccup: catches up faster the further behind it is, a quick glide rather than a long drag or a jump)
+    else { let rate = 1 + Math.max(-0.5, Math.min(0.6, (want - J.pt) / 300)); const ahead = Tl - J.pt; if (ahead < -40) rate = Math.min(rate, Math.max(0, 1 + (ahead + 40) / 80));      // (out of poses: carries on the way they were going for a moment, then eases to a stop. It used to start slowing 50ms before running out, every time a pose was a little late: a stutter)
       J.pt += Math.max(0, now - (J.pn || now)) * rate; }
     J.pn = now;
-    const rt = J.pt, n = buf.length;
+    // a long gap between two of their poses: nothing changed (a game only sends what's changed: they stood still), or their
+    // game froze for a moment. Nothing happened in it, so they're held where they were until just before the next pose
+    // and the clock skips across it. (Played out as time, someone who stood still a second and set off was drawn a second
+    // late, then sped up to catch up)
+    const IDLE = 250, n = buf.length;
+    for (let j = n - 1; j > 0; j--) { const tA = T(buf[j - 1]), tB = T(buf[j]); if (tB <= J.pt) break;
+      if (tB - tA > IDLE && J.pt > tA && J.pt < tB - J.gap) { J.pt = Math.max(J.pt, Math.min(want, tB - J.gap)); break; } }
+    const rt = J.pt;
     let i = n - 2; while (i > 0 && T(buf[i]) > rt) i--;
-    const a = buf[i], b = buf[i + 1], ta = T(a), tb = T(b), span = Math.max(1, tb - ta);
+    this.p.keepFrom = (buf[Math.max(0, i - 1)] || {}).ts;      // (the buffer keeps these: net.js pushPose)
+    const a = buf[i], b = buf[i + 1], tb = T(b), held = tb - T(a) > IDLE, ta = held ? tb - J.gap : T(a), span = Math.max(1, tb - ta);
     let k = (rt - ta) / span;
     if (k < 0) return a.m;
     const A = a.m, B = b.m, e0 = buf[i - 1] || a, e3 = buf[i + 2] || b, P0 = e0.m, P3 = e3.m;
-    // late (past the newest pose): carry on the way it was going for a moment (at most 100ms, then wait). Which way and how
+    // late (past the newest pose): carry on the way it was going for a moment (at most 120ms: the playback clock eases to a
+    // stop just there too, so when poses come again they carry on from where this left them, no jump). Which way and how
     // fast is taken over at least 40ms of poses, and never faster than a person moves: from just the last two, sent a
     // few milliseconds apart after a hitch, a millimetre of wobble came out as metres a second and threw them across the room
-    if (k > 1) { const ex = Math.min(rt - tb, Math.min(100, J.gap * 1.5)); let j = i; while (j > 0 && tb - T(buf[j]) < 40) j--;
+    if (k > 1) { const ex = Math.min(rt - tb, 120); let j = i; while (j > 0 && tb - T(buf[j]) < 40) j--;
       const o = buf[j], to = T(o), dtv = Math.max(40, tb - to);
       const on = (key, vmax) => B[key].map((v, n) => { const vel = Math.max(-vmax, Math.min(vmax, (v - o.m[key][n]) / dtv)); return v + vel * ex; });
       const q2 = new THREE.Quaternion(...B.q);
-      return { ...B, h: on('h', 0.006), rh: on('rh', 0.012), l: on('l', 0.012), q: [q2.x, q2.y, q2.z, q2.w], fcv: null }; }
+      return { ...B, h: on('h', 0.006), rh: on('rh', 0.004), l: on('l', 0.004), q: [q2.x, q2.y, q2.z, q2.w], fcv: null, rl: B.flat ? localHand(B) : null }; }
     // between two poses: a smooth curve through them, its slopes scaled by the real time between each pair (they don't
     // arrive evenly: assuming they did bent the curve out past the poses when one gap was short and the next long)
-    const s0 = Math.max(1, tb - T(e0)), s3 = Math.max(1, T(e3) - ta), f1 = e0 === a ? 1 : span / s0, f2 = e3 === b ? 1 : span / s3;
+    const s0 = Math.max(1, tb - T(e0)), s3 = Math.max(1, T(e3) - ta), f1 = held ? 0 : e0 === a ? 1 : span / s0, f2 = e3 === b ? 1 : span / s3;      // (held still: it sets off from a standstill)
     const cr = (p0, p1, p2, p3) => p1.map((v, j) => { const m1 = (p2[j] - p0[j]) * f1, m2 = (p3[j] - v) * f2, k2 = k * k, k3 = k2 * k;
         return (2 * k3 - 3 * k2 + 1) * v + (k3 - 2 * k2 + k) * m1 + (-2 * k3 + 3 * k2) * p2[j] + (k3 - k2) * m2; });
     const q = new THREE.Quaternion(...A.q).slerp(new THREE.Quaternion(...B.q), Math.min(1, k));
     // (hand tracking's finger curls too: blended between the two poses, not stepping from one to the next 20 times a second)
     let fcv = null; if (typeof B.fc === 'string' && typeof A.fc === 'string' && A.fc.length === B.fc.length) { const kk = Math.min(1, k); fcv = [];
       for (let j = 0; j < B.fc.length; j++) { const x = B.fc.charCodeAt(j) - 48, y = A.fc.charCodeAt(j) - 48; fcv.push(x < 0 || x > 9 ? null : y < 0 || y > 9 ? x / 9 : (y + (x - y) * kk) / 9); } }
-    return { ...B, h: cr(P0.h, A.h, B.h, P3.h), rh: cr(P0.rh, A.rh, B.rh, P3.rh), l: cr(P0.l, A.l, B.l, P3.l), q: [q.x, q.y, q.z, q.w], fcv };
+    // (a phone player's hand, in front of them: blended where it is to them (in front, to the right), not where it is in the
+    // room. In the room, turning round took it straight across, through their head, and up came the arm to eat)
+    let rl = null; if (B.flat && A.flat) { const la = localHand(A), lb = localHand(B), kk = Math.min(1, k); rl = la.map((v, j) => v + (lb[j] - v) * kk); }
+    return { ...B, h: cr(P0.h, A.h, B.h, P3.h), rh: cr(P0.rh, A.rh, B.rh, P3.rh), l: cr(P0.l, A.l, B.l, P3.l), q: [q.x, q.y, q.z, q.w], fcv, rl };
   }
   // Imposter: a body (flat out where they were killed), hidden (a ghost, or down a trapdoor), or an imposter's mate (red tag)
   impVis(v) { const r = this.c.rag; if (r.group) r.group.visible = v; if (this.c.fx) this.c.fx.visible = v; if (this.c.prop) this.c.prop.visible = v && !this.emote.active; this.tag.visible = v && !this.p.self; if (!v) { if (this.chatS) this.chatS.visible = false; this.emote.active && this.emote.stop && this.emote.stop(); } }
@@ -1531,16 +1551,28 @@ class SquadPuppet {
       // ...and drawn bigger: as tall as they've grown (their head is up there) and wider still, up to nearly twice as wide
       const sNow = this.sNow = (this.sNow || 1) + ((pose.s || 1) - (this.sNow || 1)) * Math.min(1, dt * 3), f = this.fatNow;
       this.c.rag.bulk = (sNow > 1.001 || f > 0.001) ? { h: sNow, w: sNow * (1 + 0.55 * f) } : null; }
-    const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * 25);
-    const prev = this.pos.clone(); this.pos.lerp(_a.set(...pose.h), k); if (pose.flat) { this.rh.lerp(_b.set(...pose.rh), k); this.lh.lerp(_b.set(...pose.l), k); } else { this.rh.set(...pose.rh); this.lh.set(...pose.l); }
+    // (a last touch of smoothing on the body: light on a steady connection (it's all lag there), more on a jittery one)
+    const J0 = this.jit, kr = J0 ? 25 + 35 * THREE.MathUtils.clamp(1 - (J0.dev - 30) / 60, 0, 1) : 25;
+    const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * kr);
+    // (no body moves faster than a person can: where the playback's own target jumps (its guess corrected as a late pose
+    // comes in after a hiccup), the jump is taken up and let out over a moment, the whole body and its hands together.
+    // A real jump (a respawn: 2m or more) still snaps straight there)
+    const tH = _a.set(...pose.h), off = this.hOff || (this.hOff = new THREE.Vector3());
+    if (this.lastH && !this.first) { const d = _c.copy(tH).sub(this.lastH), L = d.length(), lim = 4 * Math.max(dt, 1 / 120) + 0.005; if (L >= 2) off.set(0, 0, 0); else if (L > lim) off.addScaledVector(d, -(1 - lim / L)); }
+    (this.lastH || (this.lastH = new THREE.Vector3())).copy(tH); off.multiplyScalar(Math.exp(-dt / 0.15)); tH.add(off);
+    const prev = this.pos.clone(); this.pos.lerp(tH, k); if (pose.flat) { this.rh.lerp(_b.set(...pose.rh).add(off), k); this.lh.lerp(_b.set(...pose.l).add(off), k); } else { this.rh.set(...pose.rh).add(off); this.lh.set(...pose.l).add(off); }
     // knocked flat: a limp ragdoll (like the NPCs), then up again where they landed
     if (this.down > 0) { this.down -= dt; r.sync(); const pl = r.parts.pelvis.body.position; c.fx.position.set(pl.x, 0, pl.z);
       if (this.down <= 0) { c.state = 'idle'; c.setIdlePose(c.t); r.pose.head.identity(); r.getUp(0.9); }
       this.placeTag(); return; }
     const q = new THREE.Quaternion(...pose.q), f = new THREE.Vector3(0, 0, -1).applyQuaternion(q); const yaw = Math.atan2(f.x, f.z);
-    let dy = yaw - this.yaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; this.yaw = this.first ? yaw : this.yaw + dy * Math.min(1, dt * 10);
+    let dy = yaw - this.yaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI;
+    // (turning on a spring: speeds up and slows down smoothly. Eased straight in, a quick about-turn was fastest in its very
+    // first frame, the hands swinging round at 8 m/s)
+    if (this.first) { this.yaw = yaw; this.yawV = 0; } else { const K = 110, st = Math.min(dt, 0.05); this.yawV = (this.yawV || 0) + (K * dy - 2 * Math.sqrt(K) * (this.yawV || 0)) * st; this.yaw += this.yawV * st; }
     const speed = Math.hypot(this.pos.x - prev.x, this.pos.z - prev.z) / Math.max(dt, 1e-3);
     if (this.first) { r.placeAt(this.pos.x, this.pos.z, this.yaw); this.first = false; this.prevH.R.copy(this.rh); this.prevH.L.copy(this.lh); }
+    if (pose.flat && pose.rl) this.rh.copy(this.pos).add(_b.set(pose.rl[0], pose.rl[1], pose.rl[2]).applyAxisAngle(_Y, this.yaw));      // (their hand, turned with their body as it's drawn)
     r.root.x = this.pos.x; r.root.z = this.pos.z; r.yaw = this.yaw;
     if (this.p.self) { r.root.x -= Math.sin(this.yaw) * 0.2; r.root.z -= Math.cos(this.yaw) * 0.2; }      // (just behind your eyes, so looking down you see your chest, belly and legs)
     // walking or standing: from a smoothed speed (a network update arriving a little early or late made it flicker

@@ -13,16 +13,20 @@ import { launch, newPage, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
 
 const SECS = +(process.env.SECS || 6);
-const NETS = (process.env.NETS || '5/2,25/15,60/40,120/90').split(',');
-const WHO = [['HEADSET1', 'lewis', 'quest'], ['HEADSET2', 'chloe', 'quest'], ['PHONEONE', 'ethan', 'phone'], ['PHONETWO', 'harry', 'phone']];
+// PLAYERS: who joins, in order (the first one hosts): Q a headset on controllers, H a headset on hand tracking, P a phone.
+// "Q,P,P,P,P,P,P,P" is a headset and seven phones. Each gets the next connection in NETS: delay/jitter in ms, and sN for
+// a phone network's hiccups (nothing gets through for up to N ms every few seconds, then it all arrives at once)
+const PLAYERS = (process.env.PLAYERS || 'Q,H,P,P').split(','), CHARS = ['lewis', 'chloe', 'ethan', 'harry', 'aidan', 'noah', 'oliver', 'dylan', 'connor', 'ronnie'];
+const WHO = []; { let q = 0, ph = 0; PLAYERS.forEach((k, i) => { const quest = k !== 'P'; WHO.push([quest ? 'HEADSET' + (++q) : 'PHONE' + (++ph), CHARS[i % CHARS.length], quest ? 'quest' : 'phone', k === 'H']); }); }
+const NETS = (process.env.NETS || (PLAYERS.length > 4 ? '5/2,20/10,50/30/s400,80/50,120/90,200/120,30/80,60/40/s800' : '5/2,25/15,60/40,120/90')).split(',');
 
 export default async function () {
   const C = checker('vrroom'), host = await startRoomHost(), b = await launch();
   try {
     const pages = [];
-    for (const [i, [name, ch, kind]] of WHO.entries()) {
+    for (const [i, [name, ch, kind, hand]] of WHO.entries()) {
       const p = kind === 'quest' ? await newPage(b, { width: 700, height: 500, xr: true }) : await newPage(b, { width: 390, height: 844, mobile: true });
-      p.pname = name; p.ch = ch; p.kind = kind; p.net = NETS[i % NETS.length]; pages.push(p);
+      p.pname = name; p.ch = ch; p.kind = kind; p.hand = hand; p.net = NETS[i % NETS.length]; pages.push(p);
       await p.goto('http://game.local/index.html?relay=' + encodeURIComponent(host.url + '/net/' + p.net)); await p.waitForTimeout(1500);
     }
     const ev = (p, f, a) => p.evaluate(f, a), cl = (p, s) => ev(p, (s) => document.querySelector(s).click(), s);
@@ -43,12 +47,13 @@ export default async function () {
     // drawn games on a few cores): everything else runs as it would, VR frames included
     for (const p of pages) {
       await ev(p, () => { RS.renderer.render = () => {}; window.__f = 0; RS.onFrame.push(() => { window.__f++; }); });
-      if (p.kind === 'quest') { if (p === pages[1]) await ev(p, () => { xrd.primaryInputMode = 'hand'; });
+      if (p.kind === 'quest') { if (p.hand) await ev(p, () => { xrd.primaryInputMode = 'hand'; });
         await ev(p, () => RS.renderer.xr.setFramebufferScaleFactor(0.12)); await cl(p, '#enter-vr');
         await p.waitForFunction(() => RS.renderer.xr.isPresenting, null, { timeout: 40000 }).catch(() => C.ok(false, p.pname + ' never got into VR')); }
       else await cl(p, '#play-flat');
     }
     await sleep(6000);      // (everyone's models load, everyone's poses arrive)
+    for (const p of pages) await p.waitForFunction((n) => [...RS.net.players.values()].filter(q => q.avatar && q.avatar.c && q.avatar.c.rag && q.avatar.c.rag.parts && q.pose).length >= n, pages.length - 1, { timeout: 180000 }).catch(() => C.ok(false, p.pname + " didn't get everyone's avatars within 3 minutes"));
     // everyone records exactly what they draw of everyone else, every frame: the moment each one's been posed (that's
     // what goes on screen; the physics step after it carries the bodies a little further, and that isn't drawn), timed
     // by the clock that pose was worked out for (the frame's start isn't it: on this busy machine a long frame made a
@@ -59,14 +64,14 @@ export default async function () {
         if (window.__recOn && !av.p.self && r && r.parts && r.parts.lArmR) { const rec = __rec[av.p.name] || (__rec[av.p.name] = []);
           const g = (n) => { const v = r.grip ? r.grip(n, new V()) : r.pos(n, new V()); return [v.x, v.y, v.z]; }, sh = (n) => { const v = r.pos(n, new V()); return [v.x, v.y, v.z]; };
           rec.push({ t: av.jit && av.jit.pn ? av.jit.pn : performance.now(), R: g('lArmR'), L: g('lArmL'), sR: sh('uArmR'), sL: sh('uArmL'), ch: sh('chest'), h: r.height || 1.7, s: (r.group && r.group.scale.y) || 1,
-            cR: r.handPose && r.handPose.lArmR ? r.handPose.lArmR.curl : null, mode: r.mode, dn: av.down > 0 || r.mode !== 'anim' || !av.jit }); }
+            cR: r.handPose && r.handPose.lArmR ? r.handPose.lArmR.curl : null, mode: r.mode, dn: av.down > 0 || r.mode !== 'anim' || !av.jit || !!(av.c.flinchDir && av.c.flinchDir.t < 0.6), D: av.jit ? av.jit.D : null }); }
         return out; }; });
     // each headset's own real hands, for the truth (how far they really move)
     for (const p of pages.filter(q => q.kind === 'quest')) await ev(p, () => { window.__mine = []; RS.onFrame.push(() => { if (!window.__recOn) return; const P = RS.player, R = P.hands.find(h => h.handedness === 'right') || P.hands[0]; window.__mine.push([R.palm.x, R.palm.y, R.palm.z]); }); });
 
     // ---- the motions (the headsets move their real hands; the phones walk about)
     const motion = async (label, setup) => {
-      for (const p of pages.filter(q => q.kind === 'quest')) await ev(p, setup, p === pages[1]);
+      for (const p of pages.filter(q => q.kind === 'quest')) await ev(p, setup, !!p.hand);
       for (const p of pages.filter(q => q.kind === 'phone')) await ev(p, () => { let t = 0; clearInterval(window.__walk); window.__walk = setInterval(() => { t += 0.05; RS.player.flatMove = { x: Math.sin(t * 0.6) * 0.4, z: Math.cos(t * 0.45) * 0.4 }; }, 50); });
       await sleep(1200);
       for (const p of pages) await ev(p, () => { for (const k in __rec) __rec[k].length = 0; if (window.__mine) __mine.length = 0; window.__recOn = true; });
@@ -127,14 +132,15 @@ export default async function () {
           let realRange = 0; const mine = got[si].mine; if (mine && mine.length > 20) for (let j = 0; j < 3; j++) { const v = mine.map(x => x[j]).sort((a, b) => a - b); realRange = Math.max(realRange, v[Math.floor(v.length * 0.95)] - v[Math.floor(v.length * 0.05)]); }
           const curls = rec.map(e => e.cR).filter(v => v != null), curlRange = curls.length ? Math.max(...curls) - Math.min(...curls) : 0;
           let curlJump = 0; for (let i = 1; i < rec.length; i++) { const a = rec[i - 1], e = rec[i]; if (a.cR != null && e.cR != null) curlJump = Math.max(curlJump, Math.abs(e.cR - a.cR) / Math.max((e.t - a.t) / 1000, 1 / 90)); }      // (how fast the curl changes: per second)
-          results.push({ label, watcher: w.pname, net: w.net, sees: s.pname, theirNet: s.net, frames: rec.length, reach: +reach.toFixed(2), leap: +leap.toFixed(1), wobble: +med.toFixed(1), wobble99: +p99.toFixed(1), range: +range.toFixed(2), realRange: +realRange.toFixed(2), curlRange: +curlRange.toFixed(2), curlJump: +curlJump.toFixed(2) });
+          const Ds = rec.map(e => e.D).filter(x => x != null).sort((x, y) => x - y); results.push({ D: Ds.length ? Math.round(Ds[Ds.length >> 1]) : null, label, watcher: w.pname, net: w.net, sees: s.pname, theirNet: s.net, frames: rec.length, reach: +reach.toFixed(2), leap: +leap.toFixed(1), wobble: +med.toFixed(1), wobble99: +p99.toFixed(1), range: +range.toFixed(2), realRange: +realRange.toFixed(2), curlRange: +curlRange.toFixed(2), curlJump: +curlJump.toFixed(2) });
           const tag = `${label}: ${w.pname} (${w.net}) watching ${s.pname} (${s.net})`;
           C.ok(reach <= 1.05, `${tag}: a hand was drawn ${(reach * 100).toFixed(0)}% of an arm's reach from its shoulder (flailing)`);
-          C.ok(leap < 8, `${tag}: a hand leapt at ${leap.toFixed(1)} m/s between two frames (from the chest) ${JSON.stringify(leapAt)}`);
+          const hic = /\/s\d/.test(w.net + s.net);      // (after a hiccup on either line they catch up a little faster than real time: a quick glide)
+          C.ok(leap < (hic ? 12 : 8), `${tag}: a hand leapt at ${leap.toFixed(1)} m/s between two frames (from the chest) ${JSON.stringify(leapAt)}`);
           C.ok(bodyLeap < 15, `${tag}: their whole body leapt at ${bodyLeap.toFixed(1)} m/s ${JSON.stringify(bodyAt)}`);
           if (wob.length > 60) C.ok(med < 6 && p99 < 32, `${tag}: hands wobble ${med.toFixed(1)}mm typically, ${p99.toFixed(1)}mm at worst, off a smooth path (jitter)`);
           if (s.kind === 'quest' && realRange > 0.15 && label !== 'walking and waving' && label !== 'punching') C.ok(range > realRange * 0.45 && range < realRange * 1.6, `${tag}: their arm moves ${range.toFixed(2)}m drawn vs ${realRange.toFixed(2)}m for real (not following)`);
-          if (s === pages[1] && label === 'waving') C.ok(curlRange > 0.25 && curlJump < 15, `${tag}: fingers: curl range ${curlRange.toFixed(2)}, fastest change ${curlJump.toFixed(1)}/s (a snap)`);
+          if (s.hand && label === 'waving') C.ok(curlRange > 0.25 && curlJump < 15, `${tag}: fingers: curl range ${curlRange.toFixed(2)}, fastest change ${curlJump.toFixed(1)}/s (a snap)`);
         }
       }
     };
@@ -142,6 +148,9 @@ export default async function () {
     // a summary table (the worst of each, for each watcher's view of a headset)
     const heads = results.filter(r => r.sees.startsWith('HEADSET'));
     console.log('  worst over all views of the headsets:', JSON.stringify({ reach: Math.max(...heads.map(r => r.reach)), leap: Math.max(...heads.map(r => r.leap)), wobble: Math.max(...heads.map(r => r.wobble)), wobble99: Math.max(...heads.map(r => r.wobble99)) }));
+    // every view, worst over the motions: how far behind they're drawn (the smoothing's delay, on top of the connection's)
+    { const by = {}; for (const r of results) { const k = r.watcher + ' sees ' + r.sees, o = by[k] || (by[k] = { net: r.theirNet, leap: 0, wob: 0, wob99: 0, D: 0, frames: 1e9 }); o.leap = Math.max(o.leap, r.leap); o.wob = Math.max(o.wob, r.wobble); o.wob99 = Math.max(o.wob99, r.wobble99); o.D = Math.max(o.D, r.D || 0); o.frames = Math.min(o.frames, r.frames); }
+      for (const [k, o] of Object.entries(by)) console.log(`   ${k.padEnd(22)} (their net ${o.net.padEnd(10)}) drawn ${String(o.D).padStart(3)}ms behind, leap ${o.leap}m/s, wobble ${o.wob}/${o.wob99}mm, frames ${o.frames}`); }
     for (const r of results.filter(r => r.sees.startsWith('HEADSET'))) console.log(`   ${r.label.padEnd(18)} ${r.watcher.padEnd(9)} sees ${r.sees.padEnd(9)} frames ${String(r.frames).padStart(4)} reach ${r.reach} leap ${r.leap}m/s wobble ${r.wobble}/${r.wobble99}mm range ${r.range}/${r.realRange}m${r.curlRange ? ' fingers ' + r.curlRange : ''}`);
     for (const p of pages) { C.ok(!p.errors.length, `${p.pname}: page errors: ` + [...new Set(p.errors)].slice(0, 3).join(' | '));
       const cr = p.crashes.filter(c => c.k !== 'start' && c.k !== 'hang'); C.ok(!cr.length, `${p.pname}: crash reports: ` + cr.slice(0, 3).map(c => c.k + ' ' + c.m).join(' | ')); }

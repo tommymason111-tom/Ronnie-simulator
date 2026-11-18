@@ -16,8 +16,12 @@ export async function startRoomHost() {
   wss.on('connection', async (ws, req) => {
     // a pretend network for this player: ws://localhost:PORT/net/<delay ms>/<jitter ms>/... adds that much delay each
     // way, varying by up to the jitter, in order (like a real connection: late messages hold up the ones behind them)
-    let lat = 0, jit = 0; const nm = req.url.match(/^\/net\/(\d+)\/(\d+)/); if (nm) { lat = +nm[1]; jit = +nm[2]; req.url = req.url.slice(nm[0].length) || '/'; }
-    const lane = () => { let last = 0; return (f) => { if (!lat && !jit) return f(); const at = Math.max(last, Date.now() + lat + Math.random() * jit); last = at; setTimeout(f, at - Date.now()); }; };
+    // A third number (/net/60/40/s700/...) adds a phone network's hiccups: every few seconds nothing gets through for up to
+    // that long (a 4G handover, a lift), then everything held up arrives at once
+    let lat = 0, jit = 0, stall = 0; const nm = req.url.match(/^\/net\/(\d+)\/(\d+)(?:\/s(\d+))?/); if (nm) { lat = +nm[1]; jit = +nm[2]; stall = +(nm[3] || 0); req.url = req.url.slice(nm[0].length) || '/'; }
+    const lane = () => { let last = 0, until = 0, next = Date.now() + 2000 + Math.random() * 3000; return (f) => { if (!lat && !jit && !stall) return f(); const now = Date.now();
+      if (stall && now > next) { until = now + stall * (0.4 + 0.6 * Math.random()); next = until + 2500 + Math.random() * 4000; }
+      const at = Math.max(last, now + lat + Math.random() * jit, until); last = at; setTimeout(f, at - now); }; };
     const toClient = lane(), toRoom = lane();
     const res = await mod.default.fetch(new Request('http://local' + req.url, { headers: { Upgrade: 'websocket' } }), env, {});
     if (res.status !== 101) { ws.close(4003, String(res.status)); return; }
