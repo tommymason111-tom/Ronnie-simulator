@@ -72,7 +72,7 @@ export default async function () {
     // ---- the motions (the headsets move their real hands; the phones walk about)
     const motion = async (label, setup) => {
       for (const p of pages.filter(q => q.kind === 'quest')) await ev(p, setup, !!p.hand);
-      for (const p of pages.filter(q => q.kind === 'phone')) await ev(p, () => { let t = 0; clearInterval(window.__walk); window.__walk = setInterval(() => { t += 0.05; RS.player.flatMove = { x: Math.sin(t * 0.6) * 0.4, z: Math.cos(t * 0.45) * 0.4 }; }, 50); });
+      for (const p of pages.filter(q => q.kind === 'phone')) await ev(p, () => { let t = 0; const t0 = performance.now(); clearInterval(window.__walk); window.__walk = setInterval(() => { t += 0.05; RS.player.flatMove = { x: Math.sin(t * 0.6) * 0.4, z: Math.cos(t * 0.45) * 0.4 }; }, 50); });
       await sleep(1200);
       for (const p of pages) await ev(p, () => { for (const k in __rec) __rec[k].length = 0; if (window.__mine) __mine.length = 0; window.__recOn = true; });
       await sleep(SECS * 1000);
@@ -85,17 +85,18 @@ export default async function () {
     // a hand on a controller (or a tracked hand) moving round a path in front of the headset, 72 times a second
     for (const p of pages.filter(q => q.kind === 'quest')) await ev(p, () => { const H = {}; window.__home = (R, L) => { for (const [k, x] of [['R', R], ['L', L]]) if (x && !H[k]) H[k] = x.position.clone(); return [H.R.clone(), H.L ? H.L.clone() : null]; }; });      // (each motion starts from the same resting spot, not wherever the last one left the hand)
     const SETUPS = {
-      'waving': (hand) => { const D = xrd, src = hand ? D.hands : D.controllers, R = src.right, L = src.left, [r0, l0] = __home(R, L); let t = 0;
-        clearInterval(window.__mv); window.__mv = setInterval(() => { t += 1 / 72; R.position.set(r0.x + 0.14 * Math.sin(t * 9), r0.y + 0.25 + 0.05 * Math.sin(t * 18), r0.z - 0.1); L.position.set(l0.x, l0.y + 0.05 * Math.sin(t * 3), l0.z);
+      'waving': (hand) => {      // (fingers: open, then a fist, a second each: slow enough that a headset drawing only a few frames a second still catches both)
+        const D = xrd, src = hand ? D.hands : D.controllers, R = src.right, L = src.left, [r0, l0] = __home(R, L); let t = 0; const t0 = performance.now();
+        clearInterval(window.__mv); window.__mv = setInterval(() => { t = (performance.now() - t0) / 1000; R.position.set(r0.x + 0.14 * Math.sin(t * 9), r0.y + 0.25 + 0.05 * Math.sin(t * 18), r0.z - 0.1); L.position.set(l0.x, l0.y + 0.05 * Math.sin(t * 3), l0.z);
           if (hand) { if (!R.__open) { R.__open = true; const ids = R.poseIds || []; const base = ['open', 'relaxed'].find(x => ids.includes(x)); if (base) R.poseId = base; }      // (from an open hand: the emulator's default is already half curled)
-            const w = 0.5 + 0.5 * Math.sin(t * 4); for (const f of ['middle', 'ring', 'pinky', 'index']) { try { R.setFingerPose(f, 'fist', w); } catch (e) {} } } }, 1000 / 72); },
-      'circles': (hand) => { const D = xrd, src = hand ? D.hands : D.controllers, R = src.right, L = src.left, [r0, l0] = __home(R, L); let t = 0;
-        clearInterval(window.__mv); window.__mv = setInterval(() => { t += 1 / 72; R.position.set(r0.x + 0.22 * Math.cos(t * 6), r0.y + 0.2 + 0.22 * Math.sin(t * 6), r0.z - 0.15); L.position.set(l0.x - 0.15 * Math.cos(t * 4), l0.y + 0.15 * Math.sin(t * 4), l0.z - 0.1); }, 1000 / 72); },
-      'punching': (hand) => { const D = xrd, src = hand ? D.hands : D.controllers, R = src.right, [r0] = __home(R, src.left); let t = 0;
-        clearInterval(window.__mv); window.__mv = setInterval(() => { t += 1 / 72; const ph = (t % 0.9) / 0.9, k = ph < 0.15 ? ph / 0.15 : ph < 0.5 ? 1 - (ph - 0.15) / 0.35 : 0, e = k * k * (3 - 2 * k); R.position.set(r0.x - 0.05 * e, r0.y + 0.1 * e, r0.z - 0.45 * e); }, 1000 / 72); },
-      'walking and waving': (hand) => { const D = xrd, src = hand ? D.hands : D.controllers, R = src.right, [r0] = __home(R, src.left); let t = 0;
+            const ph = t % 2, w = ph < 0.3 ? ph / 0.3 : ph < 1 ? 1 : ph < 1.3 ? 1 - (ph - 1) / 0.3 : 0; for (const f of ['middle', 'ring', 'pinky', 'index']) { try { R.setFingerPose(f, 'fist', w); } catch (e) {} } } }, 1000 / 72); },
+      'circles': (hand) => { const D = xrd, src = hand ? D.hands : D.controllers, R = src.right, L = src.left, [r0, l0] = __home(R, L); let t = 0; const t0 = performance.now();
+        clearInterval(window.__mv); window.__mv = setInterval(() => { t = (performance.now() - t0) / 1000; R.position.set(r0.x + 0.22 * Math.cos(t * 6), r0.y + 0.2 + 0.22 * Math.sin(t * 6), r0.z - 0.15); L.position.set(l0.x - 0.15 * Math.cos(t * 4), l0.y + 0.15 * Math.sin(t * 4), l0.z - 0.1); }, 1000 / 72); },
+      'punching': (hand) => { const D = xrd, src = hand ? D.hands : D.controllers, R = src.right, [r0] = __home(R, src.left); let t = 0; const t0 = performance.now();
+        clearInterval(window.__mv); window.__mv = setInterval(() => { t = (performance.now() - t0) / 1000; const ph = (t % 0.9) / 0.9, k = ph < 0.15 ? ph / 0.15 : ph < 0.5 ? 1 - (ph - 0.15) / 0.35 : 0, e = k * k * (3 - 2 * k); R.position.set(r0.x - 0.05 * e, r0.y + 0.1 * e, r0.z - 0.45 * e); }, 1000 / 72); },
+      'walking and waving': (hand) => { const D = xrd, src = hand ? D.hands : D.controllers, R = src.right, [r0] = __home(R, src.left); let t = 0; const t0 = performance.now();
         if (!hand) D.controllers.left.updateAxes('thumbstick', 0, -0.7);
-        clearInterval(window.__mv); window.__mv = setInterval(() => { t += 1 / 72; R.position.set(r0.x + 0.1 * Math.sin(t * 7), r0.y + 0.2, r0.z - 0.12); }, 1000 / 72); },
+        clearInterval(window.__mv); window.__mv = setInterval(() => { t = (performance.now() - t0) / 1000; R.position.set(r0.x + 0.1 * Math.sin(t * 7), r0.y + 0.2, r0.z - 0.12); }, 1000 / 72); },
     };
     const results = [];
     const check = (label, got) => {
