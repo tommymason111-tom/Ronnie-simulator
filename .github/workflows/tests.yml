@@ -5,6 +5,10 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+# a newer push stops the older run still going (only the newest code matters; no pile of runs and emails)
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest

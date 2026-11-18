@@ -29,6 +29,7 @@ import { MPSync } from './mpsync.js';
 import { foodGlow, warmFood } from './foods.js';
 import { EMOTES, CHAR_EMOTES, EmotePlayer, emoteInfo } from './emotes.js';
 import { mergeMaterialGroups, atlasSigns } from './perf.js';
+import { warmShaders, learnShaders } from './shaderwarm.js';
 import { sweep, releaseLevelGeometry, releaseTextures, noteLevelTextures, releaseLevelCanvases } from './memory.js';
 import { Music } from './music.js';
 import { PowerUps } from './powerups.js';
@@ -82,6 +83,7 @@ camera.position.set(0, 1.6, 0);
 const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant, garden: buildGarden, grid: buildGrid };
 const room = (BUILD[SEL.place] || buildRoom)(scene);
 atlasSigns(scene); mergeMaterialGroups(scene);      // (fewer draws, same picture: see perf.js)
+const learnShader = learnShaders(renderer, scene);
 const levelMeshes = []; scene.traverse(o => { if (o.isMesh) levelMeshes.push(o); });      // (the level itself: see memory.js)
 releaseLevelGeometry(levelMeshes, Infinity); noteLevelTextures(levelMeshes);      // (each piece's spare copy goes the moment it's first sent to the graphics chip: the peak while loading is what phones close a page for)
 FLOOR.at = room.floorAt || null;
@@ -768,7 +770,7 @@ function warmUpload() {
   setInterval(() => {
     if (!document.body.classList.contains('ready') || window.__glLost) return; ticks++;      // (nothing's let go of while the 3D context is lost: its objects belong to the old one)
     try {
-      if (ticks === 1 && !renderer.xr.isPresenting) warmUpload();
+      if (ticks === 1 && !renderer.xr.isPresenting) { warmUpload(); warmShaders(renderer, scene, camera).then(r => { window.__shaderWarm = r; }).catch(e => console.warn('shaders', e)); }      // (every shader built now, in the background: shaderwarm.js)
       if (!released && ticks > 2) { if (!releaseLevelGeometry(levelMeshes, 150)) released = true; }
       if (ticks > 2) { releaseTextures(renderer, scene); releaseLevelCanvases(renderer); }
       sweep(scene);
@@ -1295,6 +1297,7 @@ function frame(simDt) {
   setListener(player.head, player.fwd, _b);
 
   if (simDt == null) renderer.render(scene, emoteCam() || camera);
+  learnShader();      // (a shader built during play: remember its kind, so next time it's built up front)
 }
 // your own emote, on a phone or a computer: the camera swings round in front of you so you can watch your character do
 // it (your own head shows while it does), then back to your eyes when it's done

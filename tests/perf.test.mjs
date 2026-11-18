@@ -6,6 +6,7 @@
 //   - keeping people out of the furniture (nearBlockers) gives exactly what checking every box did
 //   - path finding (reused working arrays) finds exactly the same routes as a fresh search
 //   - growing a size doesn't stop the game: every belly look is made beforehand
+//   - no shader is built in the middle of play (each was a stutter): they're all built while the level loads
 import { launch, newPage, startGame, checker } from './lib/game.mjs';
 
 // draw calls from the start spot, all four ways (well under what it was: pub 862, Lidl 1701 before)
@@ -54,10 +55,22 @@ export default async function () {
               const warm = key(nav.path(a[0], a[1], c2[0], c2[1])); nav._g = null; const fresh = key(nav.path(a[0], a[1], c2[0], c2[1])); if (warm !== fresh) out.navDiff++; } }
           return out;
         });
+        // no first-time stutters: once the level's warmed up, playing (power-ups, eating, attacks) builds no new shaders
+        await p.waitForFunction(() => window.__shaderWarm, null, { timeout: 240000 });
+        const sh = await p.evaluate(async () => { const R = RS.renderer, PU = Object.keys((await import('./js/powerups.js')).POWERUPS || {}); let s = 9; const rnd = () => (s = s * 16807 % 2147483647) / 2147483647;
+          for (let i = 0; i < 3; i++) { RS.sim(0.2, 1 / 30); R.render(RS.scene, RS.player.camera); }      // (the very first frames: a sunny place's shadows)
+          const n0 = R.info.programs.length;
+          for (let i = 0; i < 60; i++) { const k = rnd();
+            if (k < 0.25 && RS.powerups && PU.length) RS.powerups.give(PU[Math.floor(rnd() * PU.length)]);
+            else if (k < 0.45) { const it = RS.items.items.find(x => !x.dead && !x.heldBy); if (it && RS.player.flatGrab) { RS.player.flatGrab(it); RS.player.flatEat && RS.player.flatEat(); } }
+            else if (k < 0.6) { const c = RS.cast.find(x => x.rag && x.rag.mesh && !x.down); if (c) try { RS.director.launch({ c, attack: { key: undefined } }); } catch (e) {} }
+            RS.sim(0.25, 1 / 30); R.render(RS.scene, RS.player.camera); }
+          return { built: R.info.programs.length - n0, warm: window.__shaderWarm }; });
+        C.ok(sh.built === 0, `${place}: ${sh.built} shaders built during play (each one a stutter on a phone or headset): warm-up didn't cover them`);
         // the belly's looks: all made within a short while of starting (in quiet moments), so growing never waits
         await p.waitForTimeout(9000);
         const belly = await p.evaluate(() => { const c = RS.player.bellyModel.cache; let n = 0; for (let s = 0; s <= 5; s++) if (c[s] && c[s].skin && c[s].tee) n++; return n; });
-        console.log(`  ${place}: ${r.calls} draws (budget ${BUDGET[place]}), ${r.signSheets} sign sheets (${r.signsLeft} single signs left), ${r.pairs} physics pairs, ${r.glowing} glowing food in ${r.haloLayers} draw, belly looks ready ${belly}/6`);
+        console.log(`  ${place}: ${r.calls} draws (budget ${BUDGET[place]}), ${r.signSheets} sign sheets (${r.signsLeft} single signs left), ${r.pairs} physics pairs, ${r.glowing} glowing food in ${r.haloLayers} draw, belly looks ready ${belly}/6, ${sh.built} shaders built in play (${sh.warm.programs} warmed in ${sh.warm.ms}ms)`);
         C.ok(r.calls <= BUDGET[place], `${place}: ${r.calls} draw calls (budget ${BUDGET[place]})`);
         C.ok(r.haloSprites === 0 && r.haloLayers === 1, `${place}: food glow isn't one layer (${r.haloSprites} sprites, ${r.haloLayers} layers)`);
         C.ok(r.signsLeft <= 2, `${place}: ${r.signsLeft} signs weren't packed onto sheets`);

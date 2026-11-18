@@ -39,6 +39,7 @@ Every update bumps the version (`2.23.x` from the merge on).
 - `js/squad.js`, `js/tommy.js`, `js/character.js`, `js/emotes.js`, `js/modes.js`: characters, attacks and emotes.
 - `js/powerups.js`, `js/runpub.js`, `js/pubjobs.js`: power-ups and the Run the Pub mode.
 - `js/perf.js`: drawing and per-frame speed-ups that keep the picture identical (material groups merged, signs packed onto shared sheets, `SpriteLayer` for many sprites in one draw, `nearBlockers` for furniture checks). Physics only tests pairs where something can move (`js/physics.js`), and ragdoll joints leave the physics world while a character is animated (`js/ragdoll.js` `syncJoints`). Slow first-time builds (belly looks, food shapes) are made in quiet moments (`main.js`). A sign whose picture is redrawn later must be marked `userData.live` (or it's packed). `tests/perf.test.mjs` holds the draw-call budgets.
+- `js/shaderwarm.js`: every shader is built while the level loads (`compileAsync` on the scene plus tiny stand-ins for each material kind in `SIGS`, and kinds a device met before, from localStorage). Their materials are kept so programs are never thrown away. A new kind of material used mid-game should get a `SIGS` entry (`tests/perf.test.mjs` fails if play builds a shader).
 - `.claude/skills/watch`: the `/watch` skill (watch a video from a link). It needs `yt-dlp` (`pip install yt-dlp`) in each new session.
 
 ## Testing
