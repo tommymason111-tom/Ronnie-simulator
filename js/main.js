@@ -759,8 +759,10 @@ window.addEventListener('resize', fitCamera);
 { const jobs = [() => player.bellyModel && player.bellyModel.warm(), warmFood];
   const idle = window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 3000 }) : (f) => setTimeout(() => f({ timeRemaining: () => 8 }), 400);
   const tick = (dl) => { if (!jobs.length) return; if (document.body.classList.contains('ready') && (dl.timeRemaining() > 6 || !player.flatMode && !renderer.xr.isPresenting)) {
-      try { if (!jobs[0]()) jobs.shift(); } catch (e) { jobs.shift(); } }
-    if (jobs.length) setTimeout(() => idle(tick), 250); };
+      // (as many pieces as fit in the spare time the browser gives us, not one per quarter second: on a slow device that
+      // took so long the belly could still be unmade when you grew)
+      let n = 0; do { try { if (!jobs[0]()) jobs.shift(); } catch (e) { jobs.shift(); } n++; } while (jobs.length && n < 20 && dl.timeRemaining() > 6); }
+    if (jobs.length) setTimeout(() => idle(tick), 60); };
   setTimeout(() => idle(tick), 1500); }
 // ---------------- memory (phones close a page that uses too much: see memory.js) ----------------
 // once, just after the level's ready: draw the whole level into a single pixel, so every shape and picture is sent to the
@@ -1481,13 +1483,25 @@ class SquadPuppet {
     const a = buf[i], b = buf[i + 1], ta = T(a), tb = T(b), span = Math.max(1, tb - ta);
     let k = (rt - ta) / span;
     if (k < 0) return a.m;
-    k = Math.min(k, 1 + Math.min(100, J.gap * 1.5) / span);        // (late: carry on a little way, then wait)
-    const A = a.m, B = b.m, P0 = (buf[i - 1] || a).m, P3 = (buf[i + 2] || b).m;
-    const cr = (p0, p1, p2, p3) => k > 1 ? p1.map((v, j) => v + (p2[j] - v) * k)          // (past the last one: straight on)
-      : p1.map((v, j) => { const m1 = (p2[j] - p0[j]) * 0.5, m2 = (p3[j] - v) * 0.5, k2 = k * k, k3 = k2 * k;
+    const A = a.m, B = b.m, e0 = buf[i - 1] || a, e3 = buf[i + 2] || b, P0 = e0.m, P3 = e3.m;
+    // late (past the newest pose): carry on the way it was going for a moment (at most 100ms, then wait). Which way and how
+    // fast is taken over at least 40ms of poses, and never faster than a person moves: from just the last two, sent a
+    // few milliseconds apart after a hitch, a millimetre of wobble came out as metres a second and threw them across the room
+    if (k > 1) { const ex = Math.min(rt - tb, Math.min(100, J.gap * 1.5)); let j = i; while (j > 0 && tb - T(buf[j]) < 40) j--;
+      const o = buf[j], to = T(o), dtv = Math.max(40, tb - to);
+      const on = (key, vmax) => B[key].map((v, n) => { const vel = Math.max(-vmax, Math.min(vmax, (v - o.m[key][n]) / dtv)); return v + vel * ex; });
+      const q2 = new THREE.Quaternion(...B.q);
+      return { ...B, h: on('h', 0.006), rh: on('rh', 0.012), l: on('l', 0.012), q: [q2.x, q2.y, q2.z, q2.w], fcv: null }; }
+    // between two poses: a smooth curve through them, its slopes scaled by the real time between each pair (they don't
+    // arrive evenly: assuming they did bent the curve out past the poses when one gap was short and the next long)
+    const s0 = Math.max(1, tb - T(e0)), s3 = Math.max(1, T(e3) - ta), f1 = e0 === a ? 1 : span / s0, f2 = e3 === b ? 1 : span / s3;
+    const cr = (p0, p1, p2, p3) => p1.map((v, j) => { const m1 = (p2[j] - p0[j]) * f1, m2 = (p3[j] - v) * f2, k2 = k * k, k3 = k2 * k;
         return (2 * k3 - 3 * k2 + 1) * v + (k3 - 2 * k2 + k) * m1 + (-2 * k3 + 3 * k2) * p2[j] + (k3 - k2) * m2; });
     const q = new THREE.Quaternion(...A.q).slerp(new THREE.Quaternion(...B.q), Math.min(1, k));
-    return { ...B, h: cr(P0.h, A.h, B.h, P3.h), rh: cr(P0.rh, A.rh, B.rh, P3.rh), l: cr(P0.l, A.l, B.l, P3.l), q: [q.x, q.y, q.z, q.w] };
+    // (hand tracking's finger curls too: blended between the two poses, not stepping from one to the next 20 times a second)
+    let fcv = null; if (typeof B.fc === 'string' && typeof A.fc === 'string' && A.fc.length === B.fc.length) { const kk = Math.min(1, k); fcv = [];
+      for (let j = 0; j < B.fc.length; j++) { const x = B.fc.charCodeAt(j) - 48, y = A.fc.charCodeAt(j) - 48; fcv.push(x < 0 || x > 9 ? null : y < 0 || y > 9 ? x / 9 : (y + (x - y) * kk) / 9); } }
+    return { ...B, h: cr(P0.h, A.h, B.h, P3.h), rh: cr(P0.rh, A.rh, B.rh, P3.rh), l: cr(P0.l, A.l, B.l, P3.l), q: [q.x, q.y, q.z, q.w], fcv };
   }
   // Imposter: a body (flat out where they were killed), hidden (a ghost, or down a trapdoor), or an imposter's mate (red tag)
   impVis(v) { const r = this.c.rag; if (r.group) r.group.visible = v; if (this.c.fx) this.c.fx.visible = v; if (this.c.prop) this.c.prop.visible = v && !this.emote.active; this.tag.visible = v && !this.p.self; if (!v) { if (this.chatS) this.chatS.visible = false; this.emote.active && this.emote.stop && this.emote.stop(); } }
@@ -1529,7 +1543,16 @@ class SquadPuppet {
     if (this.first) { r.placeAt(this.pos.x, this.pos.z, this.yaw); this.first = false; this.prevH.R.copy(this.rh); this.prevH.L.copy(this.lh); }
     r.root.x = this.pos.x; r.root.z = this.pos.z; r.yaw = this.yaw;
     if (this.p.self) { r.root.x -= Math.sin(this.yaw) * 0.2; r.root.z -= Math.cos(this.yaw) * 0.2; }      // (just behind your eyes, so looking down you see your chest, belly and legs)
-    if (speed > 0.25) c.walkPose(dt, Math.min(speed, 3)); else c.setIdlePose(c.t += dt);
+    // walking or standing: from a smoothed speed (a network update arriving a little early or late made it flicker
+    // across the line every frame), with a gap between "starts walking" and "stops", and the two poses blended over a
+    // moment, not swapped: the arms and legs snapped from one pose to the other, the arms most of all
+    { const sp = this.spd = this.spd == null ? speed : this.spd + (speed - this.spd) * (1 - Math.exp(-dt * 6));
+      if (this.walking ? sp < 0.15 : sp > 0.3) this.walking = !this.walking;
+      const ww = this.walkW = (this.walkW || 0) + ((this.walking ? 1 : 0) - (this.walkW || 0)) * (1 - Math.exp(-dt * 7));
+      c.setIdlePose(c.t += dt);
+      if (ww > 0.005) { const idle = {}; for (const n in r.pose) idle[n] = r.pose[n].clone(); const bob0 = r.bob || 0, he0 = c.headExtra;
+        c.walkPose(dt, THREE.MathUtils.clamp(sp, 0.35, 3));
+        if (ww < 0.995) { for (const n in r.pose) r.pose[n].copy(idle[n].slerp(r.pose[n], ww)); r.bob = bob0 + ((r.bob || 0) - bob0) * ww; if (he0 && c.headExtra) c.headExtra = { yaw: he0.yaw + (c.headExtra.yaw - he0.yaw) * ww, pitch: he0.pitch + (c.headExtra.pitch - he0.pitch) * ww }; } } }
     // an emote off the wheel: the whole body does it (a VR player's arms stay their own real arms)
     // (a VR player's emote is the whole body too: their real arms would only fight it and flail about)
     const em = this.emote.active ? this.emote.update(dt, false) : 0;
@@ -1557,9 +1580,17 @@ class SquadPuppet {
       const punching = this.swingT > 0 && (side === (this.swingSide || 'R') || !pose.flat);
       if (!pose.flat || atMouth || swinging || punching) this.armT[side] = 0.45;
       else this.armT[side] -= dt;
-      const want = this.armT[side] > 0 ? 1 : 0; this.armW[side] += (want - this.armW[side]) * Math.min(1, dt * (want ? 14 : 5));
+      let want = this.armT[side] > 0 ? 1 : 0;
+      if (!pose.flat) this.armW[side] += (want - this.armW[side]) * Math.min(1, dt * (want ? 14 : 5));
+      else { // (a phone player's arm: on a spring, and already starting up as the hand nears the mouth, so it rises and
+        // drops smoothly: switched on all at once the whole arm swung up in a frame or two, a big jerk on everyone else's screen)
+        const md = h.distanceTo(head); want = Math.max(want, THREE.MathUtils.smoothstep(0.47 - md, 0, 0.17));      // (their hand rests 0.49m from their head: the arm stays down until it's on its way up)
+        const sv = this.armV || (this.armV = { R: 0, L: 0 }), K = 90, st = Math.min(dt, 0.05);
+        sv[side] += (K * (want - this.armW[side]) - 2 * Math.sqrt(K) * sv[side]) * st; this.armW[side] = THREE.MathUtils.clamp(this.armW[side] + sv[side] * st, 0, 1); }
       const w = this.armW[side]; if (w < 0.01) continue;
       if (!pose.flat) { this.ikDt = dt; this.reachArm(side, this.hT[side], w); continue; }
+      // (eating: the hand goes to their mouth with the elbow bent, like a real arm, not the whole arm swung straight up)
+      if (!punching) { if (h.distanceTo(chest) > 1.2) continue; this.ikDt = dt; this.reachArm(side, h, w); continue; }
       let d;
       if (pose.flat && punching && !atMouth) { const k = 1 - this.swingT / 0.38; d = new THREE.Vector3(side === 'R' ? 0.1 : -0.1, 0.2 + 0.25 * (1 - k), 0.6 + k); }   // a phone player's jab: cocked, then straight out in front
       else { d = h.clone().sub(chest).applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.yaw); if (d.length() > 1.2 || d.lengthSq() < 1e-6) continue; }
@@ -1569,7 +1600,7 @@ class SquadPuppet {
     if (!em) r.pose.head.setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.clamp(-Math.asin(f.y), -0.6, 0.6));
     // hand tracking: their real fingers (sent only by players using it): how bent the fingers are, and the middle one
     if (!em && pose.fc && r.handPose) for (const [side, o] of [['R', 0], ['L', 5]]) { const hp = r.handPose['lArm' + side], s5 = pose.fc.slice(o, o + 5); if (!hp || s5[1] === '-') continue;
-      const d = (i) => (s5.charCodeAt(i) - 48) / 9, curl = (d(1) + d(3) + d(4)) / 3, mid = d(2); hp.curl += (curl - hp.curl) * Math.min(1, dt * 15); hp.mid += (mid - hp.mid) * Math.min(1, dt * 15); }
+      const d = (i) => pose.fcv && pose.fcv[o + i] != null ? pose.fcv[o + i] : (s5.charCodeAt(i) - 48) / 9, curl = (d(1) + d(3) + d(4)) / 3, mid = d(2); hp.curl += (curl - hp.curl) * Math.min(1, dt * 15); hp.mid += (mid - hp.mid) * Math.min(1, dt * 15); }
     r.animate(dt); r.sync(); if (em) this.emote.place(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag();
   }
   headPos() { return this.c.headPos(new THREE.Vector3()); }

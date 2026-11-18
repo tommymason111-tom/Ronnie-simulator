@@ -14,13 +14,18 @@ export async function startRoomHost() {
   const server = http.createServer((q, s) => s.end('ok'));
   const wss = new WebSocketServer({ server });
   wss.on('connection', async (ws, req) => {
+    // a pretend network for this player: ws://localhost:PORT/net/<delay ms>/<jitter ms>/... adds that much delay each
+    // way, varying by up to the jitter, in order (like a real connection: late messages hold up the ones behind them)
+    let lat = 0, jit = 0; const nm = req.url.match(/^\/net\/(\d+)\/(\d+)/); if (nm) { lat = +nm[1]; jit = +nm[2]; req.url = req.url.slice(nm[0].length) || '/'; }
+    const lane = () => { let last = 0; return (f) => { if (!lat && !jit) return f(); const at = Math.max(last, Date.now() + lat + Math.random() * jit); last = at; setTimeout(f, at - Date.now()); }; };
+    const toClient = lane(), toRoom = lane();
     const res = await mod.default.fetch(new Request('http://local' + req.url, { headers: { Upgrade: 'websocket' } }), env, {});
     if (res.status !== 101) { ws.close(4003, String(res.status)); return; }
     const code = (req.url.match(/room\/([A-Z0-9]+)/i) || [])[1].toUpperCase(), R = roomFor(code), sock = R.socks[R.socks.length - 1]; stats.rooms.add(code);
     for (const m of sock.got.splice(0)) ws.send(m);                                   // (the welcome went out before the socket was wired up)
-    sock.send = (s) => { if (sock.closed) throw new Error('closed'); stats.out++; if (ws.readyState === 1) ws.send(s); };
+    sock.send = (s) => { if (sock.closed) throw new Error('closed'); stats.out++; toClient(() => { if (ws.readyState === 1) ws.send(s); }); };
     sock.close = () => { sock.closed = true; try { ws.close(); } catch (e) {} };
-    ws.on('message', (d) => { stats.in++; R.room.webSocketMessage(sock, d.toString()); });
+    ws.on('message', (d) => { stats.in++; const m = d.toString(); toRoom(() => { if (!sock.closed) R.room.webSocketMessage(sock, m); }); });
     ws.on('close', () => { if (!sock.closed) { sock.closed = true; R.room.webSocketClose(sock, 1000, '', true); } });
   });
   await new Promise(r => server.listen(0, r));
