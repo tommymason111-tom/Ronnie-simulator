@@ -657,6 +657,9 @@ function respawnPlayer() {
 }
 // a new game, for this player: off the end screen / pause menu, the mode started fresh, back at the start
 function newGame(id, why) {
+  // (only the games this place has: Run the Pub needs the pub's bar and seats, the sweep needs Lidl. A game from anywhere
+  // else (another player's restart message, a stray call) starts this place's own first game instead of crashing)
+  { const ok = PLACE_GAMES[room.placeId]; if (ok && !ok.includes(id)) { console.warn('not a game for ' + room.placeId + ': ' + id); id = ok[0]; } }
   if (G.over) { G.over = false; player.menuLock = false; player.noTurn = false; document.body.classList.remove('gameover'); pauseEl.classList.remove('show-end'); if (player.flatMode) touch.show(true); if (player.wrist) player.wrist.visible = true;
     const rc = director.receipt; if (rc && rc.parent === camera) { camera.remove(rc); rc.visible = false; } }
   setPaused(false); attackFx.removeAll(); SEL.mode = id;

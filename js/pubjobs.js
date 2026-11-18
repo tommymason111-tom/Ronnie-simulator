@@ -101,7 +101,7 @@ export class PubJobs {
   }
   flagTex(n) { const c = document.createElement('canvas'); c.width = 128; c.height = 80; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 128, 80); x.font = '900 52px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#c62828'; x.fillText(String(n), 64, 44); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; }
   emptySpots(n) {
-    const seats = (this.g.room.chairsAt || []).filter(([x, z]) => x > -9.6 && z < 7.8 && z > -8.8), out = [];
+    const seats = (this.g.room.chairsAt || []).filter(([x, z]) => x > -9.6 && z < 7.8 && z > -8.8), out = []; if (!seats.length) return out;
     for (let k = 0; k < 40 && out.length < n; k++) { const [x, z, ry] = R(seats); const p = V(x - Math.sin(ry) * 0.42, 0.8, z - Math.cos(ry) * 0.42); if (out.every(q => q.distanceTo(p) > 2)) out.push(p); }
     return out;
   }
