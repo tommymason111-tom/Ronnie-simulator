@@ -1,5 +1,5 @@
 // Hand-drawn (canvas) cut scenes and full-screen overlays for the squad's attacks.
-//   drawTurkey(g, t)  — Ben takes Ronnie to Turkey for a new hairline (8 seconds, 8 scenes)
+//   drawTurkey(g, t)  — Ben takes Ronnie to Turkey for a new hairline (TURKEY_LEN seconds, 8 scenes)
 //   drawPepsi(g, t, dur) — the screen fills up with Pepsi Max, fizzes, then drains
 //   drawSiu(g, t, dur)   — Lewis's Portugal "SIUUU" overlay
 // Everything is drawn on a 1024x576 canvas each frame.
@@ -9,7 +9,8 @@ import { FONT } from './textures.js';
 // (tall on a phone held upright) so nothing gets squashed thin
 let W = 1024, H = 576;
 export function setCanvas(w, h) { W = w; H = h; }
-export const TURKEY_LEN = 20.0;   // long enough to read every caption
+const FILM_LEN = 20.0;             // (the film's own timeline: the scenes below are laid out over this)
+export const TURKEY_LEN = 12.0;   // how long it actually plays for: the film runs at FILM_LEN / TURKEY_LEN speed (it dragged at 20s)
 
 // ------------------------------------------------------------------ helpers
 const ease = (t) => t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t);
@@ -140,9 +141,10 @@ const SCENES = [
   [10.9, 14.1, sceneClinic],
   [14.1, 16.1, sceneRecovery],
   [16.1, 18.6, sceneReveal],
-  [18.6, TURKEY_LEN, sceneHome],
+  [18.6, FILM_LEN, sceneHome],
 ];
 export function drawTurkey(g, t) {
+  t *= FILM_LEN / TURKEY_LEN;
   for (const [a, b, fn] of SCENES) if (t < b || fn === sceneHome) {
     fn(g, t - a, b - a, t);
     // a quick white wipe between scenes

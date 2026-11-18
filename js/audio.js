@@ -40,6 +40,17 @@ function unlockIOS() {
 }
 
 export function setPitchScale(s) { pitchScale = s; }
+// HUSH: while a full-screen cut scene plays on your own (Ben's trip to Turkey), the world behind it goes quiet: nobody
+// talking, no footsteps, no background noise, the speakers' song turned right down. Sounds with no place in the world
+// (the cut scene's own: the plane taking off) still play
+let hush = false;
+export const hushed = () => hush;
+export function setHush(on) {
+  on = !!on; if (on === hush) return; hush = on; if (!ctx) return; const t = ctx.currentTime;
+  if (on) for (const k of [...VPLAY.keys()]) stopVoice(k);
+  if (ambGain) ambGain.gain.setTargetAtTime(on ? 0 : 1, t, 0.15);
+  if (songOut) songOut.gain.setTargetAtTime(on ? 0.12 : 0.9, t, 0.2);
+}
 // where the songs from the speakers go in (through the same master volume / mute as everything else)
 let songOut = null;
 export function musicBus() { if (!ctx || !master) return null; if (!songOut) { songOut = ctx.createGain(); songOut.gain.value = 0.9; songOut.connect(master); } return { ctx, out: songOut }; }
@@ -327,6 +338,7 @@ function wobble(o, t, dur, rate, depth) { const l = ctx.createOscillator(); l.fr
 
 export function sfx(name, pos = null, vol = 1) {
   if (!ctx || ctx.state !== 'running') return;
+  if (hush && pos) return;      // (the world's gone quiet: a cut scene's on)
   if (!SOUNDS[name]) name = ALIAS[name] || name; if (!SOUNDS[name]) return;
   // (a busy moment can fire dozens at once: the same sound more than 6 times in a quarter second is just noise)
   const now = ctx.currentTime, h = (_recent[name] = (_recent[name] || []).filter(x => now - x < 0.25)); if (h.length >= 6) return; h.push(now);
@@ -338,7 +350,7 @@ const NOVARY = new Set(['fanfare', 'sadviolin', 'trumpet', 'siu', 'jackpot', 'cr
 
 // Tommy "speaks" in a smooth little babble while his speech bubble is up.
 export function babble(pos, syllables = 8, pitch = 1) {
-  if (!ctx || ctx.state !== 'running') return;
+  if (!ctx || ctx.state !== 'running') return; if (hush) return;
   const d = out(pos, 0.25, true);
   let t = ctx.currentTime + 0.02;
   for (let i = 0; i < syllables; i++) {
@@ -411,7 +423,7 @@ function startAmbience() {
   ambNext = ctx.currentTime + 0.3; ambBar = 0; nextEvent = { a: ctx.currentTime + 3, b: ctx.currentTime + 6, c: ctx.currentTime + 25 };
   if (ambKind === 'pub') pubMurmur();
   const tick = () => {
-    if (ctx.state === 'running') { while (ambNext < ctx.currentTime + 1.2) ambNext = BAR[ambKind](ambNext); events(); }
+    if (ctx.state === 'running') { while (ambNext < ctx.currentTime + 1.2) ambNext = BAR[ambKind](ambNext); if (!hush) events(); }
     else ambNext = ctx.currentTime + 0.3;
     ambTimer = setTimeout(tick, 300);
   };
@@ -577,7 +589,7 @@ export const audioCtx = () => ctx;
 export function decodeClip(ab) { return ctx ? new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)) : Promise.resolve(null); }
 // starts it now; returns how long it lasts (seconds)
 export function playBuffer(buf, pos = null, vol = 1, key = null) {
-  if (!ctx || !buf) return 0; if (key) stopVoice(key);
+  if (!ctx || !buf) return 0; if (hush && pos) return buf.duration; if (key) stopVoice(key);
   const src = ctx.createBufferSource(); src.buffer = buf; const g = out(pos, 1.6 * vol, true); src.connect(g); src.start();
   if (key) VPLAY.set(key, src);
   src.onended = () => { try { src.disconnect(); g.disconnect(); if (g._p) g._p.disconnect(); } catch (e) {} if (key && VPLAY.get(key) === src) VPLAY.delete(key); };

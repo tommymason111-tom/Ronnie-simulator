@@ -11,7 +11,7 @@ import { Player } from './player.js';
 import { Tommy } from './tommy.js';
 import { STAGE_LINES } from './dialogue.js';
 import { AttackFX } from './attackfx.js';
-import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience, setMuted } from './audio.js';
+import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience, setMuted, setHush } from './audio.js';
 import { voiceLine, warmLine, VOICED } from './voices.js';
 import { DomPanel } from './vrdom.js';
 import { FONT } from './textures.js';
@@ -1185,6 +1185,13 @@ function frame(simDt) {
     if (!it.def.prop && mouthGap(it) < TUNING.mouthRadius * player.scale) bite(it, h);
   }
 
+  // A FULL-SCREEN CUT SCENE ON YOUR OWN (Ben's trip to Turkey): the world behind it stops dead (nobody walks about,
+  // talks or throws anything, the timer waits, nothing's heard) until it's over. In a room the others carry on playing,
+  // so it keeps running there
+  const held = !!(attackFx.inCutscene && !net.connected);
+  setHush(held);
+  if (held) { attackFx.update(dt); if (player.flatMode) { updateTouchUI(); touch.busy(true); } G.fpsFrames++; G.fpsT += dt; if (G.fpsT >= 1) { G.fps = Math.round(G.fpsFrames / G.fpsT); G.fpsFrames = 0; G.fpsT = 0; }
+    if (simDt == null) renderer.render(scene, camera); return; }
   items.update(dt);
   vegAndHits(dt);
   if (xr) slaps();
