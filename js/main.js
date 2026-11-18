@@ -47,7 +47,16 @@ const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'pub', mode: 'e
   await Promise.race([MODEL_LOAD, new Promise(r => setTimeout(r, 25000))]); done = true; }
 
 // ---------------- renderer / scene ----------------
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+// (a device or browser that can't do 3D at all: say so on the loading screen, instead of LOADING for ever)
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); }
+catch (e) {
+  const ls = document.getElementById('loadscreen');
+  if (ls) { const t = ls.querySelector('.lst'), h = document.getElementById('ls-hint'); if (t) t.textContent = 'NO 3D ON THIS BROWSER';
+    if (h) h.textContent = "This browser can't show 3D right now. Try Chrome or Safari, switch on hardware acceleration in its settings, or close some tabs and restart it."; ls.classList.add('on', 'no3d'); }
+  window.__crash && window.__crash('context', e, { where: 'no webgl' });
+  throw e;
+}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;

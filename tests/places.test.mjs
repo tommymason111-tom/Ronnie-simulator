@@ -25,6 +25,13 @@ export default async function () {
       await p.context().close();
     }
     if (!ONLY || ONLY.includes('crash')) {
+      // a browser with no 3D at all: a clear message on the loading screen, not LOADING for ever
+      { const p = await newPage(b, { width: 390, height: 844, mobile: true });
+        await p.addInitScript(() => { const g = HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext = function (k, ...a) { return /webgl/.test(k) ? null : g.call(this, k, ...a); }; });
+        await p.goto('http://game.local/index.html?go=1&place=bedroom&mode=roam'); await p.waitForTimeout(6000);
+        const t = await p.evaluate(() => { const ls = document.getElementById('loadscreen'); return { on: ls.classList.contains('on'), title: ls.querySelector('.lst').textContent, hint: document.getElementById('ls-hint').textContent }; });
+        C.ok(t.on && /NO 3D/.test(t.title) && /Chrome or Safari/.test(t.hint), 'no 3D: no clear message on the loading screen: ' + JSON.stringify(t));
+        await p.context().close(); }
       // the crash reporter: a thrown error is reported (with where), a lost 3D context is reported, and the game draws again
       const p = await newPage(b, { width: 640, height: 400 });
       await startGame(p, { place: 'bedroom', mode: 'roam' });

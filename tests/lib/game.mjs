@@ -10,7 +10,7 @@ const TYPES = { '.js': 'application/javascript', '.mjs': 'application/javascript
 // BROWSER=firefox or webkit (Safari's engine, as on every iPhone) runs the same tests in those instead of Chromium
 export const BROWSER = process.env.BROWSER || 'chromium';
 export async function launch() {
-  if (BROWSER === 'firefox') return firefox.launch({ firefoxUserPrefs: { 'webgl.force-enabled': true, 'media.autoplay.default': 0 } });
+  if (BROWSER === 'firefox') return firefox.launch({ headless: !process.env.HEADED, firefoxUserPrefs: { 'webgl.force-enabled': true, 'media.autoplay.default': 0 } });      // (headless Firefox has no WebGL on Linux: run it on a virtual screen, HEADED=1 under xvfb-run)
   if (BROWSER === 'webkit') return webkit.launch();
   return chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info', '--disable-features=BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights,LocalNetworkAccessChecks', '--no-proxy-server'] });
 }
@@ -40,7 +40,7 @@ export async function newPage(browser, { width = 900, height = 560, mobile = fal
 }
 // straight into a place and mode, playing flat; resolves when the game is running
 export async function startGame(page, { place = 'pub', mode = 'roam', dev = false, extra = '' } = {}) {
-  if (dev) { await page.goto('http://game.local/index.html'); await page.evaluate(() => sessionStorage.setItem('rs_dev', '1')); }
+  if (dev) await page.addInitScript(() => { try { sessionStorage.setItem('rs_dev', '1'); } catch (e) {} });      // (set before the page starts: loading it twice left the first load's half-done requests failing, in WebKit)
   await page.goto(`http://game.local/index.html?go=1&place=${place}&mode=${mode}${extra}`);
   try { await page.waitForFunction(() => window.RS && document.body.classList.contains('ready'), null, { timeout: 180000 }); }
   catch (e) { const st = await page.evaluate(() => JSON.stringify({ url: location.href, rs: !!window.RS, ready: document.body.classList.contains('ready'), body: document.body.className, load: (document.querySelector('#loadscreen') || {}).className, lsText: ((document.querySelector('#loadscreen') || {}).textContent || '').replace(/\s+/g, ' ').slice(0, 160), screen: (document.querySelector('#start .screen.on') || {}).dataset })).catch(x => 'no page: ' + x.message);
