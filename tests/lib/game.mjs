@@ -22,6 +22,7 @@ export async function newPage(browser, { width = 900, height = 560, mobile = fal
   page.on('console', m => { const t = m.text(); if (m.type() === 'error' && !/Failed to load resource|net::ERR|WebSocket connection/.test(t)) page.errors.push('console: ' + t.slice(0, 300)); });
   await page.route('**/*', async (r) => {
     const u = r.request().url(); let f = null;
+    if (u.startsWith('blob:') || u.startsWith('data:')) return r.fallback();      // (WebKit sends the page's own in-memory pictures through here too: let them be)
     if (u.startsWith('https://cdn.jsdelivr.net/npm/three@0.170.0/')) f = path.join(NM, 'three', u.split('three@0.170.0/')[1].split('?')[0]);
     else if (u.startsWith('https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/')) f = path.join(NM, 'cannon-es/dist/cannon-es.js');
     else if (/\/crash$/.test(u.split('?')[0]) && r.request().method() === 'POST') { try { page.crashes.push(JSON.parse(r.request().postData() || '{}')); } catch (e) {} return r.fulfill({ body: 'ok' }); }

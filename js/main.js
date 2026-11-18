@@ -757,7 +757,7 @@ function warmUpload() {
 }
 { let released = false, ticks = 0;
   setInterval(() => {
-    if (!document.body.classList.contains('ready')) return; ticks++;
+    if (!document.body.classList.contains('ready') || window.__glLost) return; ticks++;      // (nothing's let go of while the 3D context is lost: its objects belong to the old one)
     try {
       if (ticks === 1 && !renderer.xr.isPresenting) warmUpload();
       if (!released && ticks > 2) { if (!releaseLevelGeometry(levelMeshes, 150)) released = true; }
