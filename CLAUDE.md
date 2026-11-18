@@ -2,23 +2,19 @@
 
 A comedy eating game in plain HTML and JavaScript (three.js r170 and cannon-es from a CDN, no build step). It runs on the Meta Quest browser (WebXR), phones and computers. Read `README.md` for what's in the game.
 
-## Branches (important)
+## Branch
 
-- **Work on `claude/ronnie-webxr-quest-x7q4x5`** (the live game) unless told otherwise.
-- **Mirror every change to `claude/mp-12-players`** (the 12-player multiplayer version). Cherry-pick each commit onto it.
-  - These files differ on purpose on that branch, so on a conflict keep **its** version and redo just your change by hand: `index.html`, `js/menu.js`, `version.json`, `js/main.js`, `js/net.js`, `js/mpsync.js`, `server/*`.
-  - `js/imposter.js` there also has host-migration code (`becomeHost`, `hostBack`). Never copy the whole file over: apply only your change.
-  - Use a worktree for it, e.g. `git worktree add ../rs-mp claude/mp-12-players`.
+- **Work on `claude/ronnie-webxr-quest-x7q4x5`** (the live game). It's the 12-player version: the old 6-player game and the separate `claude/mp-12-players` branch were merged into it at 2.23.0. Don't mirror changes anywhere any more.
 - Commit and push everything. Don't open pull requests unless asked.
 
 ## Versions
 
-Every update bumps the version.
+Every update bumps the version (`2.23.x` from the merge on).
 
-- **Live branch:** `2.21.x`. **12-player branch:** `2.22.x`. They share the same last number, e.g. 2.21.18 and 2.22.18.
 - **To bump:**
-  1. Edit `GAME_VERSION` in `js/menu.js`.
+  1. Edit `GAME_VERSION` in `js/menu.js` (and add a line to the update notes under it).
   2. Run `python3 tools/stamp.py`. This writes `version.json` and the `?v=` cache-busters in `index.html`.
+- A player on an older version is updated automatically when they join a mate's room on a newer one.
 
 ## Rules from the owner
 
@@ -29,7 +25,7 @@ Every update bumps the version.
   - The code is `FATTY` (not case-sensitive). A wrong code locks it on that device (`localStorage rs_dev_locked`).
   - It's free roam with no random attacks. The dev panel (`js/devmode.js`) triggers emotes, attacks, Imposter jobs, cameras and power-ups.
   - It has a map picker, including a blank test grid (`js/levels/grid.js`).
-- **Servers (Cloudflare Workers):** `ronnie-mp` (live branch, 6 players) and `ronnie-mp12` (12-player branch), both at `<name>.ronnie-sim.workers.dev`. Each branch's `server/worker.js` is its server (deploy steps in `server/README.md`). Ask the owner before deploying a server. Test a relay from a browser (Playwright): Node's own WebSocket skips the session's proxy.
+- **Server (Cloudflare Worker):** `ronnie-mp12.ronnie-sim.workers.dev` (12 players a room, saved player IDs, host handover, grab ownership). `server/worker.js` is its code (deploy steps in `server/README.md`). The old 6-player `ronnie-mp` server isn't used by the game any more. Ask the owner before deploying a server. Test a relay from a browser (Playwright): Node's own WebSocket skips the session's proxy.
 - **Real voices (ElevenLabs):** `js/voices.js`. Characters in `VOICED` speak their lines from pre-made clips (`assets/voices/<char>/<hash>.mp3`, made with `python3 tools/voices.py <char> "<ElevenLabs voice name>"` from `tools/voice_lines/<char>.json`). Typed chat and lines without a clip go to the server's `/tts`, which needs the Worker secret `ELEVENLABS_KEY` (added by the owner) and the voice id in `VOICES` in `server/worker.js`.
 
 ## Where things are

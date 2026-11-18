@@ -144,7 +144,7 @@ export class Imposter {
     for (const k of ['imK', 'imT', 'imM', 'imV', 'imS', 'imF']) on(k, (m, p) => { if (this.host && p) this.hostIn(k, m, p.id); });
     for (const k of ['imStart', 'imDead', 'imBar', 'imMeet', 'imVoted', 'imRes', 'imRound', 'imSabOn', 'imSabOff', 'imFixed', 'imWin', 'imLobby', 'imSync', 'imNo']) on(k, (m) => { if (!this.host && (!m.to || m.to === this.me)) this.apply(k, m); });
     // a game that starts after the deal (pressed PLAY late): ask the host for where things are
-    on('imHello', (m, p) => { if (this.host && p) this.hostHello(p.id); });
+    on('imHello', (m, p) => { if (this.host && p) { this.hostBack(p.id); this.hostHello(p.id); } });
     on('imVent', (m, p) => { const pl = p && this.players.get(p.id); if (pl) { pl.vent = !!m.in; } });
     this.camWatchers = new Set(); on('imCams', (m, p) => { if (!p) return; if (m.on) this.camWatchers.add(p.id); else this.camWatchers.delete(p.id); });
     this.leaveWas = this.net.on.leave; this.net.on.leave = (m) => { this.leaveWas && this.leaveWas(m); this.camWatchers && this.camWatchers.delete(m.id); if (this.host) this.hostLeft(m.id); };
@@ -235,7 +235,19 @@ export class Imposter {
     if (this.taskCount() >= this.taskTotal()) return this.send('imWin', { side: 'faithful', why: 'EVERY JOB IN THE PUB IS DONE' });
     if (imps >= faith) return this.send('imWin', { side: 'imposter', why: 'THE IMPOSTERS OUTNUMBER THE FAITHFUL' });
   }
-  hostLeft(id) { const p = this.players.get(id); if (!p) return; p.left = true; p.alive = false; if (this.phase === 'meeting' && this.H.votes) { this.H.votes.delete(id); } this.hostCheck(); }
+  // someone's dropped out: they get 30 seconds to come back (a phone that lost signal, a reload) and carry on exactly
+  // where they were (their role, their jobs, alive or dead). After that they've left: out of the game
+  hostLeft(id) { const p = this.players.get(id); if (!p || p.left) return; clearTimeout(p.awayT); p.away = true;
+    p.awayT = setTimeout(() => { if (p.away && this.host) this.hostGone(id); }, 30000); }
+  hostBack(id) { const p = this.players.get(id); if (p && p.away) { p.away = false; clearTimeout(p.awayT); } }
+  // we're the host now (the last one left): rebuild the referee's notebook from what we know, and carry on
+  becomeHost() { if (this.host) return; this.host = true; const list = [...this.players.values()], imps = this.impList || list.filter(p => p.realImp).map(p => p.id);
+    this.H = { killCD: new Map(imps.map(id => [id, IMP.KILL_CD / 2])), emerg: new Map(list.map(p => [p.id, 1])), emergCD: 5, sabCD: 15, votes: this.phase === 'meeting' ? new Map() : null, meetEnd: now() + 30, resumeT: this.phase === 'eject' ? 3 : 0 };
+    if (list.length) this.dealMsg = { list: list.map(p => ({ id: p.id, name: p.name, char: p.char })), imps, tasks: Object.fromEntries(list.map(p => [p.id, p.tasks])), n: this.nImpsNow || imps.length };
+    for (const p of list) if (p.id !== this.me && !this.net.players.has(p.id) && !p.left) this.hostLeft(p.id);      // (the old host, and anyone else not here: the usual 30 seconds)
+    this.lobbyT = 0; }
+  becomeGuest() { this.host = false; this.H = null; }
+  hostGone(id) { const p = this.players.get(id); if (!p) return; p.left = true; p.alive = false; if (this.phase === 'meeting' && this.H.votes) { this.H.votes.delete(id); } this.hostCheck(); }
   hostUpdate(dt) {
     if (this.phase === 'waiting') { if ((this.lobbyT -= dt) <= 0) { this.lobbyT = 2; this.send('imLobby', { n: this.roster().length }); } return; }
     const H = this.H; if (!H || this.phase === 'over') return;

@@ -637,7 +637,7 @@ export class ItemManager {
       if (it.spawnScale < 1) { it.spawnScale = Math.min(1, it.spawnScale + dt * 4); it.obj.scale.setScalar(easeOutBack(it.spawnScale) * (0.55 + 0.45 * it.eatFraction)); }
       else if (it.obj.scale.x < 0.05 && !it.heldBy) it.obj.scale.setScalar(0.55 + 0.45 * it.eatFraction);      // (put out full-size straight away, e.g. the glasses behind the bar: they were left tiny, so invisible)
       if (it.heldBy) { it.resting = false; it.restTime = 0; continue; }
-      if (it.netMirror) continue;                    // (multiplayer: the host's game moves this one)
+      if ((it.netMirror && !it.ownedHere) || it.remoteOwner) continue;      // (multiplayer: whoever owns it moves it: the host, or whoever grabbed it last)
       if (it.resting) {
         it.restTime += dt;
         if ((it.def.veg || it.empty || it.temp) && it.restTime > 6 && !it.shelf) this.remove(it);

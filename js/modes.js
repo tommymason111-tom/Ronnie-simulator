@@ -325,7 +325,7 @@ export class Director {
     }
     this.showReceipt(lines);
     if (!this.player2) { this.receiptT = 1e9; this.g.onGameOver && this.g.onGameOver(lines); }      // (the final scoreboard: stays up till you leave; not between the two players' goes of an eat-off)
-    if (this.mp && this.mp.on && this.mp.host) this.mp.net.send({ t: 'end', lines });
+    if (this.mp && this.mp.on && this.mp.host) { this.mp.net.send({ t: 'end', lines }); this.mp.net.send({ t: 'endGame' }); }      // (the game's over: the room forgets everyone's progress)
     g.tommy.say({
       intervention: 'Another intervention, another failure. I\'ll tell your mum you were good. I\'ll lie.',
       veggie: 'Well done, Ron. You ate the level. The WHOLE level.',

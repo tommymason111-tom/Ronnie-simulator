@@ -16,7 +16,7 @@ import { emoteInfo } from './emotes.js';
 import { voiceLine } from './voices.js';
 
 const TYPES = Object.keys(FOODS);
-const SNAP_HZ = 10;
+const SNAP_HZ = 20;             // (the host's word on everything, 20 times a second: only what's changed, the whole lot once a second)
 const q3 = (v) => Math.round(v * 1000) / 1000, q2 = (v) => Math.round(v * 100) / 100;
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
 
@@ -25,11 +25,11 @@ export class MPSync {
     Object.assign(this, o);            // { net, scene, room, physics, player, items, cast, director, words, fx, G, tommy }
     this.seq = 0; this.byNid = new Map(); this.dead = new Map(); this.snapT = 0; this.fullT = 0; this.dirT = 0;
     this.sentDefs = new Set(); this.remoteHolds = new Map(); this.lastSay = new Map();
-    this.charSnap = new Map(); this.punchCool = 0; this.rgrabs = new Map();
+    this.charSnap = new Map(); this.punchCool = 0; this.rgrabs = new Map(); this.lastChar = new Map(); this.snapN = 0; this.owned = new Map();
     // VR on a joining player's game: grabbing one of the host's people sends it to the host
     if (this.player) this.player.remoteGrab = (h, who, part, ph) => this.sendGrab(h, who, part, ph);
     const net = this.net;
-    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc', 'emote', 'swing', 'sfx', 'rgrab', 'chat', 'char'])
+    for (const k of ['snap', 'def', 'say', 'dir', 'hold', 'throw', 'bite', 'gone', 'wake', 'woke', 'stun', 'announce', 'coming', 'hitby', 'punch', 'end', 'hitc', 'emote', 'swing', 'sfx', 'rgrab', 'chat', 'char', 'own', 'rel'])
       net.on[k] = (m, p) => this['on_' + k] && this['on_' + k](m, p);
   }
   get host() { return this.net.host; }
@@ -145,13 +145,27 @@ export class MPSync {
   // a joining player's game: the host's people and food replace ours
   becomeClient() {
     const { items, director } = this;
-    director.remote = true;
+    director.remote = true; if (this.minFood0 === undefined) this.minFood0 = items.minFood;
     items.minFood = 0; items.respawnQueue.length = 0; items.clientMode = true;
     for (const it of items.items.slice()) if (!it.netMirror) { it.dropNoTell = true; items.remove(it); }
     for (const c of this.cast.slice(1)) c.dispose();
     this.cast.length = 1;
     this.tommy.netDriven = true;
   }
+  // the host's left (or handed it over) and it's us now: our copy of the game becomes the real one, right where it is:
+  // the food we were shown is real food, the squad we were shown come to life, the game carries on
+  becomeHost() {
+    const { items, director } = this; if (!director.remote) return;
+    director.remote = false; items.clientMode = false; if (this.minFood0 !== undefined) items.minFood = this.minFood0;
+    for (const it of items.items) if (it.netMirror) {
+      it.netMirror = false; if (it.netT) { it.pos.copy(it.netT.p); it.obj.quaternion.copy(it.netT.q); } it.netT = null; it.prev.copy(it.pos);
+      if (!it.heldBy && !it.ownedHere) { it.vel.set(0, 0, 0); it.resting = true; } it.netSent = false; this.seq = Math.max(this.seq, it.nid || 0); }
+    for (const c of this.cast.slice(1)) { c.netDriven = false; c.netTarget = null; c.active = true; if (c.rag && c.rag.mode === 'ragdoll' && c.recover) c.recover(); }
+    if (this.tommy) this.tommy.netDriven = false;
+    this.lastChar.clear(); this.fullT = 0; this.snapT = 0;
+  }
+  // we've handed hosting to someone else: from now on their game is the real one and ours shows it
+  becomeGuest() { if (this.director.remote) return; this.becomeClient(); const im = this.director.imposter; if (im && im.becomeGuest) im.becomeGuest(); }
   // which squad members are being played by someone (left out of the squad)
   takenChars() { const s = new Set(); if (!this.net.connected) return s; if (this.net.char && this.net.char !== 'ronnie') s.add(this.net.char); for (const p of this.net.players.values()) if (p.char && p.char !== 'ronnie') s.add(p.char); return s; }
 
@@ -164,6 +178,7 @@ export class MPSync {
     if (bench !== !!T.benched) { T.benched = bench; T.rag.group.visible = !bench; T.bubble && (T.bubble.visible = false);
       if (bench) { T.attacks = false; T.directed = false; T.rag.placeAt(0, -60, 0); } else { const sp = this.room.tommySpots[0]; T.rag.placeAt(sp.x, sp.y, 0); } }
     if (bench) { T.attacks = false; T.directed = false; }
+    this.ownership(dt);
     if (this.host) { this.hostUpdate(dt); this.holdGrabs(dt); } else { this.clientUpdate(dt); this.grabMoves(dt); }
     this.punches();
   }
@@ -174,20 +189,18 @@ export class MPSync {
     // anyone now played by a person leaves the squad
     const taken = this.takenChars();
     for (const c of this.cast.slice(1)) if (taken.has(c.id)) { c.dispose(); this.cast.splice(this.cast.indexOf(c), 1); }
-    // the food other people are holding follows their hands; let go without a throw = dropped
-    for (const [nid, h] of this.remoteHolds) { const it = this.byNid.get(nid); if (!it || it.dead) { this.remoteHolds.delete(nid); continue; }
-      if (performance.now() - h.at > 400) { it.heldBy = null; it.resting = false; it.vel.set(0, 0, 0); this.remoteHolds.delete(nid); continue; }
-      it.heldBy = { remote: h.id }; it.prev.copy(it.pos); it.pos.lerp(_v.set(...h.p), 0.6); }
     this.remoteHits();
     if ((this.snapT -= dt) > 0) return;
     this.snapT = 1 / SNAP_HZ;
     const full = (this.fullT -= 1 / SNAP_HZ) <= 0; if (full) this.fullT = 1.0;
-    const chars = [];
-    for (const c of this.cast) {
+    const chars = []; this.snapN++;
+    for (const [ci, c] of this.cast.entries()) {
       if (!c.rag || !c.rag.list) continue;
+      if (!full && (ci + this.snapN) % 2) continue;      // (each person's whole body 10 times a second, half of them in each snapshot: the same as before, sent twice as often)
       if (c.id.startsWith('p') && !this.sentDefs.has(c.id) && SQUAD[c.id]) { this.sentDefs.add(c.id); this.net.send({ t: 'def', id: c.id, def: SQUAD[c.id] }); }
       const a = [c.id, c.rag.mode === 'ragdoll' ? 1 : 0];
       for (const p of c.rag.list) { const b = p.body; a.push(q3(b.position.x), q3(b.position.y), q3(b.position.z), q2(b.quaternion.x), q2(b.quaternion.y), q2(b.quaternion.z), q2(b.quaternion.w)); }
+      const key = a.join(','); if (!full && this.lastChar.get(c.id) === key) continue; this.lastChar.set(c.id, key);      // (not moved: not sent)
       chars.push(a);
     }
     const its = [];
@@ -195,6 +208,7 @@ export class MPSync {
       if (it.dead) continue;
       if (!it.nid) { it.nid = ++this.seq; this.byNid.set(it.nid, it); }   // (food that was there before the room opened)
       if (!full && it.resting && it.netSent) continue;
+      if (!full && it.remoteOwner) continue;      // (someone else has it: they're telling everyone where it is)
       it.netSent = true;
       const r = it.obj.quaternion, s = it.obj.scale.x;
       its.push([it.nid, TYPES.indexOf(it.type), it.variant || 0, q3(it.pos.x), q3(it.pos.y), q3(it.pos.z), q2(r.x), q2(r.y), q2(r.z), q2(r.w), q2(s), it.empty ? 1 : 0, it.heldBy ? (it.heldBy.remote || 'h') : 0]);
@@ -213,7 +227,6 @@ export class MPSync {
           it.vel.multiplyScalar(-0.25); it.thrownByPlayer = false; it.incoming = false; break; } }
     }
   }
-  on_hold(m, p) { if (!this.host) return; for (const [nid, x, y, z] of m.h || []) { this.remoteHolds.set(nid, { id: p ? p.id : m.f, p: [x, y, z], at: performance.now() }); const it = this.byNid.get(nid); if (it) { it.heldBy = { remote: m.f }; it.resting = false; it.shelf = false; } } }
   on_throw(m) { if (!this.host) return; const it = this.byNid.get(m.nid); this.remoteHolds.delete(m.nid); if (!it) return;
     it.heldBy = null; it.resting = false; it.pos.set(...m.p); it.prev.copy(it.pos); it.vel.set(...m.v); it.thrownByPlayer = true; it.thrower = m.f; it.spin.set(Math.random() * 10, Math.random() * 10, Math.random() * 10); it.netSent = false; }
   on_bite(m) { if (!this.host) return; const it = this.byNid.get(m.nid); if (it) { it.bitesLeft = m.left; it.empty = !!m.empty; it.netSent = false; } }
@@ -224,15 +237,46 @@ export class MPSync {
   clientUpdate(dt) {
     // smooth everything towards the host's last word
     const k = Math.min(1, dt * 14);
-    for (const it of this.items.items) if (it.netMirror && it.netT && !this.heldLocally(it)) { it.pos.lerp(it.netT.p, k); it.obj.quaternion.slerp(it.netT.q, k); it.obj.scale.setScalar(it.obj.scale.x + (it.netT.s - it.obj.scale.x) * k); }
-    // tell the host what I'm holding (and where)
-    const held = this.localHeld();
-    if (held.length && (this.holdT = (this.holdT || 0) - dt) <= 0) { this.holdT = 0.08; this.net.send({ t: 'hold', h: held.filter(it => it.nid).map(it => [it.nid, q3(it.pos.x), q3(it.pos.y), q3(it.pos.z)]) }); }
-    // something I was holding has just left my hand: it's been thrown (or dropped)
-    for (const it of this.wasHeld || []) if (!held.includes(it) && it.nid && !it.dead) { this.net.send({ t: 'throw', nid: it.nid, p: [q3(it.pos.x), q3(it.pos.y), q3(it.pos.z)], v: [q2(it.vel.x), q2(it.vel.y), q2(it.vel.z)] }); it.netT = null; }
-    this.wasHeld = held;
+    for (const it of this.items.items) if (it.netMirror && it.netT && !it.ownedHere && !this.heldLocally(it)) { it.pos.lerp(it.netT.p, k); it.obj.quaternion.slerp(it.netT.q, k); it.obj.scale.setScalar(it.obj.scale.x + (it.netT.s - it.obj.scale.x) * k); }
     for (const [nid, t] of this.dead) if (performance.now() - t > 3000) this.dead.delete(nid);
   }
+  // ------------------------------------------------------------------ owning things (everyone, host included)
+  // Whoever grabs a thing owns it: their game runs its physics (in the hand, through the air, until it lands) and
+  // tells everyone where it is 20 times a second. The room referees: the next person to grab takes it over, and if two
+  // grab at the same moment the first to reach the room gets it (the other one's hand lets go).
+  ownership(dt) {
+    const held = this.localHeld(), now = performance.now();
+    for (const it of held) if (it.nid && !this.owned.has(it.nid)) { this.owned.set(it.nid, it); it.ownedHere = true; it.ownerId = this.net.id; this.net.send({ t: 'grab', nid: it.nid }); }
+    // what I own: in my hand, or flying from my throw. Tell everyone; once it's come to rest, hand it back to the host
+    if ((this.ownT = (this.ownT || 0) - dt) <= 0 && this.owned.size) { this.ownT = 0.05; const out = [];
+      for (const [nid, it] of this.owned) {
+        if (it.dead) { this.owned.delete(nid); continue; }
+        const inHand = held.includes(it);
+        if (!inHand && (it.resting || it.pos.y < -5)) { this.owned.delete(nid); it.ownedHere = false; it.ownerId = null;
+          const q = it.obj.quaternion; this.net.send({ t: 'rel', nid, p: [q3(it.pos.x), q3(it.pos.y), q3(it.pos.z)], q: [q2(q.x), q2(q.y), q2(q.z), q2(q.w)] }); continue; }
+        const q = it.obj.quaternion; out.push([nid, q3(it.pos.x), q3(it.pos.y), q3(it.pos.z), q2(q.x), q2(q.y), q2(q.z), q2(q.w), q2(it.vel.x), q2(it.vel.y), q2(it.vel.z), inHand ? 1 : 0]); }
+      if (out.length) this.net.send({ t: 'hold', h: out }); }
+    // the host takes back anything whose owner has gone quiet (left, or their phone's dropped out)
+    if (this.host) for (const it of this.items.items) if (it.remoteOwner && now - (it.ownSeen || 0) > 1200) { it.remoteOwner = null; it.ownerId = null; it.heldBy = null; it.resting = false; it.netSent = false; }
+  }
+  // the room's decision: who has it
+  on_own(m) { const it = this.byNid.get(m.nid); if (!it) return;
+    if (m.id === this.net.id) return;                       // (mine)
+    if (it.ownedHere) { this.owned.delete(m.nid); it.ownedHere = false; this.dropLocal(it); }   // someone else got it (first, or after me): let go
+    it.ownerId = m.id; it.ownSeen = performance.now(); if (this.host) { it.remoteOwner = m.id; it.resting = false; } }
+  // where the owner says it is
+  on_hold(m) { const now = performance.now();
+    for (const e of m.h || []) { const [nid, x, y, z, qx, qy, qz, qw, vx, vy, vz, inHand] = e, it = this.byNid.get(nid); if (!it || it.dead || it.ownedHere) continue;
+      it.ownerId = m.f; it.ownSeen = now;
+      if (this.host) { it.remoteOwner = m.f; it.prev.copy(it.pos); it.pos.set(x, y, z); if (qw !== undefined) it.obj.quaternion.set(qx, qy, qz, qw); if (vx !== undefined) it.vel.set(vx, vy, vz);
+        if (inHand || vx === undefined) { it.heldBy = { remote: m.f }; it.resting = false; } else { it.heldBy = null; it.resting = false; it.thrownByPlayer = true; it.thrower = m.f; } }
+      else if (!this.heldLocally(it)) it.netT = { p: new THREE.Vector3(x, y, z), q: qw !== undefined ? new THREE.Quaternion(qx, qy, qz, qw) : it.obj.quaternion.clone(), s: it.obj.scale.x }; } }
+  // it's landed: back to the host
+  on_rel(m) { const it = this.byNid.get(m.nid); if (!it || it.ownedHere) return; it.ownerId = null; it.ownSeen = 0;
+    if (this.host) { it.remoteOwner = null; it.heldBy = null; it.pos.set(...m.p); it.prev.copy(it.pos); if (m.q) it.obj.quaternion.set(...m.q); it.vel.set(0, 0, 0); it.resting = true; it.thrownByPlayer = false; it.netSent = false; }
+    else it.netT = { p: new THREE.Vector3(...m.p), q: m.q ? new THREE.Quaternion(...m.q) : it.obj.quaternion.clone(), s: it.obj.scale.x }; }
+  // let go of something someone else has taken
+  dropLocal(it) { const P = this.player; for (const h of P.hands || []) if (h.held === it) P.release(h, true); if (P.flatHolder && P.flatHolder.held === it) P.flatDrop(); it.heldBy = null; }
   localHeld() { const P = this.player; return [...(P.hands || []).map(h => h.held), P.flatHolder && P.flatHolder.held].filter(it => it && !it.dead); }
   heldLocally(it) { return this.localHeld().includes(it); }
   on_def(m) { if (!this.host && m.def) SQUAD[m.id] = m.def; }
@@ -250,7 +294,7 @@ export class MPSync {
       for (let i = 0; i < c.rag.list.length; i++) { const o = 2 + i * 7; tg[i] = a.slice(o, o + 7); }
       c.netRag = a[1];
     }
-    for (const c of this.cast.slice(1)) if (!seen.has(c.id)) { c.dispose(); this.cast.splice(this.cast.indexOf(c), 1); }
+    if (m.full) for (const c of this.cast.slice(1)) if (!seen.has(c.id)) { c.dispose(); this.cast.splice(this.cast.indexOf(c), 1); }
     // the food
     const listed = new Set();
     for (const r of m.i) {
@@ -258,7 +302,7 @@ export class MPSync {
       if (this.dead.has(nid)) continue;
       let it = this.byNid.get(nid);
       if (!it || it.dead) { it = this.items.spawn(TYPES[ti], new THREE.Vector3(x, y, z), null, v); it.netMirror = true; it.nid = nid; this.byNid.set(nid, it); it.obj.quaternion.set(qx, qy, qz, qw); it.resting = true; it.spawnScale = 1; }
-      if (this.heldLocally(it)) continue;
+      if (this.heldLocally(it) || it.ownedHere || (it.ownerId && performance.now() - (it.ownSeen || 0) < 600)) continue;      // (mine, or someone else's who's telling us where it is)
       it.netT = { p: new THREE.Vector3(x, y, z), q: new THREE.Quaternion(qx, qy, qz, qw), s };
       it.empty = !!empty; it.netHeldBy = held;
     }
