@@ -17,6 +17,10 @@ export default async function () {
       Character.prototype.showLine = function (text, pri, dur) { show0.call(this, text, pri, dur);
         const near = [...Character.ALL].filter(c => c.speakT > 0 && c.rag.mesh && c.headPos(new RS.THREE.Vector3()).distanceTo(P.head) <= TALK_RANGE).length;
         out.lines.push({ who: this.id, pri, d: +this.headPos(new RS.THREE.Vector3()).distanceTo(P.head).toFixed(1), near }); };
+      // stand right by the biggest group of the squad, so there's always someone in earshot (people mostly stand still)
+      RS.sim(4, 1 / 30);
+      const ppl = RS.cast.filter(c => c.rag && c.rag.mesh), score = (c) => ppl.filter(o => o.pos.distanceTo(c.pos) < 6).length, best = ppl.sort((a, c) => score(c) - score(a))[0];
+      if (best) { P.rig.position.set(best.pos.x + 1.2, P.rig.position.y, best.pos.z); P.rig.updateMatrixWorld(true); }
       RS.sim(90, 1 / 30);
       // put one person right next to you and everyone else far away: the far ones can't chat, the near one can
       const live = RS.cast.filter(c => c.rag && c.rag.mesh && !c.disposed && !c.down);
