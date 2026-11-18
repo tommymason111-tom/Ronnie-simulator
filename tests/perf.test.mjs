@@ -68,8 +68,12 @@ export default async function () {
             RS.sim(0.25, 1 / 30); R.render(RS.scene, RS.player.camera); }
           return { built: R.info.programs.length - n0, warm: window.__shaderWarm }; });
         C.ok(sh.built === 0, `${place}: ${sh.built} shaders built during play (each one a stutter on a phone or headset): warm-up didn't cover them`);
+        // a new game straight after another, again and again, while the shaders are being built: nothing may throw (three.js's
+        // own background building threw from a timer, out of anyone's reach, when a material it was waiting on went)
+        if (place === 'pub') { await p.evaluate(async () => { for (const m of ['roam', 'everyone', 'runpub', 'roam0', 'everyone']) { RS.newGame(m); RS.sim(0.1, 1 / 30); await new Promise(r => setTimeout(r, 120)); } });
+          await p.waitForTimeout(4000); C.ok(!p.errors.length, 'new games while shaders were being built: ' + [...new Set(p.errors)].slice(0, 3).join(' | ')); }
         // the belly's looks: all made within a short while of starting (in quiet moments), so growing never waits
-        await p.waitForTimeout(9000);
+        await p.waitForFunction(() => { const c = RS.player.bellyModel.cache; let n = 0; for (let s = 0; s <= 5; s++) if (c[s] && c[s].skin && c[s].tee) n++; return n === 6; }, null, { timeout: 25000 }).catch(() => {});
         const belly = await p.evaluate(() => { const c = RS.player.bellyModel.cache; let n = 0; for (let s = 0; s <= 5; s++) if (c[s] && c[s].skin && c[s].tee) n++; return n; });
         console.log(`  ${place}: ${r.calls} draws (budget ${BUDGET[place]}), ${r.signSheets} sign sheets (${r.signsLeft} single signs left), ${r.pairs} physics pairs, ${r.glowing} glowing food in ${r.haloLayers} draw, belly looks ready ${belly}/6, ${sh.built} shaders built in play (${sh.warm.programs} warmed in ${sh.warm.ms}ms)`);
         C.ok(r.calls <= BUDGET[place], `${place}: ${r.calls} draw calls (budget ${BUDGET[place]})`);

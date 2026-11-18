@@ -1,7 +1,7 @@
 // NO FIRST-TIME STUTTERS: the graphics chip has to build a little program (a "shader") for every different kind of
 // material the first time it draws one. Built in the middle of play, that's a freeze (tens to hundreds of milliseconds
 // on a phone or a headset, each time something new turns up: a power-up, an attack's effects, an emote's props).
-// Here they're all built while the level loads instead, in the background (compileAsync: the page carries on):
+// Here they're all built while the level loads instead, in the background (the browser builds them in parallel):
 //   - everything already in the level, and
 //   - one tiny invisible stand-in for every kind of material the game uses later (SIGS below, plus any new kind this
 //     device has met before: remembered in localStorage, so next time it's ready up front too).
@@ -43,6 +43,12 @@ function probe(sig) {
   mat.userData.keep = true; obj.frustumCulled = false; obj.raycast = () => {}; obj.layers.set(31);      // (on a layer no camera draws: built, never drawn)
   return obj;
 }
+async function waitReady(renderer, maxMs = 6000) {
+  const t0 = performance.now();
+  for (;;) { let pending = 0;
+    for (const p of renderer.info.programs || []) { try { if (p.isReady && !p.isReady()) pending++; } catch (e) {} }
+    if (!pending || performance.now() - t0 > maxMs) return; await new Promise(r => setTimeout(r, 30)); }
+}
 const learnt = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
 const KEEP = [];      // (the stand-ins' materials, held so their programs are never thrown away)
 
@@ -54,8 +60,11 @@ export async function warmShaders(renderer, scene, camera) {
   for (const s of sigs) { try { const o = probe(s); grp.add(o); KEEP.push(o.material); } catch (e) {} }
   grp.position.copy(camera.getWorldPosition(new THREE.Vector3())); scene.add(grp); grp.updateMatrixWorld(true);
   const t0 = performance.now();
-  try { if (renderer.compileAsync) await renderer.compileAsync(scene, camera); else renderer.compile(scene, camera); }
-  catch (e) { console.warn('shader warm-up', e); }
+  // (renderer.compile starts every program building; with the browser's parallel shader building that doesn't wait for
+  // them. Then they're waited for here, gently. Not three.js's compileAsync: its own waiting threw, outside anyone's
+  // reach, if a material it was waiting on was let go of meanwhile, e.g. starting a new game straight away)
+  try { renderer.compile(scene, camera); } catch (e) { console.warn('shader warm-up', e); }
+  await waitReady(renderer);
   // sunny places draw shadows too, with their own programs: one hidden 1-pixel frame with everything in it builds them
   if (renderer.shadowMap.enabled && !renderer.xr.isPresenting) {
     // (stand-ins that cast shadows too, one for each kind of shadow program: plain, instanced, a body with a skeleton,
