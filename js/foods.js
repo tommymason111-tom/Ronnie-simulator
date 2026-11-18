@@ -481,16 +481,40 @@ function solidOnly(geo, name) {
   foodStats[name] = { pieces: list.length, attached: list.length - moved, moved, tris: T };
   return geo;
 }
+// make every food's shapes now (one kind per call), in quiet moments (main.js), so the first burger of the game doesn't
+// stop it while its detailed shape is worked out. Returns false once they're all made.
+let warmList = null;
+export function warmFood() {
+  if (!warmList) warmList = Object.keys(FOODS);
+  while (warmList.length) { const type = warmList.shift(); try { sizedMesh(type, 0); return true; } catch (e) {} }
+  return false;
+}
 export const HI_NEAR = 3.2;      // (metres: closer than this you see the detailed fast food)
 const sizedMesh = (type, v) => {
   let m = meshFor(type, v);
   if (HI[type]) { const lod = new THREE.LOD(); lod.addLevel(new THREE.Mesh(hiCache[type] || (hiCache[type] = solidOnly(HI[type](), type)), vcLambert), 0); lod.addLevel(m, HI_NEAR); m = lod; }
   const k = bigFor(FOODS[type]); if (k !== 1) m.scale.multiplyScalar(k); return m; };
+// THE GLOW round food you can pick up: one soft warm halo per item, gently pulsing. All of them are drawn together, as
+// ONE instanced layer of camera-facing squares (it was a sprite per item: 300 food in the shop = 300 separate draws, a
+// big cost on a phone or a headset). Same picture, same size, same blending and haze as the sprites were.
 const HALO_MAT = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
   r.addColorStop(0, 'rgba(255,245,190,1)'); r.addColorStop(0.3, 'rgba(255,220,100,0.6)'); r.addColorStop(0.65, 'rgba(255,200,60,0.18)'); r.addColorStop(1, 'rgba(255,200,60,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 }); })();
+  const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 });
+  // (each square turned to face you, like a sprite: its centre placed by the instance, its size from the instance's scale)
+  m.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', `
+    vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+    mvPosition.xy += position.xy * length(instanceMatrix[0].xyz);
+    gl_Position = projectionMatrix * mvPosition;`); };
+  m.customProgramCacheKey = () => 'halo-billboard';
+  return m; })();
 export const foodGlow = (t) => { HALO_MAT.opacity = 0.34 + Math.sin(t * 2.6) * 0.12; };
+const HALO_MAX = 2048, _hm = new THREE.Matrix4(), _hp = new THREE.Vector3(), _hq = new THREE.Quaternion(), _hs = new THREE.Vector3();
+function haloLayer(scene) {
+  const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), HALO_MAT, HALO_MAX);
+  im.count = 0; im.frustumCulled = false; im.renderOrder = 2; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.name = 'food halos'; im.raycast = () => {};      // (never in the way of a pointer)
+  scene.add(im); return im;
+}
 export class Item {
   constructor(type, v = 0) {
     this.type = type;
@@ -500,7 +524,7 @@ export class Item {
     this.obj.add(sizedMesh(type, v));
     this.radius = this.def.radius * bigFor(this.def);
     // food you can pick up glows a little (a soft warm halo round it, gently pulsing) so it stands out
-    if (bigFor(this.def) !== 1) { this.halo = new THREE.Sprite(HALO_MAT); this.halo.scale.setScalar(this.radius * 7); this.halo.renderOrder = 2; this.obj.add(this.halo); }
+    if (bigFor(this.def) !== 1) this.halo = { visible: true, size: this.radius * 7 };      // (drawn by the manager's halo layer)
     this.vel = new THREE.Vector3();
     this.prev = new THREE.Vector3();   // position last frame (for swept hit tests)
     this.spin = new THREE.Vector3();
@@ -528,7 +552,7 @@ export class Item {
     this.vel.set(0, 0, 0); this.spin.set(0, 0, 0);
     this.obj.visible = true;
   }
-  setVariant(v) { if (this.variant === v) return; this.variant = v; const s = this.obj.scale.x; this.obj.clear(); this.obj.add(sizedMesh(this.type, v)); this.obj.scale.setScalar(s); if (this.halo) this.obj.add(this.halo); }
+  setVariant(v) { if (this.variant === v) return; this.variant = v; const s = this.obj.scale.x; this.obj.clear(); this.obj.add(sizedMesh(this.type, v)); this.obj.scale.setScalar(s); }
   get pos() { return this.obj.position; }
   get eatFraction() { return this.bitesLeft / this.def.bites; }
 }
@@ -541,6 +565,17 @@ export class ItemManager {
     this.pool = {};
     this.respawnQueue = [];
     this.onLand = null;        // callback(item, speed)
+    this.halos = haloLayer(scene);
+  }
+  // every glowing item's halo, where it is right now (hidden while it's held, finished, or not in the world)
+  updateHalos() {
+    const im = this.halos; if (!im.parent) this.scene.add(im); let n = 0;
+    for (const it of this.items) { const h = it.halo; if (!h || it.dead || !h.visible || !it.obj.visible || !it.obj.parent || n >= HALO_MAX) continue;
+      let o = it.obj, vis = true; while (o) { if (!o.visible) { vis = false; break; } o = o.parent; } if (!vis) continue;
+      if (it.obj.parent === this.scene) { _hp.copy(it.obj.position); _hs.setScalar(h.size * it.obj.scale.x); }
+      else { it.obj.updateWorldMatrix(true, false); it.obj.matrixWorld.decompose(_hp, _hq, _hs); _hs.setScalar(h.size * _hs.x); }
+      _hm.compose(_hp, _hq.identity(), _hs); im.setMatrixAt(n++, _hm); }
+    im.count = n; if (n) im.instanceMatrix.needsUpdate = true;
   }
 
   spawn(type, pos, vel = null, v = null) {
@@ -614,7 +649,8 @@ export class ItemManager {
     return best;
   }
 
-  update(dt) {
+  update(dt) { this.update1(dt); this.updateHalos(); }
+  update1(dt) {
     if (this.clientMode) { for (const it of this.items) { it.age += dt; if (it.spawnScale < 1) { it.spawnScale = Math.min(1, it.spawnScale + dt * 4); } if (it.obj.scale.x < 0.05 && !it.heldBy) it.obj.scale.setScalar(Math.max(0.05, it.spawnScale) * (0.55 + 0.45 * it.eatFraction)); if (it.netMirror && !it.heldBy) it.prev.copy(it.pos); else if (!it.netMirror) {} } this.items.filter(it => !it.netMirror && !it.heldBy).forEach(() => {}); }
     // big places never run dry: top up with random junk food every so often
     if (!this.clientMode && this.minFood && (this.topUpT = (this.topUpT || 0) - dt) <= 0) {

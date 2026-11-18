@@ -3,6 +3,7 @@
 // things, getting hit / slapped / knocked out / grabbed, and getting back up.
 // Tommy (tommy.js) and the squad (squad.js) build on this.
 import * as THREE from 'three';
+import { nearBlockers, NEAR_SAFE } from './perf.js';
 import { Ragdoll } from './ragdoll.js';
 import { canvasTex, fitText, roundRect, blobTex } from './textures.js';
 import { Dialogue, BANKS } from './dialogue.js';
@@ -87,14 +88,18 @@ export class Character {
       root.x = THREE.MathUtils.clamp(root.x, b.x0 + m, b.x1 - m);
       root.z = THREE.MathUtils.clamp(root.z, b.z0 + m, b.z1 - m);
       if (this.seated) return;          // sat down in a chair / on a sofa: it's meant to be "in" the furniture
-      for (const k of this.room.blockers) {
+      // (only the furniture near them: perf.js. If being pushed out takes them further than that covers, the whole lot)
+      const x0 = root.x, z0 = root.z, out = (list) => { for (const k of list) {
         const p = 0.22;
         if (root.x > k.x0 - p && root.x < k.x1 + p && root.z > k.z0 - p && root.z < k.z1 + p) {
           const dl = root.x - (k.x0 - p), dr = (k.x1 + p) - root.x, dn = root.z - (k.z0 - p), df = (k.z1 + p) - root.z;
           const mn = Math.min(dl, dr, dn, df);
           if (mn === dl) root.x = k.x0 - p; else if (mn === dr) root.x = k.x1 + p; else if (mn === dn) root.z = k.z0 - p; else root.z = k.z1 + p;
+          if (Math.abs(root.x - x0) > NEAR_SAFE || Math.abs(root.z - z0) > NEAR_SAFE) far = true;
         }
-      }
+      } };
+      let far = false; out(nearBlockers(this.room, x0, z0));
+      if (far) { root.x = x0; root.z = z0; out(this.room.blockers); }
     };
     const sp = cfg.spawn || [room.tommySpots[0].x, room.tommySpots[0].y, 0];
     this.rag.placeAt(sp[0], sp[1], sp[2] || 0);
@@ -413,6 +418,8 @@ export class Character {
         if (this.quietT > (this.cfg.chatterEvery || 16) && this.speakT <= 0) this.say('chatter', 1);
         break;
       case 'walk': {
+        if (this.pathLater && this.walkGoal && this.room.nav && !this.room.nav.busy) { const g = this.walkGoal; this.pathLater = false;
+          this.path = this.room.nav.path(pos.x, pos.z, g.x, g.z); if (this.path && this.path.length) { this.moveTarget = this.path.shift(); this.walkLimit = this.stateT + 8 + Math.hypot(g.x - pos.x, g.z - pos.z) * 1.6; } }
         _v2.set(this.moveTarget.x - pos.x, 0, this.moveTarget.y - pos.z);
         const d = _v2.length();
         if (d < 0.15 && this.path && this.path.length) { this.moveTarget = this.path.shift(); break; }   // next waypoint
@@ -534,7 +541,8 @@ export class Character {
     const dist = Math.hypot(gx - pos.x, gz - pos.z);
     if (dist <= stopAt) { this.chase = null; return dist; }
     c.t -= dt;
-    if (c.t <= 0 || !c.path || !c.path.length) { c.t = 0.45; c.path = nav ? nav.path(pos.x, pos.z, gx, gz) : null; if (!c.path || !c.path.length) c.path = [new THREE.Vector2(gx, gz)]; }
+    if (c.t <= 0 || !c.path || !c.path.length) { if (nav && nav.busy && c.path && c.path.length) c.t = 0.03;      // (path finding's had its time this frame: keep to the route we've got, look again in a moment)
+      else { c.t = 0.45; c.path = nav ? nav.path(pos.x, pos.z, gx, gz) : null; if (!c.path || !c.path.length) c.path = [new THREE.Vector2(gx, gz)]; } }
     let wp = c.path[0]; while (c.path.length > 1 && Math.hypot(wp.x - pos.x, wp.y - pos.z) < 0.25) { c.path.shift(); wp = c.path[0]; }
     _v2.set(wp.x - pos.x, 0, wp.y - pos.z); if (_v2.lengthSq() < 1e-6) _v2.set(gx - pos.x, 0, gz - pos.z);
     _v2.normalize(); this.steer(_v2, pos);
@@ -584,7 +592,8 @@ export class Character {
   goTo(x, z, speed = 0.9, after = null) {
     // big levels: follow a path round the furniture
     const nav = this.room.nav, pos = this.pos;
-    this.path = nav ? nav.path(pos.x, pos.z, x, z) : null;
+    this.pathLater = !!(nav && nav.busy);      // (path finding's had its time this frame: straight at it for now, the route next frame)
+    this.path = nav && !this.pathLater ? nav.path(pos.x, pos.z, x, z) : null;
     if (this.path && this.path.length) { this.moveTarget = this.path.shift(); this.walkLimit = 8 + Math.hypot(x - pos.x, z - pos.z) * 1.6; }
     else { this.moveTarget = new THREE.Vector2(x, z); this.walkLimit = 8; }
     this.walkSpeed = speed;

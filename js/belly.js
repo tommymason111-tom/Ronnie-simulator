@@ -89,8 +89,16 @@ export class Belly {
   }
   setStage(st) {
     st = Math.max(0, Math.min(5, st)); if (st === this.stage) return; this.stage = st;
-    const c = this.cache[st] || (this.cache[st] = { skin: build(st, false), tee: build(st, true) });
+    const c = this.cache[st] || (this.cache[st] = {}); if (!c.skin) c.skin = build(st, false); if (!c.tee) c.tee = build(st, true);
     this.skin.geometry = c.skin; this.tee.geometry = c.tee;
+  }
+  // make the next look that isn't made yet, one piece at a time (the skin or the shirt). Making one the moment Ronnie
+  // grew into it stopped the game dead for a third of a second on a phone, so they're all made beforehand, in quiet
+  // moments (main.js). Returns false once every look is ready.
+  warm() {
+    for (let st = 0; st <= 5; st++) { const c = this.cache[st] || (this.cache[st] = {});
+      if (!c.skin) { c.skin = build(st, false); return true; } if (!c.tee) { c.tee = build(st, true); return true; } }
+    return false;
   }
   // which of the belly model's six looks a belly size means (ten stages' belly values: 1 ... 3)
   static stageFor(b) { return [1.15, 1.5, 1.9, 2.3, 2.7].filter(x => b >= x).length; }

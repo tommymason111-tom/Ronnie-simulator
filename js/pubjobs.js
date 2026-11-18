@@ -141,12 +141,19 @@ export class PubJobs {
   }
   // ---- markers in the pub, the same colour as their line on the TO DO list: the job (blue), trouble (orange),
   // fuming punters (red); every empty glass gets its own
-  mark(key, at, icon, col, h = 2.1) { let m = this.marks.get(key);
-    if (!m || m.userData.icon !== icon) { if (m) this.grp.remove(m); m = new THREE.Group(); m.userData.icon = icon;
+  // (the marker's picture, shapes and materials are made once for each icon and colour and shared: a new glass to
+  // collect made all of them again, a stutter each time a job started)
+  markParts(icon, col) { const k = icon + col, M = this.markCache || (this.markCache = new Map()); let p = M.get(k); if (p) return p;
       const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.fillStyle = col; g.beginPath(); g.arc(64, 64, 60, 0, 7); g.fill(); g.fillStyle = '#0a0e1e'; g.beginPath(); g.arc(64, 64, 49, 0, 7); g.fill(); g.font = '64px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(icon, 64, 70);
-      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true })); sp.scale.setScalar(0.34); sp.renderOrder = 24; m.add(sp);
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.16, 14), new THREE.MeshBasicMaterial({ color: col, depthTest: false })); cone.rotation.x = Math.PI; cone.position.y = -0.27; cone.renderOrder = 24; m.add(cone);
-      const ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.44, 32), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.name = 'ring'; m.add(ring);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+      p = { sprite: new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }), coneGeo: this.coneGeo || (this.coneGeo = new THREE.ConeGeometry(0.06, 0.16, 14)), cone: new THREE.MeshBasicMaterial({ color: col, depthTest: false }),
+        ringGeo: this.ringGeo || (this.ringGeo = new THREE.RingGeometry(0.34, 0.44, 32)), ring: new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }) };
+      M.set(k, p); return p; }
+  mark(key, at, icon, col, h = 2.1) { let m = this.marks.get(key);
+    if (!m || m.userData.icon !== icon) { if (m) this.grp.remove(m); m = new THREE.Group(); m.userData.icon = icon; const P = this.markParts(icon, col);
+      const sp = new THREE.Sprite(P.sprite); sp.scale.setScalar(0.34); sp.renderOrder = 24; m.add(sp);
+      const cone = new THREE.Mesh(P.coneGeo, P.cone); cone.rotation.x = Math.PI; cone.position.y = -0.27; cone.renderOrder = 24; m.add(cone);
+      const ring = new THREE.Mesh(P.ringGeo, P.ring); ring.rotation.x = -Math.PI / 2; ring.name = 'ring'; m.add(ring);
       this.grp.add(m); this.marks.set(key, m); }
     m.userData.seen = true; m.visible = true; const tt = performance.now() / 220; m.position.set(at.x, 0, at.z); m.children[0].position.y = h + Math.sin(tt) * 0.06; m.children[1].position.y = h - 0.27 + Math.sin(tt) * 0.06;
     const ring = m.getObjectByName('ring'); ring.position.y = 0.025; ring.scale.setScalar(1 + Math.sin(tt * 1.2) * 0.08); }

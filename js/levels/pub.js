@@ -660,7 +660,7 @@ export function buildPub(scene) {
       for (let i = 0; i < 8; i++) { const [px2, pz2] = L(-0.35 + i * 0.1, 0.27); k.cyl(0.016, 0.016, 0.02, px2, 1.88, pz2, i % 2 ? 0xffffff : 0xff5252, 8); } }
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = 320;
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-    const mesh = k.label('THE CHIP MACHINE', 0.66, 0.82, [x + nx * 0.01, 1.12, z + nz * 0.01], [0, ry, 0], { tex, glow: true });
+    const mesh = k.label('THE CHIP MACHINE', 0.66, 0.82, [x + nx * 0.01, 1.12, z + nz * 0.01], [0, ry, 0], { tex, glow: true }); mesh.userData.live = true;      // (its screen is drawn on as it plays: not packed onto a sheet, perf.js)
     const m = { z, screen: new THREE.Vector3(x, 1.12, z), front: new THREE.Vector3(x + nx * 0.4, 1.0, z + nz * 0.4), tray: new THREE.Vector3(x + nx * 0.2, 0.75, z + nz * 0.2), cv, tex, mesh, t: -1, reels: [0, 1, 2], win: null, cool: 0 };
     m.spin = () => { if (m.t >= 0 || m.cool > 0) return false; m.t = 0; m.win = MACHINE_SYMS[Math.floor(Math.random() * MACHINE_SYMS.length)]; return true; };
     drawMachine(m, 0); machines.push(m);

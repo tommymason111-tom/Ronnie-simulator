@@ -26,8 +26,9 @@ import { SQUAD } from './squad.js';
 import { buildGarden } from './levels/garden.js';
 import { Net, newCode } from './net.js';
 import { MPSync } from './mpsync.js';
-import { foodGlow } from './foods.js';
+import { foodGlow, warmFood } from './foods.js';
 import { EMOTES, CHAR_EMOTES, EmotePlayer, emoteInfo } from './emotes.js';
+import { mergeMaterialGroups, atlasSigns } from './perf.js';
 import { sweep, releaseLevelGeometry, releaseTextures, noteLevelTextures, releaseLevelCanvases } from './memory.js';
 import { Music } from './music.js';
 import { PowerUps } from './powerups.js';
@@ -71,6 +72,7 @@ camera.position.set(0, 1.6, 0);
 
 const BUILD = { bedroom: buildRoom, pub: buildPub, shop: buildSupermarket, restaurant: buildRestaurant, garden: buildGarden, grid: buildGrid };
 const room = (BUILD[SEL.place] || buildRoom)(scene);
+atlasSigns(scene); mergeMaterialGroups(scene);      // (fewer draws, same picture: see perf.js)
 const levelMeshes = []; scene.traverse(o => { if (o.isMesh) levelMeshes.push(o); });      // (the level itself: see memory.js)
 releaseLevelGeometry(levelMeshes, Infinity); noteLevelTextures(levelMeshes);      // (each piece's spare copy goes the moment it's first sent to the graphics chip: the peak while loading is what phones close a page for)
 FLOOR.at = room.floorAt || null;
@@ -731,6 +733,16 @@ function fitCamera() {
 }
 fitCamera();
 window.addEventListener('resize', fitCamera);
+// ---------------- getting ready in quiet moments ----------------
+// Things that take a while to make the first time (each of the belly's looks) are made beforehand, one piece at a time,
+// while nothing much is happening (before PLAY, or when a frame finishes early), not the moment they're needed (growing
+// a size stopped the game dead for a third of a second on a phone)
+{ const jobs = [() => player.bellyModel && player.bellyModel.warm(), warmFood];
+  const idle = window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 3000 }) : (f) => setTimeout(() => f({ timeRemaining: () => 8 }), 400);
+  const tick = (dl) => { if (!jobs.length) return; if (document.body.classList.contains('ready') && (dl.timeRemaining() > 6 || !player.flatMode && !renderer.xr.isPresenting)) {
+      try { if (!jobs[0]()) jobs.shift(); } catch (e) { jobs.shift(); } }
+    if (jobs.length) setTimeout(() => idle(tick), 250); };
+  setTimeout(() => idle(tick), 1500); }
 // ---------------- memory (phones close a page that uses too much: see memory.js) ----------------
 // once, just after the level's ready: draw the whole level into a single pixel, so every shape and picture is sent to the
 // graphics chip now (and their spare copies let go of straight away), instead of bit by bit as you walk round and film
@@ -1197,6 +1209,7 @@ function frame(simDt) {
   if (xr) slaps();
   physics.step(dt);
   nanGuard();
+  if (room.nav) room.nav.spent = 0;      // (each frame's path finding allowance: nav.js)
   for (const c of cast) c.update(dt, mp.ctxFor(c, ctx));
   mp.update(dt);
   // people don't walk through each other (or through Ronnie)

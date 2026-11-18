@@ -13,6 +13,13 @@ export function characterGroup() { const g = 1 << (4 + (nextChar++ % 11)); retur
 export function createPhysics(room) {
   const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.81, 0) });
   world.broadphase = new CANNON.SAPBroadphase(world);
+  // Only test pairs where something can actually be pushed. cannon-es skips static-with-static, but a character being
+  // animated (kinematic bodies) was still tested against the floor, the walls, every bit of furniture and every other
+  // character, every step: contacts between two things neither of which can move change nothing (their equations have
+  // no mass on either side), and they were most of the game's whole per-frame cost on a phone. Ragdolls (dynamic)
+  // collide with everything exactly as before.
+  { const DYN = CANNON.Body.DYNAMIC, base = CANNON.Broadphase.prototype.needBroadphaseCollision;
+    world.broadphase.needBroadphaseCollision = function (a, b) { if ((a.type & DYN) === 0 && (b.type & DYN) === 0) return false; return base.call(this, a, b); }; }
   world.allowSleep = false;
   world.solver.iterations = 16;
   world.defaultContactMaterial.friction = 0.6;

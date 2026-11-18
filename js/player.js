@@ -5,6 +5,7 @@
 // the wrist Chonk Meter, Ronnie's ever-growing belly, and a first-person hand
 // for playing on a phone / tablet.
 import * as THREE from 'three';
+import { nearBlockers, NEAR_SAFE } from './perf.js';
 import { Belly } from './belly.js';
 import * as CANNON from 'cannon-es';
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
@@ -466,13 +467,16 @@ export class Player {
     if (this.zoomLean > 0.001) { const f = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(new THREE.Quaternion())); _v.addScaledVector(f, -this.zoomLean); }   // (ignore the darts lean-in)
     const m = 0.2, B = this.room ? this.room.bounds : { x0: -ROOM.w / 2, x1: ROOM.w / 2, z0: -ROOM.d / 2, z1: ROOM.d / 2 };
     let cx = THREE.MathUtils.clamp(_v.x, B.x0 + m, B.x1 - m), cz = THREE.MathUtils.clamp(_v.z, B.z0 + m, B.z1 - m);
-    const r = 0.22;
-    for (const b of this.room?.blockers || []) {
+    const r = 0.22, sx = cx, sz = cz;
+    const push = (list) => { for (const b of list) {
       if (!this.flatMode && !((b.y1 ?? 1) > 1.6)) continue;   // in VR only walls stop you (you can lean over tables)
       const nx = THREE.MathUtils.clamp(cx, b.x0, b.x1), nz = THREE.MathUtils.clamp(cz, b.z0, b.z1);
       const dx = cx - nx, dz = cz - nz, d = Math.hypot(dx, dz);
-      if (d < r) { if (d < 1e-4) { cz = b.z1 + r; } else { cx = nx + dx / d * r; cz = nz + dz / d * r; } }
-    }
+      if (d < r) { if (d < 1e-4) { cz = b.z1 + r; } else { cx = nx + dx / d * r; cz = nz + dz / d * r; } if (Math.abs(cx - sx) > NEAR_SAFE || Math.abs(cz - sz) > NEAR_SAFE) far = true; }
+    } };
+    let far = false;
+    if (this.room) { push(nearBlockers(this.room, sx, sz));      // (only the furniture near you: perf.js; the whole lot if you were ever pushed further than that covers)
+      if (far) { cx = sx; cz = sz; push(this.room.blockers || []); } }
     this.rig.position.x += cx - _v.x; this.rig.position.z += cz - _v.z;
     // raised floors (the Oysterfleet's top-left seating area): step up and down smoothly
     const fy = this.room?.floorAt ? this.room.floorAt(cx, cz) : 0, f0 = this.floorY || 0, f1 = Math.abs(fy - f0) < 0.005 ? fy : f0 + (fy - f0) * 0.25;

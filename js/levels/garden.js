@@ -1225,7 +1225,7 @@ function floralTex() {
 const LIGHTBOX_PRESETS = ['OI OI', 'RONNIE\nWAS\nHERE', 'LADS\nLADS\nLADS', 'SPURS\n0 - 3', 'FEED\nRONNIE', 'MY\nKNEE', 'HARRY\nWAS SICK', 'IAN\'S BBQ\nRULES'];
 function makeLightbox(mesh) {
   const cv = document.createElement('canvas'); cv.width = 256; cv.height = 176; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-  mesh.material.map = tex; mesh.material.needsUpdate = true;
+  mesh.material.map = tex; mesh.material.needsUpdate = true; mesh.userData.live = true;      // (drawn on: never packed, perf.js)
   const draw = (msg) => {
     const g = cv.getContext('2d'), w = 256, h = 176;
     g.fillStyle = '#f8f8f2'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,0.08)'; for (let y = 58; y < h; y += 58) g.fillRect(0, y, w, 2);

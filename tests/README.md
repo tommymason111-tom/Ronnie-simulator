@@ -16,6 +16,7 @@ Crash and regression tests for Ronnie Simulator. GitHub Actions runs them on eve
 | `netfuzz.test.mjs` | a game in a room receives every message type with nonsense in every field: no throw, nothing at an impossible position |
 | `talk.test.mjs` | the squad only chats near a player (two at a time at most), a far-away line from the host isn't shown on your game, voices fade to silence with distance |
 | `cutscene.test.mjs` | Ben's Turkey cut scene plays for 12s; on your own nothing moves, talks or is heard behind it and the clock waits; in a room the world carries on |
+| `perf.test.mjs` | each place's draw calls stay under budget; food glow is one draw; signs are packed; no physics pair where nothing can move; animated characters' joints are out of the physics world; furniture push-out and path finding give exactly the old answers; every belly look is made before it's needed |
 | `mp.test.mjs` | two real games (a computer and a phone) through the real room server: join through the menus, the whole squad, grabs and throws, punch, chat, emote, game change, a dropped line coming back. Not one real message may be thrown away by the message checks |
 | `places.test.mjs` | every place and solo mode loads and runs 20s with no errors or crash reports; the crash reporter catches errors and a lost 3D context; the game comes back after the context does |
 | `chaos.test.mjs` | a seeded bot mashes everything in every place (`SEEDS`, `STEPS`, `PLACES`, `SEED0` to go harder or replay a seed) |

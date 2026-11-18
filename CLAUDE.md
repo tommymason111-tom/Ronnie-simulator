@@ -38,6 +38,7 @@ Every update bumps the version (`2.23.x` from the merge on).
 - `js/impgames.js`: one mini-game per job kind (`GAMES`), detailed canvas art (`ART`), and the `Panel` that shows them on phone or in VR. A game is `{ title, down, move, up, update, draw, done }` on a 512×512 canvas. A screen can set `quit = true` to close itself, or `bigClose` for a labelled close button.
 - `js/squad.js`, `js/tommy.js`, `js/character.js`, `js/emotes.js`, `js/modes.js`: characters, attacks and emotes.
 - `js/powerups.js`, `js/runpub.js`, `js/pubjobs.js`: power-ups and the Run the Pub mode.
+- `js/perf.js`: drawing and per-frame speed-ups that keep the picture identical (material groups merged, signs packed onto shared sheets, `SpriteLayer` for many sprites in one draw, `nearBlockers` for furniture checks). Physics only tests pairs where something can move (`js/physics.js`), and ragdoll joints leave the physics world while a character is animated (`js/ragdoll.js` `syncJoints`). Slow first-time builds (belly looks, food shapes) are made in quiet moments (`main.js`). A sign whose picture is redrawn later must be marked `userData.live` (or it's packed). `tests/perf.test.mjs` holds the draw-call budgets.
 - `.claude/skills/watch`: the `/watch` skill (watch a video from a link). It needs `yt-dlp` (`pip install yt-dlp`) in each new session.
 
 ## Testing

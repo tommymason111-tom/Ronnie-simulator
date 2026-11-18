@@ -36,11 +36,22 @@ export class NavGrid {
     return -1;
   }
   // A* from (x0,z0) to (x1,z1): array of Vector2 waypoints (simplified), or null
-  path(x0, z0, x1, z1) {
+  // (how long path finding has taken this frame: main.js zeroes it every frame. Once it's over BUDGET, anyone else setting
+  // off this frame walks straight at their goal for a frame and gets their route on the next: several people picking
+  // somewhere to go in the same frame stuttered the game)
+  get busy() { return this.spent > 3; }
+  path(x0, z0, x1, z1) { const t0 = performance.now(); try { return this.path1(x0, z0, x1, z1); } finally { this.spent = (this.spent || 0) + performance.now() - t0; } }
+  path1(x0, z0, x1, z1) {
     const s = this.nearestFree(x0, z0), t = this.nearestFree(x1, z1);
     if (s < 0 || t < 0) return null;
     if (s === t) return [new THREE.Vector2(x1, z1)];
-    const n = this.nx * this.nz, g = new Float32Array(n).fill(Infinity), came = new Int32Array(n).fill(-1), closed = new Uint8Array(n);
+    // (the search's working arrays are kept between searches, not made afresh: half a megabyte for the pub, every time
+    // anyone set off somewhere. A cell's g / came / closed only count if they were set in THIS search (its stamp))
+    const n = this.nx * this.nz;
+    if (!this._g || this._g.length !== n) { this._g = new Float32Array(n); this._f = new Float32Array(n); this._came = new Int32Array(n); this._seen = new Uint32Array(n); this._shut = new Uint32Array(n); this._gen = 0; }
+    const gen = ++this._gen; if (gen >= 0xffffffff) { this._seen.fill(0); this._shut.fill(0); this._gen = 1; }
+    const G = this._g, came = this._came, seen = this._seen, shut = this._shut, cur = this._gen;
+    const g = { get: (k) => seen[k] === cur ? G[k] : Infinity };
     // a binary heap of cells ordered by f (fast even across a whole pub)
     const heap = [], push = (k) => { heap.push(k); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (f[heap[p]] <= f[k]) break; heap[i] = heap[p]; i = p; } heap[i] = k; };
     const pop = () => {
@@ -52,29 +63,29 @@ export class NavGrid {
           if (m < 0) break; heap[i] = heap[m]; i = m; }
         heap[i] = last; }
       return top; };
-    g[s] = 0;
+    seen[s] = cur; G[s] = 0; came[s] = -1;
     const tx = t % this.nx, tz = Math.floor(t / this.nx);
     const h = (k) => { const dx = Math.abs(k % this.nx - tx), dz = Math.abs(Math.floor(k / this.nx) - tz); return Math.max(dx, dz) + 0.414 * Math.min(dx, dz); };
-    const f = new Float32Array(n); f[s] = h(s); push(s);
+    const f = this._f; f[s] = h(s); push(s);
     let found = false, iter = 0;
     while (heap.length && iter++ < 40000) {
       const k = pop();
       if (k === t) { found = true; break; }
-      if (closed[k]) continue; closed[k] = 1;
+      if (shut[k] === cur) continue; shut[k] = cur;
       const ki = k % this.nx, kj = Math.floor(k / this.nx);
       for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
         if (!di && !dj) continue;
         const i = ki + di, j = kj + dj;
         if (i < 0 || j < 0 || i >= this.nx || j >= this.nz) continue;
         const m = j * this.nx + i;
-        if (!this.free[m] || closed[m]) continue;
+        if (!this.free[m] || shut[m] === cur) continue;
         if (di && dj && (!this.free[kj * this.nx + i] || !this.free[j * this.nx + ki])) continue;   // no corner cutting
-        const ng = g[k] + (di && dj ? 1.414 : 1);
-        if (ng < g[m]) { g[m] = ng; came[m] = k; f[m] = ng + h(m); push(m); }
+        const ng = G[k] + (di && dj ? 1.414 : 1);
+        if (ng < g.get(m)) { seen[m] = cur; G[m] = ng; came[m] = k; f[m] = ng + h(m); push(m); }
       }
     }
     if (!found) return null;
-    const cells = []; for (let k = t; k !== -1; k = came[k]) cells.push(k);
+    const cells = []; for (let k = t; k !== -1; k = came[k]) cells.push(k);      // (every cell on the way was set in this search)
     cells.reverse();
     // string-pull: keep only the waypoints needed for straight walking
     const pts = cells.map(k => this.center(k));

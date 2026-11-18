@@ -245,6 +245,14 @@ export class Ragdoll {
       this.world.addConstraint(c);
       this.joints.push({ c, A, B, def: d, axis, hinge: d.joint === 'hinge' ? d.hinge : null, twist: d.twist || 0 });
     }
+    this.jointsOn = true; this.syncJoints();
+  }
+  // The joints only matter while the body is a ragdoll (physics moving it). While it's being animated every part is
+  // placed by the animation, so the joints are taken out of the physics world: solving them was most of the physics
+  // cost (every character's ten-odd joints, sixteen passes, every step, for nothing)
+  syncJoints() {
+    const want = this.mode === 'ragdoll'; if (want === this.jointsOn) return; this.jointsOn = want;
+    for (const j of this.joints) { if (want) this.world.addConstraint(j.c); else this.world.removeConstraint(j.c); }
   }
 
   // Remove this ragdoll from the physics world (used when a squad member leaves).
@@ -872,7 +880,7 @@ export class Ragdoll {
       this.list.forEach((p, i) => { const b = p.body; this._from[i].p.set(b.position.x, b.position.y, b.position.z); this._from[i].q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w); });
       this.blendT = 0;
     }
-    this.mode = mode;
+    this.mode = mode; this.syncJoints();
   }
 
   // Start getting up: stand where the hips landed, facing where the body faces.

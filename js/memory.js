@@ -20,6 +20,7 @@ const KEEP = new WeakSet();
       // (a level picture whose spare copy was let go of, being drawn on again: put its picture back first, if whoever
       // draws on it still has it; if nobody does, nothing can have changed, and the chip's copy stays as it is)
       if (v && this.__cvRef) { const c = this.__cvRef.deref(); if (!c) return; this.source.data = c; this.__cvRef = null; }
+      if (v && this.__onRedraw) { const f = this.__onRedraw; this.__onRedraw = null; try { f(); } catch (e) {} }      // (a sign packed onto a shared sheet (perf.js) being drawn on: it comes back out as its own sign)
       d.set.call(this, v); if (v) SEEN.tex.add(this); } }); } }           // let go of the spare copy: never dispose these (they couldn't be sent again)
 // a level shape whose spare copy is gone can't be sent to the chip again, so it must never be let go of (by anything)
 { const d = THREE.BufferGeometry.prototype.dispose; if (!d.__memSafe) { const f = function () { if (this.__cpuFreed) return; return d.call(this); }; f.__memSafe = true; THREE.BufferGeometry.prototype.dispose = f; } }
@@ -45,7 +46,7 @@ export function sweep(scene, extra) {
 export function releaseLevelGeometry(meshes, max = 120) {
   // (a few at a time: each is sent to the chip once more, and its spare copy goes the moment that's done)
   let n = 0, bytes = 0;
-  for (const o of meshes) { if (n >= max) break; const g = o.geometry; if (!g || KEEP.has(g) || o.isSkinnedMesh || (g.morphAttributes && Object.keys(g.morphAttributes).length)) continue;
+  for (const o of meshes) { if (n >= max) break; const g = o.geometry; if (!g || KEEP.has(g) || (g.userData && g.userData.keepCPU) || o.isSkinnedMesh || (g.morphAttributes && Object.keys(g.morphAttributes).length)) continue;
     if (!g.boundingSphere) g.computeBoundingSphere(); if (!g.boundingBox) g.computeBoundingBox();      // (worked out first: they need the shape)
     KEEP.add(g); g.__cpuFreed = true; o.userData.cpuFreed = true; n++;
     for (const a of [...Object.values(g.attributes), g.index]) if (a && a.array && a.onUpload) { bytes += a.array.byteLength; a.onUpload(function () { this.array = null; }); a.needsUpdate = true; } }

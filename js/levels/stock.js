@@ -110,15 +110,18 @@ const frozeTex = ([name, bg]) => canvasTex(192, 128, (g, w, h) => { g.fillStyle 
 
 // ---------- shapes (front faces +z, standing on y = 0) ----------
 const lathe = (pts, seg = 14) => new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), seg);
-function shapes() {
+// lo: the same products for further away (beyond LO_FAR): the same size, outline and pictures with fewer, bigger facets
+// on the rounding (a 6mm rounded corner or a pack's puff is under a pixel from there). Up close it's the full detail.
+export const LO_FAR = 6.5;
+function shapes(lo = false) {
   // boxes with properly rounded edges and corners (no hard-edged blocks on the shelves)
-  const box = (w, h, d, r = Math.min(w, h, d) * 0.12) => { const g = new RoundedBoxGeometry(w, h, d, 2, r); g.translate(0, h / 2, 0); return g; };
+  const box = (w, h, d, r = Math.min(w, h, d) * 0.12) => { const g = new RoundedBoxGeometry(w, h, d, lo ? 1 : 2, r); g.translate(0, h / 2, 0); return g; };
   // a pillow: a rounded box puffed out in the middle (packs in film, frozen bags, meat trays under film)
-  const pillow = (w, h, d, puff = 0.25, r = Math.min(w, h, d) * 0.2) => { const g = new RoundedBoxGeometry(w, h, d, 3, r), p = g.attributes.position;
+  const pillow = (w, h, d, puff = 0.25, r = Math.min(w, h, d) * 0.2) => { const g = lo ? new THREE.BoxGeometry(w, h, d, 4, 1, 4) : new RoundedBoxGeometry(w, h, d, 3, r), p = g.attributes.position;
     for (let i = 0; i < p.count; i++) { const x = p.getX(i) / (w / 2), y = p.getY(i) / (h / 2), z = p.getZ(i) / (d / 2), k = 1 + puff * (1 - x * x) * (1 - z * z) * Math.sign(y) * Math.abs(y); p.setY(i, p.getY(i) * k); }
     g.computeVertexNormals(); g.translate(0, h / 2, 0); return g; };
   // a chocolate bar: thin and flat, crimped flat at both ends
-  const bar = (w, h, d) => { const g = new RoundedBoxGeometry(w, h, d, 3, Math.min(w, d) * 0.08), p = g.attributes.position;
+  const bar = (w, h, d) => { const g = lo ? new THREE.BoxGeometry(w, h, d, 1, 12, 1) : new RoundedBoxGeometry(w, h, d, 3, Math.min(w, d) * 0.08), p = g.attributes.position;
     for (let i = 0; i < p.count; i++) { const y = p.getY(i) / (h / 2), e = Math.abs(y); if (e > 0.82) p.setZ(i, p.getZ(i) * 0.25); }
     g.computeVertexNormals(); g.translate(0, h / 2, 0); return g; };
   const bag = (w, h, d) => {            // a puffed bag standing up, crimped top and bottom
@@ -156,7 +159,9 @@ export class Stock {
   addStack(cat, cx, cz, w, d, y, layers, layerH, face = 1, rowGap = 0.1) { for (let l = 0; l < layers; l++) for (let x = cx - w / 2 + rowGap / 2; x < cx + w / 2; x += rowGap) this.runs.push({ cat, x, y: y + l * layerH, z0: cz - d / 2, z1: cz + d / 2, face, full: true }); }
   addRunX(cat, z, y, x0, x1, face) { this.runs.push({ cat, x: z, y, z0: x0, z1: x1, face, alongX: true }); }
   build(scene) {
-    const S = shapes(), std = ({ roughness, metalness, ...o }) => new THREE.MeshLambertMaterial(o);   // (Lambert: much cheaper to draw thousands of)
+    const S = shapes(), SL = shapes(true), LO = new Map(), tris = (g) => (g.index ? g.index.count : g.attributes.position.count) / 3;
+    for (const k in S) if (SL[k] && tris(SL[k]) < tris(S[k]) * 0.6) LO.set(S[k], SL[k]);      // (only where it's much simpler)
+    const std = ({ roughness, metalness, ...o }) => new THREE.MeshLambertMaterial(o);   // (Lambert: much cheaper to draw thousands of)
     const boxMats = (front, side) => { const s = std({ map: side }); return [s, s, s, s, std({ map: front }), s]; };
     const D = {};   // design key -> { geo, mat, size (width along the shelf), extra parts }
     CEREALS.forEach((c, i) => D['cereal' + i] = { geo: S.cereal, mat: boxMats(cerealFront(c), sideTex(c[1])), w: 0.2 });
@@ -207,9 +212,18 @@ export class Stock {
     for (const key in list) {
       const d = D[key], cells = new Map();
       for (const m of list[key]) { const c = Math.floor(m.elements[12] / 5) + ',' + Math.floor(m.elements[14] / 5); (cells.get(c) || cells.set(c, []).get(c)).push(m); }
-      for (const ms of cells.values()) { const im = new THREE.InstancedMesh(d.geo, d.mat, ms.length);
-        ms.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere();
-        im.receiveShadow = true; scene.add(im); n += ms.length; }
+      const lo = LO.get(d.geo);
+      for (const ms of cells.values()) {
+        if (!lo) { const im = new THREE.InstancedMesh(d.geo, d.mat, ms.length);
+          ms.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere();
+          im.receiveShadow = true; scene.add(im); n += ms.length; continue; }
+        // full detail near you, the simpler shape further off (a LOD per patch, placed at the patch's middle)
+        const c = new THREE.Vector3(); for (const m of ms) { c.x += m.elements[12]; c.y += m.elements[13]; c.z += m.elements[14]; } c.multiplyScalar(1 / ms.length);
+        const lod = new THREE.LOD(); lod.position.copy(c); const off = new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z), T = new THREE.Matrix4();
+        for (const [geo, dist] of [[d.geo, 0], [lo, LO_FAR]]) { const im = new THREE.InstancedMesh(geo, d.mat, ms.length);
+          ms.forEach((m, i) => im.setMatrixAt(i, T.multiplyMatrices(off, m))); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.receiveShadow = true;
+          lod.addLevel(im, dist, 0.08); }
+        lod.updateMatrixWorld(true); scene.add(lod); n += ms.length; }
     }
     return n;
   }

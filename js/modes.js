@@ -18,6 +18,8 @@ import { TURKEY_LEN } from './cutscenes.js';
 import { BBQ_SPOT, IAN_SPOT, IAN_YAW } from './levels/garden.js';
 import { pickVeg, pickJunk } from './config.js';
 import { RunPub } from './runpub.js';
+import { SpriteLayer } from './perf.js';
+const _glowP = new THREE.Vector3();
 
 export const MODES = {
   everyone:     { name: 'THE WHOLE SQUAD', desc: 'Everyone\'s here. Eat while they take turns to stop you.', time: 0 },
@@ -676,14 +678,17 @@ export class Director {
     this.trolley.rotation.y = Math.atan2(f.x, f.z);
     // glows: green on the food you want in the trolley; fruit and veg flicker red AND green (trust nothing)
     const t = performance.now() / 1000;
+    // (all drawn together as one layer: perf.js SpriteLayer. A sprite each was a draw each: ~170 in Lidl)
+    const L = this.glowLayer || (this.glowLayer = new SpriteLayer(g.scene, { map: glowTex(), opacity: 0.85, renderOrder: 4, max: 1024 }));
+    L.begin();
     for (const it of g.items.items) {
-      if (it.incoming || it.def.prop || it.heldBy) { if (it.glow) it.glow.visible = false; continue; }
-      if (!it.glow) { it.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0x39ff14, transparent: true, opacity: 0.85, depthWrite: false })); it.glow.scale.setScalar(0.3); it.glow.renderOrder = 4; it.obj.add(it.glow); this.glows.add(it); }
-      it.glow.visible = true;
-      const s = 1 / Math.max(0.3, it.obj.scale.x);
-      if (it.def.veg) { const k = (Math.sin(t * 3.1 + it.pos.x * 7) + Math.sin(t * 5.3 + it.pos.z * 5)) > 0.2; it.glow.material.color.setHex(k ? 0x39ff14 : 0xff2a2a); it.glow.scale.setScalar(0.28 * s); }
-      else { it.glow.material.color.setHex(0x39ff14); it.glow.scale.setScalar((0.27 + Math.sin(t * 4 + it.pos.x * 3) * 0.03) * s); }
+      if (it.dead || it.incoming || it.def.prop || it.heldBy || !it.obj.visible || !it.obj.parent) continue;
+      if (!it.glow) { it.glow = true; this.glows.add(it); }
+      const at = it.obj.parent === L.scene ? it.obj.position : it.obj.getWorldPosition(_glowP);
+      if (it.def.veg) { const k = (Math.sin(t * 3.1 + it.pos.x * 7) + Math.sin(t * 5.3 + it.pos.z * 5)) > 0.2; L.push(at, 0.28, k ? 0x39ff14 : 0xff2a2a); }
+      else L.push(at, 0.27 + Math.sin(t * 4 + it.pos.x * 3) * 0.03, 0x39ff14);
     }
+    L.end();
     // the countdown, big at the top of the screen (and what's in the trolley so far)
     if (g.fx) { const tl = Math.max(0, Math.ceil(this.timeLeft)); g.fx.setCountdown(`⏱ ${Math.floor(tl / 60)}:${String(tl % 60).padStart(2, '0')}  ·  🛒 ${sw.items} ITEMS  ·  🔥 ${kc(sw.total)}${tl <= 10 ? '  ·  HURRY!' : ''}`); }
     // Aidan W hobbles after you too (the knee: he's slow, but he never stops, and he moans the whole way)
@@ -713,7 +718,7 @@ export class Director {
     }
   }
 
-  clearGlows() { if (!this.glows) { this.glows = new Set(); return; } for (const it of this.glows) if (it.glow) { it.obj.remove(it.glow); it.glow = null; } this.glows.clear(); }
+  clearGlows() { if (this.glowLayer) this.glowLayer.clear(); if (!this.glows) { this.glows = new Set(); return; } for (const it of this.glows) it.glow = null; this.glows.clear(); }
 
   // ------------------------------------------------------------------ FREE ROAM
   // Everyone spread right round the place, each doing their own thing (on the sofa, at the darts,
