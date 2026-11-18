@@ -657,7 +657,10 @@ export class ItemManager {
       this.topUpT = this.topUpEvery || 1.0;
       let food = this.respawnQueue.length;
       for (const it of this.items) if (!it.def.veg && !it.def.prop && !it.temp && !it.empty && !it.incoming) food++;
-      if (food < this.minFood) { const veg = this.vegShare && Math.random() < this.vegShare; const it = this.spawn(veg ? ['apple', 'banana', 'orange', 'broccoli', 'carrot', 'pear', 'tomato'][Math.floor(Math.random() * 7)] : pickJunk(), this.freeSpawn()); if (veg) it.shelf = true; }
+      // (far short, e.g. straight after Run the Pub, which only has drinks: fill back up within a couple of seconds, a few
+      // a frame, instead of one a second, which left the next game nearly empty of food for minutes)
+      const n = food < this.minFood * 0.9 ? Math.min(4, this.minFood - food) : food < this.minFood ? 1 : 0; if (n > 1) this.topUpT = 0.05;
+      for (let k = 0; k < n; k++) { const veg = this.vegShare && Math.random() < this.vegShare; const it = this.spawn(veg ? ['apple', 'banana', 'orange', 'broccoli', 'carrot', 'pear', 'tomato'][Math.floor(Math.random() * 7)] : pickJunk(), this.freeSpawn()); if (veg) it.shelf = true; }
     }
     for (const it of this.items) if (it.halo) it.halo.visible = !it.heldBy && !it.empty;
     for (let i = this.respawnQueue.length - 1; i >= 0; i--) {

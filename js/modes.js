@@ -635,8 +635,13 @@ export class Director {
     g.items.minFood = 140; g.items.respawnDelay = 0.5; g.items.topUpEvery = 0.25; g.items.vegShare = 0.2; this.clearGlows();
     g.player.speedMul = 1.7;                                   // it's a SWEEP: you leg it round the shop
     // fill the shelves straight away: food on every free spot, and some fruit and veg as traps
-    for (const sp of shuffle(g.room.spawns).slice(0, 170)) if (g.items.items.every(it => it.pos.distanceToSquared(sp) > 0.04))   // (not every spot: keeps it smooth on the headset)
-      { const veg = Math.random() < 0.22; const it = g.items.spawn(veg ? ['apple', 'banana', 'orange', 'broccoli', 'carrot', 'pear', 'tomato'][Math.floor(Math.random() * 7)] : pickJunk(), sp); if (veg) it.shelf = true; }
+    // (topped up to the same amount every sweep, counting what's already lying about: it filled 170 spots every time,
+    // so each sweep in a session left ~100 more food in the shop than the last, and the game got slower and slower.
+    // The amounts are what the first sweep always had: ~275 bits of junk food and ~35 fruit and veg traps)
+    const live = g.items.items.filter(it => !it.dead && !it.def.prop && !it.def.drink && !it.heldBy), VEG = ['apple', 'banana', 'orange', 'broccoli', 'carrot', 'pear', 'tomato'];
+    const todo = shuffle([...Array(Math.max(0, 35 - live.filter(it => it.def.veg).length)).fill(true), ...Array(Math.max(0, 275 - live.filter(it => !it.def.veg).length)).fill(false)]);
+    for (const sp of shuffle(g.room.spawns)) { if (!todo.length) break; if (!g.items.items.every(it => it.pos.distanceToSquared(sp) > 0.04)) continue;   // (not every spot: keeps it smooth on the headset)
+      const veg = todo.pop(); const it = g.items.spawn(veg ? VEG[Math.floor(Math.random() * VEG.length)] : pickJunk(), sp); if (veg) it.shelf = true; }
     setTimeout(() => g.showBanner('GREEN GLOW = TROLLEY', 'FRUIT & VEG COST YOU (DON\'T TRUST THE GLOW)'), 3500);
     const oli = this.cast.find(c => c.id === 'oliver');
     if (oli) { oli.active = false; setTimeout(() => oli.say('Store security. Walk, don\'t run. And DEFINITELY don\'t eat the stock, Ron.', 5), 1800); }

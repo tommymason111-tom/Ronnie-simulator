@@ -154,7 +154,7 @@ export class RunPub {
   plate() { const g = new THREE.Group(); g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.015, 18), new THREE.MeshLambertMaterial({ color: 0xffffff })));
     const food = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 6), new THREE.MeshLambertMaterial({ color: 0xc8863a })); food.scale.set(1.2, 0.5, 1); food.position.y = 0.03; g.add(food);
     const peas = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshLambertMaterial({ color: 0x5aaa2a })); peas.position.set(0.06, 0.02, 0.04); g.add(peas);
-    this.g.scene.add(g); return g; }
+    this.g.scene.add(g); (this.added || (this.added = [])).push(g); return g; }
   freeBarSpot(near) { const spots = (this.g.room.barSpots || []).filter(s => !this.barTaken.has(s) && s.x > -14); if (!spots.length) return null; spots.sort((a, b) => Math.hypot(a.x - near.x, a.z - near.z) - Math.hypot(b.x - near.x, b.z - near.z)); return spots[Math.floor(Math.random() * Math.min(3, spots.length))]; }
   freeSeat(pred) { const all = (this.g.room.chairsAt || []).filter(s => !this.seatTaken.has(s) && pred(s)); return all.length ? R(all) : null; }
   add(kind, extra) {
@@ -320,7 +320,7 @@ export class RunPub {
       else { this.rating += 0.05 + quick * 0.12; c.say('thanks', 3); }
     } else { this.wrong++; this.served++; const pay = o.price * (thrown ? 0.25 : 0.5); this.pay(pay, where, '+£' + pay.toFixed(2) + ' (WRONG DRINK)'); this.rating -= 0.1; c.say(R(['That\'s not what I asked for!', 'I said ' + o.name.toLowerCase() + '! ...go on then.', 'Are you even listening, Ronnie?']), 4); }
     rp.drinks++; rp.phase = 'served'; rp.servedT = 1.8; this.dropTag(c);
-    if (!c.prop) { c.prop = makeProp('pint', c.rag.height / 1.68); this.g.scene.add(c.prop); }
+    if (!c.prop) { c.prop = makeProp('pint', c.rag.height / 1.68); this.g.scene.add(c.prop); (this.added || (this.added = [])).push(c.prop); }
     c.activity = 'drink';
   }
 
@@ -506,5 +506,7 @@ export class RunPub {
     ];
   }
   cleanup() { if (this.event && this.endEvent2 && this.event.hemi0 !== undefined) this.endEvent2(); if (this.jobs) { this.jobs.dispose(); this.jobs = null; } const its = this.g.items; if (its) { its.drinksOnly = false; its.minFood = this.g.room.big ? 150 : 0; }
-    if (this.bar) this.bar.dispose(); if (this.ordersEl) this.ordersEl.remove(); if (this.wrist) this.g.scene.remove(this.wrist); for (const id of Object.keys(SQUAD)) if (/^p\d+$/.test(id)) delete SQUAD[id]; for (const t of this.tags.values()) this.g.scene.remove(t); this.tags.clear(); for (const c of this.cast) if (c.plate) { this.g.scene.remove(c.plate); c.plate = null; } }
+    if (this.bar) this.bar.dispose(); if (this.ordersEl) this.ordersEl.remove(); if (this.wrist) this.g.scene.remove(this.wrist); for (const id of Object.keys(SQUAD)) if (/^p\d+$/.test(id)) delete SQUAD[id]; for (const t of this.tags.values()) this.g.scene.remove(t); this.tags.clear(); for (const c of this.cast) if (c.plate) { this.g.scene.remove(c.plate); c.plate = null; }
+    for (const o of this.added || []) this.g.scene.remove(o); this.added = [];      // (Lewis's plate, punters' pints: the people they belonged to are already gone by now, so they were left floating in the pub, one more every game)
+  }
 }
