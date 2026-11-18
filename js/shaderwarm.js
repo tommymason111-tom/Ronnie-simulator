@@ -40,7 +40,7 @@ function probe(sig) {
     if (has('i')) { obj = new THREE.InstancedMesh(g, mat, 1); obj.setMatrixAt(0, new THREE.Matrix4()); if (has('c')) obj.setColorAt(0, new THREE.Color(1, 1, 1)); }
     else obj = new THREE.Mesh(g, mat);
   }
-  mat.userData.keep = true; obj.frustumCulled = false; obj.raycast = () => {};
+  mat.userData.keep = true; obj.frustumCulled = false; obj.raycast = () => {}; obj.layers.set(31);      // (on a layer no camera draws: built, never drawn)
   return obj;
 }
 const learnt = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
@@ -58,10 +58,25 @@ export async function warmShaders(renderer, scene, camera) {
   catch (e) { console.warn('shader warm-up', e); }
   // sunny places draw shadows too, with their own programs: one hidden 1-pixel frame with everything in it builds them
   if (renderer.shadowMap.enabled && !renderer.xr.isPresenting) {
-    const was = []; scene.traverse(o => { if ((o.isMesh || o.isSprite) && o.frustumCulled) { was.push(o); o.frustumCulled = false; } });
+    // (stand-ins that cast shadows too, one for each kind of shadow program: plain, instanced, a body with a skeleton,
+    // and cut-out pictures (alpha test), each one- and two-sided: whatever turns up mid-game casting a shadow)
+    const sg = new THREE.Group(); sg.position.copy(grp.position); scene.add(sg);
+    for (const kind of ['m', 'i', 's']) for (const cut of [false, true]) for (const side of [THREE.FrontSide, THREE.DoubleSide]) {
+      const mat = new THREE.MeshLambertMaterial({ side, map: cut ? (tex || null) : null, alphaTest: cut ? 0.5 : 0, vertexColors: false }); mat.userData.keep = true; KEEP.push(mat);
+      const g = new THREE.BoxGeometry(0.01, 0.01, 0.01); let o;
+      if (kind === 'i') { o = new THREE.InstancedMesh(g, mat, 1); o.setMatrixAt(0, new THREE.Matrix4()); }
+      else if (kind === 's') { const n = g.attributes.position.count; g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Array(n * 4).fill(0), 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(new Array(n * 4).fill(0).map((v, k) => k % 4 ? 0 : 1), 4));
+        o = new THREE.SkinnedMesh(g, mat); const bone = new THREE.Bone(); o.add(bone); o.bind(new THREE.Skeleton([bone])); }
+      else o = new THREE.Mesh(g, mat);
+      o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; sg.add(o); }
+    sg.updateMatrixWorld(true);
+    const was = [], hid = [], lods = []; scene.traverse(o => { if ((o.isMesh || o.isSprite) && o.frustumCulled) { was.push(o); o.frustumCulled = false; }
+      if (o.isLOD && o.autoUpdate) { lods.push(o); o.autoUpdate = false; }      // (every level of detail, near and far, shown for this one frame)
+      if ((o.isMesh || o.isLOD || o.isGroup) && !o.visible && o.name !== 'food batch') { hid.push(o); o.visible = true; } });      // (and whatever's hidden now but shown later)
     const auto = renderer.shadowMap.autoUpdate; renderer.shadowMap.needsUpdate = true;
     try { renderer.setScissorTest(true); renderer.setScissor(0, 0, 1, 1); renderer.render(scene, camera); } catch (e) { console.warn('shadow warm-up', e); }
-    renderer.setScissorTest(false); renderer.shadowMap.autoUpdate = auto; for (const o of was) o.frustumCulled = true;
+    renderer.setScissorTest(false); renderer.shadowMap.autoUpdate = auto; for (const o of was) o.frustumCulled = true; for (const o of hid) o.visible = false; for (const o of lods) o.autoUpdate = true;
+    scene.remove(sg); sg.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.skeleton) o.skeleton.dispose(); });
   }
   scene.remove(grp); for (const o of grp.children) if (o.geometry) o.geometry.dispose();
   const ms = Math.round(performance.now() - t0);

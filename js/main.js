@@ -98,6 +98,7 @@ const player = new Player(renderer, scene, camera);
 player.rig.position.set(room.start.x, 0, room.start.z);
 player.rig.rotation.y = room.start.yaw;
 const items = new ItemManager(scene, room);
+{ const before = scene.onBeforeRender; scene.onBeforeRender = function (r, sc, cam, ...a) { if (before) before.call(this, r, sc, cam, ...a); try { items.syncDraw(cam); } catch (e) { console.warn('food draw', e); } }; }      // (all the food drawn a shape at a time: foods.js syncDraw)
 { const t0 = performance.now(), n = items.densify(); console.log('food spots', room.spawns.length, '(+' + n + ')', Math.round(performance.now() - t0) + 'ms'); }
 player.items = items;
 for (const gm of room.games || []) gm.attach(items, player);     // darts, table tennis... (words hooked up below)
@@ -675,7 +676,7 @@ function newGame(id, why) {
     const rc = director.receipt; if (rc && rc.parent === camera) { camera.remove(rc); rc.visible = false; } }
   setPaused(false); attackFx.removeAll(); SEL.mode = id;
   const tag = document.getElementById('ready-tag'); if (tag && PAUSE_MODES[id]) tag.textContent = tag.textContent.replace(/·.*$/, '· ' + PAUSE_MODES[id][1]);
-  director.start(id); mpAfterStart(); if (director.imposter) director.imposter.needSpawn = 2; else respawnPlayer();
+  director.start(id); mpAfterStart(); rewarm(); if (director.imposter) director.imposter.needSpawn = 2; else respawnPlayer();
   setTimeout(() => { try { sweep(scene); } catch (e) {} }, 1500);      // (Imposter puts everyone round the bell)
   if (why) showBanner(why, (PAUSE_MODES[id] ? PAUSE_MODES[id][1] : id.toUpperCase()));
 }
@@ -691,7 +692,11 @@ function startFlat() {
 // the game starts once: pressing PLAY again, or going into VR after starting flat, must never restart it (an Imposter
 // game already dealt would drop the host back to the lobby, still being asked to ring the bell)
 let gameBegun = false;
-function startOnce() { if (gameBegun && director.running) return; gameBegun = true; director.start(chosenMode()); mpAfterStart(); }
+function startOnce() { if (gameBegun && director.running) return; gameBegun = true; director.start(chosenMode()); mpAfterStart(); rewarm(); }
+// once a game's people are in: build their shaders (and their shadows') now, not the first time each is seen (shaderwarm.js)
+// (a character's model has just loaded: once the last of a batch is in, build its shaders too)
+{ let t = null; window.__onModelReady = () => { clearTimeout(t); window.__shaderWarm = null; t = setTimeout(rewarm, 500); }; }
+function rewarm() { window.__shaderWarm = null; setTimeout(() => { if (renderer.xr.isPresenting || window.__glLost) { window.__shaderWarm = { skipped: true }; return; } warmShaders(renderer, scene, camera).then(r => { window.__shaderWarm = r; }).catch(() => {}); }, 300); }
 function chosenMode() { const m = ['classic', 'intervention', 'veggie', 'catch'].includes(SEL.mode) || !SEL.mode ? 'everyone' : SEL.mode; return m.startsWith('imposter') && !(window.ronnieMP && window.ronnieMP.role) ? 'everyone' : m; }   // old links still work
 { const pf = document.getElementById('play-flat'); pf.addEventListener('click', startFlat); pf.disabled = false; pf.innerHTML = '<span class="pi">▶</span> PLAY'; }
 

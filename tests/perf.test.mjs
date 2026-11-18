@@ -10,7 +10,7 @@
 import { launch, newPage, startGame, checker } from './lib/game.mjs';
 
 // draw calls from the start spot, all four ways (well under what it was: pub 862, Lidl 1701 before)
-const BUDGET = { pub: 640, shop: 1000, restaurant: 260, garden: 480, bedroom: 140 };
+const BUDGET = { pub: 560, shop: 800, restaurant: 220, garden: 400, bedroom: 120 };
 const MODES = { pub: 'everyone', shop: 'sweep', restaurant: 'date', garden: 'bbq', bedroom: 'everyone' };
 
 export default async function () {
@@ -56,6 +56,7 @@ export default async function () {
           return out;
         });
         // no first-time stutters: once the level's warmed up, playing (power-ups, eating, attacks) builds no new shaders
+        await p.waitForFunction(() => RS.cast.every(c => !c.rag || c.rag.ready), null, { timeout: 120000 }).catch(() => {}); await p.waitForTimeout(1500);      // (the people's models are in: their shaders are warmed once they've loaded)
         await p.waitForFunction(() => window.__shaderWarm, null, { timeout: 240000 });
         const sh = await p.evaluate(async () => { const R = RS.renderer, PU = Object.keys((await import('./js/powerups.js')).POWERUPS || {}); let s = 9; const rnd = () => (s = s * 16807 % 2147483647) / 2147483647;
           for (let i = 0; i < 3; i++) { RS.sim(0.2, 1 / 30); R.render(RS.scene, RS.player.camera); }      // (the very first frames: a sunny place's shadows)

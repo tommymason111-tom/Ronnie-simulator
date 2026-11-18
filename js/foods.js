@@ -509,6 +509,7 @@ const HALO_MAT = (() => { const c = document.createElement('canvas'); c.width = 
   m.customProgramCacheKey = () => 'halo-billboard';
   return m; })();
 export const foodGlow = (t) => { HALO_MAT.opacity = 0.34 + Math.sin(t * 2.6) * 0.12; };
+const _bc = new THREE.Vector3(), _bp = new THREE.Vector3();
 const HALO_MAX = 2048, _hm = new THREE.Matrix4(), _hp = new THREE.Vector3(), _hq = new THREE.Quaternion(), _hs = new THREE.Vector3();
 function haloLayer(scene) {
   const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), HALO_MAT, HALO_MAX);
@@ -566,6 +567,38 @@ export class ItemManager {
     this.respawnQueue = [];
     this.onLand = null;        // callback(item, speed)
     this.halos = haloLayer(scene);
+    this.batches = new Map();      // food shape -> { im (one instanced draw for every bit of food with that shape), n }
+  }
+  // EVERY BIT OF FOOD WITH THE SAME SHAPE IN ONE DRAW: it was a draw each (~120 in the pub, ~160 in Lidl, each costing
+  // the phone or headset the same however small the food); now it's one per kind of shape (~25-30). Called just before
+  // the picture's drawn (scene.onBeforeRender: everything's in its final place by then, for whichever camera's
+  // drawing). Each food's own shape stays where it was (the game moves it, holds it, scales it as it's eaten), just
+  // not drawn itself. The close-up / far-away detail is picked the same way the LOD did (HI_NEAR from the camera).
+  syncDraw(camera) {
+    const B = this.batches; for (const b of B.values()) b.n = 0;
+    const cam = _bc.setFromMatrixPosition(camera.matrixWorld), zoom = camera.zoom || 1;
+    for (const it of this.items) {
+      const o = it.obj; if (it.dead || !o.parent) continue;
+      let vis = true; for (let q = o; q; q = q.parent) if (!q.visible) { vis = false; break; } if (!vis) continue;
+      for (const c of o.children) {
+        let m = null;
+        if (c.isLOD) { c.autoUpdate = false; const lv = c.levels; c.getWorldPosition(_bp); const d = _bp.distanceTo(cam) / zoom; let pick = lv[0].object;
+          for (const l of lv) { if (d >= l.distance) pick = l.object; } for (const l of lv) l.object.visible = false; m = pick; }
+        else if (c.isMesh && !c.isInstancedMesh) m = c;
+        if (!m || m.material !== vcLambert || !m.geometry) { if (c.isLOD && m) m.visible = true; continue; }      // (any other kind of material: drawn as it was)
+        m.visible = false; m.updateWorldMatrix(true, false);
+        let b = B.get(m.geometry); if (!b) B.set(m.geometry, b = { im: null, n: 0, cap: 0 });
+        if (b.n >= b.cap) this.growBatch(b, m.geometry, Math.max(8, b.cap * 2));
+        b.im.setMatrixAt(b.n++, m.matrixWorld);
+      }
+    }
+    for (const b of B.values()) { if (!b.im) continue; b.im.count = b.n; b.im.visible = b.n > 0; if (b.n) b.im.instanceMatrix.needsUpdate = true; }
+  }
+  growBatch(b, geo, cap) {
+    const im = new THREE.InstancedMesh(geo, vcLambert, cap); im.frustumCulled = false; im.raycast = () => {}; im.name = 'food batch'; im.count = 0;
+    im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    if (b.im) { im.instanceMatrix.array.set(b.im.instanceMatrix.array.subarray(0, b.n * 16)); this.scene.remove(b.im); b.im.dispose(); }
+    b.im = im; b.cap = cap; this.scene.add(im);
   }
   // every glowing item's halo, where it is right now (hidden while it's held, finished, or not in the world)
   updateHalos() {

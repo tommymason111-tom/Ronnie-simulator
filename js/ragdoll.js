@@ -505,6 +505,7 @@ export class Ragdoll {
     this.ready = true;
     this.modelLoaded = true;
     this.sync();
+    try { window.__onModelReady && window.__onModelReady(); } catch (e) {}      // (main.js builds its shaders, and its shadow's, straight away)
     // (clothes going wrong must never fail the model: that used to put a second, made-up body inside this one)
     if (this.wantUniform) try { this.wearUniform(); } catch (e) { console.warn('uniform', e); }
     if (this.wantShoes) try { this.wearShoes(this.wantShoes); } catch (e) { console.warn('shoes', e); }
