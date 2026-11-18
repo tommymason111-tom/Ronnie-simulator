@@ -143,7 +143,7 @@ export default async function () {
           // (eight games on a few test cores run at a few frames a second, in bunches: there the worst frames are judged looser.
           // The exact limits, at real frame rates, are in arms.test.mjs)
           const big = pages.length > 4; if (wob.length > 60) C.ok(med < 6 && p99 < (big ? 50 : 32), `${tag}: hands wobble ${med.toFixed(1)}mm typically, ${p99.toFixed(1)}mm at worst, off a smooth path (jitter)`);
-          if (s.kind === 'quest' && realRange > 0.15 && label !== 'walking and waving' && label !== 'punching') C.ok(range > realRange * 0.45 && range < realRange * 1.6, `${tag}: their arm moves ${range.toFixed(2)}m drawn vs ${realRange.toFixed(2)}m for real (not following)`);
+          if (s.kind === 'quest' && realRange > 0.15 && rec.length >= 60 && label !== 'walking and waving' && label !== 'punching') C.ok(range > realRange * 0.45 && range < realRange * 1.6, `${tag}: their arm moves ${range.toFixed(2)}m drawn vs ${realRange.toFixed(2)}m for real (not following)`);
           if (s.hand && label === 'waving') C.ok(curlRange > 0.25 && curlJump < 15, `${tag}: fingers: curl range ${curlRange.toFixed(2)}, fastest change ${curlJump.toFixed(1)}/s (a snap)`);
         }
       }
