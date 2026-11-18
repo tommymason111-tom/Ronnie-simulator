@@ -57,12 +57,17 @@ export function setListener(pos, fwd, up) {
 }
 
 // Output node: spatial (PannerNode) when a world position is given.
-function out(pos, vol = 1) {
+// VOICES (talking, babble, real voices, chat read out) carry only so far: full volume up close, fading to nothing at
+// HEAR_RANGE metres, so you only hear the people near you (other sounds keep the gentle fall-off: a crash across the
+// pub should still be heard).
+export const HEAR_RANGE = 14;
+function out(pos, vol = 1, voice = false) {
   const g = ctx.createGain(); g.gain.value = vol;
   if (pos) {
     const p = ctx.createPanner();
-    p.panningModel = 'equalpower'; p.distanceModel = 'inverse';
-    p.refDistance = 1; p.rolloffFactor = 0.6;
+    p.panningModel = 'equalpower';
+    if (voice) { p.distanceModel = 'linear'; p.refDistance = 2; p.maxDistance = HEAR_RANGE; p.rolloffFactor = 1; }
+    else { p.distanceModel = 'inverse'; p.refDistance = 1; p.rolloffFactor = 0.6; }
     if (p.positionX) { p.positionX.value = pos.x; p.positionY.value = pos.y; p.positionZ.value = pos.z; }
     else p.setPosition(pos.x, pos.y, pos.z);
     g.connect(p); p.connect(master); g._p = p;
@@ -334,7 +339,7 @@ const NOVARY = new Set(['fanfare', 'sadviolin', 'trumpet', 'siu', 'jackpot', 'cr
 // Tommy "speaks" in a smooth little babble while his speech bubble is up.
 export function babble(pos, syllables = 8, pitch = 1) {
   if (!ctx || ctx.state !== 'running') return;
-  const d = out(pos, 0.25);
+  const d = out(pos, 0.25, true);
   let t = ctx.currentTime + 0.02;
   for (let i = 0; i < syllables; i++) {
     const f = (140 + Math.random() * 60) * pitch;
@@ -573,7 +578,7 @@ export function decodeClip(ab) { return ctx ? new Promise((res, rej) => ctx.deco
 // starts it now; returns how long it lasts (seconds)
 export function playBuffer(buf, pos = null, vol = 1, key = null) {
   if (!ctx || !buf) return 0; if (key) stopVoice(key);
-  const src = ctx.createBufferSource(); src.buffer = buf; const g = out(pos, 1.6 * vol); src.connect(g); src.start();
+  const src = ctx.createBufferSource(); src.buffer = buf; const g = out(pos, 1.6 * vol, true); src.connect(g); src.start();
   if (key) VPLAY.set(key, src);
   src.onended = () => { try { src.disconnect(); g.disconnect(); if (g._p) g._p.disconnect(); } catch (e) {} if (key && VPLAY.get(key) === src) VPLAY.delete(key); };
   return buf.duration;

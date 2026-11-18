@@ -22,7 +22,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Quick tests (static checks, server, VR, hostile messages)
-        run: node run.mjs lint server vr netfuzz
+        run: node run.mjs lint server vr netfuzz talk
       - name: Two games playing together
         run: node run.mjs mp
       - name: Every place and mode

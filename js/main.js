@@ -1373,6 +1373,9 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
 }
 // the shared game (food and people): see mpsync.js
 const mp = new MPSync({ net, scene, room, physics, player, items, cast, director, words, fx: attackFx, G, tommy });
+// who's close enough to hear the squad talk (character.js only lets people chat near a player): you, and when you're
+// running the game for a room, everyone in it too (their games show the lines you send them)
+Character.hearers = () => { const a = [player.head]; if (net.connected && mp.host) for (const p of net.players.values()) if (p.avatar && !p.avatar.gone) a.push(p.avatar.pos); return a; };
 director.startRemote = (id) => { if (!net.host && director.mode && (PAUSE_MODES[id] || id === 'imposter')) newGame(id, 'NEW GAME'); };
 // power-ups turn up in the eating games (not Run the Pub, the Sweep or Imposter)
 powerups = new PowerUps({ scene, room, items, player, sfx, words, net, mp, eatWhole: (it) => hooverEat(it),

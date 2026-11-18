@@ -8,7 +8,8 @@ import { canvasTex, fitText, roundRect, blobTex } from './textures.js';
 import { Dialogue, BANKS } from './dialogue.js';
 import { sfx, babble } from './audio.js';
 import { voiceLine, cancelLine } from './voices.js';
-const MAX_TALKERS = 2;      // (how many people can be talking at once)
+const MAX_TALKERS = 2;      // (how many people can be talking at once, around any one player)
+export const TALK_RANGE = 12;      // (metres: further than this from every player, nobody chats. Voices fade out by audio.js HEAR_RANGE)
 import { TUNING } from './config.js';
 import { Item } from './foods.js';
 import { MODE_LINES, modeGroup } from './modelines.js';
@@ -130,7 +131,11 @@ export class Character {
     if ((this.speakT > 0.6 || this.voicePending) && pri < this.speakPri) return false;
     // only a couple of people talk at once (no wall of bubbles and voices, e.g. everyone greeting you as you join);
     // the important lines (attacks, being hit, the game's own announcements: priority 4+) always get through
-    if (pri < 4 && !this.mpPuppet) { let n = 0; for (const c of (Character.ALL || [])) if (c !== this && !c.disposed && (c.speakT > 0 || c.voicePending) && !c.mpPuppet) n++; if (n >= MAX_TALKERS) return false; }
+    // and only people NEAR someone talk: chatter from the far side of the map is just noise (and a wall of bubbles).
+    // The important lines (attacks, being hit, the game's own announcements: priority 4+) always get through, and only a
+    // couple of people talk at once around any one player (no wall of bubbles and voices, e.g. everyone greeting you
+    // as you join). Players who could hear: Character.hearers() (you, plus everyone in the room when you're the host)
+    if (pri < 4 && !this.mpPuppet && !this.canChat(this.headPos(_v))) return false;
     const text = isBank ? this.line(bankOrText) : (BANKS[bankOrText] || this.banks[bankOrText] ? null : bankOrText);
     if (!text) return false;
     this.speakPri = pri; this.quietT = 0;
@@ -139,6 +144,16 @@ export class Character {
     this.showLine(text, pri, 0);
     babble(this.headPos(_v), Math.min(14, 4 + Math.floor(text.length / 8)), this.cfg.voicePitch || 1);
     return true;
+  }
+  // is someone near enough to hear me, who hasn't already got MAX_TALKERS people talking near them?
+  canChat(at) {
+    const hs = Character.hearers ? Character.hearers() : []; if (!hs.length) return true;
+    for (const h of hs) {
+      if (!h || h.distanceTo(at) > TALK_RANGE) continue;
+      let n = 0; for (const c of (Character.ALL || [])) if (c !== this && !c.disposed && !c.mpPuppet && (c.speakT > 0 || c.voicePending) && c.rag && c.rag.mesh && c.headPos(_v2).distanceTo(h) <= TALK_RANGE) n++;
+      if (n < MAX_TALKERS) return true;
+    }
+    return false;
   }
   // the bubble up, for as long as the line takes to say (or read)
   showLine(text, pri, dur = 0) {

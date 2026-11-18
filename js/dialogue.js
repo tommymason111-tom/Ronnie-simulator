@@ -105,7 +105,6 @@ export const BANKS = {
 };
 
 export const STAGE_LINES = {
-  2: 'Ooh, that\'s a little bulge, Ron. Cute. Like a baby. A younger baby than me.',
   3: 'Did your shirt just make a noise? I think it\'s crying.',
   4: 'Ronnie... I\'m not saying you\'re big, but your chins have started a group chat.',
   5: 'That\'s FIVE now, Ron. I\'m calling your mum.',

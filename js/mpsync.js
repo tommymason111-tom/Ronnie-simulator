@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { FOODS } from './config.js';
 import { SquadMember, SQUAD } from './squad.js';
-import { Character, KO_IMPULSE } from './character.js';
+import { Character, KO_IMPULSE, TALK_RANGE } from './character.js';
 import { sfx } from './audio.js';
 import { emoteInfo } from './emotes.js';
 import { voiceLine } from './voices.js';
@@ -308,7 +308,8 @@ export class MPSync {
     }
     if (m.full) for (const it of this.items.items.slice()) if (it.netMirror && !listed.has(it.nid) && !this.heldLocally(it)) { it.dropNoTell = true; this.items.remove(it); }
   }
-  on_say(m) { if (this.host) return; const c = this.cast.find(x => x.id === m.id); if (!c || !c.rag.mesh) return;      // (a real voice: the bubble comes up as the sound starts, here too: voices.js)
+  on_say(m) { if (this.host) return; const c = this.cast.find(x => x.id === m.id); if (!c || !c.rag.mesh) return;
+    const at = c.headPos(new THREE.Vector3()); if (this.player && this.player.head && at.distanceTo(this.player.head) > TALK_RANGE) return;      // (someone talking near another player, not you: not your conversation)      // (a real voice: the bubble comes up as the sound starts, here too: voices.js)
     if (!voiceLine(c.id, m.text, c.headPos(new THREE.Vector3()), { key: 'npc_' + c.id, onStart: (dur) => c.showLine(m.text, 3, dur) })) c.showLine(m.text, 3, 0); }
   on_dir(m) { if (this.host) return; const d = this.director; d.hostHud = m.hud; d.timeLeft = m.left; if (m.mode && m.mode !== (d.fullMode || d.mode) && d.startRemote) d.startRemote(m.mode); }
   on_woke(m) { const D = this.room.dormant; if (!D) return; const e = D.entries[m.i]; if (e && !e.woken) { e.woken = true; for (const im of e.group.meshes) { im.setMatrixAt(e.index, new THREE.Matrix4().makeScale(0, 0, 0)); im.instanceMatrix.needsUpdate = true; } } }
