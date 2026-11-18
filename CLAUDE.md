@@ -14,7 +14,7 @@ Every update bumps the version (`2.23.x` from the merge on).
 - **To bump:**
   1. Edit `GAME_VERSION` in `js/menu.js` (and add a line to the update notes under it).
   2. Run `python3 tools/stamp.py`. This writes `version.json` and the `?v=` cache-busters in `index.html`.
-- A player on an older version is updated automatically when they join a mate's room on a newer one.
+- Every page load checks `version.json` and reloads itself into a newer version, so players are moved onto it as soon as they open the game.
 
 ## Rules from the owner
 
@@ -42,7 +42,11 @@ Every update bumps the version (`2.23.x` from the merge on).
 
 ## Testing
 
-There's no test suite. Test in headless Chromium with Playwright, which is pre-installed: `require('playwright')`.
+**The test suite is in `tests/`** (see `tests/README.md`), and GitHub Actions runs it on every push (`.github/workflows/tests.yml`). Run it before pushing: `cd tests && npm ci && node run.mjs` (or one file: `node run.mjs places`). It covers static checks, the room server under attack, VR regressions, hostile multiplayer messages, two real games playing together, every place and mode, and a seeded chaos bot. A crash you fix gets a test that fails without the fix.
+
+**Crash reports** from players' devices: `js/crash.js` (loaded first) sends them to the server's `/crash`; read them at `https://ronnie-mp12.ronnie-sim.workers.dev/crashes?k=<CRASH_KEY>` (a Worker secret the owner sets). Check them before guessing at a crash.
+
+For anything else, test in headless Chromium with Playwright, which is pre-installed: `require('playwright')`.
 
 - **Launch** with `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`.
 - **Serve the files locally.** Route `three@0.170.0` and `cannon-es@0.20.0` CDN requests to local copies; `npm pack three@0.170.0 cannon-es@0.20.0` gets them. Serve the repo itself, too.

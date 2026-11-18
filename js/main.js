@@ -1101,6 +1101,24 @@ function vrEmoteView(on, live) {
     vrEC = null; player.vrEmoteHold = null; player.emoteLock = false;
   }
 }
+// the last line of defence: anything at an impossible position (NaN or Infinity: from a bad message, or a division by
+// zero somewhere) goes back to where it last was, standing still. A NaN in the physics spreads to everything it touches
+// and the whole room goes blank, so it's stopped here, every frame, and reported the first time
+const _goodPos = new WeakMap(); let nanSeen = false, _rigGood = null;
+const fin3 = (v) => Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z);
+function nanGuard() {
+  const bodies = physics.world.bodies;
+  for (let i = 0; i < bodies.length; i++) {
+    const b = bodies[i], p = b.position, q = b.quaternion;
+    if (fin3(p) && fin3(b.velocity) && Number.isFinite(q.w) && fin3(q)) { let g = _goodPos.get(b); if (!g) _goodPos.set(b, g = [p.x, p.y, p.z]); else { g[0] = p.x; g[1] = p.y; g[2] = p.z; } continue; }
+    const g = _goodPos.get(b) || [0, -50, 0]; p.set(g[0], g[1], g[2]); b.velocity.set(0, 0, 0); b.angularVelocity.set(0, 0, 0); if (!(Number.isFinite(q.w) && fin3(q))) q.set(0, 0, 0, 1);
+    if (b.previousPosition) b.previousPosition.copy(p); if (b.interpolatedPosition) b.interpolatedPosition.copy(p);
+    if (!nanSeen) { nanSeen = true; try { window.__crash && window.__crash('caught', new Error('physics body at an impossible position (put back)')); } catch (e) {} }
+  }
+  const rp = player.rig.position;
+  if (fin3(rp)) (_rigGood || (_rigGood = rp.clone())).copy(rp);
+  else { rp.copy(_rigGood || new THREE.Vector3(0, 0, 0)); if (!nanSeen) { nanSeen = true; try { window.__crash && window.__crash('caught', new Error('player at an impossible position (put back)')); } catch (e) {} } }
+}
 let powerups = null;
 function frame(simDt) {
   foodGlow(performance.now() / 1000);
@@ -1109,7 +1127,7 @@ function frame(simDt) {
   if (paused && simDt == null && net.connected) { if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(1 / 60); } }
   else if (paused && simDt == null) { clock.getDelta(); if (renderer.xr.isPresenting) { vrPause.open(); vrPause.update(1 / 60); } renderer.render(scene, camera); return; }    // frozen until RESUME
   const dt = simDt ?? Math.min(clock.getDelta(), 0.05);
-  try { selfBodyUpdate(dt); } catch (e) { if (!selfBodyErrs++) console.warn('self body', e); }      // (with the real frame time: a fixed 1/60 made your own body's emotes run slow and its physics bodies run away)
+  try { selfBodyUpdate(dt); } catch (e) { if (!selfBodyErrs++) { window.__crash && window.__crash('frame', e, { where: 'self body' }); console.warn('self body', e); } }      // (with the real frame time: a fixed 1/60 made your own body's emotes run slow and its physics bodies run away)
   time += dt;
   for (const f of (window.RS && window.RS.onFrame) || []) try { f(dt); } catch (e) { console.warn('onFrame', e); }      // (developer mode's test bench)
   const xr = renderer.xr.isPresenting;
@@ -1168,6 +1186,7 @@ function frame(simDt) {
   vegAndHits(dt);
   if (xr) slaps();
   physics.step(dt);
+  nanGuard();
   for (const c of cast) c.update(dt, mp.ctxFor(c, ctx));
   mp.update(dt);
   // people don't walk through each other (or through Ronnie)
@@ -1182,7 +1201,7 @@ function frame(simDt) {
     }
   }
   director.update(dt, ctx);
-  try { powerups && powerups.update(dt, time); } catch (e) { console.error('powerups', e); }
+  try { powerups && powerups.update(dt, time); } catch (e) { window.__crash && window.__crash('frame', e, { where: 'powerups' }); console.error('powerups', e); }
   attackFx.update(dt);
   if (player.flatMode) { updateTouchUI(); touch.busy(!!(attackFx.cut && !attackFx.cut.overlay)); }
 
@@ -1293,7 +1312,7 @@ function emoteCamSpot(look, want) {
 }
 // (one bad frame must never stop the game: log it, still draw, carry on with the next)
 let frameErrs = 0;
-renderer.setAnimationLoop(() => { try { frame(); } catch (e) { if (frameErrs++ < 5) console.error('frame', e); try { renderer.render(scene, camera); } catch (e2) {} } });
+renderer.setAnimationLoop(() => { try { frame(); } catch (e) { window.__crash && window.__crash('frame', e); if (frameErrs++ < 5) console.error('frame', e); try { renderer.render(scene, camera); } catch (e2) {} } });
 
 // Debug handle for testing in a desktop browser console.
 // ---------------- multiplayer: the room was set up on the menu (SOLO / MULTIPLAYER), this carries it on ----------------

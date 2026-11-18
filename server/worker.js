@@ -29,6 +29,7 @@ export class Room {
   all(m, except) { const s = JSON.stringify(m); for (const [w] of this.live()) if (w !== except) this.send(w, s); }
 
   async fetch(req) {
+    if (new URL(req.url).pathname.startsWith('/crash')) return crashLog(this, req);      // (one special "room" keeps the crash reports)
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected a websocket', { status: 426, headers: cors });
     const url = new URL(req.url), name = clean(url.searchParams.get('name'), 16) || 'Ronnie';
     const pid = (url.searchParams.get('pid') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || crypto.randomUUID().replace(/-/g, '').slice(0, 10);
@@ -139,8 +140,53 @@ export default {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (url.pathname === '/tts' && req.method === 'GET') return tts(req, env, ctx, url);
+    if ((url.pathname === '/crash' && req.method === 'POST') || (url.pathname === '/crashes' && req.method === 'GET')) {
+      const fwd = new Request(req, { headers: new Headers({ 'x-ip': req.headers.get('cf-connecting-ip') || '', 'x-key-ok': env.CRASH_KEY && url.searchParams.get('k') === env.CRASH_KEY ? '1' : '' }) });
+      return env.ROOMS.get(env.ROOMS.idFromName('__crashlog__')).fetch(fwd);
+    }
     const m = url.pathname.match(/^\/room\/([A-Z0-9]{4,8})$/i);
     if (m) return env.ROOMS.get(env.ROOMS.idFromName(m[1].toUpperCase())).fetch(req);
     return new Response('Ronnie Simulator multiplayer: OK (up to ' + MAX_PLAYERS + ' players a room)', { headers: { ...cors, 'content-type': 'text/plain' } });
   },
 };
+
+// ---- CRASH REPORTS (js/crash.js sends them). Kept in one special room: each different problem is a group (counted by
+// version, device, browser, place and mode, with the last few times it happened); and every session says hello once, so
+// the share of sessions with no problems can be worked out for each version and device. Nothing personal is sent.
+// See them at /crashes?k=<CRASH_KEY> (a Worker secret the owner sets; without it the page is locked).
+const CRASH_KINDS = ['start', 'error', 'promise', 'frame', 'caught', 'context', 'hang', 'killed'];
+const fnv = (str) => { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(36); };
+const word = (x, n = 24) => String(x == null ? '' : x).replace(/[^\w .:<>/()'#,-]/g, '').slice(0, n);
+const bump = (o, k) => { k = word(k, 24) || '?'; o[k] = (o[k] || 0) + 1; return o; };
+async function crashLog(room, req) {
+  const st = room.state.storage, url = new URL(req.url);
+  if (url.pathname === '/crashes') {
+    if (req.headers.get('x-key-ok') !== '1') return new Response('locked: add ?k= with the CRASH_KEY secret (set it on the Worker first)', { status: 403, headers: cors });
+    const sess = (await st.get('sess')) || {}, bad = (await st.get('bad')) || {}, groups = [...(await st.list({ prefix: 'g:' })).values()].sort((a, b) => b.n - a.n);
+    if (url.searchParams.get('json')) return new Response(JSON.stringify({ sessions: sess, crashedSessions: bad, groups }, null, 1), { headers: { ...cors, 'content-type': 'application/json' } });
+    const esc = (t) => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    const top = (o) => Object.entries(o || {}).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => `${esc(k)} ${n}`).join(', ');
+    let rate = '';
+    for (const v of Object.keys(sess).sort().reverse().slice(0, 6)) for (const d of Object.keys(sess[v])) { const n = sess[v][d], b = (bad[v] && bad[v][d]) || 0; rate += `<tr><td>${esc(v)}</td><td>${esc(d)}</td><td>${n}</td><td>${b}</td><td>${n ? Math.round(100 * (1 - Math.min(n, b) / n)) : '-'}%</td></tr>`; }
+    const rows = groups.slice(0, 150).map(g => `<tr><td>${g.n}</td><td>${esc(g.k)}</td><td><b>${esc(g.m)}</b><br><small>${esc(g.s)}</small></td><td>${top(g.v)}</td><td>${top(g.d)}<br><small>${top(g.b)}</small></td><td>${top(g.p)}<br><small>${top(g.md)}</small></td><td>${g.vr || 0}</td><td><small>${new Date(g.last).toISOString().slice(0, 16)}</small></td></tr>`).join('');
+    return new Response(`<!doctype html><meta name=viewport content="width=device-width"><title>Ronnie Simulator crashes</title><style>body{font:14px system-ui;margin:12px}table{border-collapse:collapse;margin-bottom:24px}td,th{border:1px solid #ccc;padding:4px 6px;vertical-align:top;text-align:left}</style>
+<h2>Sessions with no problems</h2><table><tr><th>version</th><th>device</th><th>sessions</th><th>with a problem</th><th>problem-free</th></tr>${rate}</table>
+<h2>Problems (most common first)</h2><table><tr><th>times</th><th>kind</th><th>error / where</th><th>versions</th><th>devices / browsers</th><th>places / modes</th><th>in VR</th><th>last</th></tr>${rows}</table>`, { headers: { ...cors, 'content-type': 'text/html; charset=utf-8' } });
+  }
+  // a report: limited to 30 a minute from one address, a few KB, known kinds only
+  const ip = req.headers.get('x-ip') || '?', now = Date.now(), rl = room.rl || (room.rl = new Map()), r = rl.get(ip) || { t: now, n: 0 };
+  if (now - r.t > 60000) { r.t = now; r.n = 0; } r.n++; rl.set(ip, r); if (rl.size > 5000) rl.clear();
+  if (r.n > 30) return new Response('slow down', { status: 429, headers: cors });
+  let b; try { const txt = await req.text(); if (txt.length > 4000) throw 0; b = JSON.parse(txt); } catch (e) { return new Response('bad', { status: 400, headers: cors }); }
+  if (!b || !CRASH_KINDS.includes(b.k)) return new Response('bad', { status: 400, headers: cors });
+  const v = word(b.v, 16) || '?', d = word(b.d, 16) || '?';
+  if (b.k === 'start') { const sess = (await st.get('sess')) || {}; (sess[v] || (sess[v] = {}))[d] = (sess[v][d] || 0) + 1; await st.put('sess', sess); return new Response('ok', { headers: cors }); }
+  if (b.f) { const bad = (await st.get('bad')) || {}; (bad[v] || (bad[v] = {}))[d] = (bad[v][d] || 0) + 1; await st.put('bad', bad); }      // (the first problem in that session)
+  const m = word(b.m, 220), s = word(b.s, 300), key = 'g:' + fnv(b.k + '|' + m + '|' + s.split(' < ')[0]);
+  const g = (await st.get(key)) || { k: b.k, m, s, n: 0, first: now, v: {}, d: {}, b: {}, p: {}, md: {}, vr: 0, ex: [] };
+  if (!g.n) { const count = (await st.get('ngroups')) || 0; if (count >= 400) return new Response('full', { status: 507, headers: cors }); await st.put('ngroups', count + 1); }
+  g.n++; g.last = now; bump(g.v, v); bump(g.d, d); bump(g.b, b.b); bump(g.p, b.p || '-'); bump(g.md, b.md || '-'); if (b.vr) g.vr++;
+  g.ex.unshift({ at: now, v, d, p: word(b.p, 16), md: word(b.md, 16), vr: !!b.vr, mp: +b.mp || 0, t: +b.t || 0, mem: +b.mem || null, where: word(b.where, 24) }); g.ex.length = Math.min(g.ex.length, 5);
+  await st.put(key, g);
+  return new Response('ok', { headers: cors });
+}

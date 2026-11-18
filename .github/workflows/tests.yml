@@ -1,0 +1,34 @@
+# Runs the crash and regression tests (tests/) on every push: static checks, the room server under attack, VR
+# regressions, hostile multiplayer messages, two real games playing together, every place and mode, and a chaos bot.
+name: tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Quick tests (static checks, server, VR, hostile messages)
+        run: node run.mjs lint server vr netfuzz
+      - name: Two games playing together
+        run: node run.mjs mp
+      - name: Every place and mode
+        run: node run.mjs places
+      - name: Chaos bot (one seed per place)
+        run: node run.mjs chaos
+        env:
+          SEEDS: 1
+          STEPS: 400

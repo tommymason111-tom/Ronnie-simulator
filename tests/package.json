@@ -1,0 +1,17 @@
+{
+  "name": "ronnie-simulator-tests",
+  "private": true,
+  "type": "module",
+  "description": "Crash and regression tests for Ronnie Simulator: node run.mjs (all) or node run.mjs <name>",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "cannon-es": "0.20.0",
+    "eslint": "9.39.1",
+    "globals": "16.5.0",
+    "playwright": "1.63.0",
+    "three": "0.170.0",
+    "ws": "8.18.3"
+  }
+}

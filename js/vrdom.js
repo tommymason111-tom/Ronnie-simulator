@@ -74,7 +74,7 @@ export class DomPanel {
       const h = this.width * shot.height / shot.width; this.mesh.scale.set(this.width, h, 1);
       this.kmesh.position.set(0, -0.5 - (0.75 * 420 / 1024) / 2 / h - 0.02, 0); this.kmesh.scale.set(1 / this.width, 1 / h, 1);
       this.compose();
-    } catch (e) { console.warn('vr panel', e); }
+    } catch (e) { window.__crash && window.__crash('frame', e, { where: 'vr panel' }); console.warn('vr panel', e); }
     this.busy = false; this.lastShot = performance.now();
   }
   // the picture plus the outline round what you're pointing at

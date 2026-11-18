@@ -24,6 +24,54 @@ const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const newCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
 
 export { RemoteRonnie };
+// every message from the room is checked before the game sees it. Messages only come from other copies of this game,
+// but an older version, a bug, or someone messing about could send anything: a number where a list goes, a huge list,
+// null in a position. Those made the game throw, or put people and things at impossible positions that then spread
+// through the physics. A message that isn't sensible is simply dropped.
+const POSE_VEC = { h: 3, l: 3, rh: 3, q: 4 };
+// what each kind of message must carry (a field ending ! is required): positions are real numbers in lists of the right
+// length; lists of things (held food, the host's snapshot) have numbers where the game does sums with them
+const nums = (a, from, to) => { for (let i = from; i < Math.min(to, a.length); i++) if (a[i] !== undefined && a[i] !== null && typeof a[i] !== 'number') return false; for (let i = from; i < Math.min(to, a.length); i++) if (a[i] === null) return false; return true; };
+const T = {
+  v2: (x) => Array.isArray(x) && x.length === 2 && x.every(n => typeof n === 'number' && Math.abs(n) < 1e5),
+  v3: (x) => Array.isArray(x) && x.length === 3 && x.every(n => typeof n === 'number' && Math.abs(n) < 1e5),
+  v4: (x) => Array.isArray(x) && x.length === 4 && x.every(n => typeof n === 'number' && Math.abs(n) < 1e5),
+  num: (x) => typeof x === 'number', str: (x) => typeof x === 'string', id: (x) => typeof x === 'string' || typeof x === 'number',
+  arr: (x) => Array.isArray(x), obj: (x) => !!x && typeof x === 'object' && !Array.isArray(x),
+  holds: (x) => Array.isArray(x) && x.every(e => Array.isArray(e) && e.length >= 4 && nums(e, 1, 11)),
+  chars: (x) => Array.isArray(x) && x.every(a => Array.isArray(a) && a.length >= 2 && nums(a, 2, a.length)),
+  items: (x) => Array.isArray(x) && x.every(r => Array.isArray(r) && r.length >= 11 && nums(r, 3, 11)),
+};
+const SCHEMA = {
+  p: { 'h!': 'v3', 'q!': 'v4', 'l!': 'v3', 'rh!': 'v3', s: 'num', st: 'num', ts: 'num', c: 'str' },      // (a pose: where their head and both hands are, always all four)
+  hitby: { 'v!': 'v2' }, hitc: { 'id!': 'id', 'p!': 'v3', 'v!': 'v3', part: 'str' }, punch: { 'v!': 'v2', at: 'v3', s: 'num', target: 'id', side: 'str' },
+  rgrab: { 'side!': 'str', ph: 'str', p: 'v3', v: 'v3', id: 'id', part: 'str' }, throw: { 'nid!': 'id', 'p!': 'v3', 'v!': 'v3' }, rel: { 'nid!': 'id', 'p!': 'v3', q: 'v4' },
+  hold: { 'h!': 'holds' }, snap: { 'c!': 'chars', 'i!': 'items' }, sfx: { 'n!': 'str', 'p!': 'v3', v: 'num' }, pu: { 'p!': 'v3' }, bite: { 'nid!': 'id', left: 'num' },
+  wake: { 'i!': 'num' }, woke: { 'i!': 'num' }, dir: { left: 'num', mode: 'str', hud: 'str' }, swing: { s: 'str' }, music: { vol: 'num', pos: 'num' }, tv: { vol: 'num', pos: 'num' },
+  save: { 'd!': 'obj' }, emote: { 'e!': 'str' }, char: { 'c!': 'str' }, chat: { 's!': 'str' }, say: { 'text!': 'str' }, stun: { who: 'id' }, coming: { who: 'id' }, setup: { place: 'str', mode: 'str' },
+  songpart: { i: 'num', n: 'num', d: 'str' }, vidpart: { i: 'num', n: 'num', d: 'str' }, own: { 'nid!': 'id', id: 'id' }, grab: { 'nid!': 'id' }, gone: { 'nid!': 'id' }, end: { lines: 'arr' },
+  welcome: { players: 'arr' }, join: { 'id!': 'id' }, leave: { 'id!': 'id' }, host: { 'id!': 'id' },
+};
+function okMessage(m) {
+  if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.t !== 'string' || !m.t || m.t.length > 24) return false;
+  let budget = 30000;
+  const ok = (v, depth) => {
+    if (--budget < 0 || depth > 8) return false;
+    if (v === null || typeof v === 'boolean') return true;
+    if (typeof v === 'number') return Number.isFinite(v) && Math.abs(v) < 1e13;
+    if (typeof v === 'string') return v.length <= 70000;      // (a song shared between players comes in chunks of text)
+    if (Array.isArray(v)) { if (v.length > 5000) return false; for (const x of v) if (!ok(x, depth + 1)) return false; return true; }
+    if (typeof v === 'object') { for (const k of Object.keys(v)) { if (k === '__proto__' || k === 'constructor' || k === 'prototype' || !ok(v[k], depth + 1)) return false; } return true; }
+    return false;
+  };
+  if (!ok(m, 0)) return false;
+  for (const k of ['f', 'id', 'to', 'target']) if (m[k] != null && typeof m[k] !== 'string' && typeof m[k] !== 'number') return false;
+  const sc = SCHEMA[m.t]; if (sc) for (const key in sc) { const req = key.endsWith('!'), k = req ? key.slice(0, -1) : key; if (m[k] === undefined || m[k] === null) { if (req) return false; continue; } if (!T[sc[key]](m[k])) return false; }
+  if (m.t === 'p') for (const k in POSE_VEC) if (k in m && !(Array.isArray(m[k]) && m[k].length === POSE_VEC[k] && m[k].every(x => typeof x === 'number' && Math.abs(x) < 1e4))) return false;      // (where someone's head and hands are: three real numbers each, a sensible size)
+  return true;
+}
+export { okMessage };
+
 export class Net {
   constructor() { this.ws = null; this.id = null; this.host = false; this.players = new Map(); this.on = {}; this.code = null; this.sendT = 0; this.status = 'off'; this.rtt = 0; this.lastSent = ''; this.lastSentAt = 0; this.max = 12; }
   get connected() { return this.ws && this.ws.readyState === 1; }
@@ -64,8 +112,13 @@ export class Net {
   off() { this.status = 'off'; this.emit('status', 'disconnected'); for (const id of [...this.players.keys()]) this.drop(id); }
   leave() { for (const o of this.stale || []) try { o.close(); } catch (e) {} this.stale = []; this.wanted = false; clearTimeout(this.retryT); clearInterval(this.ping); if (this.ws) { const w = this.ws; this.ws = null; try { w.close(); } catch (e) {} } for (const id of [...this.players.keys()]) this.drop(id); this.status = 'off'; }
   send(m) { if (this.connected) this.ws.send(JSON.stringify(m)); }
-  emit(k, ...a) { const f = this.on[k]; f && f(...a); }
+  // (one message that trips a bug mustn't take the game down: it's caught, reported once, and the game carries on)
+  emit(k, ...a) { const f = this.on[k]; if (!f) return; try { f(...a); } catch (e) { const n = (this.emitErrs = this.emitErrs || {}); if (!n[k]) { n[k] = 1; try { window.__crash && window.__crash('caught', e, { where: 'net ' + String(k).slice(0, 16) }); } catch (e2) {} } } }
   handle(m) {
+    if (!okMessage(m)) { this.badMsgs = (this.badMsgs || 0) + 1; return; }      // (see okMessage: anything malformed is dropped at the door)
+    try { this.handle1(m); } catch (e) { const n = (this.emitErrs = this.emitErrs || {}); if (!n['@' + m.t]) { n['@' + m.t] = 1; try { window.__crash && window.__crash('caught', e, { where: 'net handle ' + m.t.slice(0, 16) }); } catch (e2) {} } }
+  }
+  handle1(m) {
     switch (m.t) {
       case 'welcome': { const again = this.status === 'reconnecting', wasHost = this.host; this.id = m.id; this.host = m.host; this.hostId = m.hostId || (m.host ? m.id : null); this.hostName = m.hostName || ''; this.orig = m.orig || null; this.saved = m.saved || null; this.back = !!m.back; this.max = m.max || this.max; this.status = 'on'; this.tries = 0; for (const o of this.stale || []) try { o.close(); } catch (e) {} this.stale = [];
         const listed = new Set(m.players.map(p => p.id));

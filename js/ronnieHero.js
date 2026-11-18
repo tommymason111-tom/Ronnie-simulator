@@ -189,7 +189,7 @@ export async function startHero(holder, { onTap, onEat, sfx } = {}) {
     // close to his mouth: he opens up for it, and takes it
     const d = dragging.position.distanceTo(MOUTH);
     jawTarget = Math.max(jawTarget, 0.25 * smooth(0.25, 0.08, d));
-    if (d < 0.09) { const o = dragging; dragging = null; canvas.style.cursor = 'grab'; o.userData.home = o.userData.home; eat(o); }
+    if (d < 0.09) { const o = dragging; dragging = null; canvas.style.cursor = 'grab'; eat(o); }
   });
   const up = (e) => {
     if (dragging) { dragging = null; canvas.style.cursor = 'grab'; }
