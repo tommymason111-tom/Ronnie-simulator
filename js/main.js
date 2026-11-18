@@ -58,8 +58,11 @@ renderer.xr.setFoveation(1);
 document.getElementById('app').appendChild(renderer.domElement);
 // iPhones can take the graphics chip's memory back (the app in the background, or short of memory). three.js can't
 // rebuild a whole level after that, so start the page again cleanly rather than leave a black or frozen screen
-renderer.domElement.addEventListener('webglcontextlost', (e) => { e.preventDefault(); console.warn('graphics context lost'); }, false);
-renderer.domElement.addEventListener('webglcontextrestored', () => { setTimeout(() => location.reload(), 50); }, false);
+// While it's gone nothing is drawn at all: the 3D models' data was handed to the graphics card and let go of (to save a
+// phone's memory), so a context that comes back empty can't be filled again, and every frame drawn then threw
+window.__glLost = false;
+renderer.domElement.addEventListener('webglcontextlost', (e) => { e.preventDefault(); window.__glLost = true; console.warn('graphics context lost'); }, false);
+renderer.domElement.addEventListener('webglcontextrestored', () => { window.__glLost = true; location.reload(); }, false);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9db7ff);
@@ -1312,7 +1315,7 @@ function emoteCamSpot(look, want) {
 }
 // (one bad frame must never stop the game: log it, still draw, carry on with the next)
 let frameErrs = 0;
-renderer.setAnimationLoop(() => { try { frame(); } catch (e) { window.__crash && window.__crash('frame', e); if (frameErrs++ < 5) console.error('frame', e); try { renderer.render(scene, camera); } catch (e2) {} } });
+renderer.setAnimationLoop(() => { if (window.__glLost) return; try { frame(); } catch (e) { window.__crash && window.__crash('frame', e); if (frameErrs++ < 5) console.error('frame', e); try { renderer.render(scene, camera); } catch (e2) {} } });
 
 // Debug handle for testing in a desktop browser console.
 // ---------------- multiplayer: the room was set up on the menu (SOLO / MULTIPLAYER), this carries it on ----------------
