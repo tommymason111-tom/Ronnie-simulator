@@ -1,13 +1,17 @@
 // Shared test helpers: a browser that runs the game from this repo (three.js and cannon-es from tests/node_modules
 // instead of the CDN), crash reports caught locally, and quick ways into a place and mode.
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 const HERE = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.resolve(HERE, '../..'), NM = path.resolve(HERE, '../node_modules');
 export { ROOT };
 const TYPES = { '.js': 'application/javascript', '.mjs': 'application/javascript', '.html': 'text/html', '.json': 'application/json', '.glb': 'model/gltf-binary', '.png': 'image/png', '.jpg': 'image/jpeg', '.mp3': 'audio/mpeg', '.css': 'text/css', '.svg': 'image/svg+xml' };
+// BROWSER=firefox or webkit (Safari's engine, as on every iPhone) runs the same tests in those instead of Chromium
+export const BROWSER = process.env.BROWSER || 'chromium';
 export async function launch() {
+  if (BROWSER === 'firefox') return firefox.launch({ firefoxUserPrefs: { 'webgl.force-enabled': true, 'media.autoplay.default': 0 } });
+  if (BROWSER === 'webkit') return webkit.launch();
   return chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info', '--disable-features=BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights,LocalNetworkAccessChecks', '--no-proxy-server'] });
 }
 // a page on http://game.local/ serving the repo; every crash report the game sends lands in page.crashes

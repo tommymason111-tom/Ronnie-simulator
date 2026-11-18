@@ -32,3 +32,33 @@ jobs:
         env:
           SEEDS: 1
           STEPS: 400
+  # the same game in Safari's engine (every iPhone and iPad) and Firefox: every place and mode, and the chaos bot
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [webkit, firefox]
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Every place and mode (${{ matrix.browser }})
+        run: node run.mjs places
+        env:
+          BROWSER: ${{ matrix.browser }}
+      - name: Chaos bot (${{ matrix.browser }})
+        run: node run.mjs chaos
+        env:
+          BROWSER: ${{ matrix.browser }}
+          SEEDS: 1
+          STEPS: 300
