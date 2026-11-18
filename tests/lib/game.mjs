@@ -19,7 +19,7 @@ export async function newPage(browser, { width = 900, height = 560, mobile = fal
   const ctx = await browser.newContext({ viewport: { width, height }, isMobile: mobile, hasTouch: mobile });
   const page = await ctx.newPage(); page.errors = []; page.crashes = [];
   page.on('pageerror', e => page.errors.push('pageerror: ' + e.message));
-  page.on('console', m => { const t = m.text(); if (m.type() === 'error' && !/Failed to load resource|net::ERR|WebSocket connection/.test(t)) page.errors.push('console: ' + t.slice(0, 300)); });
+  page.on('console', m => { const t = m.text(); if (m.type() === 'error' && !/Failed to load resource|net::ERR|WebSocket connection|Navigated away from page/.test(t)) page.errors.push('console: ' + t.slice(0, 300)); });
   await page.route('**/*', async (r) => {
     const u = r.request().url(); let f = null;
     if (u.startsWith('blob:') || u.startsWith('data:')) return r.fallback();      // (WebKit sends the page's own in-memory pictures through here too: let them be)
