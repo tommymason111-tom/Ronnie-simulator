@@ -63,7 +63,8 @@ let renderer;
 try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); }
 catch (e) {
   const ls = document.getElementById('loadscreen');
-  if (ls) { clearInterval(ls._tips); const t = ls.querySelector('.lst'), h = document.getElementById('ls-hint');      // (the tips stop turning over: this message stays) if (t) t.textContent = 'NO 3D ON THIS BROWSER';
+  if (ls) { clearInterval(ls._tips); const t = ls.querySelector('.lst'), h = document.getElementById('ls-hint');      // (the tips stop turning over: this message stays)
+    if (t) t.textContent = 'NO 3D ON THIS BROWSER';
     if (h) h.textContent = "This browser can't show 3D right now. Try Chrome or Safari, switch on hardware acceleration in its settings, or close some tabs and restart it."; ls.classList.add('on', 'no3d'); }
   window.__crash && window.__crash('context', e, { where: 'no webgl' });
   throw e;
