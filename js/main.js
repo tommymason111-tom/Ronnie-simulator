@@ -1444,6 +1444,8 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
     $('mp-chip').classList.toggle('on', net.connected || re); $('mp-chip').classList.toggle('re', re); };
   // the host tells anyone who joins late which place and game to load
   net.on.join = (m) => { chip(); if (m.quiet) { net.send({ t: 'hi', to: m.id, name: net.name, char: net.char }); return; } if (net.host) net.send({ t: 'setup', to: m.id, place: room.placeId, mode: director.fullMode || director.mode || SEL.mode }); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
+  // someone waiting in the room asking what's on (they missed the start, or came back to the lobby): the host tells them
+  net.on.whatgame = (m, p) => { if (net.host && p && p.id) net.send({ t: 'setup', to: p.id, place: room.placeId, mode: director.fullMode || director.mode || SEL.mode }); };
   net.on.leave = () => chip(); net.on.status = () => chip();
   // a new host (the old one left, or handed it over): everyone's told who; if it's you, your game takes over running
   // everything (the squad, the food, the game) from exactly where it was

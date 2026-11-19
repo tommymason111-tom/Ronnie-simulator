@@ -46,14 +46,20 @@ export default async function () {
     C.ok(hostSeesReady === 1 && guestSeesReady === 2, `ready ticks: host sees ${hostSeesReady} (want 1), guest sees ${guestSeesReady} (want 2)`);
     // options: the host's reach everyone; a guest's buttons are off and a faked message is ignored
     await ev(H, () => { document.querySelector('#room-opts [data-ok="len"][data-ov="short"]').click(); document.querySelector('#room-opts [data-ok="attacks"][data-ov="off"]').click(); }); await sleep(1200);
-    const gOpts = await ev(G, () => ({ ...window.__roomOpts, disabled: document.querySelector('#room-opts [data-ok="len"]').disabled }));
+    const gOpts = await ev(G, () => ({ ...window.__roomOpts, disabled: !document.querySelector('#room-opts [data-ok="len"]') && document.querySelector('#room-opts-btn').hidden }));      // (a guest doesn't see the options at all: only the host has the button)
+    const hBtn = await ev(H, () => ({ shown: !document.querySelector('#room-opts-btn').hidden, closed: getComputedStyle(document.querySelector('#room-opts')).display === 'none' }));
+    C.ok(hBtn.shown, `the host has no ROOM OPTIONS button: ${JSON.stringify(hBtn)}`);
     await ev(G, () => ronnieMP.net.send({ t: 'ropts', o: { len: 'long', attacks: 'chaos' } })); await sleep(1200);
     const hOpts = await ev(H, () => ({ ...window.__roomOpts })), xOpts = await ev(X, () => ({ ...window.__roomOpts }));
-    C.ok(gOpts.len === 'short' && gOpts.attacks === 'off' && gOpts.disabled, `the host's options didn't reach the guest: ${JSON.stringify(gOpts)}`);
+    C.ok(gOpts.len === 'short' && gOpts.attacks === 'off' && gOpts.disabled, `the host's options didn't reach the guest (or the guest can see them): ${JSON.stringify(gOpts)}`);
     C.ok(hOpts.len === 'short' && xOpts.len === 'short' && xOpts.attacks === 'off', `a guest changed the room's options: host ${JSON.stringify(hOpts)} third ${JSON.stringify(xOpts)}`);
     // chat both ways
     await ev(G, () => { document.querySelector('#room-chat-in').value = 'alright lads'; document.querySelector('#room-chat-send').click(); }); await sleep(1200);
     const hostChat = await ev(H, () => document.querySelector('#room-chat-log').textContent);
+    const badge = await ev(H, () => ({ closed: getComputedStyle(document.querySelector('#room-chat')).display === 'none', n: document.querySelector('#room-chat-badge').hidden ? 0 : +document.querySelector('#room-chat-badge').textContent }));
+    C.ok(badge.closed && badge.n >= 1, `chat should be a button (closed) with an unread count: ${JSON.stringify(badge)}`);
+    await cl(H, '#room-chat-btn'); const opened = await ev(H, () => ({ open: getComputedStyle(document.querySelector('#room-chat')).display !== 'none', n: document.querySelector('#room-chat-badge').hidden }));
+    C.ok(opened.open && opened.n, `opening the chat didn't show it and clear the count: ${JSON.stringify(opened)}`);
     C.ok(hostChat.includes('alright lads') && hostChat.includes('GUESTY'), `lobby chat didn't arrive: ${hostChat}`);
     // a guest can't kick; the host can
     const xid = await ev(X, () => ronnieMP.net.id);
@@ -88,6 +94,15 @@ export default async function () {
     console.log(`  game: ${JSON.stringify(game)}; after the attack timer ran out: ${JSON.stringify(after)}`);
     C.ok(game.left > 0 && game.left <= 360 * 0.6 + 1, `GAME LENGTH: SHORT didn't shorten the game: ${game.left}s left`);
     C.ok(!after.attacking && !after.current, 'SQUAD ATTACKS: OFF, and the squad attacked anyway');
+    // a mate joining while the game's already going (or coming back to the room): they're pulled straight into it, not
+    // left on "waiting for the host" (the host's word on what's on used to arrive before their game was listening)
+    await ev(X, (c) => { document.querySelector('#mp-code2').value = c; document.querySelector('#mp-join2').click(); }, code);
+    await X.waitForFunction(() => document.querySelector('.screen[data-s="intro"].on') || document.body.classList.contains('ready'), null, { timeout: 60000 }).catch(() => {});
+    await ev(X, () => { const r = document.querySelector('#intro-ready'); if (r && r.offsetParent) r.click(); });
+    const late = await X.waitForFunction(() => window.RS && document.body.classList.contains('ready'), null, { timeout: 180000 }).then(() => true).catch(() => false);
+    if (late) { await ev(X, () => document.getElementById('play-flat').click()); await sleep(1500); }
+    const lateMode = late ? await ev(X, () => RS.director.mode) : await ev(X, () => document.querySelector('#room-msg') && document.querySelector('#room-msg').textContent);
+    C.ok(late && lateMode === 'runpub', `a mate joining mid-game wasn't pulled into it: ${JSON.stringify(lateMode)}`);
     for (const [n, p] of [['host', H], ['guest', G], ['third', X]]) C.ok(!p.errors.length, `${n} page errors: ` + [...new Set(p.errors)].slice(0, 3).join(' | '));
   } finally { await b.close(); await host.close(); }
   return C.fails;
