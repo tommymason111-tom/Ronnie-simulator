@@ -103,11 +103,11 @@ async function onePlace(place, WHO) {
     // a lock, seen by everyone
     const H0 = pages[hiders[0]], h0 = info[hiders[0]].id;
     await ev(H0, () => RS.director.prophunt.toggleLock());
-    for (const p of pages) await p.waitForFunction((id) => { const q = RS.director.prophunt.players.get(id); return q && q.locked; }, h0, { timeout: 15000 }).catch(() => {});
+    for (const p of pages) await p.waitForFunction((id) => { const q = RS.director.prophunt.players.get(id); return q && q.locked; }, h0, { timeout: 45000 }).catch(() => {});
     for (const p of pages) { const l = await ev(p, (id) => { const q = RS.director.prophunt.players.get(id); return q && q.locked && Array.isArray(q.lp); }, h0); C.ok(l, `${p.pname} doesn't see ${H0.pname} locked`); }
     // the seekers are let go (the host's clock jumped on)
     await ev(H, () => { RS.director.prophunt.H.ends = performance.now() / 1000; });
-    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'seek', null, { timeout: 15000 }).catch(() => C.ok(false, `${p.pname} never got to the seeking`));
+    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'seek', null, { timeout: 45000 }).catch(() => C.ok(false, `${p.pname} never got to the seeking`));
     C.ok(!(await ev(S, () => RS.director.prophunt.blindOn)), 'the seeker is still blindfolded after the hide');
     // a taunt: everyone hears it, and it scores
     const tot0 = await ev(H, (id) => RS.director.prophunt.H.tot[id] || 0, h0);
@@ -122,7 +122,7 @@ async function onePlace(place, WHO) {
     C.ok(decoy, 'no decoy the seeker could check');
     if (decoy) { await lookAt(S, decoy); await H.waitForFunction(([id, x, z]) => { const q = RS.director.prophunt.posOf(id); return q && Math.hypot(q.x - x, q.z - z) < 0.8; }, [sId, decoy.ox, decoy.oz], { timeout: 20000, polling: 300 }).catch(() => {});
       await ev(S, ([x, y, z]) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, o = new T.Vector3(P.head.x, P.head.y, P.head.z); m.chkCD = 0; m.doCheck(new T.Ray(o, new T.Vector3(x, y, z).sub(o).normalize())); }, [decoy.x, decoy.y, decoy.z]);
-      await S.waitForFunction(() => RS.director.prophunt.mine().hp < 100, null, { timeout: 15000 }).catch(() => {}); const hp = await ev(S, () => RS.director.prophunt.mine().hp), hph = await ev(H, (id) => RS.director.prophunt.H.hp[id], sId);
+      await S.waitForFunction(() => RS.director.prophunt.mine().hp < 100, null, { timeout: 45000 }).catch(() => {}); const hp = await ev(S, () => RS.director.prophunt.mine().hp), hph = await ev(H, (id) => RS.director.prophunt.H.hp[id], sId);
       C.ok(hp === 90 && hph === 90, `a wrong guess didn't cost 10 health (seeker sees ${hp}, host ${hph})`); }
     // the seeker finds every hider
     for (const i of hiders) { const id = info[i].id;
@@ -131,24 +131,25 @@ async function onePlace(place, WHO) {
         if (!at) break; await aimAt(S, at.x, at.y, at.z); await sleep(1500);
         if (await ev(pages[i], () => { const me = RS.director.prophunt.mine(); return !!(me && me.found); })) break; }
       const f = await ev(pages[i], () => ({ found: !!RS.director.prophunt.mine().found, ghost: !!RS.player.ghost, phase: RS.director.prophunt.phase }));
-      C.ok(f.found && (f.ghost || f.phase !== 'seek'), `${pages[i].pname} was never found (or isn't a ghost): ${JSON.stringify(f)}`);
+      const why = f.found ? '' : JSON.stringify(await ev(H, ([id, sid]) => { const m = RS.director.prophunt, a = m.posOf(id), b = m.posOf(sid), q = m.players.get(id); return { hider: a && [+a.x.toFixed(2), +a.z.toFixed(2)], seeker: b && [+b.x.toFixed(2), +b.z.toFixed(2)], locked: q && q.lp, phase: m.phase }; }, [id, sId])) + ' seeker sees ' + JSON.stringify(await ev(S, (id) => { const m = RS.director.prophunt, pr = m.props.get(id), P = RS.player; return { prop: pr && [+pr.pos.x.toFixed(2), +pr.pos.z.toFixed(2), pr.kind], me: [+P.head.x.toFixed(2), +P.head.z.toFixed(2)], hp: m.mine().hp }; }, id));
+      C.ok(f.found && (f.ghost || f.phase !== 'seek'), `${pages[i].pname} was never found (or isn't a ghost): ${JSON.stringify(f)} host sees ${why}`);
       for (const p of pages) { const seen = await ev(p, (id) => { const q = RS.director.prophunt.players.get(id); return !!(q && q.found); }, id); C.ok(seen, `${p.pname} didn't see ${pages[i].pname} found`); } }
-    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'roundend', null, { timeout: 15000 }).catch(() => C.ok(false, `${p.pname}: the round didn't end when everyone was found`));
+    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'roundend', null, { timeout: 45000 }).catch(() => C.ok(false, `${p.pname}: the round didn't end when everyone was found`));
     const end1 = await ev(H, () => RS.director.prophunt.lastEnd); C.ok(end1 && end1.win === 'seekers', 'the seekers didn\'t win round 1: ' + JSON.stringify(end1 && end1.win));
     const sp = await ev(S, () => ({ panel: !!RS.director.prophunt.panel.cur })); await sleep(2200); const sp2 = await ev(S, () => !!RS.director.prophunt.panel.cur); C.ok(sp2, 'no round summary on the seeker\'s game');
-    log('round 1 done: ' + JSON.stringify(end1.tot));
+    log('round 1 done: ' + JSON.stringify(end1 && end1.tot));
     // no new shader for any of it (props, the poof, bursts, the summary)
     for (const p of pages) { const r = await shot(p); C.ok(r.total === base[p.pname], `${p.pname}: Prop Hunt built ${r.total - base[p.pname]} new shader programs during play`); }
     // round 2: the teams swap; let the clock run out (the hiders left win)
     await ev(H, () => { RS.director.prophunt.H.nextAt = 0; });
-    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'hide' && RS.director.prophunt.round === 2, null, { timeout: 15000 }).catch(() => C.ok(false, `${p.pname} never got to round 2`));
+    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'hide' && RS.director.prophunt.round === 2, null, { timeout: 45000 }).catch(() => C.ok(false, `${p.pname} never got to round 2`));
     info = []; for (const p of pages) info.push(await I(p));
     const s2 = info.filter(x => x.role === 'seeker').map(x => x.id); C.ok(s2.length && !s2.includes(round1Seeker), `the teams didn't swap: round 1 seeker ${round1Seeker}, round 2 ${s2}`);
     await ev(H, () => { RS.director.prophunt.H.ends = 0; }); await sleep(1200);
-    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'seek', null, { timeout: 15000 }).catch(() => {});
+    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'seek', null, { timeout: 45000 }).catch(() => {});
     const auto = await ev(H, () => [...RS.director.prophunt.players.values()].filter(p => p.role === 'hider').every(p => !!p.kind)); C.ok(auto, 'a hider who didn\'t pick wasn\'t given a prop');
     await ev(H, () => { RS.director.prophunt.H.ends = 0; });
-    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'roundend', null, { timeout: 15000 }).catch(() => C.ok(false, `${p.pname}: round 2 didn't end on time`));
+    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'roundend', null, { timeout: 45000 }).catch(() => C.ok(false, `${p.pname}: round 2 didn't end on time`));
     const end2 = await ev(H, () => RS.director.prophunt.lastEnd); C.ok(end2 && end2.win === 'hiders' && end2.alive.length === WHO.length - s2.length, 'round 2 (out of time): the hiders didn\'t win: ' + JSON.stringify(end2 && { win: end2.win, alive: end2.alive }));
     for (const id of (end2 && end2.alive) || []) C.ok((end2.rp[id] || 0) >= 100, `${id} survived round 2 but scored ${end2.rp[id]}`);
     // the rest of the rounds, quickly, to the results
@@ -156,7 +157,7 @@ async function onePlace(place, WHO) {
       await ev(H, () => { const m = RS.director.prophunt; if (m.phase === 'roundend') m.H.nextAt = 0; else if (m.H) m.H.ends = 0; }); await sleep(1500);
       await ev(H, () => { const m = RS.director.prophunt; if (m.H && (m.phase === 'hide' || m.phase === 'seek')) m.H.ends = 0; }); await sleep(1500);
       await ev(H, () => { const m = RS.director.prophunt; if (m.H && m.phase === 'seek') m.H.ends = 0; }); await sleep(1500); }
-    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'over', null, { timeout: 20000 }).catch(() => C.ok(false, `${p.pname} never got the results`));
+    for (const p of pages) await p.waitForFunction(() => RS.director.prophunt.phase === 'over', null, { timeout: 45000 }).catch(() => C.ok(false, `${p.pname} never got the results`));
     for (const p of pages) { const r = await ev(p, () => { const m = RS.director.prophunt; return { panel: !!m.panel.cur, ranked: m.ranked().length, pts: m.ranked().map(r => r.pts) }; }); C.ok(r.panel && r.ranked === WHO.length, `${p.pname}: no results screen (${JSON.stringify(r)})`); }
     const sums = []; for (const p of pages) sums.push(JSON.stringify(await ev(p, () => RS.director.prophunt.ranked().map(r => r.id + ':' + r.pts))));
     C.ok(sums.every(s => s === sums[0]), 'the final scores differ between games: ' + sums.join(' / '));

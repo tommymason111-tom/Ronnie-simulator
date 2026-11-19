@@ -563,15 +563,23 @@ export class PropHunt {
     if (grip && grip.visible) { grip.visible = false; this.gripHid = true; }
     const cam = this.tcam || (this.tcam = new THREE.PerspectiveCamera(60, 1, 0.05, 200)), dir = g.camera.getWorldDirection(new THREE.Vector3());
     const look = new THREE.Vector3(tgt.x, tgt.y + Math.max(0.35, h * 0.75), tgt.z), dist = 1.5 + h * 1.3, want = look.clone().addScaledVector(dir, -dist).add({ x: 0, y: 0.35, z: 0 });
-    // (not behind a wall: come in along the line until it's clear)
+    // (not behind a wall or inside the furniture: come in along the line until it's clear, like the emote camera)
     const r = new THREE.Ray(look, want.clone().sub(look).normalize()); let d = look.distanceTo(want);
-    for (const b of this.walls || []) { if (b.containsPoint(look)) continue; const p = r.intersectBox(b, _hit); if (p) { const t = p.distanceTo(look) - 0.25; if (t < d) d = Math.max(0.6, t); } }
+    if ((this.camT = (this.camT || 0) - 1) <= 0 || !this.camD || Math.abs(this.camD.dir.dot(r.direction)) < 0.995) { this.camT = 4; d = this.camClear(look, r, d); this.camD = { d, dir: r.direction.clone() }; } else d = Math.min(d, this.camD.d);
     want.copy(look).addScaledVector(r.direction, d);
     if (!this.camWas || this.camWas.distanceTo(want) > 4) this.camWas = want.clone(); else this.camWas.lerp(want, 0.35);
     cam.position.copy(this.camWas); cam.quaternion.copy(g.camera.getWorldQuaternion(_q)); cam.aspect = g.camera.aspect; cam.fov = g.camera.fov; cam.updateProjectionMatrix(); cam.updateMatrixWorld();
     this.viewCamNow = cam; return cam;
   }
 
+  camClear(look, r, d) {
+    const room = this.g.room; if (!this.solids) this.solids = (room.colliders || []).filter(b => b.max.y - b.min.y > 0.2).map(b => new THREE.Box3(b.min.clone(), b.max.clone()));
+    for (const b of this.solids) { if (b.containsPoint(look)) continue; const p = r.intersectBox(b, _hit); if (p) { const t = p.distanceTo(look) - 0.2; if (t < d) d = t; } }
+    const near = (x, z) => (room.blockers || []).some(b => (b.y1 ?? 2) > 0.3 && x > b.x0 - 0.3 && x < b.x1 + 0.3 && z > b.z0 - 0.3 && z < b.z1 + 0.3)
+      || (room.dormant ? room.dormant.entries : []).some(e => !e.woken && e.type === 'chair' && Math.hypot(e.pos.x - x, e.pos.z - z) < 0.6);
+    while (d > 0.7 && near(look.x + r.direction.x * d, look.z + r.direction.z * d)) d -= 0.1;
+    return Math.max(0.7, d);
+  }
   // ------------------------------------------------------------------ the HUD (phone / computer)
   buildUI() {
     const st = document.createElement('style'); st.id = 'ph-style';
@@ -587,7 +595,7 @@ body.prophunt.flat #ph-ui { display: flex; } #ph-ui .row { display: flex; gap: 1
 #ph-quiet { width: 78px; height: 8px; border-radius: 4px; background: rgba(0,0,0,0.5); border: 2px solid #fff; overflow: hidden; } #ph-quiet u { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #39ff14, #ffd400, #ff3b3b); }
 @keyframes phpulse { from { box-shadow: 0 4px 0 rgba(0,0,0,0.4), 0 0 0 0 rgba(255,255,255,0.6); } to { box-shadow: 0 4px 0 rgba(0,0,0,0.4), 0 0 0 10px rgba(255,255,255,0); } }
 @keyframes phlock { 50% { transform: rotate(-6deg) scale(1.05); } }
-#ph-top { position: fixed; left: 50%; top: max(8px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 44; display: none; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; font-family: "Arial Black", Arial; color: #fff; max-width: calc(100vw - 150px); }
+#ph-top { position: fixed; left: 50%; top: max(46px, calc(env(safe-area-inset-top) + 42px)); transform: translateX(-50%); z-index: 44; display: none; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; font-family: "Arial Black", Arial; color: #fff; max-width: calc(100vw - 150px); }
 body.prophunt.flat #ph-top { display: flex; }
 #ph-top .clock { display: flex; align-items: center; gap: 8px; background: rgba(10,12,30,0.85); border: 3px solid #ffd400; border-radius: 16px; padding: 3px 12px; box-shadow: 0 3px 0 rgba(0,0,0,0.4); white-space: nowrap; }
 #ph-top .clock small { font-size: 11px; color: #ffd400; letter-spacing: 1px; } #ph-top .clock b { font-size: 24px; min-width: 64px; text-align: center; } #ph-top .clock.hurry { border-color: #ff3b3b; animation: phhurry .5s infinite alternate; } #ph-top .clock.hurry b { color: #ff6b6b; }
@@ -599,8 +607,8 @@ body.prophunt.flat #ph-top { display: flex; }
 #ph-top.shake { animation: phshake .35s; } @keyframes phshake { 20% { transform: translateX(calc(-50% - 8px)); } 40% { transform: translateX(calc(-50% + 8px)); } 60% { transform: translateX(calc(-50% - 5px)); } 80% { transform: translateX(calc(-50% + 4px)); } }
 #ph-cross { position: fixed; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; z-index: 43; display: none; pointer-events: none; border-radius: 50%; border: 3px solid rgba(255,255,255,0.85); box-shadow: 0 0 0 2px rgba(0,0,0,0.4); transition: transform .15s, border-color .15s; }
 #ph-cross::after { content: ''; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #fff; } #ph-cross.on { display: block; } #ph-cross.hot { border-color: #ffd400; transform: scale(1.25); } #ph-cross.hot::after { background: #ffd400; }
-#ph-card { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(140%); z-index: 44; display: flex; align-items: center; gap: 10px; background: rgba(10,12,30,0.9); border: 3px solid #00e08a; border-radius: 18px; padding: 8px 14px 8px 8px; color: #fff; font-family: "Arial Black", Arial; pointer-events: none; transition: transform .2s cubic-bezier(.3,1.6,.6,1); max-width: calc(100vw - 230px); }
-#ph-card.on { transform: translateX(-50%) translateY(0); } #ph-card .pic { font-size: 34px; width: 52px; height: 52px; border-radius: 12px; background: radial-gradient(circle, #2d3a66, #141a33); display: flex; align-items: center; justify-content: center; animation: phspin 2.4s infinite linear; }
+#ph-card { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(30px); opacity: 0; z-index: 44; display: flex; align-items: center; gap: 10px; background: rgba(10,12,30,0.9); border: 3px solid #00e08a; border-radius: 18px; padding: 8px 14px 8px 8px; color: #fff; font-family: "Arial Black", Arial; pointer-events: none; transition: transform .2s cubic-bezier(.3,1.6,.6,1), opacity .15s; max-width: calc(100vw - 230px); }
+#ph-card.on { transform: translateX(-50%) translateY(0); opacity: 1; } #ph-card .pic { font-size: 34px; width: 52px; height: 52px; border-radius: 12px; background: radial-gradient(circle, #2d3a66, #141a33); display: flex; align-items: center; justify-content: center; animation: phspin 2.4s infinite linear; }
 @keyframes phspin { 0% { transform: rotateY(0); } 100% { transform: rotateY(360deg); } } #ph-card b { font-size: 15px; display: block; } #ph-card small { font: 700 11px Arial; color: #9fffd0; display: block; } #ph-card em { font: 900 11px Arial; color: #ffd400; font-style: normal; }
 #ph-splash { position: fixed; inset: 0; z-index: 66; display: none; align-items: center; justify-content: center; flex-direction: column; background: radial-gradient(circle, rgba(0,0,0,0.45), rgba(0,0,0,0.9)); color: #fff; text-align: center; pointer-events: none; font-family: "Arial Black", Arial; overflow: hidden; }
 #ph-splash.on { display: flex; } #ph-splash .rays { position: absolute; left: 50%; top: 50%; width: 220vmax; height: 220vmax; margin: -110vmax; background: repeating-conic-gradient(currentColor 0 6deg, transparent 6deg 18deg); opacity: 0.12; animation: phrays 12s linear infinite; }
@@ -611,8 +619,8 @@ body.prophunt.flat #ph-top { display: flex; }
 #ph-blind.on { display: flex; } #ph-blind .eyes { font-size: 70px; animation: phpeek 2s infinite; } @keyframes phpeek { 0%, 80%, 100% { transform: none; } 88% { transform: translateY(-6px) rotate(-8deg); } }
 #ph-blind b { font-size: clamp(70px, 22vw, 160px); color: #ffd400; line-height: 1; } #ph-blind p { font-size: clamp(14px, 3.6vw, 22px); margin: 8px 18px; } #ph-blind small { font: 700 13px Arial; color: #aaa; }
 #ph-count { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 65; font: 900 clamp(90px, 28vw, 200px) "Arial Black"; color: #ffd400; text-shadow: 0 8px 0 rgba(0,0,0,0.5); pointer-events: none; display: none; }
-#ph-count.on { display: block; animation: phcount 1s ease-out; } @keyframes phcount { from { transform: translate(-50%, -50%) scale(1.8); opacity: 0; } 30% { opacity: 1; } to { transform: translate(-50%, -50%) scale(0.9); opacity: 0.2; } }
-#ph-feed { position: fixed; left: max(10px, env(safe-area-inset-left)); top: max(48px, calc(env(safe-area-inset-top) + 42px)); z-index: 44; display: none; flex-direction: column; gap: 4px; pointer-events: none; width: min(300px, 42vw); }
+#ph-count.on { display: block; animation: phcount 1s ease-out forwards; } @keyframes phcount { from { transform: translate(-50%, -50%) scale(1.8); opacity: 0; } 30% { opacity: 1; } 75% { opacity: 0.9; } to { transform: translate(-50%, -50%) scale(0.9); opacity: 0; } }
+#ph-feed { position: fixed; left: max(10px, env(safe-area-inset-left)); top: max(64px, calc(env(safe-area-inset-top) + 58px)); z-index: 44; display: none; flex-direction: column; gap: 4px; pointer-events: none; width: min(300px, 42vw); }
 body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(10,12,30,0.82); border-left: 4px solid #ffd400; border-radius: 8px; padding: 4px 8px; color: #fff; font: 700 12px Arial; animation: phfeed .35s ease-out; } #ph-feed div.old { opacity: 0; transition: opacity 1s; }
 @keyframes phfeed { from { transform: translateX(-30px); opacity: 0; } }
 #ph-pop { position: fixed; left: 50%; top: 58%; transform: translateX(-50%); z-index: 46; pointer-events: none; font: 900 clamp(16px, 4.6vw, 26px) "Arial Black"; text-shadow: 0 3px 0 #000, 0 0 12px #000; white-space: nowrap; display: none; } #ph-pop.on { display: block; animation: phpop 1.5s ease-out forwards; }
@@ -625,7 +633,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
 #ph-ghost { position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0; transition: opacity .8s; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(120,170,255,0.38) 100%); } #ph-ghost.on { opacity: 1; }
 #ph-lockfx { position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%); z-index: 46; font-size: 90px; pointer-events: none; display: none; } #ph-lockfx.on { display: block; animation: phlockfx .8s ease-out forwards; }
 @keyframes phlockfx { 0% { transform: translate(-50%, -50%) scale(2); opacity: 0; } 25% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; } 40% { transform: translate(-50%, -50%) scale(1.05); } 100% { transform: translate(-50%, -80%) scale(0.7); opacity: 0; } }
-@media (max-width: 520px) { #ph-ui button { width: 66px; height: 66px; font-size: 10px; } #ph-ui button b { font-size: 23px; } #ph-ui .become { width: 78px; height: 78px; } #ph-ui .check { width: 92px; height: 92px; } #ph-ui .start { width: 104px; height: 104px; } #ph-quiet { width: 66px; } #ph-card { max-width: calc(100vw - 24px); bottom: max(150px, calc(env(safe-area-inset-bottom) + 140px)); } #ph-top { max-width: calc(100vw - 110px); } #ph-feed { top: max(100px, calc(env(safe-area-inset-top) + 92px)); } }`;
+@media (max-width: 520px) { #ph-ui button { width: 66px; height: 66px; font-size: 10px; } #ph-ui button b { font-size: 23px; } #ph-ui .become { width: 78px; height: 78px; } #ph-ui .check { width: 92px; height: 92px; } #ph-ui .start { width: 104px; height: 104px; } #ph-quiet { width: 66px; } #ph-card { max-width: calc(100vw - 24px); bottom: max(150px, calc(env(safe-area-inset-bottom) + 140px)); } #ph-top { top: max(88px, calc(env(safe-area-inset-top) + 84px)); max-width: calc(100vw - 20px); } #ph-feed { top: max(176px, calc(env(safe-area-inset-top) + 170px)); } }`;
     document.head.appendChild(st); this.style = st;
     const ui = document.createElement('div'); ui.id = 'ph-ui';
     ui.innerHTML = `<div class="row"><button class="watch" hidden><b>👀</b>WATCH<i>V</i></button><button class="props" hidden><b>🎭</b>PROPS<i>Q</i></button></div>
@@ -744,7 +752,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     // the countdown: the last five seconds of the hide, big numbers for everyone
     if (this.phase === 'hide') { const left = Math.ceil(this.endsAt - t); if (left <= 5 && left >= 1 && left !== this.countBeep) { this.countBeep = left; sfx('ph_count', null, 0.8); if (!this.blindOn) { this.countEl.textContent = left; this.countEl.className = ''; void this.countEl.offsetWidth; this.countEl.className = 'on'; } } }
     if (this.blindOn) { const left = Math.max(0, Math.ceil(this.endsAt - t)); if (this.blindN !== left) { this.blindN = left; const jokes = ['NO PEEKING', 'EYES SHUT', 'HANDS OVER YOUR EYES', 'WE CAN SEE YOU PEEKING', 'COUNT PROPERLY', 'ONE ELEPHANT, TWO ELEPHANT...'];
-      this.blindEl.innerHTML = `<div class="eyes">🙈</div><b>${left}</b><p>${jokes[Math.floor(left / 7) % jokes.length]}, ${esc((this.net.name || 'YOU').toUpperCase())}</p><small>${this.hiders().length} HIDERS ARE TURNING INTO THINGS...</small>`; } }
+      this.blindEl.innerHTML = `<div class="eyes">🙈</div><b>${left}</b><p>${jokes[Math.floor(left / 7) % jokes.length]}</p><small>${esc((this.net.name || 'YOU').toUpperCase())}, YOU'RE SEEKING · ${this.hiders().length === 1 ? '1 HIDER IS TURNING INTO SOMETHING' : this.hiders().length + ' HIDERS ARE TURNING INTO THINGS'}...</small>`; } }
     // props: everyone's where they are
     for (const p of this.players.values()) { if (p.role !== 'hider' || !p.kind || p.found) continue; const pr = this.ensureProp(p.id); if (pr) this.placeProp(pr, p, dt); }
     for (const [id, pr] of this.props) this.animProp(pr, dt, id);
