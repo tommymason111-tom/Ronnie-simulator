@@ -755,6 +755,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
         const [u, v] = P(cx / pts.length, cz / pts.length); labels.push([name, u, v, sz, u1 - u0, v1 - v0]); } };
     // every room's name, written last (so the next room along never paints over it) and always whole: it gets smaller
     // to fit inside its room, and goes onto two lines if it's still too wide
+    const nameBoxes = [];      // (where the room names went: the job tags keep off them)
     const labels = [], fitLabel = (name, u, v, sz, bw, bh) => { const maxW = Math.max(30, bw - 10), maxH = Math.max(14, bh - 6), words = name.split(' ');
       for (let f = sz; f >= 8; f--) { x.font = `900 ${f}px ${FONT}`;
         if (x.measureText(name).width <= maxW && f <= maxH) return draw([name], u, v, f);
@@ -762,14 +763,14 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
           if (best[1] <= maxW) return draw(best[0], u, v, f); } }
       x.font = `900 8px ${FONT}`; draw(words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(' '), words.slice(Math.ceil(words.length / 2)).join(' ')] : [name], u, v, 8); },
       draw = (lines, u, v, f) => { x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round'; x.lineWidth = Math.max(3, f / 4); x.strokeStyle = 'rgba(0,0,0,0.8)'; x.fillStyle = '#fff';
-        lines.forEach((l, i) => { const y = v + (i - (lines.length - 1) / 2) * f * 1.08; x.strokeText(l, u, y); x.fillText(l, u, y); }); };
+        lines.forEach((l, i) => { const y = v + (i - (lines.length - 1) / 2) * f * 1.08; x.strokeText(l, u, y); x.fillText(l, u, y); const w = x.measureText(l).width; nameBoxes.push([u - w / 2, y - f / 2, u + w / 2, y + f / 2]); }); };
     const room = (x0, x1, z0, z1, col, name, sz) => poly([[x0, z0], [x1, z0], [x1, z1], [x0, z1]], col, name, sz);
     // the beer garden: paving, the stream with its bridge, the deck, the octagonal bar in the middle
     room(-10, 10.68, 16.08, 42.4, '#8e8a84', ''); room(-10, 10.68, 16.08, 20.3, '#4a3a30', 'DECK', 13); room(-10, 10.68, 20.5, 23.0, '#7fc4e8', ''); room(-6.2, -5.0, 20.3, 23.2, '#6a4a30', '');
     { const cx = 1.87, cz = 32.3, r = 3.0, pts = []; for (let i = 0; i < 8; i++) { const a = (i + 0.5) * Math.PI / 4; pts.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]); } poly(pts, '#3a2a22', 'GARDEN BAR', 13); }
-    { const [u, v] = P(0, 39.5); txt(x, '🌳 BEER GARDEN', u, v, 17, '#fff'); }
+    { const [u, v] = P(0, 39.5); txt(x, '🌳 BEER GARDEN', u, v, 17, '#fff'); nameBoxes.push([u - 75, v - 10, u + 75, v + 10]); }
     // the car park out the front: the tarmac, the bays, Lewis's car
-    poly(CARPARK, '#3d3f43', '', 12, '#1a1a1a'); { const [u, v] = P(11.5, -17.5); txt(x, '🚗 CAR PARK', u, v, 15, '#fff'); }
+    poly(CARPARK, '#3d3f43', '', 12, '#1a1a1a'); { const [u, v] = P(11.5, -17.5); txt(x, '🚗 CAR PARK', u, v, 15, '#fff'); nameBoxes.push([u - 60, v - 9, u + 60, v + 9]); }
     for (const zz of [-21.9, -19.4, -16.9, -14.4, -11.9, -9.4, -6.9]) { const [a1, b1] = P(12.0, zz), [a2, b2] = P(16.4, zz); x.strokeStyle = '#ddd'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(a1, b1); x.lineTo(a2, b2); x.stroke(); }
     { const pts = [[7.3, -10.0], [9.4, -10.0], [9.4, -11.8], [7.3, -11.8]]; poly(pts, '#c8102e', '', 10, '#111'); }
     // the restaurant
@@ -782,7 +783,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     room(6.12, 10.68, -6.84, 0, '#a8b0bd', 'STAFF ROOM', 12); room(7.08, 10.68, 0, 7.92, '#8a9aa8', 'KEG ROOM', 12); room(5.64, 7.08, -1.2, 7.92, '#9a8a7a', '', 10);
     room(-14.4, -9.72, -8.88, 2.04, '#e0e0e0', 'KITCHEN', 13); room(-14.4, -9.72, 2.04, 5.16, '#c9b8a0', '', 10); room(-9.72, 4.68, 7.92, 16.08, '#e8dcc0', 'CONSERVATORY', 14); room(4.68, 9.0, 7.92, 15.48, '#2c3e8f', 'GAMBLING', 12);
     // the bar
-    poly([[2.2, -8.6], [3.0, -8.6], [3.0, -0.6], [4.6, -0.6], [4.6, 6.2], [3.8, 6.2], [3.8, 0.2], [2.2, 0.2]], '#c98a48', '', 12, '#5a2e14'); { const [u, v] = P(3.6, 2.6); txt(x, 'THE BAR', u, v, 12, '#fff'); }
+    poly([[2.2, -8.6], [3.0, -8.6], [3.0, -0.6], [4.6, -0.6], [4.6, 6.2], [3.8, 6.2], [3.8, 0.2], [2.2, 0.2]], '#c98a48', '', 12, '#5a2e14'); { const [u, v] = P(3.6, 2.6); txt(x, 'THE BAR', u, v, 12, '#fff'); nameBoxes.push([u - 30, v - 8, u + 30, v + 8]); }
     // every table, counter, booth and fixture, from the level's own solid boxes (low and inside the map: not walls or the roof)
     { const cols = (this.g.room && this.g.room.colliders) || []; x.fillStyle = 'rgba(30,16,8,0.32)'; x.strokeStyle = 'rgba(0,0,0,0.35)'; x.lineWidth = 1;
       for (const c of cols) { if (c.max.y > 1.6 || c.min.y > 1.2) continue; const w = c.max.x - c.min.x, d = c.max.z - c.min.z; if (w > 6 || d > 6 || w * d < 0.04) continue;
@@ -798,8 +799,16 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
       // the way to your nearest job: a dashed line, and a ring pulsing round it
       if (near) { const [a1, b1] = P(h0.x, h0.z), [a2, b2] = P(near.at[0], near.at[1]); x.save(); x.setLineDash([10, 8]); x.lineDashOffset = -performance.now() / 40; x.strokeStyle = 'rgba(255,212,0,0.85)'; x.lineWidth = 4; x.beginPath(); x.moveTo(a1, b1); x.lineTo(a2, b2); x.stroke(); x.restore();
         const k = (performance.now() / 900) % 1; x.strokeStyle = `rgba(255,212,0,${1 - k})`; x.lineWidth = 4; x.beginPath(); x.arc(a2, b2, 12 + k * 22, 0, 7); x.stroke(); }
-      me.tasks.forEach((id, i) => { const t = TASK[id], d = me.done.has(id); dot(t.at[0], t.at[1], 11, d ? '#39ff14' : '#ffd400', '#111', d ? '✓' : String(i + 1));
-        if (!d) { const [u, v] = P(t.at[0], t.at[1]); const nm = (t.name || id).toUpperCase(); x.font = `900 11px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'top'; x.lineWidth = 3; x.strokeStyle = 'rgba(0,0,0,0.85)'; x.strokeText(nm, u, v + 14, 150); x.fillStyle = '#ffd400'; x.fillText(nm, u, v + 14, 150); } }); }
+      me.tasks.forEach((id, i) => { const t = TASK[id], d = me.done.has(id); dot(t.at[0], t.at[1], 11, d ? '#39ff14' : '#ffd400', '#111', d ? '✓' : String(i + 1)); });
+      // each job's name on a little dark tag next to its dot: below it, or above, right or left if that spot's taken
+      // (by another job's dot or tag), so two jobs close together never write over each other
+      const taken = me.tasks.map(id => { const [u, v] = P(TASK[id].at[0], TASK[id].at[1]); return [u - 13, v - 13, u + 13, v + 13]; }).concat(nameBoxes), hit = (b) => taken.some(o => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]) || b[0] < 2 || b[2] > W - 2 || b[1] < TOP || b[3] > H - 2;
+      me.tasks.forEach((id, i) => { const t = TASK[id]; if (me.done.has(id)) return; const [u, v] = P(t.at[0], t.at[1]), nm = (t.name || id).toUpperCase();
+        x.font = `900 11px ${FONT}`; const tw = Math.min(150, x.measureText(nm).width) + 10, th = 17;
+        const spots = [[u - tw / 2, v + 14], [u - tw / 2, v - 14 - th], [u + 15, v - th / 2], [u - 15 - tw, v - th / 2], [u - tw / 2, v + 14 + th + 2], [u - tw / 2, v - 16 - th * 2]];
+        let at = spots.find(([a, b]) => !hit([a, b, a + tw, b + th])) || spots[0]; taken.push([at[0], at[1], at[0] + tw, at[1] + th]);
+        x.fillStyle = 'rgba(0,0,0,0.78)'; rr(x, at[0], at[1], tw, th, 6); x.fill(); x.strokeStyle = '#ffd400'; x.lineWidth = 1.5; x.stroke();
+        x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; x.fillText(nm, at[0] + tw / 2, at[1] + th / 2 + 1, 150); }); }
     if (this.sab) for (const pnt of this.sab.k === 'lights' ? [FUSE] : VALVES) dot(pnt.at[0], pnt.at[1], 13, '#ff3b3b', '#fff', '⚠', 14, '#fff');
     for (const c of CAMS) { const [u, w] = P(c.at[0], c.at[2]), [lu, lw] = P(c.look[0], c.look[2]), a0 = Math.atan2(lw - w, lu - u), L = Math.min(70, Math.hypot(lu - u, lw - w));
       x.fillStyle = this.camWatchers && this.camWatchers.size ? 'rgba(255,60,60,0.28)' : 'rgba(255,255,255,0.16)'; x.beginPath(); x.moveTo(u, w); x.arc(u, w, L, a0 - 0.5, a0 + 0.5); x.closePath(); x.fill(); x.fillStyle = '#222'; x.fillRect(u - 5, w - 4, 10, 8); }
@@ -807,10 +816,10 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     if (this.amImp()) for (const v of VENTS) { const [u, w] = P(v.at[0], v.at[1]); x.fillStyle = '#4e342e'; x.strokeStyle = '#ff3b3b'; x.lineWidth = 3; x.fillRect(u - 8, w - 8, 16, 16); x.strokeRect(u - 8, w - 8, 16, 16); }
     const Pl = this.g.player, h = Pl.head, [hu, hv] = P(h.x, h.z), [fu, fv] = P(h.x + Pl.fwd.x, h.z + Pl.fwd.z), a = Math.atan2(fu - hu, -(fv - hv));
     x.save(); x.translate(hu, hv); x.rotate(a); x.fillStyle = '#4fc3ff'; x.strokeStyle = '#fff'; x.lineWidth = 3; x.beginPath(); x.moveTo(0, -15); x.lineTo(11, 11); x.lineTo(0, 5); x.lineTo(-11, 11); x.closePath(); x.fill(); x.stroke(); x.restore();
-    x.fillStyle = 'rgba(0,0,0,0.65)'; x.fillRect(0, 0, W, TOP - 4); txt(x, '🗺️ THE OYSTERFLEET', W / 2 - 60, TOP / 2 - 1, 22, '#ffd400');
+    x.fillStyle = 'rgba(0,0,0,0.65)'; x.fillRect(0, 0, W, TOP - 4); x.font = `900 22px ${FONT}`; x.textAlign = 'left'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; x.fillText('🗺️ THE OYSTERFLEET', 14, TOP / 2 - 1); const titleW = x.measureText('🗺️ THE OYSTERFLEET').width;      // (left: the CLOSE button sits over the right of the header)
     // how it's going: your jobs and the team's bar, top right; what the marks mean, bottom left
     if (me) { const mine = me.tasks.length ? `${me.tasks.filter(id => me.done.has(id)).length}/${me.tasks.length} JOBS` : ''; const team = this.bar && this.bar.total ? ` · TEAM ${Math.round(100 * this.bar.done / this.bar.total)}%` : '';
-      x.font = `900 15px ${FONT}`; x.textAlign = 'right'; x.textBaseline = 'middle'; x.fillStyle = '#39ff14'; x.fillText(this.amImp() ? '🔪 FAKE YOUR JOBS' : mine + team, W - 12, TOP / 2 - 1); }
+      x.font = `900 15px ${FONT}`; x.textAlign = 'left'; x.textBaseline = 'middle'; x.fillStyle = '#39ff14'; x.fillText(this.amImp() ? '🔪 FAKE YOUR JOBS' : mine + team, 14 + titleW + 16, TOP / 2 - 1); }
     { const items = [['#ffd400', '1', 'YOUR JOB'], ['#39ff14', '✓', 'DONE'], ['#d81b2a', '🔔', 'MEETING BELL'], ['#ff3b3b', '⚠', 'SABOTAGE: FIX'], ['#222', '📹', 'CAMERAS']].concat(this.amImp() ? [['#4e342e', '', 'TRAPDOOR (VENT)']] : []);
       const LH = 22, bx = 10, by = H - 10 - items.length * LH - 12; x.fillStyle = 'rgba(0,0,0,0.6)'; rr(x, bx, by, 190, items.length * LH + 12, 10); x.fill();
       items.forEach(([col, ic, t], i) => { const yy = by + 6 + i * LH + LH / 2; x.fillStyle = col; x.beginPath(); x.arc(bx + 16, yy, 8, 0, 7); x.fill(); x.font = '11px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff'; if (ic) x.fillText(ic, bx + 16, yy + 1);
