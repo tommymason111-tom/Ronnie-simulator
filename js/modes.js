@@ -19,6 +19,8 @@ import { BBQ_SPOT, IAN_SPOT, IAN_YAW } from './levels/garden.js';
 import { pickVeg, pickJunk } from './config.js';
 import { RunPub } from './runpub.js';
 import { SpriteLayer } from './perf.js';
+import { resetAwards, pickAwards, track } from './awards.js';
+import { roomNum } from './roomopts.js';
 const _glowP = new THREE.Vector3();
 
 export const MODES = {
@@ -172,17 +174,19 @@ export class Director {
   }
 
   get cast() { return this.g.cast; }
-  get fullMode() { return this.noNpc && this.mode === 'roam' ? 'roam0' : this.mode; }     // (what the host tells everyone: 'roam0' isn't 'roam')
+  get fullMode() { return this.noNpc && this.mode === 'roam' ? 'roam0' : this.mode === 'runpub' && this.rpDiff && this.rpDiff !== 2 ? 'runpub' + this.rpDiff : this.mode; }     // (what the host tells everyone: 'roam0' isn't 'roam')
 
   // ------------------------------------------------------------------ starting / ending
   start(id) {
-    this.noNpc = id === 'roam0'; if (this.noNpc) id = 'roam';          // (Free Roam, just you: nobody else about)
+    this.noNpc = id === 'roam0'; if (this.noNpc) id = 'roam';
+    if (/^runpub\d$/.test(id)) { this.rpDiff = +id.slice(6); id = 'runpub'; } else if (id === 'runpub') this.rpDiff = 2;      // (Run the Pub: a quiet night, a Friday, the cup final)          // (Free Roam, just you: nobody else about)
     const g = this.g, m = MODES[id];
     if (!m) return;
+    resetAwards(); this.awardsFor = null; this.awardShown = null; this.awardsStamped = false;      // (the end-of-game awards count this game only)
     if (this.imposter) { this.imposter.dispose(); this.imposter = null; }
     this.hideTommy(false);
     this.mode = id; globalThis.RS_MODE = id; this.running = true; this.used.clear(); this.pending = null;
-    this.timeLeft = m.time;
+    this.timeLeft = m.time > 0 && id !== 'imposter' ? Math.round(m.time * roomNum('len')) : m.time;      // (a room's GAME LENGTH: short, normal, long)
     this.stats = { chonk: 0, veg: 0, swats: 0, popped: 0, roasted: 0, caught: 0, thrown: 0, attempts: 0, fails: [] };
     this.meter = 0; this.nextIntervener = 0; this.waveT = 2.5; this.spawned = 0;
     this.guilt = null;
@@ -238,7 +242,7 @@ export class Director {
     if (id === 'everyone') { this.nextChaos = 18; tommy.attacks = true; tommy.directed = true; }
     if (id === 'runpub') { tommy.attacks = false; tommy.directed = false; this.pending = null; this.runpub = new RunPub(this); this.runpub.start(); }
     if (id === 'roam') { tommy.attacks = false; tommy.directed = false; this.pending = null; if (g.fx) { g.fx.setCountdown(null); g.fx.hideCard && g.fx.hideCard(); } this.startRoam(); }
-    this.nextAttackT = id === 'everyone' ? 12 : 15;
+    this.nextAttackT = (id === 'everyone' ? 12 : 15) * (roomNum('attacks') || 1);
     if (g.fx) g.fx.setCountdown(null);
     tommy.say({
       runpub: 'You\'re behind the bar tonight, Ron. Serve the punters. Do NOT drink the stock.',
@@ -481,7 +485,7 @@ export class Director {
     // Ronnie's busy (on the floor, mid-air, in Ben's film): hold the attack until he isn't
     if (P.knock || P.throwAnim || (fx && fx.inCutscene)) { this.pending = { who, key, t: 0, wait: prev ? prev.wait : 0 }; return; }
     if (fx) fx.hideCard();
-    sfx(A.sfx || 'thud', null, 1);
+    sfx(A.sfx || 'thud', null, 1); track('ouch');
     const tint = (color, t, op = 0.3) => { G.fxTint = color; G.fxTintT = t; G.fxTintOp = op; };
     const away = { x: P.head.x - who.pos.x, z: P.head.z - who.pos.z };
     const P3 = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -560,6 +564,7 @@ export class Director {
     }
     if (this.current) { this.currentT += dt; if (this.currentT > 25 || this.current.state !== 'act') this.current = null; }
     if (this.attackInProgress()) { g.fx && g.fx.setCountdown('ATTACK IN PROGRESS!'); return; }
+    if (!roomNum('attacks')) { g.fx && g.fx.setCountdown(null); return; }      // (the room's set SQUAD ATTACKS: OFF)
     this.nextAttackT -= dt;
     if (this.nextAttackT > 0) { g.fx && g.fx.setCountdown(`NEXT ATTACK IN ${Math.ceil(this.nextAttackT)}`); return; }
     g.fx && g.fx.setCountdown('NEXT ATTACK: ANY SECOND...');
@@ -568,7 +573,7 @@ export class Director {
     const pick = this.pickAttacker(pool);
     if (!pick || !this.launch(pick)) return;        // nobody free right now: try again next frame
     sfx('notify', null, 0.6);
-    this.nextAttackT = this.mode === 'everyone' ? 14 + Math.random() * 6 : 16;
+    this.nextAttackT = (this.mode === 'everyone' ? 14 + Math.random() * 6 : 16) * roomNum('attacks');      // (CHILL: further apart; CHAOS: one after another)
     if (this.mode === 'intervention') {
       const c = pick.c;
       this.nextIntervener++; this.meter = 0; this.current = c; this.currentT = 0;
@@ -1064,15 +1069,31 @@ export class Director {
     c.font = `900 40px ${FONT}`; c.fillText('RONNIE SIMULATOR', w / 2, 60);
     c.font = '20px monospace'; c.fillText('*** OFFICIAL RECEIPT ***', w / 2, 92);
     c.fillText('------------------------------------', w / 2, 118);
+    // the awards go at the bottom (yours, whoever's lines these are): the score lines get the room above them
+    const all = this.awardsFor || (this.awardsFor = pickAwards({ stage: this.g.stageNo ? this.g.stageNo() : 0, stageName: this.g.stageName ? this.g.stageName() : '' }));
+    // (a long shift report leaves room for fewer awards: the score always fits, and at least one award does)
+    const AW = 66, linesH = lines.reduce((a, [, v]) => a + (v === '' ? 44 : 34), 0), room = h - 112 - 40 - 150 - linesH;
+    const awards = all.slice(0, Math.max(1, Math.min(all.length, Math.floor(room / AW)))), awTop = h - 112 - 40 - awards.length * AW;
     let y = 150;
     c.textAlign = 'left';
     for (const [k, v] of lines) {
-      if (y > h - 120) break;
+      if (y > awTop - 8) break;
       if (v === '') { fitText(c, k, 24, y - 18, w - 48, 44, 20, { color: '#333', font: 'monospace', align: 'left' }); y += 44; continue; }
       c.font = 'bold 21px monospace'; c.fillStyle = '#111'; const vw = c.measureText(String(v)).width; let fs = 21; while (c.measureText(String(k)).width > w - 64 - vw && fs > 12) { fs--; c.font = `bold ${fs}px monospace`; } c.fillText(String(k), 24, y);      // (the whole label, smaller if it's long)
       c.font = 'bold 21px monospace'; c.textAlign = 'right'; c.fillText(String(v), w - 24, y); c.textAlign = 'left';
       y += 34;
     }
+    // ★ AWARDS ★: each one a stamped box, coming in one after another (stampAwards redraws as they land), straight under the score
+    const awY = Math.min(awTop, y + 4);
+    c.textAlign = 'center'; c.fillStyle = '#111'; c.font = `900 26px ${FONT}`; c.fillText('★ AWARDS ★', w / 2, awY + 26);
+    awards.forEach((a, i) => { const k = this.awardShown == null ? 1 : THREE.MathUtils.clamp(this.awardShown - i, 0, 1); if (k <= 0) return;
+      const y0 = awY + 40 + i * AW, col = ['#c8102e', '#1e4ea8', '#15803d'][i % 3], s = 1 + (1 - k) * 0.9;
+      c.save(); c.translate(w / 2, y0 + AW / 2 - 4); c.rotate((i % 2 ? 0.8 : -0.8) * Math.PI / 180 * (0.5 + k)); c.scale(s, s); c.globalAlpha = Math.min(1, k * 1.6);
+      c.strokeStyle = col; c.lineWidth = 4; roundRect(c, -w / 2 + 22, -AW / 2 + 6, w - 44, AW - 12, 10); c.stroke();
+      c.fillStyle = col; c.textAlign = 'left'; c.font = '30px sans-serif'; c.fillText(a[0], -w / 2 + 32, 10);
+      fitText(c, a[1], -w / 2 + 76, -26, w - 120, 26, 22, { color: col, font: FONT, weight: 900, align: 'left' });
+      fitText(c, a[2], -w / 2 + 76, 0, w - 120, 22, 15, { color: '#333', font: 'monospace', align: 'left' });
+      c.restore(); });
     c.textAlign = 'center'; c.font = '20px monospace'; c.fillStyle = '#111';
     c.fillText('------------------------------------', w / 2, h - 96);
     c.fillText('Thank you for eating with us.', w / 2, h - 66);
@@ -1087,6 +1108,22 @@ export class Director {
     this.receipt.visible = true;
     this.receiptT = 25;
     this.lastLines = lines;
+    if (!this.awardsStamped && !this.stamping) this.stampAwards(lines, awards.length);
+  }
+  // the awards land one by one, each with a thump: redraw the receipt a few times a second while they come in
+  stampAwards(lines, n) {
+    this.stamping = true; this.awardsStamped = true; this.awardShown = 0; const t0 = performance.now(), gap = 0.75, start = 0.9;
+    const tick = () => {
+      if (!this.receipt.visible || this.lastLines !== lines) { this.stamping = false; this.awardShown = null; return; }
+      const t = (performance.now() - t0) / 1000, was = this.awardShown;
+      this.awardShown = Math.max(0, Math.min(n, (t - start) / gap)); const landed = Math.floor(this.awardShown), before = Math.floor(was);
+      if (landed > before) { sfx('stomp', null, 0.7); try { navigator.vibrate && navigator.vibrate(30); } catch (e) {} }
+      const keepT = this.receiptT; this.showReceipt(lines);
+      if (this.awardShown >= n) { this.stamping = false; this.awardShown = null; this.showReceipt(lines); this.receiptT = keepT; sfx('ding', null, 0.6); return; }
+      this.receiptT = keepT;      // (redrawing it doesn't restart its timer: the end-of-game one stays up)
+      setTimeout(tick, 70);
+    };
+    setTimeout(tick, 70);
   }
 
   hud() {

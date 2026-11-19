@@ -11,7 +11,7 @@ export default async function () {
   try {
     const H = await newPage(b, { width: 900, height: 560 }), G = await newPage(b, { width: 390, height: 844, mobile: true });
     const ev = (p, f, a) => p.evaluate(f, a), cl = (p, s) => ev(p, (s) => document.querySelector(s).click(), s);
-    for (const p of [H, G]) { await p.goto('http://game.local/index.html?relay=' + encodeURIComponent(host.url)); await p.waitForTimeout(2000); }
+    for (const p of [H, G]) { await p.goto('http://game.local/index.html?relay=' + encodeURIComponent(host.url), { timeout: 120000, waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2000); }
     const join = async (p, n, ch, code) => { await cl(p, '.playbtn'); await sleep(400); await cl(p, '#pick-multi'); await sleep(400);
       await ev(p, ([n, c]) => { document.querySelector('#mp-myname').value = n; document.querySelector(`#char-grid .mate[data-id="${c}"]`).click(); }, [n, ch]); await cl(p, '#char-next'); await sleep(400);
       if (!code) { await cl(p, '#mp-host2'); await p.waitForFunction(() => window.ronnieMP && ronnieMP.net && ronnieMP.net.code && ronnieMP.net.status === 'on', null, { timeout: 30000 }); return ev(p, () => ronnieMP.net.code); }

@@ -6,6 +6,7 @@ import { part, merge, vcLambert, cyl, sph, box } from './geo.js';
 import { canLabelTex } from './textures.js';
 import { batMesh } from './pingpong.js';
 import { HI } from './foodmodels.js';
+import { roomNum } from './roomopts.js';
 
 // ---------- geometry ----------
 function burgerGeo() {
@@ -692,7 +693,8 @@ export class ItemManager {
       for (const it of this.items) if (!it.def.veg && !it.def.prop && !it.temp && !it.empty && !it.incoming) food++;
       // (far short, e.g. straight after Run the Pub, which only has drinks: fill back up within a couple of seconds, a few
       // a frame, instead of one a second, which left the next game nearly empty of food for minutes)
-      const n = food < this.minFood * 0.9 ? Math.min(4, this.minFood - food) : food < this.minFood ? 1 : 0; if (n > 1) this.topUpT = 0.05;
+      const mf = Math.round(this.minFood * roomNum('food'));      // (a room's FOOD ABOUT: less, normal, loads)
+      const n = food < mf * 0.9 ? Math.min(4, mf - food) : food < mf ? 1 : 0; if (n > 1) this.topUpT = 0.05;
       for (let k = 0; k < n; k++) { const veg = this.vegShare && Math.random() < this.vegShare; const it = this.spawn(veg ? ['apple', 'banana', 'orange', 'broccoli', 'carrot', 'pear', 'tomato'][Math.floor(Math.random() * 7)] : pickJunk(), this.freeSpawn()); if (veg) it.shelf = true; }
     }
     for (const it of this.items) if (it.halo) it.halo.visible = !it.heldBy && !it.empty;
@@ -705,7 +707,10 @@ export class ItemManager {
     const b = this.room.bounds, g = TUNING.gravity;
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
-      it.age += dt;
+      it.age += dt; if (!it.feel) it.feel = feelFor(it.type, it.def);
+      if (it.sqA) squashStep(it, dt);
+      if (it.settleTo) { if (it.heldBy || !it.resting) it.settleTo = null; else { const r = it.obj.rotation, k = Math.min(1, dt * 16); r.x += (it.settleTo[0] - r.x) * k; r.z += (it.settleTo[1] - r.z) * k;
+        if (Math.abs(it.settleTo[0] - r.x) + Math.abs(it.settleTo[1] - r.z) < 0.002) { r.x = it.settleTo[0]; r.z = it.settleTo[1]; it.settleTo = null; it.netSent = false; } } }      // (multiplayer: send where it ended up)
       if (it.spawnScale < 1) { it.spawnScale = Math.min(1, it.spawnScale + dt * 4); it.obj.scale.setScalar(easeOutBack(it.spawnScale) * (0.55 + 0.45 * it.eatFraction)); }
       else if (it.obj.scale.x < 0.05 && !it.heldBy) it.obj.scale.setScalar(0.55 + 0.45 * it.eatFraction);      // (put out full-size straight away, e.g. the glasses behind the bar: they were left tiny, so invisible)
       if (it.heldBy) { it.resting = false; it.restTime = 0; continue; }
@@ -718,6 +723,7 @@ export class ItemManager {
       // integrate
       it.prev.copy(it.pos);
       it.vel.y += g * dt;
+      const fe = it.feel; if (fe.drag && !it.def.dart) it.vel.multiplyScalar(Math.exp(-fe.drag * dt));      // (air: a magazine flutters down, a can doesn't notice)
       it.pos.addScaledVector(it.vel, dt);
       if (it.def.dart) {           // darts fly point first, and can stick in the board
         if (it.vel.lengthSq() > 1) it.obj.quaternion.setFromUnitVectors(_c.set(0, 0, -1), _v.copy(it.vel).normalize());
@@ -735,7 +741,7 @@ export class ItemManager {
       const r = it.radius;
       let hit = false, impact = 0;
       // room shell
-      if (it.pos.y < r) { impact = Math.max(impact, -it.vel.y); it.pos.y = r; it.vel.y = -it.vel.y * 0.3; it.vel.x *= 0.7; it.vel.z *= 0.7; hit = true; }
+      if (it.pos.y < r) { const vy = -it.vel.y; impact = Math.max(impact, vy); it.pos.y = r; it.vel.y = vy > 0.5 ? vy * fe.bounce : 0; groundRub(it, fe, vy, dt); hit = true; }
       if (it.pos.y > b.y1 - r) { it.pos.y = b.y1 - r; it.vel.y = -Math.abs(it.vel.y) * 0.3; }
       if (it.pos.x < b.x0 + r) { impact = Math.max(impact, -it.vel.x); it.pos.x = b.x0 + r; it.vel.x = Math.abs(it.vel.x) * 0.35; }
       if (it.pos.x > b.x1 - r) { impact = Math.max(impact, it.vel.x); it.pos.x = b.x1 - r; it.vel.x = -Math.abs(it.vel.x) * 0.35; }
@@ -752,27 +758,68 @@ export class ItemManager {
         if (d < 1e-5) { _v.set(0, 1, 0); } else _v.multiplyScalar(1 / d);
         it.pos.addScaledVector(_v, r - d);
         const vn = it.vel.dot(_v);
-        if (vn < 0) { impact = Math.max(impact, -vn); it.vel.addScaledVector(_v, -vn * 1.3); it.vel.multiplyScalar(0.75); }
+        if (vn < 0) { impact = Math.max(impact, -vn); it.vel.addScaledVector(_v, -vn * (1 + (_v.y > 0.7 && -vn < 0.5 ? 0 : fe.bounce))); if (_v.y > 0.7) groundRub(it, fe, -vn, dt); else it.vel.multiplyScalar(0.6 + 0.3 * fe.keep); }
         if (_v.y > 0.7) onTop = true;
         hit = true;
       }
-      if (hit && impact > 0.6 && this.onLand) this.onLand(it, impact);
+      if (hit && impact > 0.6) { squashOn(it, impact); if (this.onLand) this.onLand(it, impact); }
       if (onTop) {
-        it.spin.multiplyScalar(0.9);
+        if (fe.roll) { const rr = Math.max(0.02, r); it.spin.set(it.vel.z / rr, it.spin.y * 0.9, -it.vel.x / rr); }      // (fruit rolls the way it's going)
+        else it.spin.multiplyScalar(0.9);
         if (it.vel.lengthSq() < 0.02) { it.resting = true; it.vel.set(0, 0, 0); settle(it); }
       }
     }
   }
 }
 
+// PHYSICS FEEL: every kind of thing flies, lands, bounces, rolls and squashes its own way. Fruit bounces and rolls
+// away across the floor; a burger lands with a soft squish and stays put; glasses and cans clunk down and stand;
+// magazines and beer mats flutter; a chair thuds. Heavy things also don't throw as far. (bounce: how much of the hit
+// comes back; keep: how much speed survives a bounce; squash: how much it squishes on landing; drag: air; slide: how
+// fast it stops sliding; throw: how hard it leaves your hand.)
+const ROLLERS = new Set(['apple', 'orange', 'tomato', 'pear', 'sprout', 'pepper', 'cauliflower']);
+const SQUISHY = new Set(['burger', 'pizza', 'hotdog', 'kebab', 'taco', 'burrito', 'baconbap', 'pasty', 'sausageroll', 'croissant', 'baguette', 'muffin', 'painchoc', 'swirl', 'icedbun', 'pancakes', 'waffle', 'cupcake', 'icecream', 'nuggets', 'chicken', 'poop', 'doughnut', 'churros', 'onionrings', 'fries']);
+export function feelFor(type, def) {
+  let f;
+  if (def.chair) f = { bounce: 0.08, keep: 0.45, squash: 0, drag: 0.01, slide: 7 };
+  else if (def.mag || def.mat) f = { bounce: 0.05, keep: 0.35, squash: 0.06, drag: 1.1, slide: 10 };
+  else if (def.bag) f = { bounce: 0.06, keep: 0.4, squash: 0.22, drag: 0.25, slide: 9 };
+  else if (def.drink || def.vessel || def.condiment || def.gun) f = { bounce: 0.22, keep: 0.72, squash: 0.04, drag: 0.02, slide: 6 };
+  else if (ROLLERS.has(type)) f = { bounce: 0.46, keep: 0.82, squash: 0.12, drag: 0.03, slide: 0.9, roll: true };
+  else if (def.veg) f = { bounce: 0.32, keep: 0.7, squash: 0.1, drag: 0.04, slide: 5 };
+  else if (SQUISHY.has(type)) f = { bounce: 0.12, keep: 0.55, squash: 0.34, drag: 0.04, slide: 8 };
+  else f = { bounce: 0.25, keep: 0.65, squash: 0.16, drag: 0.04, slide: 7 };      // (crisps, choc, cookie...)
+  f.throw = def.chair ? 0.5 : THREE.MathUtils.clamp(1.18 - (def.mass || 0.2) * 0.55, 0.72, 1.15);
+  return f;
+}
+// a landing squish: flattened on the way down, then a springy wobble back to its shape
+export function squashOn(it, impact) {
+  const f = it.feel; if (!f || !f.squash || it.spawnScale < 1 || impact < 0.9) return;
+  const a = Math.min(1, impact / 5) * f.squash; if (a > (it.sqA || 0) * Math.exp(-7 * (it.sqT || 0))) { it.sqA = a; it.sqT = 0; }
+}
+function squashStep(it, dt) {
+  const base = 0.55 + 0.45 * it.eatFraction;
+  if (it.heldBy || it.spawnScale < 1) { it.sqA = 0; it.obj.scale.setScalar(it.spawnScale < 1 ? it.obj.scale.x : base); return; }
+  it.sqT += dt; const k = it.sqA * Math.exp(-7 * it.sqT) * Math.cos(26 * it.sqT);
+  if (it.sqT > 0.7) { it.sqA = 0; it.obj.scale.setScalar(base); return; }
+  it.obj.scale.set(base * (1 + k * 0.55), base * (1 - k), base * (1 + k * 0.55));
+}
+// on the floor or a table top: a real bounce loses some speed; sliding along, it slows down (fruit rolls on and on)
+function groundRub(it, fe, vy, dt) {
+  const k = vy > 0.5 ? fe.keep : Math.exp(-fe.slide * dt); it.vel.x *= k; it.vel.z *= k;
+}
+const TAU = Math.PI * 2, nearAngle = (cur, to) => to + TAU * Math.round((cur - to) / TAU);
+
 // Lay things down nicely when they come to rest.
 function settle(it) {
-  const r = it.obj.rotation;
+  const r = it.obj.rotation; it._rx = r.x; it._rz = r.z;
   if (it.def.drink) { r.x = it.empty ? Math.PI / 2 : 0; r.z = 0; }
   else if (it.def.mag) { r.x = 0; r.z = 0; }
   else if (it.def.bat) { r.x = -Math.PI / 2; r.z = 0; }
   else if (it.def.flat) { r.x = 0; r.z = 0; }
   else { r.x = 0; r.z = 0; }
+  // (it tips over onto its resting side in a moment rather than snapping there)
+  const tx = r.x, tz = r.z; r.x = it._rx; r.z = it._rz; it.settleTo = [nearAngle(it._rx, tx), nearAngle(it._rz, tz)];
 }
 
 function easeOutBack(t) { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }

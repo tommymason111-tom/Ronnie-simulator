@@ -18,13 +18,15 @@ export function buildMix(el) {
   el.innerHTML = `<div class="mixui">${ROWS.map(([k, ico, name]) => `<label class="mx"><span class="mxn">${ico} ${name}</span><span class="mxv" data-v="${k}">${Math.round(m[k] * 100)}%</span>
       <input type="range" min="0" max="100" step="5" value="${Math.round(m[k] * 100)}" data-k="${k}" aria-label="${name} volume"></label>`).join('')}
     <button class="mxbuzz${haptics.on ? ' on' : ''}" type="button">📳 BUZZ WHEN YOU DO THINGS: <b>${haptics.on ? 'ON' : 'OFF'}</b></button>
+    <button class="mxbuzz mxshake${haptics.shake ? ' on' : ''}" type="button">💥 SCREEN SHAKE ON BIG HITS: <b>${haptics.shake ? 'ON' : 'OFF'}</b></button>
     <p class="mxnote">The buzz works on Android phones and Quest controllers (iPhones don't let websites vibrate).</p></div>`;
   let testT = 0;
   el.querySelectorAll('input[type=range]').forEach(r => r.addEventListener('input', () => {
     const k = r.dataset.k; setMix(k, r.value / 100); el.querySelector(`[data-v="${k}"]`).textContent = r.value + '%';
     const now = performance.now(); if (now - testT > 160 && TEST[k]) { testT = now; try { initAudio(); sfx(TEST[k], null, 0.7); } catch (e) {} }      // (a little sound so you can hear the level)
   }));
-  const b = el.querySelector('.mxbuzz'); b.addEventListener('click', () => { haptics.on = !haptics.on; b.classList.toggle('on', haptics.on); b.querySelector('b').textContent = haptics.on ? 'ON' : 'OFF'; });
+  const sh = el.querySelector('.mxshake'); sh.addEventListener('click', () => { haptics.shake = !haptics.shake; sh.classList.toggle('on', haptics.shake); sh.querySelector('b').textContent = haptics.shake ? 'ON' : 'OFF'; });
+  const b = el.querySelector('.mxbuzz:not(.mxshake)'); b.addEventListener('click', () => { haptics.on = !haptics.on; b.classList.toggle('on', haptics.on); b.querySelector('b').textContent = haptics.on ? 'ON' : 'OFF'; });
 }
 export const MIX_CSS = `
 .mixui { display: flex; flex-direction: column; gap: 10px; text-align: left; }

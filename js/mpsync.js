@@ -14,6 +14,8 @@ import { Character, KO_IMPULSE, TALK_RANGE } from './character.js';
 import { sfx } from './audio.js';
 import { emoteInfo } from './emotes.js';
 import { voiceLine } from './voices.js';
+import { track } from './awards.js';
+import { roomNum } from './roomopts.js';
 
 const TYPES = Object.keys(FOODS);
 const SNAP_HZ = 20;             // (the host's word on everything, 20 times a second: only what's changed, the whole lot once a second)
@@ -88,7 +90,7 @@ export class MPSync {
   // chat (multiplayer): a message to everyone; it shows over your character's head and in everyone's chat log
   chat(text) { if (!this.net.connected) return false; text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 90); if (!text) return false;
     const gate = this.chatGate ? this.chatGate() : { ok: true }; if (!gate.ok) { this.onChatBlocked && this.onChatBlocked(gate.why); return false; }     // (Imposter: only in meetings; ghosts only to ghosts)
-    const send = () => { this.net.send(gate.ghost ? { t: 'chat', s: text, g: 1 } : { t: 'chat', s: text }); this.onChat && this.onChat((gate.ghost ? '👻 ' : '') + text, null); };
+    const send = () => { track('chats'); this.net.send(gate.ghost ? { t: 'chat', s: text, g: 1 } : { t: 'chat', s: text }); this.onChat && this.onChat((gate.ghost ? '👻 ' : '') + text, null); };
     // (playing someone with a real voice: get the message's voice made first, so it's waiting on the server for everyone
     // else the moment the message arrives, and their bubble and voice come up together)
     const warm = this.voiceWarm && this.voiceWarm(text); if (warm && warm.then) warm.then(send); else send(); return true; }
@@ -362,6 +364,7 @@ export class MPSync {
   }
   punch(p, vel, at) {
     if (this.noPunch) return;
+    if (!roomNum('pvp')) { this.words.show('NO PUNCHING IN THIS ROOM', at.clone().add({ x: 0, y: 0.25, z: 0 }), '#ffd400', 0.1, 1.2); return; }      // (the host set PUNCH EACH OTHER: OFF)
     this.punchCool = 0.5;
     // (sent to everyone: the one who got hit falls over on their own screen, everyone else sees them go flying)
     this.net.send({ t: 'punch', side: vel.side || 'R', target: p.id, v: [q2(vel.x), q2(vel.z)], s: q2(vel.length()), at: [q2(at.x), q2(at.y), q2(at.z)] });
@@ -370,11 +373,12 @@ export class MPSync {
   }
   knockAvatar(p, v, s, at) { const av = p && p.avatar; if (!av) return; if (av.knock) av.knock(v, s, at); else av.flinch && av.flinch(v); }
   on_punch(m, from) {
+    if (!roomNum('pvp')) return;
     const v = new THREE.Vector3(m.v[0] || 0, 0, m.v[1] || 0);
     if (from && from.avatar && from.avatar.swing) from.avatar.swing(m.side || 'R');          // the puncher throws the punch
     if (m.target && m.target !== this.net.id) { this.knockAvatar(this.net.players.get(m.target), v, m.s || 3, m.at && new THREE.Vector3(...m.at)); return; }
     const P = this.player, s = m.s || 3, d = { x: m.v[0] || 0, z: m.v[1] || 0 };
-    sfx('punch', P.head, 1); this.words.show('OOF!', P.head.clone().addScaledVector(P.fwd, 0.5), '#ff5a36', 0.16, 1);
+    sfx('punch', P.head, 1); track('ouch'); this.words.show('OOF!', P.head.clone().addScaledVector(P.fwd, 0.5), '#ff5a36', 0.16, 1);
     if (s > 3.2 && P.knockDown) P.knockDown(d, 2.4);
     else { const l = Math.hypot(d.x, d.z) || 1; P.rig.position.x += d.x / l * 0.25; P.rig.position.z += d.z / l * 0.25; P.effect && P.effect('dizzy', 1.2); }
   }

@@ -9,6 +9,8 @@ import { PubJobs } from './pubjobs.js';
 import { SquadMember, SQUAD, makeProp } from './squad.js';
 import { sfx } from './audio.js';
 import { Bar } from './barstations.js';
+import { TipJar, RP_DIFF } from './tipjar.js';
+import { track } from './awards.js';
 
 const DOOR = { x: 4.45, z: -12.95 };
 const STAFF_SPOTS = { aidan: [3.45, -8.0, -Math.PI / 2], connor: [3.45, -4.9, -Math.PI / 2], chloe: [4.1, -2.7, -Math.PI / 2], ben: [-13.2, -7.4, -Math.PI / 2] };
@@ -120,9 +122,10 @@ export class RunPub {
 
   start() {
     const g = this.g, room = g.room;
+    this.diff = RP_DIFF[this.d.rpDiff] || RP_DIFF[2]; this.tips = 0;      // (a quiet night, a Friday, the cup final)
     this.money = 0; this.served = 0; this.walkouts = 0; this.wrong = 0; this.fights = 0; this.rating = 3.5; this.events = 0; this.staffServed = 0;
     this.punters = []; this.tags = new Map(); this.barTaken = new Map(); this.seatTaken = new Set();
-    this.spawnT = 2; this.dropT = 25 + Math.random() * 20; this.eventT = 55 + Math.random() * 20; this.event = null; this.stockT = 0; this.staffT = 6;
+    this.spawnT = 2; this.dropT = 25 + Math.random() * 20; this.eventT = (55 + Math.random() * 20) * this.diff.events; this.event = null; this.stockT = 0; this.staffT = 6;
     // the staff to their posts
     for (const c of this.cast) {
       if (c === g.tommy) continue;
@@ -139,9 +142,10 @@ export class RunPub {
     const its = g.items; its.drinksOnly = true; its.minFood = 0; its.respawnQueue.length = 0;
     for (const it of its.items.slice()) if (!it.dead && !it.def.drink && !it.def.prop) its.remove(it);
     this.bar = new Bar(this);
+    this.tipJar = new TipJar(this);
     this.buildOrdersUI();
     this.jobs = new PubJobs(this);
-    g.showBanner('RUN THE PUB', 'SERVE THE PUNTERS');
+    g.showBanner('RUN THE PUB', this.diff.name + ' · SERVE THE PUNTERS');
   }
 
   // how many of you are running the pub (multiplayer: busier, less patient punters, more going on)
@@ -189,6 +193,7 @@ export class RunPub {
   // ------------------------------------------------------------------ per frame
   update(dt) {
     const g = this.g, P = g.player;
+    if (this.tipJar) this.tipJar.update(dt);
     // staff at their posts (knocked about? back to them)
     for (const c of this.cast) {
       if (!c.rpJob || c.down) continue;
@@ -201,7 +206,7 @@ export class RunPub {
     // new punters: fill up to 6 early on, then keep it busy (up to 10)
     const np = this.np(), elapsed = 360 - (this.d.timeLeft || 0), cap = Math.min(10 + 4 * (np - 1), 4 + Math.floor(elapsed / 30) + 2 * (np - 1));
     if ((this.spawnT -= dt) <= 0) {
-      this.spawnT = (5 + Math.random() * 7) / Math.pow(np, 0.7);
+      this.spawnT = (5 + Math.random() * 7) / Math.pow(np, 0.7) * this.diff.spawn;
       const n = this.punters.filter(p => p.rp.kind !== 'hool').length;
       if (n < cap) { const r = Math.random(); if (r < 0.55) this.arrive('old'); else if (r < 0.78 && n < cap - 2) this.arriveFamily(); else this.arriveLads(); }
     }
@@ -216,7 +221,7 @@ export class RunPub {
       if (st) st.say(R([`Ron! ${wait.name}'s been waiting AGES!`, 'Ronnie, customers! CUSTOMERS!', 'Don\'t look at me, Ron, I\'m on my break.', 'Chop chop, Ronnie!']), 3); }
     if (this.jobs) this.jobs.update(dt);
     // events
-    if (!this.event && (this.eventT -= dt) <= 0) { this.eventT = (45 + Math.random() * 30) / Math.sqrt(this.np()); this.startEvent(); }
+    if (!this.event && (this.eventT -= dt) <= 0) { this.eventT = (45 + Math.random() * 30) / Math.sqrt(this.np()) * this.diff.events; this.startEvent(); }
     if (this.event) this.eventTick(dt);
     this.rating = THREE.MathUtils.clamp(this.rating, 0, 5);
   }
@@ -297,7 +302,7 @@ export class RunPub {
     let key = R(MENU[rp.kind] || MENU.old); rp.kidBooze = false;
     if (kid && Math.random() < 0.3) { key = R(['lager', 'cider', 'guinness']); rp.kidBooze = true; }       // a kid trying their luck
     const o = ORDERS[key];
-    rp.order = o; rp.orderKey = key; rp.wait = 0; rp.patience = (rp.kind === 'old' ? 46 : 56) / (1 + 0.12 * (this.np() - 1)); rp.moaned = false; rp.phase = 'waiting';
+    rp.order = o; rp.orderKey = key; rp.wait = 0; rp.patience = (rp.kind === 'old' ? 46 : 56) / (1 + 0.12 * (this.np() - 1)) * this.diff.patience; rp.moaned = false; rp.phase = 'waiting';
     c.state = 'idle'; c.faceYaw = rp.spot.yaw; c.say(rp.kidBooze ? R(['Pint of lager please. I\'m eighteen. Honest.', 'A cider. For my... dad.', 'Can I get a GUINNESS? I\'ve got ID. At home.']) : R(o.lines), 4);
     let tag = this.tags.get(c); if (!tag) { tag = orderTag(); this.tags.set(c, tag); this.g.scene.add(tag); } tag.visible = true; rp.tagT = 0;
   }
@@ -308,13 +313,14 @@ export class RunPub {
     const quick = 1 - rp.wait / rp.patience;
     if (byStaff) { this.staffServed++; this.pay(o.price, where, '+£' + o.price.toFixed(2) + ' (' + byStaff.name + ')'); this.rating += 0.03; }
     else if (rp.kidBooze && it && it.def.booze) {                       // you served a kid alcohol
-      this.kidBooze = (this.kidBooze || 0) + 1; this.money -= 10; this.rating -= 0.45; this.g.words.show('SERVED A KID BOOZE! -£10', where, '#ff3a3a', 0.11, 1.8); sfx('sadviolin', where, 0.6);
+      this.kidBooze = (this.kidBooze || 0) + 1; track('kidbooze'); this.money -= 10; this.rating -= 0.45; this.g.words.show('SERVED A KID BOOZE! -£10', where, '#ff3a3a', 0.11, 1.8); sfx('sadviolin', where, 0.6);
       c.say(R(['YESSS! Wait till I tell Tyler!', 'Cheers, mate! Hic.', 'Don\'t tell my mum.']), 4); this.g.showBanner('YOU SERVED A KID!', 'CHECK THEIR AGE: SOFT DRINKS ONLY');
       if (rp.family) { const mum = rp.family.find(f => f.rp.kind === 'mum' || f.rp.kind === 'dad'); mum && setTimeout(() => !mum.disposed && mum.say('Did you just give my CHILD a drink?! I want the manager!', 5), 1500); }
     } else if (rp.kidBooze && it && it.def.drink && !it.def.booze) {    // a kid after booze, given a soft drink instead: well done
-      this.served++; this.carded = (this.carded || 0) + 1; this.pay(2.8 + 2, where, '+£4.80 GOOD CALL!'); this.rating += 0.15; c.say(R(['Awww. Fine. Thanks.', 'Worth a try.', 'Is there sugar in it at least?']), 3);
+      this.served++; this.carded = (this.carded || 0) + 1; track('carded'); track('served'); this.pay(2.8 + 2, where, '+£4.80 GOOD CALL!'); this.rating += 0.15; c.say(R(['Awww. Fine. Thanks.', 'Worth a try.', 'Is there sugar in it at least?']), 3);
     } else if (!it || o.ok(it)) {
-      const tip = thrown ? 0 : Math.round(Math.max(0, quick) * 3 * 10) / 10, pay = thrown ? o.price * 0.5 : o.price + tip;
+      const tip = thrown ? 0 : Math.round(Math.max(0, quick) * 3 * this.diff.tip * 10) / 10, pay = thrown ? o.price * 0.5 : o.price + tip;
+      if (tip > 0) { this.tips += tip; this.tipJar && this.tipJar.add(tip); track('tips', tip); } track('served');      // (into the tip jar on the bar)
       this.served++; this.pay(pay, where, thrown ? `+£${pay.toFixed(2)} (THROWN AT THEM)` : tip > 0.4 ? `+£${o.price.toFixed(2)} +£${tip.toFixed(2)} TIP` : null);
       if (thrown) { this.thrown = (this.thrown || 0) + 1; this.rating -= 0.08; c.say(R(['Did you just THROW that at me?!', 'Is this how you serve everyone?!', 'Half of it\'s on my shirt now!', 'I\'m leaving a review about this.', 'Charming. Absolutely charming.']), 4); }
       else { this.rating += 0.05 + quick * 0.12; c.say('thanks', 3); }
@@ -457,7 +463,7 @@ export class RunPub {
           if (Math.random() < dt * 0.9 && o.flinch) { o.flinch(new THREE.Vector3(op.x - c.pos.x, 0, op.z - c.pos.z), 0.9); sfx('punch', op, 0.6); }
           if (Math.random() < dt * 0.3) c.say('chatter', 3); } }
       this.rating -= dt * 0.035;
-      if (!live.length) { this.fights++; this.pay(20, P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 }), 'FIGHT BROKEN UP! +£20'); this.rating += 0.6; g.showBanner('FIGHT BROKEN UP!', 'THE LANDLORD IS PROUD'); this.event = null; return; }
+      if (!live.length) { this.fights++; track('fights'); this.pay(20, P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 }), 'FIGHT BROKEN UP! +£20'); this.rating += 0.6; g.showBanner('FIGHT BROKEN UP!', 'THE LANDLORD IS PROUD'); this.event = null; return; }
       if (e.t > 50) { this.rating -= 0.8; this.money = Math.max(0, this.money - 40); g.showBanner('THEY SMASHED THE PLACE UP', '-£40 IN BROKEN GLASSES'); for (const c of live) this.leave(c, R(['This pub\'s a DUMP!', 'We\'re going!'])); this.event = null; }
     } else if (e.kind === 'singer') {
       const c = e.who[0]; if (c.disposed) { this.event = null; return; }
@@ -491,7 +497,10 @@ export class RunPub {
   summary() {
     const stars = Math.round(this.rating * 2) / 2;
     return [
+      ['NIGHT', this.diff.name],
       ['TAKINGS', '£' + this.money.toFixed(2)],
+      ['TIPS IN THE JAR', '£' + (this.tipJar ? this.tipJar.total : this.tips).toFixed(2)],
+      ...(this.tipJar && this.tipJar.nicked ? [['NICKED BY LEWIS (FOR THE CAR)', '£' + this.tipJar.nicked.toFixed(2)]] : []),
       ['DRINKS SERVED BY RONNIE', this.served],
       ['JOBS DONE FOR THE STAFF', this.jobs ? this.jobs.done : 0],
       ['WRONG DRINKS', this.wrong],
@@ -505,7 +514,7 @@ export class RunPub {
       [stars >= 4 ? 'Lewis: "Bro. Landlord of the year, bro."' : stars >= 2.5 ? 'Aidan: "Not bad. Let it settle next time."' : 'Chloe: "Babe. You ate the profits."', ''],
     ];
   }
-  cleanup() { if (this.event && this.endEvent2 && this.event.hemi0 !== undefined) this.endEvent2(); if (this.jobs) { this.jobs.dispose(); this.jobs = null; } const its = this.g.items; if (its) { its.drinksOnly = false; its.minFood = this.g.room.big ? 150 : 0; }
+  cleanup() { if (this.tipJar) { this.tipJar.dispose(); this.tipJar = null; } if (this.event && this.endEvent2 && this.event.hemi0 !== undefined) this.endEvent2(); if (this.jobs) { this.jobs.dispose(); this.jobs = null; } const its = this.g.items; if (its) { its.drinksOnly = false; its.minFood = this.g.room.big ? 150 : 0; }
     if (this.bar) this.bar.dispose(); if (this.ordersEl) this.ordersEl.remove(); if (this.wrist) this.g.scene.remove(this.wrist); for (const id of Object.keys(SQUAD)) if (/^p\d+$/.test(id)) delete SQUAD[id]; for (const t of this.tags.values()) this.g.scene.remove(t); this.tags.clear(); for (const c of this.cast) if (c.plate) { this.g.scene.remove(c.plate); c.plate = null; }
     for (const o of this.added || []) this.g.scene.remove(o); this.added = [];      // (Lewis's plate, punters' pints: the people they belonged to are already gone by now, so they were left floating in the pub, one more every game)
   }

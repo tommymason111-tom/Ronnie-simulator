@@ -9,10 +9,10 @@ export { ROOT };
 const TYPES = { '.js': 'application/javascript', '.mjs': 'application/javascript', '.html': 'text/html', '.json': 'application/json', '.glb': 'model/gltf-binary', '.png': 'image/png', '.jpg': 'image/jpeg', '.mp3': 'audio/mpeg', '.css': 'text/css', '.svg': 'image/svg+xml' };
 // BROWSER=firefox or webkit (Safari's engine, as on every iPhone) runs the same tests in those instead of Chromium
 export const BROWSER = process.env.BROWSER || 'chromium';
-export async function launch() {
+export async function launch({ args = [] } = {}) {
   if (BROWSER === 'firefox') return firefox.launch({ headless: !process.env.HEADED, firefoxUserPrefs: { 'webgl.force-enabled': true, 'media.autoplay.default': 0 } });      // (headless Firefox has no WebGL on Linux: run it on a virtual screen, HEADED=1 under xvfb-run)
   if (BROWSER === 'webkit') return webkit.launch();
-  return chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info', '--disable-features=BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights,LocalNetworkAccessChecks', '--no-proxy-server'] });
+  return chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info', '--disable-features=BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights,LocalNetworkAccessChecks', '--no-proxy-server', ...args] });
 }
 // a page on http://game.local/ serving the repo; every crash report the game sends lands in page.crashes
 export async function newPage(browser, { width = 900, height = 560, mobile = false, xr = false } = {}) {

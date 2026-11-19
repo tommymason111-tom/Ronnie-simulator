@@ -5,6 +5,7 @@
 // the wrist Chonk Meter, Ronnie's ever-growing belly, and a first-person hand
 // for playing on a phone / tablet.
 import * as THREE from 'three';
+import { feelFor } from './foods.js';
 import { nearBlockers, NEAR_SAFE } from './perf.js';
 import { Belly } from './belly.js';
 import * as CANNON from 'cannon-es';
@@ -518,7 +519,7 @@ export class Player {
     if (!it) return;
     if (it.def.bat && this.room && this.room.pingpong) { this.room.pingpong.smash(); return; }     // THROW with the bat = smash / serve
     f.held = null; it.heldBy = null;
-    it.vel.copy(this.fwd).multiplyScalar(power); it.vel.y += 1.6;
+    const fe = it.feel || feelFor(it.type, it.def); it.vel.copy(this.fwd).multiplyScalar(power * fe.throw); it.vel.y += 1.6 * Math.min(1, fe.throw + 0.1);      // (heavy things don't go as far)
     // darts on a phone/PC: they go where the middle of the screen is pointing (give or take a wobble)
     const db = this.room && this.room.dartboard;
     if (it.def.dart && db) {
@@ -534,10 +535,14 @@ export class Player {
         }
       }
     }
-    it.spin.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(30);
+    // it tumbles end over end, the way a thrown thing does (a bit of wobble; a magazine flaps, a pint barely turns)
+    const side = new THREE.Vector3(-this.fwd.z, 0, this.fwd.x).normalize(), tum = it.def.mag || it.def.mat ? 6 : it.def.drink || it.def.vessel ? 4 : it.def.chair ? 2 : 11;
+    it.spin.copy(side).multiplyScalar(tum * (0.8 + Math.random() * 0.4)).add(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(tum * 0.5));
     it.thrownByPlayer = true;
     this.onRelease && this.onRelease(it, f, power);
   }
+
+  shake(k) { if (!(this.renderer && this.renderer.xr.isPresenting)) { this.shakeA = Math.min(1.2, Math.max(this.shakeA || 0, k)); this.shakeT = 0; } }
 
   flatDrop() { const f = this.flatHolder; if (f?.held) { f.held.heldBy = null; f.held = null; } }
 
@@ -550,6 +555,10 @@ export class Player {
     // darts zoom: lean your view in towards where you're looking (your hand and the dart come with it)
     this.zoomLean = (this.zoomLean || 0) + ((this.zoom ? (this.zoomDist || 1.4) : 0) - (this.zoomLean || 0)) * Math.min(1, dt * 7);
     this.camera.position.set(0, 1.6, 0);
+    // a hit lands: the view jolts and settles (a few quick decaying wobbles; never in VR)
+    if (this.shakeA > 0.002) { this.shakeT = (this.shakeT || 0) + dt; const a = this.shakeA, t = this.shakeT * 38;
+      this.camera.position.x += a * 0.035 * Math.sin(t); this.camera.position.y += a * 0.025 * Math.sin(t * 1.37 + 1); this.camera.rotation.z += a * 0.02 * Math.sin(t * 0.9 + 2);
+      this.shakeA *= Math.exp(-dt * 9); } else this.shakeA = 0;
     if (this.zoomLean > 0.001) { const f = new THREE.Vector3(0, 0, -1).applyEuler(this.camera.rotation); this.camera.position.addScaledVector(f, this.zoomLean); }
     const mx = this.flatMove.x, mz = this.flatMove.z;
     if (Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05) {

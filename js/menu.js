@@ -1,10 +1,11 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '2.24.9';
+var GAME_VERSION = '2.25.0';
 // when each update came out (UK time)
-var GAME_WHEN = {'2.24.9': '2026-11-19T18:00', '2.24.8': '2026-11-19T17:00', '2.24.7': '2026-11-19T16:00', '2.24.6': '2026-11-19T14:00', '2.24.5': '2026-11-19T12:00', '2.24.4': '2026-11-19T04:00', '2.24.3': '2026-11-19T03:00', '2.24.2': '2026-11-19T02:00', '2.24.1': '2026-11-19T01:00', '2.24.0': '2026-11-19T00:00', '2.23.9': '2026-11-18T23:00', '2.23.8': '2026-11-18T22:00', '2.23.7': '2026-11-18T21:00', '2.23.6': '2026-11-18T20:00', '2.23.5': '2026-11-18T19:00', '2.23.4': '2026-11-18T17:00', '2.23.3': '2026-11-18T16:00', '2.23.2': '2026-11-18T15:00', '2.23.1': '2026-11-18T14:00', '2.23.0': '2026-11-18T10:00', '2.22.33': '2026-11-18T01:00', '2.22.32': '2026-11-18T00:00', '2.22.31': '2026-11-17T23:00', '2.22.30': '2026-11-17T22:00', '2.22.29': '2026-11-17T21:00', '2.22.28': '2026-11-17T20:00', '2.22.27': '2026-11-17T19:00', '2.22.26': '2026-11-17T18:00', '2.22.25': '2026-11-17T17:00', '2.22.24': '2026-11-17T16:00', '2.22.23': '2026-11-17T14:00', '2.22.17': '2026-11-17T02:30', '2.22.16': '2026-11-17T00:30', '2.22.15': '2026-11-16T22:00', '2.22.14': '2026-11-16T20:30', '2.22.13': '2026-11-16T19:30', '2.22.12': '2026-11-16T18:00', '2.22.11': '2026-11-16T16:20', '2.22.10': '2026-11-16T15:40', '2.22.9': '2026-11-16T15:00', '2.22.8': '2026-11-16T13:40', '2.22.7': '2026-11-16T12:30', '2.22.6': '2026-11-16T09:30', '2.22.5': '2026-11-16T07:15', '2.22.4': '2026-11-16T03:45', '2.22.3': '2026-11-16T03:00', '2.17.0': '2026-11-15T23:59', '2.16.1': '2026-11-15T23:55', '2.16.0': '2026-11-15T23:30', '2.15.0': '2026-11-15T21:30', '2.14.0': '2026-11-15T20:24', '2.13.0': '2026-11-15T19:42', '2.12.0': '2026-11-15T19:05', '2.11.0': '2026-11-15T17:55', '2.10.0': '2026-11-15T17:10', '1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.9.0': '2026-11-15T16:54', '2.8.0': '2026-11-15T16:45', '2.7.0': '2026-11-15T16:34', '2.6.3': '2026-11-15T16:15', '2.6.2': '2026-11-15T16:15', '2.6.1': '2026-11-15T16:00', '2.6.0': '2026-11-15T15:54', '2.5.3': '2026-11-15T15:48', '2.5.2': '2026-11-15T15:46', '2.5.1': '2026-11-15T15:43', '2.5.0': '2026-11-15T15:42', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
+var GAME_WHEN = {'2.25.0': '2026-11-19T21:00', '2.24.9': '2026-11-19T18:00', '2.24.8': '2026-11-19T17:00', '2.24.7': '2026-11-19T16:00', '2.24.6': '2026-11-19T14:00', '2.24.5': '2026-11-19T12:00', '2.24.4': '2026-11-19T04:00', '2.24.3': '2026-11-19T03:00', '2.24.2': '2026-11-19T02:00', '2.24.1': '2026-11-19T01:00', '2.24.0': '2026-11-19T00:00', '2.23.9': '2026-11-18T23:00', '2.23.8': '2026-11-18T22:00', '2.23.7': '2026-11-18T21:00', '2.23.6': '2026-11-18T20:00', '2.23.5': '2026-11-18T19:00', '2.23.4': '2026-11-18T17:00', '2.23.3': '2026-11-18T16:00', '2.23.2': '2026-11-18T15:00', '2.23.1': '2026-11-18T14:00', '2.23.0': '2026-11-18T10:00', '2.22.33': '2026-11-18T01:00', '2.22.32': '2026-11-18T00:00', '2.22.31': '2026-11-17T23:00', '2.22.30': '2026-11-17T22:00', '2.22.29': '2026-11-17T21:00', '2.22.28': '2026-11-17T20:00', '2.22.27': '2026-11-17T19:00', '2.22.26': '2026-11-17T18:00', '2.22.25': '2026-11-17T17:00', '2.22.24': '2026-11-17T16:00', '2.22.23': '2026-11-17T14:00', '2.22.17': '2026-11-17T02:30', '2.22.16': '2026-11-17T00:30', '2.22.15': '2026-11-16T22:00', '2.22.14': '2026-11-16T20:30', '2.22.13': '2026-11-16T19:30', '2.22.12': '2026-11-16T18:00', '2.22.11': '2026-11-16T16:20', '2.22.10': '2026-11-16T15:40', '2.22.9': '2026-11-16T15:00', '2.22.8': '2026-11-16T13:40', '2.22.7': '2026-11-16T12:30', '2.22.6': '2026-11-16T09:30', '2.22.5': '2026-11-16T07:15', '2.22.4': '2026-11-16T03:45', '2.22.3': '2026-11-16T03:00', '2.17.0': '2026-11-15T23:59', '2.16.1': '2026-11-15T23:55', '2.16.0': '2026-11-15T23:30', '2.15.0': '2026-11-15T21:30', '2.14.0': '2026-11-15T20:24', '2.13.0': '2026-11-15T19:42', '2.12.0': '2026-11-15T19:05', '2.11.0': '2026-11-15T17:55', '2.10.0': '2026-11-15T17:10', '1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.9.0': '2026-11-15T16:54', '2.8.0': '2026-11-15T16:45', '2.7.0': '2026-11-15T16:34', '2.6.3': '2026-11-15T16:15', '2.6.2': '2026-11-15T16:15', '2.6.1': '2026-11-15T16:00', '2.6.0': '2026-11-15T15:54', '2.5.3': '2026-11-15T15:48', '2.5.2': '2026-11-15T15:46', '2.5.1': '2026-11-15T15:43', '2.5.0': '2026-11-15T15:42', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
 
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['2.25.0', ["Physics feel: everything behaves like what it is. Fruit bounces and rolls off across the floor, burgers land with a squish and wobble back into shape, glasses and cans clunk down and stand up, magazines flutter, chairs thud. Heavy things don't throw as far, and thrown things tumble end over end. Hard landings kick up a puff of dust", "A punch, a smash or getting hit shakes the view a little (phone and computer only, never in VR; turn it off in SOUND & FEEL)", "New loading screen: the place's colours, the game's card, food going into a chomping mouth, the steps ticking off (THE SQUAD, THE PLACE, THE FOOD, GO!) and a new funny tip every few seconds. It fits landscape phones too", "End of a game: up to three funny AWARDS stamped onto your receipt one by one (HOOVER OF THE YEAR, COMBO KING, TOMMY'S NEMESIS, CLEAN SHEET, TV LICENCE REVOKED, HUMAN PUNCHBAG, COUCH POTATO, TIP MAGNET, THE BOUNCER... 25 in all). Do nothing and you get the participation medal", "Run the Pub: pick your night: 🌙 QUIET NIGHT (patient regulars), 🍺 FRIDAY NIGHT, or 🔥 CUP FINAL (rammed, impatient, kicking off, but big tips)", "Run the Pub: a TIP JAR on the bar next to the Guinness tap. Tips drop in as coins you can watch pile up, the label shows the total, the bar cheers every £10, and Lewis comes past 'borrowing' some for his car unless you're stood by it", "Name tags: their character's face, 👑 for the host, pips for how big they've got, connection bars, a green glow and a mic when they're talking (ready for voice chat), and bigger far away so you can still read them", "The multiplayer lobby: 📨 INVITE MATES (a link straight into your room: share it or copy it), ✋ I'M READY ticks, chat while you wait, and the host can remove someone or 🔒 lock the room", "Room options for the host: game length (short, normal, long), squad attacks (off, chill, normal, chaos), power-ups on or off, how much food, punching each other on or off, and max players"]],
   ['2.24.9', ["The eat meter fights back: every bite punches it, the bar slides up instead of jumping, and quick bites build a COMBO (NICE, GREEDY, UNSTOPPABLE, BOTTOMLESS, LEGENDARY) with a badge and a timer. Growing a size flashes the meter gold"]],
   ['2.24.8', ["Your phone buzzes when you do things (eating, grabbing, throwing, punching, getting hit, winning), each with its own feel; Quest controllers rumble too. Turn it off in SOUND & FEEL", "SOUND & FEEL (Settings and the pause menu): a volume for everything, the music, the squad talking, sound effects, the background and voice chat"]],
   ['2.24.7', ["Imposter: dead, you're a ghost like in Among Us. Float through walls and furniture anywhere in the pub, a bit quicker, and watch everyone. Other ghosts look see-through and pale blue; the living can't see any of you. You can still finish your jobs"]],
@@ -129,6 +130,16 @@ var GAME_UPDATES = [
   ['1.4.1', ['Oysterfleet bar rebuilt from the real one: open behind, walk in from the end, into the staff room', 'No more flickering walls, floors or signs', 'Every sign fits its words and sits on a wall (nothing floating)', 'Beer mats on every table']],
   ['1.4.0', ['Settings cog with the version', 'Oysterfleet: panelled half walls, brick pillars, farmhouse chairs, antler chandeliers', 'Lidl: bakery with a bake-off room and real bakery food, middle aisle baskets, Lidl bags with surprises inside, magazines, staff in uniforms', 'Supermarket Sweep counts calories']],
 ];
+
+// LOADING STEPS: main.js ticks these off as it gets there (the squad's models, the place, the food, then GO)
+window.__ls = (k) => {
+  const ls = document.getElementById('loadscreen'); if (!ls) return;
+  const order = ['squad', 'place', 'food', 'go'], i = order.indexOf(k); if (i < 0) return;
+  ls.querySelectorAll('#ls-steps li').forEach((li, j) => { li.classList.toggle('done', j < i || k === 'go'); li.classList.toggle('now', j === i && k !== 'go'); });
+  const f = document.getElementById('ls-fill'); if (f) f.style.transform = `scaleX(${k === 'go' ? 1 : (0.12 + 0.88 * (i + 0.45) / order.length).toFixed(3)})`;
+  ls.dataset.step = k;
+};
+
 // RONNIE SIMULATOR — the start screen: a few animated screens you tap through.
 //   TITLE   bouncing logo, tap Ronnie (he chomps and talks), catch the falling food
 //   PLACE   swipe through the places, each with its own little animated scene
@@ -164,11 +175,13 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   // each place has its own games: Lidl is Supermarket Sweep, Lewis's is Ian's barbecue,
   // La Grande Portion is date night; the pub and the bedroom have the squad and the eat-off
   const PLACE_MODES = { pub: ['everyone', 'runpub', 'imposter', 'eatoff', 'roam'], bedroom: ['everyone', 'eatoff', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'], grid: ['roam'] };
-  const GAME_IDS = ['everyone', 'runpub', 'sweep', 'bbq', 'date', 'chonkoff', 'chonkoff2', 'imposter', 'imposter2', 'roam', 'roam0'];
-  const cardOf = (id) => id === 'chonkoff' || id === 'chonkoff2' ? 'eatoff' : id === 'imposter2' ? 'imposter' : id === 'roam0' ? 'roam' : id;      // the eat-off card covers 1P and 2P
-  const modeInfo = (id) => { const m = MODES.find(x => x.id === cardOf(id)); return id === 'chonkoff' ? { ...m, ico: '⏱️', name: 'EAT-OFF · 1 PLAYER' } : id === 'chonkoff2' ? { ...m, ico: '🆚', name: 'EAT-OFF · 2 PLAYERS' } : id === 'imposter' ? { ...m, name: 'IMPOSTER · 1 IMPOSTER' } : id === 'imposter2' ? { ...m, name: 'IMPOSTER · 2 IMPOSTERS' } : id === 'roam' ? { ...m, name: 'FREE ROAM · WITH THE SQUAD' } : id === 'roam0' ? { ...m, ico: '🧍', name: 'FREE ROAM · JUST YOU', desc: 'The place to yourself: no NPCs at all. Have a proper look round.' } : m; };
+  // Run the Pub's three nights: how busy, how patient, how big the tips
+  const RP_DIFF = { runpub1: ['🌙', 'QUIET NIGHT'], runpub: ['🍺', 'FRIDAY NIGHT'], runpub3: ['🔥', 'CUP FINAL'] };
+  const GAME_IDS = ['everyone', 'runpub', 'runpub1', 'runpub3', 'sweep', 'bbq', 'date', 'chonkoff', 'chonkoff2', 'imposter', 'imposter2', 'roam', 'roam0'];
+  const cardOf = (id) => id === 'runpub1' || id === 'runpub3' ? 'runpub' : id === 'chonkoff' || id === 'chonkoff2' ? 'eatoff' : id === 'imposter2' ? 'imposter' : id === 'roam0' ? 'roam' : id;      // the eat-off card covers 1P and 2P
+  const modeInfo = (id) => { const m = MODES.find(x => x.id === cardOf(id)); return cardOf(id) === 'runpub' ? { ...m, name: 'RUN THE PUB · ' + RP_DIFF[id][1] } : id === 'chonkoff' ? { ...m, ico: '⏱️', name: 'EAT-OFF · 1 PLAYER' } : id === 'chonkoff2' ? { ...m, ico: '🆚', name: 'EAT-OFF · 2 PLAYERS' } : id === 'imposter' ? { ...m, name: 'IMPOSTER · 1 IMPOSTER' } : id === 'imposter2' ? { ...m, name: 'IMPOSTER · 2 IMPOSTERS' } : id === 'roam' ? { ...m, name: 'FREE ROAM · WITH THE SQUAD' } : id === 'roam0' ? { ...m, ico: '🧍', name: 'FREE ROAM · JUST YOU', desc: 'The place to yourself: no NPCs at all. Have a proper look round.' } : m; };
   const mpOn = () => !!(window.ronnieMP && window.ronnieMP.role);
-  const gameChoices = (p) => PLACE_MODES[p].flatMap(c => c === 'eatoff' ? ['chonkoff', 'chonkoff2'] : c === 'imposter' ? (mpOn() ? ['imposter', 'imposter2'] : []) : c === 'roam' ? ['roam', 'roam0'] : [c]);
+  const gameChoices = (p) => PLACE_MODES[p].flatMap(c => c === 'runpub' ? ['runpub1', 'runpub', 'runpub3'] : c === 'eatoff' ? ['chonkoff', 'chonkoff2'] : c === 'imposter' ? (mpOn() ? ['imposter', 'imposter2'] : []) : c === 'roam' ? ['roam', 'roam0'] : [c]);
   const SQUAD = [
     { n: 'Tommy', c: '#f0c040', a: '🟤', t: 'The final ball', l: "I've been alive a WHOLE day longer than you, Ronnie." },
     { n: 'Chloe', c: '#c2185b', a: '🥗', t: 'Puts you on a diet', l: 'I made you a salad. You looked at it like it owed you money.' },
@@ -380,7 +393,8 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   const grid = $('#mode-grid');
   function drawModes() {
     if (cardOf(mode) === 'imposter' && !mpOn()) mode = 'everyone';
-    const pp = (m) => m.id === 'eatoff' ? `<div class="pp">${[1, 2].map(n => `<button data-pp="${n}" class="${cardOf(mode) === 'eatoff' && (mode === 'chonkoff2') === (n === 2) ? 'on' : ''}">${n === 1 ? '👤 1 PLAYER' : '👥 2 PLAYERS'}</button>`).join('')}</div>`
+    const pp = (m) => m.id === 'runpub' ? `<div class="pp pp3">${['runpub1', 'runpub', 'runpub3'].map((id, n) => `<button data-pp="${n + 1}" class="${mode === id || (n === 1 && cardOf(mode) !== 'runpub') ? 'on' : ''}">${RP_DIFF[id][0]} ${RP_DIFF[id][1]}</button>`).join('')}</div>`
+      : m.id === 'eatoff' ? `<div class="pp">${[1, 2].map(n => `<button data-pp="${n}" class="${cardOf(mode) === 'eatoff' && (mode === 'chonkoff2') === (n === 2) ? 'on' : ''}">${n === 1 ? '👤 1 PLAYER' : '👥 2 PLAYERS'}</button>`).join('')}</div>`
       : m.id === 'imposter' ? `<div class="pp">${[1, 2].map(n => `<button data-pp="${n}" class="${cardOf(mode) === 'imposter' && (mode === 'imposter2') === (n === 2) ? 'on' : ''}">${n === 1 ? '🔪 1 IMPOSTER' : '🔪🔪 2 IMPOSTERS'}</button>`).join('')}</div>`
       : m.id === 'roam' ? `<div class="pp">${[1, 2].map(n => `<button data-pp="${n}" class="${cardOf(mode) === 'roam' && (mode === 'roam0') === (n === 2) ? 'on' : ''}">${n === 1 ? '👥 WITH THE SQUAD' : '🧍 JUST YOU'}</button>`).join('')}</div>` : '';
     grid.innerHTML = MODES.filter(m => ok(m, place)).map((m, i) => {
@@ -397,12 +411,13 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     const ppb = e.target.closest('[data-pp]');
     if (ppb) {                 // 1 or 2 players: picks the eat-off straight away
       const was = c.classList.contains('flipped');
+      if (c.dataset.id === 'runpub') { mode = ['runpub1', 'runpub', 'runpub3'][+ppb.dataset.pp - 1]; blip(780 + 110 * +ppb.dataset.pp, 0.08); drawModes(); const nc = $('.flip[data-id="runpub"]', grid); nc.classList.add('chosen'); if (was) nc.classList.add('flipped'); return; }      // (how busy the night is)
       const imp = c.dataset.id === 'imposter', ro = c.dataset.id === 'roam'; mode = imp ? (ppb.dataset.pp === '2' ? 'imposter2' : 'imposter') : ro ? (ppb.dataset.pp === '2' ? 'roam0' : 'roam') : ppb.dataset.pp === '2' ? 'chonkoff2' : 'chonkoff'; blip(ppb.dataset.pp === '2' ? 990 : 880, 0.08); drawModes();
       const nc = $(`.flip[data-id="${imp ? 'imposter' : ro ? 'roam' : 'eatoff'}"]`, grid); nc.classList.add('chosen'); if (was) nc.classList.add('flipped');
       return;
     }
     if (!c.classList.contains('flipped')) { $$('.flip.flipped', grid).forEach(f => f !== c && f.classList.remove('flipped')); c.classList.add('flipped'); blip(600, 0.05); return; }
-    mode = m.id === 'eatoff' ? (mode === 'chonkoff2' ? 'chonkoff2' : 'chonkoff') : m.id === 'imposter' ? (mode === 'imposter2' ? 'imposter2' : 'imposter') : m.id === 'roam' ? (mode === 'roam0' ? 'roam0' : 'roam') : m.id; blip(880, 0.08); drawModes(); $(`.flip[data-id="${m.id}"]`, grid).classList.add('flipped', 'chosen');
+    mode = m.id === 'runpub' ? (cardOf(mode) === 'runpub' ? mode : 'runpub') : m.id === 'eatoff' ? (mode === 'chonkoff2' ? 'chonkoff2' : 'chonkoff') : m.id === 'imposter' ? (mode === 'imposter2' ? 'imposter2' : 'imposter') : m.id === 'roam' ? (mode === 'roam0' ? 'roam0' : 'roam') : m.id; blip(880, 0.08); drawModes(); $(`.flip[data-id="${m.id}"]`, grid).classList.add('flipped', 'chosen');
   });
 
   // ---------------------------------------------------------------- READY: summary and the countdown
@@ -453,7 +468,8 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   $('#mp-myname').addEventListener('input', () => { $('#name-msg').textContent = ''; $('#mp-myname').classList.remove('need'); });
   $('#char-next').addEventListener('click', () => {
     if (!($('#mp-myname').value || '').trim()) { show('mpname', -1); return; }
-    $('#mp-who').textContent = `You're playing as ${mp.char().n}`; show('mp'); });
+    $('#mp-who').textContent = `You're playing as ${mp.char().n}`; show('mp');
+    if (mp.pendingJoin) { mpStatus(`Joining room <b>${mp.pendingJoin}</b>…`); mp.pendingJoin = null; $('#mp-join2').click(); } });
   const mpStatus = (h) => { $('#mp-status2').innerHTML = h; };
   let myName = ''; try { myName = localStorage.getItem('rs_mp_name') || ''; } catch (e) {}
   $('#mp-myname').value = myName;
@@ -462,16 +478,23 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   // the room: everyone in it, their name and who they're playing as; a free slot for each space left
   const lobby = () => {
     if (!mp.net) return;
-    const me = { name: nameOf(), char: mpChar, host: mp.net.host, me: true };
+    const boss0 = mp.role === 'host' || (mp.net.host && mp.role !== 'join');
+    const me = { name: nameOf(), char: mpChar, host: mp.net.host, me: true, ready: mp.ready };
     const ps = [me, ...mp.net.players.values()];
-    $('#room-code').textContent = mp.net.code;
-    $('#room-players').innerHTML = ps.map(p => { const c = CHARS.find(x => x.id === p.char) || CHARS[0];
-      return `<div class="rp" style="--c:${c.c}">${c.img ? `<img src="./assets/portraits/${c.img}.webp" alt="">` : '<div class="em">🍔</div>'}<b>${esc(p.name || '...')}</b><small>as ${c.n}</small>${p.host ? '<span class="tag">HOST</span>' : ''}${p.me ? '<span class="tag" style="background:#39ff14">YOU</span>' : ''}</div>`; }).join('')
-      + Array.from({ length: Math.max(0, (mp.net.max || 12) - ps.length) }, () => '<div class="rp empty"><div class="em">➕</div><small>free space</small></div>').join('');      // (all twelve places shown, not six then more as people came in)
-    $('#room-count').textContent = `${ps.length} / ${mp.net.max || 12} PLAYERS`;
+    $('#room-code').textContent = mp.net.code; $('#room-url').textContent = inviteURL();
+    const seen = mp.seenCards || (mp.seenCards = new Set()), key = (p) => p.me ? 'me' : String(p.id);
+    const html = ps.map(p => { const c = CHARS.find(x => x.id === p.char) || CHARS[0];
+      return `<div class="rp${p.ready ? ' isready' : ''}${seen.has(key(p)) ? ' seen' : ''}" style="--c:${c.c}" data-pid="${p.me ? '' : esc(p.id || '')}">${p.ready ? '<span class="rdy">✓</span>' : ''}${!p.me && boss0 ? `<button class="kick" data-kick="${esc(p.id || '')}" aria-label="Remove ${esc(p.name || 'player')}">✕</button>` : ''}${c.img ? `<img src="./assets/portraits/${c.img}.webp" alt="">` : '<div class="em">🍔</div>'}<b>${esc(p.name || '...')}</b><small>as ${c.n}</small>${p.host ? '<span class="tag">HOST</span>' : ''}${p.me ? '<span class="tag" style="background:#39ff14">YOU</span>' : ''}</div>`; }).join('')
+      + Array.from({ length: Math.max(0, Math.min(mp.net.max || 12, mp.RO ? mp.RO.optNum('max') : 12) - ps.length) }, () => '<div class="rp empty"><div class="em">➕</div><small>free space</small></div>').join('');      // (all twelve places shown, not six then more as people came in)
+    // (only redrawn when something's changed, and only someone new pops in: redrawing restarted every card's pop-in, so they flickered out on each message)
+    const pe = $('#room-players'); if (pe._html !== html) { pe._html = html; pe.innerHTML = html; } ps.forEach(p => seen.add(key(p)));
+    const RO = mp.RO, max = RO ? Math.min(mp.net.max || 12, RO.optNum('max')) : (mp.net.max || 12), nReady = ps.filter(p => p.ready).length;
+    $('#room-count').textContent = `${ps.length} / ${max} PLAYERS · ${nReady} READY${mp.locked ? ' · 🔒 LOCKED' : ''}`;
+    drawRoomOpts(boss0);
+    const rb = $('#room-ready'); rb.classList.toggle('on', !!mp.ready); rb.textContent = mp.ready ? '✅ READY! (TAP TO UNDO)' : '✋ I\'M READY';
     const boss = mp.role === 'host' || (mp.net.host && mp.role !== 'join');
     $('#room-go').style.display = boss ? '' : 'none';
-    $('#room-msg').textContent = boss ? (ps.length > 1 ? 'Everyone\'s in? Choose where you\'re playing.' : 'Tell your mates the code. Start when everyone\'s in.') : 'Waiting for the host to choose the game…';
+    $('#room-msg').textContent = boss ? (ps.length > 1 ? (nReady >= ps.length ? 'Everyone\'s ready! Choose where you\'re playing.' : `Waiting for ${ps.length - nReady} to say they're ready (or just start).`) : 'Invite your mates (or tell them the code). Start when everyone\'s in.') : 'Waiting for the host to choose the game…';
   };
   async function mpConnect(code) {
     const { Net, RELAY } = await import('./net.js');
@@ -485,7 +508,20 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     net.on.hi = (m, p) => { if (p) { p.char = m.char; p.name = m.name; } lobby();
       // a mate on a newer version: update now (straight back into this room), so you both see the same things
       if (m.v && vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; mpStatus('Your mate has a newer version. Updating…'); setTimeout(() => { location.href = location.pathname + '?lobby=' + encodeURIComponent(code) + '&u=' + Date.now(); }, 1200); } };
-    net.on.join = (m) => { hi(m.id); lobby(); }; net.on.leave = () => lobby(); net.on.host = () => lobby();
+    mp.RO = mp.RO || await import('./roomopts.js'); mp.RO.resetOpts(); mp.ready = false; mp.locked = false; mp.seenCards = new Set(); roomChat.length = 0; drawChat();
+    const isBoss = () => mp.role === 'host' || (net.host && mp.role !== 'join');
+    const sendOpts = (to) => net.send(to ? { t: 'ropts', to, o: { ...mp.RO.roomOpts }, lock: mp.locked ? 1 : 0 } : { t: 'ropts', o: { ...mp.RO.roomOpts }, lock: mp.locked ? 1 : 0 });      // (the room only reads "to" near the start)
+    net.on.join = (m) => { hi(m.id); if (isBoss()) { const n = net.players.size + 1, max = Math.min(net.max || 12, mp.RO.optNum('max'));
+        if (mp.locked || n > max) { net.send({ t: 'kick', to: m.id, why: mp.locked ? 'locked' : 'full' }); } else { sendOpts(m.id); if (mp.ready) net.send({ t: 'ready', r: 1, to: m.id }); } }
+      else if (mp.ready) net.send({ t: 'ready', r: 1, to: m.id });
+      sysChat(`${(m.name || 'Someone')} joined`); lobby(); };
+    net.on.leave = (m) => { sysChat('Someone left'); lobby(); }; net.on.host = () => { lobby(); if (isBoss()) sendOpts(); };
+    // the lobby: ready ticks, the host's room options, chat, the host removing someone (only the host's word counts)
+    net.on.ready = (m, p) => { if (p) { p.ready = !!m.r; lobby(); } };
+    net.on.ropts = (m, p) => { if (!p || !p.host) return; mp.RO.setOpts(m.o); mp.locked = !!m.lock; lobby(); };
+    net.on.kick = (m, p) => { if (!p || !p.host || (m.to && m.to !== net.id)) return; const why = m.why === 'locked' ? 'The host has locked the room.' : m.why === 'full' ? 'The room is full.' : 'The host removed you from the room.';
+      try { localStorage.removeItem('rs_mp_last'); } catch (e) {} net.leave(); mp.net = null; mp.role = null; $('#mp-code-chip').textContent = ''; show('mp', -1); mpStatus(why); };
+    net.on.chat = (m, p) => { if (!document.querySelector('.screen.on[data-s="room"]')) return; addChat(p ? p.name : 'Someone', String(m.s || '').slice(0, 90)); };
     hi(); try { localStorage.setItem('rs_mp_last', JSON.stringify({ code, t: Date.now() })); } catch (e) {}      // (for the REJOIN button, if this page gets closed)
     return w;
   }
@@ -496,6 +532,31 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     } catch (e) { mpStatus("Couldn't connect. Check your internet and try again."); }
   });
   $('#room-go').addEventListener('click', () => { drawPlace(); show('place'); });
+  // ---- the lobby extras
+  const roomChat = [];
+  const drawChat = () => { const el = $('#room-chat-log'); if (!el) return; el.innerHTML = roomChat.map(c => c.sys ? `<p class="sys">${esc(c.s)}</p>` : `<p><b>${esc(c.who)}:</b> ${esc(c.s)}</p>`).join('') || '<p class="sys">Chat to the room while you wait…</p>'; el.scrollTop = el.scrollHeight; };
+  const addChat = (who, s2) => { if (!s2) return; roomChat.push({ who, s: s2 }); if (roomChat.length > 40) roomChat.shift(); drawChat(); blip(700, 0.04, 'triangle', 0.05); };
+  const sysChat = (s2) => { roomChat.push({ sys: 1, s: s2 }); if (roomChat.length > 40) roomChat.shift(); drawChat(); };
+  const sendChat = () => { const i = $('#room-chat-in'), t = (i.value || '').trim().slice(0, 90); if (!t || !mp.net) return; mp.net.send({ t: 'chat', s: t }); addChat(nameOf(), t); i.value = ''; };
+  $('#room-chat-send').addEventListener('click', sendChat); $('#room-chat-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+  $('#room-ready').addEventListener('click', () => { if (!mp.net) return; mp.ready = !mp.ready; mp.net.send({ t: 'ready', r: mp.ready ? 1 : 0 }); blip(mp.ready ? 990 : 500, 0.08); lobby(); });
+  $('#room-players').addEventListener('click', (e) => { const k = e.target.closest('[data-kick]'); if (!k || !mp.net) return; const p = mp.net.players.get(k.dataset.kick) || [...mp.net.players.values()].find(x => String(x.id) === k.dataset.kick);
+    if (!p || !confirm(`Remove ${p.name || 'this player'} from the room?`)) return; mp.net.send({ t: 'kick', to: p.id, why: 'kick' }); sysChat(`${p.name || 'A player'} was removed`); });
+  // the host's room options (everyone else sees them, greyed)
+  const drawRoomOpts = (boss) => { const el = $('#room-opts'), RO = mp.RO; if (!el || !RO) return;
+    el.innerHTML = `<h4>⚙️ ROOM OPTIONS${boss ? '' : ' (THE HOST PICKS)'}</h4>` + RO.OPT_DEFS.map(d => `${d.imp && d.k === RO.OPT_DEFS.find(x => x.imp).k ? '<h5>🔪 FOR IMPOSTER</h5>' : ''}<div class="ro"><span>${d.ico} ${d.imp ? d.name.replace('IMPOSTER: ', '') : d.name}</span><div class="seg">${d.vals.map(v => `<button type="button" data-ok="${d.k}" data-ov="${v[0]}" class="${RO.roomOpts[d.k] === v[0] ? 'on' : ''}"${boss ? '' : ' disabled'}>${v[1]}</button>`).join('')}</div></div>`).join('')
+      + (boss ? `<button type="button" class="lock${mp.locked ? ' on' : ''}" data-lock="1">${mp.locked ? '🔒 ROOM LOCKED: NOBODY ELSE CAN JOIN' : '🔓 ROOM OPEN: TAP TO LOCK IT'}</button>` : '') + `<p class="note">Options count in this room's games. Playing on your own is always the normal game.</p>`; };
+  $('#room-opts').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.disabled || !mp.net || !mp.RO) return;
+    if (b.dataset.lock) mp.locked = !mp.locked; else mp.RO.setOpts({ [b.dataset.ok]: b.dataset.ov });
+    mp.net.send({ t: 'ropts', o: { ...mp.RO.roomOpts }, lock: mp.locked ? 1 : 0 }); blip(820, 0.05); lobby(); });
+  // INVITE: a link straight into this room (the phone's share sheet, or copied)
+  const inviteURL = () => `${location.origin}${location.pathname}?join=${encodeURIComponent(mp.net ? mp.net.code : '')}`;
+  const linkMsg = (t) => { const m = $('#room-link-msg'); m.textContent = t; clearTimeout(m._t); m._t = setTimeout(() => { m.textContent = ''; }, 4000); };
+  const copyLink = async () => { const u = inviteURL(); try { await navigator.clipboard.writeText(u); linkMsg('Link copied! Paste it to your mates.'); } catch (e) { const t = document.createElement('textarea'); t.value = u; document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (er) {} t.remove(); linkMsg(ok ? 'Link copied! Paste it to your mates.' : u); } };
+  $('#room-copy').addEventListener('click', copyLink);
+  $('#room-share').addEventListener('click', async () => { if (!mp.net) return; const u = inviteURL();
+    if (navigator.share) { try { await navigator.share({ title: 'Ronnie Simulator', text: `Come and eat with me! Room ${mp.net.code}`, url: u }); linkMsg('Invite sent!'); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    copyLink(); });
   $('#room-leave').addEventListener('click', () => { try { localStorage.removeItem('rs_mp_last'); } catch (e) {} if (mp.net) mp.net.leave(); mp.net = null; mp.role = null; $('#mp-code-chip').textContent = ''; show('mp', -1); });
   $('#mp-code2').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
   $('#mp-join2').addEventListener('click', async () => {
@@ -519,6 +580,12 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       if (mp.role === 'join') mp.net.on.setup = (m) => { if (window.__setupSeen) return; window.__setupSeen = true; place = m.place; mode = m.mode; $('#room-msg').textContent = 'Off we go!'; window.__menuIntro(() => window.__menuGo(true)); };
     } catch (e) { show('mp'); mpStatus("Couldn't get back into the room. Check your internet and try again."); }
   };
+  // an invite link (?join=CODE): straight into that room (after your name and who you're playing as, if it's your first time)
+  const joinCode = (q.get('join') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+  if (joinCode.length === 4 && !q.get('lobby') && !q.get('go')) setTimeout(() => { try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    $('#mp-code2').value = joinCode; mp.pendingJoin = joinCode;
+    if (myName) { $('#mp-who').textContent = `You're playing as ${mp.char().n}`; show('mp'); mpStatus(`Joining room <b>${joinCode}</b>…`); $('#mp-join2').click(); }
+    else { show('mpname'); setTimeout(() => { try { $('#mp-myname').focus(); } catch (e) {} }, 450); } }, 700);
   if (q.get('lobby')) setTimeout(() => { const code = q.get('lobby').toUpperCase().slice(0, 6); try { history.replaceState(null, '', location.pathname); } catch (e) {} rejoin(code); }, 600);
   else { let last = null; try { last = JSON.parse(localStorage.getItem('rs_mp_last') || 'null'); } catch (e) {}
     if (last && last.code && Date.now() - last.t < 30 * 60000) { const b = $('#rejoin-btn'); b.hidden = false; b.querySelector('b').textContent = last.code;
@@ -555,18 +622,42 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       // straight away: the button squashes and a loading screen comes up (with its own animation), THEN the
       // heavy level-building starts, so the screen never just freezes on you
       const ls = document.getElementById('loadscreen');
-      if (ls) {
-        const p = ALLPLACES.find(p => p.id === place), m = modeInfo(mode);
-        $('#ls-place').textContent = `${p.ico} ${p.name} · ${m.name}`;
-        const HINTS = ['Tip: tap the 🏃 SPRINT button to go faster', 'Tip: grab food and press EAT', 'Tip: THROW food at Tommy. He deserves it.', 'Tip: in VR, click the left stick to sprint', 'Ronnie is warming up his jaw…'];
-        $('#ls-hint').textContent = HINTS[Math.floor(Math.random() * HINTS.length)];
-        ls.classList.add('on');
-      }
+      if (ls) showLoading(ls, place, mode);
       $('#go').classList.add('pressed');
       // (in the headset the page's own animation frames are paused, so don't wait for one: that's why PLAY did nothing in VR)
       if (window.ronnieHero && window.ronnieHero.inVR) setTimeout(finish, 60);
       else requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(finish, 60)));
     };
+    // ---- LOADING: the place's colours, this mode's card, food going into a mouth, the steps, a tip every few seconds
+    const showLoading = (ls, place, mode) => {
+      const p = ALLPLACES.find(p => p.id === place) || ALLPLACES[0], m = modeInfo(mode), card = CARDS[mode] || CARDS[cardOf(mode)] || CARDS.everyone;
+      ls.style.setProperty('--ac', card.ac); ls.style.setProperty('--ac2', card.ac2); if (p.bg) ls.style.setProperty('--lsbg', p.bg);
+      $('#ls-ico').textContent = m.ico || p.ico; $('#ls-place').textContent = `${p.ico} ${p.name} · ${m.name}`;
+      $('#ls-chips').innerHTML = (card.chips || []).map(([i, t]) => `<b>${i} ${t}</b>`).join('');
+      const FOOD = ['🍔', '🍕', '🌭', '🍟', '🍩', '🌮', '🍗', '🥙', '🧁', '🍪', '🥐', '🍺'];
+      ls.querySelector('.lsbelt').innerHTML = FOOD.slice(0, 6).map((f, i) => `<span style="animation-delay:${(-i * 0.4).toFixed(1)}s">${f}</span>`).join('');
+      ls.querySelector('.lsfall').innerHTML = Array.from({ length: 14 }, (_, i) => `<span style="left:${(i * 7.3 + (i % 3) * 2) % 100}%;animation-delay:${(-i * 0.53).toFixed(2)}s;animation-duration:${(6 + (i % 5)).toFixed(0)}s">${FOOD[i % FOOD.length]}</span>`).join('');
+      const tips = loadTips(mode); let ti = Math.floor(Math.random() * tips.length);
+      const hint = $('#ls-hint'); hint.textContent = tips[ti]; hint.classList.remove('out');
+      clearInterval(ls._tips); ls._tips = setInterval(() => { if (!ls.classList.contains('on')) { clearInterval(ls._tips); return; }
+        hint.classList.add('out'); setTimeout(() => { ti = (ti + 1) % tips.length; hint.textContent = tips[ti]; hint.classList.remove('out'); }, 300); }, 3200);
+      ls.classList.remove('no3d', 'fade'); window.__ls('squad'); ls.classList.add('on');
+    };
+    const TIPS = {
+      all: ['Tip: tap 🏃 SPRINT to go faster', 'Tip: grab food and press EAT', 'Tip: THROW food at Tommy. He deserves it.', 'Tip: in VR, click the left stick to sprint',
+        'Ronnie is warming up his jaw…', 'Quick bites build a COMBO. Don\'t stop chewing.', 'Fruit bounces. Burgers go splat. Choose your weapon.',
+        'Tommy has still never caught anything thrown at him.', 'Lewis is out the front checking his car. Again.', 'Harry is on the apps. Swiping right. On everyone.',
+        'Aidan is three Guinness deep and growing a beard as we speak.', 'Dylan\'s knee is fine. Probably. Don\'t look at it.', 'Ben is checking his hairline in the window.',
+        'Ethan is mid FIFA rage. Give him a minute.', 'Lewis has made a protein shake. It makes you grow FASTER.', 'Chewing sounds have been turned up to 11.',
+        'Tip: ⚙️ SOUND & FEEL has a slider for everything', 'Tip: the 🎭 button does emotes. Use them wisely. Or don\'t.'],
+      imposter: ['Tip: do your jobs to win, or find the imposter first', 'Tip: dead? You\'re a ghost. Float through walls and spy on everyone.', 'Tip: 🔔 the bell calls a meeting', 'Tip: lights out? Find the fuse box', 'The imposter is always the quiet one. Or the loud one.'],
+      runpub: ['Tip: pour the right drink, earn the tip', 'Tip: kids want soft drinks. Do NOT give them a Guinness.', 'Tip: a spilt pint needs mopping before someone slips', 'Ben is watching the till.'],
+      chonkoff: ['Tip: 60 seconds. Eat everything.', 'Tip: chain bites for a combo', 'Your personal best is watching you.'], chonkoff2: ['Tip: pass the phone. No peeking.', 'Most eaten wins. Chew faster.'],
+      sweep: ['Tip: fill the trolley, dodge security', 'Tip: big items are worth more'], date: ['Tip: only eat when she looks away', 'Three strikes and the date\'s over'],
+      bbq: ['Tip: grab it off the grill', 'Tip: dodge the salad. It\'s a trap.'], roam: ['Tip: no attacks, no timer. Have a proper look round.'], roam0: ['Tip: the place to yourself. Have a proper look round.'],
+    };
+    window.__lsShow = (place, mode) => showLoading(document.getElementById('loadscreen'), place, mode);      // (tests)
+    const loadTips = (mode) => (TIPS[mode] || TIPS[cardOf(mode)] || []).concat(TIPS.all);
     // ---- the panel over the level before you play: this game's own card (its colour, icon and the key facts)
     const CARDS = {
       everyone: { ac: '#ffd400', ac2: '#ff8a00', chips: [['🍔', 'Eat it all'], ['⚔️', 'Squad attacks'], ['🏆', '10 sizes']] },
@@ -646,7 +737,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
         roam: [
           { pic: 'emoji:🚶', title: 'FREE ROAM', lines: ['Have a look round and explore', 'Everyone is here, but nobody attacks you', 'No timer: eat, throw, slap and play the machines'] }, controls ],
       };
-      PAGES.imposter2 = PAGES.imposter; PAGES.roam0 = PAGES.roam;
+      PAGES.imposter2 = PAGES.imposter; PAGES.roam0 = PAGES.roam; PAGES.runpub1 = PAGES.runpub3 = PAGES.runpub;
       const pages = PAGES[mode] || PAGES.everyone; let i = 0;
       const draw = () => { const pg = pages[i];
         $(P + 'title').textContent = pg.title; $(P + 'step').textContent = `HOW TO PLAY · PAGE ${i + 1} OF ${pages.length}`;

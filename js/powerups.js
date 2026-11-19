@@ -5,6 +5,7 @@
 //   SUPER SPEED   - you go much faster
 // In multiplayer the host puts them down (everyone sees the same ones) and whoever gets there first gets it.
 import * as THREE from 'three';
+import { track } from './awards.js';
 
 export const POWERUPS = {
   hoover: { name: 'HOOVER MODE', icon: '🌀', col: 0x00e5ff, css: '#00e5ff', dur: 7, line: 'SUCK IT ALL UP!' },
@@ -70,7 +71,7 @@ export class PowerUps {
 
   take(o) {
     const P = POWERUPS[o.k]; if (!o.dev) { this.drop(o); if (this.mpOn) this.net.send({ t: 'pug', id: o.id }); }
-    this.sfx('powerup', null, 1);
+    this.sfx('powerup', null, 1); if (!o.dev) track('powers');
     const at = this.player.head.clone().addScaledVector(this.player.fwd, 0.8 * this.player.scale);
     this.words.show(`${P.icon} ${P.name}!`, at.clone().add({ x: 0, y: 0.12, z: 0 }), P.css, 0.13 * this.player.scale, 1.6);
     setTimeout(() => this.words.show(P.line, at, '#ffffff', 0.08 * this.player.scale, 1.2), 450);

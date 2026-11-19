@@ -11,12 +11,16 @@ const P = {      // [vibration pattern (ms on/off/on...), VR strength 0..1]
   alarm: [[100, 60, 100], 0.9], emergency: [[120, 60, 120], 1], tap: [[6], 0.12], toggle: [[8], 0.15], notify: [[12], 0.2], swipe: [[8], 0.15],
 };
 let on = true; try { on = localStorage.getItem('rs_haptics') !== '0'; } catch (e) {}
-let vr = null, head = null, lastT = 0;
+let vr = null, head = null, lastT = 0, shakeFn = null, shakeOn = true; try { shakeOn = localStorage.getItem('rs_shake') !== '0'; } catch (e) {}
 export const haptics = {
   get on() { return on; },
   set on(v) { on = !!v; try { localStorage.setItem('rs_haptics', on ? '1' : '0'); } catch (e) {} if (on) buzz([20], 0.4, true); },
   // (main.js: how to rumble the controllers, and where your head is)
   hook(pulse, headFn) { vr = pulse; head = headFn; },
+  // the screen shake that goes with the big ones (a punch, a smash, getting hit): phone and computer only, never in VR
+  get shake() { return shakeOn; },
+  set shake(v) { shakeOn = !!v; try { localStorage.setItem('rs_shake', shakeOn ? '1' : '0'); } catch (e) {} if (shakeOn && shakeFn) shakeFn(0.8); },
+  hookShake(fn) { shakeFn = fn; },
 };
 function buzz(pat, strength, force) {
   if (!on && !force) return;
@@ -26,8 +30,9 @@ function buzz(pat, strength, force) {
 }
 // a sound just played: buzz if it's one of yours
 export function hapticFor(name, pos) {
-  const p = P[name]; if (!p || !on) return;
+  const p = P[name]; if (!p) return;
   if (pos && head) { const h = head(); if (h && Math.hypot(pos.x - h.x, pos.y - h.y, pos.z - h.z) > 1.4) return; }      // (someone else's, over there)
-  buzz(p[0], p[1]);
+  if (shakeOn && shakeFn && p[1] >= 0.7) try { shakeFn(p[1]); } catch (e) {}
+  if (on) buzz(p[0], p[1]);
 }
 export const HAPTIC_SOUNDS = Object.keys(P);

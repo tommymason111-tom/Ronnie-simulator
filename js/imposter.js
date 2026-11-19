@@ -18,8 +18,12 @@ import { Panel, makeGame, rr, txt } from './impgames.js';
 import { FONT } from './textures.js';
 import { REST } from './levels/oysterRestaurant.js';
 import { CARPARK } from './levels/carpark.js';
+import { roomNum } from './roomopts.js';
+import { ImpReplay } from './impreplay.js';
 
-export const IMP = { KILL_CD: 30, START_CD: 15, KILL_R: 1.8, REPORT_R: 2.6, USE_R: 1.55, MEET_T: 90, EMERG_CD: 15, TASKS_EACH: 5, SAB_CD: 30, CRIT_T: 45, MIN_PLAYERS: 3 };
+// (the host's room options set some of these at the start of each game: roomopts.js)
+export function impOpts() { IMP.KILL_CD = roomNum('kcd'); IMP.TASKS_EACH = roomNum('jobs'); IMP.MEET_T = roomNum('meet'); IMP.EMERGS = roomNum('emerg'); IMP.EJECTS = !!roomNum('ejects'); }
+export const IMP = { EMERGS: 1, EJECTS: true, KILL_CD: 30, START_CD: 15, KILL_R: 1.8, REPORT_R: 2.6, USE_R: 1.55, MEET_T: 90, EMERG_CD: 15, TASKS_EACH: 5, SAB_CD: 30, CRIT_T: 45, MIN_PLAYERS: 3 };
 const V = (x, z) => new THREE.Vector3(x, 0, z);
 const CENTRE = V(0.9, -0.2);
 const SEATS = [[2.2, -0.2], [1.89, 0.64], [1.12, 1.08], [-0.1, 0.63], [-0.4, -0.21], [1.14, -1.48], [1.91, -1.02], [3.15, 0.62], [2.74, 1.35], [2.09, 1.88], [1.31, 2.17], [-1.36, 0.6], [-1.5, -0.22], [-0.28, -2.29], [1.35, -2.56], [2.13, -2.26]];
@@ -170,12 +174,12 @@ export class Imposter {
   send(k, m) { m.t = k; this.net.send(m); this.apply(k, m); }        // (host: tell everyone, and do it here too)
   ask(k, m) { if (this.host) this.hostIn(k, m, this.me); else { m.t = k; this.net.send(m); } }   // (anyone: ask the referee)
   hostDeal() {
-    const list = this.roster();
+    impOpts(); const list = this.roster();
     if (list.length < IMP.MIN_PLAYERS) { this.send('imLobby', { n: list.length }); this.toast(`NEED ${IMP.MIN_PLAYERS}+ PLAYERS (${list.length} HERE)`); return; }
     let n = this.nImp; if (n > 1 && list.length < 5) n = 1;
     const imps = shuffle(list.map(p => p.id)).slice(0, n), pool = TASKS.map(t => t.id), tasks = {};
     for (const p of list) tasks[p.id] = shuffle(pool).slice(0, IMP.TASKS_EACH);
-    this.H = { killCD: new Map(imps.map(id => [id, IMP.START_CD + 4])), emerg: new Map(list.map(p => [p.id, 1])), emergCD: IMP.EMERG_CD - 1, sabCD: 14, votes: null };
+    this.H = { killCD: new Map(imps.map(id => [id, IMP.START_CD + 4])), emerg: new Map(list.map(p => [p.id, IMP.EMERGS])), emergCD: IMP.EMERG_CD - 1, sabCD: 14, votes: null };
     this.dealMsg = { list, imps, tasks, n }; this.send('imStart', { ...this.dealMsg });
   }
   // someone's game started late: the deal again (just for them), then everything that's happened since
@@ -262,16 +266,16 @@ export class Imposter {
     const g = this.g;
     if (k === 'imLobby') { const ok = m.n >= IMP.MIN_PLAYERS; this.lobbyN = m.n; this.lobbyMsg = ok ? `${m.n} IN THE PUB. ${this.host ? 'YOU\'RE THE HOST: RING THE LAST ORDERS BELL IN THE MIDDLE TO START!' : 'WAITING FOR THE HOST TO RING THE BELL...'}` : `WAITING FOR PLAYERS: ${m.n} HERE (${IMP.MIN_PLAYERS}+ NEEDED). HAVE A WANDER ROUND.`; return; }
     if (k === 'imStart') {
-      this.players.clear(); this.bodies.forEach(b => this.dropBody(b)); this.bodies = []; this.lobbyMsg = null;
+      impOpts(); (this.replay || (this.replay = new ImpReplay(this))).reset(); this.replayDone = false; this.players.clear(); this.bodies.forEach(b => this.dropBody(b)); this.bodies = []; this.lobbyMsg = null;
       const iAmImp = m.imps.includes(this.me);
       for (const p of m.list) this.players.set(p.id, { id: p.id, name: p.name, char: p.char, alive: true, imp: m.imps.includes(p.id) && (iAmImp || p.id === this.me), realImp: m.imps.includes(p.id), tasks: m.tasks[p.id] || [], done: new Set(), left: false });
       this.impList = m.imps; this.nImpsNow = m.n; this.bar = { done: 0, total: 0 }; for (const p of m.list) if (!m.imps.includes(p.id)) this.bar.total += (m.tasks[p.id] || []).length;
-      this.killCD = IMP.START_CD; this.sabCD = 14; this.emergCD = IMP.EMERG_CD; this.emergLeft = 1; this.sab = null; this.spect = null; this.setVent(null);
+      this.killCD = IMP.START_CD; this.sabCD = 14; this.emergCD = IMP.EMERG_CD; this.emergLeft = IMP.EMERGS; this.sab = null; this.spect = null; this.setVent(null);
       this.phase = 'intro'; this.introT = 5; this.respawnRing(); this.showRole(); this.syncPuppets();
       return;
     }
     if (k === 'imDead') {
-      const v = this.players.get(m.v); if (!v) return; v.alive = false; v.killedBy = m.k;
+      const v = this.players.get(m.v); if (!v) return; v.alive = false; v.killedBy = m.k; this.replay && this.replay.event('kill', { v: m.v, k: m.k, p: m.p });
       const body = { id: m.v, at: V(m.p[0], m.p[1]), char: v.char, found: false }; this.bodies.push(body); this.makeBody(body);
       if (m.k === this.me) { this.killCD = IMP.KILL_CD; this.teleport(m.p[0], m.p[1]); }
       if (m.v === this.me) this.iDied(m.k, 'killed');
@@ -280,11 +284,11 @@ export class Imposter {
     if (k === 'imSync') { for (const id of m.dead) { const p = this.players.get(id); if (p) p.alive = false; } for (const id in m.done) { const p = this.players.get(id); if (p) for (const t of m.done[id]) p.done.add(t); } this.bar.done = m.bar;
       if (m.phase === 'play') { this.phase = 'play'; this.introT = 0; } if (m.sab) { this.sab = { k: m.sab.k, until: m.sab.left ? now() + m.sab.left : 0, fixed: {} }; this.sabAlert(true); } this.setFog(); this.syncPuppets(); return; }
     if (k === 'imBar') { this.bar.done = m.done; const p = this.players.get(m.who); if (p) p.done.add(m.task); if (m.who === this.me && TASK[m.task]) this.burst(V(...TASK[m.task].at).setY(1.3), [0xffd400, 0x39ff14, 0xffffff], 26); return; }
-    if (k === 'imMeet') { this.startMeeting(m); return; }
+    if (k === 'imMeet') { this.replay && this.replay.event(m.body ? 'report' : 'meeting', { by: m.by }); this.startMeeting(m); return; }
     if (k === 'imVoted') { if (this.meeting) this.meeting.voted.add(m.who); sfx('vote', null, 0.6); return; }
     if (k === 'imRes') { this.showResult(m); return; }
     if (k === 'imRound') { this.endMeeting(); return; }
-    if (k === 'imSabOn') { this.sab = { k: m.k, until: m.dur ? now() + m.dur : 0, fixed: {} }; this.sabCD = IMP.SAB_CD; this.sabAlert(true); return; }
+    if (k === 'imSabOn') { this.replay && this.replay.event('sab', { k: m.k }); this.sab = { k: m.k, until: m.dur ? now() + m.dur : 0, fixed: {} }; this.sabCD = IMP.SAB_CD; this.sabAlert(true); return; }
     if (k === 'imFixed') { if (this.sab) this.sab.fixed[m.part] = true; sfx('fixed', null, 0.7); return; }
     if (k === 'imSabOff') { if (this.sab) { this.sab = null; this.sabAlert(false); } if (this.panel.open && this.panel.cur && this.panel.cur.sabFix) this.panel.close(true); return; }
     if (k === 'imWin') { this.win(m); return; }
@@ -589,7 +593,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     const n = this.near(); if (!n.vent) return; this.setVent(n.vent);
   }
   // down a trapdoor: nobody sees you; press again to pop out at the next one, USE (or walking off) to climb out
-  setVent(v) { const was = this.vented; this.vented = v; if (!!was === !!v) return; const me = this.mine(); if (me) me.vent = !!v; this.net.send({ t: 'imVent', in: !!v }); sfx('vent', null, 0.8);
+  setVent(v) { const was = this.vented; this.vented = v; if (!!was === !!v) return; if (v && this.replay) this.replay.event('vent', { who: this.me }); const me = this.mine(); if (me) me.vent = !!v; this.net.send({ t: 'imVent', in: !!v }); sfx('vent', null, 0.8);
     this.g.player.menuLock = !!v; if (v) this.teleport(v.at[0], v.at[1]); this.syncPuppets(); }
   doSpectate() { const live = [...this.players.values()].filter(p => p.alive && p.id !== this.me); if (!live.length) { this.spect = null; return; } const i = live.findIndex(p => p.id === this.spect); this.spect = i + 1 >= live.length ? null : live[i + 1].id; this.toast(this.spect ? `WATCHING ${this.nameOf(this.spect).toUpperCase()}` : 'FREE GHOST'); }
   toast(s) { this.g.words && this.g.words.show(s, this.g.player.head.clone().addScaledVector(this.g.player.fwd, 0.8).add({ x: 0, y: 0.1, z: 0 }), '#ffd400', 0.07, 1.4); }
@@ -678,7 +682,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   ejectScreen(m) {
     const p = m.ej && this.players.get(m.ej), t0 = now(), name = p ? p.name.toUpperCase() : '';
     const l1 = p ? `${name} WAS THROWN OUT OF THE PUB.` : m.tie ? 'IT\'S A TIE. NOBODY WAS THROWN OUT.' : 'NOBODY WAS THROWN OUT. (SKIPPED)';
-    const l2 = p ? (m.wasImp ? `${name} WAS THE IMPOSTER.` : `${name} WAS NOT THE IMPOSTER.`) : '', l3 = `${m.impsLeft} IMPOSTER${m.impsLeft === 1 ? '' : 'S'} REMAIN${m.impsLeft === 1 ? 'S' : ''}`;
+    const l2 = p ? (!IMP.EJECTS ? `${name} WAS EJECTED.` : m.wasImp ? `${name} WAS THE IMPOSTER.` : `${name} WAS NOT THE IMPOSTER.`) : '', l3 = IMP.EJECTS ? `${m.impsLeft} IMPOSTER${m.impsLeft === 1 ? '' : 'S'} REMAIN${m.impsLeft === 1 ? 'S' : ''}` : 'NOBODY KNOWS IF THEY WERE...';      // (the room's SAY WHO WAS THE IMPOSTER: OFF keeps it secret)
     return { draw: (g) => { const t = now() - t0;
       const sky = g.createLinearGradient(0, 0, 0, 512); sky.addColorStop(0, '#05071a'); sky.addColorStop(1, '#1a1440'); g.fillStyle = sky; rr(g, 4, 4, 504, 504, 30); g.fill();
       for (let i = 0; i < 60; i++) { g.fillStyle = `rgba(255,255,255,${0.3 + (i % 5) * 0.12})`; g.fillRect((i * 97 + t * 30 * (1 + i % 3)) % 512, (i * 53) % 300, 2, 2); }
@@ -687,7 +691,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
       if (p) { const k = Math.min(1, t / 3.2), x = 70 + k * 520, y = 400 - Math.sin(k * Math.PI) * 220, im = portrait(p.char);
         g.save(); g.translate(x, y); g.rotate(t * 7); g.beginPath(); g.arc(0, 0, 46, 0, 7); g.clip(); if (im.complete && im.naturalWidth) g.drawImage(im, -46, -46, 92, 92); else { g.fillStyle = '#5b6cff'; g.fillRect(-46, -46, 92, 92); } g.restore(); }
       const typed = (s, at) => s.slice(0, Math.max(0, Math.floor((t - at) * 22)));
-      txt(g, typed(l1, 0.6), 256, 110, 24, '#fff'); if (l2) txt(g, typed(l2, 2.4), 256, 160, 24, m.wasImp ? '#ff5252' : '#4fc3ff'); txt(g, typed(l3, 3.6), 256, 210, 20, '#ffd400');
+      txt(g, typed(l1, 0.6), 256, 110, 24, '#fff'); if (l2) txt(g, typed(l2, 2.4), 256, 160, 24, !IMP.EJECTS ? '#ffffff' : m.wasImp ? '#ff5252' : '#4fc3ff'); txt(g, typed(l3, 3.6), 256, 210, 20, '#ffd400');
     } };
   }
   endMeeting() {
@@ -713,6 +717,8 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   }
   win(m) {
     this.phase = 'over'; this.panel.close(true); this.setVent(null); this.sabEl.classList.remove('on'); this.alertEl.classList.remove('on'); this.phase = 'over'; this.setFog();
+    // first the game's best moment, played back (impreplay.js); then the result
+    if (!this.replayDone && this.replay) { this.replayDone = true; if (this.replay.play(() => this.win(m))) return; }
     const imps = (this.impList || []).map(id => this.players.get(id)).filter(Boolean), me = this.mine(), mine = me && (m.side === 'imposter' ? this.impList.includes(this.me) : !this.impList.includes(this.me));
     sfx(mine ? 'fanfare' : 'sadviolin', null, 1);
     const playB = { x: 40, y: 430, w: 200, h: 56 }, lobbyB = { x: 272, y: 430, w: 200, h: 56 };
@@ -777,12 +783,23 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     room(-14.4, -9.72, -8.88, 2.04, '#e0e0e0', 'KITCHEN', 13); room(-14.4, -9.72, 2.04, 5.16, '#c9b8a0', '', 10); room(-9.72, 4.68, 7.92, 16.08, '#e8dcc0', 'CONSERVATORY', 14); room(4.68, 9.0, 7.92, 15.48, '#2c3e8f', 'GAMBLING', 12);
     // the bar
     poly([[2.2, -8.6], [3.0, -8.6], [3.0, -0.6], [4.6, -0.6], [4.6, 6.2], [3.8, 6.2], [3.8, 0.2], [2.2, 0.2]], '#c98a48', '', 12, '#5a2e14'); { const [u, v] = P(3.6, 2.6); txt(x, 'THE BAR', u, v, 12, '#fff'); }
+    // every table, counter, booth and fixture, from the level's own solid boxes (low and inside the map: not walls or the roof)
+    { const cols = (this.g.room && this.g.room.colliders) || []; x.fillStyle = 'rgba(30,16,8,0.32)'; x.strokeStyle = 'rgba(0,0,0,0.35)'; x.lineWidth = 1;
+      for (const c of cols) { if (c.max.y > 1.6 || c.min.y > 1.2) continue; const w = c.max.x - c.min.x, d = c.max.z - c.min.z; if (w > 6 || d > 6 || w * d < 0.04) continue;
+        if (c.max.x < Bx[0] || c.min.x > Bx[1] || c.max.z < Bz[0] || c.min.z > Bz[1]) continue;
+        const [u0, v0] = P(c.min.x, c.min.z), [u1, v1] = P(c.max.x, c.max.z); const ux = Math.min(u0, u1), vy = Math.min(v0, v1), uw = Math.abs(u1 - u0), vh = Math.abs(v1 - v0); x.fillRect(ux, vy, uw, vh); if (uw > 6 && vh > 6) x.strokeRect(ux, vy, uw, vh); } }
     for (const L of labels) fitLabel(...L);
     const dot = (X, Z, r, col, edge, label, lsz = 13, lcol = '#111') => { const [u, v] = P(X, Z); x.fillStyle = col; x.strokeStyle = edge || '#111'; x.lineWidth = 3; x.beginPath(); x.arc(u, v, r, 0, 7); x.fill(); if (edge) x.stroke(); if (label) txt(x, label, u, v + 1, lsz, lcol); };
     // the bell, the jobs, the fixes, the trapdoors, you
     dot(CENTRE.x, CENTRE.z, 12, '#d81b2a', '#fff', '🔔', 13);
     const me = this.mine();
-    if (me) for (const id of me.tasks) { const t = TASK[id], d = me.done.has(id); dot(t.at[0], t.at[1], 11, d ? '#39ff14' : '#ffd400', '#111', d ? '✓' : '!'); }
+    if (me) { const h0 = this.g.player.head; let near = null, nd = 1e9;
+      for (const id of me.tasks) { const t = TASK[id]; if (me.done.has(id)) continue; const dd = Math.hypot(t.at[0] - h0.x, t.at[1] - h0.z); if (dd < nd) { nd = dd; near = t; } }
+      // the way to your nearest job: a dashed line, and a ring pulsing round it
+      if (near) { const [a1, b1] = P(h0.x, h0.z), [a2, b2] = P(near.at[0], near.at[1]); x.save(); x.setLineDash([10, 8]); x.lineDashOffset = -performance.now() / 40; x.strokeStyle = 'rgba(255,212,0,0.85)'; x.lineWidth = 4; x.beginPath(); x.moveTo(a1, b1); x.lineTo(a2, b2); x.stroke(); x.restore();
+        const k = (performance.now() / 900) % 1; x.strokeStyle = `rgba(255,212,0,${1 - k})`; x.lineWidth = 4; x.beginPath(); x.arc(a2, b2, 12 + k * 22, 0, 7); x.stroke(); }
+      me.tasks.forEach((id, i) => { const t = TASK[id], d = me.done.has(id); dot(t.at[0], t.at[1], 11, d ? '#39ff14' : '#ffd400', '#111', d ? '✓' : String(i + 1));
+        if (!d) { const [u, v] = P(t.at[0], t.at[1]); const nm = (t.name || id).toUpperCase(); x.font = `900 11px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'top'; x.lineWidth = 3; x.strokeStyle = 'rgba(0,0,0,0.85)'; x.strokeText(nm, u, v + 14, 150); x.fillStyle = '#ffd400'; x.fillText(nm, u, v + 14, 150); } }); }
     if (this.sab) for (const pnt of this.sab.k === 'lights' ? [FUSE] : VALVES) dot(pnt.at[0], pnt.at[1], 13, '#ff3b3b', '#fff', '⚠', 14, '#fff');
     for (const c of CAMS) { const [u, w] = P(c.at[0], c.at[2]), [lu, lw] = P(c.look[0], c.look[2]), a0 = Math.atan2(lw - w, lu - u), L = Math.min(70, Math.hypot(lu - u, lw - w));
       x.fillStyle = this.camWatchers && this.camWatchers.size ? 'rgba(255,60,60,0.28)' : 'rgba(255,255,255,0.16)'; x.beginPath(); x.moveTo(u, w); x.arc(u, w, L, a0 - 0.5, a0 + 0.5); x.closePath(); x.fill(); x.fillStyle = '#222'; x.fillRect(u - 5, w - 4, 10, 8); }
@@ -791,12 +808,22 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     const Pl = this.g.player, h = Pl.head, [hu, hv] = P(h.x, h.z), [fu, fv] = P(h.x + Pl.fwd.x, h.z + Pl.fwd.z), a = Math.atan2(fu - hu, -(fv - hv));
     x.save(); x.translate(hu, hv); x.rotate(a); x.fillStyle = '#4fc3ff'; x.strokeStyle = '#fff'; x.lineWidth = 3; x.beginPath(); x.moveTo(0, -15); x.lineTo(11, 11); x.lineTo(0, 5); x.lineTo(-11, 11); x.closePath(); x.fill(); x.stroke(); x.restore();
     x.fillStyle = 'rgba(0,0,0,0.65)'; x.fillRect(0, 0, W, TOP - 4); txt(x, '🗺️ THE OYSTERFLEET', W / 2 - 60, TOP / 2 - 1, 22, '#ffd400');
+    // how it's going: your jobs and the team's bar, top right; what the marks mean, bottom left
+    if (me) { const mine = me.tasks.length ? `${me.tasks.filter(id => me.done.has(id)).length}/${me.tasks.length} JOBS` : ''; const team = this.bar && this.bar.total ? ` · TEAM ${Math.round(100 * this.bar.done / this.bar.total)}%` : '';
+      x.font = `900 15px ${FONT}`; x.textAlign = 'right'; x.textBaseline = 'middle'; x.fillStyle = '#39ff14'; x.fillText(this.amImp() ? '🔪 FAKE YOUR JOBS' : mine + team, W - 12, TOP / 2 - 1); }
+    { const items = [['#ffd400', '1', 'YOUR JOB'], ['#39ff14', '✓', 'DONE'], ['#d81b2a', '🔔', 'MEETING BELL'], ['#ff3b3b', '⚠', 'SABOTAGE: FIX'], ['#222', '📹', 'CAMERAS']].concat(this.amImp() ? [['#4e342e', '', 'TRAPDOOR (VENT)']] : []);
+      const LH = 22, bx = 10, by = H - 10 - items.length * LH - 12; x.fillStyle = 'rgba(0,0,0,0.6)'; rr(x, bx, by, 190, items.length * LH + 12, 10); x.fill();
+      items.forEach(([col, ic, t], i) => { const yy = by + 6 + i * LH + LH / 2; x.fillStyle = col; x.beginPath(); x.arc(bx + 16, yy, 8, 0, 7); x.fill(); x.font = '11px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff'; if (ic) x.fillText(ic, bx + 16, yy + 1);
+        x.font = `800 12px ${FONT}`; x.textAlign = 'left'; x.fillText(t, bx + 32, yy); }); }
   }
 
   // ------------------------------------------------------------------ every frame
   clearFood() { const it = this.g.items; if (!it) return; it.minFood = 0; it.respawnQueue.length = 0; for (const f of it.items.slice()) if (!f.def.prop) it.remove(f); }
+  // which part of the pub a spot's in (the nearest job's room)
+  roomNear(p) { let best = null, bd = 1e9; for (const t of TASKS) { const d = Math.hypot(t.at[0] - p[0], t.at[1] - p[1]); if (d < bd) { bd = d; best = t.room; } } return bd < 9 ? best : null; }
   update(dt) {
     const g = this.g, P = g.player, xr = g.renderer.xr.isPresenting;
+    if (this.replay) { if (this.phase === 'play') this.replay.record(dt); this.replay.update(dt); }
     if (this.needSpawn > 0 && --this.needSpawn === 0) this.respawnRing();          // (a frame in: everyone starts round the bell)
     if (this.host) this.hostUpdate(dt);
     if ((this.foodT = (this.foodT || 0) - dt) <= 0) { this.foodT = 1; this.clearFood(); }

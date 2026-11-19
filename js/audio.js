@@ -10,7 +10,11 @@ let master = null;
 const BUS = {}, MIX_KEYS = ['master', 'music', 'voices', 'fx', 'ambience', 'chat'];
 let MIX = { master: 1, music: 0.8, voices: 1, fx: 1, ambience: 0.8, chat: 1 };
 try { const m = JSON.parse(localStorage.getItem('rs_mix') || 'null'); if (m) for (const k of MIX_KEYS) if (typeof m[k] === 'number' && m[k] >= 0 && m[k] <= 1) MIX[k] = m[k]; } catch (e) {}
-function applyMix() { if (!ctx || !master) return; const t = ctx.currentTime; master.gain.setTargetAtTime(0.8 * MIX.master, t, 0.03); for (const k in BUS) BUS[k].gain.setTargetAtTime(MIX[k], t, 0.03); }
+function applyMix() { if (!ctx || !master) return; const t = ctx.currentTime; master.gain.setTargetAtTime(0.8 * MIX.master, t, 0.03); for (const k in BUS) BUS[k].gain.setTargetAtTime(k === 'voices' && npcMute ? 0 : MIX[k], t, 0.03); }
+// voice chat: while anyone's talking on it, the squad (NPCs) go quiet, so you can hear each other (voicechat.js)
+let npcMute = false;
+export function setNpcMute(on) { npcMute = !!on; applyMix(); if (npcMute) try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }
+export const npcMuted = () => npcMute;
 export function getMix() { return { ...MIX }; }
 export function setMix(k, v) { if (!MIX_KEYS.includes(k)) return; MIX[k] = Math.max(0, Math.min(1, +v || 0)); try { localStorage.setItem('rs_mix', JSON.stringify(MIX)); } catch (e) {} applyMix(); }
 export function mixGains() { const o = { master: master ? master.gain.value / 0.8 : null }; for (const k in BUS) o[k] = BUS[k].gain.value; return o; }      // (for the tests)
@@ -615,7 +619,7 @@ export function stopVoice(key) { const s = VPLAY.get(key); if (s) { try { s.stop
 
 // say something out loud with the device's speech voice, if it has one
 export function shout(text, { rate = 1, pitch = 1, volume = 0.8 } = {}) {
-  try { if (!window.speechSynthesis) return; const u = new SpeechSynthesisUtterance(text); u.rate = rate; u.pitch = pitch; u.volume = volume; window.speechSynthesis.speak(u); } catch (e) {}
+  try { if (!window.speechSynthesis || npcMute) return; const u = new SpeechSynthesisUtterance(text); u.rate = rate; u.pitch = pitch; u.volume = volume; window.speechSynthesis.speak(u); } catch (e) {}
 }
 
 // mute / unmute everything (pause menu)

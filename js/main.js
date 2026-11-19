@@ -30,6 +30,9 @@ import { foodGlow, warmFood } from './foods.js';
 import { EMOTES, CHAR_EMOTES, EmotePlayer, emoteInfo } from './emotes.js';
 import { mergeMaterialGroups, atlasSigns } from './perf.js';
 import { warmShaders, learnShaders } from './shaderwarm.js';
+import { track, trackMax } from './awards.js';
+import { roomNum } from './roomopts.js';
+import { VoiceChat } from './voicechat.js';
 import { sweep, releaseLevelGeometry, releaseTextures, noteLevelTextures, releaseLevelCanvases } from './memory.js';
 import { Music } from './music.js';
 import { PowerUps } from './powerups.js';
@@ -47,7 +50,11 @@ const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'pub', mode: 'e
 // ...and make sure everyone's actually arrived before the game starts (so nobody's invisible)
 { const st = document.getElementById('status'); let done = false;
   setTimeout(() => { if (!done && st) st.textContent = 'Getting the squad ready…'; }, 400);
-  await Promise.race([MODEL_LOAD, new Promise(r => setTimeout(r, 25000))]); done = true; }
+  window.__ls && window.__ls('squad');
+  await Promise.race([MODEL_LOAD, new Promise(r => setTimeout(r, 25000))]); done = true;
+  // (the place is built in one go next: tick the step and let it be drawn first. The loading animations keep going
+  // while it builds; in the headset the page's frames are paused, so don't wait long for one)
+  if (window.__ls) { window.__ls('place'); await new Promise(r => { let d = false; const go = () => { if (!d) { d = true; r(); } }; requestAnimationFrame(() => setTimeout(go, 0)); setTimeout(go, 60); }); } }
 
 // ---------------- renderer / scene ----------------
 // (a device or browser that can't do 3D at all: say so on the loading screen, instead of LOADING for ever)
@@ -55,7 +62,7 @@ let renderer;
 try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); }
 catch (e) {
   const ls = document.getElementById('loadscreen');
-  if (ls) { const t = ls.querySelector('.lst'), h = document.getElementById('ls-hint'); if (t) t.textContent = 'NO 3D ON THIS BROWSER';
+  if (ls) { clearInterval(ls._tips); const t = ls.querySelector('.lst'), h = document.getElementById('ls-hint');      // (the tips stop turning over: this message stays) if (t) t.textContent = 'NO 3D ON THIS BROWSER';
     if (h) h.textContent = "This browser can't show 3D right now. Try Chrome or Safari, switch on hardware acceleration in its settings, or close some tabs and restart it."; ls.classList.add('on', 'no3d'); }
   window.__crash && window.__crash('context', e, { where: 'no webgl' });
   throw e;
@@ -166,7 +173,7 @@ else {
 // a chair picked up: the space it stood in is free again
 room.takenBlocker = (b) => { physics.removeBox(b.x0, b.x1, b.z0, b.z1); const i = room.blockers.indexOf(b); if (i >= 0) room.blockers.splice(i, 1); };
 // a telly hit by something thrown: the screen cracks and goes dark, glass sprays out, a shower of sparks
-items.onTvSmash = (tv, p, u, v) => {
+items.onTvSmash = (tv, p, u, v) => { track('tvs');
   sfx('smash', p, 1);
   const c = document.createElement('canvas'); c.width = 256; c.height = 144; const g = c.getContext('2d');
   g.fillStyle = '#060708'; g.fillRect(0, 0, 256, 144);
@@ -190,6 +197,12 @@ items.onLand = (it, speed) => {
   G.lastLand = time;
   sfx(it.type === 'can' ? 'can' : /pint|glass|wine|cup/.test(it.type) ? 'glass' : 'land', it.pos, Math.min(1, speed / 4));
 };
+// PHYSICS FEEL: a hard landing kicks up a little puff of dust (and crumbs off food); a heavy one right by you jolts the view
+{ const _land = items.onLand;
+  items.onLand = (it, speed) => { _land(it, speed);
+    if (speed > 3.2) { const at = it.pos.clone(); at.y = Math.max(0.02, at.y - it.radius * 0.8);
+      crumbs.burst(at, it.def.drink || it.def.vessel || it.def.prop ? [0xd9d4c8, 0xbdb6a6, 0xeeeae0] : [0xc89850, 0xa8783a, 0xe0c080, 0xd9d4c8], Math.min(14, Math.round(speed * 2)), 0.5 + speed * 0.08);
+      if ((it.def.mass || 0) >= 1 && it.pos.distanceTo(player.head) < 3) player.shake(Math.min(0.8, speed / 8)); } }; }
 items.onSpawn = () => sfx('spawn', null, 0.15);
 player.onGrab = (it) => {
   // Supermarket Sweep: straight into the trolley
@@ -226,7 +239,7 @@ function openBag(bag) {
 function holdingMsg(it) { const n = (it.def.label || it.type).replace(/^Bottle off the back bar$/, 'bottle').toLowerCase(), a = /^[aeiou]/.test(n) ? 'an' : 'a';
   const t = `You're already holding ${/s$/.test(n) && !/ss$/.test(n) ? 'some' : a} ${n}!`; touch.hint(t); words.show(t.toUpperCase(), player.head.clone().addScaledVector(player.fwd, 0.8).add({ x: 0, y: -0.15, z: 0 }), '#ffd400', 0.07 * player.scale, 1.4); }
 player.onBlocked = (it) => holdingMsg(it);
-player.onRelease = (it, h, sp) => { if (sp > 2.5) sfx('throw', it.pos, Math.min(1, sp / 6)); if (sp > 1.2) try { mp.swing(h && h.handedness === 'left' ? 'L' : 'R'); } catch (e) {} };
+player.onRelease = (it, h, sp) => { if (sp > 1.2 || h && h.isFlat) track('throws'); if (sp > 2.5) sfx('throw', it.pos, Math.min(1, sp / 6)); if (sp > 1.2) try { mp.swing(h && h.handedness === 'left' ? 'L' : 'R'); } catch (e) {} };
 
 // anyone throwing anything at Ronnie
 function onThrow(start, vel, type, who, spec) {
@@ -308,6 +321,7 @@ function bite(it, hand) {
   const amount = (it.def.chonk / it.def.bites) * chonkMul();
   addChonk(amount);
   eatFeedback(amount);
+  track('bites'); if (it.def.drink) track('drinks'); trackMax('combo', G.combo);      // (the end-of-game awards)
   director.onAte(it, amount);
   if (it.bitesLeft <= 0) {
     setTimeout(() => sfx('gulp', null, 1), 220);
@@ -370,7 +384,7 @@ function poopOver(it) {
 }
 
 function gag(veg) {
-  const thrower = veg.thrower;
+  const thrower = veg.thrower; track('veg');
   director.onVegEaten();
   items.remove(veg);
   G.gagT = TUNING.gagTime;
@@ -538,7 +552,7 @@ function vegAndHits(dt) {
         const veg = !!it.def.veg;
         const mass = it.def.mass * (it.empty ? 0.3 : 1);
         _a.copy(it.vel).multiplyScalar(mass * 6);        // cartoon physics: food hits 6x harder than real life
-        const res = who.hitBy(part, it.pos, _a, veg);
+        const res = who.hitBy(part, it.pos, _a, veg); track('hits'); if (who === tommy) track('tommy');
         hitSfx('splat', it.pos, res === 'ko' ? 1 : 0.6);
         if (res === 'ko') words.show(veg ? 'RETURN TO SENDER!' : ['SPLAT!', 'WALLOP!', 'POW!'][Math.floor(Math.random() * 3)], it.pos.clone().add({ x: 0, y: 0.3, z: 0 }), veg ? '#7cff6a' : '#ff5a36', 0.25, 1.3);
         else words.show('SPLAT!', it.pos.clone().add({ x: 0, y: 0.2, z: 0 }), '#ff9a36', 0.16, 0.9);
@@ -579,7 +593,7 @@ const touch = setupTouch({
   },
   onEat: () => { const h = player.flatHolder?.held; if (h && h.def.gun && director.runpub && director.runpub.bar) { director.runpub.bar.toggleFlavour(); return; } if (h) player.flatEat(); },
   onThrow: () => player.flatThrow(),
-  onEmote: (id) => mp.emote(id),
+  onEmote: (id) => { track('emotes'); mp.emote(id); },
   onZoom: (dir) => { player.zoom = dir === undefined ? !player.zoom : dir; return player.zoom; },
   onSprint: () => { player.sprint = !player.sprint; sfx(player.sprint ? 'sprint' : 'walk', null, 0.4); return player.sprint; },
   onTap: (x, y) => {
@@ -796,6 +810,7 @@ function warmUpload() {
   setInterval(() => {
     if (!document.body.classList.contains('ready') || window.__glLost) return; ticks++;      // (nothing's let go of while the 3D context is lost: its objects belong to the old one)
     try {
+      if (ticks === 1) window.__ls && window.__ls('food');
       if (ticks === 1 && !renderer.xr.isPresenting) { warmUpload(); warmShaders(renderer, scene, camera).then(r => { window.__shaderWarm = r; }).catch(e => console.warn('shaders', e)); }      // (every shader built now, in the background: shaderwarm.js)
       if (!released && ticks > 2) { if (!releaseLevelGeometry(levelMeshes, 150)) released = true; }
       if (ticks > 2) { releaseTextures(renderer, scene); releaseLevelCanvases(renderer); }
@@ -820,9 +835,9 @@ const director = new Director({
   onGameOver: (lines) => gameOver(lines),
   // IMPOSTER (multiplayer): the whole game lives in imposter.js
   makeImposter: (n) => new Imposter({ scene, room, player, net, mp, words, renderer, camera, items, tommy, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b),
-    restart: () => hostNewGame(director.mode), leave: () => leaveGame() }, n),
+    restart: () => hostNewGame(director.fullMode), leave: () => leaveGame() }, n),
   hint: (t) => touch.hint(t),
-  stageName: () => stageNameOf(G.stage),
+  stageName: () => stageNameOf(G.stage), stageNo: () => G.stage,
   // points that pop bubbles / press board buttons: palms, fingertips and held food
   popPoints: (fingers) => {
     const pts = [];
@@ -937,7 +952,7 @@ let soundOff = false;
 document.getElementById('menu-btn').addEventListener('click', () => setPaused(true));
 document.getElementById('pause-resume').addEventListener('click', () => { initAudio(); setPaused(false); });
 document.getElementById('pause-restart').addEventListener('click', () => { hostNewGame(curMode()); });
-function curMode() { return director.noNpc ? 'roam0' : (director.mode || chosenMode()); }
+function curMode() { return director.mode ? director.fullMode : chosenMode(); }
 // the FPS / ping display (switched on and off from the pause menu; remembered on this device)
 const statsEl = document.createElement('div'); statsEl.id = 'net-stats';
 statsEl.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:max(6px,env(safe-area-inset-bottom));z-index:60;pointer-events:none;background:rgba(0,0,0,0.72);color:#fff;font:700 12px/1.2 ui-monospace,Menlo,monospace;padding:4px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.35);display:none;white-space:nowrap';
@@ -954,6 +969,7 @@ setInterval(() => { if (!showStats) return; const n = (window.ronnieMP && window
 document.getElementById('pause-mix').addEventListener('click', () => { buildMix(document.getElementById('pause-mix-body')); pauseEl.classList.add('show-mix'); });
 document.getElementById('pause-mix-back').addEventListener('click', () => pauseEl.classList.remove('show-mix'));
 // the buzz: VR controllers' rumble while in the headset, and where your head is (only your own sounds buzz)
+haptics.hookShake((k) => player.shake(k));
 haptics.hook((strength, ms) => { if (!renderer.xr.isPresenting) return false; for (const h of player.hands) if (h.source && h.pulse) h.pulse(strength, Math.max(20, ms)); return true; }, () => player.head);
 document.getElementById('pause-sound').addEventListener('click', (e) => { soundOff = !soundOff; e.currentTarget.textContent = soundOff ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'; });
 document.getElementById('pause-quit').addEventListener('click', () => {
@@ -976,14 +992,16 @@ const PAUSE_MODES = {
   date: ['💜', 'DATE NIGHT', 'Eat when Chloe looks away'],
   roam: ['🚶', 'FREE ROAM · WITH THE SQUAD', 'Have a look round. Everyone\'s about, nobody attacks'],
   roam0: ['🧍', 'FREE ROAM · JUST YOU', 'The place to yourself: no NPCs at all'],
-  runpub: ['🍺', 'RUN THE PUB', 'Behind the bar: serve the punters, sort out the trouble'],
+  runpub1: ['🌙', 'RUN THE PUB · QUIET NIGHT', 'Easy: a few regulars, plenty of patience'],
+  runpub: ['🍺', 'RUN THE PUB · FRIDAY NIGHT', 'Behind the bar: serve the punters, sort out the trouble'],
+  runpub3: ['🔥', 'RUN THE PUB · CUP FINAL', 'Hard: rammed, impatient, kicking off. Big tips though'],
   imposter: ['🔪', 'IMPOSTER · 1 IMPOSTER', 'Multiplayer: do your jobs, find the imposter, vote them out'],
   imposter2: ['🔪', 'IMPOSTER · 2 IMPOSTERS', 'Multiplayer: two imposters among you (5+ players)'],
 };
-const PLACE_GAMES = { pub: ['everyone', 'runpub', 'imposter', 'imposter2', 'chonkoff', 'chonkoff2', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam', 'roam0'], shop: ['sweep', 'roam', 'roam0'], garden: ['bbq', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'] };
-const modeTitle = () => { const m = director.mode; return (PAUSE_MODES[m] && PAUSE_MODES[m][1]) || (m === 'classic' ? 'CLASSIC' : m === 'intervention' ? 'THE SQUAD' : (m || '').toUpperCase()); };
+const PLACE_GAMES = { pub: ['everyone', 'runpub1', 'runpub', 'runpub3', 'imposter', 'imposter2', 'chonkoff', 'chonkoff2', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam', 'roam0'], shop: ['sweep', 'roam', 'roam0'], garden: ['bbq', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'] };
+const modeTitle = () => { const m = director.fullMode; return (PAUSE_MODES[m] && PAUSE_MODES[m][1]) || (m === 'classic' ? 'CLASSIC' : m === 'intervention' ? 'THE SQUAD' : (m || '').toUpperCase()); };
 function showPauseModes() {
-  const list = document.getElementById('pause-mode-list'), cur = director.mode;
+  const list = document.getElementById('pause-mode-list'), cur = director.fullMode;
   list.innerHTML = (PLACE_GAMES[room.placeId] || PLACE_GAMES.bedroom).filter(id => net.connected || !PAUSE_MODES[id] || !id.startsWith('imposter')).map(id => { const [ico, name, desc] = PAUSE_MODES[id];
     return `<button class="alt mode-opt${id === cur ? ' cur' : ''}" data-id="${id}">${ico} ${name}<small>${id === cur ? 'Playing now · tap to restart' : desc}</small></button>`; }).join('');
   list.querySelectorAll('.mode-opt').forEach(b => b.addEventListener('click', () => {
@@ -1014,7 +1032,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && pla
 
 // the loading screen goes once the first frame of the level has been drawn
 let loadShown = true;
-function hideLoading() { if (!loadShown) return; loadShown = false; const ls = document.getElementById('loadscreen'); if (ls && ls.classList.contains('on')) { ls.classList.add('fade'); setTimeout(() => ls.classList.remove('on', 'fade'), 320); } }
+function hideLoading() { if (!loadShown) return; loadShown = false; const ls = document.getElementById('loadscreen'); if (ls && ls.classList.contains('on')) { window.__ls && window.__ls('go'); setTimeout(() => { ls.classList.add('fade'); setTimeout(() => ls.classList.remove('on', 'fade'), 320); }, 220); } }
 const menuCam = new THREE.PerspectiveCamera(70, 1, 0.05, 40), menuShot = { t: 0, yaw: 0, dir: 1 };
 // ---------------- the pause menu in the headset ----------------
 // The phone's pause menu, drawn on a panel that floats in front of you: point a controller (or your hand) at a
@@ -1114,7 +1132,7 @@ const vrEmote = (() => {
       const ax = gp && (gp.axes.length >= 4 ? gp.axes[2] : gp.axes[0]) || 0, ay = gp && (gp.axes.length >= 4 ? gp.axes[3] : gp.axes[1]) || 0;
       if (page < 0) { if (Math.abs(ax) > 0.55) { const i = ax < 0 ? 0 : 1; if (i !== sel) { sel = i; h && h.pulse && h.pulse(0.3, 20); } } }
       else if (Math.hypot(ax, ay) > 0.55) { let a = Math.atan2(ay, ax) + Math.PI / 2; const n = L.length; a = ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); const i = Math.round(a / (2 * Math.PI / n)) % n; if (i !== sel) { sel = i; h && h.pulse && h.pulse(0.3, 20); } }
-      if (ok && !okWas && sel >= 0) { const e = L[sel]; if (e.id === '__def' || e.id === '__own' || e.id === '__back') { page = e.id === '__def' ? 0 : e.id === '__own' ? 1 : -1; sel = -1; drawn = ''; h && h.pulse && h.pulse(0.5, 30); } else { close(); mp.emote(e.id); } }
+      if (ok && !okWas && sel >= 0) { const e = L[sel]; if (e.id === '__def' || e.id === '__own' || e.id === '__back') { page = e.id === '__def' ? 0 : e.id === '__own' ? 1 : -1; sel = -1; drawn = ''; h && h.pulse && h.pulse(0.5, 30); } else { close(); track('emotes'); mp.emote(e.id); } }
       if (open) draw();
     }
     okWas = ok;
@@ -1227,6 +1245,7 @@ function frame(simDt) {
     player.setScale(G.scaleFrom + (G.scaleTo - G.scaleFrom) * elasticOut(G.scaleT));
   }
 
+  { const rp = player.rig.position, lw = G.lastWalk || (G.lastWalk = rp.clone()), d = Math.hypot(rp.x - lw.x, rp.z - lw.z); if (d < 2 && director.running && !G.over) track('walk', d); lw.copy(rp); }      // (how far you walked: the awards)
   player.update(dt, time); player.updateFace(dt);
   net.update(dt, player, G, scene);
 
@@ -1337,7 +1356,7 @@ function frame(simDt) {
   _b.set(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(_q));
   setListener(player.head, player.fwd, _b);
 
-  if (simDt == null) renderer.render(scene, emoteCam() || camera);
+  if (simDt == null) renderer.render(scene, (director.imposter && director.imposter.replay && director.imposter.replay.cam) || emoteCam() || camera);      // (Imposter's end-of-game replay films from its own camera)
   learnShader();      // (a shader built during play: remember its kind, so next time it's built up front)
 }
 // your own emote, on a phone or a computer: the camera swings round in front of you so you can watch your character do
@@ -1443,6 +1462,48 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
   net.on.ver = (m) => { if (vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; showBanner('YOUR MATE HAS A NEWER VERSION', 'UPDATING...');
     setTimeout(() => { location.href = location.pathname + '?lobby=' + encodeURIComponent(net.code || '') + '&u=' + Date.now(); }, 1600); } };
   const sayVer = () => net.send({ t: 'ver', v: window.GAME_BUILD }); if (net.connected) sayVer(); const j0 = net.on.join; net.on.join = (m) => { j0 && j0(m); sayVer(); };
+// ---------------- VOICE CHAT (multiplayer, off until you turn it on): the 🎙️ button under CHAT, who's talking down the
+// left side and on their name tags; the squad go quiet while anyone's on it (voicechat.js)
+const voice = new VoiceChat(net); window.__voice = voice;
+{ const vOn = (m, p) => voice.onMsg(m, p); net.on.vc = vOn; net.on.rtc = vOn;
+  const l0 = net.on.leave; net.on.leave = (m) => { l0 && l0(m); if (m && m.id != null) voice.left(m.id); };
+  const j1 = net.on.join; net.on.join = (m) => { j1 && j1(m); if (voice.on && m && m.id != null) net.send({ t: 'vc', to: m.id, on: 1, m: voice.muted ? 1 : 0 }); };
+  const st = document.createElement('style'); st.textContent = `
+#vc-bar { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 78px); right: max(10px, env(safe-area-inset-right)); z-index: 20; display: none; gap: 6px; }
+body.flat.mpon #vc-bar { display: flex; } body:not(.mpon) #pause-voice { display: none; } body.gameover #vc-bar, body.gameover #vc-list { display: none !important; }
+#vc-bar button { font: 900 12px Arial, sans-serif; padding: 8px 12px; border-radius: 12px; border: 2px solid transparent; background: rgba(0,0,0,0.6); color: #fff; cursor: pointer; }
+#vc-bar #vc-btn.on { background: rgba(20,120,40,0.85); border-color: #39ff14; } #vc-bar #vc-btn.talk { box-shadow: 0 0 0 3px #39ff14, 0 0 14px #39ff14; }
+#vc-bar #vc-mute { display: none; } #vc-bar.on #vc-mute { display: block; } #vc-bar #vc-mute.on { background: rgba(160,20,20,0.85); border-color: #ff3b3b; }
+#vc-list { position: fixed; left: max(10px, env(safe-area-inset-left)); top: 42%; z-index: 19; display: none; flex-direction: column; gap: 5px; pointer-events: none; }
+body.mpon #vc-list.any { display: flex; }
+#vc-list div { display: flex; align-items: center; gap: 6px; font: 800 12px Arial, sans-serif; color: #fff; background: rgba(0,0,0,0.55); padding: 4px 9px 4px 4px; border-radius: 999px; border: 2px solid transparent; transition: border-color .12s, transform .12s, background .12s; }
+#vc-list div img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; background: #222; }
+#vc-list div.talk { border-color: #39ff14; background: rgba(20,90,30,0.8); transform: scale(1.08); } #vc-list div.mute { opacity: 0.6; }
+#vc-err { position: fixed; left: 50%; top: 30%; transform: translateX(-50%); z-index: 46; display: none; max-width: min(360px, 90vw); font: 800 14px Arial, sans-serif; color: #fff; background: rgba(120,20,20,0.95); padding: 12px 14px; border-radius: 14px; text-align: center; }`;
+  document.head.appendChild(st);
+  const bar = document.createElement('div'); bar.id = 'vc-bar'; bar.innerHTML = '<button id="vc-btn" type="button">🎙️ VOICE: OFF</button><button id="vc-mute" type="button" aria-label="Mute my microphone">🔇</button>'; document.body.appendChild(bar);
+  const list = document.createElement('div'); list.id = 'vc-list'; document.body.appendChild(list);
+  const err = document.createElement('div'); err.id = 'vc-err'; document.body.appendChild(err);
+  const btn = bar.querySelector('#vc-btn'), mute = bar.querySelector('#vc-mute');
+  const draw = () => { btn.classList.toggle('on', voice.on); bar.classList.toggle('on', voice.on); btn.textContent = voice.starting ? '🎙️ …' : voice.on ? '🎙️ VOICE: ON' : '🎙️ VOICE: OFF';
+    mute.classList.toggle('on', voice.muted); mute.textContent = voice.muted ? '🔇 MUTED' : '🎤';
+    const rows = []; if (voice.on) rows.push({ id: 'me', name: (net.name || 'You') + ' (you)', char: net.char, m: voice.muted });
+    for (const [id, o] of voice.remoteOn) { const p = net.players.get(id); rows.push({ id, name: p ? p.name || 'Player' : 'Player', char: p && p.char, m: o.muted }); }
+    list.innerHTML = rows.map(r => `<div data-v="${String(r.id).replace(/"/g, '')}" class="${r.m ? 'mute' : ''}"><img src="./assets/portraits/${r.char === 'ronnie' || !r.char ? 'ronnie' : r.char}.webp" alt="">${r.m ? '🔇 ' : '🎙️ '}<span></span></div>`).join('');
+    [...list.children].forEach((d, i) => { d.querySelector('span').textContent = rows[i].name; d.querySelector('img').onerror = function () { this.style.visibility = 'hidden'; }; });
+    list.classList.toggle('any', rows.length > 0);
+    if (voice.err) { err.textContent = '🎙️ ' + voice.err; err.style.display = 'block'; clearTimeout(err._t); err._t = setTimeout(() => { err.style.display = 'none'; voice.err = ''; }, 4500); } };
+  const pv = document.getElementById('pause-voice');
+  if (pv) pv.addEventListener('click', () => btn.click());      // (the pause menu has it too: that's the way in from VR)
+  voice.onChange = () => { draw(); if (pv) pv.textContent = voice.on ? (voice.muted ? '🎙️ VOICE CHAT: ON (MUTED)' : '🎙️ VOICE CHAT: ON · TAP TO LEAVE') : '🎙️ VOICE CHAT: OFF · TAP TO JOIN'; };
+  voice.onChange();
+  btn.addEventListener('click', async () => { if (voice.on) { voice.stop(); sfx('mic_off', null, 0.6); } else { draw(); if (await voice.start()) sfx('mic_on', null, 0.6); } draw(); });
+  mute.addEventListener('click', () => { voice.setMuted(!voice.muted); });
+  // who's talking: their tag glows, their row down the side lights up, your button glows when it's you
+  voice.onLevels = (lv) => { for (const p of net.players.values()) if (p.avatar && p.avatar.setSpeaking) p.avatar.setSpeaking(lv.get(p.id) || 0);
+    btn.classList.toggle('talk', (lv.get('me') || 0) > 0);
+    for (const d of list.children) { const v = lv.get(d.dataset.v === 'me' ? 'me' : d.dataset.v) || 0; d.classList.toggle('talk', v > 0); } };
+}
   // the host started a new game (changed the mode, or restarted): everyone starts it, back at the start of the map
   net.on.restart = (m) => { if (net.host || !m.mode) return; newGame(m.mode, 'NEW GAME'); };
   if (net.connected) chip();
@@ -1455,7 +1516,7 @@ Character.hearers = () => { const a = [player.head]; if (net.connected && mp.hos
 director.startRemote = (id) => { if (!net.host && director.mode && (PAUSE_MODES[id] || id === 'imposter')) newGame(id, 'NEW GAME'); };
 // power-ups turn up in the eating games (not Run the Pub, the Sweep or Imposter)
 powerups = new PowerUps({ scene, room, items, player, sfx, words, net, mp, eatWhole: (it) => hooverEat(it),
-  enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter'].includes(director.mode) });
+  enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter'].includes(director.mode) && roomNum('powerups') > 0 });
 mp.selfBody = () => selfBody;      // (your emotes play on your own body too)
 mp.onChat = (text, p) => { chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text); if (!p) voiceLine(net.char, text, player.head, { key: 'chat_me' }); };      // (you hear your own message in your character's voice too)
 mp.voiceWarm = (text) => VOICED.has(net.char) ? warmLine(net.char, text) : null;      // (voices.js)
@@ -1482,10 +1543,15 @@ net.makeAvatar = (p) => { if (!p.char || (p.char !== 'tommy' && !SQUAD_MP[p.char
 const _Y = new THREE.Vector3(0, 1, 0);
 function yawOfQ(q) { const f = new THREE.Vector3(0, 0, -1).applyQuaternion(new THREE.Quaternion(q[0], q[1], q[2], q[3])); return Math.atan2(f.x, f.z); }
 function localHand(m) { const v = new THREE.Vector3(m.rh[0] - m.h[0], m.rh[1] - m.h[1], m.rh[2] - m.h[2]).applyAxisAngle(_Y, -yawOfQ(m.q)); return [v.x, v.y, v.z]; }
+// the squad's faces for the name tags (loaded once each; every tag waiting on one is redrawn when it arrives)
+const PORTRAITS = new Map();
+function portrait(ch, onload) { if (!ch) return null; let e = PORTRAITS.get(ch);
+  if (!e) { const img = new Image(); e = { img, wait: [] }; PORTRAITS.set(ch, e); img.onload = () => { const w = e.wait; e.wait = []; for (const f of w) try { f(); } catch (er) {} }; img.onerror = () => { e.wait = []; }; img.src = `./assets/portraits/${ch}.webp`; }
+  if (!e.img.complete && onload && e.wait.length < 30) e.wait.push(onload); return e.img; }
 class SquadPuppet {
   constructor(p) { this.c = p.char === 'tommy' ? (() => { const t = new Tommy(scene, room, physics); t.load(); return t; })() : new SquadMemberMP(scene, room, physics, p.char, [0, 0, 0], director); this.c.attacks = false; this.c.mpPuppet = true; this.c.active = false; this.pos = new THREE.Vector3(); this.yaw = 0; this.rh = new THREE.Vector3(); this.lh = new THREE.Vector3(); this.first = true; this.c.name = p.name || this.c.name;
     // a name tag over their head (so you can tell a real player from the squad): their name, and who they're playing as
-    this.p = p; this.tagC = document.createElement('canvas'); this.tagC.width = 320; this.tagC.height = 96; this.tagTex = new THREE.CanvasTexture(this.tagC); this.tagTex.colorSpace = THREE.SRGBColorSpace;
+    this.p = p; this.tagC = document.createElement('canvas'); this.tagC.width = 400; this.tagC.height = 120; this.tagTex = new THREE.CanvasTexture(this.tagC); this.tagTex.colorSpace = THREE.SRGBColorSpace;
     this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; this.tag.userData.remoteRonnie = !p.self; scene.add(this.tag); this.drawTag();
     this.down = 0; this.hT = {}; this.armW = { R: 0, L: 0 }; this.armT = { R: 0, L: 0 }; this.prevH = { R: new THREE.Vector3(), L: new THREE.Vector3() }; this.swingT = 0;
     this.c.rag.constrain = null;      // (a real player: where they are is where they are. Pushing them out of the tables made them jump about as they walked past)
@@ -1693,10 +1759,30 @@ class SquadPuppet {
     for (const [n, d] of [['uArm' + side, du], ['lArm' + side, dl]]) { const rest = r.pose[n].clone(); r.aim(n, d.x, d.y, d.z); r.pose[n].copy(rest.slerp(r.pose[n], w)); }
   }
   swing(side = 'R') { this.swingT = 0.38; this.swingSide = side; }
-  drawTag() { const x = this.tagC.getContext('2d'), nm = (this.p.name || 'PLAYER').toUpperCase(); this.tagName = this.p.name; x.clearRect(0, 0, 320, 96);
-    x.fillStyle = 'rgba(10,14,30,0.85)'; x.beginPath(); x.roundRect(4, 4, 312, 88, 22); x.fill(); x.lineWidth = 5; x.strokeStyle = this.tagRed ? '#ff3b3b' : '#39ff14'; x.stroke();
-    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; let f = 40; do { x.font = `900 ${f}px Arial`; f -= 2; } while (x.measureText(nm).width > 290 && f > 16); x.fillText(nm, 160, 38);
-    x.fillStyle = this.tagRed ? '#ff6b6b' : '#c9d3ff'; x.font = '700 20px Arial'; x.fillText((this.tagRed ? '🔪 IMPOSTER · ' : '👤 PLAYER · ') + 'as ' + (this.p.char === 'tommy' ? 'Tommy' : SQUAD_MP[this.p.char]?.name || this.c.name), 160, 74); this.tagTex.needsUpdate = true; }
+  // NAME TAG: their character's face, their name, who they're playing as (and 👑 if they're the host), how big they've
+  // got (the pips along the bottom), how good their connection is (the bars), and a green glow while they're talking
+  drawTag() { const x = this.tagC.getContext('2d'), p = this.p, nm = (p.name || 'PLAYER').toUpperCase(), W = 400, H = 120; this.tagName = p.name; this.tagKey = this.tagState(); x.clearRect(0, 0, W, H);
+    const talk = this.speaking > 0.05, edge = this.tagRed ? '#ff3b3b' : talk ? '#39ff14' : p.host ? '#ffd400' : '#5b7cff';
+    x.fillStyle = 'rgba(10,14,30,0.86)'; x.beginPath(); x.roundRect(5, 5, W - 10, H - 10, 26); x.fill(); x.lineWidth = talk ? 9 : 6; x.strokeStyle = edge; x.stroke();
+    // their face
+    const img = portrait(p.char, () => this.drawTag()), cx = 62, cy = H / 2, r = 42;
+    x.save(); x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fillStyle = '#1e2a5a'; x.fill(); x.clip(); if (img && img.complete && img.naturalWidth) x.drawImage(img, cx - r, cy - r, r * 2, r * 2); x.restore();
+    x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.lineWidth = 4; x.strokeStyle = edge; x.stroke();
+    if (p.host) { x.font = '30px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('👑', cx + 30, cy - 34); }
+    if (talk) { x.font = '28px sans-serif'; x.textAlign = 'center'; x.fillText('🎙️', cx - 32, cy + 32); }
+    // the name and who they are
+    const tx = 118, tw = W - tx - 62; x.textAlign = 'left'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; let f = 40; do { x.font = `900 ${f}px Arial`; f -= 2; } while (x.measureText(nm).width > tw && f > 16); x.fillText(nm, tx, 38, tw);      // (a very long name squeezes in rather than run into the bars)
+    const who = p.char === 'tommy' ? 'Tommy' : SQUAD_MP[p.char]?.name || this.c.name;
+    x.fillStyle = this.tagRed ? '#ff6b6b' : '#c9d3ff'; f = 21; const sub = (this.tagRed ? '🔪 IMPOSTER · ' : p.host ? 'HOST · ' : '') + 'as ' + who; do { x.font = `700 ${f}px Arial`; f--; } while (x.measureText(sub).width > tw + 50 && f > 12); x.fillText(sub, tx, 70, tw + 50);
+    // how big they've got: ten pips
+    const st = Math.max(0, Math.min(10, (p.pose && p.pose.st || 0) + 1));
+    for (let i = 0; i < 10; i++) { x.fillStyle = i < st ? (i >= 7 ? '#ff5a36' : i >= 4 ? '#ffb020' : '#39ff14') : 'rgba(255,255,255,0.18)'; x.beginPath(); x.roundRect(tx + i * 22, 90, 18, 12, 4); x.fill(); }
+    // their connection: three bars (green: fine; yellow: a bit behind; red: struggling)
+    const q = this.tagNet || 3, col = q >= 3 ? '#39ff14' : q === 2 ? '#ffd400' : '#ff3b3b';
+    for (let i = 0; i < 3; i++) { x.fillStyle = i < q ? col : 'rgba(255,255,255,0.2)'; const bh = 10 + i * 9; x.fillRect(W - 52 + i * 12, 44 - bh / 2 + 6, 8, bh); }
+    this.tagTex.needsUpdate = true; }
+  // what the tag shows (redrawn only when this changes)
+  tagState() { const p = this.p; return [p.name, p.char, p.host ? 1 : 0, this.tagRed ? 1 : 0, this.speaking > 0.05 ? 1 : 0, p.pose && p.pose.st || 0, this.tagNet || 3].join('|'); }
   // a chat message: a black speech bubble over their head (black, so you can tell it from the squad's white ones)
   chat(text) {      // (a real voice: the bubble comes up as their voice starts; voices.js)
     if (this.p.self || !voiceLine(this.p.char, text, this.c.headPos(new THREE.Vector3()), { key: 'chat_' + (this.p.id || this.p.name), onStart: (dur) => this.drawChat(text, dur) })) this.drawChat(text, 0);
@@ -1713,7 +1799,12 @@ class SquadPuppet {
     this.chatT.needsUpdate = true; this.chatS.scale.set(0.9, 0.9 * 200 / 512, 1); this.chatS.visible = true; this.chatUntil = performance.now() + Math.max(2500 + text.length * 70, dur * 1000 + 600);
   }
   placeTag() { if (this.chatS) { const on = performance.now() < this.chatUntil; this.chatS.visible = on; if (on) { const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())); this.chatS.position.set(h.x, h.y + (this.p.self ? 0.4 : 0.6), h.z); } }
-    if (this.p.self) return; if (this.p.name !== this.tagName) { this.c.name = this.p.name || this.c.name; this.drawTag(); } const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())); this.tag.position.set(h.x, h.y + 0.42, h.z); }
+    if (this.p.self) return; if (this.p.name !== this.tagName) this.c.name = this.p.name || this.c.name;
+    const now = performance.now(); if (!(now < this.tagCheck)) { this.tagCheck = now + 400; const age = now - (this.p.at || now); this.tagNet = age < 600 ? 3 : age < 1600 ? 2 : 1; if (this.tagState() !== this.tagKey) this.drawTag(); }
+    const h = this.c.rag.drawn(this.c.headPos(new THREE.Vector3())), d = h.distanceTo(player.head), k = THREE.MathUtils.clamp(d / 5, 1, 2.4);      // (further away, a bit bigger, so you can still read it)
+    this.tag.scale.set(0.56 * k, 0.168 * k, 1); this.tag.position.set(h.x, h.y + 0.34 + 0.084 * k, h.z); this.tag.material.opacity = d > 30 ? Math.max(0, 1 - (d - 30) / 10) : 1; }
+  // voice chat: how loud they are right now (0..1). The tag glows green, a mic shows, and their name pulses a little
+  setSpeaking(v) { const was = this.speaking > 0.05; this.speaking = v; if ((v > 0.05) !== was && !this.p.self) this.drawTag(); }
   flinch(v) { this.c.flinch(v.clone ? v.clone() : new THREE.Vector3(v.x, 0, v.z), 1); }
   // a proper hit: go limp and fly, same as the NPCs (a light one is just a flinch)
   knock(v, s, at) {
