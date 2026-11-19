@@ -149,6 +149,7 @@ export default async function () {
       try {
         await startGame(p, { place: 'garden', mode: 'boss', extra: '&boss=chloe' });
         const r = await p.evaluate(() => { RS.renderer.setAnimationLoop(null); RS.sim(8, 1 / 30); const B = RS.director.boss, P = RS.player;
+          for (let i = 0; i < 300 && (B.shielded || B.st === 'charge'); i++) RS.sim(1 / 30, 1 / 30);      // (not mid-roar or mid-charge: a hit then is BLOCKED or misses, which isn't what's being checked)
           const it = RS.items.items.find(i => !i.dead && !i.heldBy && !i.def.veg && !i.def.prop); P.flatGrab(it);
           const hd = B.drawn(B.c.rag.pos('chest', new RS.THREE.Vector3())), cam = P.camera; cam.updateMatrixWorld(); const v = hd.clone().project(cam);
           const ray = new RS.THREE.Raycaster(); ray.setFromCamera(new RS.THREE.Vector2(v.x, v.y), cam);
