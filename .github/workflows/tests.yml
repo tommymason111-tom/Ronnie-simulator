@@ -25,8 +25,8 @@ jobs:
           cache-dependency-path: tests/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - name: Quick tests (static checks, server, VR, hostile messages)
-        run: node run.mjs lint server vr netfuzz talk cutscene perf
+      - name: Quick tests (static checks, server, VR, hostile messages, sound effects)
+        run: node run.mjs lint server vr netfuzz talk cutscene perf sounds
       - name: Two games playing together
         run: node run.mjs mp
       - name: Every place and mode

@@ -116,7 +116,7 @@ function env(g, t, a, peak, dec) {
 }
 
 function noise(dest, t, dur, type, freq, q, peak, attack = 0.005) {
-  const src = ctx.createBufferSource(); src.buffer = noiseBuf;
+  const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;      // (looped: the buffer's only a second long, and a long hiss used to stop dead part-way through)
   src.playbackRate.value = 0.7 + Math.random() * 0.6;
   const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
   const g = ctx.createGain(); env(g, t, attack, peak, dur);
@@ -234,7 +234,7 @@ const SOUNDS = {
     });
   },
   thud(d, t) { tone(d, t, 'sine', 90, 40, 0.12, 0.5); noise(d, t, 0.06, 'lowpass', 500, 1, 0.3); },
-  shutter(d, t) { noise(d, t, 0.03, 'highpass', 3000, 1, 0.5, 0.001); noise(d, t + 0.06, 0.04, 'bandpass', 2000, 2, 0.4, 0.001); },
+  shutter(d, t) { noise(d, t, 0.03, 'highpass', 3000, 1, 0.5, 0.001); noise(d, t + 0.06, 0.04, 'bandpass', 2000, 2, 0.4, 0.001); const o = tone(d, t + 0.12, 'sawtooth', 220, 260, 0.14, 0.07, 0.01); wobble(o, t + 0.12, 0.16, 60, 40); },      // a camera: click-clack and the film winding on
   sizzle(d, t) { noise(d, t, 1.6, 'highpass', 4000, 0.5, 0.25, 0.1); },
   fizz(d, t) { noise(d, t, 1.2, 'bandpass', 5000, 0.8, 0.5, 0.02); tone(d, t, 'sine', 200, 900, 0.3, 0.2); },
   whistle(d, t) { tone(d, t, 'sine', 2600, 2700, 0.12, 0.3); tone(d, t + 0.18, 'sine', 2600, 2400, 0.35, 0.3); },
@@ -256,7 +256,7 @@ const SOUNDS = {
   spawn(d, t) { for (let i = 0; i < 3; i++) tone(d, t + i * 0.04, 'sine', 1400 + i * 500, 1600 + i * 500, 0.08, 0.25, 0.003); },   // something appears: a sparkle
   pickup(d, t) { noise(d, t, 0.05, 'bandpass', 3200, 1.5, 0.35, 0.002); tone(d, t, 'sine', 520, 820, 0.05, 0.25, 0.002); },         // grabbed: a rustle and an upward blip
   sprint(d, t) { const f = noise(d, t, 0.32, 'bandpass', 600, 1.8, 0.45, 0.04); f.frequency.exponentialRampToValueAtTime(3200, t + 0.32); tone(d, t, 'triangle', 220, 440, 0.25, 0.12, 0.02); },
-  walk(d, t) { const f = noise(d, t, 0.25, 'bandpass', 2400, 1.8, 0.3, 0.02); f.frequency.exponentialRampToValueAtTime(500, t + 0.25); },
+  walk(d, t) { const f = noise(d, t, 0.25, 'bandpass', 2400, 1.8, 0.3, 0.02); f.frequency.exponentialRampToValueAtTime(500, t + 0.25); tone(d, t, 'triangle', 440, 220, 0.25, 0.12, 0.02); },      // sprint off: slowing down
   // ---- money, machines, bells
   coin(d, t) {          // the till: ka-CHING
     noise(d, t, 0.05, 'bandpass', 1800, 2, 0.4, 0.002); click(d, t + 0.02, 900, 0.4);
@@ -292,7 +292,7 @@ const SOUNDS = {
   throw(d, t) { const f = noise(d, t, 0.22, 'bandpass', 900, 3, 0.9, 0.03); f.frequency.exponentialRampToValueAtTime(260, t + 0.22); },     // something flung: a falling swish
   dart(d, t) { click(d, t, 3200, 0.45); tone(d, t, 'sine', 300, 180, 0.06, 0.4, 0.001); noise(d, t + 0.005, 0.04, 'lowpass', 1200, 1, 0.25, 0.001); },   // a dart hitting the board: thunk
   paddle(d, t) { bell(d, t, 540, 0.09, 0.55); click(d, t, 4200, 0.4); noise(d, t, 0.02, 'bandpass', 1100, 3, 0.3, 0.001); },                          // the ping pong bat: tock
-  bounce(d, t) { tone(d, t, 'sine', 1300, 1150, 0.03, 0.35, 0.001); click(d, t, 4000, 0.15); },                       // the ball on the table: tik
+  bounce(d, t) { tone(d, t, 'sine', 2350, 2200, 0.025, 0.3, 0.001); tone(d, t, 'sine', 3720, 3600, 0.015, 0.12, 0.001); tone(d, t, 'triangle', 900, 800, 0.02, 0.12, 0.001); click(d, t, 5000, 0.15); },      // the ball on the table: a hollow celluloid pik
   // ---- the voice of things: a dog, a grunt, a buzzer, an engine
   bark(d, t) { for (const dt of [0, 0.26]) { tone(d, t + dt, 'sawtooth', 520, 300, 0.12, 0.3, 0.008); noise(d, t + dt, 0.1, 'bandpass', 1100, 2, 0.35, 0.005); } },
   grunt(d, t) { const o = tone(d, t, 'sawtooth', 110, 85, 0.45, 0.35, 0.04); wobble(o, t, 0.5, 9, 8); noise(d, t, 0.4, 'bandpass', 500, 2, 0.25, 0.04); },
@@ -344,6 +344,247 @@ const SOUNDS = {
   rustle(d, t) { for (let i = 0; i < 5; i++) noise(d, t + i * 0.03 + Math.random() * 0.02, 0.04, 'highpass', 3500 + Math.random() * 2000, 1, 0.3, 0.002); },                               // a crisp packet
   strum(d, t) { [196, 247, 294, 392, 494, 587].forEach((f, i) => { tone(d, t + i * 0.018, 'triangle', f, f, 0.9, 0.06, 0.002); tone(d, t + i * 0.018, 'sawtooth', f * 2, f * 2, 0.15, 0.015, 0.002); }); },   // a guitar chord
   burp(d, t) { const o = tone(d, t, 'sawtooth', 95, 70, 0.55, 0.45, 0.03); wobble(o, t, 0.6, 22, 14); noise(d, t, 0.5, 'lowpass', 500, 4, 0.3, 0.03); },
+
+  // ================================================================ more sounds: one of its own for every kind of thing
+  // ---- the game: combos, growing a size, the meter, countdowns and stings
+  combo(d, t) {        // a combo ticking up: each one in a quick run is a semitone higher, so a run of them climbs
+    _comboN = t - _comboT < 1.6 ? Math.min(_comboN + 1, 14) : 0; _comboT = t;
+    const f = 740 * Math.pow(2, _comboN / 12);
+    tone(d, t, 'triangle', f, f * 1.06, 0.045, 0.22, 0.002); tone(d, t + 0.04, 'triangle', f * 1.5, f * 1.52, 0.07, 0.18, 0.002); tone(d, t + 0.04, 'sine', f * 3, f * 3, 0.05, 0.05, 0.002);
+  },
+  stageup(d, t) {      // growing a size: a deep swell, a bright rising run and a ringing chord on top
+    const o = tone(d, t, 'sine', 70, 140, 0.5, 0.5, 0.08); wobble(o, t, 0.6, 7, 6);
+    [523, 659, 784, 1047, 1319].forEach((f, i) => { tone(d, t + 0.12 + i * 0.065, 'triangle', f, f, 0.16, 0.2, 0.004); bell(d, t + 0.12 + i * 0.065, f * 2, 0.12, 0.05); });
+    for (const f of [1047, 1319, 1568, 2093]) tone(d, t + 0.47, 'triangle', f, f * 1.003, 0.9, 0.09, 0.01);
+    const s = noise(d, t + 0.45, 0.8, 'highpass', 6000, 0.7, 0.07, 0.05); s.frequency.setValueAtTime(6000, t + 0.45); s.frequency.exponentialRampToValueAtTime(9000, t + 1.2);
+  },
+  meterpop(d, t) { tone(d, t, 'sine', 260, 620, 0.05, 0.4, 0.003); tone(d, t + 0.045, 'triangle', 1240, 1180, 0.06, 0.16, 0.002); },      // the eat meter bumping up: blup
+  countdown(d, t) { tone(d, t, 'sine', 784, 784, 0.16, 0.35, 0.004); tone(d, t, 'triangle', 1568, 1568, 0.08, 0.06, 0.004); },           // 3.. 2.. 1..
+  go(d, t) { tone(d, t, 'sine', 1568, 1568, 0.5, 0.35, 0.004); tone(d, t, 'triangle', 784, 784, 0.45, 0.18, 0.004); tone(d, t, 'sine', 3136, 3136, 0.2, 0.05, 0.004); },
+  gamestart(d, t) {    // a game starting: two drum hits and a bright brassy stab
+    for (const dt of [0, 0.14]) { tone(d, t + dt, 'sine', 150, 70, 0.18, 0.6, 0.002); noise(d, t + dt, 0.08, 'bandpass', 1800, 0.8, 0.25, 0.001); }
+    const lp = filt(d, 'lowpass', 2400, 1); for (const f of [392, 494, 587, 784]) tone(lp, t + 0.3, 'sawtooth', f, f, 0.5, 0.1, 0.01);
+    bell(d, t + 0.3, 1568, 0.5, 0.15);
+  },
+  timeup(d, t) {       // time's up: a game-show buzzer
+    const lp = filt(d, 'lowpass', 1500, 2); tone(lp, t, 'sawtooth', 196, 194, 0.7, 0.3, 0.01); tone(lp, t, 'sawtooth', 207, 205, 0.7, 0.25, 0.01); tone(lp, t, 'square', 98, 98, 0.7, 0.12, 0.01);
+  },
+  award(d, t) {        // an award reveal: a timpani hit, a big brass chord and sparkles falling
+    tone(d, t, 'sine', 98, 70, 0.6, 0.7, 0.003); noise(d, t, 0.3, 'lowpass', 400, 1, 0.3, 0.003);
+    const lp = filt(d, 'lowpass', 1800, 1); for (const f of [262, 330, 392, 523, 659]) tone(lp, t + 0.02, 'sawtooth', f, f * 1.002, 1.1, 0.07, 0.03);
+    for (let i = 0; i < 8; i++) bell(d, t + 0.15 + i * 0.07, 2637 * Math.pow(0.94, i), 0.4, 0.08);
+  },
+  drumroll(d, t) {     // a snare roll building for 1.2 seconds, then the hit
+    for (let i = 0, n = 38; i < n; i++) { const k = i / n; noise(d, t + i * 0.03, 0.04, 'bandpass', 2200, 0.9, 0.08 + 0.3 * k, 0.001); if (i % 2) tone(d, t + i * 0.03, 'triangle', 220, 180, 0.03, 0.04 + 0.1 * k, 0.001); }
+    tone(d, t + 1.16, 'sine', 120, 50, 0.3, 0.8, 0.002); noise(d, t + 1.16, 0.25, 'bandpass', 2400, 0.8, 0.5, 0.001); noise(d, t + 1.16, 0.6, 'highpass', 6000, 0.7, 0.18, 0.002);
+  },
+  victory(d, t) {      // your side won the match: a proper brass fanfare with drums
+    const lp = filt(d, 'lowpass', 2600, 1);
+    [[392, 0, 0.14], [392, 0.15, 0.08], [392, 0.24, 0.08], [523, 0.33, 0.35], [466, 0.7, 0.18], [523, 0.9, 0.7]].forEach(([f, dt, len]) => { tone(lp, t + dt, 'sawtooth', f, f, len, 0.14, 0.01); tone(lp, t + dt, 'square', f / 2, f / 2, len, 0.05, 0.01); });
+    for (const f of [659, 784]) tone(lp, t + 0.9, 'sawtooth', f * 1.003, f, 0.7, 0.06, 0.02);
+    for (const dt of [0, 0.33, 0.9]) { tone(d, t + dt, 'sine', 110, 55, 0.25, 0.55, 0.002); noise(d, t + dt, 0.3, 'highpass', 5000, 0.7, 0.12, 0.002); }
+  },
+  loadwhoosh(d, t) {   // the loading screen sweeping away: a deep rising swell and a sparkle as it lands
+    const f = noise(d, t, 0.7, 'bandpass', 220, 1.4, 0.5, 0.25); f.frequency.setValueAtTime(220, t); f.frequency.exponentialRampToValueAtTime(3000, t + 0.7);
+    tone(d, t, 'sine', 70, 420, 0.65, 0.3, 0.25);
+    [1760, 2349, 2794].forEach((x, i) => bell(d, t + 0.62 + i * 0.05, x, 0.35, 0.08));
+  },
+  airhorn(d, t) {      // a comedy air horn: two quick blasts and a long one
+    const lp = filt(d, 'lowpass', 2600, 1.5);
+    for (const [dt, len] of [[0, 0.12], [0.18, 0.12], [0.36, 0.55]]) for (const f of [415, 523, 622]) { const o = tone(lp, t + dt, 'sawtooth', f, f * 0.995, len, 0.09, 0.008); wobble(o, t + dt, len + 0.05, 30, 3); }
+  },
+  whistle_ref(d, t) {  // a referee's pea whistle: a short peep and a long trilling blast
+    for (const [dt, len] of [[0, 0.12], [0.2, 0.55]]) { const o = tone(d, t + dt, 'sine', 2950, 2900, len, 0.22, 0.01); wobble(o, t + dt, len + 0.05, 28, 140); noise(d, t + dt, len, 'bandpass', 3000, 3, 0.12, 0.01); }
+  },
+  // ---- the lobby and voice chat
+  ready(d, t) { tone(d, t, 'triangle', 660, 680, 0.06, 0.28, 0.003); tone(d, t + 0.07, 'triangle', 990, 1000, 0.12, 0.28, 0.003); bell(d, t + 0.07, 1980, 0.25, 0.08); },
+  join(d, t) { [523, 659, 784].forEach((f, i) => tone(d, t + i * 0.07, 'sine', f, f, 0.22, 0.22, 0.006)); },
+  leave(d, t) { tone(d, t, 'sine', 659, 659, 0.18, 0.22, 0.006); tone(d, t + 0.12, 'sine', 440, 430, 0.3, 0.22, 0.006); click(d, t + 0.36, 900, 0.2); },
+  kick(d, t) {         // booted out of the lobby: a boot thump and a falling bwomp
+    tone(d, t, 'sine', 140, 50, 0.14, 0.8, 0.002); noise(d, t, 0.05, 'bandpass', 1200, 1.2, 0.5, 0.001);
+    const lp = filt(d, 'lowpass', 900, 3); const o = tone(lp, t + 0.08, 'sawtooth', 330, 90, 0.5, 0.25, 0.01); wobble(o, t + 0.08, 0.55, 8, 10);
+  },
+  mic_on(d, t) { click(d, t, 3200, 0.4); tone(d, t + 0.01, 'sine', 1000, 1000, 0.04, 0.22, 0.003); tone(d, t + 0.07, 'sine', 1500, 1500, 0.06, 0.22, 0.003); },      // mic on: bip-BIP
+  mic_off(d, t) { click(d, t, 2400, 0.4); tone(d, t + 0.01, 'sine', 1500, 1500, 0.04, 0.2, 0.003); tone(d, t + 0.07, 'sine', 750, 720, 0.08, 0.2, 0.003); },      // mic off: BIP-bop
+  // ---- impacts by what the thing is made of (short; the caller scales the volume by how hard it hit)
+  hit_wood(d, t) { noise(d, t, 0.03, 'bandpass', 1200, 3, 0.5, 0.001); bell(d, t, 420, 0.09, 0.4); bell(d, t, 1150, 0.05, 0.15); tone(d, t, 'sine', 180, 150, 0.04, 0.2, 0.001); },      // a hollow wooden tok
+  hit_metal(d, t) { click(d, t, 4000, 0.5); for (const [f, dur, pk] of [[523, 0.45, 0.25], [1347, 0.35, 0.16], [2213, 0.25, 0.1], [3571, 0.18, 0.06]]) tone(d, t, 'sine', f, f * 0.997, dur, pk, 0.001); },
+  hit_glass(d, t) { click(d, t, 6000, 0.35); bell(d, t, 3300, 0.22, 0.22); tone(d, t, 'sine', 4870, 4860, 0.12, 0.08, 0.001); },
+  hit_soft(d, t) { noise(d, t, 0.09, 'lowpass', 650, 0.7, 0.6, 0.006); tone(d, t, 'sine', 150, 95, 0.07, 0.3, 0.004); },
+  hit_plastic(d, t) { noise(d, t, 0.035, 'bandpass', 1900, 3, 1.0, 0.001); tone(d, t, 'square', 430, 390, 0.025, 0.15, 0.001); tone(d, t, 'sine', 1150, 1100, 0.05, 0.3, 0.001); },
+  hit_ceramic(d, t) { click(d, t, 3600, 0.4); bell(d, t, 2350, 0.16, 0.25); tone(d, t, 'sine', 5150, 5100, 0.07, 0.07, 0.001); noise(d, t, 0.03, 'bandpass', 1500, 2, 0.2, 0.001); },
+  hit_cardboard(d, t) { noise(d, t, 0.07, 'bandpass', 480, 1.2, 0.7, 0.002); noise(d, t + 0.005, 0.04, 'highpass', 2600, 0.8, 0.15, 0.002); tone(d, t, 'sine', 125, 90, 0.05, 0.3, 0.002); },
+  slosh(d, t) {        // a drink sloshing about in the glass
+    const a = noise(d, t, 0.18, 'bandpass', 350, 3, 0.6, 0.04); a.frequency.setValueAtTime(350, t); a.frequency.exponentialRampToValueAtTime(900, t + 0.15);
+    const b = noise(d, t + 0.16, 0.2, 'bandpass', 800, 3, 0.45, 0.04); b.frequency.setValueAtTime(800, t + 0.16); b.frequency.exponentialRampToValueAtTime(380, t + 0.36);
+    for (let i = 0; i < 3; i++) tone(d, t + 0.05 + i * 0.09 + Math.random() * 0.03, 'sine', 280 + Math.random() * 150, 480 + Math.random() * 200, 0.04, 0.08, 0.004);
+  },
+  shatter(d, t) {      // a plate or a glass breaking: a crack with a ringing clank, then the pieces bouncing apart in little bursts
+    noise(d, t, 0.03, 'highpass', 2500, 0.7, 0.9, 0.0008); bell(d, t, 1150, 0.12, 0.35); bell(d, t, 1730, 0.1, 0.2); tone(d, t, 'sine', 260, 140, 0.04, 0.3, 0.001);
+    for (const [dt, n] of [[0.09, 5], [0.21, 4], [0.3, 3], [0.37, 2]]) for (let i = 0; i < n; i++) { const tt = t + dt + Math.random() * 0.03; bell(d, tt, 2500 + Math.random() * 4000, 0.05, 0.16); click(d, tt, 4000 + Math.random() * 3000, 0.15); }
+  },
+  tipjar(d, t) {       // coins dropping into a glass jar
+    [0, 0.07, 0.11, 0.19, 0.24].forEach((dt, i) => { click(d, t + dt, 5000, 0.25); bell(d, t + dt, 3200 + Math.random() * 1400, 0.12, 0.14); bell(d, t + dt, 1450 + i * 20, 0.25, 0.05); });
+  },
+  // ---- crowds (a room of people, kept soft)
+  crowd_ooh(d, t) {    // the room going "ooooh": a dozen voices sliding up and down through an "oo"
+    const bus = ctx.createGain(); bus.connect(filt(d, 'bandpass', 330, 3)); bus.connect(filt(d, 'bandpass', 850, 5));
+    for (let i = 0; i < 12; i++) { const f = 150 + Math.random() * 130, s = t + Math.random() * 0.12; const o = bend(bus, s, 'sawtooth', [[0, f], [0.35, f * 1.3], [1.1, f * 0.85]], 0.08, 0.12, 0.4); wobble(o, s, 1.2, 4 + Math.random() * 3, 3); }
+    noise(d, t, 1.1, 'lowpass', 500, 0.8, 0.12, 0.2);
+  },
+  crowd_laugh(d, t) {  // the room laughing: voices going "ha ha ha", each at its own speed
+    const bus = ctx.createGain(); bus.connect(filt(d, 'bandpass', 750, 2.5)); bus.connect(filt(d, 'bandpass', 1250, 4));
+    for (let v = 0; v < 7; v++) { let s = t + Math.random() * 0.25, f = 170 + Math.random() * 160; const gap = 0.13 + Math.random() * 0.06;
+      for (let k = 0, n = 4 + Math.floor(Math.random() * 3); k < n; k++) { tone(bus, s, 'sawtooth', f, f * 0.88, 0.07, 0.35 * (1 - k / (n + 1)), 0.012); s += gap; f *= 0.97; } }
+    noise(d, t, 1.2, 'bandpass', 1500, 0.8, 0.1, 0.15);
+  },
+  brawl(d, t) {        // it's kicking off: a chair scraping back, a table thumped, the room going up
+    const a = noise(d, t, 0.3, 'bandpass', 700, 6, 0.4, 0.02); a.frequency.setValueAtTime(700, t); a.frequency.exponentialRampToValueAtTime(1300, t + 0.3);
+    for (const dt of [0.25, 0.42, 0.55]) { tone(d, t + dt, 'sine', 110, 50, 0.12, 0.6, 0.002); noise(d, t + dt, 0.08, 'lowpass', 600, 1, 0.4, 0.002); }
+    bell(d, t + 0.43, 2400, 0.18, 0.12);
+    noise(d, t + 0.2, 1.2, 'bandpass', 800, 0.7, 0.3, 0.2); noise(d, t + 0.3, 1.0, 'bandpass', 1900, 1, 0.12, 0.2);
+  },
+  oneeighty(d, t) {    // ONE HUNDRED AND EIGHTY: the crowd erupts under three big brass hits
+    noise(d, t, 1.8, 'bandpass', 1000, 0.6, 0.55, 0.08); noise(d, t + 0.05, 1.6, 'bandpass', 2500, 0.9, 0.2, 0.1);
+    const lp = filt(d, 'lowpass', 2200, 1);
+    [0, 0.22, 0.44].forEach((dt, i) => { const k = i === 2 ? 1.335 : 1; for (const f of [349, 440, 523]) tone(lp, t + dt, 'sawtooth', f * k, f * k, i === 2 ? 0.7 : 0.16, 0.08, 0.01); tone(d, t + dt, 'sine', 100, 55, 0.2, 0.5, 0.002); });
+  },
+  // ---- the imposter jobs: each its own
+  guinness(d, t) {     // the stout settling: a creamy surge of tiny bubbles, then a soft chime
+    const f = noise(d, t, 0.8, 'lowpass', 300, 1, 0.3, 0.15); f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(1400, t + 0.8);
+    for (let i = 0; i < 16; i++) tone(d, t + Math.random() * 0.75, 'sine', 2200 + Math.random() * 2400, 2600 + Math.random() * 2400, 0.015, 0.035, 0.002);
+    bell(d, t + 0.75, 1175, 0.5, 0.3); bell(d, t + 0.75, 1760, 0.4, 0.12);
+  },
+  spill(d, t) {        // something overflowing: a splash and drips
+    noise(d, t, 0.22, 'lowpass', 1300, 1, 0.75, 0.004); tone(d, t, 'sine', 240, 90, 0.12, 0.4, 0.002);
+    for (let i = 0; i < 4; i++) tone(d, t + 0.1 + i * 0.08 + Math.random() * 0.04, 'sine', 700 + Math.random() * 400, 1500 + Math.random() * 600, 0.025, 0.14, 0.002);
+  },
+  ratchet(d, t) { for (let i = 0; i < 3; i++) { click(d, t + i * 0.025, 2300 - i * 200, 1.0 - i * 0.2); bell(d, t + i * 0.025, 1200 + i * 150, 0.03, 0.14); } },      // a valve wheel cranked round: clack clack clack
+  gas_hiss(d, t) {     // gas let out of a keg: a valve thunk and a falling hiss
+    tone(d, t, 'sine', 160, 80, 0.07, 0.4, 0.002); click(d, t, 1400, 0.4);
+    const f = noise(d, t + 0.02, 0.6, 'bandpass', 2800, 1.2, 0.55, 0.01); f.frequency.setValueAtTime(2800, t + 0.02); f.frequency.exponentialRampToValueAtTime(1100, t + 0.62);
+  },
+  card_beep(d, t) { tone(d, t, 'sine', 2730, 2730, 0.08, 0.3, 0.002); },      // the card machine reading the card: bip
+  receipt(d, t) {      // paid: the approval double-beep, then the receipt printer chattering out the slip, and the tear
+    tone(d, t, 'sine', 2730, 2730, 0.06, 0.28, 0.002); tone(d, t + 0.1, 'sine', 2730, 2730, 0.06, 0.28, 0.002);
+    for (let i = 0; i < 9; i++) { noise(d, t + 0.22 + i * 0.045, 0.035, 'bandpass', 3200, 2, 0.25, 0.003); tone(d, t + 0.22 + i * 0.045, 'square', 140, 140, 0.03, 0.05, 0.002); }
+    const r = noise(d, t + 0.66, 0.1, 'highpass', 2500, 0.8, 0.3, 0.01); r.frequency.setValueAtTime(2500, t + 0.66); r.frequency.exponentialRampToValueAtTime(6000, t + 0.76);
+  },
+  plug_in(d, t) {      // a jack lead pushed home: a click, a thump, a little speaker hum
+    click(d, t, 1600, 0.6); tone(d, t + 0.01, 'sine', 120, 70, 0.07, 0.4, 0.002);
+    const lp = filt(d, 'lowpass', 500, 1); tone(lp, t + 0.02, 'sawtooth', 100, 100, 0.25, 0.12, 0.01);
+  },
+  decks_on(d, t) {     // the decks back on: the needle drops, a scratch, two kicks
+    click(d, t, 2500, 0.4); noise(d, t, 0.15, 'highpass', 5000, 0.7, 0.06, 0.005);
+    const s = noise(d, t + 0.08, 0.2, 'bandpass', 700, 3, 0.45, 0.01); s.frequency.setValueAtTime(700, t + 0.08); s.frequency.exponentialRampToValueAtTime(2600, t + 0.15); s.frequency.exponentialRampToValueAtTime(600, t + 0.26);
+    for (const dt of [0.32, 0.56]) { tone(d, t + dt, 'sine', 150, 45, 0.2, 0.8, 0.002); click(d, t + dt, 3000, 0.25); }
+  },
+  coins(d, t) { for (let i = 0; i < 6; i++) { const dt = i * 0.03 + Math.random() * 0.02; bell(d, t + dt, 1700 + Math.random() * 1300, 0.14, 0.12); click(d, t + dt, 3000, 0.15); } noise(d, t, 0.22, 'bandpass', 3500, 2, 0.12, 0.02); },      // a handful of coins scooped out: chink chink chink
+  reel_stop(d, t) { click(d, t, 2200, 0.4); click(d, t + 0.02, 1900, 0.35); click(d, t + 0.045, 700, 0.6); tone(d, t + 0.045, 'sine', 210, 120, 0.06, 0.45, 0.001); bell(d, t + 0.045, 900, 0.06, 0.12); },      // a reel clunking to a stop
+  cherry(d, t) { tone(d, t, 'square', 1319, 1319, 0.05, 0.14, 0.002); tone(d, t + 0.06, 'square', 1760, 1760, 0.08, 0.14, 0.002); tone(d, t + 0.06, 'sine', 3520, 3520, 0.06, 0.05, 0.002); },      // a cherry on the line: an 8-bit bleep
+  plunger(d, t) {      // the plunger: a rubbery squelch and a suck
+    const f = noise(d, t, 0.15, 'lowpass', 300, 7, 0.6, 0.01); f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(1000, t + 0.15);
+    tone(d, t, 'sine', 260, 110, 0.1, 0.4, 0.004); tone(d, t + 0.12, 'sine', 500, 900, 0.03, 0.2, 0.002);
+  },
+  flush(d, t) {        // the toilet flushing: a rush of water and a gurgle draining away
+    const f = noise(d, t, 1.4, 'bandpass', 900, 0.7, 0.55, 0.12); f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(400, t + 1.4);
+    noise(d, t, 0.3, 'highpass', 3500, 0.7, 0.2, 0.03);
+    for (let i = 0; i < 10; i++) tone(d, t + 0.4 + i * 0.09 + Math.random() * 0.04, 'sine', 180 + Math.random() * 120, 380 + Math.random() * 200, 0.05, 0.12, 0.005);
+  },
+  loo_catch(d, t) { noise(d, t, 0.06, 'lowpass', 1200, 0.8, 0.45, 0.004); tone(d, t, 'sine', 210, 140, 0.04, 0.2, 0.003); tone(d, t + 0.03, 'triangle', 560, 840, 0.05, 0.16, 0.003); },      // a loo roll caught: fwump, and a little 'got it'
+  soggy(d, t) { const f = noise(d, t, 0.2, 'lowpass', 600, 5, 0.6, 0.005); f.frequency.setValueAtTime(600, t); f.frequency.exponentialRampToValueAtTime(250, t + 0.2); const o = tone(d, t, 'sine', 190, 60, 0.15, 0.4, 0.003); wobble(o, t, 0.2, 25, 30); },      // a wet one: splodge
+  page_flip(d, t) { for (let i = 0; i < 4; i++) noise(d, t + i * 0.018, 0.02, 'highpass', 4000, 0.7, 0.25 - i * 0.04, 0.003); noise(d, t + 0.07, 0.06, 'bandpass', 1100, 1.5, 0.15, 0.01); },      // a page of the bookings riffled over
+  stamp(d, t) {        // a rubber stamp: the spring goes ka-, the stamp goes CHUNK on the desk
+    click(d, t, 2600, 0.35); tone(d, t + 0.05, 'sine', 150, 65, 0.12, 0.7, 0.002); noise(d, t + 0.05, 0.06, 'bandpass', 700, 1.5, 0.5, 0.001); bell(d, t + 0.05, 330, 0.08, 0.15);
+  },
+  wipe(d, t) { const o = tone(d, t, 'sine', 1700 + Math.random() * 300, 2300, 0.11, 0.12, 0.02); wobble(o, t, 0.15, 32, 90); noise(d, t, 0.12, 'bandpass', 3000, 2, 0.18, 0.03); },      // a cloth squeaking across a table
+  broom(d, t) { noise(d, t, 0.18, 'highpass', 1800, 0.5, 0.35, 0.06); noise(d, t + 0.04, 0.08, 'bandpass', 5200, 1.5, 0.12, 0.01); },      // a broom's bristles: shhk
+  mop(d, t) { const f = noise(d, t, 0.25, 'lowpass', 700, 2, 0.5, 0.03); f.frequency.setValueAtTime(700, t); f.frequency.exponentialRampToValueAtTime(1200, t + 0.2); tone(d, t + 0.05, 'sine', 320, 200, 0.12, 0.12, 0.01); },      // a wet mop going round
+  keypad(d, t) { const lo = [697, 770, 852, 941][Math.floor(Math.random() * 4)]; tone(d, t, 'sine', 1209, 1209, 0.07, 0.16, 0.002); tone(d, t, 'sine', lo, lo, 0.07, 0.16, 0.002); },      // a keypad key: a phone-style double tone
+  unlock(d, t) { [1000, 1333, 2000].forEach((f, i) => tone(d, t + i * 0.06, 'triangle', f, f, 0.05, 0.2, 0.002)); click(d, t + 0.22, 900, 0.5); tone(d, t + 0.22, 'sine', 180, 110, 0.06, 0.3, 0.002); },      // code accepted: bleep bleep bleep, clunk
+  breaker(d, t) {      // a circuit breaker thrown: a heavy clunk, a spit of sparks, the hum coming back
+    click(d, t, 900, 0.9); tone(d, t, 'sine', 110, 50, 0.1, 0.6, 0.001);
+    for (let i = 0; i < 4; i++) noise(d, t + 0.01 + Math.random() * 0.06, 0.012, 'highpass', 5000, 0.7, 0.4, 0.0005);
+    const lp = filt(d, 'lowpass', 400, 1); tone(lp, t + 0.05, 'sawtooth', 100, 100, 0.3, 0.1, 0.05);
+  },
+  gas_tap(d, t) { bell(d, t, 720, 0.06, 0.3); click(d, t, 2100, 0.5); noise(d, t + 0.02, 0.15, 'highpass', 4000, 0.7, 0.25, 0.005); },      // the gas valve lever: clack and a puff
+  coupler(d, t) { tone(d, t, 'sine', 120, 70, 0.08, 0.5, 0.001); bell(d, t, 310, 0.2, 0.3); bell(d, t + 0.01, 830, 0.12, 0.15); click(d, t, 1800, 0.4); },      // the keg coupler: a heavy metal clunk
+  keg_roll(d, t) { tone(d, t, 'sine', 105, 88, 0.45, 0.6, 0.004); bell(d, t, 236, 0.35, 0.3); bell(d, t, 590, 0.15, 0.1); noise(d, t, 0.4, 'lowpass', 300, 1, 0.3, 0.01); },      // a full keg set down: a hollow boom
+  pulley(d, t) { const o = tone(d, t, 'square', 760, 690, 0.06, 0.14, 0.005); wobble(o, t, 0.08, 45, 40); click(d, t, 1300, 0.5); },      // the parasol's winder creaking
+  parasol(d, t) {      // the parasol opening: a whoosh up, then the canopy snapping taut
+    const f = noise(d, t, 0.25, 'bandpass', 300, 1.5, 0.45, 0.06); f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(1800, t + 0.25);
+    noise(d, t + 0.27, 0.04, 'bandpass', 1300, 1.2, 0.8, 0.001); tone(d, t + 0.27, 'sine', 180, 110, 0.06, 0.4, 0.001); click(d, t + 0.3, 2000, 0.3);
+  },
+  fry(d, t) { for (let i = 0; i < 14; i++) noise(d, t + Math.random() * 0.5, 0.02, 'bandpass', 2000 + Math.random() * 3000, 2, 0.25, 0.001); noise(d, t, 0.5, 'highpass', 5000, 0.7, 0.08, 0.05); },      // the fryer bubbling and spitting
+  flare(d, t) { const f = noise(d, t, 0.7, 'lowpass', 250, 1, 0.8, 0.05); f.frequency.setValueAtTime(250, t); f.frequency.exponentialRampToValueAtTime(1600, t + 0.25); tone(d, t, 'sine', 70, 40, 0.5, 0.5, 0.05); noise(d, t + 0.1, 0.6, 'highpass', 3000, 0.7, 0.1, 0.1); },      // the fat catching: WHOOMPH
+  dish_splash(d, t) { noise(d, t, 0.2, 'lowpass', 1500, 1, 0.5, 0.004); bell(d, t + 0.02, 480, 0.25, 0.3); bell(d, t + 0.02, 1290, 0.15, 0.1); tone(d, t, 'sine', 200, 120, 0.08, 0.25, 0.002); },      // a pot into the sink
+  glass_stack(d, t) { bell(d, t, 3400, 0.18, 0.25); click(d, t, 5500, 0.3); tone(d, t, 'sine', 900, 800, 0.03, 0.2, 0.001); },      // a glass stacked on a glass
+  shard(d, t) { for (let i = 0; i < 3; i++) bell(d, t + i * 0.025 + Math.random() * 0.01, 5200 + Math.random() * 2000, 0.05, 0.25); click(d, t, 2600, 0.4); },      // a bit of broken glass into the dustpan
+  pipe_turn(d, t) { bell(d, t, 880, 0.08, 0.25); click(d, t, 1400, 0.4); noise(d, t, 0.06, 'bandpass', 2600, 3, 0.2, 0.004); },      // a cable joint turned
+  barrier(d, t) {      // the car park barrier: the motor whirring it up, then a clunk at the top
+    const lp = filt(d, 'lowpass', 600, 1.5); const o = tone(lp, t, 'sawtooth', 70, 140, 0.8, 0.35, 0.05); wobble(o, t, 0.9, 40, 6);
+    noise(d, t, 0.8, 'bandpass', 1200, 2, 0.08, 0.1); click(d, t + 0.85, 700, 0.7); tone(d, t + 0.85, 'sine', 160, 90, 0.08, 0.4, 0.001);
+  },
+  corkscrew(d, t) { const o = tone(d, t, 'sine', 950, 1150, 0.06, 0.25, 0.01); wobble(o, t, 0.08, 60, 60); noise(d, t, 0.06, 'bandpass', 1600, 3, 0.35, 0.01); },      // the corkscrew creaking in
+  cork(d, t) { tone(d, t, 'sine', 240, 1100, 0.025, 0.7, 0.001); tone(d, t, 'sine', 180, 120, 0.05, 0.4, 0.001); noise(d, t, 0.03, 'bandpass', 1500, 1.5, 0.5, 0.001); noise(d, t + 0.03, 0.35, 'highpass', 4500, 0.7, 0.08, 0.02); },      // a cork: POP and a breath of air
+  wine_glass(d, t) { tone(d, t, 'sine', 1760, 1758, 1.1, 0.16, 0.002); tone(d, t, 'sine', 1764, 1762, 1.1, 0.12, 0.002); tone(d, t, 'sine', 4870, 4850, 0.4, 0.04, 0.002); },      // a fine wine glass, ringing
+  wine_pour(d, t) { for (let i = 0; i < 3; i++) { tone(d, t + i * 0.08, 'sine', 170, 320, 0.05, 0.2, 0.006); noise(d, t + i * 0.08, 0.05, 'lowpass', 800, 2, 0.15, 0.006); } },      // glug glug glug
+  napkin(d, t) { const f = noise(d, t, 0.22, 'bandpass', 600, 0.6, 0.3, 0.07); f.frequency.setValueAtTime(600, t); f.frequency.exponentialRampToValueAtTime(1800, t + 0.22); noise(d, t + 0.2, 0.03, 'highpass', 3000, 0.7, 0.2, 0.002); },      // a fold of cloth: a soft swish and a crease
+  fold_done(d, t) { noise(d, t, 0.08, 'lowpass', 600, 1, 0.3, 0.01); tone(d, t + 0.05, 'triangle', 1047, 1047, 0.2, 0.15, 0.004); tone(d, t + 0.13, 'triangle', 1568, 1568, 0.3, 0.13, 0.004); },      // a napkin done: a soft pat and a chime
+  lightswitch(d, t) { click(d, t, 1300, 0.8); tone(d, t, 'sine', 240, 160, 0.03, 0.3, 0.001); click(d, t + 0.008, 3200, 0.3); },      // a chunky wall switch
+  bulbs_on(d, t) { const lp = filt(d, 'lowpass', 500, 1); tone(lp, t, 'sawtooth', 100, 100, 0.7, 0.12, 0.2); bell(d, t + 0.15, 1319, 0.6, 0.2); bell(d, t + 0.25, 1976, 0.6, 0.15); },      // the lights back on: a hum and a chime
+  shock(d, t) { const o = tone(d, t, 'square', 70, 60, 0.35, 0.25, 0.002); wobble(o, t, 0.4, 13, 25); for (let i = 0; i < 8; i++) noise(d, t + Math.random() * 0.35, 0.015, 'highpass', 4000, 0.7, 0.45, 0.0005); },      // ZZZT: a belt off the mains
+  bulb_in(d, t) { const o = tone(d, t, 'sine', 2300, 2500, 0.04, 0.06, 0.005); wobble(o, t, 0.05, 50, 80); click(d, t + 0.06, 1700, 0.5); tone(d, t + 0.06, 'sine', 600, 500, 0.03, 0.15, 0.001); },      // a new bulb screwed in
+  bulb_twist(d, t) { tone(d, t, 'sine', 2700, 2450, 0.04, 0.18, 0.004); noise(d, t, 0.04, 'bandpass', 3200, 4, 0.25, 0.004); },      // a bulb squeaking as it turns
+  bulb_out(d, t) { bell(d, t, 4100, 0.12, 0.15); tone(d, t, 'sine', 650, 500, 0.04, 0.2, 0.002); },      // the dead one out
+  grill(d, t) { noise(d, t, 0.9, 'highpass', 3200, 0.7, 0.45, 0.01); tone(d, t, 'sine', 140, 90, 0.06, 0.3, 0.002); noise(d, t, 0.15, 'bandpass', 900, 1, 0.2, 0.004); },      // a burger slapped on the hot grill: TSSSS
+  flip(d, t) { noise(d, t, 0.06, 'bandpass', 3200, 2.5, 0.35, 0.004); noise(d, t + 0.09, 0.05, 'lowpass', 900, 1, 0.5, 0.002); noise(d, t + 0.1, 0.5, 'highpass', 3800, 0.7, 0.3, 0.01); },      // the spatula scrapes, the burger slaps down and sizzles
+  plate_down(d, t) { tone(d, t, 'sine', 200, 150, 0.04, 0.3, 0.002); [0, 0.07, 0.12, 0.15, 0.17].forEach((dt, i) => bell(d, t + dt, 1900, 0.06, 0.16 / (i + 1))); },      // a plate set down, rattling still
+  bin(d, t) { tone(d, t, 'sine', 150, 100, 0.1, 0.5, 0.002); noise(d, t, 0.1, 'bandpass', 600, 3, 0.4, 0.002); bell(d, t, 380, 0.12, 0.15); },      // in the bin: a hollow thunk
+  tap_fill(d, t) { const f = noise(d, t, 0.3, 'bandpass', 600, 3, 0.7, 0.02); f.frequency.setValueAtTime(600, t); f.frequency.exponentialRampToValueAtTime(1500, t + 0.3); tone(d, t, 'sine', 320, 900, 0.3, 0.1, 0.03); },      // the outside tap filling a can
+  watering(d, t) { for (let i = 0; i < 7; i++) { const s = t + Math.random() * 0.25, f = 1400 + Math.random() * 1400; tone(d, s, 'sine', f, f * 1.6, 0.02, 0.08, 0.001); } noise(d, t, 0.28, 'bandpass', 2600, 1.5, 0.1, 0.04); },      // a watering can's rose: drips pattering on leaves
+  bloom(d, t) { [784, 988, 1175, 1568].forEach((f, i) => bell(d, t + i * 0.05, f, 0.4, 0.12)); noise(d, t + 0.1, 0.3, 'highpass', 7000, 0.7, 0.04, 0.05); },      // a happy basket: a soft harp run
+  plop(d, t) { tone(d, t, 'sine', 950, 280, 0.06, 0.45, 0.002); noise(d, t, 0.05, 'lowpass', 900, 1, 0.2, 0.002); },      // dropped back in the water
+  net_scoop(d, t) { const f = noise(d, t, 0.2, 'bandpass', 400, 1.5, 0.8, 0.04); f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(1200, t + 0.2); for (let i = 0; i < 3; i++) tone(d, t + 0.15 + i * 0.06, 'sine', 900, 1400, 0.02, 0.08, 0.002); },      // the net through the water, dripping
+  quack(d, t) { const bp = filt(d, 'bandpass', 1100, 2.5); for (const dt of [0, 0.22]) { tone(bp, t + dt, 'sawtooth', 620, 470, 0.13, 0.6, 0.01); tone(bp, t + dt, 'square', 310, 240, 0.12, 0.15, 0.01); } },      // a duck, not happy
+  litter_bin(d, t) { bell(d, t, 680, 0.12, 0.3); bell(d, t + 0.05, 1950, 0.08, 0.15); noise(d, t + 0.03, 0.06, 'bandpass', 1500, 2, 0.3, 0.002); tone(d, t + 0.08, 'sine', 150, 100, 0.06, 0.3, 0.002); },      // cans and bottles into the bin
+  clock_beep(d, t) { tone(d, t, 'sine', 1480, 1480, 0.09, 0.28, 0.003); click(d, t, 4000, 0.15); },      // a button on the time clock
+  punch_clock(d, t) { click(d, t, 1800, 0.5); tone(d, t + 0.04, 'sine', 140, 70, 0.08, 0.6, 0.001); noise(d, t + 0.04, 0.05, 'bandpass', 900, 1.5, 0.4, 0.001); bell(d, t + 0.12, 2093, 0.4, 0.25); bell(d, t + 0.12, 2637, 0.3, 0.1); },      // a time card punched: ka-CHUNK, ding
+  cutlery(d, t) { for (const [dt, f] of [[0, 3100], [0.04, 4300]]) { bell(d, t + dt, f + Math.random() * 300, 0.08, 0.18); click(d, t + dt, 6000, 0.2); } },      // a knife and fork laid down
+  match(d, t) { const f = noise(d, t, 0.1, 'bandpass', 2000, 2, 0.45, 0.01); f.frequency.setValueAtTime(2000, t); f.frequency.exponentialRampToValueAtTime(4500, t + 0.1); noise(d, t + 0.09, 0.35, 'lowpass', 600, 1, 0.35, 0.03); },      // a match struck and catching
+  gust(d, t) { const a = noise(d, t, 0.8, 'lowpass', 500, 1.5, 0.5, 0.25); a.frequency.setValueAtTime(500, t); a.frequency.exponentialRampToValueAtTime(1100, t + 0.35); a.frequency.exponentialRampToValueAtTime(350, t + 1.0); noise(d, t + 0.1, 0.6, 'bandpass', 1800, 4, 0.08, 0.2); },      // a gust of wind
+  // ---- people and the pub's games
+  ko(d, t) {           // knocked out: a cartoon bonk and the birds tweeting round their head
+    tone(d, t, 'sine', 700, 180, 0.09, 0.6, 0.001); bell(d, t, 1000, 0.08, 0.25);
+    for (let i = 0; i < 3; i++) { const s = t + 0.2 + i * 0.16; tone(d, s, 'sine', 3000, 3700, 0.05, 0.1, 0.004); tone(d, s + 0.06, 'sine', 3300, 3900, 0.04, 0.08, 0.004); }
+  },
+  bonk(d, t) { tone(d, t, 'sine', 330, 250, 0.12, 0.6, 0.001); bell(d, t, 560, 0.15, 0.3); click(d, t, 2500, 0.3); },      // a ball off the head: tonk
+  tackle(d, t) { tone(d, t, 'sine', 80, 35, 0.28, 1.0, 0.002); noise(d, t, 0.25, 'lowpass', 420, 1, 0.6, 0.002); const lp = filt(d, 'lowpass', 900, 1); tone(lp, t + 0.05, 'sawtooth', 150, 90, 0.22, 0.2, 0.02); noise(d, t + 0.02, 0.1, 'bandpass', 2000, 1, 0.2, 0.002); },      // a rugby tackle: WHUMP and an 'oof'
+  record_scratch(d, t) { const f = noise(d, t, 0.38, 'bandpass', 600, 2, 1.0, 0.005); f.frequency.setValueAtTime(600, t); f.frequency.exponentialRampToValueAtTime(3200, t + 0.1); f.frequency.exponentialRampToValueAtTime(500, t + 0.22); f.frequency.exponentialRampToValueAtTime(2600, t + 0.32); const o = tone(d, t, 'sawtooth', 200, 90, 0.35, 0.15, 0.005); wobble(o, t, 0.38, 10, 80); },      // BUSTED: the record stops
+  popout(d, t) { tone(d, t, 'sine', 320, 950, 0.05, 0.35, 0.002); const f = noise(d, t, 0.14, 'bandpass', 700, 2, 0.2, 0.01); f.frequency.setValueAtTime(700, t); f.frequency.exponentialRampToValueAtTime(2200, t + 0.14); },      // food flying out of the bag
+  bubble(d, t) { const o = tone(d, t, 'sine', 210, 520, 0.12, 0.3, 0.01); wobble(o, t, 0.14, 30, 40); },      // a bubble appearing: blorp
+  warn(d, t) { const o = tone(d, t, 'triangle', 330, 520, 0.22, 0.25, 0.02); wobble(o, t, 0.25, 7, 12); tone(d, t + 0.18, 'sine', 1040, 1040, 0.12, 0.08, 0.004); },      // uh-oh: she's about to look
+  roast(d, t) { tone(d, t, 'sine', 210, 170, 0.1, 0.5, 0.002); tone(d, t + 0.13, 'sine', 150, 120, 0.12, 0.5, 0.002); noise(d, t + 0.32, 0.7, 'highpass', 5500, 0.7, 0.3, 0.002); noise(d, t + 0.32, 0.05, 'bandpass', 2000, 1, 0.3, 0.001); },      // a roast lands: ba-dum TSS
+  blink(d, t) { tone(d, t, 'sine', 300, 2400, 0.14, 0.3, 0.004); const f = noise(d, t, 0.18, 'bandpass', 800, 3, 0.25, 0.02); f.frequency.setValueAtTime(800, t); f.frequency.exponentialRampToValueAtTime(5000, t + 0.18); bell(d, t + 0.13, 3136, 0.25, 0.1); },      // someone appearing out of thin air
+  cast(d, t) {         // a fishing rod cast: the line whizzing off the reel, then a plop
+    let tt = t; for (let i = 0; i < 18; i++) { click(d, tt, 3200, 0.25); tt += 0.014 + i * 0.0025; }
+    tone(d, t, 'sine', 1900, 800, 0.4, 0.06, 0.02); tone(d, tt + 0.05, 'sine', 900, 300, 0.06, 0.4, 0.002);
+  },
+  eject(d, t) { tone(d, t, 'sine', 90, 50, 0.2, 0.7, 0.003); const o = tone(d, t + 0.1, 'sine', 1300, 260, 1.0, 0.2, 0.02); wobble(o, t + 0.1, 1.05, 6, 25); noise(d, t, 0.4, 'bandpass', 900, 1, 0.3, 0.05); },      // flung out of the pub: whoomp and a slide whistle falling away
+  ghost(d, t) { const o = bend(d, t, 'sine', [[0, 520], [0.4, 700], [1.5, 300]], 0.2, 0.15, 0.6); wobble(o, t, 1.5, 6, 18); bend(d, t + 0.05, 'triangle', [[0, 260], [0.4, 350], [1.5, 150]], 0.06, 0.2, 0.6); noise(d, t, 1.3, 'bandpass', 1200, 1.2, 0.08, 0.4); },      // you're dead: a ghostly wooo
+  game_on(d, t) { for (const dt of [0, 0.18]) { bell(d, t + dt, 1046, 0.7, 0.35); tone(d, t + dt, 'sine', 2380, 2370, 0.5, 0.08, 0.002); click(d, t + dt, 3000, 0.3); } },      // a pub game starting: ding ding
+  point(d, t) { tone(d, t, 'triangle', 1319, 1760, 0.1, 0.4, 0.003); },      // your point
+  point_lose(d, t) { tone(d, t, 'triangle', 440, 400, 0.1, 0.25, 0.003); tone(d, t + 0.11, 'triangle', 330, 280, 0.16, 0.25, 0.003); },      // their point
+  darts_reset(d, t) { for (let i = 0; i < 3; i++) { click(d, t + i * 0.05, 4500, 0.35); bell(d, t + i * 0.05, 2600 + i * 300, 0.04, 0.08); } noise(d, t, 0.15, 'highpass', 3000, 0.7, 0.08, 0.01); },      // the darts gathered back up
+  attack_in(d, t) {    // an attack's coming: a low brass stab and a timpani hit
+    tone(d, t, 'sine', 90, 60, 0.4, 0.6, 0.003); const lp = filt(d, 'lowpass', 1100, 1.5); for (const f of [110, 165, 220, 233]) tone(lp, t, 'sawtooth', f, f * 0.99, 0.55, 0.12, 0.01);
+    noise(d, t, 0.15, 'highpass', 3000, 0.7, 0.15, 0.002);
+  },
+  glasswasher(d, t) { for (let i = 0; i < 8; i++) bell(d, t + Math.random() * 0.2, 2000 + Math.random() * 1600, 0.1, 0.1); tone(d, t + 0.28, 'sine', 120, 70, 0.1, 0.5, 0.002); click(d, t + 0.28, 1200, 0.4); noise(d, t + 0.35, 0.8, 'bandpass', 1200, 0.7, 0.2, 0.2); },      // a rack of glasses in, the door shut, the water starting
+  hatch(d, t) { tone(d, t, 'sine', 75, 38, 0.3, 0.9, 0.002); noise(d, t, 0.15, 'bandpass', 420, 1.5, 0.6, 0.002); noise(d, t, 0.04, 'bandpass', 950, 4, 0.4, 0.001); },      // the cellar hatch dropping shut
+  crt_on(d, t) { tone(d, t, 'sine', 8000, 8200, 0.6, 0.03, 0.1); tone(d, t, 'sine', 90, 50, 0.08, 0.4, 0.002); noise(d, t + 0.02, 0.3, 'highpass', 3000, 0.7, 0.2, 0.01); },      // the camera monitors flicking on
+  clog(d, t) { for (let i = 0; i < 4; i++) { const s = t + i * 0.16 + Math.random() * 0.04; const o = tone(d, s, 'sine', 120 + Math.random() * 40, 60, 0.12, 0.4, 0.01); wobble(o, s, 0.13, 30, 20); noise(d, s, 0.1, 'lowpass', 400, 4, 0.25, 0.01); } },      // a blocked drain glugging
+  body_fall(d, t) { tone(d, t, 'sine', 85, 38, 0.22, 0.9, 0.003); noise(d, t, 0.25, 'lowpass', 320, 1, 0.5, 0.004); tone(d, t + 0.14, 'sine', 70, 40, 0.12, 0.45, 0.003); },      // a body hitting the floor
 };
 // old names still used by a few things (kept, but pointed at the new sounds)
 const ALIAS = {};
@@ -353,6 +594,16 @@ function click(d, t, f, peak) { noise(d, t, 0.012, 'bandpass', f, 6, peak, 0.000
 function bell(d, t, f, dur, peak) { tone(d, t, 'sine', f, f * 0.998, dur, peak, 0.002); tone(d, t, 'sine', f * 2.76, f * 2.7, dur * 0.5, peak * 0.3, 0.002); }
 // shake an oscillator's pitch (a growl, a rev, a vibrato)
 function wobble(o, t, dur, rate, depth) { const l = ctx.createOscillator(); l.frequency.value = rate; const g = ctx.createGain(); g.gain.value = depth; l.connect(g); g.connect(o.frequency); l.start(t); l.stop(t + dur); }
+// a filter on the way out, for shaping a whole sound (a mute, a mouth, a tinny speaker)
+function filt(d, type, f, q = 1) { const x = ctx.createBiquadFilter(); x.type = type; x.frequency.value = f * _pv; x.Q.value = q; x.connect(d); return x; }
+// a held note that bends through several pitches ([[seconds in, Hz], ...]): voices, wails
+function bend(d, t, type, pts, peak, attack = 0.02, rel = 0.1) {
+  const o = ctx.createOscillator(); o.type = type; const g = ctx.createGain(), end = t + pts[pts.length - 1][0];
+  o.frequency.setValueAtTime(pts[0][1] * _pv, t); for (const [dt, f] of pts.slice(1)) o.frequency.linearRampToValueAtTime(f * _pv, t + dt);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + attack); g.gain.setValueAtTime(peak, Math.max(t + attack, end - rel)); g.gain.exponentialRampToValueAtTime(0.0001, end);
+  o.connect(g); g.connect(d); o.start(t); o.stop(end + 0.05); _endT = Math.max(_endT, end + 0.05); return o;
+}
+let _comboN = 0, _comboT = -9;      // (the combo run: how far up it's climbed, and when the last one was)
 
 export function sfx(name, pos = null, vol = 1) {
   if (!SOUNDS[name]) name = ALIAS[name] || name;
@@ -366,7 +617,32 @@ export function sfx(name, pos = null, vol = 1) {
   try { SOUNDS[name](o, t); } finally { _pv = 1; release(o); }
 }
 const _recent = {};
-const NOVARY = new Set(['fanfare', 'sadviolin', 'trumpet', 'siu', 'jackpot', 'crewmate', 'anthem']);
+// every sound by name (the dev sound board, the tests), in groups for the board; anything not in a group is listed
+// under the rest
+export const SOUND_NAMES = Object.keys(SOUNDS);
+export const hasSound = (name) => !!(SOUNDS[name] || SOUNDS[ALIAS[name]]);
+export const SOUND_GROUPS = [
+  ['GAME & STINGS', ['combo', 'stageup', 'meterpop', 'countdown', 'go', 'gamestart', 'timeup', 'award', 'drumroll', 'victory', 'loadwhoosh', 'airhorn', 'whistle_ref', 'fanfare', 'sadviolin', 'trumpet', 'bwoomp', 'powerup', 'powerdown']],
+  ['LOBBY & CHAT', ['ready', 'join', 'leave', 'kick', 'mic_on', 'mic_off', 'tap', 'toggle', 'notify', 'error', 'tick', 'beep']],
+  ['IMPACTS', ['hit_wood', 'hit_metal', 'hit_glass', 'hit_soft', 'hit_plastic', 'hit_ceramic', 'hit_cardboard', 'shatter', 'smash', 'slosh', 'tipjar', 'land', 'thud', 'body_fall', 'bonk', 'ko', 'tackle', 'punch', 'slap', 'thwack', 'splat']],
+  ['CROWDS', ['crowd_ooh', 'crowd_laugh', 'cheer', 'aww', 'brawl', 'oneeighty', 'anthem', 'siu']],
+  ['IMPOSTER JOBS', ['guinness', 'spill', 'ratchet', 'gas_hiss', 'card_beep', 'receipt', 'plug_in', 'decks_on', 'coins', 'reel_stop', 'cherry', 'plunger', 'flush', 'loo_catch', 'soggy', 'page_flip', 'stamp', 'wipe', 'broom', 'mop', 'keypad', 'unlock', 'breaker', 'gas_tap', 'coupler', 'keg_roll', 'pulley', 'parasol', 'fry', 'flare', 'dish_splash', 'glass_stack', 'shard', 'pipe_turn', 'barrier', 'corkscrew', 'cork', 'wine_glass', 'wine_pour', 'napkin', 'fold_done', 'lightswitch', 'bulbs_on', 'shock', 'bulb_in', 'bulb_twist', 'bulb_out', 'grill', 'flip', 'plate_down', 'bin', 'tap_fill', 'watering', 'bloom', 'plop', 'net_scoop', 'quack', 'litter_bin', 'clock_beep', 'punch_clock', 'cutlery', 'match', 'gust', 'fixed']],
+  ['IMPOSTER', ['vote', 'alarm', 'emergency', 'kill', 'vent', 'sinister', 'crewmate', 'lightsout', 'eject', 'ghost', 'crt_on']],
+  ['PUB & GAMES', ['game_on', 'point', 'point_lose', 'darts_reset', 'dart', 'paddle', 'bounce', 'bell', 'ding', 'coin', 'jackpot', 'reels', 'glasswasher', 'hatch', 'record_scratch', 'roast', 'warn', 'bubble', 'popout', 'blink', 'cast', 'attack_in', 'pour', 'glass', 'clink', 'can', 'clack', 'clog']],
+];
+// a sound rendered to a buffer offline (the tests): through the same compressor as the speakers. Channel 0 is what
+// comes out of the speakers, channel 1 the mix before the compressor
+export function renderSound(name, { seconds = 4, rate = 22050, pitch = 1 } = {}) {
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OAC || !SOUNDS[name]) return Promise.resolve(null);
+  const oc = new OAC(2, Math.ceil(seconds * rate), rate), was = { ctx, noiseBuf, pitchScale, _endT };
+  const nb = oc.createBuffer(1, rate, rate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  const comp = oc.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 6;
+  const m = oc.createGain(); m.gain.value = 0.8; const merge = oc.createChannelMerger(2); m.connect(comp); comp.connect(merge, 0, 0); m.connect(merge, 0, 1); merge.connect(oc.destination);
+  ctx = oc; noiseBuf = nb; pitchScale = pitch; _pv = 1; _endT = 0;
+  try { SOUNDS[name](m, 0.005); } finally { ctx = was.ctx; noiseBuf = was.noiseBuf; pitchScale = was.pitchScale; _endT = was._endT; _pv = 1; }
+  return oc.startRendering();
+}
+const NOVARY = new Set(['fanfare', 'sadviolin', 'trumpet', 'siu', 'jackpot', 'crewmate', 'anthem', 'combo', 'stageup', 'countdown', 'go', 'gamestart', 'award', 'victory', 'oneeighty', 'join', 'leave', 'ready', 'game_on', 'point', 'point_lose', 'cherry', 'keypad']);
 
 // Tommy "speaks" in a smooth little babble while his speech bubble is up.
 export function babble(pos, syllables = 8, pitch = 1) {

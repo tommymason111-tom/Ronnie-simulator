@@ -82,7 +82,7 @@ export class DartGame {
     this.left = 501; this.hist = []; this.visit = []; this.lastVisit = []; this.msg = 'GAME ON!'; this.collectT = 0;
     for (const d of this.darts) if (!d.dead) this.items.remove(d);
     this.darts = []; for (let i = 0; i < 3; i++) this.darts.push(this.spawn(i));
-    sfx('bell', this.c, 0.6); this.draw();
+    sfx('game_on', this.c, 0.6); this.draw();
   }
   stop() {
     this.playing = false; this.button.set(false); this.marker.visible = false;
@@ -137,7 +137,7 @@ export class DartGame {
     if (tag === 'BUST!') { this.hist.push('BUST'); sfx('sadviolin', this.c, 0.5); }
     else {
       this.left -= sum; this.hist.push(sum); this.best = Math.max(this.best, sum);
-      if (sum === 180) { this.tons++; tag = 'ONE HUNDRED AND EIGHTY!'; sfx('fanfare', this.c, 1); }
+      if (sum === 180) { this.tons++; tag = 'ONE HUNDRED AND EIGHTY!'; sfx('oneeighty', this.c, 1); }
       else if (sum >= 100) { tag = 'TON' + (sum > 100 ? '-' + (sum - 100) : '') + '!'; sfx('trumpet', this.c, 0.7); }
     }
     if (tag === 'GAME SHOT!') { this.wins++; sfx('fanfare', this.c, 1); }
@@ -164,7 +164,7 @@ export class DartGame {
     }
     if (this.collectT > 0 && (this.collectT -= dt) <= 0) {
       for (let i = 0; i < this.darts.length; i++) { const it = this.darts[i]; if (!it.heldBy) { if (!it.dead) this.items.remove(it); this.darts[i] = this.spawn(i); } }
-      sfx('pickup', this.c, 0.4);
+      sfx('darts_reset', this.c, 0.4);
     }
   }
   // the chalkboards inside the doors

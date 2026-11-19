@@ -2,6 +2,7 @@
 //   EMOTES    pick anyone in the squad: they appear in front of you and do any of their emotes (or all of them in turn)
 //   ATTACKS   set off any character's attack on you, there and then
 //   IMPOSTER  play any Imposter job (and the two sabotage fixes) straight away, without a game
+//   SOUNDS    every sound effect by name, with a play button and a search box, to audition them all
 // Nothing here changes the game itself: the random attacks are switched off while it's open, that's all.
 import * as THREE from 'three';
 import { EMOTES, CHAR_EMOTES, emoteInfo } from './emotes.js';
@@ -9,6 +10,7 @@ import { TASKS, makeCamFeeds } from './imposter.js';
 import { Panel, makeGame } from './impgames.js';
 import { SQUAD } from './squad.js';
 import { POWERUPS } from './powerups.js';
+import { SOUND_NAMES, SOUND_GROUPS, sfx, initAudio } from './audio.js';
 
 const KIND_ICON = { hold: '🍺', crank: '⚙️', swipe: '💳', wires: '🔌', collect: '🧺', plunge: '🪠', order: '📖', scrub: '🧽', code: '🔢', dial: '⏲️', switches: '💡', reels: '🍒', catch: '🧻', temp: '🍟', sort: '🍽️', whack: '🍺', simon: '🕒', place: '🍴', light: '🕯️', stacker: '🍹', sweep: '🧹', pipes: '🚧', coupler: '🛢️', raise: '⛱️', wine: '🍷', fold: '🧻', bulbs: '💡', grill: '🍔', water: '🌸', net: '🥫' };
 const NAME = (id) => id === 'tommy' ? 'TOMMY' : ((SQUAD[id] && SQUAD[id].name) || id).toUpperCase();
@@ -42,12 +44,17 @@ export function startDev(RS) {
   #dev-panel .dv-wide { background: #39ff14; color: #001a00; border-color: #b8ffb0; justify-content: center; font-weight: 900; box-shadow: 0 0 12px rgba(57,255,20,0.6); }
   #dev-panel .dv-note { color: #6fdf6a; font-weight: 600; font-size: 12px; margin: 2px 2px 6px; }
   #dev-panel .dv-note::before { content: '// '; }
+  #dev-panel .dv-search { width: 100%; box-sizing: border-box; font: 800 14px 'Courier New', monospace; padding: 9px 10px; margin: 2px 0 4px; border-radius: 6px; border: 1px solid #39ff14; background: rgba(0,0,0,0.6); color: #b8ffb0; }
+  #dev-panel .dv-snd { grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+  #dev-panel .dv-snd .dv-act { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #dev-panel .dv-snd .dv-act.on { background: #39ff14; color: #001a00; }
   #dev-tag { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 72; font: 900 12px 'Courier New', monospace; letter-spacing: 1px; color: #39ff14; background: rgba(0,10,2,0.9); border: 1px solid #39ff14; padding: 3px 10px; border-radius: 6px; pointer-events: none; text-shadow: 0 0 6px #39ff14; box-shadow: 0 0 12px rgba(57,255,20,0.5); }`;
   document.head.appendChild(st);
   const btn = document.createElement('button'); btn.id = 'dev-btn'; btn.textContent = '>_ DEV'; document.body.appendChild(btn);
   const tag = document.createElement('div'); tag.id = 'dev-tag'; tag.textContent = '>_ DEVELOPER MODE'; document.body.appendChild(tag);
   const panel = document.createElement('div'); panel.id = 'dev-panel'; document.body.appendChild(panel);
   ['pointerdown', 'touchstart', 'mousedown', 'wheel'].forEach(k => { panel.addEventListener(k, (e) => e.stopPropagation()); btn.addEventListener(k, (e) => e.stopPropagation()); });
+  ['keydown', 'keyup'].forEach(k => panel.addEventListener(k, (e) => { if (e.target.matches && e.target.matches('input')) e.stopPropagation(); }));      // (typing in the sound search doesn't walk you about)
   const open = (on) => { panel.classList.toggle('on', on); btn.textContent = on ? '[ X ] CLOSE' : '>_ DEV'; };
   btn.addEventListener('click', () => open(!panel.classList.contains('on')));
 
@@ -95,7 +102,12 @@ export function startDev(RS) {
 
   // ---- the panel's pages
   const chars = ['tommy', ...Object.keys(CHAR_EMOTES).filter(c => c !== 'tommy')].filter(c => c === 'tommy' || SQUAD[c]);
-  let tab = 'emotes', sel = chars[0];
+  let tab = 'emotes', sel = chars[0], sq = '';
+  // the sound board: audio.js's groups, then anything that isn't in one
+  const soundGroups = () => { const seen = new Set(), g = SOUND_GROUPS.map(([n, l]) => [n, l.filter(s => SOUND_NAMES.includes(s) && !seen.has(s) && seen.add(s))]);
+    g.push(['EVERYTHING ELSE', SOUND_NAMES.filter(s => !seen.has(s))]); return g.filter(x => x[1].length); };
+  const filterSounds = () => { const q = sq.trim().toLowerCase();
+    panel.querySelectorAll('.dv-sgrp').forEach(grp => { let n = 0; grp.querySelectorAll('[data-snd]').forEach(b => { const on = !q || b.dataset.snd.includes(q); b.style.display = on ? '' : 'none'; n += on; }); grp.style.display = n ? '' : 'none'; }); };
   const render = () => {
     const T = (id, label) => `<button data-tab="${id}" class="${tab === id ? 'on' : ''}">${label}</button>`;
     let body = '';
@@ -113,16 +125,22 @@ export function startDev(RS) {
       body += `<div class="dv-note">Tap one: it switches on now, as if you'd picked it up.</div><div class="dv-grid">`;
       for (const [k, P] of Object.entries(POWERUPS)) body += `<button class="dv-act" data-pu="${k}"><i>${P.icon}</i>${P.name}<small>${P.dur ? P.dur + 's' : 'NOW'}</small></button>`;
       body += `</div>`;
+    } else if (tab === 'sounds') {
+      body += `<div class="dv-note">Every sound effect (${SOUND_NAMES.length}). Tap one to hear it.</div><input class="dv-search" type="search" placeholder="SEARCH SOUNDS..." autocomplete="off">`;
+      for (const [g, list] of soundGroups()) body += `<div class="dv-sgrp"><h5>${g}</h5><div class="dv-grid dv-snd">${list.map(s => `<button class="dv-act" data-snd="${s}"><i>▶</i>${s}</button>`).join('')}</div></div>`;
     } else {
       body += `<div class="dv-note">Every Imposter job's game. Tap one to play it now.</div><div class="dv-grid">`;
       for (const t of TASKS) body += `<button class="dv-act" data-job="${t.id}"><i>${t.o && t.o.icon || KIND_ICON[t.kind] || '🔧'}</i>${t.name}<small>${t.room}</small></button>`;
       body += `</div><h5>SABOTAGE FIXES</h5><div class="dv-grid"><button class="dv-act" data-fix="lights"><i>💡</i>Fix the lights<small>FUSE BOX</small></button><button class="dv-act" data-fix="valve"><i>🛢️</i>Release a keg valve<small>KEG PRESSURE</small></button></div>`;
       body += `<h5>SECURITY</h5><div class="dv-grid"><button class="dv-act" data-cams="1"><i>📹</i>Security cameras<small>STAFF ROOM</small></button></div>`;
     }
-    panel.innerHTML = `<div class="dv-tabs">${T('emotes', '🎭 EMOTES')}${T('attacks', '💥 ATTACKS')}${T('imposter', '🔪 IMPOSTER JOBS')}${T('power', '⚡ POWER-UPS')}</div><div class="dv-body">${body}</div>`;
+    panel.innerHTML = `<div class="dv-tabs">${T('emotes', '🎭 EMOTES')}${T('attacks', '💥 ATTACKS')}${T('imposter', '🔪 IMPOSTER JOBS')}${T('power', '⚡ POWER-UPS')}${T('sounds', '🔊 SOUNDS')}</div><div class="dv-body">${body}</div>`;
+    if (tab === 'sounds') { panel.querySelector('.dv-search').value = sq; filterSounds(); }
   };
+  panel.addEventListener('input', (e) => { if (e.target.matches('.dv-search')) { sq = e.target.value; filterSounds(); } });
   panel.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
     if (d.tab) { tab = d.tab; render(); return; }
+    if (d.snd) { try { initAudio(); sfx(d.snd); } catch (err) { console.warn('dev sound', err); } b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 250); return; }
     if (d.ch) { sel = d.ch; render(); return; }
     if (d.all) return playAll(d.all);
     if (d.em) return play(sel, d.em);

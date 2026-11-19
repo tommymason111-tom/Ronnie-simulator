@@ -121,7 +121,7 @@ player.room = room;
 const crumbs = new Crumbs(scene);
 const words = new Words(scene);
 // someone appearing in front of you for an attack: a puff where they were, a puff where they land, a zap
-Character.onBlink = (from, to) => { try { const W = ['#ffffff', '#d8e4ff', '#b8ffb0', '#ffd400']; crumbs.burst(from.clone().setY(1.0), W, 26, 1.4); crumbs.burst(to.clone().setY(1.0), W, 34, 1.6); sfx('zap', to, 0.7);
+Character.onBlink = (from, to) => { try { const W = ['#ffffff', '#d8e4ff', '#b8ffb0', '#ffd400']; crumbs.burst(from.clone().setY(1.0), W, 26, 1.4); crumbs.burst(to.clone().setY(1.0), W, 34, 1.6); sfx('blink', to, 0.7);
   words.show('POOF!', to.clone().setY(2.1), '#ffffff', 0.16, 0.7); } catch (e) {} };
 for (const gm of room.games || []) gm.words = words;
 const attackFx = new AttackFX(scene, camera, player);
@@ -232,7 +232,7 @@ function openBag(bag) {
   found.forEach((t, i) => setTimeout(() => {
     const from = _a.copy(player.head).addScaledVector(player.fwd, 0.55 * player.scale); from.y -= 0.25 * player.scale;
     const v = new THREE.Vector3(player.fwd.x * 0.6 + (Math.random() - 0.5) * 0.8, 2.0 + Math.random() * 0.6, player.fwd.z * 0.6 + (Math.random() - 0.5) * 0.8);
-    const it = items.spawn(t, from.clone(), v); it.spawnScale = 0.2; sfx('spawn', from, 0.6);
+    const it = items.spawn(t, from.clone(), v); it.spawnScale = 0.2; sfx('popout', from, 0.6);
   }, 700 + i * 220));
 }
 // you can only hold one thing at a time
