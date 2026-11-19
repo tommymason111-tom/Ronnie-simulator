@@ -81,6 +81,7 @@ Pick a mode on the start screen, or change it any time from **GAME MODE** in the
 | **Catch & Eat** | Harry throws 20 foods. Catch them in your mouth. |
 | **Eat-Off** (60s) | Eat as much as you can. Your best score is saved on the device. |
 | **Eat-Off 2P** | Player 1 plays, passes the headset or phone, then Player 2 presses Eat-Off 2P. Winner on the receipt. |
+| **Prop Hunt** (multiplayer, 2-12) | The pub, Lidl or Lewis's. Each round a few seekers count to 40 blindfolded while the hiders turn into the map's own things (a keg, a bin, a gnome, a trolley) and lock in. Seekers check anything that looks off: a hider is FOUND, the real thing costs 10 health. Hiders score for every second hidden and for taunts (quack, kazoo, airhorn...). Teams swap every round; podium and awards at the end. All in `js/prophunt.js`. |
 
 ## Controls (in VR)
 
@@ -141,6 +142,7 @@ js/character.js   shared character behaviour: speech, walking, poses, throwing, 
 js/tommy.js       Tommy: his model, eyes, spotlight, broccoli attacks
 js/squad.js       the squad: looks (built from shapes), lines and interventions
 js/modes.js       game modes, intervention meter, roast bubbles, receipts
+js/prophunt.js    Prop Hunt (multiplayer): props and decoys, the host's referee, HUD, VR wrist and panels
 js/dialogue.js    Tommy's line banks (from §3 of the design doc)
 js/room.js        the bedroom, furniture, joke signs, lighting
 js/foods.js       food meshes + the small physics engine

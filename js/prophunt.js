@@ -613,7 +613,7 @@ body.prophunt.flat #ph-top { display: flex; }
 #ph-splash { position: fixed; inset: 0; z-index: 66; display: none; align-items: center; justify-content: center; flex-direction: column; background: radial-gradient(circle, rgba(0,0,0,0.45), rgba(0,0,0,0.9)); color: #fff; text-align: center; pointer-events: none; font-family: "Arial Black", Arial; overflow: hidden; }
 #ph-splash.on { display: flex; } #ph-splash .rays { position: absolute; left: 50%; top: 50%; width: 220vmax; height: 220vmax; margin: -110vmax; background: repeating-conic-gradient(currentColor 0 6deg, transparent 6deg 18deg); opacity: 0.12; animation: phrays 12s linear infinite; }
 @keyframes phrays { to { transform: rotate(360deg); } } #ph-splash > div { position: relative; animation: phin .5s cubic-bezier(.2,1.6,.5,1); max-width: 92vw; }
-@keyframes phin { from { transform: scale(0.3); opacity: 0; } } #ph-splash h1 { font-size: clamp(32px, 9vw, 78px); margin: 0; letter-spacing: 2px; text-shadow: 0 5px 0 rgba(0,0,0,0.5); } #ph-splash p { font-size: clamp(14px, 3.6vw, 24px); margin: 10px 14px; } #ph-splash p.sm { font-size: clamp(12px, 3vw, 18px); color: #cfe0ff; }
+@keyframes phin { from { transform: scale(0.5); opacity: 0.3; } } #ph-splash h1 { font-size: clamp(32px, 9vw, 78px); margin: 0; letter-spacing: 2px; text-shadow: 0 5px 0 rgba(0,0,0,0.5); } #ph-splash p { font-size: clamp(14px, 3.6vw, 24px); margin: 10px 14px; } #ph-splash p.sm { font-size: clamp(12px, 3vw, 18px); color: #cfe0ff; }
 #ph-splash .imgs { display: flex; gap: 10px; margin-top: 10px; justify-content: center; flex-wrap: wrap; } #ph-splash img { width: 78px; height: 78px; border-radius: 50%; border: 4px solid currentColor; object-fit: cover; }
 #ph-blind { position: fixed; inset: 0; z-index: 64; display: none; align-items: center; justify-content: center; flex-direction: column; background: #050505; color: #fff; text-align: center; font-family: "Arial Black", Arial; pointer-events: none; }
 #ph-blind.on { display: flex; } #ph-blind .eyes { font-size: 70px; animation: phpeek 2s infinite; } @keyframes phpeek { 0%, 80%, 100% { transform: none; } 88% { transform: translateY(-6px) rotate(-8deg); } }
@@ -701,7 +701,8 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
   // the end of a round: who won, everyone's points this round and in all
   summaryScreen(m) {
     const ids = [...new Set([...Object.keys(m.tot || {}), ...this.players.keys()])].sort((a, b) => (m.tot[b] || 0) - (m.tot[a] || 0)).slice(0, 12), alive = new Set(m.alive || []);
-    return { draw: (g, t) => { const sk = m.win === 'seekers'; g.fillStyle = sk ? '#2a1206' : '#06240f'; rr(g, 4, 4, 504, 504, 30); g.fill(); g.lineWidth = 8; g.strokeStyle = sk ? '#ff9f1c' : '#39ff14'; rr(g, 4, 4, 504, 504, 30); g.stroke();
+    const t0 = performance.now();      // (the rows come in on the clock, not the frame count: a slow phone still gets them all)
+    return { draw: (g) => { const t = (performance.now() - t0) / 1000, sk = m.win === 'seekers'; g.fillStyle = sk ? '#2a1206' : '#06240f'; rr(g, 4, 4, 504, 504, 30); g.fill(); g.lineWidth = 8; g.strokeStyle = sk ? '#ff9f1c' : '#39ff14'; rr(g, 4, 4, 504, 504, 30); g.stroke();
         txt(g, `ROUND ${m.r} OF ${m.of}`, 256, 34, 18, '#ccc'); txt(g, sk ? '🔍 THE SEEKERS WIN' : '🙈 THE HIDERS WIN', 256, 66, 32 + Math.sin(t * 5) * 1.5, sk ? '#ffb74d' : '#69f0ae'); txt(g, String(m.why || ''), 256, 98, 15, '#fff');
         txt(g, 'PLAYER', 40, 128, 13, '#999', 'left'); txt(g, 'ROUND', 380, 128, 13, '#999', 'center'); txt(g, 'TOTAL', 460, 128, 13, '#999', 'center');
         const rowH = Math.min(30, 300 / Math.max(1, ids.length)); ids.forEach((id, i) => { const y = 150 + i * rowH, p = this.players.get(id), role = p ? p.role : 'spec', k = Math.min(1, t * 2 - i * 0.1); if (k <= 0) return; g.globalAlpha = k;
@@ -715,7 +716,8 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
   // the end of the game: the podium, everyone's points, the awards
   resultsScreen(m) {
     const ranked = this.ranked(), playB = { x: 40, y: 438, w: 200, h: 54 }, lobbyB = { x: 272, y: 438, w: 200, h: 54 };
-    return { draw: (g, t) => {
+    const t0 = performance.now();
+    return { draw: (g) => { const t = (performance.now() - t0) / 1000;
         const bg = g.createLinearGradient(0, 0, 0, 512); bg.addColorStop(0, '#1a1f4a'); bg.addColorStop(1, '#0a0d22'); g.fillStyle = bg; rr(g, 4, 4, 504, 504, 30); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ffd400'; rr(g, 4, 4, 504, 504, 30); g.stroke();
         txt(g, '🏆 PROP HUNT: FINAL SCORES', 256, 34, 26, '#ffd400');
         // the podium: 2nd, 1st, 3rd
@@ -725,9 +727,10 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
           if (k > 0.5) { const im = portrait(r.char), cy = base - hh - 52 + (i === 0 ? Math.sin(t * 4) * 3 : 0); g.save(); g.beginPath(); g.arc(x, cy, 30, 0, 7); g.clip(); if (im.complete && im.naturalWidth) g.drawImage(im, x - 30, cy - 30, 60, 60); else { g.fillStyle = '#555'; g.fill(); } g.restore();
             g.lineWidth = 4; g.strokeStyle = col; g.beginPath(); g.arc(x, cy, 30, 0, 7); g.stroke(); if (i === 0) txt(g, '👑', x, cy - 40, 26, '#ffd400'); txt(g, r.name.toUpperCase(), x, base - hh - 11, 13, '#fff', 'center', 110); txt(g, r.pts + ' PTS', x, base + 14, 14, col); } }
         // everyone else, and the awards
-        const rest = ranked.slice(3, 9); rest.forEach((r, i) => txt(g, `${i + 4}. ${r.name.toUpperCase()}  ${r.pts}`, i % 2 ? 380 : 136, 296 + Math.floor(i / 2) * 20, 13, r.id === this.me ? '#ffd400' : '#ccc', 'center', 220));
-        const aw = Array.isArray(m.aw) ? m.aw.slice(0, 4) : []; aw.forEach((a, i) => { const y = 362 + Math.floor(i / 2) * 36, x = i % 2 ? 380 : 136; if (!Array.isArray(a)) return;
-          g.fillStyle = 'rgba(255,255,255,0.08)'; rr(g, x - 116, y - 16, 232, 32, 10); g.fill(); txt(g, `${a[0]} ${a[1]}: ${this.nameOf(a[2]).toUpperCase()} (${a[3]})`, x, y, 12, '#fff', 'center', 224); });
+        const rest = ranked.slice(3, 9); rest.forEach((r, i) => txt(g, `${i + 4}. ${r.name.toUpperCase()}  ${r.pts}`, i % 2 ? 380 : 136, 292 + Math.floor(i / 2) * 17, 13, r.id === this.me ? '#ffd400' : '#ccc', 'center', 220));
+        // (the awards: two lines each, the award over who won it)
+        const aw = Array.isArray(m.aw) ? m.aw.slice(0, 4) : []; aw.forEach((a, i) => { const y = 360 + Math.floor(i / 2) * 44, x = i % 2 ? 380 : 136; if (!Array.isArray(a)) return;
+          g.fillStyle = 'rgba(255,255,255,0.08)'; rr(g, x - 116, y - 20, 232, 40, 10); g.fill(); txt(g, `${a[0]} ${a[1]}`, x, y - 8, 13, '#ffd400', 'center', 220); txt(g, `${this.nameOf(a[2]).toUpperCase()} · ${a[3]}`, x, y + 9, 12, '#fff', 'center', 220); });
         if (this.host) { g.fillStyle = '#2e7d32'; rr(g, playB.x, playB.y, playB.w, playB.h, 14); g.fill(); txt(g, '▶ PLAY AGAIN', playB.x + playB.w / 2, playB.y + 28, 22); }
         else txt(g, 'THE HOST CAN PLAY AGAIN', 140, 465, 14, '#aaa', 'center', 220);
         g.fillStyle = '#37474f'; rr(g, lobbyB.x, lobbyB.y, lobbyB.w, lobbyB.h, 14); g.fill(); txt(g, '↩ LOBBY', lobbyB.x + lobbyB.w / 2, lobbyB.y + 28, 22); },
@@ -858,14 +861,14 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
       m.position.copy(at); const a = Math.random() * Math.PI * 2, u = Math.random(); m.userData.v = new THREE.Vector3(Math.cos(a) * speed * (0.4 + u), 1.5 + Math.random() * 2.2, Math.sin(a) * speed * (0.4 + u)); m.userData.t = 0; this.grp.add(m); this.fx.push(m); }
   }
   puff(at, n = 8) {
-    if (!this.puffGeo) this.puffGeo = new THREE.IcosahedronGeometry(0.16, 1);
-    for (let i = 0; i < n; i++) { const m = new THREE.Mesh(this.puffGeo, new THREE.MeshBasicMaterial({ color: i % 2 ? 0xf2f2f2 : 0xd8d8e8, transparent: true, opacity: 0.8, depthWrite: false })); const a = i / n * Math.PI * 2;
+    if (!this.puffGeo) this.puffGeo = new THREE.IcosahedronGeometry(0.16, 3);
+    for (let i = 0; i < n; i++) { const m = new THREE.Mesh(this.puffGeo, new THREE.MeshBasicMaterial({ color: i % 2 ? 0xf2f2f2 : 0xd8d8e8, transparent: true, opacity: 0.6, depthWrite: false })); const a = i / n * Math.PI * 2;
       m.position.set(at.x + Math.cos(a) * 0.15, at.y + 0.2 + Math.random() * 0.4, at.z + Math.sin(a) * 0.15); m.userData.v = new THREE.Vector3(Math.cos(a) * 0.9, 0.5 + Math.random() * 0.6, Math.sin(a) * 0.9); m.userData.t = 0; this.grp.add(m); this.puffs.push(m); }
   }
   zap(a, b, hit) { const pa = this.zapLine.geometry.attributes.position; pa.setXYZ(0, a.x, a.y - 0.15, a.z); pa.setXYZ(1, b.x, b.y, b.z); pa.needsUpdate = true; this.zapLine.geometry.computeBoundingSphere(); this.zapLine.material.color.setHex(hit ? 0xffe066 : 0xaaaaaa); this.zapT = 0.25; }
   animFx(dt) {
     this.fx = this.fx.filter(m => { const u = m.userData; u.t += dt; u.v.y -= 6 * dt; m.position.addScaledVector(u.v, dt); m.rotation.x += dt * 8; m.rotation.y += dt * 6; m.material.opacity = Math.max(0, 1 - u.t / 1.1); if (u.t > 1.1) { this.grp.remove(m); m.geometry.dispose(); m.material.dispose(); return false; } return true; });
-    this.puffs = this.puffs.filter(m => { const u = m.userData; u.t += dt; u.v.multiplyScalar(Math.exp(-dt * 3)); m.position.addScaledVector(u.v, dt); m.scale.setScalar(1 + u.t * 2.2); m.material.opacity = Math.max(0, 0.8 * (1 - u.t / 0.9)); if (u.t > 0.9) { this.grp.remove(m); m.material.dispose(); return false; } return true; });
+    this.puffs = this.puffs.filter(m => { const u = m.userData; u.t += dt; u.v.multiplyScalar(Math.exp(-dt * 3)); m.position.addScaledVector(u.v, dt); m.scale.setScalar(1 + u.t * 2.2); m.material.opacity = Math.max(0, 0.6 * (1 - u.t / 0.9) * (1 - u.t / 0.9)); if (u.t > 0.9) { this.grp.remove(m); m.material.dispose(); return false; } return true; });
     if (this.zapT > 0) { this.zapT -= dt; this.zapLine.material.opacity = Math.max(0, this.zapT / 0.25); } else this.zapLine.material.opacity = 0;
   }
   // what the tests and the wrist ask: the state of play
