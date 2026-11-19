@@ -105,9 +105,14 @@ export default async function () {
     if (part('defeat')) { const p = await newPage(b, { width: 640, height: 400 });
       try {
         await startGame(p, { place: 'garden', mode: 'boss', extra: '&boss=lewis' });
-        await p.evaluate(BOT); await p.evaluate(() => RS.renderer.setAnimationLoop(null));
+        await p.evaluate(BOT);
+        // (no first-time stutters: once the shaders are warmed, the whole fight builds no new ones)
+        await p.waitForFunction(() => window.__shaderWarm && RS.director.boss.c && RS.director.boss.c.rag.mesh, null, { timeout: 240000 }).catch(() => {});
+        await p.waitForTimeout(1500); await p.waitForFunction(() => window.__shaderWarm, null, { timeout: 240000 }).catch(() => {});
+        const n0 = await p.evaluate(() => { RS.renderer.setAnimationLoop(null); RS.renderer.render(RS.scene, RS.player.camera); return RS.renderer.info.programs.length; });
         await fight(p, { idle: true }, 400);
         const s = await summary(p);
+        C.ok(s.progs === n0, `defeat: ${s.progs - n0} shaders built during the fight (a stutter each): add them to shaderwarm.js SIGS`);
         console.log(`  defeat: ${s.over} after ${s.t}s, knocked down ${s.kd}x, boss at ${s.hp}/${s.mx}`);
         C.ok(s.over === 'lose', `defeat: standing still didn't lose (${JSON.stringify({ over: s.over, kd: s.kd, t: s.t })})`);
         C.ok(s.hp === s.mx, `defeat: the boss lost health with nobody throwing anything (${s.hp}/${s.mx})`);
@@ -163,7 +168,7 @@ async function multiplayer(C, b) {
   const host = await startRoomHost(), pages = [];
   try {
     for (const [name, ch] of [['HOSTY', 'lewis'], ['JOINY', 'harry']]) { const p = await newPage(b, { width: 480, height: 360 }); p.pname = name; p.ch = ch; pages.push(p);
-      await p.goto('http://game.local/index.html?relay=' + encodeURIComponent(host.url)); await p.waitForTimeout(1200); }
+      await p.goto('http://game.local/index.html?relay=' + encodeURIComponent(host.url), { timeout: 120000, waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1200); }
     const ev = (p, f, a) => p.evaluate(f, a), cl = (p, s) => ev(p, (s) => document.querySelector(s).click(), s);
     const join = async (p, code) => { await cl(p, '.playbtn'); await sleep(400); await cl(p, '#pick-multi'); await sleep(400);
       await ev(p, ([n, c]) => { document.querySelector('#mp-myname').value = n; const m = document.querySelector(`#char-grid .mate[data-id="${c}"]`); if (m) m.click(); }, [p.pname, p.ch]); await cl(p, '#char-next'); await sleep(400);
@@ -200,8 +205,8 @@ async function multiplayer(C, b) {
       if (r === 'threw') thrown++;
       await sleep(900);
     }
-    await sleep(2500);
-    const [h1, j1] = await both();
+    let h1, j1; for (let k = 0; k < 16; k++) { await sleep(500); [h1, j1] = await both(); if (k >= 4 && Math.abs(h1.hp - j1.hp) < 1) break; }      // (the host's word reaches the joiner ten times a second)
+    if (Math.abs(h1.hp - j1.hp) >= 1) console.log('  mp: joiner state', JSON.stringify(await ev(J, () => ({ heard: Math.round(performance.now() - (RS.director.boss.stateAt || 0)), hostId: RS.net.hostId, host: RS.net.host, players: [...RS.net.players.keys()] }))), 'host', JSON.stringify(await ev(H, () => ({ id: RS.net.id, mpOn: RS.director.boss.mpOn, players: RS.net.players.size }))));
     const hostSees = await ev(H, () => { const B = RS.director.boss; return [...B.players.values()].map(p => ({ name: p.name, dmg: p.dmg, hits: p.hits })); });
     console.log(`  mp: joiner threw ${thrown}, joiner counted ${j1.mine} damage, host credits ${JSON.stringify(hostSees)}; boss ${h1.hp}/${h1.mx} (host) vs ${j1.hp} (joiner)`);
     C.ok(thrown >= 2, `mp: the joiner couldn't throw anything (${thrown})`);

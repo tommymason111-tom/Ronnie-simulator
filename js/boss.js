@@ -276,7 +276,7 @@ export class BossFight {
     { const sl = c.showLine.bind(c); c.showLine = (...a) => { sl(...a); if (g.player.flatMode && !g.renderer.xr.isPresenting) c.bubble.visible = false; }; }      // (on a screen: subtitles instead, see drawHud)
     c.rag.bulk = { w: this.S, h: this.S };
     this.c = c; this.x = hx; this.z = hz; this.yaw = yaw;
-    this.baseCol = null; this.flashT = 0;
+    this.baseCol = null; this.flashT = 0; this.shadSet = false;
   }
   // the body's own material (the hit flash and the angry red go on it)
   mat() { const m = this.c && this.c.rag.mesh && this.c.rag.mesh.material; if (m && !Array.isArray(m) && m.emissive) { if (!this.baseCol) this.baseCol = { e: m.emissive.clone(), c: m.color.clone() }; return m; } return null; }
@@ -782,6 +782,7 @@ export class BossFight {
     if (this.host) return;
     const num = (v, d) => (typeof v === 'number' && isFinite(v) ? v : d);
     if (typeof m.b !== 'string' || !BOSSES[m.b]) return;
+    this.stateAt = performance.now();
     if (m.b !== this.id) { this.id = m.b; this.S0 = this.def.S; this.S = num(m.s, this.S0); this.makeChar(); this.x = num(m.x, this.A.home[0]); this.z = num(m.z, this.A.home[1]); if (m.st === 'drop' || m.st === 'roar') this.startIntro(); }
     this.mx = Math.max(1, num(m.mx, this.mx)); this.hp = clamp(num(m.hp, this.hp), 0, this.mx); this.ph = clamp(Math.round(num(m.ph, 1)), 1, 3);
     this.S = clamp(num(m.s, this.S), 0.5, 5); this.dropY = clamp(num(m.dy, 0), 0, 30);
@@ -853,6 +854,9 @@ export class BossFight {
     if (this.host && st !== 'drop') { this.x = r.root.x; this.z = r.root.z; }      // (where it really ended up: round the furniture)
     if (dt > 0) { const k = Math.min(1, dt * 6); this.vx = lerp(this.vx || 0, (this.x - (this.px ?? this.x)) / dt, k); this.vz = lerp(this.vz || 0, (this.z - (this.pz ?? this.z)) / dt, k); this.px = this.x; this.pz = this.z; }
     if (c.updateEyes) c.updateEyes(dt, this.g.player.head);
+    // a sunny place: its shadow on from the moment its model's in (as the place does for everyone, a second later), so the
+    // shadow's shader is built in the warm-up that follows the model loading, not the moment it first falls into the sun
+    if (!this.shadSet && r.mesh && this.g.room.shadows) { this.shadSet = true; r.group.traverse(o => { if ((o.isSkinnedMesh || (o.isMesh && o.parent && o.parent.isBone)) && !o.userData.shad) { o.castShadow = true; o.userData.shad = true; } }); window.__onModelReady && window.__onModelReady(); }
     // the bits that go with the body, drawn where the body's drawn
     const head = this.drawn(r.pos('head', _v2));
     if (c.fx) { c.fx.position.set(this.x, 0, this.z); c.fx.scale.setScalar(S * 1.2); }
