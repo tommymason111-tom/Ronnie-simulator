@@ -42,6 +42,8 @@ export const MODES = {
   imposter:     { name: 'IMPOSTER', desc: 'Multiplayer at the Oysterfleet. Do your jobs, find the imposter, vote them out.', time: 0, place: 'pub', mp: true, hidden: true },
   imposter2:    { name: 'IMPOSTER', desc: 'Multiplayer at the Oysterfleet, with two imposters.', time: 0, place: 'pub', mp: true, hidden: true },
   boss:         { name: 'BOSS FIGHT', desc: 'A giant mate. Eat to power up, throw food to bring them down. Solo or co-op.', time: 0, places: ['pub', 'garden'] },      // (BOSS FIGHT: boss.js)
+  // PROP HUNT (multiplayer: the pub, Lidl, Lewis's): see prophunt.js
+  prophunt:     { name: 'PROP HUNT', desc: 'Multiplayer hide and seek. Hiders turn into things, seekers find them.', time: 0, mp: true, hidden: true },
 };
 // which modes each place offers (also used by the start screen)
 export function modesFor(place) {
@@ -191,6 +193,7 @@ export class Director {
     resetAwards(); this.awardsFor = null; this.awardShown = null; this.awardsStamped = false;      // (the end-of-game awards count this game only)
     if (this.imposter) { this.imposter.dispose(); this.imposter = null; }
     if (this.boss) { this.boss.dispose(); this.boss = null; }      // (BOSS FIGHT: boss.js)
+    if (this.prophunt) { this.prophunt.dispose(); this.prophunt = null; }      // (PROP HUNT)
     this.hideTommy(false);
     this.mode = id; globalThis.RS_MODE = id; this.running = true; this.used.clear(); this.pending = null;
     this.timeLeft = m.time > 0 && id !== 'imposter' && id !== 'chonkoffr' ? Math.round(m.time * roomNum('len')) : m.time;      // (a room's GAME LENGTH: short, normal, long)
@@ -233,7 +236,7 @@ export class Director {
       g.cast.push(c);
     });
     if (this.runpub) { this.runpub.cleanup(); this.runpub = null; }
-    const SHORT = { imposter: 'THERE IS AN IMPOSTER AMONG US', imposter2: 'THERE ARE TWO IMPOSTERS AMONG US', runpub: 'SERVE THE PUNTERS', sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
+    const SHORT = { prophunt: 'HIDE AS ANYTHING. FIND THEM ALL', imposter: 'THERE IS AN IMPOSTER AMONG US', imposter2: 'THERE ARE TWO IMPOSTERS AMONG US', runpub: 'SERVE THE PUNTERS', sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
     if (id !== 'boss') g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');      // (the boss fight has its own entrance)
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
@@ -243,6 +246,9 @@ export class Director {
     // BOSS FIGHT (the pub's car park, Lewis's garden): no squad, Tommy sits it out, the fight lives in boss.js (host and joiners alike)
     if (id === 'boss') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null); this.removeTrolley();
       this.boss = g.makeBoss ? g.makeBoss() : null; return; }
+    // PROP HUNT (multiplayer, the pub / Lidl / Lewis's): no food, no squad, no Tommy: see prophunt.js
+    if (id === 'prophunt') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null); this.removeTrolley();
+      this.prophunt = g.makePropHunt ? g.makePropHunt() : null; sfx('gamestart', null, 1); return; }
     if (this.remote) { tommy.attacks = false; tommy.directed = false; if (g.fx) g.fx.setCountdown(null); return; }
     if (id === 'date') this.startDate();
     if (g.room.name === 'Lidl' && (id === 'sweep' || id === 'roam')) this.setupLidlStaff(id);    // uniforms, and people on the tills
@@ -372,6 +378,7 @@ export class Director {
     const g = this.g;
     if (this.imposter) { this.imposter.update(dt); return; }
     if (this.boss) { this.boss.update(dt, ctx); this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } return; }      // (BOSS FIGHT: boss.js)
+    if (this.prophunt) { this.prophunt.update(dt); return; }      // (PROP HUNT)
     if (this.remote) { this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
     if (this.pending) {                       // an announced attack that hasn't landed yet
       const pd = this.pending, P = g.player;
@@ -1173,7 +1180,7 @@ export class Director {
   }
 
   hud() {
-    if (this.imposter) return null;
+    if (this.imposter || this.prophunt) return null;
     if (this.boss) return this.boss.hud();      // (BOSS FIGHT)
     if (this.remote) return this.hostHud || null;
     if (!this.running || this.mode === 'classic') return null;

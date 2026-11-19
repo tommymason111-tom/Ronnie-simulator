@@ -77,12 +77,13 @@ export class MPSync {
   // emotes: everyone sees your character do it (you get a little "you did it" here)
   emote(id) {
     if (!this.net.connected) return; const e = emoteInfo(id); if (!e) return;      // (default emotes and every character's own)
+    if (this.emoteGate && !this.emoteGate()) return;      // (PROP HUNT: a hider's a keg, kegs don't dance)
     if ((this.emoteCool || 0) > performance.now()) return; this.emoteCool = performance.now() + 600;
     this.net.send({ t: 'emote', e: id });
     if (this.selfBody && this.selfBody()) this.selfBody().doEmote(id);
     const P = this.player; this.words.show(e.icon + ' ' + e.name, P.head.clone().addScaledVector(P.fwd, 1.1).add({ x: 0, y: -0.1, z: 0 }), '#ff4fa3', 0.1, 1.6);
   }
-  on_emote(m, p) { const e = emoteInfo(m.e); if (!e || !p || !p.avatar) return;
+  on_emote(m, p) { const e = emoteInfo(m.e); if (!e || !p || !p.avatar || p.avatar.impHidden) return;      // (someone who isn't there: hidden in a game mode)
     if (p.avatar.doEmote) p.avatar.doEmote(m.e); else this.words.show(e.icon, p.avatar.headPos().add({ x: 0, y: 0.45, z: 0 }), '#ffd400', 0.3, e.dur); }
   // someone's switched character mid-game: their old body goes, the new one turns up with their next move
   setChar(c) { if (!this.net.connected) return; this.net.char = c; this.net.send({ t: 'char', c }); }
@@ -167,7 +168,7 @@ export class MPSync {
     this.lastChar.clear(); this.fullT = 0; this.snapT = 0;
   }
   // we've handed hosting to someone else: from now on their game is the real one and ours shows it
-  becomeGuest() { if (this.director.remote) return; this.becomeClient(); const im = this.director.imposter; if (im && im.becomeGuest) im.becomeGuest(); }
+  becomeGuest() { if (this.director.remote) return; this.becomeClient(); const im = this.director.imposter; if (im && im.becomeGuest) im.becomeGuest(); const ph = this.director.prophunt; if (ph) ph.becomeGuest(); }
   // which squad members are being played by someone (left out of the squad)
   takenChars() { const s = new Set(); if (!this.net.connected) return s; if (this.net.char && this.net.char !== 'ronnie') s.add(this.net.char); for (const p of this.net.players.values()) if (p.char && p.char !== 'ronnie') s.add(p.char); return s; }
 

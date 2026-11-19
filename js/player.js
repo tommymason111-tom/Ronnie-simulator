@@ -662,6 +662,7 @@ export class Player {
     g.save(); g.translate(0, 64);
     if (state.pub) { this.drawPubBox(g, w, h, state); g.restore(); this.wristTex.needsUpdate = true; return; }
     if (state.imp) { this.drawImpBox(g, w, h, state.imp); g.restore(); this.wristTex.needsUpdate = true; return; }
+    if (state.custom) { state.custom(g, w, h); g.restore(); this.wristTex.needsUpdate = true; return; }      // (a mode that draws its own: PROP HUNT)
     g.fillStyle = '#111827'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill();
     // (nearly the next size: the border glows gold, pulsing)
     g.lineWidth = 8 + (state.glow || 0) * 6; g.strokeStyle = state.loco > 0 ? '#ff9a1f' : state.glow ? `rgb(255,${Math.round(212 + 30 * state.glow)},${Math.round(40 * state.glow)})` : '#39ff14'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();

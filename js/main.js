@@ -40,6 +40,7 @@ import { buildMix, MIX_CSS } from './mixui.js';
 import { haptics } from './haptics.js';
 import { Imposter } from './imposter.js';
 import { BossFight } from './boss.js';      // (BOSS FIGHT)
+import { PropHunt } from './prophunt.js';      // (PROP HUNT)
 import { TVs } from './tv.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
 import { setupWeather } from './weather.js';      // (weather and the time of day; importing it also readies every shader for it)
@@ -606,6 +607,7 @@ const touch = setupTouch({
   onSprint: () => { player.sprint = !player.sprint; sfx(player.sprint ? 'sprint' : 'walk', null, 0.4); return player.sprint; },
   onTap: (x, y) => {
     if (!player.flatMode) return;
+    if (director.prophunt) { director.prophunt.tap(x, y); return; }      // (PROP HUNT: a tap is a seeker's check, or a hider becoming what they tapped)
     ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
     const ray = raycaster.ray, reach = 3 * player.scale;
@@ -739,7 +741,7 @@ function startOnce() { if (gameBegun && director.running) return; gameBegun = tr
 // (a character's model has just loaded: once the last of a batch is in, build its shaders too)
 { let t = null; window.__onModelReady = () => { clearTimeout(t); window.__shaderWarm = null; t = setTimeout(rewarm, 500); }; }
 function rewarm() { window.__shaderWarm = null; setTimeout(() => { if (renderer.xr.isPresenting || window.__glLost) { window.__shaderWarm = { skipped: true }; return; } warmShaders(renderer, scene, camera).then(r => { window.__shaderWarm = r; }).catch(() => {}); }, 300); }
-function chosenMode() { const m = ['classic', 'intervention', 'veggie', 'catch'].includes(SEL.mode) || !SEL.mode ? 'everyone' : SEL.mode; return m.startsWith('imposter') && !(window.ronnieMP && window.ronnieMP.role) ? 'everyone' : m; }   // old links still work
+function chosenMode() { const m = ['classic', 'intervention', 'veggie', 'catch'].includes(SEL.mode) || !SEL.mode ? 'everyone' : SEL.mode; return /^(imposter|prophunt)/.test(m) && !(window.ronnieMP && window.ronnieMP.role) ? 'everyone' : m; }   // old links still work
 { const pf = document.getElementById('play-flat'); pf.addEventListener('click', startFlat); pf.disabled = false; pf.innerHTML = '<span class="pi">▶</span> PLAY'; }
 
 // ---------------- Enter VR ----------------
@@ -847,6 +849,8 @@ const director = new Director({
     restart: () => hostNewGame(director.fullMode), leave: () => leaveGame() }, n),
   // BOSS FIGHT: the whole fight lives in boss.js
   makeBoss: () => new BossFight({ scene, room, physics, player, items, words, crumbs, G, cast, director, net, mp, camera, renderer, fx: attackFx, hint: (t) => touch.hint(t), showBanner: (a, b) => showBanner(a, b) }),
+  // PROP HUNT (multiplayer): the whole game lives in prophunt.js
+  makePropHunt: () => new PropHunt({ scene, room, player, net, mp, words, renderer, camera, items, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), leave: () => leaveGame() }),
   hint: (t) => touch.hint(t),
   stageName: () => stageNameOf(G.stage), stageNo: () => G.stage,
   // points that pop bubbles / press board buttons: palms, fingertips and held food
@@ -1010,12 +1014,13 @@ const PAUSE_MODES = {
   imposter: ['🔪', 'IMPOSTER · 1 IMPOSTER', 'Multiplayer: do your jobs, find the imposter, vote them out'],
   imposter2: ['🔪', 'IMPOSTER · 2 IMPOSTERS', 'Multiplayer: two imposters among you (5+ players)'],
   boss: ['👹', 'BOSS FIGHT', 'A giant mate: eat to power up, throw food to bring them down'],      // (BOSS FIGHT)
+  prophunt: ['🎭', 'PROP HUNT', 'Multiplayer: hide as a keg, a bin, a gnome... seekers find them'],      // (PROP HUNT)
 };
-const PLACE_GAMES = { pub: ['everyone', 'runpub1', 'runpub', 'runpub3', 'imposter', 'imposter2', 'boss', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], shop: ['sweep', 'roam', 'roam0'], garden: ['bbq', 'boss', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'] };
+const PLACE_GAMES = { pub: ['everyone', 'runpub1', 'runpub', 'runpub3', 'imposter', 'imposter2', 'boss', 'prophunt', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], shop: ['sweep', 'prophunt', 'roam', 'roam0'], garden: ['bbq', 'boss', 'prophunt', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'] };
 const modeTitle = () => { const m = director.fullMode; return (PAUSE_MODES[m] && PAUSE_MODES[m][1]) || (m === 'classic' ? 'CLASSIC' : m === 'intervention' ? 'THE SQUAD' : (m || '').toUpperCase()); };
 function showPauseModes() {
   const list = document.getElementById('pause-mode-list'), cur = director.fullMode;
-  list.innerHTML = (PLACE_GAMES[room.placeId] || PLACE_GAMES.bedroom).filter(id => net.connected || !PAUSE_MODES[id] || !id.startsWith('imposter')).map(id => { const [ico, name, desc] = PAUSE_MODES[id];
+  list.innerHTML = (PLACE_GAMES[room.placeId] || PLACE_GAMES.bedroom).filter(id => net.connected || !PAUSE_MODES[id] || !/^(imposter|prophunt)/.test(id)).map(id => { const [ico, name, desc] = PAUSE_MODES[id];
     return `<button class="alt mode-opt${id === cur ? ' cur' : ''}" data-id="${id}">${ico} ${name}<small>${id === cur ? 'Playing now · tap to restart' : desc}</small></button>`; }).join('');
   list.querySelectorAll('.mode-opt').forEach(b => b.addEventListener('click', () => {
     const id = b.dataset.id; SEL.mode = id;
@@ -1268,7 +1273,7 @@ function frame(simDt) {
   // press a game's PLAY sign by touching it (headset hands)
   if (xr) for (const gm of room.games || []) if (gm.button && gm.button.visible) for (const h of player.hands) if (h.tracked && h.palm.distanceTo(gm.button.position) < 0.2) { gm.toggle(); h.pulse && h.pulse(0.6, 60); }
   // play a fruit machine by touching it (headset hands)
-  if (room.machines && xr && !director.imposter) for (const h of player.hands) if (h.tracked) for (const m of room.machines) if (h.palm.distanceTo(m.front) < 0.35 && m.spin()) { sfx('reels', m.front, 1); h.pulse && h.pulse(0.6, 80); }
+  if (room.machines && xr && !director.imposter && !director.prophunt) for (const h of player.hands) if (h.tracked) for (const m of room.machines) if (h.palm.distanceTo(m.front) < 0.35 && m.spin()) { sfx('reels', m.front, 1); h.pulse && h.pulse(0.6, 80); }
   // eating & drinking held food (VR hands, or the on-screen hand)
   for (const h of player.flatMode ? [player.flatHolder] : player.hands) {
     const it = h.held;
@@ -1346,7 +1351,7 @@ function frame(simDt) {
 }
   G.wristT -= dt;
   if (director.running && director.mode !== 'classic' && Math.floor(director.timeLeft) !== G.lastHudSec) { G.lastHudSec = Math.floor(director.timeLeft); G.wristDirty = true; }
-  { const hl = director.hud(); if (hl !== G.lastHudLine) { G.lastHudLine = hl; G.wristDirty = true; } if (director.imposter && (G.impHudT = (G.impHudT || 0) - dt) <= 0) { G.impHudT = 0.25; G.wristDirty = true; } }   // e.g. the attack countdown ticking
+  { const hl = director.hud(); if (hl !== G.lastHudLine) { G.lastHudLine = hl; G.wristDirty = true; } if ((director.imposter || director.prophunt) && (G.impHudT = (G.impHudT || 0) - dt) <= 0) { G.impHudT = 0.25; G.wristDirty = true; } }   // e.g. the attack countdown ticking
   // (the meter's moving parts: the bar sliding to its level, the combo timer draining, the flash, the near-full glow:
   // redrawn quicker while any of them is moving)
   { const max0 = G.stage === STAGES.length - 1, c0 = STAGES[G.stage].chonk, n0 = max0 ? c0 : STAGES[G.stage + 1].chonk, want = max0 ? 1 : Math.max(0, Math.min(1, (G.chonk - c0) / (n0 - c0)));
@@ -1365,13 +1370,14 @@ function frame(simDt) {
       modeLine: (window.__devMode || window.__devPending) ? 'TEST BENCH · NO RANDOM ATTACKS' : director.hud(), title: (window.__devMode || window.__devPending) ? 'DEVELOPER MODE' : modeTitle(), dev: !!(window.__devMode || window.__devPending),
       pub: director.runpub ? director.runpub.hudState(director.timeLeft) : null,
       imp: director.imposter ? director.imposter.hudState() : null,
+      custom: director.prophunt ? (g2, w, h) => director.prophunt.drawWrist(g2, w, h) : null,      // (PROP HUNT draws its own wrist)
     });
   }
 
   _b.set(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(_q));
   setListener(player.head, player.fwd, _b);
 
-  if (simDt == null) renderer.render(scene, (director.boss && director.boss.cineCam()) || (director.imposter && director.imposter.replay && director.imposter.replay.cam) || emoteCam() || camera);      // (Imposter's end-of-game replay and the BOSS FIGHT entrance film from their own cameras)
+  if (simDt == null) renderer.render(scene, (director.boss && director.boss.cineCam()) || (director.prophunt && director.prophunt.viewCam()) || (director.imposter && director.imposter.replay && director.imposter.replay.cam) || emoteCam() || camera);      // (Imposter's replay, the BOSS FIGHT entrance and a PROP HUNT hider's view of their prop have their own cameras)
   learnShader();      // (a shader built during play: remember its kind, so next time it's built up front)
 }
 // your own emote, on a phone or a computer: the camera swings round in front of you so you can watch your character do
@@ -1441,7 +1447,7 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
   // a new host (the old one left, or handed it over): everyone's told who; if it's you, your game takes over running
   // everything (the squad, the food, the game) from exactly where it was
   net.on.host = (m, was) => { chip();
-    if (m.id === net.id && !was) { mp.becomeHost(); director.imposter && director.imposter.becomeHost && director.imposter.becomeHost(); showBanner('👑 YOU\'RE THE HOST NOW', m.why === 'given' ? 'HANDED BACK TO YOU' : 'THE HOST LEFT: YOU\'RE RUNNING THE GAME'); }
+    if (m.id === net.id && !was) { mp.becomeHost(); director.imposter && director.imposter.becomeHost && director.imposter.becomeHost(); director.prophunt && director.prophunt.becomeHost(); showBanner('👑 YOU\'RE THE HOST NOW', m.why === 'given' ? 'HANDED BACK TO YOU' : 'THE HOST LEFT: YOU\'RE RUNNING THE GAME'); }
     else if (m.id !== net.id) showBanner('👑 ' + String(m.name || 'SOMEONE').toUpperCase() + ' IS THE HOST', m.why === 'given' ? 'HOSTING WAS HANDED OVER' : 'THE HOST LEFT');
     if (was && m.id !== net.id) mp.becomeGuest && mp.becomeGuest(); };
   // your progress (how big you've got, what you've eaten), kept by the room: drop out and come back, and it's yours again
@@ -1532,7 +1538,7 @@ Character.hearers = () => { const a = [player.head]; if (net.connected && mp.hos
 director.startRemote = (id) => { if (!net.host && director.mode && (PAUSE_MODES[id] || id === 'imposter')) newGame(id, 'NEW GAME'); };
 // power-ups turn up in the eating games (not Run the Pub, the Sweep or Imposter)
 powerups = new PowerUps({ scene, room, items, player, sfx, words, net, mp, eatWhole: (it) => hooverEat(it),
-  enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter'].includes(director.mode) && roomNum('powerups') > 0 });
+  enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter', 'prophunt'].includes(director.mode) && roomNum('powerups') > 0 });
 mp.selfBody = () => selfBody;      // (your emotes play on your own body too)
 mp.onChat = (text, p) => { chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text); if (!p) voiceLine(net.char, text, player.head, { key: 'chat_me' }); };      // (you hear your own message in your character's voice too)
 mp.voiceWarm = (text) => VOICED.has(net.char) ? warmLine(net.char, text) : null;      // (voices.js)

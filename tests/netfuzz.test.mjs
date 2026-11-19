@@ -51,6 +51,33 @@ export default async function () {
         out.nanBodies = ph; out.player = [RS.player.head.x, RS.player.head.y, RS.player.head.z].every(isFinite); out.types = types.length; out.sent = steps;
         return out;
       }, [asHost, boss]);
+      if (!boss) {
+      // PROP HUNT: the same again with the game in Prop Hunt (its own messages), and a game dealt from nonsense
+      const ph = await p.evaluate(async () => {
+        const n = RS.net, out = { thrown: [], nan: [], on: false };
+        RS.newGame('prophunt'); for (let i = 0; i < 10; i++) RS.sim(0.05, 0.05); out.on = !!RS.director.prophunt;
+        const J = [null, NaN, Infinity, -1, 0, 1e9, '', 'x', 'x'.repeat(3000), [], [NaN, NaN, NaN], [1, 2], [1, 2, 3], ['frienddd', 'meeeeeee'], [{ id: 'frienddd' }, { id: null }, 5], {}, { frienddd: 'keg', meeeeeee: 9 }, { x: [1, 2, 3] }, true];
+        const types = ['phChk', 'phProp', 'phLock', 'phTaunt', 'phHello', 'phLobby', 'phRound', 'phGo', 'phClock', 'phFound', 'phMiss', 'phOut', 'phBack', 'phPts', 'phAuto', 'phEnd', 'phOver', 'phState'];
+        const fields = ['v', 'p', 'k', 'id', 'y', 'on', 'i', 'n', 'list', 'seek', 'hide', 'lay', 'r', 'of', 'ht', 'st', 'tot', 'ph', 'left', 'by', 'hp', 'd', 't', 'why', 'rp', 'alive', 'stats', 'win', 'last', 'aw', 'round', 'kinds', 'locks', 'found', 'to'];
+        const send = (m) => { try { n.handle(JSON.parse(JSON.stringify(m))); } catch (e) { out.thrown.push(`${m.t}.${Object.keys(m).filter(k => k !== 't' && k !== 'f').join(',')}: ${e.message}`); } };
+        // (a round dealt by the friend, as if they were the host, so the hider and seeker messages have someone to be about)
+        const deal = () => n.host ? (() => { try { RS.director.prophunt.hostStart(); } catch (e) { out.thrown.push('hostStart: ' + e.message); } })() : send({ t: 'phRound', f: n.hostId, r: 1, of: 4, seek: ['frienddd'], hide: ['meeeeeee'], list: [{ id: 'meeeeeee', name: 'ME', char: 'lewis' }, { id: 'frienddd', name: 'FRIEND', char: 'chloe' }], ht: 40, st: 150, lay: [0, 1, 1, 0.5, 1, NaN, 2, 0, 99, 3, 3, 3] });
+        let steps = 0; deal(); RS.sim(0.05, 0.05);
+        for (const t of types) for (const f of fields) for (const j of J) {
+          send({ t, f: 'frienddd', [f]: j }); send({ t, f: 'strangerX', [f]: j }); if ((t === 'phRound' || t === 'phEnd' || t === 'phOver') && j === true) deal();
+          if (++steps % 50 === 0) { try { RS.sim(0.05, 0.05); } catch (e) { out.thrown.push('sim after ' + t + '.' + f + ': ' + e.message); } }
+        }
+        for (const t of types) { send({ t }); send({ t, f: 'frienddd' }); }
+        for (let i = 0; i < 40; i++) { try { RS.sim(0.05, 0.05); } catch (e) { out.thrown.push('sim at the end: ' + e.message); break; } }
+        RS.scene.traverse(o => { if (o.position && !(isFinite(o.position.x) && isFinite(o.position.y) && isFinite(o.position.z))) out.nan.push(o.name || o.type); });
+        out.player = [RS.player.head.x, RS.player.head.y, RS.player.head.z].every(isFinite); out.sent = steps;
+        RS.newGame('roam'); for (let i = 0; i < 5; i++) RS.sim(0.05, 0.05); out.after = !RS.director.prophunt && !document.querySelector('#ph-ui');
+        return out;
+      });
+      { const label = (asHost ? 'as host' : 'as guest') + ' in Prop Hunt';
+        C.ok(ph.on, `${label}: Prop Hunt didn't start`); C.ok(!ph.thrown.length, `${label}: ${ph.thrown.length} hostile messages threw: ` + [...new Set(ph.thrown.map(x => x.slice(0, 120)))].slice(0, 8).join(' | '));
+        C.ok(!ph.nan.length, `${label}: NaN positions: ${ph.nan.slice(0, 5).join(', ')}`); C.ok(ph.player, `${label}: the player's own position went NaN`); C.ok(ph.after, `${label}: Prop Hunt left things behind when the game changed`); }
+      }
       const label = (asHost ? 'as host' : 'as guest') + (boss ? ' (boss fight)' : '');
       C.ok(!r.thrown.length, `${label}: ${r.thrown.length} hostile messages threw: ` + [...new Set(r.thrown.map(x => x.replace(/: .*/, m => m.slice(0, 90))))].slice(0, 8).join(' | '));
       C.ok(!r.nan.length && !r.nanBodies, `${label}: NaN positions after the attack: ${r.nan.slice(0, 5).join(', ')} / ${r.nanBodies} physics bodies`);
