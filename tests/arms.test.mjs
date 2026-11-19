@@ -10,7 +10,7 @@
 //     one late: carrying on from just those two turned a 1cm wobble into metres a second, the whole body thrown across
 //     the room for a frame. It carries on at the speed they were really going
 import { launch, newPage, startGame, checker } from './lib/game.mjs';
-// (ARMS_CASES, ARMS_NETS, ARMS_FPS to try others; a net 'delay/jitter/sN' has a phone network's hiccups: nothing for up
+// (ARMS_CASES, ARMS_NETS, ARMS_FPS to try others (ARMS_FPS=0: a watcher that hitches, a quarter-second freeze then a burst of quick frames: look at leaps there, wobble assumes even frames); a net 'delay/jitter/sN' has a phone network's hiccups: nothing for up
 // to N ms every few seconds, then it all arrives at once)
 const CASES = (process.env.ARMS_CASES || 'vr:wave,vr:circle,vr:punch,vr:still,vr:walkwave,phone:walk,phone:walkturn,phone:eat,phone:run,phone:stopgo,phone:bot').split(',');
 const NETS = (process.env.ARMS_NETS || '5/2,120/90,60/40/s1500').split(','), FPS = (process.env.ARMS_FPS || '72,30').split(',').map(Number);
@@ -38,10 +38,12 @@ export default async function () {
           if (motion === 'walkwave' || motion === 'walk' || motion === 'walkturn' ) { hx += 1.2 * s(t * 0.5); hz += 0.8 * s(t * 0.35); yaw = Math.PI / 2 + (motion === 'walkturn' ? 1.5 * s(t * 0.7) : 0.3 * s(t * 0.5)); if (motion === 'walkwave') R = [0.25 + 0.1 * s(t * 7), -0.1, 0.3]; }
           const F = [Math.sin(yaw), Math.cos(yaw)], Rt = [Math.cos(yaw), -Math.sin(yaw)], W = (o) => [hx + Rt[0] * o[0] + F[0] * o[2], 1.62 + o[1], hz + Rt[1] * o[0] + F[1] * o[2]];
           return { h: [hx, 1.62, hz], yaw, rh: W(R), l: W(L), botEat }; };
-        const sendHz = 20, dur = stall ? 14 : 6, frames = Math.round(dur * fps); let nextSend = 0, lastArr = 0, lastKey = '', lastKeyAt = -9, moved = false; const inflight = []; const rec = [];
+        const sendHz = 20, dur = stall ? 14 : 6, frames = fps ? Math.round(dur * fps) : Math.round(dur / 0.05); let nextSend = 0, lastArr = 0, lastKey = '', lastKeyAt = -9, moved = false; const inflight = []; const rec = [];
         const noise = kind === 'vr' ? 0.0015 : 0;      // (a Quest controller's tracking noise: ~1.5mm)
         for (let i = 0; i < frames; i++) {
-          const t = i / fps; fake += 1000 / fps;
+          // (fps 0: a phone that hitches: a quarter-second freeze, then a burst of quick frames, again and again)
+          const BURST = [0.25, 0.008, 0.008, 0.016, 0.016, 0.033, 0.033, 0.033], fdt = fps ? 1 / fps : BURST[i % BURST.length];
+          const t = (i ? rec.__t || 0 : 0) + (i ? fdt : 0); rec.__t = t; fake += fdt * 1000;
           // the sender: poses on its own frames (72/s for a headset, 60 for a phone), sent at most 20 times a second
           const sfps = kind === 'vr' ? 72 : 60; while (nextSend <= t) { const st = nextSend; const tr = truth(st); const j = () => kind === 'vr' ? gauss() * noise : 0;
             const q = new T.Quaternion().setFromAxisAngle(new V(0, 1, 0), tr.yaw + Math.PI); const r3 = (a) => a.map(v => Math.round(v * 1000) / 1000);
@@ -55,8 +57,8 @@ export default async function () {
             const arr = Math.max(lastArr, st * 1000 + lat + rnd() * jit, stUntil); lastArr = arr; inflight.push({ arr, m }); nextSend += 1 / sendHz; }
           while (inflight.length && inflight[0].arr <= t * 1000) { const x = inflight.shift(); pushPose(pl, x.m, fake); }      // (the game's own: net.js)
           // (measured as drawn: straight after the avatar's posed, before the physics step carries its bodies on)
-          if (pl.pose) av.update(Math.min(1 / fps, 0.05), pl.pose);      // (the game caps a frame's step at 0.05s: main.js frame)
-          const step = () => RS.physics.step(Math.min(1 / fps, 0.05));
+          if (pl.pose) av.update(Math.min(fdt, 0.05), pl.pose);      // (the game caps a frame's step at 0.05s: main.js frame)
+          const step = () => RS.physics.step(Math.min(fdt, 0.05));
           const r = av.c.rag; if (!r.parts || !pl.pose) { step(); continue; }
           const g = (n) => { const v = r.grip(n, new V()); return [v.x, v.y, v.z]; }, sh = (n) => { const v = r.pos(n, new V()); return [v.x, v.y, v.z]; };
           const ht = av.hT && av.hT.R ? [av.hT.R.x, av.hT.R.y, av.hT.R.z] : null, raw = [av.rh.x, av.rh.y, av.rh.z];
