@@ -35,12 +35,15 @@ export default async function () {
       if (!code) { await cl(p, '#mp-host2'); await p.waitForFunction(() => window.ronnieMP && ronnieMP.net && ronnieMP.net.code && ronnieMP.net.status === 'on', null, { timeout: 60000 }); return ev(p, () => ronnieMP.net.code); }
       await ev(p, (c) => { document.querySelector('#mp-code2').value = c; document.querySelector('#mp-join2').click(); }, code); await p.waitForFunction(() => window.ronnieMP && ronnieMP.net && ronnieMP.net.status === 'on', null, { timeout: 60000 }); };
     const H = pages[0], code = await join(H); for (const p of pages.slice(1)) await join(p, code);
+    // (what each game is doing: which screen, connected, how many others it can see)
+    const states = () => Promise.all(pages.map(p => ev(p, () => ({ screen: (document.querySelector('.screen.on') || {}).dataset?.s || null, ready: document.body.classList.contains('ready'), net: window.ronnieMP && ronnieMP.net ? { status: ronnieMP.net.status, others: ronnieMP.net.players.size, host: !!ronnieMP.net.host } : null })).then(x => p.pname + ' ' + JSON.stringify(x)).catch(e => p.pname + ' ' + e.message.slice(0, 80))));
+    { const st = await states(); console.log('  joined:\n   ' + st.join('\n   ')); }
     // the host starts free roam (just the players) in the pub
     await cl(H, '#room-go'); await sleep(400); await ev(H, () => document.querySelector('.scene[data-id="pub"]').click()); await sleep(300);
     await ev(H, () => document.querySelector('.screen[data-s="place"] .bigbtn').click()); await sleep(500);
     await ev(H, () => { const f = () => document.querySelector('.flip[data-id="roam"]'); f() && f().click(); }); await sleep(300);
     await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await cl(H, '#go');
-    for (const p of pages) { await p.waitForFunction(() => document.querySelector('.screen[data-s="intro"].on') || document.body.classList.contains('ready'), null, { timeout: 150000 * Math.max(1, pages.length / 4) }); await ev(p, () => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click(); }); }
+    for (const p of pages) { await p.waitForFunction(() => document.querySelector('.screen[data-s="intro"].on') || document.body.classList.contains('ready'), null, { timeout: 150000 * Math.max(1, pages.length / 4) }).catch(async (e) => { throw new Error(p.pname + ' never started: ' + (await states()).join(' | ')); }); await ev(p, () => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click(); }); }
     for (const p of pages) await p.waitForFunction(() => window.RS && document.body.classList.contains('ready'), null, { timeout: 200000 * Math.max(1, pages.length / 4) });
     if (await ev(H, () => RS.director.mode !== 'roam')) await ev(H, () => RS.newGame('roam0'));
     // into the game: headsets into VR (the second on hand tracking), phones play flat. Nothing is drawn (four software-
