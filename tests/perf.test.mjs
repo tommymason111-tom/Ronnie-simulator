@@ -6,6 +6,7 @@
 //   - keeping people out of the furniture (nearBlockers) gives exactly what checking every box did
 //   - path finding (reused working arrays) finds exactly the same routes as a fresh search
 //   - growing a size doesn't stop the game: every belly look is made beforehand
+//   - characters out of view aren't drawn (every pixel in view the same)
 //   - no shader is built in the middle of play (each was a stutter): they're all built while the level loads
 import { launch, newPage, startGame, checker } from './lib/game.mjs';
 
@@ -55,6 +56,19 @@ export default async function () {
               const warm = key(nav.path(a[0], a[1], c2[0], c2[1])); nav._g = null; const fresh = key(nav.path(a[0], a[1], c2[0], c2[1])); if (warm !== fresh) out.navDiff++; } }
           return out;
         });
+        // characters are skipped when they're out of view (with twelve players, every phone drew all eleven others every
+        // frame, behind it or not), and what's in view is exactly the same: every pixel, from 8 directions (shadows too)
+        if (place === 'pub' || place === 'garden') { const cv = await p.evaluate(() => { const T = RS.THREE, R = RS.renderer, st = RS.room.start;
+            const skins = []; for (const c of RS.cast) if (c.rag && c.rag.group) c.rag.group.traverse(o => { if (o.isSkinnedMesh) skins.push(o); });
+            const rt = new T.WebGLRenderTarget(240, 150), a = new Uint8Array(240 * 150 * 4), bb = new Uint8Array(240 * 150 * 4), cam = new T.PerspectiveCamera(70, 1.6, 0.05, 60); let diff = 0, saved = 0;
+            for (let k = 0; k < 8; k++) { cam.position.set(st.x, 1.6, st.z); cam.rotation.set(-0.1, k / 8 * Math.PI * 2, 0, 'YXZ'); cam.updateMatrixWorld();
+              R.setRenderTarget(rt); R.info.reset(); R.render(RS.scene, cam); const c1 = R.info.render.calls; R.readRenderTargetPixels(rt, 0, 0, 240, 150, a);
+              const was = skins.map(m => m.frustumCulled); skins.forEach(m => { m.frustumCulled = false; }); R.info.reset(); R.render(RS.scene, cam); saved += R.info.render.calls - c1; R.readRenderTargetPixels(rt, 0, 0, 240, 150, bb); skins.forEach((m, j) => { m.frustumCulled = was[j]; });
+              for (let j = 0; j < a.length; j += 4) if (Math.abs(a[j] - bb[j]) + Math.abs(a[j + 1] - bb[j + 1]) + Math.abs(a[j + 2] - bb[j + 2]) > 6) diff++; }
+            R.setRenderTarget(null); rt.dispose(); return { skins: skins.length, culled: skins.filter(m => m.frustumCulled).length, diff, saved }; });
+          C.ok(cv.skins > 0 && cv.culled === cv.skins, `${place}: ${cv.skins - cv.culled} of ${cv.skins} character bodies are drawn even when out of view`);
+          C.ok(cv.diff === 0, `${place}: skipping characters out of view changed ${cv.diff} pixels (someone in view went missing)`);
+          console.log(`  ${place}: characters out of view skipped: ${cv.saved} draws saved over 8 views, ${cv.diff} pixels different`); }
         // no first-time stutters: once the level's warmed up, playing (power-ups, eating, attacks) builds no new shaders
         await p.waitForFunction(() => RS.cast.every(c => !c.rag || c.rag.ready), null, { timeout: 120000 }).catch(() => {}); await p.waitForTimeout(1500);      // (the people's models are in: their shaders are warmed once they've loaded)
         await p.waitForFunction(() => window.__shaderWarm, null, { timeout: 240000 });

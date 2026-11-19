@@ -990,6 +990,22 @@ export class Ragdoll {
       _hm.multiply(_hm2.makeTranslation(c.x, c.y, c.z)); _hm.decompose(bone.position, bone.quaternion, bone.scale);
     });
     this.applyScale();
+    this.cullBounds();
+  }
+  // only drawn while it's in view: each frame, a ball round where the body really is (from its parts, with room for the
+  // flesh, the belly and the hands), so the graphics chip can skip a character behind you or out of the way. Characters
+  // used to be drawn wherever they were (an animated body's own bounds don't move with it): with twelve players, every
+  // phone drew all eleven others every frame, looking at them or not. Nothing in view looks any different
+  cullBounds() {
+    if (!this.mesh || !this.list.length) return;
+    let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+    for (const p of this.list) { const q = p.body.position; if (q.x < x0) x0 = q.x; if (q.x > x1) x1 = q.x; if (q.y < y0) y0 = q.y; if (q.y > y1) y1 = q.y; if (q.z < z0) z0 = q.z; if (q.z > z1) z1 = q.z; }
+    const S = this._cs || (this._cs = new THREE.Sphere()); S.center.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    let r = 0; for (const p of this.list) r = Math.max(r, S.center.distanceTo(p.body.position));
+    S.radius = r + 0.5 * (this.height / 1.68) * (1 + Math.max(0, this.fat || 0));
+    if (!Number.isFinite(S.radius) || !Number.isFinite(S.center.x)) { S.center.set(0, 0, 0); S.radius = 1e6; }      // (never hidden by a bad number)
+    if (!this._skin || this._skinN !== this.group.children.length) { this._skinN = this.group.children.length; this._skin = []; this.group.traverse(o => { if (o.isSkinnedMesh) this._skin.push(o); }); }
+    for (const m of this._skin) { m.boundingSphere = S; m.frustumCulled = true; }
   }
   // how big the body is drawn, around where it stands: bulk (a player's stage in multiplayer: taller and much wider)
   // times an emote's stretch (tall and thin...)
