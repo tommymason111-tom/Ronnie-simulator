@@ -115,9 +115,15 @@ async function onePlace(place, WHO) {
     const tot1 = await ev(H, (id) => RS.director.prophunt.H.tot[id] || 0, h0); C.ok(tot1 - tot0 >= 10, `a taunt scored ${tot1 - tot0} points`);
     for (const p of pages) { const heard = await ev(p, (id) => { const q = RS.director.prophunt.players.get(id); return !!(q && q.tauntAt && performance.now() / 1000 - q.tauntAt < 5); }, h0); C.ok(heard, `${p.pname} didn't get ${H0.pname}'s taunt`); }
     // a wrong guess: the seeker checks one of the real things
-    const aimAt = async (p, x, y, z) => { const at = await ev(p, ([x, y, z]) => { const m = RS.director.prophunt, P = RS.player, d = Math.hypot(x - P.head.x, z - P.head.z) || 1; m.teleport(x - (x - P.head.x) / d * 2, z - (z - P.head.z) / d * 2); return [P.head.x, P.head.z]; }, [x, y, z]);
-      await H.waitForFunction(([id, x, z]) => { const q = RS.director.prophunt.posOf(id); return q && Math.hypot(q.x - x, q.z - z) < 0.8; }, [sId, at[0], at[1]], { timeout: 20000, polling: 300 }).catch(() => {});      // (the host's game sees the seeker there)
-      await ev(p, ([x, y, z]) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, o = new T.Vector3(P.head.x, P.head.y, P.head.z); m.chkCD = 0; m.doCheck(new T.Ray(o, new T.Vector3(x, y, z).sub(o).normalize())); }, [x, y, z]); };
+    // the seeker goes to a spot near a hider's prop with a clear view of it (no wall, no real prop in the way) and checks it
+    const checkHider = async (p, id, tries) => { const at = await ev(p, ([id, n]) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, pr = m.props.get(id); if (!pr) return null;
+        const c = new T.Vector3(pr.pos.x, pr.pos.y + m.K[pr.kind].h / 2, pr.pos.z);
+        for (let k = 0; k < 24; k++) { const a = (k + n * 5) * 0.785, r = 1.4 + (k % 3) * 0.6, o = new T.Vector3(c.x + Math.cos(a) * r, P.head.y, c.z + Math.sin(a) * r), q = RS.room.nav.idx(o.x, o.z);
+          if (q < 0 || !RS.room.nav.free[q]) continue; const h = m.pick(new T.Ray(o, c.clone().sub(o).normalize()), { maxD: 5 }); if (h && h.kind === 'h' && h.id === id) { m.teleport(o.x, o.z); return [P.head.x, P.head.z]; } }
+        return null; }, [id, tries]);
+      if (!at) return false;
+      await H.waitForFunction(([id, x, z]) => { const q = RS.director.prophunt.posOf(id); return q && Math.hypot(q.x - x, q.z - z) < 0.8; }, [sId, at[0], at[1]], { timeout: 45000, polling: 300 }).catch(() => {});      // (the host's game sees the seeker there)
+      await ev(p, (id) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, pr = m.props.get(id); if (!pr) return; const o = new T.Vector3(P.head.x, P.head.y, P.head.z), c = new T.Vector3(pr.pos.x, pr.pos.y + m.K[pr.kind].h / 2, pr.pos.z); m.chkCD = 0; m.doCheck(new T.Ray(o, c.sub(o).normalize())); }, id); return true; };
     const decoy = await findDecoy(S);
     C.ok(decoy, 'no decoy the seeker could check');
     if (decoy) { await lookAt(S, decoy); await H.waitForFunction(([id, x, z]) => { const q = RS.director.prophunt.posOf(id); return q && Math.hypot(q.x - x, q.z - z) < 0.8; }, [sId, decoy.ox, decoy.oz], { timeout: 20000, polling: 300 }).catch(() => {});
@@ -127,8 +133,7 @@ async function onePlace(place, WHO) {
     // the seeker finds every hider
     for (const i of hiders) { const id = info[i].id;
       for (let tries = 0; tries < 3; tries++) {
-        const at = await ev(S, (id) => { const pr = RS.director.prophunt.props.get(id), m = RS.director.prophunt; return pr ? { x: pr.pos.x, y: pr.pos.y + m.K[pr.kind].h / 2, z: pr.pos.z } : null; }, id);
-        if (!at) break; await aimAt(S, at.x, at.y, at.z); await sleep(1500);
+        if (!(await checkHider(S, id, tries))) break; await pages[i].waitForFunction(() => { const me = RS.director.prophunt.mine(); return !!(me && me.found); }, null, { timeout: 15000 }).catch(() => {});
         if (await ev(pages[i], () => { const me = RS.director.prophunt.mine(); return !!(me && me.found); })) break; }
       const f = await ev(pages[i], () => ({ found: !!RS.director.prophunt.mine().found, ghost: !!RS.player.ghost, phase: RS.director.prophunt.phase }));
       const why = f.found ? '' : JSON.stringify(await ev(H, ([id, sid]) => { const m = RS.director.prophunt, a = m.posOf(id), b = m.posOf(sid), q = m.players.get(id); return { hider: a && [+a.x.toFixed(2), +a.z.toFixed(2)], seeker: b && [+b.x.toFixed(2), +b.z.toFixed(2)], locked: q && q.lp, phase: m.phase }; }, [id, sId])) + ' seeker sees ' + JSON.stringify(await ev(S, (id) => { const m = RS.director.prophunt, pr = m.props.get(id), P = RS.player; return { prop: pr && [+pr.pos.x.toFixed(2), +pr.pos.z.toFixed(2), pr.kind], me: [+P.head.x.toFixed(2), +P.head.z.toFixed(2)], hp: m.mine().hp }; }, id));
