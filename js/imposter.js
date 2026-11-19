@@ -490,7 +490,7 @@ export class Imposter {
     }
     // ghosts see ghosts
     for (const p of this.players.values()) {
-      const want = meDead && !p.alive && p.id !== this.me; let s = this.ghostTags.get(p.id);
+      const gp = this.ghostPups && this.ghostPups.get(p.id), want = meDead && !p.alive && p.id !== this.me && !(gp && gp.c && gp.c.rag && gp.c.rag.mesh); let s = this.ghostTags.get(p.id);      // (the 👻 floats there until their ghost is ready)
       if (want && !s) { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256; const x = cv.getContext('2d'); x.font = '150px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.globalAlpha = 0.8; x.fillText('👻', 128, 110); x.globalAlpha = 1; txt(x, p.name.toUpperCase(), 128, 220, 34, '#cfe0ff');
         const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, opacity: 0.75, depthWrite: false })); s.scale.setScalar(0.6); this.grp.add(s); this.ghostTags.set(p.id, s); }
       if (s) s.visible = want;
@@ -803,7 +803,8 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     this.panel.update(dt);
     if (this.camsGame && (this.panel.cur !== this.camsGame || !(this.mine() && this.mine().alive))) { if (this.panel.cur === this.camsGame) this.panel.close(true); this.closeCams(); }
     if (this.camLeds) { const on = this.camWatchers.size > 0 && Math.floor(performance.now() / 450) % 2 === 0; for (const l of this.camLeds) l.material.color.setHex(on ? 0xff2020 : 0x330000); }
-    if (this.phase === 'intro') { this.introT -= dt; if (this.introT <= 0) { this.phase = 'play'; this.setFog(); } }
+    if (this.phase === 'intro') { this.introT -= dt; if (this.introT <= 0) { this.phase = 'play'; this.setFog(); this.warmGhosts(); } }
+    this.updateGhosts(dt);
     const me = this.mine(), alive = !!(me && me.alive);
     if (this.phase === 'play') { if (this.killCD > 0) this.killCD -= dt; if (this.sabCD > 0 && !this.sab) this.sabCD -= dt; if (this.emergCD > 0) this.emergCD -= dt; }
     // meeting: nobody moves (you're round the bell)
@@ -889,7 +890,54 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     if (this.panT > 0.33 && !this.panHit) { this.panHit = true; this.burst(this.panAt.clone().add({ x: 0, y: -1.1, z: 0 }), [0xffd400, 0xffffff, 0xff5252], 30, 2.8); }
     if (this.panT === 0) this.panHit = false;
   }
+  // ------------------------------------------------------------------ ghosts (like Among Us)
+  // Dead, you're a ghost: you float through walls (player.js), a little quicker, anywhere in the map, and you see every
+  // other ghost as a see-through, pale blue copy of their character, walking about where they really are (their body
+  // stays where it fell). The living never see a ghost at all: these copies are only ever made on a ghost's own game
+  updateGhosts(dt) {
+    const me = this.mine(), meDead = !!(me && !me.alive) && this.phase !== 'over' && this.phase !== 'waiting', P = this.g.player;
+    P.ghost = meDead;
+    const G = this.ghostPups || (this.ghostPups = new Map());
+    for (const p of this.players.values()) {
+      const want = meDead && !p.alive && !p.left && p.id !== this.me, np = this.net.players.get(p.id); let gp = G.get(p.id);
+      if (want && !gp && np && np.pose && this.net.makeAvatar) { gp = this.net.makeAvatar(np); if (!gp) continue; G.set(p.id, gp);
+        for (const pt of gp.c.rag.list) pt.body.collisionResponse = false; }      // (nothing bumps into a ghost)
+      if (!want && gp) { gp.dispose(); G.delete(p.id); continue; }
+      if (!gp) continue;
+      if (np && np.pose) gp.update(dt, np.pose);
+      if ((gp.ghostT = (gp.ghostT || 0) - dt) <= 0) { gp.ghostT = 0.5; this.ghostify(gp.c.rag.group); }      // (and anything new on them: an emote's bits, a bigger belly)
+    }
+    for (const [id, gp] of G) if (!this.players.has(id)) { gp.dispose(); G.delete(id); }
+    // you, a ghost: a cold blue edge round your view
+    if (!this.ghostEl) { const d = this.ghostEl = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:5;opacity:0;transition:opacity .8s;background:radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(120,170,255,0.38) 100%)'; document.body.appendChild(d); }
+    this.ghostEl.style.opacity = meDead ? '1' : '0';
+  }
+  // a see-through, pale blue version of a material (made once, kept: the graphics chip's program for it stays built)
+  ghostMat(m) {
+    const C = this.ghostMats || (this.ghostMats = new Map()); let c = C.get(m.uuid); if (c) return c;
+    c = m.clone(); c.transparent = true; c.opacity = 0.42; c.depthWrite = false; if (c.color) c.color.lerp(new THREE.Color(0xbfe0ff), 0.55); if (c.emissive) c.emissive.setHex(0x1a2a48);
+    c.userData.keep = true; c.userData.ghost = true; C.set(m.uuid, c); C.set(c.uuid, c); return c;
+  }
+  ghostify(root) {
+    if (!root) return;
+    root.traverse(o => { if (!o.isMesh || !o.material) return; const ms = [].concat(o.material); if (ms.every(m => m.userData && m.userData.ghost)) return;
+      const gs = ms.map(m => this.ghostMat(m)); o.material = Array.isArray(o.material) ? gs : gs[0]; o.castShadow = false; });
+  }
+  // built while the game's starting (not the moment someone dies: building a program mid-game is a stutter): the ghost
+  // version of every material on everyone's character
+  warmGhosts() {
+    try { const R = this.g.renderer, tmp = [], avs = [...this.players.keys()].map(id => this.avatar(id)).filter(Boolean);
+      for (const av of avs) { const g = av.c && av.c.rag && av.c.rag.group; if (!g) continue;
+        g.traverse(o => { if (!o.isMesh || !o.material) return; const mats = [].concat(o.material).map(m => this.ghostMat(m));
+          let t; if (o.isSkinnedMesh && o.skeleton) { t = new THREE.SkinnedMesh(o.geometry, mats.length > 1 ? mats : mats[0]); t.bind(o.skeleton, o.bindMatrix); } else t = new THREE.Mesh(o.geometry, mats.length > 1 ? mats : mats[0]);
+          if (o.geometry && o.geometry.morphAttributes && Object.keys(o.geometry.morphAttributes).length) t.updateMorphTargets();
+          t.layers.set(31); t.frustumCulled = false; t.raycast = () => {}; this.grp.add(t); tmp.push(t); }); }
+      if (tmp.length) R.compile(this.g.scene, this.g.player.camera);
+      for (const t of tmp) this.grp.remove(t);
+    } catch (e) { console.warn('ghost warm-up', e); }
+  }
   dispose() {
+    for (const gp of (this.ghostPups || new Map()).values()) gp.dispose(); this.ghostPups = null; if (this.ghostEl) { this.ghostEl.remove(); this.ghostEl = null; } this.g.player.ghost = false;
     this.dim(false); if (this.camsGame) { this.camsGame.dispose(); this.camsGame = null; }
     this.panel.close(true); this.panel.wrap.remove(); this.g.scene.remove(this.panel.mesh, this.panel.dot); this.g.scene.remove(this.grp);
     for (const el of [this.ui, this.splash, this.alertEl, this.mapEl, this.sabEl, this.style, this.tasksEl]) el && el.remove(); if (this.g.player.wrist && this.g.player.flatMode) this.g.player.wrist.visible = true;
