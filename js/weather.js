@@ -556,7 +556,7 @@ export function setupWeather({ renderer, scene, room, camera, place }) {
   const sunDir = new THREE.Vector3(0, 1, 0), moonDir = new THREE.Vector3(0, 1, 0), tmpV = new THREE.Vector3();
   const C = { night: { zen: v3(0.004, 0.007, 0.022), hor: v3(0.02, 0.03, 0.065) }, dusk: { zen: v3(0.12, 0.17, 0.38), hor: v3(1.0, 0.5, 0.24) } };
   const cBuf = { a: new THREE.Color(), b: new THREE.Color() };
-  let lastSend = 0, sentKey = '';
+  let lastSend = 0, sentKey = '', sentTod = 0;
   function retarget(type, quick) { if (!WEATHERS[type]) return; S.type = type; S.blendRate = quick ? 1 / 6 : 1 / 25; }
   S.blendRate = 1 / 25;
 
@@ -564,7 +564,7 @@ export function setupWeather({ renderer, scene, room, camera, place }) {
     dt = Math.min(Math.max(dt || 0, 0), 0.25); S.t += dt;
     // the clock
     if (S.time === 'cycle') { const nightish = Math.abs(((S.tod + 0.5) % 1) - 0.5) < 0.22; S.tod = (S.tod + dt / S.daySecs * (nightish ? 2.2 : 1)) % 1; }
-    else if (TIMES[S.time] && TIMES[S.time][2] != null) { const want = TIMES[S.time][2]; let d = want - S.tod; d -= Math.round(d); S.tod = (S.tod + d * Math.min(1, dt * 0.6) + 1) % 1; }
+    else if (TIMES[S.time] && TIMES[S.time][2] != null && !(net && net.connected && !net.host && S.heard)) { const want = TIMES[S.time][2]; let d = want - S.tod; d -= Math.round(d); S.tod = (S.tod + d * Math.min(1, dt * 1.2) + 1) % 1; }      // (a guest goes where the host's clock is instead)
     if (S.todTo != null) { let d = S.todTo - S.tod; d -= Math.round(d); S.tod = (S.tod + d * Math.min(1, dt * 1.5) + 1) % 1; if (Math.abs(d) < 1e-4) S.todTo = null; }
     // AUTO: something new every few minutes (the host decides, in a room)
     if (S.want === 'auto' && S.host && (S.autoT -= dt) <= 0) { const n = NEXT[S.type] || ['clear']; retarget(n[Math.floor(Math.random() * n.length)]); S.autoT = 150 + Math.random() * 180; }
@@ -697,7 +697,7 @@ export function setupWeather({ renderer, scene, room, camera, place }) {
     try { weatherSound({ rain: clamp01(P.rain * (P.fine > 0.5 ? 0.55 : 1)), heavy: clamp01((P.rain - 0.5) * 2), wind: clamp01(wind), hail: clamp01(P.hail), snow: P.snow, indoor: outdoor ? acc.inside : 1 }); } catch (e) {}
 
     // ---- in a room: the host tells everyone
-    if (net && net.connected && net.host && net.players.size && (S.t - lastSend > 5 || sentKey !== S.type + S.want + S.time)) send();
+    if (net && net.connected && net.host && net.players.size && (S.t - lastSend > 5 || sentKey !== S.type + S.want + S.time || (S.time !== 'cycle' && Math.abs(S.tod - sentTod) > 0.015 && S.t - lastSend > 0.5))) send();      // (and while the clock's moving to a new time)
   }
 
   // ---------------------------------------------------------------- choosing
@@ -709,14 +709,14 @@ export function setupWeather({ renderer, scene, room, camera, place }) {
 
   // ---------------------------------------------------------------- multiplayer: the host's weather is everyone's
   let net = null;
-  function send(to) { if (!net || !net.connected || !net.host) return; lastSend = S.t; sentKey = S.type + S.want + S.time; const m = { t: 'wx', w: S.type, a: S.want === 'auto' ? 1 : 0, tm: Math.round(S.tod * 1e4) / 1e4, c: S.time, ds: S.daySecs }; if (to) m.to = to; net.send(m); }
+  function send(to) { if (!net || !net.connected || !net.host) return; lastSend = S.t; sentKey = S.type + S.want + S.time; sentTod = S.tod; const m = { t: 'wx', w: S.type, a: S.want === 'auto' ? 1 : 0, tm: Math.round(S.tod * 1e4) / 1e4, c: S.time, ds: S.daySecs }; if (to) m.to = to; net.send(m); }
   function onWx(m) {
     if (!m || !net || net.host || (net.hostId && m.f && m.f !== net.hostId)) return;
     const w = typeof m.w === 'string' && WEATHERS[m.w] ? m.w : null; if (w && w !== S.type) retarget(w, !S.heard);
     if (typeof m.c === 'string' && (TIMES[m.c] || m.c === 'fixed')) S.time = m.c;
     S.want = m.a ? 'auto' : (w || S.want);
     if (typeof m.ds === 'number' && isFinite(m.ds)) S.daySecs = Math.min(36000, Math.max(60, m.ds));
-    if (typeof m.tm === 'number' && isFinite(m.tm)) { const tm = ((m.tm % 1) + 1) % 1; let d = tm - S.tod; d -= Math.round(d); if (!S.heard || Math.abs(d) > 0.08) S.tod = tm; else if (Math.abs(d) > 0.002) S.todTo = tm; }
+    if (typeof m.tm === 'number' && isFinite(m.tm)) { const tm = ((m.tm % 1) + 1) % 1; let d = tm - S.tod; d -= Math.round(d); if (!S.heard || Math.abs(d) > 0.25) S.tod = tm; else if (Math.abs(d) > 0.002) S.todTo = tm; }
     if (!S.heard) { S.heard = true; snap(); }
     drawUI();
   }

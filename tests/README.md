@@ -23,6 +23,7 @@ Crash and regression tests for Ronnie Simulator. GitHub Actions runs them on eve
 | `session.test.mjs` | game after game in the same place: food doesn't pile up (the sweep added ~100 each time), the pub's food is back straight after Run the Pub, nothing is left behind in the world |
 | `mp.test.mjs` | two real games (a computer and a phone) through the real room server: join through the menus, the whole squad, grabs and throws, punch, chat, emote, game change, a dropped line coming back. Not one real message may be thrown away by the message checks |
 | `places.test.mjs` | every place and solo mode loads and runs 20s with no errors or crash reports; the crash reporter catches errors and a lost 3D context; the game comes back after the context does |
+| `weather.test.mjs` | every weather at dawn, midday, sunset and night in every place: no errors, no shader built while it changes, draw calls within budget, rain follows the camera and falls only outdoors, dark nights / lit rooms, muffled indoors, Imposter's fog left alone; two real games: the host's weather and time reach the guest (`PLACES`, `NOMP=1`) |
 | `chaos.test.mjs` | a seeded bot mashes everything in every place (`SEEDS`, `STEPS`, `PLACES`, `SEED0` to go harder or replay a seed) |
 
 A test returns a list of what went wrong (empty = passed). Helpers are in `lib/`: `game.mjs` (a browser running the game from this repo, crash reports caught), `durable.mjs` (a stand-in for Cloudflare's Durable Objects), `roomhost.mjs` (the real room server over real WebSockets).
