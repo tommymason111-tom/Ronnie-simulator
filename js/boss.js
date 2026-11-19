@@ -238,7 +238,7 @@ export class BossFight {
     on('bossHit', (m, p) => this.onRemoteHit(m, p)); on('bossP', (m, p) => this.onPlayer(m, p)); on('bossHi', (m, p) => { if (this.host && p) this.sendState(true); });
     if (this.host) this.begin(pick || nextBoss(g.mp && g.mp.takenChars ? g.mp.takenChars() : new Set()));
     else { g.net.send({ t: 'bossHi' }); this.st = 'wait'; }
-    sfx('fanfare', null, 1);
+    sfx('gamestart', null, 1);
   }
   get host() { return !this.g.director.remote; }
   get mpOn() { return !!(this.g.net && this.g.net.connected && this.g.mp && this.g.mp.on); }
@@ -480,7 +480,7 @@ export class BossFight {
       case 'say': if (this.c && typeof ev.s === 'string') { this.c.say(ev.s.slice(0, 160), 5); this.sayText = ev.s.slice(0, 160); this.sayT = 3.6; } break;
       case 'land': {
         const at = new THREE.Vector3(num(ev.x, this.x), 0.1, num(ev.z, this.z));
-        sfx('slam', at, 1); sfx('boing', at, 0.6); this.shake(0.12, 0.8);
+        sfx('slam', at, 1); this.shake(0.12, 0.8);
         g.crumbs.burst(at, [0x8a7a5a, 0x6f8f45, 0xb8b0a0, 0x5a4a3a], 60, 4.5);
         this.wave(at.x, at.z, 0, 4.5, 'dust');
         break;
@@ -497,13 +497,13 @@ export class BossFight {
       }
       case 'drop': this.projectile(ev); break;
       case 'charge': this.clearTele(); this.lane = { x0: num(ev.x0), z0: num(ev.z0), x1: num(ev.x1), z1: num(ev.z1), d: clamp(num(ev.d, 1), 0.2, 4), w: clamp(num(ev.w, 1.5), 0.3, 4), t0: this.t, hit: false };
-        if (!this.host) { this.setSt('charge', 'charge'); } sfx('whoosh', null, 0.8); break;
-      case 'thud': sfx('boing', new THREE.Vector3(num(ev.x, this.x), 1, num(ev.z, this.z)), 1); this.shake(0.06, 0.4); break;
+        if (!this.host) { this.setSt('charge', 'charge'); } sfx('boss_charge', null, 0.8); break;
+      case 'thud': sfx('boss_step', new THREE.Vector3(num(ev.x, this.x), 1, num(ev.z, this.z)), 1); this.shake(0.06, 0.4); break;
       case 'tired': this.clearTele(); g.hint && g.hint(`${this.def.name} IS OUT OF PUFF! HIT THE WEAK SPOT!`); break;
-      case 'summon': if (Array.isArray(ev.ids)) { this.minionIds = ev.ids.filter(s => typeof s === 'string').slice(0, 4); sfx('whistle', null, 0.9); g.hint && g.hint('THROW FOOD AT THE LADS: ONE HIT KNOCKS THEM OUT'); } break;
+      case 'summon': if (Array.isArray(ev.ids)) { this.minionIds = ev.ids.filter(s => typeof s === 'string').slice(0, 4); sfx('boss_summon', null, 0.9); g.hint && g.hint('THROW FOOD AT THE LADS: ONE HIT KNOCKS THEM OUT'); } break;
       case 'hit': { if (!remote || ev.b === this.g.net.id) break; const at = new THREE.Vector3(num(ev.x, this.x), num(ev.y, 2), num(ev.z, this.z)); this.hitFx(num(ev.d), at, num(ev.w), false); break; }
       case 'blocked': if (remote && ev.b !== this.g.net.id) this.numbers.show('BLOCKED', '', new THREE.Vector3(num(ev.x, this.x), num(ev.y, 3), num(ev.z, this.z)), '#c9d3ff', 0.4); break;
-      case 'stagger': sfx('boing', null, 0.6); this.clearTele(); break;
+      case 'stagger': sfx('boss_stagger', null, 0.6); this.clearTele(); break;
       case 'dead': if (!this.host) { this.setSt('dead'); this.clearTele(); } sfx('roar', null, 0.8); break;
       case 'phase': this.phaseFx(clamp(Math.round(num(ev.ph, 2)), 1, 3)); break;
       case 'win': this.finish(true); break;
@@ -519,12 +519,12 @@ export class BossFight {
     const add = (geo, color, op, ro = 3) => { const m = new THREE.Mesh(geo, flatMat(color, op)); m.renderOrder = ro; m.frustumCulled = false; grp.add(m); return m; };
     const h = { kind: 'tele', a: ev.a, t: 0, d, grp, x, z }; this.teleT = d;
     if (ev.a === 'slam') { const r = clamp(+ev.r || 4, 0.5, 14); h.zone = add(G.disc, 0xff2020, 0.18); h.zone.scale.setScalar(r); h.edge = add(G.ring, 0xff3030, 0.85, 4); h.edge.scale.setScalar(r); h.fill = add(G.disc, 0xff6a00, 0.22, 4); h.fill.scale.setScalar(0.01); h.r = r;
-      this.warn(`⚠ ${this.def.moves.slam}! GET OUT OF THE RED!`); sfx('alarm', null, 0.35); }
+      this.warn(`⚠ ${this.def.moves.slam}! GET OUT OF THE RED!`); sfx('boss_warn', null, 0.5); }
     else if (ev.a === 'wave') { const r = clamp(+ev.r || 10, 1, 14), r0 = clamp(+ev.r0 || 2.4, 0.5, r - 0.5); h.zone = add(G.thick, 0xff2020, 0.16); h.zone.scale.setScalar(r); h.safe = add(G.disc, 0x39ff14, 0.28, 4); h.safe.scale.setScalar(r0); h.edge = add(G.ring, 0x7cff6a, 0.95, 5); h.edge.scale.setScalar(r0); h.r = r; h.r0 = r0;
-      this.warn(`⚠ ${this.def.moves.wave}! GET IN CLOSE: STAND IN THE GREEN!`, true); sfx('alarm', null, 0.35); }
+      this.warn(`⚠ ${this.def.moves.wave}! GET IN CLOSE: STAND IN THE GREEN!`, true); sfx('boss_warn', null, 0.5); }
     else if (ev.a === 'charge') { const x1 = +ev.x1 || x, z1 = +ev.z1 || z, len = Math.hypot(x1 - x, z1 - z), w = clamp(+ev.w || 1.5, 0.3, 4);
       h.zone = add(G.lane, 0xff2020, 0.22); h.zone.scale.set(w * 2, 1, len); h.zone.rotation.y = Math.atan2(x1 - x, z1 - z); h.fill = add(G.lane, 0xff7a00, 0.35, 4); h.fill.scale.set(w * 2, 1, 0.01); h.fill.rotation.y = h.zone.rotation.y; h.len = len;
-      this.warn(`⚠ ${this.def.moves.charge}! GET OUT OF THE WAY!`); sfx('alarm', null, 0.35); }
+      this.warn(`⚠ ${this.def.moves.charge}! GET OUT OF THE WAY!`); sfx('boss_warn', null, 0.5); }
     else if (ev.a === 'throw') this.warn(`⚠ ${this.def.moves.throw}! WATCH FOR THE TARGETS!`);
     else if (ev.a === 'summon') this.warn(`⚠ ${this.def.moves.summon}! KNOCK THEM OUT WITH FOOD!`);
     grp.position.set(x, this.floorY(x, z), z); g.scene.add(grp);
@@ -550,7 +550,7 @@ export class BossFight {
     mk.position.copy(to); g.scene.add(mk);
     const vy = (to.y - from.y + 0.5 * GRAV * f * f) / f;
     this.projs.push({ obj, type, mk, close, from, to, f, r, t: 0, vy, spin: new THREE.Vector3(Math.random() * 6, Math.random() * 6, 0) });
-    sfx('throw', from, 1);
+    sfx('boss_throw', from, 1);
   }
   updateHazards(dt) {
     const g = this.g, P = g.player, me = P.head;
@@ -591,7 +591,7 @@ export class BossFight {
       p.obj.rotation.x += p.spin.x * dt; p.obj.rotation.y += p.spin.y * dt;
       const k = clamp(p.t / p.f, 0, 1); p.close.scale.setScalar(Math.max(0.05, p.r * (1 - k) + 0.05)); p.mk.children[0].material.opacity = 0.18 + 0.2 * (0.5 + 0.5 * Math.sin(p.t * 20));
       if (p.t >= p.f && !p.landed) {
-        p.landed = true; sfx('splat', p.to, 1); sfx('thud', p.to, 0.8); g.crumbs.burst(p.to.clone().setY(0.3), FOOD_COL[p.type] || [0xff8c1a, 0xffc04a, 0x6fbf3f], 40, 3);
+        p.landed = true; sfx('boss_food_land', p.to, 1); g.crumbs.burst(p.to.clone().setY(0.3), FOOD_COL[p.type] || [0xff8c1a, 0xffc04a, 0x6fbf3f], 40, 3);
         if (!this.out && Math.hypot(P.head.x - p.to.x, P.head.z - p.to.z) <= p.r) this.ouch('throw', p.to, 1);
       }
       if (p.t >= p.f + 0.25) { g.scene.remove(p.obj); g.scene.remove(p.mk); this.projs.splice(i, 1); }
@@ -605,7 +605,7 @@ export class BossFight {
     this.hearts = Math.max(0, this.hearts - dmg); this.iframe = IFRAMES; this.stats.kd++;
     P.dropAll(); P.knockDown({ x: P.head.x - from.x, z: P.head.z - from.z }, lie);
     g.G.fxTint = 0xff2020; g.G.fxTintT = 0.6; g.G.fxTintOp = 0.35;
-    sfx(kind === 'charge' ? 'punch' : 'boing', null, 1); sfx('thud', null, 0.8);
+    sfx('boss_hitme', null, 1);
     g.words.show(this.hearts > 0 ? `OOF! -${dmg} ❤` : 'KNOCKED OUT!', P.head.clone().addScaledVector(P.fwd, 0.7 * P.scale), '#ff5252', 0.12 * P.scale, 1.3);
     for (const h of P.hands || []) h.pulse && h.pulse(1, 220);
     if (Math.random() < 0.5) this.say('hitYou');
@@ -631,7 +631,7 @@ export class BossFight {
   onAte() { if (this.over) return; this.stats.ateB = (this.stats.ateB || 0) + 1; }
   onFinished(it) {
     if (this.over || !it || it.def.veg) return; this.stats.ate++;
-    if (this.hearts < MAX_HEARTS && this.out <= 0) { this.hearts++; this.stats.healed++; const P = this.g.player; this.g.words.show('+1 ❤', P.head.clone().addScaledVector(P.fwd, 0.75 * P.scale).add({ x: 0.12, y: 0.12, z: 0 }), '#ff6b9a', 0.11 * P.scale, 1.2); sfx('powerup', null, 0.5); this.tellHost(); }
+    if (this.hearts < MAX_HEARTS && this.out <= 0) { this.hearts++; this.stats.healed++; const P = this.g.player; this.g.words.show('+1 ❤', P.head.clone().addScaledVector(P.fwd, 0.75 * P.scale).add({ x: 0.12, y: 0.12, z: 0 }), '#ff6b9a', 0.11 * P.scale, 1.2); sfx('heart_up', null, 0.5); this.tellHost(); }
   }
 
   // ---------------------------------------------------------------- your food hitting the boss
@@ -689,9 +689,9 @@ export class BossFight {
   }
   // the hit, as everyone sees it: a number, a flash, a flinch
   hitFx(dmg, at, w, mine) {
-    if (!dmg) { this.numbers.show('BLOCKED', '', at, '#c9d3ff', 0.4); sfx('thud', at, 0.5); return; }
+    if (!dmg) { this.numbers.show('BLOCKED', '', at, '#c9d3ff', 0.4); sfx('blocked', at, 0.6); return; }
     this.numbers.show('-' + dmg, w === 2 ? 'WEAK SPOT!' : w === 1 ? 'HEADSHOT!' : '', at, w === 2 ? '#ff4fd8' : w === 1 ? '#ff5a36' : mine ? '#ffd400' : '#ffffff', w ? 0.7 : 0.5);
-    sfx('splat', at, 1); if (w) sfx('punch', at, 0.8);
+    sfx('splat', at, 1); if (w) sfx('crit', at, 0.8);
     this.flashT = w ? 0.22 : 0.14; this.flashW = w;
     if (this.c) { const dir = _v.set(this.x - at.x, 0, this.z - at.z); this.c.flinch(dir, w ? 1 : 0.6); }
     this.hudHit = 0.2;
@@ -979,7 +979,7 @@ export class BossFight {
       if (P.flatGrip && this.hidGrip !== undefined) P.flatGrip.visible = this.hidGrip; if (P.wrist && this.hidWrist !== undefined) P.wrist.visible = this.hidWrist;
       g.hint && g.hint(P.flatMode ? `Grab food, then TAP ${d.name} (or aim and press THROW). Aim for the head!` : `Grab food and throw it at ${d.name}. Aim for the head!`);
       g.words.show('FIGHT!', P.head.clone().addScaledVector(P.fwd, 1.4 * P.scale).add({ x: 0, y: -0.25 * P.scale, z: 0 }), '#ffd400', 0.13 * P.scale, 1.2);
-      sfx('whistle', null, 1);
+      sfx('fight_bell', null, 1);
     }
     if (this.cine) this.cine.t = t;
   }

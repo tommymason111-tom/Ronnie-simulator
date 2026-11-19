@@ -25,7 +25,9 @@ const BOT = () => {
     // dodge: get out of whatever's coming
     let mx = 0, mz = 0;
     for (const h of B.hazards) {
-      if (h.kind !== 'tele') continue; const dx = me.x - B.x, dz = me.z - B.z, d = Math.hypot(dx, dz) || 1;
+      if (h.kind !== 'tele') continue;
+      if (h.__skip === undefined) h.__skip = (s.nTele = (s.nTele || 0) + 1) % 5 === 3;      // (a human misses one now and then: every fifth warning isn't dodged, so the boss's hits always get tested)
+      if (h.__skip) continue; const dx = me.x - B.x, dz = me.z - B.z, d = Math.hypot(dx, dz) || 1;
       if (h.a === 'slam' && d < h.r + 0.8) { mx += dx / d; mz += dz / d; }
       if (h.a === 'wave' && d > h.r0 - 0.7) { mx -= dx / d; mz -= dz / d; }
       if (h.a === 'charge' && B.lane) { const L = B.lane, lx = L.x1 - L.x0, lz = L.z1 - L.z0, ll = Math.hypot(lx, lz) || 1, ux = lx / ll, uz = lz / ll, px = me.x - L.x0, pz = me.z - L.z0, along = px * ux + pz * uz, side = px * -uz + pz * ux;

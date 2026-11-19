@@ -586,6 +586,18 @@ const SOUNDS = {
   clog(d, t) { for (let i = 0; i < 4; i++) { const s = t + i * 0.16 + Math.random() * 0.04; const o = tone(d, s, 'sine', 120 + Math.random() * 40, 60, 0.12, 0.4, 0.01); wobble(o, s, 0.13, 30, 20); noise(d, s, 0.1, 'lowpass', 400, 4, 0.25, 0.01); } },      // a blocked drain glugging
   body_fall(d, t) { tone(d, t, 'sine', 85, 38, 0.22, 0.9, 0.003); noise(d, t, 0.25, 'lowpass', 320, 1, 0.5, 0.004); tone(d, t + 0.14, 'sine', 70, 40, 0.12, 0.45, 0.003); },      // a body hitting the floor
   // ---- BOSS FIGHT (boss.js)
+  boss_step(d, t) { tone(d, t, 'sine', 55, 32, 0.35, 0.9, 0.004); noise(d, t, 0.18, 'lowpass', 220, 1.2, 0.5, 0.004); click(d, t + 0.01, 300, 0.25); },      // a giant footstep: a deep floor thump
+  boss_stagger(d, t) { const o = tone(d, t, 'triangle', 160, 90, 0.6, 0.35, 0.01); wobble(o, t, 0.6, 9, 22); noise(d, t, 0.25, 'lowpass', 400, 1, 0.3, 0.01); tone(d, t + 0.32, 'sine', 70, 45, 0.25, 0.5, 0.004); },      // the boss reeling: a dizzy wobble, then a stumble
+  boss_hitme(d, t) { tone(d, t, 'square', 220, 60, 0.18, 0.3, 0.002); noise(d, t, 0.2, 'bandpass', 1400, 1.5, 0.6, 0.001); tone(d, t + 0.05, 'sine', 120, 50, 0.4, 0.8, 0.003); bell(d, t + 0.25, 1500, 0.5, 0.06); },      // you get flattened: a crunch, a thump and ringing ears
+  boss_charge(d, t) { const n = noise(d, t, 1.0, 'bandpass', 300, 1.2, 0.7, 0.25); n.frequency.exponentialRampToValueAtTime(1600, t + 0.9); for (let i = 0; i < 5; i++) tone(d, t + i * 0.18, 'sine', 60, 35, 0.12, 0.6, 0.003); },      // a giant charging: thundering steps and a rush of air
+  boss_summon(d, t) { tone(d, t, 'sine', 1900, 2600, 0.18, 0.25, 0.01); tone(d, t + 0.22, 'sine', 2600, 1800, 0.3, 0.25, 0.01); tone(d, t + 0.6, 'sawtooth', 110, 110, 0.4, 0.12, 0.05); },      // a two-finger whistle calling the lads in, then a shout
+  fight_bell(d, t) { for (let i = 0; i < 3; i++) { bell(d, t + i * 0.2, 1180, 0.9, 0.35); click(d, t + i * 0.2, 3000, 0.3); } },      // ding ding ding: the fight's on
+  boss_warn(d, t) { for (let i = 0; i < 2; i++) tone(d, t + i * 0.16, 'square', 660, 660, 0.1, 0.18, 0.003); tone(d, t + 0.32, 'square', 440, 440, 0.18, 0.18, 0.003); },      // a move's coming: a short warning blip
+  boss_throw(d, t) { tone(d, t, 'sawtooth', 140, 90, 0.35, 0.18, 0.05); const n = noise(d, t + 0.15, 0.45, 'bandpass', 500, 2, 0.8, 0.05); n.frequency.exponentialRampToValueAtTime(150, t + 0.6); },      // a giant heave and something huge flying
+  boss_food_land(d, t) { noise(d, t, 0.45, 'lowpass', 900, 0.8, 0.9, 0.003); tone(d, t, 'sine', 80, 40, 0.35, 0.8, 0.003); for (let i = 0; i < 6; i++) noise(d, t + 0.08 + Math.random() * 0.3, 0.05, 'bandpass', 1200 + Math.random() * 1500, 3, 0.25, 0.002); },      // giant food landing: a huge squelch with bits spraying
+  crit(d, t) { tone(d, t, 'square', 880, 1760, 0.08, 0.2, 0.002); bell(d, t + 0.06, 2637, 0.5, 0.25); noise(d, t, 0.08, 'highpass', 4000, 0.7, 0.4, 0.001); },      // a critical hit (head, weak spot): a bright crack and a ting
+  blocked(d, t) { tone(d, t, 'triangle', 300, 300, 0.25, 0.3, 0.002); tone(d, t, 'triangle', 452, 452, 0.25, 0.2, 0.002); click(d, t, 2200, 0.4); },      // bouncing off the boss's shield: a hollow clonk
+  heart_up(d, t) { [784, 988, 1319].forEach((f, i) => tone(d, t + i * 0.07, 'sine', f, f * 1.01, 0.22, 0.22, 0.004)); },      // a heart back: a quick sweet rising arpeggio
   slam(d, t) { tone(d, t, 'sine', 70, 28, 0.6, 1.0, 0.003); tone(d, t, 'triangle', 140, 40, 0.3, 0.5, 0.003); noise(d, t, 0.5, 'lowpass', 700, 1, 0.8, 0.003); noise(d, t + 0.02, 0.9, 'lowpass', 260, 0.7, 0.5, 0.05); },      // a giant landing: a deep boom and the ground rumbling
   roar(d, t) { const o = tone(d, t, 'sawtooth', 120, 70, 1.3, 0.35, 0.12); wobble(o, t, 1.4, 11, 18); const o2 = tone(d, t, 'square', 180, 95, 1.2, 0.12, 0.15); wobble(o2, t, 1.3, 7, 25); noise(d, t, 1.3, 'bandpass', 700, 1.2, 0.45, 0.15); },      // a big angry ROAR
   rumble(d, t) { noise(d, t, 2.2, 'lowpass', 160, 0.8, 0.7, 0.9); tone(d, t, 'sine', 45, 38, 2.2, 0.35, 0.8); },      // something huge coming
@@ -629,7 +641,7 @@ export const SOUND_NAMES = Object.keys(SOUNDS);
 export const hasSound = (name) => !!(SOUNDS[name] || SOUNDS[ALIAS[name]]);
 export const SOUND_GROUPS = [
   ['GAME & STINGS', ['combo', 'stageup', 'meterpop', 'countdown', 'go', 'gamestart', 'timeup', 'award', 'drumroll', 'victory', 'loadwhoosh', 'airhorn', 'whistle_ref', 'fanfare', 'sadviolin', 'trumpet', 'bwoomp', 'powerup', 'powerdown']],
-  ['BOSS FIGHT', ['slam', 'roar', 'rumble', 'boss_win', 'defeat']],
+  ['BOSS FIGHT', ['slam', 'roar', 'rumble', 'boss_win', 'defeat', 'boss_step', 'boss_stagger', 'boss_hitme', 'boss_charge', 'boss_summon', 'fight_bell', 'boss_warn', 'boss_throw', 'boss_food_land', 'crit', 'blocked', 'heart_up']],
   ['LOBBY & CHAT', ['ready', 'join', 'leave', 'kick', 'mic_on', 'mic_off', 'tap', 'toggle', 'notify', 'error', 'tick', 'beep']],
   ['IMPACTS', ['hit_wood', 'hit_metal', 'hit_glass', 'hit_soft', 'hit_plastic', 'hit_ceramic', 'hit_cardboard', 'shatter', 'smash', 'slosh', 'tipjar', 'land', 'thud', 'body_fall', 'bonk', 'ko', 'tackle', 'punch', 'slap', 'thwack', 'splat']],
   ['CROWDS', ['crowd_ooh', 'crowd_laugh', 'cheer', 'aww', 'brawl', 'oneeighty', 'anthem', 'siu']],
