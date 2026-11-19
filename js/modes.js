@@ -1112,14 +1112,14 @@ export class Director {
   }
   // the awards land one by one, each with a thump: redraw the receipt a few times a second while they come in
   stampAwards(lines, n) {
-    this.stamping = true; this.awardsStamped = true; this.awardShown = 0; const t0 = performance.now(), gap = 0.75, start = 0.9;
+    this.stamping = true; this.awardsStamped = true; this.awardShown = 0; sfx('drumroll', null, 0.6); const t0 = performance.now(), gap = 0.75, start = 0.9;
     const tick = () => {
       if (!this.receipt.visible || this.lastLines !== lines) { this.stamping = false; this.awardShown = null; return; }
       const t = (performance.now() - t0) / 1000, was = this.awardShown;
       this.awardShown = Math.max(0, Math.min(n, (t - start) / gap)); const landed = Math.floor(this.awardShown), before = Math.floor(was);
-      if (landed > before) { sfx('stomp', null, 0.7); try { navigator.vibrate && navigator.vibrate(30); } catch (e) {} }
+      if (landed > before) { sfx('award', null, 0.8); try { navigator.vibrate && navigator.vibrate(30); } catch (e) {} }
       const keepT = this.receiptT; this.showReceipt(lines);
-      if (this.awardShown >= n) { this.stamping = false; this.awardShown = null; this.showReceipt(lines); this.receiptT = keepT; sfx('ding', null, 0.6); return; }
+      if (this.awardShown >= n) { this.stamping = false; this.awardShown = null; this.showReceipt(lines); this.receiptT = keepT; return; }
       this.receiptT = keepT;      // (redrawing it doesn't restart its timer: the end-of-game one stays up)
       setTimeout(tick, 70);
     };

@@ -17,6 +17,7 @@ import { launch, newPage, startGame, checker, ROOT } from './lib/game.mjs';
 const UI = new Set(['tap', 'toggle', 'error', 'tick', 'notify']);
 // sounds shared on purpose: the places they may be used in (a file, or impgames.js:<job kind>), and why it's the same
 const RELATED = {
+  kill: { why: 'a kill: as it happens, and the same kill in the end-of-game replay', in: ['imposter.js', 'impreplay.js'] },
   fixed: { why: 'a job or a step of one finished', in: ['impgames.js:Panel', 'imposter.js', 'pubjobs.js'] },
   spill: { why: 'a drink or water overflowing', in: ['impgames.js:hold', 'impgames.js:wine', 'impgames.js:water'] },
   gas_hiss: { why: 'gas let out of a keg', in: ['impgames.js:crank', 'impgames.js:dial', 'impgames.js:coupler'] },
@@ -28,9 +29,9 @@ const RELATED = {
   smash: { why: 'something smashed to bits (a telly, a controller)', in: ['main.js', 'emotes.js'] },
   land: { why: 'a thing dropped on the floor', in: ['main.js', 'emotes.js'] },
   burp: { why: 'a burp / a hiccup', in: ['emotes.js'] },
-  jackpot: { why: 'the fruit machine paying out', in: ['main.js', 'impgames.js:reels'] },
+  jackpot: { why: 'a pay-out: the fruit machine, the tip jar passing another £10', in: ['main.js', 'impgames.js:reels', 'tipjar.js'] },
   plunger: { why: 'the plunger in the toilet', in: ['impgames.js:plunge', 'runpub.js'] },
-  shatter: { why: 'a glass breaking', in: ['impgames.js:stacker', 'runpub.js'] },
+  shatter: { why: 'a glass breaking', in: ['impgames.js:stacker', 'runpub.js', 'main.js'] },
   breaker: { why: 'the fuse box breaker', in: ['impgames.js:switches', 'runpub.js'] },
   lightsout: { why: 'the lights going out (Imposter sabotage, Run the Pub fuse)', in: ['imposter.js', 'runpub.js'] },
   hit_soft: { why: 'a material impact: anything soft hitting something', in: '*' },

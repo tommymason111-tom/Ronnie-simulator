@@ -195,7 +195,11 @@ items.onTvSmash = (tv, p, u, v) => { track('tvs');
 items.onLand = (it, speed) => {
   if (time - G.lastLand < 0.08) return;
   G.lastLand = time;
-  sfx(it.type === 'can' ? 'can' : /pint|glass|wine|cup/.test(it.type) ? 'glass' : 'land', it.pos, Math.min(1, speed / 4));
+  // what it's made of decides what it sounds like landing (a full drink sloshes; a glass hitting hard shatters)
+  const d = it.def, v = Math.min(1, speed / 4), glassy = /pint|glass|wine|beer|cider|spirit/.test(it.type);
+  if (glassy && speed > 6.5) sfx('shatter', it.pos, v);
+  else if (d.drink && !it.empty && speed > 2.5) { sfx(glassy ? 'hit_glass' : it.type === 'can' ? 'can' : 'hit_plastic', it.pos, v); sfx('slosh', it.pos, v * 0.8); }
+  else sfx(it.type === 'can' ? 'can' : glassy ? 'hit_glass' : it.type === 'mug' ? 'hit_ceramic' : d.chair ? 'hit_wood' : d.mag || d.bag || d.mat ? 'hit_cardboard' : d.condiment || it.type === 'cup' || it.type === 'soft' ? 'hit_plastic' : d.prop ? 'hit_metal' : 'hit_soft', it.pos, v);
 };
 // PHYSICS FEEL: a hard landing kicks up a little puff of dust (and crumbs off food); a heavy one right by you jolts the view
 { const _land = items.onLand;

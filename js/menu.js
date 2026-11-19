@@ -514,13 +514,13 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     net.on.join = (m) => { hi(m.id); if (isBoss()) { const n = net.players.size + 1, max = Math.min(net.max || 12, mp.RO.optNum('max'));
         if (mp.locked || n > max) { net.send({ t: 'kick', to: m.id, why: mp.locked ? 'locked' : 'full' }); } else { sendOpts(m.id); if (mp.ready) net.send({ t: 'ready', r: 1, to: m.id }); } }
       else if (mp.ready) net.send({ t: 'ready', r: 1, to: m.id });
-      sysChat(`${(m.name || 'Someone')} joined`); lobby(); };
-    net.on.leave = (m) => { sysChat('Someone left'); lobby(); }; net.on.host = () => { lobby(); if (isBoss()) sendOpts(); };
+      sysChat(`${(m.name || 'Someone')} joined`); sndUI('join'); lobby(); };
+    net.on.leave = (m) => { sysChat('Someone left'); sndUI('leave'); lobby(); }; net.on.host = () => { lobby(); if (isBoss()) sendOpts(); };
     // the lobby: ready ticks, the host's room options, chat, the host removing someone (only the host's word counts)
-    net.on.ready = (m, p) => { if (p) { p.ready = !!m.r; lobby(); } };
+    net.on.ready = (m, p) => { if (p) { p.ready = !!m.r; if (m.r) sndUI('ready'); lobby(); } };
     net.on.ropts = (m, p) => { if (!p || !p.host) return; mp.RO.setOpts(m.o); mp.locked = !!m.lock; lobby(); };
     net.on.kick = (m, p) => { if (!p || !p.host || (m.to && m.to !== net.id)) return; const why = m.why === 'locked' ? 'The host has locked the room.' : m.why === 'full' ? 'The room is full.' : 'The host removed you from the room.';
-      try { localStorage.removeItem('rs_mp_last'); } catch (e) {} net.leave(); mp.net = null; mp.role = null; $('#mp-code-chip').textContent = ''; show('mp', -1); mpStatus(why); };
+      try { localStorage.removeItem('rs_mp_last'); } catch (e) {} net.leave(); mp.net = null; mp.role = null; $('#mp-code-chip').textContent = ''; show('mp', -1); mpStatus(why); sndUI('kick'); };
     net.on.chat = (m, p) => { if (!document.querySelector('.screen.on[data-s="room"]')) return; addChat(p ? p.name : 'Someone', String(m.s || '').slice(0, 90)); };
     hi(); try { localStorage.setItem('rs_mp_last', JSON.stringify({ code, t: Date.now() })); } catch (e) {}      // (for the REJOIN button, if this page gets closed)
     return w;
@@ -539,7 +539,9 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   const sysChat = (s2) => { roomChat.push({ sys: 1, s: s2 }); if (roomChat.length > 40) roomChat.shift(); drawChat(); };
   const sendChat = () => { const i = $('#room-chat-in'), t = (i.value || '').trim().slice(0, 90); if (!t || !mp.net) return; mp.net.send({ t: 'chat', s: t }); addChat(nameOf(), t); i.value = ''; };
   $('#room-chat-send').addEventListener('click', sendChat); $('#room-chat-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
-  $('#room-ready').addEventListener('click', () => { if (!mp.net) return; mp.ready = !mp.ready; mp.net.send({ t: 'ready', r: mp.ready ? 1 : 0 }); blip(mp.ready ? 990 : 500, 0.08); lobby(); });
+  $('#room-ready').addEventListener('click', () => { if (!mp.net) return; mp.ready = !mp.ready; mp.net.send({ t: 'ready', r: mp.ready ? 1 : 0 }); if (mp.ready) sndUI('ready'); else blip(500, 0.08); lobby(); });
+  // the lobby's own sounds (audio.js: joining, leaving, ready, being removed)
+  const sndUI = (n) => { import('./audio.js').then(A => { try { A.initAudio(); A.sfx(n, null, 0.7); } catch (e) {} }).catch(() => {}); };
   $('#room-players').addEventListener('click', (e) => { const k = e.target.closest('[data-kick]'); if (!k || !mp.net) return; const p = mp.net.players.get(k.dataset.kick) || [...mp.net.players.values()].find(x => String(x.id) === k.dataset.kick);
     if (!p || !confirm(`Remove ${p.name || 'this player'} from the room?`)) return; mp.net.send({ t: 'kick', to: p.id, why: 'kick' }); sysChat(`${p.name || 'A player'} was removed`); });
   // the host's room options (everyone else sees them, greyed)

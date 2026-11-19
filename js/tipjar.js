@@ -53,7 +53,7 @@ export class TipJar {
     let dirty = false;
     for (let i = this.falling.length - 1; i >= 0; i--) { const f = this.falling[i]; f.t += dt; if (f.t < 0) continue;
       const y = f.y - 4.9 * f.t * f.t, [sx, sy, sz] = this.slot(Math.min(this.coins, MAX_COINS - 1));
-      if (y <= sy) { this.falling.splice(i, 1); if (this.coins < MAX_COINS) { this.setCoin(this.coins, sx + f.x * 0.3, sy, sz + f.z * 0.3, 0.25, f.col); this.coins++; this.im.count = this.coins; } dirty = true; sfx('coin', this.grp.position, 0.25); this.wob = Math.max(this.wob, 0.25); continue; }
+      if (y <= sy) { this.falling.splice(i, 1); if (this.coins < MAX_COINS) { this.setCoin(this.coins, sx + f.x * 0.3, sy, sz + f.z * 0.3, 0.25, f.col); this.coins++; this.im.count = this.coins; } dirty = true; sfx('tipjar', this.grp.position, 0.35); this.wob = Math.max(this.wob, 0.25); continue; }
       const k = Math.min(MAX_COINS - 1, this.coins + 1); this.setCoin(k, f.x, y, f.z, f.t * 14, f.col); this.im.count = Math.max(this.im.count, k + 1); dirty = true; }
     if (!this.falling.length && this.im.count > this.coins) { this.im.count = this.coins; }
     if (dirty) { this.im.instanceMatrix.needsUpdate = true; if (this.im.instanceColor) this.im.instanceColor.needsUpdate = true; }

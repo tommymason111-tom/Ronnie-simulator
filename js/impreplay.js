@@ -58,7 +58,7 @@ export class ImpReplay {
     const sb = g.selfBody && g.selfBody(); if (sb) { hide(sb.c && sb.c.rag && sb.c.rag.group); }
     for (const fp of who.values()) { try { fp.avatar = this.net.makeAvatar(fp); } catch (e) {} }
     const cam = this.cam = new THREE.PerspectiveCamera(55, g.camera.aspect || 1.6, 0.05, 80); const F = new THREE.Vector3(b.focus[0], 1.0, b.focus[1]);
-    const ui = this.ui(b); sfx('whoosh', null, 0.6);
+    const ui = this.ui(b); sfx('crowd_ooh', null, 0.6);      // (the crowd watching it back)
     const kills = b.kills.map(k => ({ ...k, done: false }));
     this.playing = { b, who, t: b.s, a0: Math.atan2(g.player.head.x - F.x, g.player.head.z - F.z) + 0.6, F, kills, hidden, ui, onDone, fi: 0, dead: new Set() };
     return true;
