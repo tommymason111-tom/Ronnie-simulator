@@ -21,6 +21,8 @@ import { RunPub } from './runpub.js';
 import { SpriteLayer } from './perf.js';
 import { resetAwards, pickAwards, track } from './awards.js';
 import { roomNum } from './roomopts.js';
+import { submitScore, postRanked } from './leaderboard.js';
+import { devicePid } from './net.js';
 const _glowP = new THREE.Vector3();
 
 export const MODES = {
@@ -31,6 +33,7 @@ export const MODES = {
   catch:        { name: 'CATCH & EAT', desc: 'Catch Harry\'s throws in your mouth.', time: 70, hidden: true },
   chonkoff:     { name: 'EAT-OFF', desc: '60 seconds. Eat everything.', time: 60 },
   chonkoff2:    { name: 'EAT-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
+  chonkoffr:    { name: 'RANKED EAT-OFF', desc: 'Everyone in the room at once: most eaten in 60s wins, your rating on the line.', time: 60 },
   sweep:        { name: 'SUPERMARKET SWEEP', desc: '90 seconds, one trolley. Grab the most calories. Dodge Oliver.', time: 90, place: 'shop' },
   bbq:          { name: "IAN'S BARBECUE", desc: 'Round Lewis\'s house. Eat off the grill before Ian makes it healthy.', time: 150, place: 'garden' },
   roam:         { name: 'FREE ROAM', desc: 'Have a look round. Everyone\'s here, nobody attacks.', time: 0 },
@@ -182,11 +185,12 @@ export class Director {
     if (/^runpub\d$/.test(id)) { this.rpDiff = +id.slice(6); id = 'runpub'; } else if (id === 'runpub') this.rpDiff = 2;      // (Run the Pub: a quiet night, a Friday, the cup final)          // (Free Roam, just you: nobody else about)
     const g = this.g, m = MODES[id];
     if (!m) return;
+    if (id === 'chonkoffr') this.rankedWire();
     resetAwards(); this.awardsFor = null; this.awardShown = null; this.awardsStamped = false;      // (the end-of-game awards count this game only)
     if (this.imposter) { this.imposter.dispose(); this.imposter = null; }
     this.hideTommy(false);
     this.mode = id; globalThis.RS_MODE = id; this.running = true; this.used.clear(); this.pending = null;
-    this.timeLeft = m.time > 0 && id !== 'imposter' ? Math.round(m.time * roomNum('len')) : m.time;      // (a room's GAME LENGTH: short, normal, long)
+    this.timeLeft = m.time > 0 && id !== 'imposter' && id !== 'chonkoffr' ? Math.round(m.time * roomNum('len')) : m.time;      // (a room's GAME LENGTH: short, normal, long)
     this.stats = { chonk: 0, veg: 0, swats: 0, popped: 0, roasted: 0, caught: 0, thrown: 0, attempts: 0, fails: [] };
     this.meter = 0; this.nextIntervener = 0; this.waveT = 2.5; this.spawned = 0;
     this.guilt = null;
@@ -254,6 +258,7 @@ export class Director {
       veggie: 'VEGGIE WAR. Everyone, positions. Aim for the mouth.',
       catch: 'Harry\'s going to throw the food AWAY from you. In theory.',
       chonkoff: 'Sixty seconds, Ron. Show me what you\'ve got. Actually, don\'t.',
+      chonkoffr: 'Ranked Eat-Off! Sixty seconds, everyone. Your reputation is on the line. What\'s left of it.',
       chonkoff2: this.player2 && this.player2.stage === 2 ? 'Player two! Beat that. Please don\'t.' : 'Eat-Off! Player one, sixty seconds. Go.',
       classic: 'Back to normal then. Normal for you.',
       roam: 'Free roam, Ron. Have a wander. Nobody\'s attacking you. Today.',
@@ -317,6 +322,7 @@ export class Director {
     } else if (this.mode.startsWith('chonkoff')) {
       const best = +(safeGet('rs_best_chonkoff') || 0);
       const score = Math.round(st.chonk);
+      if (this.mode === 'chonkoffr' && this.mp && this.mp.on) setTimeout(() => this.rankedEnd(score), 0);      // (everyone's scores in, the ratings, the placings)
       if (score > best) { safeSet('rs_best_chonkoff', score); lines.push(['NEW RECORD!', score]); }
       else lines.push(['BEST EVER', best]);
       if (this.mode === 'chonkoff2') {
@@ -329,6 +335,9 @@ export class Director {
         }
       }
     }
+    // online: your score goes up on the leaderboard (the eat-off, the sweep, a Run the Pub night); its rank is added to the receipt
+    const board = this.mode === 'chonkoff' ? ['eatoff', Math.round(st.chonk)] : this.mode === 'sweep' && this.sweep ? ['sweep', Math.round(this.sweep.total)] : this.mode === 'runpub' && this.runpub ? [this.fullMode, Math.round(this.runpub.money)] : null;
+    if (board && !(this.mp && this.mp.on && !this.mp.host && this.mode === 'runpub')) submitScore(board[0], board[1]).then(r => { if (!r || this.lastLines !== lines) return; lines.push([r.best ? 'NEW ONLINE BEST! RANK' : 'ONLINE RANK', '#' + r.rank]); const k = this.receiptT; this.showReceipt(lines); this.receiptT = k; });
     this.showReceipt(lines);
     if (!this.player2) { this.receiptT = 1e9; this.g.onGameOver && this.g.onGameOver(lines); }      // (the final scoreboard: stays up till you leave; not between the two players' goes of an eat-off)
     if (this.mp && this.mp.on && this.mp.host) { this.mp.net.send({ t: 'end', lines }); this.mp.net.send({ t: 'endGame' }); }      // (the game's over: the room forgets everyone's progress)
@@ -342,6 +351,7 @@ export class Director {
       runpub: 'Last orders! ...Ron, last orders means for THEM, not you.',
       chonkoff: 'Time! ...the scales have left the building.',
       chonkoff2: 'Time! ...both of you are a disgrace. I\'m very proud.',
+      chonkoffr: 'Time! Let\'s see who the biggest disgrace is.',
     }[this.mode], 5);
     sfx('timeup', null, 1);
     // squad goes quiet
@@ -350,6 +360,7 @@ export class Director {
 
   // ------------------------------------------------------------------ per frame
   update(dt, ctx) {
+    if (this.mode === 'chonkoffr' && this.mp && this.mp.net && this.rkWired !== this.mp.net) this.rankedWire();      // (guests answer the host's "what did you score?")
     const g = this.g;
     if (this.imposter) { this.imposter.update(dt); return; }
     if (this.remote) { this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
@@ -1109,6 +1120,30 @@ export class Director {
     this.receiptT = 25;
     this.lastLines = lines;
     if (!this.awardsStamped && !this.stamping) this.stampAwards(lines, awards.length);
+  }
+  // ---- RANKED EAT-OFF (multiplayer): the host asks every game for its score, sends the match to the leaderboard server
+  // for the ratings, and tells everyone the placings (with the rating change, when the server has them)
+  rankedWire() {
+    const net = this.mp && this.mp.net; if (!net || this.rkWired === net) return; this.rkWired = net;
+    net.on.rkask = (m, p) => { if (p && p.host) net.send({ t: 'rk', to: p.id, s: Math.round(this.stats.chonk), pid: devicePid(), n: net.name || 'Ronnie', c: net.char || 'ronnie' }); };
+    net.on.rk = (m, p) => { if (this.rkRows && p && Number.isFinite(+m.s)) this.rkRows.set(p.id, { pid: String(m.pid || ''), n: String(m.n || 'Player').slice(0, 16), c: String(m.c || 'ronnie').slice(0, 12), s: Math.max(0, Math.round(+m.s)) }); };
+    net.on.rkres = (m, p) => { if (p && p.host && Array.isArray(m.rows)) this.showRanked(m.rows.slice(0, 12)); };
+  }
+  rankedEnd(score) {
+    const net = this.mp && this.mp.net; if (!net) return; this.rankedWire();
+    this.rkRows = new Map([[net.id, { pid: devicePid(), n: net.name || 'Ronnie', c: net.char || 'ronnie', s: score }]]); net.send({ t: 'rkask' });
+    setTimeout(async () => {
+      const rows = [...this.rkRows.values()]; this.rkRows = null;
+      const res = rows.length >= 2 ? await postRanked(rows, `${net.code}-${Math.round(performance.timeOrigin + performance.now())}`) : null;
+      const out = res && res.rows ? res.rows : rows.sort((a, b) => b.s - a.s).map((r, i) => ({ ...r, place: i + 1 }));
+      net.send({ t: 'rkres', rows: out }); this.showRanked(out);
+    }, 3500);
+  }
+  showRanked(rows) {
+    const me = devicePid(), lines = (this.lastLines || []).filter(l => !l[2]), mine = rows.find(r => r.pid === me);
+    lines.push(['🏅 RANKED RESULT', '', 1]); for (const r of rows) lines.push([`${r.place}. ${String(r.n).toUpperCase()}${r.pid === me ? ' (YOU)' : ''}`, `${r.s}${r.r != null ? ` · ${r.r} (${r.d >= 0 ? '+' : ''}${r.d})` : ''}`, 1]);
+    const k = this.receiptT; this.showReceipt(lines); this.receiptT = k;
+    if (mine) { const o = ['1ST', '2ND', '3RD'][mine.place - 1] || mine.place + 'TH'; this.g.showBanner(mine.place === 1 ? '🏅 YOU WON THE RANKED EAT-OFF!' : `🏅 YOU CAME ${o}`, mine.r != null ? `RATING ${mine.r} (${mine.d >= 0 ? '+' : ''}${mine.d})` : 'THE RATINGS AREN\'T SWITCHED ON YET'); sfx(mine.place === 1 ? 'award' : 'notify', null, 0.8); }
   }
   // the awards land one by one, each with a thump: redraw the receipt a few times a second while they come in
   stampAwards(lines, n) {

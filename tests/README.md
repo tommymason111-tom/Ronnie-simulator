@@ -33,6 +33,8 @@ Crash and regression tests for Ronnie Simulator. GitHub Actions runs them on eve
 | `nametags.test.mjs` | another player's tag: face, name, host crown, size pips, connection bars that drop when poses stop, green while talking, bigger far away and faded a long way off, redrawn only on change |
 | `lobby.test.mjs` | three players through the real room server: the invite link lands you in the room, ready ticks both ways, the host's room options reach everyone (a guest's can't), lobby chat, only the host can kick, a locked room turns people away, a game runs SHORT and with no attacks |
 | `voice.test.mjs` | voice chat with a pretend microphone: off by default, the squad goes quiet, a full mesh connects, sound arrives, round trip and hold-back (checked on a calm machine), never your own voice back, mute, on/off five times, and in a real game the talking player's tag and row light up |
+| `replay.test.mjs` | Imposter's best-moment replay: recording everyone, picking the double kill, stand-ins playing it back with the kill on time, its own camera, SKIP, nothing left behind |
+| `leaderboard.test.mjs` | the leaderboard server (bests only, in order, nonsense turned away, floods slowed, Elo ratings, a match counted once), a solo score's rank on the receipt, the 🏆 screen online and offline, and a real two-game ranked eat-off |
 | `chaos.test.mjs` | a seeded bot mashes everything in every place (`SEEDS`, `STEPS`, `PLACES`, `SEED0` to go harder or replay a seed) |
 
 A test returns a list of what went wrong (empty = passed). Helpers are in `lib/`: `game.mjs` (a browser running the game from this repo, crash reports caught), `durable.mjs` (a stand-in for Cloudflare's Durable Objects), `roomhost.mjs` (the real room server over real WebSockets).

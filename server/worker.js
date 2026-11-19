@@ -30,6 +30,7 @@ export class Room {
 
   async fetch(req) {
     if (new URL(req.url).pathname.startsWith('/crash')) return crashLog(this, req);      // (one special "room" keeps the crash reports)
+    if (/^\/(lb|rank)$/.test(new URL(req.url).pathname)) return leaderboard(this, req);      // (and another keeps the leaderboards)
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected a websocket', { status: 426, headers: cors });
     const url = new URL(req.url), name = clean(url.searchParams.get('name'), 16) || 'Ronnie';
     const pid = (url.searchParams.get('pid') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || crypto.randomUUID().replace(/-/g, '').slice(0, 10);
@@ -144,6 +145,11 @@ export default {
       const fwd = new Request(req, { headers: new Headers({ 'x-ip': req.headers.get('cf-connecting-ip') || '', 'x-key-ok': env.CRASH_KEY && url.searchParams.get('k') === env.CRASH_KEY ? '1' : '' }) });
       return env.ROOMS.get(env.ROOMS.idFromName('__crashlog__')).fetch(fwd);
     }
+    if ((url.pathname === '/lb' || url.pathname === '/rank') && req.method === 'OPTIONS') return new Response('', { headers: { ...cors, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' } });
+    if ((url.pathname === '/lb' && (req.method === 'GET' || req.method === 'POST')) || (url.pathname === '/rank' && req.method === 'POST')) {
+      const fwd = new Request(req, { headers: new Headers({ 'x-ip': req.headers.get('cf-connecting-ip') || '', 'content-type': 'application/json' }) });
+      return env.ROOMS.get(env.ROOMS.idFromName('__leaderboard__')).fetch(fwd);
+    }
     const m = url.pathname.match(/^\/room\/([A-Z0-9]{4,8})$/i);
     if (m) return env.ROOMS.get(env.ROOMS.idFromName(m[1].toUpperCase())).fetch(req);
     return new Response('Ronnie Simulator multiplayer: OK (up to ' + MAX_PLAYERS + ' players a room)', { headers: { ...cors, 'content-type': 'text/plain' } });
@@ -189,4 +195,49 @@ async function crashLog(room, req) {
   g.ex.unshift({ at: now, v, d, p: word(b.p, 16), md: word(b.md, 16), vr: !!b.vr, mp: +b.mp || 0, t: +b.t || 0, mem: +b.mem || null, where: word(b.where, 24) }); g.ex.length = Math.min(g.ex.length, 5);
   await st.put(key, g);
   return new Response('ok', { headers: cors });
+}
+
+// ---- LEADERBOARDS (js/leaderboard.js). Kept in one special room. Personal bests per board (each device's best, with the
+// name and character it played as), and RANKED eat-off ratings (Elo, every player against every other in a match).
+// Nothing personal: a device id the game made up, a nickname, a character. Scores are sanity-checked, sends limited.
+const BOARDS = { eatoff: 6000, sweep: 200000, runpub1: 5000, runpub: 5000, runpub3: 5000 };
+const json = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, 'content-type': 'application/json' } });
+const pidOk = (p) => typeof p === 'string' && /^[a-z0-9]{6,12}$/.test(p);
+async function leaderboard(room, req) {
+  const st = room.state.storage, url = new URL(req.url), now = Date.now();
+  if (req.method === 'GET') {
+    const b = url.searchParams.get('b') || 'eatoff', me = url.searchParams.get('pid') || '';
+    let rows;
+    if (b === 'ranked') { const r = (await st.get('r')) || {}; rows = Object.entries(r).filter(([, v]) => v.g >= 1).map(([pid, v]) => ({ pid, n: v.n, c: v.c, s: Math.round(v.r), g: v.g, w: v.w })); }
+    else if (BOARDS[b]) { const o = (await st.get('b:' + b)) || {}; rows = Object.entries(o).map(([pid, v]) => ({ pid, n: v.n, c: v.c, s: v.s, t: v.t })); }
+    else return json({ error: 'no such board' }, 404);
+    rows.sort((x, y) => y.s - x.s); const i = rows.findIndex(x => x.pid === me);
+    return json({ b, top: rows.slice(0, 25).map((x, k) => ({ ...x, pid: undefined, me: x.pid === me || undefined, rank: k + 1 })), me: i >= 0 ? { rank: i + 1, s: rows[i].s } : null, n: rows.length });
+  }
+  const ip = req.headers.get('x-ip') || '?', rl = room.rl || (room.rl = new Map()), r = rl.get(ip) || { t: now, n: 0 };
+  if (now - r.t > 60000) { r.t = now; r.n = 0; } r.n++; rl.set(ip, r); if (rl.size > 5000) rl.clear();
+  if (r.n > 20) return json({ error: 'slow down' }, 429);
+  let b; try { const txt = await req.text(); if (txt.length > 4000) throw 0; b = JSON.parse(txt); } catch (e) { return json({ error: 'bad' }, 400); }
+  if (url.pathname === '/lb') {
+    const max = BOARDS[b && b.b], s2 = Math.round(+(b && b.s)); if (!max || !pidOk(b.pid) || !Number.isFinite(s2) || s2 < 0 || s2 > max) return json({ error: 'bad' }, 400);
+    const key = 'b:' + b.b, o = (await st.get(key)) || {}, old = o[b.pid], best = !old || s2 > old.s;
+    if (best) { o[b.pid] = { n: clean(b.n, 16) || 'Ronnie', c: clean(b.c, 12) || 'ronnie', s: s2, t: now };
+      const ks = Object.keys(o); if (ks.length > 3000) { ks.sort((x, y) => o[x].s - o[y].s); for (const k of ks.slice(0, ks.length - 3000)) delete o[k]; } await st.put(key, o); }
+    const rank = 1 + Object.values(o).filter(v => v.s > (best ? s2 : old.s)).length;
+    return json({ ok: 1, best, rank, s: best ? s2 : old.s });
+  }
+  // a ranked match: 2-12 different players, each with their score; the same match sent twice (everyone's game sends it)
+  // counts once
+  const rows = Array.isArray(b && b.rows) ? b.rows.filter(x => x && pidOk(x.pid) && Number.isFinite(+x.s) && +x.s >= 0 && +x.s <= BOARDS.eatoff) : [];
+  if (rows.length < 2 || rows.length > 12 || new Set(rows.map(x => x.pid)).size !== rows.length) return json({ error: 'bad' }, 400);
+  const mid = 'm:' + clean(String(b.match || ''), 40); const seen = mid.length > 3 ? await st.get(mid) : null; if (seen) return json(seen);
+  const R = (await st.get('r')) || {}, K = 32 / (rows.length - 1);
+  const cur = rows.map(x => ({ pid: x.pid, s: +x.s, n: clean(x.n, 16) || 'Ronnie', c: clean(x.c, 12) || 'ronnie', r0: R[x.pid] ? R[x.pid].r : 1000 }));
+  for (const a of cur) { a.d = 0; for (const o of cur) { if (o === a) continue; const exp = 1 / (1 + Math.pow(10, (o.r0 - a.r0) / 400)), res = a.s > o.s ? 1 : a.s === o.s ? 0.5 : 0; a.d += K * (res - exp); } }
+  const top = Math.max(...cur.map(x => x.s));
+  for (const a of cur) { const v = R[a.pid] || { r: 1000, g: 0, w: 0 }; v.r = a.r0 + a.d; v.g++; if (a.s === top) v.w++; v.n = a.n; v.c = a.c; R[a.pid] = v; }
+  await st.put('r', R);
+  const out = { ok: 1, rows: cur.sort((x, y) => y.s - x.s).map((a, i) => ({ pid: a.pid, n: a.n, c: a.c, s: a.s, place: i + 1, r: Math.round(a.r0 + a.d), d: Math.round(a.d) })) };
+  if (mid.length > 3) await st.put(mid, out);
+  return json(out);
 }

@@ -11,7 +11,10 @@ export async function startRoomHost() {
   installGlobals();
   const mod = await import(pathToFileURL(path.join(ROOT, 'server/worker.js')).href + '?t=' + Date.now());
   const { env, roomFor } = makeEnv(mod.Room), stats = { in: 0, out: 0, rooms: new Set() };
-  const server = http.createServer((q, s) => s.end('ok'));
+  // plain web requests (the leaderboards) go to the worker too
+  const server = http.createServer(async (q, s) => { try { let body = ''; for await (const c of q) body += c;
+      const res = await mod.default.fetch(new Request('http://local' + q.url, { method: q.method, headers: { ...q.headers, 'cf-connecting-ip': '127.0.0.1' }, body: q.method === 'GET' || q.method === 'HEAD' || q.method === 'OPTIONS' ? undefined : body }), env, { waitUntil() {} });
+      const h = {}; res.headers.forEach((v, k) => { h[k] = v; }); s.writeHead(res.status, h); s.end(await res.text()); } catch (e) { s.statusCode = 500; s.end(String(e)); } });
   const wss = new WebSocketServer({ server });
   wss.on('connection', async (ws, req) => {
     // a pretend network for this player: ws://localhost:PORT/net/<delay ms>/<jitter ms>/... adds that much delay each
