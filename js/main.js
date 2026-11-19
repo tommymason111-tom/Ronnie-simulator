@@ -266,6 +266,21 @@ const CRUMB_COLORS = {
 };
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _q = new THREE.Quaternion();
 
+// ---------------- eat meter feedback: every bite punches the meter, a "+N" floats up from your mouth, quick bites in
+// a row build a COMBO (its own rising sound, a badge with a draining timer on the meter, bigger and brighter the
+// higher it goes), and the bar slides up to its new level instead of jumping
+const COMBO_GAP = 2.4, COMBO_TIERS = [[2, '#39ff14', 'COMBO'], [4, '#00e5ff', 'NICE'], [7, '#ffd400', 'GREEDY'], [11, '#ff9a1f', 'UNSTOPPABLE'], [16, '#ff3b8b', 'BOTTOMLESS'], [25, '#c77dff', 'LEGENDARY']];
+function comboTier(n) { let t = null; for (const x of COMBO_TIERS) if (n >= x[0]) t = x; return t; }
+function eatFeedback(amount) {
+  G.combo = time - (G.comboAt ?? -99) < COMBO_GAP ? (G.combo || 0) + 1 : 1; G.comboAt = time; G.bestCombo = Math.max(G.bestCombo || 0, G.combo);
+  player.wristKick(0.16 + Math.min(0.14, G.combo * 0.012));
+  const up = _b.copy(player.mouth).addScaledVector(player.fwd, 0.35 * player.scale).add({ x: 0.06 * player.scale, y: 0.09 * player.scale, z: 0 });
+  words.show('+' + Math.max(1, Math.round(amount)), up, '#39ff14', 0.07 * player.scale, 0.9);
+  const tier = comboTier(G.combo);
+  if (tier) { sfx('combo', null, 0.5 + Math.min(0.5, G.combo * 0.04));
+    if (G.combo === tier[0] || G.combo % 5 === 0) words.show(`x${G.combo} ${tier[2]}!`, _c.copy(player.head).addScaledVector(player.fwd, 0.9 * player.scale).add({ x: 0, y: 0.18 * player.scale, z: 0 }), tier[1], (0.11 + Math.min(0.08, G.combo * 0.004)) * player.scale, 1.1); }
+  G.wristDirty = true;
+}
 function addChonk(n) {
   G.chonk = Math.max(STAGES[G.stage].chonk, G.chonk + n);
   while (G.stage < STAGES.length - 1 && G.chonk >= STAGES[G.stage + 1].chonk) stageUp();
@@ -292,6 +307,7 @@ function bite(it, hand) {
   hand && hand.pulse(0.9, 70);
   const amount = (it.def.chonk / it.def.bites) * chonkMul();
   addChonk(amount);
+  eatFeedback(amount);
   director.onAte(it, amount);
   if (it.bitesLeft <= 0) {
     setTimeout(() => sfx('gulp', null, 1), 220);
@@ -439,7 +455,8 @@ function stageUp() {
   G.scaleFrom = player.scale; G.scaleTo = st.scale; G.scaleT = 0;
   player.setBelly(st.belly);
   setPitchScale(1 / Math.pow(st.scale, 0.8));
-  sfx('bwoomp', null, 1); sfx('fanfare', null, 1);
+  sfx('bwoomp', null, 1); sfx('stageup', null, 1);      // (its own sound: the fanfare is a game starting)
+  player.wristKick(0.45); G.meterFlash = 1;
   showBanner(`STAGE ${G.stage + 1}`, stageNameOf(G.stage).toUpperCase());
   player.hands.forEach(h => h.pulse(1, 300));
   tommy.say(STAGE_LINES[G.stage + 1] || "You're getting bigger, Ron. Still younger though.", 5);
@@ -789,6 +806,7 @@ function warmUpload() {
 // ---------------- modes ----------------
 function resetRonnie() {
   player.clearEffects(); G.fxTintT = 0; attackFx.removeAll(); powerups && powerups.reset();
+  G.combo = 0; G.comboAt = -99; G.bestCombo = 0; G.fillShown = null; G.meterFlash = 0;
   G.chonk = 0; G.stage = 0; G.eaten = 0; G.swats = 0; G.locoT = 0; G.stoutT = 0; G.gagT = 0;
   G.scaleFrom = player.scale; G.scaleTo = 1; G.scaleT = player.scale === 1 ? 1 : 0;
   player.setBelly(STAGES[0].belly); setPitchScale(1); stopLocoMusic(); room.hemi.color.set(0xc9d6ff);
@@ -1295,13 +1313,21 @@ function frame(simDt) {
   G.wristT -= dt;
   if (director.running && director.mode !== 'classic' && Math.floor(director.timeLeft) !== G.lastHudSec) { G.lastHudSec = Math.floor(director.timeLeft); G.wristDirty = true; }
   { const hl = director.hud(); if (hl !== G.lastHudLine) { G.lastHudLine = hl; G.wristDirty = true; } if (director.imposter && (G.impHudT = (G.impHudT || 0) - dt) <= 0) { G.impHudT = 0.25; G.wristDirty = true; } }   // e.g. the attack countdown ticking
+  // (the meter's moving parts: the bar sliding to its level, the combo timer draining, the flash, the near-full glow:
+  // redrawn quicker while any of them is moving)
+  { const max0 = G.stage === STAGES.length - 1, c0 = STAGES[G.stage].chonk, n0 = max0 ? c0 : STAGES[G.stage + 1].chonk, want = max0 ? 1 : Math.max(0, Math.min(1, (G.chonk - c0) / (n0 - c0)));
+    if (G.fillShown == null || want < G.fillShown - 0.5) G.fillShown = want; else G.fillShown += (want - G.fillShown) * Math.min(1, dt * 9);
+    if (G.meterFlash > 0) G.meterFlash = Math.max(0, G.meterFlash - dt * 2.2);
+    const comboLive = G.combo >= 2 && time - G.comboAt < COMBO_GAP; if (!comboLive && G.combo >= 2 && time - G.comboAt >= COMBO_GAP) { G.combo = 0; G.wristDirty = true; }
+    if (Math.abs(want - G.fillShown) > 0.002 || G.meterFlash > 0 || comboLive || (!max0 && want > 0.85)) { G.wristDirty = true; if (G.wristT > 1 / 30) G.wristT = 1 / 30; } }
   if (G.wristDirty && G.wristT <= 0) {
     G.wristDirty = false; G.wristT = 0.1;
     const max = G.stage === STAGES.length - 1;
     const cur = STAGES[G.stage].chonk, next = max ? cur : STAGES[G.stage + 1].chonk;
+    const tierNow = G.combo >= 2 && time - G.comboAt < COMBO_GAP ? comboTier(G.combo) : null;
     player.drawWrist({
       stage: G.stage, stages: STAGES.length, name: stageNameOf(G.stage), chonk: G.chonk, next, max,
-      fill: max ? 1 : (G.chonk - cur) / (next - cur), loco: G.locoT, stout: G.stoutT, eaten: G.eaten, swats: G.swats, fps: G.fps,
+      fill: G.fillShown ?? (max ? 1 : (G.chonk - cur) / (next - cur)), loco: G.locoT, combo: tierNow ? { n: G.combo, col: tierNow[1], word: tierNow[2], left: 1 - (time - G.comboAt) / COMBO_GAP } : null, flash: G.meterFlash || 0, glow: !max && (G.chonk - cur) / (next - cur) > 0.85 ? 0.5 + 0.5 * Math.sin(time * 9) : 0, stout: G.stoutT, eaten: G.eaten, swats: G.swats, fps: G.fps,
       modeLine: (window.__devMode || window.__devPending) ? 'TEST BENCH · NO RANDOM ATTACKS' : director.hud(), title: (window.__devMode || window.__devPending) ? 'DEVELOPER MODE' : modeTitle(), dev: !!(window.__devMode || window.__devPending),
       pub: director.runpub ? director.runpub.hudState(director.timeLeft) : null,
       imp: director.imposter ? director.imposter.hudState() : null,

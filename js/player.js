@@ -264,7 +264,7 @@ export class Player {
     if (this.knock) this.updateKnock(dt);
     this.updateEffects(dt, t);
     this.placeHeld();
-    this.updateWristParent(xr);
+    this.updateWristParent(xr); this.wristFx(dt);
     this.updateBelly(dt, t);
   }
 
@@ -618,6 +618,17 @@ export class Player {
   }
 
   // ---------------- wrist Chonk Meter ----------------
+  // a bite punches the meter: a quick springy scale-up with a little wobble, settling back (every frame, no redraw)
+  wristKick(k = 0.2) { this.wKick = Math.min(0.6, (this.wKick || 0) + k); this.wKickV = (this.wKickV || 0) + k * 6; this.wWob = (this.wWob || 0) + k * (Math.random() < 0.5 ? -1 : 1) * 0.6; }
+  wristFx(dt) {
+    if (!this.wrist) return; const base = this.wristBase || 1;
+    // (a spring: stiff, a bit bouncy)
+    this.wKickV = (this.wKickV || 0) + (-(this.wKick || 0) * 260 - (this.wKickV || 0) * 16) * Math.min(dt, 0.05); this.wKick = (this.wKick || 0) + this.wKickV * Math.min(dt, 0.05);
+    this.wWob = (this.wWob || 0) * Math.exp(-dt * 7);
+    if (Math.abs(this.wKick) < 1e-4 && Math.abs(this.wKickV) < 1e-3 && Math.abs(this.wWob) < 1e-4) { this.wKick = this.wKickV = this.wWob = 0; }
+    this.wrist.scale.setScalar(base * (1 + Math.max(-0.2, this.wKick)));
+    this.wrist.rotation.z = (this.wristRotZ || 0) + this.wWob * Math.sin(performance.now() / 45);
+  }
   buildWrist() {
     this.wristCanvas = document.createElement('canvas');
     this.wristCanvas.width = 512; this.wristCanvas.height = 384;
@@ -643,11 +654,12 @@ export class Player {
     if (state.pub) { this.drawPubBox(g, w, h, state); g.restore(); this.wristTex.needsUpdate = true; return; }
     if (state.imp) { this.drawImpBox(g, w, h, state.imp); g.restore(); this.wristTex.needsUpdate = true; return; }
     g.fillStyle = '#111827'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill();
-    g.lineWidth = 8; g.strokeStyle = state.loco > 0 ? '#ff9a1f' : '#39ff14'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();
+    // (nearly the next size: the border glows gold, pulsing)
+    g.lineWidth = 8 + (state.glow || 0) * 6; g.strokeStyle = state.loco > 0 ? '#ff9a1f' : state.glow ? `rgb(255,${Math.round(212 + 30 * state.glow)},${Math.round(40 * state.glow)})` : '#39ff14'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();
     g.textAlign = 'left'; g.textBaseline = 'middle';
     g.fillStyle = '#c3cad6'; g.font = `900 34px ${FONT}`;
     g.fillText(`EAT METER · STAGE ${state.stage + 1}/${state.stages}`, 30, 44);
-    g.fillStyle = '#ffffff'; { let f = 54; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(state.name.toUpperCase()).width > w - 60 && f > 28); }
+    g.fillStyle = '#ffffff'; { const room = w - 60 - (state.combo ? 170 : 0); let f = 54; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(state.name.toUpperCase()).width > room && f > 18); }      // (room left for a combo badge)
     g.fillText(state.name.toUpperCase(), 30, 98);
     // belly-shaped bar that bulges as it fills
     const bx = 30, by = 140, bw = w - 60, bh = 70, k = Math.max(0, Math.min(1, state.fill));
@@ -665,6 +677,10 @@ export class Player {
       g.quadraticCurveTo(bx - 4, by + bh / 2, bx + 30, by - bulge * 0.3);
       g.fill();
     }
+    // a combo: a badge on the bar's top right, its timer draining round the bottom
+    if (state.combo) { const c = state.combo, cw = 150, cx = w - 30 - cw, cy = by - 54;
+      g.fillStyle = c.col; roundRect(g, cx, cy, cw, 44, 22); g.fill(); g.fillStyle = '#111'; g.font = `900 30px ${FONT}`; g.textAlign = 'center'; g.fillText(`x${c.n} COMBO`, cx + cw / 2, cy + 23);
+      g.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(g, cx + 10, cy + 38, cw - 20, 5, 3); g.fill(); g.fillStyle = '#fff'; roundRect(g, cx + 10, cy + 38, (cw - 20) * Math.max(0, Math.min(1, c.left)), 5, 3); g.fill(); g.textAlign = 'left'; }
     g.fillStyle = '#ffffff'; g.font = `900 42px ${FONT}`; g.textAlign = 'center';
     g.fillText(state.max ? `${Math.round(state.chonk)} — MAXED OUT` : `${Math.round(state.chonk)} / ${state.next}`, w / 2, by + bh / 2 + 2);
     g.textAlign = 'left';
@@ -682,6 +698,7 @@ export class Player {
       g.fillStyle = '#6b7280'; g.font = `900 28px ${FONT}`;
       g.fillText(`Eaten: ${state.eaten}  Swats: ${state.swats}`, 30, 262);
     }
+    if (state.flash > 0) { g.fillStyle = `rgba(255,255,255,${0.75 * state.flash})`; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill(); }      // (a size up: a white flash)
     g.textAlign = 'right'; g.font = `900 24px ${FONT}`;
     g.fillStyle = state.fps >= 70 ? '#39ff14' : state.fps >= 60 ? '#ffe600' : '#ff4d4d';
     g.fillText(`${state.fps} fps`, w - 30, 296);
@@ -731,19 +748,19 @@ export class Player {
       const d = 0.3, hh = d * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)), hw = hh * this.camera.aspect;
       const sc = Math.min(1.25, hw * (this.camera.aspect < 1 ? 1.12 : 0.9) / 0.1);     // (a phone held upright: a bit bigger, easier to read)
       this.wrist.position.set(-hw + 0.05 * sc + 0.008, hh - 0.0375 * sc - 0.024, -d);
-      this.wrist.scale.setScalar(sc);
+      this.wrist.scale.setScalar(sc); this.wristBase = sc;
     }
     if (parent === this.wristParent) return;
     this.wristParent = parent;
     if (!parent) { this.wrist.removeFromParent(); return; }
     parent.add(this.wrist);
-    this.wrist.scale.setScalar(1);
+    this.wrist.scale.setScalar(1); this.wristBase = mode === 'flat' ? this.wristBase || 1 : 1;
     if (mode === 'flat') {          // flat-screen preview: bottom-left of the view
-      this.wrist.rotation.set(0, 0, 0);
+      this.wrist.rotation.set(0, 0, 0); this.wristRotZ = 0;
     } else if (mode === 'joint') {  // hand tracking: on the back of the wrist (+Y = back of hand)
-      this.wrist.position.set(0, 0.03, 0.03); this.wrist.rotation.set(-Math.PI / 2 + 0.35, 0, 0);
+      this.wrist.position.set(0, 0.03, 0.03); this.wrist.rotation.set(-Math.PI / 2 + 0.35, 0, 0); this.wristRotZ = 0;
     } else {                        // controller: on top of the wrist, tilted toward your eyes
-      this.wrist.position.set(0, 0.035, 0.1); this.wrist.rotation.set(-Math.PI / 2 + 0.55, 0, 0);
+      this.wrist.position.set(0, 0.035, 0.1); this.wrist.rotation.set(-Math.PI / 2 + 0.55, 0, 0); this.wristRotZ = 0;
     }
   }
 
