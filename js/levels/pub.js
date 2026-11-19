@@ -1422,7 +1422,8 @@ export function buildPub(scene) {
     railX(GX0, 5.4, 19.4); railX(7.0, GX1, 19.4); railZ(GX0, GZ, 19.28);
     // picnic bench: top of five planks, two seats, A-frame legs, cross braces (local x along the table)
     const UMB = canvasTex(128, 256, (g, w, h) => { g.fillStyle = '#f2c81a'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,0.18)'; for (let x = 0; x < w; x += 32) g.fillRect(x, 0, 4, h); g.fillStyle = '#7a1a2a'; g.font = '900 54px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('B', w / 2, h * 0.38); g.font = '900 20px Georgia, serif'; g.save(); g.translate(w / 2, h * 0.68); g.rotate(-Math.PI / 2); g.fillText('BULMERS', 0, 0); g.restore(); });
-    const umbM = new THREE.MeshLambertMaterial({ map: UMB }), poleM = new THREE.MeshLambertMaterial({ color: 0xd8d8d8 });
+    const umbM = new THREE.MeshLambertMaterial({ map: UMB }); umbM.userData.sway = 0.1;      // (weather.js: parasols flap in the wind)
+    const poleM = new THREE.MeshLambertMaterial({ color: 0xd8d8d8 });
     const closedG = new THREE.LatheGeometry([[0.002, 0], [0.05, 0.05], [0.13, 0.35], [0.11, 0.9], [0.05, 1.15], [0.02, 1.25], [0, 1.25]].map(([a, b]) => new THREE.Vector2(a, b)), 10);
     const openG = new THREE.ConeGeometry(1.25, 0.42, 8, 1, true); openG.translate(0, 0.21, 0);
     const poleG = new THREE.CylinderGeometry(0.02, 0.02, 2.3, 6); poleG.translate(0, 1.15, 0);
@@ -1666,6 +1667,8 @@ export function buildPub(scene) {
     spotCount: 40,
   });
   room.floorAt = pubFloorAt;
+  room.indoors = (x, z) => z < GZ - 0.02 && inside(x, z);      // (weather.js: indoors = under the pub's roofs; the beer garden's out in it)
+  room.skyRefs = { dome: sky.mesh.material };                    // (weather.js: the sun moves round this sky)
   for (const o of scene.children.slice(sceneStart)) if (o.isMesh || o.isInstancedMesh) { o.updateMatrix(); o.updateMatrixWorld(true); o.matrixAutoUpdate = false; }   // (static: no per-frame matrix work)
   room.chairsAt = chairsAt; room.dormant = dorm; room.tvs = tvs; k.room = room;
   room.barSpots = barSpots.concat([-6.4, -4.6, -2.8, -1.0, 0.8].map(z => ({ x: -18.1, z, yaw: Math.PI / 2 })));   // (the pub bar, and the restaurant's)
@@ -1711,6 +1714,7 @@ export function buildPub(scene) {
               const F = (g, c, d, y) => { const [px, , pz] = at(d); bits.push(part(g, c, [px, y, pz], [0, ry, 0])); };
               F(new THREE.BoxGeometry(ww + 0.12, wh + 0.12, 0.06), WH, 0.13, wy);                                  // frame
               F(new THREE.BoxGeometry(ww - 0.04, wh - 0.04, 0.065), loo ? 0xc4d0d8 : GL, 0.135, wy);              // glass
+              (k.wxWindows = k.wxWindows || []).push({ x: wx + nx * 0.175, z: wz + nz * 0.175, nx, nz, y: wy, w: ww - 0.04, h: wh - 0.04 });      // (weather.js: lit up at night)
               F(new THREE.BoxGeometry(0.05, wh - 0.04, 0.075), WH, 0.135, wy);                                      // mullion
               if (!loo) F(new THREE.BoxGeometry(ww - 0.04, 0.05, 0.075), WH, 0.135, wy + wh / 2 - 0.42);           // top openers
               F(new THREE.BoxGeometry(ww + 0.2, 0.05, 0.16), 0xd8d4cc, 0.16, wy - wh / 2 - 0.08);                  // sill

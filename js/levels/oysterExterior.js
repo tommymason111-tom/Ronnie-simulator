@@ -147,6 +147,7 @@ export function buildExterior(k, scene, { blk }) {
   // on a wall facing (nx, nz) at the point (x, z): w x h, its middle at height y. Panes: how many side by side
   const win = (x, z, nx, nz, y, w, h, panes = 2, frosted = false) => {
     const ux = -nz, uz = nx, ry = Math.atan2(-uz, ux), at = (s, d) => [x + ux * s + nx * d, z + uz * s + nz * d];
+    (k.wxWindows = k.wxWindows || []).push({ x: x + nx * 0.062, z: z + nz * 0.062, nx, nz, y, w, h });      // (weather.js: lit up at night)
     { const [px, pz] = at(0, 0.03); B(w, h, 0.04, px, y, pz, frosted ? 0xdfe8ec : GLASS, ry); }
     if (!frosted) { const [px, pz] = at(0, 0.045); B(w * 0.94, h * 0.3, 0.02, px, y + h * 0.3, pz, SKY, ry); }            // the sky in the top half
     const fr = (ww, hh, s, yy) => { const [px, pz] = at(s, 0.07); B(ww, hh, 0.07, px, yy, pz, WHITE, ry); };

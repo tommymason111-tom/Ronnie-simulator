@@ -236,6 +236,7 @@ export function buildRoom(scene) {
   let t = 0;
   return {
     colliders, blockers, spawns, tommySpots, hemi, sun,
+    sunFx: [stripes, dust, ...beams.children.map(p => p.children[0])],      // (weather.js: the sunbeams fade with the sun)
     bounds: { x0: -HW, x1: HW, z0: -HD, z1: HD, y1: H },
     update(dt) {
       t += dt;
@@ -293,7 +294,7 @@ function scatterCans(scene, blockers) {
 }
 
 function streetTex() {
-  return canvasTex(1024, 768, (g, w, h) => {
+  const t = canvasTex(1024, 768, (g, w, h) => {
     const sky = g.createLinearGradient(0, 0, 0, h * 0.7);
     sky.addColorStop(0, '#7fb2ff'); sky.addColorStop(1, '#ffe2b8');
     g.fillStyle = sky; g.fillRect(0, 0, w, h);
@@ -316,6 +317,7 @@ function streetTex() {
     g.strokeStyle = '#c0392b'; g.lineWidth = 8; g.strokeRect(w * 0.3, h * 0.38, w * 0.26, h * 0.12);
     fitText(g, 'RONNIE EXCLUSION ZONE 50M', w * 0.31, h * 0.385, w * 0.24, h * 0.11, 40, { color: '#c0392b' });
   });
+  t.userData.view = {}; return t;      // (weather.js: the weather and the time of day out of the window)
 }
 
 function wantedTex() {

@@ -705,8 +705,8 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   // lights out: every light in the pub drops right down (and the glowing signs with it), the fog closes in black; back
   // up when someone fixes the fuse box. (Not for the imposters: they can see in the dark)
   dim(on) {
-    if (!!on === !!this.dimmed) return; this.dimmed = !!on; const sc = this.g.scene;
-    if (on) { this.lightsWas = []; sc.traverse(o => { if (o.isLight) { this.lightsWas.push([o, o.intensity]); o.intensity *= o.isAmbientLight || o.isHemisphereLight ? 0.12 : 0.08; } });
+    if (!!on === !!this.dimmed) return; this.dimmed = !!on; const sc = this.g.scene; sc.userData.wxDim = !!on;      // (the weather's own lights (the sun) dim themselves: weather.js)
+    if (on) { this.lightsWas = []; sc.traverse(o => { if (o.isLight && !o.userData.wx) { this.lightsWas.push([o, o.intensity]); o.intensity *= o.isAmbientLight || o.isHemisphereLight ? 0.12 : 0.08; } });
       this.bgWas = sc.background; if (sc.background && sc.background.isColor) sc.background = new THREE.Color(0x020306); f2(this.g.renderer, 0.45); }
     else { for (const [o, v] of this.lightsWas || []) o.intensity = v; this.lightsWas = null; if (this.bgWas !== undefined) { sc.background = this.bgWas; this.bgWas = undefined; } f2(this.g.renderer, 1); }
     function f2(r, k) { if (r.__expo0 === undefined) r.__expo0 = r.toneMappingExposure; r.toneMappingExposure = r.__expo0 * k; }

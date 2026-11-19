@@ -51,6 +51,7 @@ const SCHEMA = {
   save: { 'd!': 'obj' }, emote: { 'e!': 'str' }, char: { 'c!': 'str' }, chat: { 's!': 'str' }, say: { 'text!': 'str' }, stun: { who: 'id' }, coming: { who: 'id' }, setup: { place: 'str', mode: 'str' },
   songpart: { i: 'num', n: 'num', d: 'str' }, vidpart: { i: 'num', n: 'num', d: 'str' }, own: { 'nid!': 'id', id: 'id' }, grab: { 'nid!': 'id' }, gone: { 'nid!': 'id' }, end: { lines: 'arr' },
   welcome: { players: 'arr' }, join: { 'id!': 'id' }, leave: { 'id!': 'id' }, host: { 'id!': 'id' },
+  wx: { w: 'str', a: 'num', tm: 'num', c: 'str', ds: 'num' },      // (the host's weather and time of day: weather.js)
 };
 function okMessage(m) {
   if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.t !== 'string' || !m.t || m.t.length > 24) return false;
