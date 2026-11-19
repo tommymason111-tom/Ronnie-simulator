@@ -31,7 +31,7 @@ export default async function () {
             () => { P.flatDrop && P.flatDrop(); return 'drop'; },
             () => { const bs = [...document.querySelectorAll('button, .mate, .flip, [data-em], [data-id]')].filter(e => e.getClientRects().length && !NO.includes(e.id) && !e.closest('#start') && getComputedStyle(e).visibility !== 'hidden'); const e = bs.length && pick(bs); if (!e) return 'no button';
               e.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); e.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); e.click(); return 'press ' + (e.id || e.dataset.id || e.dataset.em || e.className || e.tagName).toString().slice(0, 30); },
-            () => { const m = pick(['everyone', 'chonkoff', 'chonkoff2', 'roam', 'roam0', 'runpub', 'sweep', 'bbq', 'date']); try { RS.newGame(m); } catch (e) { throw new Error('newGame ' + m + ': ' + e.message); } return 'game ' + m; },
+            () => { const m = pick(['everyone', 'chonkoff', 'chonkoff2', 'roam', 'roam0', 'runpub', 'sweep', 'bbq', 'date', 'boss']); try { RS.newGame(m); } catch (e) { throw new Error('newGame ' + m + ': ' + e.message); } return 'game ' + m; },
             () => { const pu = RS.powerups; if (pu && pu.give && PU.length) { const id = pick(PU); pu.give(id); return 'power-up ' + id; } return 'no power-ups'; },
             () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: pick(['Escape', 'Enter', ' ', 'e', 'q', 'w', 'a', 's', 'd', 'ArrowLeft', 'ArrowRight']), bubbles: true })); return 'key'; },
             () => { const t = 0.5 + rnd() * 3; RS.sim(t, 1 / 30); return 'wait ' + t.toFixed(1) + 's'; },

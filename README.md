@@ -81,6 +81,7 @@ Pick a mode on the start screen, or change it any time from **GAME MODE** in the
 | **Catch & Eat** | Harry throws 20 foods. Catch them in your mouth. |
 | **Eat-Off** (60s) | Eat as much as you can. Your best score is saved on the device. |
 | **Eat-Off 2P** | Player 1 plays, passes the headset or phone, then Player 2 presses Eat-Off 2P. Winner on the receipt. |
+| **Boss Fight** (the pub's car park, Lewis's garden) | A giant Noah, Lewis, Chloe or Tommy (a different one each fight) drops out of the sky. Throw food at them (headshots x2, the glowing weak spot x3 when they're out of puff), eat to power up and get hearts back. Three phases of telegraphed moves: slams (get out of the red), waves (get in close), giant food lobbed at you, charges, and the lads called in to help. Solo or co-op: the host runs the boss (`js/boss.js`). |
 
 ## Controls (in VR)
 

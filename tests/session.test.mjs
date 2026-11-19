@@ -5,7 +5,7 @@
 //   - a game that isn't one of this place's starts this place's own game instead (Run the Pub crashed in the bedroom)
 import { launch, newPage, startGame, checker } from './lib/game.mjs';
 
-const RUNS = { shop: ['sweep', 'roam', 'roam0'], pub: ['everyone', 'runpub', 'chonkoff', 'roam', 'roam0'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'] };
+const RUNS = { shop: ['sweep', 'roam', 'roam0'], pub: ['everyone', 'runpub', 'boss', 'chonkoff', 'roam', 'roam0'], garden: ['bbq', 'boss', 'roam'], restaurant: ['date', 'roam'] };
 
 export default async function () {
   const C = checker('session'), b = await launch();
@@ -35,7 +35,7 @@ export default async function () {
     }
     // a game that doesn't belong here (another player's restart message, a stray call: Run the Pub in the bedroom crashed
     // its job board, looking for the pub's seats) starts this place's own game instead
-    for (const [place, wrong] of [['bedroom', 'runpub'], ['garden', 'sweep'], ['shop', 'bbq'], ['restaurant', 'runpub']]) {
+    for (const [place, wrong] of [['bedroom', 'runpub'], ['garden', 'sweep'], ['shop', 'bbq'], ['restaurant', 'runpub'], ['shop', 'boss'], ['bedroom', 'boss']]) {
       const p = await newPage(b, { width: 640, height: 400 });
       try { await startGame(p, { place, mode: 'roam' });
         const r = await p.evaluate((w) => { RS.renderer.setAnimationLoop(null); let threw = null; try { RS.newGame(w); RS.sim(40, 1 / 30); } catch (e) { threw = e.message; } return { threw, mode: RS.director.mode }; }, wrong);

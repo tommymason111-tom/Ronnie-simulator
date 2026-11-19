@@ -39,6 +39,7 @@ import { PowerUps } from './powerups.js';
 import { buildMix, MIX_CSS } from './mixui.js';
 import { haptics } from './haptics.js';
 import { Imposter } from './imposter.js';
+import { BossFight } from './boss.js';      // (BOSS FIGHT)
 import { TVs } from './tv.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
 
@@ -606,6 +607,7 @@ const touch = setupTouch({
     raycaster.setFromCamera(ndc, camera);
     const ray = raycaster.ray, reach = 3 * player.scale;
     if (director.tapBubble(ray)) return;
+    if (director.boss && director.boss.tap(ray)) return;      // (BOSS FIGHT: holding food, tap the boss to throw it there)
     if (MEDIA_ON && music.tap(ray, reach)) return;                       // the music button on the speakers / DJ deck
     if (director.runpub && director.runpub.tapGive && director.runpub.tapGive(ray)) return;   // Run the Pub: holding a drink, tap someone to give it to them
     if (director.runpub && director.runpub.bar && director.runpub.bar.tap(ray)) return;   // Run the Pub: the tap, the coffee machine, the soft-drink gun
@@ -840,6 +842,8 @@ const director = new Director({
   // IMPOSTER (multiplayer): the whole game lives in imposter.js
   makeImposter: (n) => new Imposter({ scene, room, player, net, mp, words, renderer, camera, items, tommy, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b),
     restart: () => hostNewGame(director.fullMode), leave: () => leaveGame() }, n),
+  // BOSS FIGHT: the whole fight lives in boss.js
+  makeBoss: () => new BossFight({ scene, room, physics, player, items, words, crumbs, G, cast, director, net, mp, camera, renderer, fx: attackFx, hint: (t) => touch.hint(t), showBanner: (a, b) => showBanner(a, b) }),
   hint: (t) => touch.hint(t),
   stageName: () => stageNameOf(G.stage), stageNo: () => G.stage,
   // points that pop bubbles / press board buttons: palms, fingertips and held food
@@ -1002,8 +1006,9 @@ const PAUSE_MODES = {
   runpub3: ['🔥', 'RUN THE PUB · CUP FINAL', 'Hard: rammed, impatient, kicking off. Big tips though'],
   imposter: ['🔪', 'IMPOSTER · 1 IMPOSTER', 'Multiplayer: do your jobs, find the imposter, vote them out'],
   imposter2: ['🔪', 'IMPOSTER · 2 IMPOSTERS', 'Multiplayer: two imposters among you (5+ players)'],
+  boss: ['👹', 'BOSS FIGHT', 'A giant mate: eat to power up, throw food to bring them down'],      // (BOSS FIGHT)
 };
-const PLACE_GAMES = { pub: ['everyone', 'runpub1', 'runpub', 'runpub3', 'imposter', 'imposter2', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], shop: ['sweep', 'roam', 'roam0'], garden: ['bbq', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'] };
+const PLACE_GAMES = { pub: ['everyone', 'runpub1', 'runpub', 'runpub3', 'imposter', 'imposter2', 'boss', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], shop: ['sweep', 'roam', 'roam0'], garden: ['bbq', 'boss', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'] };
 const modeTitle = () => { const m = director.fullMode; return (PAUSE_MODES[m] && PAUSE_MODES[m][1]) || (m === 'classic' ? 'CLASSIC' : m === 'intervention' ? 'THE SQUAD' : (m || '').toUpperCase()); };
 function showPauseModes() {
   const list = document.getElementById('pause-mode-list'), cur = director.fullMode;
@@ -1361,7 +1366,7 @@ function frame(simDt) {
   _b.set(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(_q));
   setListener(player.head, player.fwd, _b);
 
-  if (simDt == null) renderer.render(scene, (director.imposter && director.imposter.replay && director.imposter.replay.cam) || emoteCam() || camera);      // (Imposter's end-of-game replay films from its own camera)
+  if (simDt == null) renderer.render(scene, (director.boss && director.boss.cineCam()) || (director.imposter && director.imposter.replay && director.imposter.replay.cam) || emoteCam() || camera);      // (Imposter's end-of-game replay and the BOSS FIGHT entrance film from their own cameras)
   learnShader();      // (a shader built during play: remember its kind, so next time it's built up front)
 }
 // your own emote, on a phone or a computer: the camera swings round in front of you so you can watch your character do

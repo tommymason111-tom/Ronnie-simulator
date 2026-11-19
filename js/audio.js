@@ -585,6 +585,12 @@ const SOUNDS = {
   crt_on(d, t) { tone(d, t, 'sine', 8000, 8200, 0.6, 0.03, 0.1); tone(d, t, 'sine', 90, 50, 0.08, 0.4, 0.002); noise(d, t + 0.02, 0.3, 'highpass', 3000, 0.7, 0.2, 0.01); },      // the camera monitors flicking on
   clog(d, t) { for (let i = 0; i < 4; i++) { const s = t + i * 0.16 + Math.random() * 0.04; const o = tone(d, s, 'sine', 120 + Math.random() * 40, 60, 0.12, 0.4, 0.01); wobble(o, s, 0.13, 30, 20); noise(d, s, 0.1, 'lowpass', 400, 4, 0.25, 0.01); } },      // a blocked drain glugging
   body_fall(d, t) { tone(d, t, 'sine', 85, 38, 0.22, 0.9, 0.003); noise(d, t, 0.25, 'lowpass', 320, 1, 0.5, 0.004); tone(d, t + 0.14, 'sine', 70, 40, 0.12, 0.45, 0.003); },      // a body hitting the floor
+  // ---- BOSS FIGHT (boss.js)
+  slam(d, t) { tone(d, t, 'sine', 70, 28, 0.6, 1.0, 0.003); tone(d, t, 'triangle', 140, 40, 0.3, 0.5, 0.003); noise(d, t, 0.5, 'lowpass', 700, 1, 0.8, 0.003); noise(d, t + 0.02, 0.9, 'lowpass', 260, 0.7, 0.5, 0.05); },      // a giant landing: a deep boom and the ground rumbling
+  roar(d, t) { const o = tone(d, t, 'sawtooth', 120, 70, 1.3, 0.35, 0.12); wobble(o, t, 1.4, 11, 18); const o2 = tone(d, t, 'square', 180, 95, 1.2, 0.12, 0.15); wobble(o2, t, 1.3, 7, 25); noise(d, t, 1.3, 'bandpass', 700, 1.2, 0.45, 0.15); },      // a big angry ROAR
+  rumble(d, t) { noise(d, t, 2.2, 'lowpass', 160, 0.8, 0.7, 0.9); tone(d, t, 'sine', 45, 38, 2.2, 0.35, 0.8); },      // something huge coming
+  boss_win(d, t) { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => { const s = i < 4 ? i * 0.12 : 0.48 + (i - 4) * 0.3; tone(d, t + s, 'square', f, f, i < 4 ? 0.12 : 0.5, 0.1, 0.004); tone(d, t + s, 'triangle', f / 2, f / 2, i < 4 ? 0.12 : 0.5, 0.12, 0.004); }); bell(d, t + 0.78, 2093, 1.2, 0.3); },      // a little original victory fanfare
+  defeat(d, t) { [392, 370, 349, 262].forEach((f, i) => { const o = tone(d, t + i * 0.36, 'sawtooth', f, f * (i === 3 ? 0.9 : 0.99), i === 3 ? 1.1 : 0.32, 0.12, 0.02); if (i === 3) wobble(o, t + i * 0.36, 1.1, 6, 8); }); tone(d, t, 'sine', 98, 92, 2.4, 0.2, 0.05); },      // womp, womp, womp, wommmp
 };
 // old names still used by a few things (kept, but pointed at the new sounds)
 const ALIAS = {};
@@ -623,6 +629,7 @@ export const SOUND_NAMES = Object.keys(SOUNDS);
 export const hasSound = (name) => !!(SOUNDS[name] || SOUNDS[ALIAS[name]]);
 export const SOUND_GROUPS = [
   ['GAME & STINGS', ['combo', 'stageup', 'meterpop', 'countdown', 'go', 'gamestart', 'timeup', 'award', 'drumroll', 'victory', 'loadwhoosh', 'airhorn', 'whistle_ref', 'fanfare', 'sadviolin', 'trumpet', 'bwoomp', 'powerup', 'powerdown']],
+  ['BOSS FIGHT', ['slam', 'roar', 'rumble', 'boss_win', 'defeat']],
   ['LOBBY & CHAT', ['ready', 'join', 'leave', 'kick', 'mic_on', 'mic_off', 'tap', 'toggle', 'notify', 'error', 'tick', 'beep']],
   ['IMPACTS', ['hit_wood', 'hit_metal', 'hit_glass', 'hit_soft', 'hit_plastic', 'hit_ceramic', 'hit_cardboard', 'shatter', 'smash', 'slosh', 'tipjar', 'land', 'thud', 'body_fall', 'bonk', 'ko', 'tackle', 'punch', 'slap', 'thwack', 'splat']],
   ['CROWDS', ['crowd_ooh', 'crowd_laugh', 'cheer', 'aww', 'brawl', 'oneeighty', 'anthem', 'siu']],
@@ -892,6 +899,33 @@ export function playBuffer(buf, pos = null, vol = 1, key = null) {
   return buf.duration;
 }
 export function stopVoice(key) { const s = VPLAY.get(key); if (s) { try { s.stop(); } catch (e) {} VPLAY.delete(key); } }
+
+// ---- BOSS FIGHT music (boss.js): an original driving loop (drums, a pulsing bass, a minor-key riff), faster each phase
+let bossTimer = null, bossOut = null;
+export function bossMusic(on, phase = 1) {
+  if (bossTimer) { clearTimeout(bossTimer); bossTimer = null; }
+  if (bossOut) { const o = bossOut; bossOut = null; try { o.gain.setTargetAtTime(0, ctx.currentTime, 0.15); setTimeout(() => { try { o.disconnect(); } catch (e) {} }, 900); } catch (e) {} }
+  if (!on || !ctx || !master) return;
+  const d = ctx.createGain(); d.gain.value = 0.55; d.connect(master); bossOut = d;
+  const bpm = [0, 132, 148, 164][phase] || 140, step = 60 / bpm / 2;      // eighth notes
+  const A = 110, hz = (s) => A * Math.pow(2, s / 12);
+  const BASS = [0, 0, 12, 0, 3, 0, 10, 0, 0, 0, 12, 0, 7, 5, 3, 2], RIFF = [12, null, 15, 12, null, 19, 17, 15, 12, null, 15, 17, 19, 22, 19, 17], RIFF3 = [24, 22, 19, 24, 22, 19, 17, 19, 24, 22, 19, 27, 26, 24, 22, 19];
+  let t = ctx.currentTime + 0.08, i = 0;
+  const sched = () => {
+    if (bossOut !== d) return;
+    while (t < ctx.currentTime + 0.6) {
+      const b = i % 16;
+      if (b % 4 === 0 || (phase >= 2 && b === 14)) { tone(d, t, 'sine', 120, 40, 0.16, 0.6, 0.002); noise(d, t, 0.03, 'lowpass', 1200, 1, 0.2, 0.001); }      // kick
+      if (b % 8 === 4) { noise(d, t, 0.14, 'bandpass', 1900, 0.8, 0.35, 0.002); tone(d, t, 'triangle', 220, 180, 0.08, 0.12, 0.002); }      // snare
+      noise(d, t, 0.025, 'highpass', 7000, 1, b % 2 ? 0.05 : 0.09, 0.001);      // hats
+      const bs = BASS[b]; tone(d, t, 'sawtooth', hz(bs - 12), hz(bs - 12), step * 0.85, 0.07, 0.004); tone(d, t, 'square', hz(bs - 24), hz(bs - 24), step * 0.85, 0.05, 0.004);
+      const rs = (phase >= 3 ? RIFF3 : RIFF)[b]; if (rs !== null && (phase >= 2 || Math.floor(i / 16) % 2 === 1)) tone(d, t, 'square', hz(rs), hz(rs), step * 0.7, 0.025, 0.004);
+      t += step; i++;
+    }
+    bossTimer = setTimeout(sched, 200);
+  };
+  sched();
+}
 
 // say something out loud with the device's speech voice, if it has one
 export function shout(text, { rate = 1, pitch = 1, volume = 0.8 } = {}) {

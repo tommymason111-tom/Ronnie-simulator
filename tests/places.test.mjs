@@ -3,7 +3,7 @@
 // after the context comes back.
 import { launch, newPage, startGame, checker } from './lib/game.mjs';
 
-const GAMES = { pub: ['everyone', 'runpub', 'chonkoff', 'chonkoff2', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam', 'roam0'], shop: ['sweep', 'roam', 'roam0'], garden: ['bbq', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'], grid: ['roam'] };
+const GAMES = { pub: ['everyone', 'runpub', 'boss', 'chonkoff', 'chonkoff2', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'roam', 'roam0'], shop: ['sweep', 'roam', 'roam0'], garden: ['bbq', 'boss', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'], grid: ['roam'] };
 const ONLY = process.env.PLACES ? process.env.PLACES.split(',') : null;
 
 export default async function () {

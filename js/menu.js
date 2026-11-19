@@ -171,14 +171,15 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     { id: 'eatoff', ico: '⏱️', name: 'EAT-OFF', desc: '60 seconds. Eat everything. On your own, or pass-and-play: who eats more?', stars: 1, who: '1 or 2 players' },
     { id: 'runpub', ico: '🍺', name: 'RUN THE PUB', desc: 'Work behind the bar at the Oysterfleet with Aidan, Connor and Chloe (Lewis is on the restaurant, Ben\'s in the kitchen). Serve the punters the right drinks, break up fights, catch runaway kids. Six-minute shift.', stars: 3, who: 'The staff, the locals, whoever turns up', place: 'pub' },
     { id: 'imposter', ico: '🔪', name: 'IMPOSTER', desc: 'Multiplayer only. Among Us at the Oysterfleet: the faithful do jobs round the pub while the imposter picks them off one by one. Find a body? REPORT it. Ring the LAST ORDERS bell for a meeting, then vote them out of the pub.', stars: 3, who: '3+ players', mp: true },
+    { id: 'boss', ico: '👹', name: 'BOSS FIGHT', desc: 'A GIANT one of the lads drops out of the sky. Eat to power up, throw food to bring them down. Three phases, a new boss every time. On your own or everyone together.', stars: 3, who: 'Noah, Lewis, Chloe, Tommy (in turn)' },      // (BOSS FIGHT: boss.js)
     { id: 'roam', ico: '🚶', name: 'FREE ROAM', desc: 'Have a look round and explore. Everyone is here, but nobody attacks you. No timer.', stars: 0, who: 'Everyone (no attacks)' },
   ];
   // each place has its own games: Lidl is Supermarket Sweep, Lewis's is Ian's barbecue,
   // La Grande Portion is date night; the pub and the bedroom have the squad and the eat-off
-  const PLACE_MODES = { pub: ['everyone', 'runpub', 'imposter', 'eatoff', 'roam'], bedroom: ['everyone', 'eatoff', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'], grid: ['roam'] };
+  const PLACE_MODES = { pub: ['everyone', 'runpub', 'imposter', 'boss', 'eatoff', 'roam'], bedroom: ['everyone', 'eatoff', 'roam'], shop: ['sweep', 'roam'], garden: ['bbq', 'boss', 'roam'], restaurant: ['date', 'roam'], grid: ['roam'] };
   // Run the Pub's three nights: how busy, how patient, how big the tips
   const RP_DIFF = { runpub1: ['🌙', 'QUIET NIGHT'], runpub: ['🍺', 'FRIDAY NIGHT'], runpub3: ['🔥', 'CUP FINAL'] };
-  const GAME_IDS = ['everyone', 'runpub', 'runpub1', 'runpub3', 'sweep', 'bbq', 'date', 'chonkoff', 'chonkoff2', 'chonkoffr', 'imposter', 'imposter2', 'roam', 'roam0'];
+  const GAME_IDS = ['everyone', 'runpub', 'runpub1', 'runpub3', 'sweep', 'bbq', 'date', 'chonkoff', 'chonkoff2', 'chonkoffr', 'imposter', 'imposter2', 'boss', 'roam', 'roam0'];
   const cardOf = (id) => id === 'runpub1' || id === 'runpub3' ? 'runpub' : id === 'chonkoff' || id === 'chonkoff2' || id === 'chonkoffr' ? 'eatoff' : id === 'imposter2' ? 'imposter' : id === 'roam0' ? 'roam' : id;      // the eat-off card covers 1P and 2P
   const modeInfo = (id) => { const m = MODES.find(x => x.id === cardOf(id)); return cardOf(id) === 'runpub' ? { ...m, name: 'RUN THE PUB · ' + RP_DIFF[id][1] } : id === 'chonkoff' ? { ...m, ico: '⏱️', name: 'EAT-OFF · 1 PLAYER' } : id === 'chonkoff2' ? { ...m, ico: '🆚', name: 'EAT-OFF · 2 PLAYERS' } : id === 'chonkoffr' ? { ...m, ico: '🏅', name: 'RANKED EAT-OFF', desc: 'Everyone in the room at once: 60 seconds, most eaten wins, and your online rating goes up or down.' } : id === 'imposter' ? { ...m, name: 'IMPOSTER · 1 IMPOSTER' } : id === 'imposter2' ? { ...m, name: 'IMPOSTER · 2 IMPOSTERS' } : id === 'roam' ? { ...m, name: 'FREE ROAM · WITH THE SQUAD' } : id === 'roam0' ? { ...m, ico: '🧍', name: 'FREE ROAM · JUST YOU', desc: 'The place to yourself: no NPCs at all. Have a proper look round.' } : m; };
   const mpOn = () => !!(window.ronnieMP && window.ronnieMP.role);
@@ -675,6 +676,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       runpub:   { ac: '#39ff14', ac2: '#15803d', chips: [['⏱️', '6 min shift'], ['🍺', 'Pour the drinks'], ['💷', 'Earn tips']] },
       imposter: { ac: '#ff3b3b', ac2: '#7f1d1d', ink: '#fff', chips: [['🔪', 'Find the imposter'], ['🔧', 'Do your jobs'], ['🔔', 'Call a meeting']] },
       roam:     { ac: '#7dd3fc', ac2: '#0369a1', chips: [['🚶', 'Explore'], ['🕊️', 'No attacks'], ['♾️', 'No timer']] },
+      boss:     { ac: '#ff4d4d', ac2: '#7a0010', ink: '#fff', chips: [['👹', 'Giant boss'], ['🍔', 'Throw food'], ['🤝', 'Solo or co-op']] },      // (BOSS FIGHT)
     };
     // developer mode (the code was right): its own start card, a hacker's terminal, instead of the game's
     const DEV = (() => { try { return sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; } catch (e) { return false; } })();
@@ -743,6 +745,12 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
         roam: [
           { pic: 'emoji:🚶', title: 'FREE ROAM', lines: ['Have a look round and explore', 'Everyone is here, but nobody attacks you', 'No timer: eat, throw, slap and play the machines'] }, controls ],
       };
+      // BOSS FIGHT (boss.js)
+      PAGES.boss = [
+        { pic: 'emoji:👹', title: 'BOSS FIGHT', lines: ['A GIANT one of the lads drops out of the sky', 'Bring their health bar (top of the ' + (vr ? 'boss' : 'screen') + ') down to nothing', 'A different boss every fight: Noah, Lewis, Chloe, then Tommy. On your own or everyone together'] },
+        { pic: 'emoji:🍔', title: 'FIGHT BACK WITH FOOD', lines: [vr ? '🎯 Grab food and throw it at them: a swing in their direction goes where you mean' : pc ? '🎯 Click food to pick it up, then click the boss (or Space) to throw it' : '🎯 Tap food to pick it up, then TAP THE BOSS to throw it there', '🎯 HEADSHOTS do double. Out of puff? Hit the glowing WEAK SPOT for triple', '😋 Eat to power up: the bigger you get, the harder you throw'] },
+        { pic: 'emoji:⚠️', title: 'WATCH THE FLOOR', lines: ['🔴 Red circle: a SLAM is coming. Get out of it', '🟢 Green middle, red all round: get IN CLOSE', '🔴 Red lane: a CHARGE. Side-step it. 🎯 Targets: giant food landing there'] },
+        { pic: 'emoji:❤️', title: 'HEARTS', lines: ['You have five hearts. Every hit knocks you down and takes one', 'Finish a bit of food: a heart back', 'Three phases, each one harder. Lose all your hearts and the boss wins', C.pause] }, controls ];
       PAGES.imposter2 = PAGES.imposter; PAGES.roam0 = PAGES.roam; PAGES.chonkoffr = PAGES.chonkoffr || PAGES.chonkoff; PAGES.runpub1 = PAGES.runpub3 = PAGES.runpub;
       const pages = PAGES[mode] || PAGES.everyone; let i = 0;
       const draw = () => { const pg = pages[i];
