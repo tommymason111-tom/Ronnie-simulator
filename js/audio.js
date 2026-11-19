@@ -1,9 +1,20 @@
+import { hapticFor } from './haptics.js';
 // Procedural sound effects with the Web Audio API — no audio files to download.
 // Every sound is synthesised from oscillators and a shared noise buffer, so the
 // game loads instantly and costs almost nothing on the Quest.
 
 let ctx = null;
 let master = null;
+// ---- the sound mix: master, music, voices (the squad), effects, the background, and voice chat; 0..1 each, kept on
+// this device
+const BUS = {}, MIX_KEYS = ['master', 'music', 'voices', 'fx', 'ambience', 'chat'];
+let MIX = { master: 1, music: 0.8, voices: 1, fx: 1, ambience: 0.8, chat: 1 };
+try { const m = JSON.parse(localStorage.getItem('rs_mix') || 'null'); if (m) for (const k of MIX_KEYS) if (typeof m[k] === 'number' && m[k] >= 0 && m[k] <= 1) MIX[k] = m[k]; } catch (e) {}
+function applyMix() { if (!ctx || !master) return; const t = ctx.currentTime; master.gain.setTargetAtTime(0.8 * MIX.master, t, 0.03); for (const k in BUS) BUS[k].gain.setTargetAtTime(MIX[k], t, 0.03); }
+export function getMix() { return { ...MIX }; }
+export function setMix(k, v) { if (!MIX_KEYS.includes(k)) return; MIX[k] = Math.max(0, Math.min(1, +v || 0)); try { localStorage.setItem('rs_mix', JSON.stringify(MIX)); } catch (e) {} applyMix(); }
+export function mixGains() { const o = { master: master ? master.gain.value / 0.8 : null }; for (const k in BUS) o[k] = BUS[k].gain.value; return o; }      // (for the tests)
+export function chatBus() { return ctx && BUS.chat ? { ctx, out: BUS.chat } : null; }      // (voice chat comes in here: voicechat.js)
 let noiseBuf = null;
 let musicGain = null;
 let pitchScale = 1;
@@ -18,7 +29,10 @@ export function initAudio() {
   comp.threshold.value = -12; comp.ratio.value = 6;
   master = ctx.createGain(); master.gain.value = 0.8;
   master.connect(comp); comp.connect(ctx.destination);
-  musicGain = ctx.createGain(); musicGain.gain.value = 0.0; musicGain.connect(master);
+  // the sound mix (Settings): every kind of sound has its own volume on the way to the master
+  for (const k of ['music', 'voices', 'fx', 'ambience', 'chat']) { const b = BUS[k] = ctx.createGain(); b.connect(master); }
+  applyMix();
+  musicGain = ctx.createGain(); musicGain.gain.value = 0.0; musicGain.connect(BUS.music);
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -53,7 +67,7 @@ export function setHush(on) {
 }
 // where the songs from the speakers go in (through the same master volume / mute as everything else)
 let songOut = null;
-export function musicBus() { if (!ctx || !master) return null; if (!songOut) { songOut = ctx.createGain(); songOut.gain.value = 0.9; songOut.connect(master); } return { ctx, out: songOut }; }
+export function musicBus() { if (!ctx || !master) return null; if (!songOut) { songOut = ctx.createGain(); songOut.gain.value = 0.9; songOut.connect(BUS.music || master); } return { ctx, out: songOut }; }
 
 export function setListener(pos, fwd, up) {
   if (!ctx) return;
@@ -81,8 +95,8 @@ function out(pos, vol = 1, voice = false) {
     else { p.distanceModel = 'inverse'; p.refDistance = 1; p.rolloffFactor = 0.6; }
     if (p.positionX) { p.positionX.value = pos.x; p.positionY.value = pos.y; p.positionZ.value = pos.z; }
     else p.setPosition(pos.x, pos.y, pos.z);
-    g.connect(p); p.connect(master); g._p = p;
-  } else g.connect(master);
+    g.connect(p); p.connect(voice ? BUS.voices || master : BUS.fx || master); g._p = p;
+  } else g.connect(voice ? BUS.voices || master : BUS.fx || master);
   return g;
 }
 // when a sound's last note has finished, unplug its output (Safari never lets go of nodes still plugged into the
@@ -337,9 +351,11 @@ function bell(d, t, f, dur, peak) { tone(d, t, 'sine', f, f * 0.998, dur, peak, 
 function wobble(o, t, dur, rate, depth) { const l = ctx.createOscillator(); l.frequency.value = rate; const g = ctx.createGain(); g.gain.value = depth; l.connect(g); g.connect(o.frequency); l.start(t); l.stop(t + dur); }
 
 export function sfx(name, pos = null, vol = 1) {
+  if (!SOUNDS[name]) name = ALIAS[name] || name;
+  try { hapticFor(name, pos); } catch (e) {}      // (a buzz too, if it's yours: haptics.js)
   if (!ctx || ctx.state !== 'running') return;
   if (hush && pos) return;      // (the world's gone quiet: a cut scene's on)
-  if (!SOUNDS[name]) name = ALIAS[name] || name; if (!SOUNDS[name]) return;
+  if (!SOUNDS[name]) return;
   // (a busy moment can fire dozens at once: the same sound more than 6 times in a quarter second is just noise)
   const now = ctx.currentTime, h = (_recent[name] = (_recent[name] || []).filter(x => now - x < 0.25)); if (h.length >= 6) return; h.push(now);
   const t = now + 0.005, o = out(pos, vol); _endT = t; _pv = NOVARY.has(name) ? 1 : 0.94 + Math.random() * 0.12;
@@ -418,7 +434,7 @@ export function setAmbience(kind, listenerFn) { ambKind = kind; ambListener = li
 function startAmbience() {
   if (!ctx || ambStarted || !ambKind || !['shop', 'restaurant'].includes(ambKind)) return;     // (no background noise in the pub: the music from the DJ booth is there instead)
   ambStarted = true;
-  ambGain = ctx.createGain(); ambGain.gain.value = 0; ambGain.connect(master);
+  ambGain = ctx.createGain(); ambGain.gain.value = 0; ambGain.connect(BUS.ambience || master);
   ambGain.gain.setTargetAtTime(1, ctx.currentTime + 0.2, 1.5);    // fade in
   ambNext = ctx.currentTime + 0.3; ambBar = 0; nextEvent = { a: ctx.currentTime + 3, b: ctx.currentTime + 6, c: ctx.currentTime + 25 };
   if (ambKind === 'pub') pubMurmur();
@@ -538,7 +554,7 @@ let tuneTimer = null;
 export function playTune(kind, seconds) {
   if (!ctx || ctx.state !== 'running') return;
   if (tuneTimer) clearTimeout(tuneTimer);
-  const d = ctx.createGain(); d.gain.value = 0.9; d.connect(master);
+  const d = ctx.createGain(); d.gain.value = 0.9; d.connect(BUS.music || master);
   const end = ctx.currentTime + seconds; let t = ctx.currentTime + 0.05, i = 0;
   const D = 293.66, hzS = (s) => D * Math.pow(2, s / 12);
   // jig: a fiddle in 6/8 over a bodhran; guitar: strummed G-D-Em-C, down-down-up-up-down

@@ -33,6 +33,8 @@ import { warmShaders, learnShaders } from './shaderwarm.js';
 import { sweep, releaseLevelGeometry, releaseTextures, noteLevelTextures, releaseLevelCanvases } from './memory.js';
 import { Music } from './music.js';
 import { PowerUps } from './powerups.js';
+import { buildMix, MIX_CSS } from './mixui.js';
+import { haptics } from './haptics.js';
 import { Imposter } from './imposter.js';
 import { TVs } from './tv.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
@@ -929,6 +931,12 @@ statsBtn();
 setInterval(() => { if (!showStats) return; const n = (window.ronnieMP && window.ronnieMP.net) || null, on = n && n.connected;
   const ping = on ? Math.round(n.rtt || 0) : null, col = ping === null ? '#fff' : ping < 80 ? '#7cff6a' : ping < 160 ? '#ffd400' : '#ff5252';
   statsEl.innerHTML = `FPS <b style="color:${G.fps >= 50 ? '#7cff6a' : G.fps >= 28 ? '#ffd400' : '#ff5252'}">${G.fps}</b>` + (on ? ` · PING <b style="color:${col}">${ping}ms</b> · ${n.players.size + 1} IN ROOM` : ' · SOLO'); }, 500);
+// SOUND & FEEL: the sound mix and the buzz (mixui.js)
+{ const st = document.createElement('style'); st.textContent = MIX_CSS; document.head.appendChild(st); }
+document.getElementById('pause-mix').addEventListener('click', () => { buildMix(document.getElementById('pause-mix-body')); pauseEl.classList.add('show-mix'); });
+document.getElementById('pause-mix-back').addEventListener('click', () => pauseEl.classList.remove('show-mix'));
+// the buzz: VR controllers' rumble while in the headset, and where your head is (only your own sounds buzz)
+haptics.hook((strength, ms) => { if (!renderer.xr.isPresenting) return false; for (const h of player.hands) if (h.source && h.pulse) h.pulse(strength, Math.max(20, ms)); return true; }, () => player.head);
 document.getElementById('pause-sound').addEventListener('click', (e) => { soundOff = !soundOff; e.currentTarget.textContent = soundOff ? '🔇 SOUND: OFF' : '🔊 SOUND: ON'; });
 document.getElementById('pause-quit').addEventListener('click', () => {
   if (net.connected && !renderer.xr.isPresenting && !window.confirm('Leave the game? You\'ll drop out of the room.')) return;     // (multiplayer: no leaving by accident)
