@@ -146,11 +146,15 @@ export default async function () {
           const tag = `${label}: ${w.pname} (${w.net}) watching ${s.pname} (${s.net})`;
           C.ok(reach <= 1.05, `${tag}: a hand was drawn ${(reach * 100).toFixed(0)}% of an arm's reach from its shoulder (flailing)`);
           const hic = /\/s\d/.test(w.net + s.net);      // (after a hiccup on either line they catch up a little faster than real time: a quick glide)
-          C.ok(leap < (hic ? 12 : 8), `${tag}: a hand leapt at ${leap.toFixed(1)} m/s between two frames (from the chest) ${JSON.stringify(leapAt)}`);
+          // (how fast this game really drew: a small shared test machine running four or more games manages a few to thirty
+          // frames a second, in bursts. The tight limits are for a game drawing smoothly; the exact smoothness, at real frame
+          // rates, is tests/arms.test.mjs. Flailing, jumps and missing players are checked strictly whatever the frame rate)
+          const fps = rec.length / SECS, smooth = fps >= 40;
+          C.ok(leap < (hic ? 12 : smooth ? 8 : 10), `${tag}: a hand leapt at ${leap.toFixed(1)} m/s between two frames (from the chest) ${JSON.stringify(leapAt)}`);
           C.ok(bodyLeap < 15, `${tag}: their whole body leapt at ${bodyLeap.toFixed(1)} m/s ${JSON.stringify(bodyAt)}`);
           // (eight games on a few test cores run at a few frames a second, in bunches: there the worst frames are judged looser.
           // The exact limits, at real frame rates, are in arms.test.mjs)
-          const big = pages.length + bots.length > 4; if (wob.length > 60) C.ok(med < 6 && p99 < (big ? 50 : 32), `${tag}: hands wobble ${med.toFixed(1)}mm typically, ${p99.toFixed(1)}mm at worst, off a smooth path (jitter)`);
+          if (wob.length > 60) C.ok(med < 6 && p99 < (smooth ? 32 : 60), `${tag}: hands wobble ${med.toFixed(1)}mm typically, ${p99.toFixed(1)}mm at worst, off a smooth path (jitter)`);
           if (s.kind === 'quest' && realRange > 0.15 && rec.length >= 60 && label !== 'walking and waving' && label !== 'punching') C.ok(range > realRange * 0.45 && range < realRange * 1.6, `${tag}: their arm moves ${range.toFixed(2)}m drawn vs ${realRange.toFixed(2)}m for real (not following)`);
           if (s.hand && label === 'waving') C.ok(curlRange > 0.25 && curlJump < 15, `${tag}: fingers: curl range ${curlRange.toFixed(2)}, fastest change ${curlJump.toFixed(1)}/s (a snap)`);
         }
