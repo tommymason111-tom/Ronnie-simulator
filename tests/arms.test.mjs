@@ -12,7 +12,7 @@
 import { launch, newPage, startGame, checker } from './lib/game.mjs';
 // (ARMS_CASES, ARMS_NETS, ARMS_FPS to try others; a net 'delay/jitter/sN' has a phone network's hiccups: nothing for up
 // to N ms every few seconds, then it all arrives at once)
-const CASES = (process.env.ARMS_CASES || 'vr:wave,vr:circle,vr:punch,vr:still,vr:walkwave,phone:walk,phone:walkturn,phone:eat,phone:run,phone:stopgo').split(',');
+const CASES = (process.env.ARMS_CASES || 'vr:wave,vr:circle,vr:punch,vr:still,vr:walkwave,phone:walk,phone:walkturn,phone:eat,phone:run,phone:stopgo,phone:bot').split(',');
 const NETS = (process.env.ARMS_NETS || '5/2,120/90,60/40/s1500').split(','), FPS = (process.env.ARMS_FPS || '72,30').split(',').map(Number);
 
 export default async function () {
@@ -27,15 +27,17 @@ export default async function () {
         const pl = { char: 'lewis', name: 'T', buf: [] }; const av = RS.net.makeAvatar(pl); await new Promise(r => setTimeout(r, 1500));
         const P0 = RS.player.head, ox = P0.x + 2.2, oz = P0.z;
         // the remote player's true pose at time t (s): head, facing, hands (world)
-        const truth = (t) => { let hx = ox, hz = oz, yaw = Math.PI / 2, R = [0.25, -0.45, 0.25], L = [-0.25, -0.45, 0.25]; const s = Math.sin, c = Math.cos;
+        const truth = (t) => { let botEat = 0, hx = ox, hz = oz, yaw = Math.PI / 2, R = [0.25, -0.45, 0.25], L = [-0.25, -0.45, 0.25]; const s = Math.sin, c = Math.cos;
           if (motion === 'wave') R = [0.25 + 0.14 * s(t * 9), 0.0 + 0.05 * s(t * 18), 0.3];
           if (motion === 'circle') { R = [0.25 + 0.22 * c(t * 6), -0.2 + 0.22 * s(t * 6), 0.35]; L = [-0.25 - 0.15 * c(t * 4), -0.25 + 0.15 * s(t * 4), 0.3]; }
           if (motion === 'punch') { const ph = (t % 0.9) / 0.9, k = ph < 0.15 ? ph / 0.15 : ph < 0.5 ? 1 - (ph - 0.15) / 0.35 : 0, e = k * k * (3 - 2 * k); R = [0.2 - 0.05 * e, -0.35 + 0.1 * e, 0.2 + 0.4 * e]; }
           if (motion === 'stopgo') { const cyc = Math.floor(t / 2.7), ph = t - cyc * 2.7, mv = 1.5 * Math.min(ph, 1.2); hx += cyc % 2 ? 1.8 - mv : mv; yaw = cyc % 2 ? -Math.PI / 2 : Math.PI / 2; }
+          if (motion === 'bot') { const cyc = t % 5, walking = cyc < 3, ang = 0.5 * (Math.floor(t / 5) * 3 + Math.min(cyc, 3)), look = walking ? 0 : 0.6 * Math.sin(t) * Math.min(1, (cyc - 3) * 3), rad = 2;
+            hx = ox + Math.cos(ang) * rad - rad; hz = oz + Math.sin(ang) * rad; yaw = -ang + look; botEat = !walking && cyc > 3.6 && cyc < 4.4 ? Math.sin((cyc - 3.6) / 0.8 * Math.PI) : 0; }
           if (motion === 'run') { hx += 2 * c(t * 1.2); hz += 2 * s(t * 1.2); yaw = -t * 1.2; }
           if (motion === 'walkwave' || motion === 'walk' || motion === 'walkturn' ) { hx += 1.2 * s(t * 0.5); hz += 0.8 * s(t * 0.35); yaw = Math.PI / 2 + (motion === 'walkturn' ? 1.5 * s(t * 0.7) : 0.3 * s(t * 0.5)); if (motion === 'walkwave') R = [0.25 + 0.1 * s(t * 7), -0.1, 0.3]; }
           const F = [Math.sin(yaw), Math.cos(yaw)], Rt = [Math.cos(yaw), -Math.sin(yaw)], W = (o) => [hx + Rt[0] * o[0] + F[0] * o[2], 1.62 + o[1], hz + Rt[1] * o[0] + F[1] * o[2]];
-          return { h: [hx, 1.62, hz], yaw, rh: W(R), l: W(L) }; };
+          return { h: [hx, 1.62, hz], yaw, rh: W(R), l: W(L), botEat }; };
         const sendHz = 20, dur = stall ? 14 : 6, frames = Math.round(dur * fps); let nextSend = 0, lastArr = 0, lastKey = '', lastKeyAt = -9, moved = false; const inflight = []; const rec = [];
         const noise = kind === 'vr' ? 0.0015 : 0;      // (a Quest controller's tracking noise: ~1.5mm)
         for (let i = 0; i < frames; i++) {
@@ -44,6 +46,7 @@ export default async function () {
           const sfps = kind === 'vr' ? 72 : 60; while (nextSend <= t) { const st = nextSend; const tr = truth(st); const j = () => kind === 'vr' ? gauss() * noise : 0;
             const q = new T.Quaternion().setFromAxisAngle(new V(0, 1, 0), tr.yaw + Math.PI); const r3 = (a) => a.map(v => Math.round(v * 1000) / 1000);
             let rh = tr.rh, l = tr.l; if (kind === 'phone') { const fw = [Math.sin(tr.yaw), Math.cos(tr.yaw)], rt = [Math.cos(tr.yaw), -Math.sin(tr.yaw)]; rh = [tr.h[0] + fw[0] * 0.4 + rt[0] * 0.18, tr.h[1] - 0.21, tr.h[2] + fw[1] * 0.4 + rt[1] * 0.18]; l = tr.h;
+              if (motion === 'bot') { const k = tr.botEat; rh = [tr.h[0] + fw[0] * (0.4 - 0.25 * k) + rt[0] * (0.18 - 0.1 * k), tr.h[1] - 0.21 + 0.13 * k, tr.h[2] + fw[1] * (0.4 - 0.25 * k) + rt[1] * (0.18 - 0.1 * k)]; }      // (the room test's light players: lib/bots.mjs)
               if (motion === 'eat') { const ph = st % 3, k0 = ph < 0.25 ? ph / 0.25 : ph < 1 ? 1 : ph < 1.25 ? 1 - (ph - 1) / 0.25 : 0, k = k0 * k0 * (3 - 2 * k0), m = [tr.h[0] + fw[0] * 0.15, tr.h[1] - 0.08, tr.h[2] + fw[1] * 0.15]; rh = rh.map((v, j) => v + (m[j] - v) * k); } }
             const m = { t: 'p', c: 'lewis', h: r3(tr.h), q: [q.x, q.y, q.z, q.w].map(v => Math.round(v * 100) / 100), rh: r3(rh.map(v => v + j())), l: r3(l.map(v => v + j())), s: 1, st: 0, ts: Math.round(1e6 + st * 1000), flat: kind === 'phone' ? 1 : 0 };
             if (stall && st * 1000 > stNext) { stUntil = st * 1000 + stall * (0.4 + 0.6 * rnd()); stNext = stUntil + 2500 + rnd() * 4000; }
@@ -52,8 +55,8 @@ export default async function () {
             const arr = Math.max(lastArr, st * 1000 + lat + rnd() * jit, stUntil); lastArr = arr; inflight.push({ arr, m }); nextSend += 1 / sendHz; }
           while (inflight.length && inflight[0].arr <= t * 1000) { const x = inflight.shift(); pushPose(pl, x.m, fake); }      // (the game's own: net.js)
           // (measured as drawn: straight after the avatar's posed, before the physics step carries its bodies on)
-          if (pl.pose) av.update(1 / fps, pl.pose);
-          const step = () => RS.physics.step(1 / fps);
+          if (pl.pose) av.update(Math.min(1 / fps, 0.05), pl.pose);      // (the game caps a frame's step at 0.05s: main.js frame)
+          const step = () => RS.physics.step(Math.min(1 / fps, 0.05));
           const r = av.c.rag; if (!r.parts || !pl.pose) { step(); continue; }
           const g = (n) => { const v = r.grip(n, new V()); return [v.x, v.y, v.z]; }, sh = (n) => { const v = r.pos(n, new V()); return [v.x, v.y, v.z]; };
           const ht = av.hT && av.hT.R ? [av.hT.R.x, av.hT.R.y, av.hT.R.z] : null, raw = [av.rh.x, av.rh.y, av.rh.z];
@@ -87,7 +90,7 @@ export default async function () {
     console.log(`  late pose after a hitch: drawn ${(100 * Math.abs(late.x - late.truth)).toFixed(1)}cm from the truth`);
     for (const r of out) {
       const k = `${r.c} (net ${r.net}, ${r.fps}fps)`;
-      console.log(`  ${r.c.padEnd(15)} net ${r.net.padEnd(7)} ${String(r.fps).padStart(2)}fps  reach ${r.reach.toFixed(2)}  leap ${r.leap.toFixed(1)}m/s  wobble ${r.wobMed.toFixed(1)}/${r.wob99.toFixed(1)}mm  body ${r.bodyLeap.toFixed(1)}m/s  range ${r.drawn.toFixed(2)}/${r.realR.toFixed(2)}m  lag ${r.lag}ms (${r.lagErr.toFixed(1)}cm)`);
+      console.log(`  ${r.c.padEnd(15)} net ${r.net.padEnd(7)} ${String(r.fps).padStart(2)}fps  reach ${r.reach.toFixed(2)}  leap ${r.leap.toFixed(1)}m/s  wobble ${r.wobMed.toFixed(1)}/${r.wob99.toFixed(1)}mm  body ${r.bodyLeap.toFixed(1)}m/s  range ${r.drawn.toFixed(2)}/${r.realR.toFixed(2)}m  lag ${r.lag}ms (${r.lagErr == null ? "-" : r.lagErr.toFixed(1)}cm)`);
       C.ok(r.reach <= 1.05, `${k}: arm stretched to ${r.reach.toFixed(2)} of its length (flailing)`);
       // (after a phone network's hiccup they catch up a little faster than real time, a quick glide: a running player's
       // arms swing harder for a moment then. Never a jump: the body stays under 6 m/s, a hand under 12)

@@ -9,7 +9,7 @@ export function startBot(url, code, { name, char = 'ethan', net = '' } = {}) {
   const pid = Array.from({ length: 10 }, () => 'abcdefghjkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 31)]).join('');
   const ws = new WebSocket(`${url}${net ? '/net/' + net : ''}/room/${code}?name=${encodeURIComponent(name)}&pid=${pid}`);
   const st = { sent: 0, got: 0, anchor: null, id: null };
-  let t0 = Date.now(), last = '', lastAt = 0, moved = false, timer = null;
+  let t0 = Date.now(), last = '', lastAt = 0, moved = false, timer = null, ang = null, prevT = 0, look = 0;
   const seed = [...name].reduce((a, c) => a + c.charCodeAt(0), 0), R = (k) => Math.sin(seed * 12.9898 + k * 78.233) * 0.5 + 0.5;
   ws.on('message', (d) => { st.got++; let m; try { m = JSON.parse(d.toString()); } catch (e) { return; }
     if (m.t === 'welcome') st.id = m.id;
@@ -18,8 +18,10 @@ export function startBot(url, code, { name, char = 'ethan', net = '' } = {}) {
     timer = setInterval(() => {
       if (!st.anchor || ws.readyState !== 1) return;
       const t = (Date.now() - t0) / 1000, cyc = (t + R(1) * 5) % 5;      // (walks for 3s, stands for 2s, again and again)
-      const walking = cyc < 3, a = R(2) * 6.28 + (walking ? 0.5 * t : 0.5 * Math.floor(t / 5) * 5), rad = 1.5 + R(3) * 2.5;
-      const hx = st.anchor.x + Math.cos(a) * rad, hz = st.anchor.z + Math.sin(a) * rad, yaw = walking ? -a : -a + Math.sin(t) * 0.6;
+      // (round a circle while walking; standing still, it looks about a little: everything continuous, nothing jumps)
+      const walking = cyc < 3, dt = Math.min(0.2, t - prevT); prevT = t; if (ang == null) ang = R(2) * 6.28; if (walking) ang += 0.5 * dt;
+      look += ((walking ? 0 : 0.6 * Math.sin(t)) - look) * Math.min(1, dt * 3);
+      const a = ang, rad = 1.5 + R(3) * 2.5, hx = st.anchor.x + Math.cos(a) * rad, hz = st.anchor.z + Math.sin(a) * rad, yaw = -a + look;
       const qy = Math.sin(yaw / 2), qw = Math.cos(yaw / 2), fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
       const eat = !walking && cyc > 3.6 && cyc < 4.4, k = eat ? Math.sin((cyc - 3.6) / 0.8 * Math.PI) : 0;
       const r3 = (v) => Math.round(v * 1000) / 1000, r2 = (v) => Math.round(v * 100) / 100;
