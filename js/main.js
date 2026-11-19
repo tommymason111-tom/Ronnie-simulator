@@ -800,14 +800,15 @@ window.addEventListener('resize', fitCamera);
 // Things that take a while to make the first time (each of the belly's looks) are made beforehand, one piece at a time,
 // while nothing much is happening (before PLAY, or when a frame finishes early), not the moment they're needed (growing
 // a size stopped the game dead for a third of a second on a phone)
-{ const jobs = [() => player.bellyModel && player.bellyModel.warm(), warmFood];
+{ const jobs = [() => player.bellyModel ? player.bellyModel.warm() : true, warmFood];      // (no belly yet: keep the job for later)
   const idle = window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 3000 }) : (f) => setTimeout(() => f({ timeRemaining: () => 8 }), 400);
-  const tick = (dl) => { if (!jobs.length) return; if (document.body.classList.contains('ready') && (dl.timeRemaining() > 6 || !player.flatMode && !renderer.xr.isPresenting)) {
+  const tick = (dl) => { if (!jobs.length) return; const ready = document.body.classList.contains('ready');      // (while the loading screen's still up, any gap counts: nothing's being played yet)
+    if (!ready || dl.timeRemaining() > 6 || !player.flatMode && !renderer.xr.isPresenting) {
       // (as many pieces as fit in the spare time the browser gives us, not one per quarter second: on a slow device that
       // took so long the belly could still be unmade when you grew)
-      let n = 0; do { try { if (!jobs[0]()) jobs.shift(); } catch (e) { jobs.shift(); } n++; } while (jobs.length && n < 20 && dl.timeRemaining() > 6); }
+      let n = 0; do { try { if (!jobs[0]()) jobs.shift(); } catch (e) { jobs.shift(); } n++; } while (jobs.length && n < 20 && (dl.timeRemaining() > 6 || !ready && n < 4)); }
     if (jobs.length) setTimeout(() => idle(tick), 60); };
-  setTimeout(() => idle(tick), 1500); }
+  setTimeout(() => idle(tick), 300); }
 // ---------------- memory (phones close a page that uses too much: see memory.js) ----------------
 // once, just after the level's ready: draw the whole level into a single pixel, so every shape and picture is sent to the
 // graphics chip now (and their spare copies let go of straight away), instead of bit by bit as you walk round and film
