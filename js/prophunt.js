@@ -408,7 +408,7 @@ export class PropHunt {
   released(quiet) {
     const me = this.mine(); this.blind(false);
     if (me && me.role === 'hider' && !me.kind && !quiet) this.toast('YOU DIDN\'T PICK! YOU\'RE A RANDOM THING NOW');
-    if (quiet) return; sfx('whistle', null, 1); setTimeout(() => sfx('whistle', null, 0.8), 380);
+    if (quiet) return; sfx('whistle_ref', null, 1); setTimeout(() => sfx('whistle_ref', null, 0.8), 380);
     this.splash(me && me.role === 'seeker' ? '#ff9f1c' : '#39ff14', me && me.role === 'seeker' ? '<p>READY OR NOT...</p><h1>GO GET \'EM!</h1><p>Tap anything that looks off. The wrong thing costs you ❤</p>' : '<p>READY OR NOT...</p><h1>HERE THEY COME!</h1><p>Stay still. Lock in. Taunt for points.</p>', 2200);
     if (this.g.renderer.xr.isPresenting) this.g.showBanner('READY OR NOT', me && me.role === 'seeker' ? 'GO GET \'EM!' : 'HERE THEY COME!');
   }
@@ -671,8 +671,8 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
   lockFx(on) { const e = this.lockEl; e.textContent = on ? '🔒' : '🔓'; e.className = ''; void e.offsetWidth; e.className = 'on'; }
   showRole() {
     const me = this.mine(); if (!me) return; const hiders = this.hiders(), seekers = this.seekers(), imgs = (l) => l.map(p => `<img src="./assets/portraits/${esc(p.char || 'ronnie')}.webp" title="${esc(p.name)}">`).join('');
-    if (me.role === 'seeker') { this.splash('#ff9f1c', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>SEEKING 🔍</h1><p>${hiders.length} hider${hiders.length === 1 ? '' : 's'} turning into stuff. Count to ${PH.HIDE_T}, no peeking.</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('sinister', null, 0.7); }
-    else if (me.role === 'hider') { this.splash('#39ff14', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>HIDING 🙈</h1><p>Find a thing. BECOME it. LOCK in. Taunt for points.</p><p class="sm">${seekers.map(p => esc(p.name)).join(' & ')} ${seekers.length > 1 ? 'are' : 'is'} counting to ${PH.HIDE_T}...</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('crewmate', null, 0.8); }
+    if (me.role === 'seeker') { this.splash('#ff9f1c', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>SEEKING 🔍</h1><p>${hiders.length} hider${hiders.length === 1 ? '' : 's'} turning into stuff. Count to ${PH.HIDE_T}, no peeking.</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_seekrole', null, 0.8); }
+    else if (me.role === 'hider') { this.splash('#39ff14', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>HIDING 🙈</h1><p>Find a thing. BECOME it. LOCK in. Taunt for points.</p><p class="sm">${seekers.map(p => esc(p.name)).join(' & ')} ${seekers.length > 1 ? 'are' : 'is'} counting to ${PH.HIDE_T}...</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_hiderole', null, 0.8); }
     else this.splash('#9fb3d9', '<h1>SIT THIS ONE OUT</h1><p>You\'ll be in next round. Watch the fun.</p>', 3000);
     if (this.g.renderer.xr.isPresenting) this.g.showBanner(`ROUND ${this.round} · YOU'RE`, me.role === 'seeker' ? 'SEEKING' : me.role === 'hider' ? 'HIDING' : 'WATCHING');
   }

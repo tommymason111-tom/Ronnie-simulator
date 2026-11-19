@@ -26,7 +26,7 @@ const BOT = () => {
     let mx = 0, mz = 0;
     for (const h of B.hazards) {
       if (h.kind !== 'tele') continue;
-      if (h.__skip === undefined) h.__skip = (s.nTele = (s.nTele || 0) + 1) % 5 === 3;      // (a human misses one now and then: every fifth warning isn't dodged, so the boss's hits always get tested)
+      if (h.__skip === undefined) h.__skip = (s.nTele = (s.nTele || 0) + 1) % 8 === 3;      // (a human misses one now and then: every eighth warning isn't dodged, so the boss's hits always get tested)
       if (h.__skip) continue; const dx = me.x - B.x, dz = me.z - B.z, d = Math.hypot(dx, dz) || 1;
       if (h.a === 'slam' && d < h.r + 0.8) { mx += dx / d; mz += dz / d; }
       if (h.a === 'wave' && d > h.r0 - 0.7) { mx -= dx / d; mz -= dz / d; }
@@ -134,7 +134,7 @@ export default async function () {
           const c = RS.cast.find(x => x.bossMinion); if (!c) return { none: true };
           await new Promise(r => setTimeout(r, 1500)); RS.sim(0.1, 1 / 30);
           const cp = c.pos.clone(); P.rig.position.x += cp.x + 2.5 - P.head.x; P.rig.position.z += cp.z - P.head.z; RS.sim(0.1, 1 / 30);
-          const it = RS.items.items.find(i => !i.dead && !i.heldBy && !i.def.veg && !i.def.prop && !i.def.drink); P.flatGrab(it); RS.sim(0.1, 1 / 30);
+          const it = RS.items.items.find(i => !i.dead && !i.heldBy && !i.def.veg && !i.def.prop && !i.def.drink); P.flatGrab(it); RS.sim(0.4, 1 / 30);      // (in the hand first)
           P.flatThrow(7); B.aimAt(it, c.rag.pos('chest', new T.Vector3()), 7); RS.sim(1, 1 / 30);
           return { down: c.down || c.bossGone, ko: B.stats.minions, n: B.minions.length }; });
         C.ok(mn.down && mn.ko > 0, `a lad the boss called in wasn't knocked out by a throw: ${JSON.stringify(mn)}`);
@@ -150,7 +150,7 @@ export default async function () {
         await startGame(p, { place: 'garden', mode: 'boss', extra: '&boss=chloe' });
         const r = await p.evaluate(() => { RS.renderer.setAnimationLoop(null); RS.sim(8, 1 / 30); const B = RS.director.boss, P = RS.player;
           for (let i = 0; i < 300 && (B.shielded || B.st === 'charge'); i++) RS.sim(1 / 30, 1 / 30);      // (not mid-roar or mid-charge: a hit then is BLOCKED or misses, which isn't what's being checked)
-          const it = RS.items.items.find(i => !i.dead && !i.heldBy && !i.def.veg && !i.def.prop); P.flatGrab(it);
+          const it = RS.items.items.find(i => !i.dead && !i.heldBy && !i.def.veg && !i.def.prop); P.flatGrab(it); RS.sim(0.3, 1 / 30);      // (in the hand first)
           const hd = B.drawn(B.c.rag.pos('chest', new RS.THREE.Vector3())), cam = P.camera; cam.updateMatrixWorld(); const v = hd.clone().project(cam);
           const ray = new RS.THREE.Raycaster(); ray.setFromCamera(new RS.THREE.Vector2(v.x, v.y), cam);
           const hp0 = B.hp, tapped = B.tap(ray.ray); RS.sim(1.5, 1 / 30);
