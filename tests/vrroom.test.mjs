@@ -11,6 +11,7 @@
 // env: SECS (seconds of each motion, default 6), MOTIONS (just these, e.g. "waving,punching"), NETS (four 'delay/jitter' pairs, e.g. "5/2,25/15,60/40,120/90")
 import { launch, newPage, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
+import { startBot } from './lib/bots.mjs';
 
 const SECS = +(process.env.SECS || 6);
 // PLAYERS: who joins, in order (the first one hosts): Q a headset on controllers, H a headset on hand tracking, P a phone.
@@ -35,6 +36,10 @@ export default async function () {
       if (!code) { await cl(p, '#mp-host2'); await p.waitForFunction(() => window.ronnieMP && ronnieMP.net && ronnieMP.net.code && ronnieMP.net.status === 'on', null, { timeout: 60000 }); return ev(p, () => ronnieMP.net.code); }
       await ev(p, (c) => { document.querySelector('#mp-code2').value = c; document.querySelector('#mp-join2').click(); }, code); await p.waitForFunction(() => window.ronnieMP && ronnieMP.net && ronnieMP.net.status === 'on', null, { timeout: 60000 }); };
     const H = pages[0], code = await join(H); for (const p of pages.slice(1)) await join(p, code);
+    // BOTS: light players (lib/bots.mjs) to fill the room up: a real player to the room and everyone's game, walking,
+    // stopping, turning, eating, each on the next pretend connection; no game of their own (twelve real games don't fit
+    // on a test machine)
+    const bots = []; for (let i = 0; i < +(process.env.BOTS || 0); i++) { const net = NETS[(WHO.length + i) % NETS.length]; const bt = startBot(host.url, code, { name: 'BOT' + (i + 1), char: CHARS[(WHO.length + i) % CHARS.length], net }); bt.pname = 'BOT' + (i + 1); bt.kind = 'phone'; bt.net = net; bots.push(bt); await sleep(300); } globalThis.__bots = bots;
     // (what each game is doing: which screen, connected, how many others it can see)
     const states = () => Promise.all(pages.map(p => ev(p, () => ({ screen: (document.querySelector('.screen.on') || {}).dataset?.s || null, ready: document.body.classList.contains('ready'), net: window.ronnieMP && ronnieMP.net ? { status: ronnieMP.net.status, others: ronnieMP.net.players.size, host: !!ronnieMP.net.host } : null })).then(x => p.pname + ' ' + JSON.stringify(x)).catch(e => p.pname + ' ' + e.message.slice(0, 80))));
     { const st = await states(); console.log('  joined:\n   ' + st.join('\n   ')); }
@@ -106,7 +111,7 @@ export default async function () {
       for (const [wi, w] of pages.entries()) {
         const g = got[wi];
         C.ok(!g.bad, `${label}: ${w.pname} threw away ${g.bad} real messages`);
-        for (const [si, s] of pages.entries()) {
+        for (const [si, s] of [...pages, ...bots].entries()) {
           if (si === wi) continue;
           const rec = g.rec[s.pname]; if (!rec || rec.length < 3) { C.ok(false, `${label}: ${w.pname} hardly drew ${s.pname} (${rec ? rec.length : 0} frames)`); continue; }
           // no flailing: the drawn hand stays within an arm's reach of its shoulder, and never leaps between frames
@@ -134,7 +139,7 @@ export default async function () {
           wob.sort((x, y) => x - y); const med = wob[Math.floor(wob.length / 2)] || 0, p99 = wob[Math.floor(wob.length * 0.99)] || 0;
           // follows: how far the drawn right hand moves about (relative to the shoulder) vs how far theirs really did
           let range = 0; if (s.kind === 'quest') { const xs = rec.map(e => e.R.map((v, j) => v - e.ch[j])); for (let j = 0; j < 3; j++) { const v = xs.map(x => x[j]).sort((a, b) => a - b); range = Math.max(range, v[Math.floor(v.length * 0.95)] - v[Math.floor(v.length * 0.05)]); } }
-          let realRange = 0; const mine = got[si].mine; if (mine && mine.length > 20) for (let j = 0; j < 3; j++) { const v = mine.map(x => x[j]).sort((a, b) => a - b); realRange = Math.max(realRange, v[Math.floor(v.length * 0.95)] - v[Math.floor(v.length * 0.05)]); }
+          let realRange = 0; const mine = got[si] && got[si].mine; if (mine && mine.length > 20) for (let j = 0; j < 3; j++) { const v = mine.map(x => x[j]).sort((a, b) => a - b); realRange = Math.max(realRange, v[Math.floor(v.length * 0.95)] - v[Math.floor(v.length * 0.05)]); }
           const curls = rec.map(e => e.cR).filter(v => v != null), curlRange = curls.length ? Math.max(...curls) - Math.min(...curls) : 0;
           let curlJump = 0; for (let i = 1; i < rec.length; i++) { const a = rec[i - 1], e = rec[i]; if (a.cR != null && e.cR != null) curlJump = Math.max(curlJump, Math.abs(e.cR - a.cR) / Math.max((e.t - a.t) / 1000, 1 / 90)); }      // (how fast the curl changes: per second)
           const Ds = rec.map(e => e.D).filter(x => x != null).sort((x, y) => x - y); results.push({ D: Ds.length ? Math.round(Ds[Ds.length >> 1]) : null, label, watcher: w.pname, net: w.net, sees: s.pname, theirNet: s.net, frames: rec.length, reach: +reach.toFixed(2), leap: +leap.toFixed(1), wobble: +med.toFixed(1), wobble99: +p99.toFixed(1), range: +range.toFixed(2), realRange: +realRange.toFixed(2), curlRange: +curlRange.toFixed(2), curlJump: +curlJump.toFixed(2) });
@@ -161,6 +166,6 @@ export default async function () {
     for (const r of results.filter(r => r.sees.startsWith('HEADSET'))) console.log(`   ${r.label.padEnd(18)} ${r.watcher.padEnd(9)} sees ${r.sees.padEnd(9)} frames ${String(r.frames).padStart(4)} reach ${r.reach} leap ${r.leap}m/s wobble ${r.wobble}/${r.wobble99}mm range ${r.range}/${r.realRange}m${r.curlRange ? ' fingers ' + r.curlRange : ''}`);
     for (const p of pages) { C.ok(!p.errors.length, `${p.pname}: page errors: ` + [...new Set(p.errors)].slice(0, 3).join(' | '));
       const cr = p.crashes.filter(c => c.k !== 'start' && c.k !== 'hang'); C.ok(!cr.length, `${p.pname}: crash reports: ` + cr.slice(0, 3).map(c => c.k + ' ' + c.m).join(' | ')); }
-  } finally { await b.close(); await host.close(); }
+  } finally { for (const bt of (globalThis.__bots || [])) bt.stop(); await b.close(); await host.close(); }
   return C.fails;
 }
