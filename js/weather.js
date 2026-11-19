@@ -282,10 +282,11 @@ const SKY_FS = `uniform vec3 uSun, uMoon, uZen, uHor, uFogCol, uSunCol, uCloudLi
     if (uBoltK > 0.01 && h > -0.02 && h < 0.42) {
       float az = atan(d.x, d.z), dx = az - uBoltA;
       float path = (noise(vec2(h * 18.0, uSeed)) - 0.5) * 0.05 + (noise(vec2(h * 60.0, uSeed + 3.0)) - 0.5) * 0.018;
-      float w = 0.0022 + 0.004 * (0.42 - h);
+      float w = 0.0035 + 0.007 * (0.42 - h);
       float bolt = (1.0 - smoothstep(0.0, w, abs(dx - path))) * (1.0 - smoothstep(0.3, 0.42, h));
       float br = (noise(vec2(h * 9.0, uSeed + 7.0)) > 0.62 && h < 0.3) ? (1.0 - smoothstep(0.0, w, abs(dx - path - (0.3 - h) * 0.25))) : 0.0;
-      add += vec3(0.85, 0.9, 1.0) * (bolt + br * 0.7) * uBoltK * 3.0;
+      float glow = exp(-abs(dx - path) * 40.0) * (1.0 - smoothstep(0.3, 0.45, h));
+      add += vec3(0.85, 0.9, 1.0) * ((bolt + br * 0.7) * 3.0 + glow * 0.45) * uBoltK;
     }
     // fog: the sky closes in to its colour, from the horizon up
     float f = clamp(uFog * (1.25 - smoothstep(-0.1, 0.65, h) * (1.15 - uFog * 0.5)), 0.0, 1.0);
@@ -435,8 +436,9 @@ function viewSet(map) {
     let s = (w * 7 + h) | 0; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4;
       if (y < skyCol[x]) { const t = y / Math.max(1, skyCol[x]); px[i] = 10 + 30 * t; px[i + 1] = 16 + 36 * t; px[i + 2] = 44 + 60 * t; }
-      else { const lum = (px[i] + px[i + 1] + px[i + 2]) / 3; px[i] = px[i] * 0.16 + 4; px[i + 1] = px[i + 1] * 0.17 + 5; px[i + 2] = px[i + 2] * 0.24 + 12;
-        if (lum > 170 && px[i + 2] > px[i] + 20 && y > skyCol[x] + 4) { px[i] = 255; px[i + 1] = 196; px[i + 2] = 105; } } }      // (house windows: lit)
+      else { const r0 = px[i], b0 = px[i + 2], lum = (px[i] + px[i + 1] + px[i + 2]) / 3; px[i] = px[i] * 0.16 + 4; px[i + 1] = px[i + 1] * 0.17 + 5; px[i + 2] = px[i + 2] * 0.24 + 12;
+        const cell = Math.sin(Math.floor(x / (w / 11)) * 12.9898 + Math.floor(y / (h / 9)) * 78.233) * 43758.5453, lit = cell - Math.floor(cell);
+        if (lum > 170 && b0 > r0 + 20 && y > skyCol[x] + 4 && lit < 0.6) { px[i] = 255; px[i + 1] = 190 + lit * 30; px[i + 2] = 100 + lit * 40; } } }      // (house windows: most of them lit)
     g.putImageData(D, 0, 0);
     for (let i = 0; i < 70; i++) { const x = r() * w, y = r() * (skyCol[Math.floor(x)] || 0) * 0.9; g.fillStyle = `rgba(255,255,255,${0.4 + r() * 0.5})`; g.fillRect(x, y, 1.5, 1.5); }
     for (const [lx, ly] of tag.lamps || []) { const x = lx * w, y = ly * h, R = w * 0.1;      // (its street lamps, lit)
@@ -464,7 +466,6 @@ export function setupWeather({ renderer, scene, room, camera, place }) {
   const map = buildMap(renderer, scene, room, outdoor);
   setMask(map.tex);
   Object.assign(U.wxBox, { x: map.box.x0, y: map.box.z0, z: 1 / map.box.w, w: 1 / map.box.d });
-  U.wxA.x = 1;
   if (!scene.fog) scene.fog = new THREE.Fog(0x9db7ff, 1e4, 2e4);      // (every place has a fog from the start, so no shader changes when it's needed)
   const fogBase = scene.fog.color.clone();
 
@@ -547,7 +548,9 @@ export function setupWeather({ renderer, scene, room, camera, place }) {
   const FOG = { r: fogBase.r, g: fogBase.g, b: fogBase.b, near: 1e4, far: 2e4 };
   function applyFog() { const fog = scene.fog; if (!fog || !fog.isFog) { U.wxA.y = 0; return; } if (scene.userData.fogLock) { U.wxA.y = 0; return; }
     U.wxA.y = 1; fog.color.setRGB(FOG.r, FOG.g, FOG.b); fog.near = FOG.near; fog.far = FOG.far; }
-  { const obr0 = scene.onBeforeRender; scene.onBeforeRender = function (...a) { if (obr0) obr0.apply(this, a); applyFog(); }; }
+  // (and only this scene: anything else drawn off-screen, like the family photos, is left exactly as it was)
+  { const obr0 = scene.onBeforeRender, oar0 = scene.onAfterRender; scene.onBeforeRender = function (...a) { if (obr0) obr0.apply(this, a); applyFog(); U.wxA.x = 1; };
+    scene.onAfterRender = function (...a) { U.wxA.x = 0; if (oar0) oar0.apply(this, a); }; }
 
   // ---------------------------------------------------------------- per frame
   const sunDir = new THREE.Vector3(0, 1, 0), moonDir = new THREE.Vector3(0, 1, 0), tmpV = new THREE.Vector3();
@@ -593,7 +596,7 @@ export function setupWeather({ renderer, scene, room, camera, place }) {
     let dayCol = mixc(v3(1, 1, 1), v3(1.0, 0.76, 0.52), golden * clearSky);
     dayCol = mixc(dayCol, v3(0.86, 0.88, 0.92), cloud * 0.6); dayCol = mulc(dayCol, 1 - dark * 0.4 - fogK * 0.05);
     if (P.heat > 0.01) dayCol = mixc(dayCol, v3(1.08, 1.0, 0.86), P.heat);
-    const nightCol = mulc(v3(0.14, 0.17, 0.3), (1 - cloud * 0.35) * (0.75 + moonUp * 0.35));
+    const nightCol = mulc(v3(0.14, 0.17, 0.3), (1 - cloud * 0.3) * (1 - dark * 0.35) * (0.75 + moonUp * 0.35));
     const outCol = mixc(nightCol, dayCol, twi * (0.55 + 0.45 * day));
     const lampK = smooth(0.12, -0.06, el) + dark * 0.35;
     const dim = scene.userData.wxDim ? 1 : 0;
@@ -649,12 +652,14 @@ export function setupWeather({ renderer, scene, room, camera, place }) {
       acc.cloudDrift.x += dt * (0.004 + wind * 0.03) * wx; acc.cloudDrift.y += dt * (0.004 + wind * 0.03) * wz;
       const own = PL.skyOwn || 0;
       SU.uRepl.value = Math.max(golden * clearSky * (1 - own) * 0.5, night * 0.94, (1 - day) * (1 - own * 0.6) * 0.6);
-      SU.uSun.value.copy(sunDir); SU.uMoon.value.copy(moonDir); SU.uZen.value.setRGB(zen.r, zen.g, zen.b); SU.uHor.value.setRGB(hor.r, hor.g, hor.b);
+      let zz = zen, hh = hor;
+      if (P.heat > 0.01) { const hk = P.heat * day; zz = mixc(zen, v3(0.1, 0.3, 0.82), hk); hh = mixc(hor, v3(1.0, 0.88, 0.66), hk); SU.uRepl.value = Math.max(SU.uRepl.value, hk * 0.4); }      // (a heatwave: a deep blue sky going hazy gold at the edges)
+      SU.uSun.value.copy(sunDir); SU.uMoon.value.copy(moonDir); SU.uZen.value.setRGB(zz.r, zz.g, zz.b); SU.uHor.value.setRGB(hh.r, hh.g, hh.b);
       SU.uSunCol.value.setRGB(1.0, 0.55, 0.26).multiplyScalar(golden * clearSky * (1 - own * 0.5) * 0.9);
       const lit = mulc(mixc(v3(0.95, 0.96, 0.98), v3(1.0, 0.78, 0.6), golden), lerp(0.035, 1, twi) * (1 - dark * 0.55));
       const shade = mulc(v3(0.62, 0.65, 0.7), lerp(0.02, 1, twi) * (1 - dark * 0.75));
       SU.uCloudLit.value.setRGB(lit.r, lit.g, lit.b); SU.uCloudDark.value.setRGB(shade.r, shade.g, shade.b);
-      SU.uCover.value = cloud; SU.uFog.value = clamp01(fogK * 0.95 + P.heat * 0.15); SU.uFogCol.value.setRGB(fogCol.r, fogCol.g, fogCol.b); SU.uFlash.value = acc.flash;
+      SU.uCover.value = cloud; SU.uFog.value = clamp01(fogK * 0.95 + P.heat * 0.06); SU.uFogCol.value.setRGB(fogCol.r, fogCol.g, fogCol.b); SU.uFlash.value = acc.flash;
       SU.uStars.value = night * (1 - cloud) * (1 - fogK); SU.uMoonK.value = moonUp * smooth(0.2, -0.05, el) * (1 - cloud * 0.97) * (1 - fogK * 0.8);
       SU.uBoltA.value = acc.boltA; SU.uBoltK.value = boltShow; SU.uTime.value = S.t; SU.uDrift.value.copy(acc.cloudDrift);
       const need = SU.uRepl.value > 0.003 || cloud > 0.02 || SU.uFog.value > 0.003 || SU.uStars.value > 0.003 || SU.uMoonK.value > 0.003 || boltShow > 0;

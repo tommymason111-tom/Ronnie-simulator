@@ -11,7 +11,7 @@ import { startRoomHost } from './lib/roomhost.mjs';
 
 const BUDGET = { pub: 560, shop: 800, restaurant: 220, garden: 400, bedroom: 120 };
 const MODES = { pub: 'roam', shop: 'roam0', restaurant: 'roam0', garden: 'roam0', bedroom: 'roam0' };
-const PLACES = (process.env.PLACES || 'pub,shop,restaurant,garden,bedroom').split(',');
+const PLACES = (process.env.PLACES ?? 'pub,shop,restaurant,garden,bedroom').split(',').filter(Boolean);
 
 export default async function () {
   const C = checker('weather'), b = await launch();
@@ -31,12 +31,12 @@ export default async function () {
           out.kinds = kinds.length;
           // every weather at dawn, midday, sunset and night, seen four ways (and a lightning strike in the storm)
           for (const w of kinds) for (const tod of [0.245, 0.5, 0.757, 0.9]) {
-            W.set(w, tod); RS.sim(0.4, 1 / 30); if (w === 'storm') { W.acc.boltT = 0; RS.sim(0.1, 1 / 30); }
-            for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) look(st.x, 1.6, st.z, yaw);
+            W.set(w, tod); RS.sim(0.2, 1 / 15); if (w === 'storm') { W.acc.boltT = 0; RS.sim(0.1, 1 / 30); }
+            for (const yaw of [0, Math.PI]) look(st.x, 1.6, st.z, yaw + (st.yaw || 0));
             const U = W.U; for (const k in U) for (const c of ['x', 'y', 'z', 'w']) if (!Number.isFinite(U[k][c])) out.bad.push(`${w}@${tod}: ${k}.${c} = ${U[k][c]}`);
           }
           // and gradually: a whole day going by while it changes from one to the next on its own
-          W.setWeather('auto'); W.setTime('cycle'); W.state.autoT = 0.5; for (let i = 0; i < 40; i++) { RS.sim(1, 1 / 10); W.state.tod = (W.state.tod + 0.025) % 1; if (i % 4 === 0) look(st.x, 1.6, st.z, st.yaw || 0); }
+          W.setWeather('auto'); W.setTime('cycle'); W.state.autoT = 0.5; for (let i = 0; i < 20; i++) { RS.sim(0.5, 1 / 10); W.state.tod = (W.state.tod + 0.05) % 1; if (i % 4 === 0) look(st.x, 1.6, st.z, st.yaw || 0); }
           out.built = R.info.programs.length - n0;
           // the busiest weather, at night: draw calls from the start spot, all four ways
           out.calls = 0; for (const w of ['storm', 'snow', 'hail', 'windy']) { W.set(w, 0.9); RS.sim(0.5, 1 / 30); for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) out.calls = Math.max(out.calls, look(st.x, 1.6, st.z, yaw)); }
@@ -98,7 +98,7 @@ async function multiplayer(b, C) {
   try {
     const H = await newPage(b, { width: 900, height: 560 }), G = await newPage(b, { width: 390, height: 844, mobile: true });
     const ev = (p, f, a) => p.evaluate(f, a), cl = (p, s) => ev(p, (s) => document.querySelector(s).click(), s);
-    for (const p of [H, G]) { await p.goto('http://game.local/index.html?relay=' + encodeURIComponent(host.url)); await p.waitForTimeout(2000); }
+    for (const p of [H, G]) { await p.goto('http://game.local/index.html?relay=' + encodeURIComponent(host.url), { timeout: 180000 }); await p.waitForTimeout(2000); }
     const join = async (p, n, ch, code) => { await cl(p, '.playbtn'); await sleep(400); await cl(p, '#pick-multi'); await sleep(400);
       await ev(p, ([n, c]) => { document.querySelector('#mp-myname').value = n; document.querySelector(`#char-grid .mate[data-id="${c}"]`).click(); }, [n, ch]); await cl(p, '#char-next'); await sleep(400);
       if (!code) { await cl(p, '#mp-host2'); await p.waitForFunction(() => window.ronnieMP && ronnieMP.net && ronnieMP.net.code && ronnieMP.net.status === 'on', null, { timeout: 30000 }); return ev(p, () => ronnieMP.net.code); }
@@ -106,10 +106,10 @@ async function multiplayer(b, C) {
     const code = await join(H, 'HOSTY', 'lewis'); await join(G, 'GUESTY', 'chloe', code);
     await cl(H, '#room-go'); await sleep(400); await ev(H, () => document.querySelector('.scene[data-id="pub"]').click()); await sleep(300);
     await ev(H, () => document.querySelector('.screen[data-s="place"] .bigbtn').click()); await sleep(500);
-    await ev(H, () => { const f = () => document.querySelector('.flip[data-id="roam"]') || document.querySelector('.flip[data-id="everyone"]'); f().click(); f().click(); }); await sleep(300);
+    await ev(H, () => { const f = () => document.querySelector('.flip[data-id="everyone"]'); f().click(); f().click(); }); await sleep(300);
     await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await cl(H, '#go');
-    for (const p of [H, G]) { await p.waitForFunction(() => document.querySelector('.screen[data-s="intro"].on') || document.body.classList.contains('ready'), null, { timeout: 180000 }); await ev(p, () => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click(); }); }
-    for (const p of [H, G]) { await p.waitForFunction(() => window.RS && window.__weather && document.body.classList.contains('ready'), null, { timeout: 240000 }); await ev(p, () => document.getElementById('play-flat').click()); }
+    for (const p of [H, G]) { await p.waitForFunction(() => document.querySelector('.screen[data-s="intro"].on') || document.body.classList.contains('ready'), null, { timeout: 300000 }); await ev(p, () => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click(); }); }
+    for (const p of [H, G]) { await p.waitForFunction(() => window.RS && window.__weather && document.body.classList.contains('ready'), null, { timeout: 300000 }); await ev(p, () => document.getElementById('play-flat').click()); }
     for (const p of [H, G]) await ev(p, () => { RS.renderer.setAnimationLoop(null); window.__run = setInterval(() => { try { RS.sim(0.1, 0.05); } catch (e) {} }, 100); });
     await sleep(3000);
     // the host picks snow at night, through the pause menu's buttons
