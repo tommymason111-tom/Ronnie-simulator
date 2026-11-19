@@ -384,7 +384,7 @@ export class Imposter {
     // the pan coming down
     this.panT = 0.001; this.panAt = b.at.clone().setY(fy + 2.0);
     const w = g.words; w && w.show(['BONK!', 'CLANG!', 'DONK!'][Math.floor(Math.random() * 3)], b.at.clone().setY(fy + 1.9), '#ff5252', 0.22, 1.2);
-    sfx('kill', b.at, 1); setTimeout(() => sfx('smash', b.at, 0.7), 120);
+    sfx('kill', b.at, 1); setTimeout(() => sfx('body_fall', b.at, 0.8), 120);
   }
   // one job's station: the kit for it (pub stuff), on the spot, and its sign hanging above
   station(id, at, label, kit) {
@@ -573,7 +573,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     const n = this.near(); if (n.use && n.use.kind === 'task' && n.use.id === 'fruit') this.doUse(); else this.toast('GET A BIT CLOSER TO THE MACHINE'); }
   // sit at the security desk: the four feeds, until you close them (or a meeting's called, or you die)
   openCams() { if (this.camsGame) return; const game = this.camsGame = makeCamFeeds({ renderer: this.g.renderer, scene: this.g.scene });
-    this.camWatchers.add(this.me); this.net.send({ t: 'imCams', on: true }); sfx('toggle', null, 0.6);
+    this.camWatchers.add(this.me); this.net.send({ t: 'imCams', on: true }); sfx('crt_on', null, 0.6);
     this.panel.show(game, { onClose: () => this.closeCams() }); }
   closeCams() { const g = this.camsGame; if (!g) return; this.camsGame = null; g.dispose(); this.camWatchers.delete(this.me); this.net.send({ t: 'imCams', on: false }); }
   doReport() { if (this.phase !== 'play') return; const n = this.near(); if (n.body) this.ask('imM', { body: n.body.id }); }
@@ -613,7 +613,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
       : `<h1>THROWN OUT</h1><p style="color:#cfe0ff">You're a ghost 👻 Only ghosts can hear you now.</p>`;
     sp.classList.add('on'); clearTimeout(this.splashT); this.splashT = setTimeout(() => sp.classList.remove('on'), 5500);
     if (this.g.renderer.xr.isPresenting) this.g.showBanner(how === 'killed' ? 'KILLED BY' : 'THROWN OUT', how === 'killed' ? (k ? k.name.toUpperCase() : '?') : 'YOU\'RE A GHOST');
-    sfx('sadviolin', null, 0.8); this.setFog(); this.syncPuppets();
+    sfx('ghost', null, 0.8); this.setFog(); this.syncPuppets();
   }
   startMeeting(m) {
     this.bellT = 0.001;
@@ -671,7 +671,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   showResult(m) {
     const M = this.meeting; if (!M) return; M.res = m; this.phase = 'eject';
     if (!this.panel.open) this.panel.show(this.voteScreen(), { canClose: false });
-    setTimeout(() => { if (this.phase !== 'eject') return; this.panel.show(this.ejectScreen(m), { canClose: false }); sfx(m.ej ? 'throw' : 'aww', null, 0.8); }, 2600);
+    setTimeout(() => { if (this.phase !== 'eject') return; this.panel.show(this.ejectScreen(m), { canClose: false }); sfx(m.ej ? 'eject' : 'aww', null, 0.8); }, 2600);
     if (m.ej) { const p = this.players.get(m.ej); if (p) { p.alive = false; p.realImp = m.wasImp; if (m.ej === this.me) setTimeout(() => this.iDied(null, 'ejected'), 7000); } }
   }
   // thrown out of the pub: the night street outside, them flying out of the door, spinning off into the distance
@@ -714,7 +714,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   win(m) {
     this.phase = 'over'; this.panel.close(true); this.setVent(null); this.sabEl.classList.remove('on'); this.alertEl.classList.remove('on'); this.phase = 'over'; this.setFog();
     const imps = (this.impList || []).map(id => this.players.get(id)).filter(Boolean), me = this.mine(), mine = me && (m.side === 'imposter' ? this.impList.includes(this.me) : !this.impList.includes(this.me));
-    sfx(mine ? 'fanfare' : 'sadviolin', null, 1);
+    sfx(mine ? 'victory' : 'sadviolin', null, 1);
     const playB = { x: 40, y: 430, w: 200, h: 56 }, lobbyB = { x: 272, y: 430, w: 200, h: 56 };
     this.panel.show({ draw: (g) => {
       g.fillStyle = m.side === 'imposter' ? '#2a0508' : '#04142e'; rr(g, 4, 4, 504, 504, 30); g.fill(); g.lineWidth = 8; g.strokeStyle = m.side === 'imposter' ? '#ff3b3b' : '#4fc3ff'; rr(g, 4, 4, 504, 504, 30); g.stroke();

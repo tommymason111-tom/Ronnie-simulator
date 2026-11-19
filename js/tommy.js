@@ -179,7 +179,7 @@ export class Tommy extends Character {
     const b = this.ball; b.t += dt; const k = Math.min(1, b.t / b.dur);
     this.ballMesh.position.copy(b.from).lerp(ctx.head, k); this.ballMesh.position.y += Math.sin(Math.PI * k) * 0.5;
     this.ballMesh.scale.setScalar(1 + Math.sin(this.t * 14) * 0.15); this.ballMesh.rotation.x += dt * 9;
-    if (k >= 1) { this.ball = null; this.ballMesh.visible = false; sfx('boing', ctx.head, 1); this.say(BALL_LINES[1 + Math.floor(Math.random() * 3)], 4); this.onTrip && this.onTrip(this); }
+    if (k >= 1) { this.ball = null; this.ballMesh.visible = false; sfx('bonk', ctx.head, 1); this.say(BALL_LINES[1 + Math.floor(Math.random() * 3)], 4); this.onTrip && this.onTrip(this); }
   }
 
   onSpeechEnd() { if (this.speakPri >= 2 && !this.down && Math.random() < 0.5) this.flashTeeth(); }

@@ -403,7 +403,7 @@ export class RunPub {
       hs.forEach((c, i) => { c.rp.phase = 'brawl'; const a = i / 3 * Math.PI * 2; c.rp.brawlAt = { x: spot.x + Math.sin(a) * 0.75, z: spot.z + Math.cos(a) * 0.75 }; c.goTo(c.rp.brawlAt.x, c.rp.brawlAt.z, 1.6); });
       this.event = { kind: 'fight', t: 0, who: hs, center: spot, knocked: new Set() };
       g.showBanner('IT\'S KICKING OFF!', 'BREAK UP THE FIGHT');
-      sfx('alarm', null, 0.8);
+      sfx('brawl', null, 0.8);
     } else if (r < 0.75) {                            // an old boy singing at the bar
       const c = this.punters.find(p => p.rp.kind === 'old' && !p.down && (p.rp.phase === 'settled' || p.rp.phase === 'waiting'));
       if (!c) { this.event = null; return this.startEvent(); }
@@ -425,8 +425,8 @@ export class RunPub {
       const sign = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.55, 4, 1, true), new THREE.MeshLambertMaterial({ color: 0xffd400, side: THREE.DoubleSide })); sign.position.set(0.5, 0.28, 0); sign.rotation.y = Math.PI / 4; grp.add(sign);
       const gl = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.032, 0.15, 12), new THREE.MeshLambertMaterial({ color: 0xdfe8ee, transparent: true, opacity: 0.6 })); gl.rotation.z = Math.PI / 2; gl.position.set(-0.2, 0.05, 0.1); grp.add(gl);
       grp.position.set(sp.x, 0, sp.y); g.scene.add(grp);
-      this.event = { kind, t: 0, at: V3(sp.x, 0, sp.y), need: 2.5, hold: 0, limit: 45, grp, who: [] }; g.showBanner('A PINT\'S GONE OVER!', 'MOP IT UP BEFORE SOMEONE SLIPS'); sfx('smash', this.event.at, 0.7); return true; }
-    if (kind === 'loo') { this.event = { kind, t: 0, at: V3(-7.97, 0, -11.8), need: 3, hold: 0, limit: 50, who: [] }; g.showBanner('THE TOILETS ARE BLOCKED!', 'GET IN THERE WITH THE PLUNGER'); sfx('burp', null, 0.6); return true; }
+      this.event = { kind, t: 0, at: V3(sp.x, 0, sp.y), need: 2.5, hold: 0, limit: 45, grp, who: [] }; g.showBanner('A PINT\'S GONE OVER!', 'MOP IT UP BEFORE SOMEONE SLIPS'); sfx('shatter', this.event.at, 0.7); return true; }
+    if (kind === 'loo') { this.event = { kind, t: 0, at: V3(-7.97, 0, -11.8), need: 3, hold: 0, limit: 50, who: [] }; g.showBanner('THE TOILETS ARE BLOCKED!', 'GET IN THERE WITH THE PLUNGER'); sfx('clog', null, 0.6); return true; }
     if (kind === 'power') { const hemi = g.room.hemi; this.event = { kind, t: 0, at: V3(6.8, 0, -2.0), need: 2, hold: 0, limit: 40, who: [], hemi0: hemi ? hemi.intensity : null };
       if (hemi) hemi.intensity *= 0.3; const fb = new THREE.Group(); const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.12), new THREE.MeshLambertMaterial({ color: 0x7a7f87 })); box.position.y = 1.45; fb.add(box);
       const post = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.06), new THREE.MeshLambertMaterial({ color: 0x222222 })); post.position.y = 0.65; fb.add(post); const front = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.42), new THREE.MeshBasicMaterial({ color: 0xffd400 })); front.position.set(0, 1.45, 0.061); fb.add(front);
@@ -437,7 +437,7 @@ export class RunPub {
   }
   // the ones you sort out by going there and staying put for a moment (mop / plunger / reset the fuse)
   holdEvent(dt) { const e = this.event, g = this.g, P = g.player, d = Math.hypot(P.head.x - e.at.x, P.head.z - e.at.z);
-    if (d < 1.3) { e.hold += dt; if (Math.floor(e.hold * 3) !== Math.floor((e.hold - dt) * 3)) { sfx(e.kind === 'power' ? 'zap' : 'scrub', e.at, 0.5); g.words.show(e.kind === 'spill' ? '*MOP MOP*' : e.kind === 'loo' ? '*PLUNGE*' : '*CLICK*', e.at.clone().setY(1.4), '#29b6ff', 0.07, 0.5); } }
+    if (d < 1.3) { e.hold += dt; if (Math.floor(e.hold * 3) !== Math.floor((e.hold - dt) * 3)) { sfx(e.kind === 'power' ? 'breaker' : e.kind === 'loo' ? 'plunger' : 'mop', e.at, 0.5); g.words.show(e.kind === 'spill' ? '*MOP MOP*' : e.kind === 'loo' ? '*PLUNGE*' : '*CLICK*', e.at.clone().setY(1.4), '#29b6ff', 0.07, 0.5); } }
     else e.hold = Math.max(0, e.hold - dt);
     if (e.hold >= e.need) { const at = P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 });
       this.pay(e.kind === 'spill' ? 4 : 6, at, e.kind === 'spill' ? 'MOPPED! +£4' : e.kind === 'loo' ? 'UNBLOCKED! +£6' : 'LIGHTS BACK ON! +£6'); this.rating += 0.25; this.endEvent2(); return; }

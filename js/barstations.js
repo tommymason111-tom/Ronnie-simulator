@@ -139,7 +139,7 @@ export class Bar {
       for (const h of P.hands || []) { if (h.held !== gun) continue; const gp = h.source && h.source.gamepad, b = !!(gp && gp.buttons[4] && gp.buttons[4].pressed);
         if (b && !this.gunBtn) this.toggleFlavour(); this.gunBtn = b; }
     }
-    if (this.sodaCup) { const sc = this.sodaCup; sc.t += dt; if (sc.it.dead || sc.it.heldBy) this.sodaCup = null; else if (sc.t > 1.2) { const n = this.swap(sc.it, 'soft', this.gunFlavour); n.resting = true; n.shelf = true; this.sodaCup = null; this.g.words.show(this.gunFlavour ? 'FANTA! PICK IT UP' : 'COKE! PICK IT UP', n.pos.clone().add(V(0, 0.15, 0)), this.gunFlavour ? '#ff8a00' : '#c8102e', 0.07, 1); sfx('ting', n.pos, 0.6); } else if (Math.floor(sc.t * 3) !== Math.floor((sc.t - dt) * 3)) sfx('fizz', sc.it.pos, 0.4); }
+    if (this.sodaCup) { const sc = this.sodaCup; sc.t += dt; if (sc.it.dead || sc.it.heldBy) this.sodaCup = null; else if (sc.t > 1.2) { const n = this.swap(sc.it, 'soft', this.gunFlavour); n.resting = true; n.shelf = true; this.sodaCup = null; this.g.words.show(this.gunFlavour ? 'FANTA! PICK IT UP' : 'COKE! PICK IT UP', n.pos.clone().add(V(0, 0.15, 0)), this.gunFlavour ? '#ff8a00' : '#c8102e', 0.07, 1); sfx('ding', n.pos, 0.6); } else if (Math.floor(sc.t * 3) !== Math.floor((sc.t - dt) * 3)) sfx('fizz', sc.it.pos, 0.4); }
     for (const it of this.g.items.items) if (it.heldBy && it.shelf && it.barStock) it.shelf = false;
     if (gun && !gun.heldBy && gun.pos.distanceTo(this.gunHome) < 0.35 && gun.pos.distanceTo(this.gunHome) > 0.02) { gun.pos.copy(this.gunHome); gun.prev.copy(gun.pos); gun.vel.set(0, 0, 0); gun.resting = true; gun.shelf = true; }
     // the gun goes back in its holster if it's left lying about

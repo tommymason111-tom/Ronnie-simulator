@@ -80,7 +80,7 @@ export class PubJobs {
       j = { kind, from, icon: '🍺', title: 'EMPTIES!', said: R(['Ron! We\'re out of glasses! Grab the empties off the tables!', 'Empties, Ronnie! The tables are covered in them!', 'Can you do a glass collection? I\'m stuck on the tap.']),
         glasses: spots.map(p => this.emptyGlass(p)), got: 0,
         steps: [{ text: `Collect the empties off the tables (0/${spots.length})`, multi: true },
-          { text: 'Put them in the GLASS WASHER (back room)', at: () => this.g.room.glassWasher || this.rp.bar.st.glasses.at.clone().setY(0), r: 1.6, act: '🫧 LOAD THE GLASS WASHER', then: () => sfx('glass', null, 0.8) }] };
+          { text: 'Put them in the GLASS WASHER (back room)', at: () => this.g.room.glassWasher || this.rp.bar.st.glasses.at.clone().setY(0), r: 1.6, act: '🫧 LOAD THE GLASS WASHER', then: () => sfx('glasswasher', null, 0.8) }] };
     } else if (kind === 'ice') { const from = R(bar);
       j = { kind, from, icon: '🧊', title: 'ICE!', said: R(['Ron, the ice well\'s empty! Ice machine\'s in the back room!', 'No ice, Ronnie! Fill the bucket!']),
         steps: [{ text: 'Fill the ice bucket at the ice machine (back room)', at: () => this.iceAt, r: 1.5, act: '🧊 FILL THE ICE BUCKET' }, { text: 'Tip it into the ice well behind the bar', at: () => V(3.6, 0, -4.4), r: 1.5, act: '🧊 TIP IT IN' }] };
@@ -93,7 +93,7 @@ export class PubJobs {
     } else {
       const from = R(bar), hatch = this.hatch();
       j = { kind, from, icon: '🛢️', title: 'CHANGE THE BARREL', said: R(['The lager\'s gone! Change the barrel, Ron, the hatch is behind the bar!', 'Barrel\'s empty! Down the hatch, Ronnie, quick!', 'It\'s all FROTH, Ron. Barrel needs changing!']),
-        steps: [{ text: 'Go to the hatch behind the bar', at: () => HATCH, r: 1.0 }, { text: 'Change the barrel: stay put', at: () => HATCH, r: 1.1, hold: 3, then: () => { hatch.visible = false; sfx('bell', HATCH, 0.8); } }] };
+        steps: [{ text: 'Go to the hatch behind the bar', at: () => HATCH, r: 1.0 }, { text: 'Change the barrel: stay put', at: () => HATCH, r: 1.1, hold: 3, then: () => { hatch.visible = false; sfx('hatch', HATCH, 0.8); } }] };
       j.cleanup = () => { hatch.visible = false; };
     }
     j.step = 0; j.t = 0; j.limit = 100; this.job = j;

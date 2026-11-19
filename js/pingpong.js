@@ -63,7 +63,7 @@ export class PingPong {
     this.playing = true; this.button.set(true); this.mesh.visible = true; this.ai.grip.visible = true;
     this.score = { P: 0, A: 0 }; this.server = 'P'; this.serves = 0; this.resetServe(); this.drawBoard();
     if (!this.bat || this.bat.dead) this.spawnBat();
-    sfx('bell', this.c, 0.6);
+    sfx('game_on', this.c, 0.6);
   }
   stop() {
     this.playing = false; this.button.set(false); this.mesh.visible = false; this.ai.grip.visible = false; this.ball.live = false;
@@ -137,7 +137,7 @@ export class PingPong {
     const s = this.score, win = (s.P >= 11 || s.A >= 11) && Math.abs(s.P - s.A) >= 2;
     let msg = (to === 'P' ? 'POINT RONNIE' : 'POINT LEWY') + (why ? ' — ' + why : '');
     if (win) { this.games[to]++; msg = to === 'P' ? 'GAME RONNIE! ' + s.P + '–' + s.A : 'GAME LEWY. ' + s.A + '–' + s.P; sfx(to === 'P' ? 'fanfare' : 'sadviolin', this.c, 0.8); }
-    else sfx(to === 'P' ? 'ting' : 'boing', this.c, 0.6);
+    else sfx(to === 'P' ? 'point' : 'point_lose', this.c, 0.6);
     this.say(msg, to === 'P' ? '#7cff6a' : '#ff8a8a', win ? 0.13 : 0.08);
     // serve changes every 2 points (every point from 10-10)
     this.serves++;
@@ -207,7 +207,7 @@ export class PingPong {
         const prevP = _p.copy(b.p);
         const ev = this.step(b, h);
         if (ev === 'P' || ev === 'A') this.onBounce(ev);
-        else if (ev === 'net') sfx('land', b.p, 0.15);
+        else if (ev === 'net') sfx('hit_soft', b.p, 0.2);
         if (bp && !flat) this.batContact(bp, i / n, (i + 1) / n, prevP);
         // Lewy: hit it when it gets to him
         const ai = this.ai.plan;

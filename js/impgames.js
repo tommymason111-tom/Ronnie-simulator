@@ -30,8 +30,8 @@ const GAMES = {
   hold() {
     const s = { title: 'POUR A PERFECT GUINNESS', hint: 'HOLD TO POUR · LET GO BETWEEN THE LINES', fill: 0, pouring: false, settle: 0, fail: 0, done: false };
     s.down = () => { if (s.settle > 0 || s.done) return; s.pouring = true; };
-    s.up = () => { if (!s.pouring) return; s.pouring = false; if (s.fill >= 0.84 && s.fill <= 0.95) { s.settle = 0.001; sfx('ding', null, 0.6); } else if (s.fill > 0.1) { s.fail = 1.2; sfx('splat', null, 0.6); } };
-    s.update = (dt) => { if (s.pouring) { s.fill += dt * 0.32; if ((s.pourT = (s.pourT || 0) - dt) <= 0) { s.pourT = 0.18; sfx('pour', null, 0.15); } if (s.fill > 1.02) { s.pouring = false; s.fail = 1.2; sfx('splat', null, 0.7); } }
+    s.up = () => { if (!s.pouring) return; s.pouring = false; if (s.fill >= 0.84 && s.fill <= 0.95) { s.settle = 0.001; sfx('guinness', null, 0.6); } else if (s.fill > 0.1) { s.fail = 1.2; sfx('spill', null, 0.6); } };
+    s.update = (dt) => { if (s.pouring) { s.fill += dt * 0.32; if ((s.pourT = (s.pourT || 0) - dt) <= 0) { s.pourT = 0.18; sfx('pour', null, 0.15); } if (s.fill > 1.02) { s.pouring = false; s.fail = 1.2; sfx('spill', null, 0.7); } }
       if (s.fail > 0) { s.fail -= dt; if (s.fail <= 0) s.fill = 0; } if (s.settle > 0) { s.settle += dt / 2.2; if (s.settle >= 1) { s.done = true; } } };
     s.draw = (g, t) => { frame(g, s.title);
       const x0 = 176, x1 = 336, top = 110, bot = 440, fy = bot - (bot - top) * Math.min(1, s.fill);
@@ -55,7 +55,7 @@ const GAMES = {
   // CRANK: turn the wheel round (the barrel coupler / the keg valve)
   crank(o = {}) {
     const s = { title: o.title || 'CHANGE THE BARREL', hint: o.hint || 'DRAG ROUND IN CIRCLES', turned: 0, need: Math.PI * 2 * (o.turns || 3), last: null, down: (x, y) => { s.last = Math.atan2(y - 280, x - 256); }, done: false };
-    s.move = (x, y) => { if (s.last === null) return; const a = Math.atan2(y - 280, x - 256); let d = a - s.last; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; if (d > 0) s.turned += d; s.last = a; if ((s.clk = (s.clk || 0) + Math.abs(d)) > 0.8) { s.clk = 0; sfx('tick', null, 0.3); } if (s.turned >= s.need) s.done = true; };
+    s.move = (x, y) => { if (s.last === null) return; const a = Math.atan2(y - 280, x - 256); let d = a - s.last; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; if (d > 0) s.turned += d; s.last = a; if ((s.clk = (s.clk || 0) + Math.abs(d)) > 0.8) { s.clk = 0; sfx('ratchet', null, 0.3); } if (s.turned >= s.need && !s.done) { s.done = true; sfx('gas_hiss', null, 0.7); } };
     s.up = () => { s.last = null; }; s.update = (dt) => { if (o.slip && s.last === null && s.turned > 0 && !s.done) s.turned = Math.max(0, s.turned - dt * 2.2); };
     s.draw = (g) => { frame(g, s.title); const k = Math.min(1, s.turned / s.need);
       g.save(); g.translate(256, 280); g.rotate(s.turned);
@@ -73,7 +73,7 @@ const GAMES = {
     s.down = (x, y) => { if (y > 230 && y < 380 && x < s.x + 170) { s.drag = true; s.t0 = performance.now(); s.dx = x - s.x; } };
     s.move = (x) => { if (s.drag) s.x = Math.max(60, Math.min(330, x - s.dx)); };
     s.up = () => { if (!s.drag) return; s.drag = false; const dt = (performance.now() - s.t0) / 1000;
-      if (s.x < 320) s.msg = 'SWIPE ALL THE WAY'; else if (dt < 0.55) s.msg = 'TOO FAST. TRY AGAIN.'; else if (dt > 1.15) s.msg = 'TOO SLOW. TRY AGAIN.'; else if (++s.good < s.need) { s.msg = 'READ OK. SWIPE AGAIN TO CONFIRM'; s.msgT = 1.4; s.x = 60; sfx('beep', null, 0.5); return; } else { s.msg = 'ACCEPTED ✓'; s.ok = 0.6; sfx('beep', null, 0.7); }
+      if (s.x < 320) s.msg = 'SWIPE ALL THE WAY'; else if (dt < 0.55) s.msg = 'TOO FAST. TRY AGAIN.'; else if (dt > 1.15) s.msg = 'TOO SLOW. TRY AGAIN.'; else if (++s.good < s.need) { s.msg = 'READ OK. SWIPE AGAIN TO CONFIRM'; s.msgT = 1.4; s.x = 60; sfx('card_beep', null, 0.5); return; } else { s.msg = 'ACCEPTED ✓'; s.ok = 0.6; sfx('receipt', null, 0.7); }
       if (!s.ok) s.good = 0;
       if (!s.ok) sfx('error', null, 0.4); s.msgT = 1.2; s.x = 60; };
     s.update = (dt) => { if (s.msgT > 0) s.msgT -= dt; if (s.ok > 0) { s.ok -= dt; if (s.ok <= 0) s.done = true; } };
@@ -92,7 +92,7 @@ const GAMES = {
     const L = (i) => ({ x: 70, y: 130 + i * gap }), Rt = (i) => ({ x: 442, y: 130 + right.indexOf(i) * gap });
     s.down = (x, y) => { for (let i = 0; i < n; i++) { const p = L(i); if (!s.joined[i] && Math.hypot(x - p.x, y - p.y) < 40) { s.drag = i; s.px = x; s.py = y; } } };
     s.move = (x, y) => { s.px = x; s.py = y; };
-    s.up = (x, y) => { if (s.drag === null) return; const i = s.drag, p = Rt(i); if (Math.hypot(x - p.x, y - p.y) < (n > 4 ? 32 : 45)) { s.joined[i] = true; sfx('zap', null, 0.5); if (s.joined.every(Boolean)) s.done = true; } s.drag = null; };
+    s.up = (x, y) => { if (s.drag === null) return; const i = s.drag, p = Rt(i); if (Math.hypot(x - p.x, y - p.y) < (n > 4 ? 32 : 45)) { s.joined[i] = true; sfx('plug_in', null, 0.5); if (s.joined.every(Boolean)) { s.done = true; sfx('decks_on', null, 0.7); } } s.drag = null; };
     s.update = () => {};
     s.draw = (g) => { frame(g, s.title); txt(g, 'DRAG EACH WIRE TO ITS COLOUR', S / 2, 82, 20);
       for (let i = 0; i < n; i++) { const a = L(i), b = Rt(i); g.fillStyle = cols[i]; rr(g, a.x - 50, a.y - 16, 46, 32, 6); g.fill(); rr(g, b.x + 4, b.y - 16, 46, 32, 6); g.fill();
@@ -105,7 +105,7 @@ const GAMES = {
   collect(o = {}) {
     const n = o.n || 8, s = { title: o.title || 'EMPTY THE FRUIT MACHINE', icon: o.icon || '🪙', into: o.into || '💰', bits: [], done: false };
     for (let i = 0; i < n; i++) s.bits.push({ x: 70 + Math.random() * 372, y: 110 + Math.random() * 250, got: 0, r: (Math.random() - 0.5) * 0.8 });
-    s.down = (x, y) => { for (const b of s.bits) if (!b.got && Math.hypot(x - b.x, y - b.y) < 40) { b.got = 0.001; sfx('pickup', null, 0.4); return; } };
+    s.down = (x, y) => { for (const b of s.bits) if (!b.got && Math.hypot(x - b.x, y - b.y) < 40) { b.got = 0.001; sfx('coins', null, 0.4); return; } };
     s.move = () => {}; s.up = () => {};
     s.update = (dt) => { for (const b of s.bits) if (b.got > 0 && b.got < 1) b.got = Math.min(1, b.got + dt * 3); if (s.bits.every(b => b.got >= 1)) s.done = true; };
     s.draw = (g) => { frame(g, s.title); txt(g, o.hint || 'TAP EVERY ONE', S / 2, 82, 20);
@@ -118,7 +118,7 @@ const GAMES = {
   // PLUNGE: tap tap tap as fast as you can (the blocked toilet)
   plunge(o = {}) {
     const s = { title: o.title || 'UNBLOCK THE TOILET', p: 0, bob: 0, done: false };
-    s.down = () => { s.p += 0.045; s.bob = 1; sfx(Math.random() < 0.5 ? 'squish' : 'splat', null, 0.35); if (s.p >= 1) { s.done = true; sfx('gulp', null, 0.8); } };
+    s.down = () => { s.p += 0.045; s.bob = 1; sfx('plunger', null, 0.35); if (s.p >= 1 && !s.done) { s.done = true; sfx('flush', null, 0.8); } };
     s.move = () => {}; s.up = () => {};
     s.update = (dt) => { s.p = Math.max(0, s.p - dt * (0.1 + s.p * 0.08)); s.bob = Math.max(0, s.bob - dt * 6); };
     s.draw = (g) => { frame(g, s.title); txt(g, 'TAP AS FAST AS YOU CAN!', S / 2, 82, 22);
@@ -135,7 +135,7 @@ const GAMES = {
     const list = times.map((tm, i) => ({ tm, who: names[i], i })), cells = shuffle(list);
     const s = { title: o.title || 'SORT THE BOOKINGS', next: 0, bad: 0, done: false, _cells: cells };
     const box = (j) => ({ x: 36 + (j % 2) * 226, y: 96 + Math.floor(j / 2) * 94, w: 214, h: 82 });
-    s.down = (x, y) => { cells.forEach((c, j) => { if (!inside(x, y, box(j)) || c.i < s.next) return; if (c.i === s.next) { s.next++; sfx('beep', null, 0.4); if (s.next >= list.length) s.done = true; } else { s.next = 0; s.bad = 0.8; sfx('thud', null, 0.5); } }); };
+    s.down = (x, y) => { cells.forEach((c, j) => { if (!inside(x, y, box(j)) || c.i < s.next) return; if (c.i === s.next) { s.next++; sfx('page_flip', null, 0.5); if (s.next >= list.length) { s.done = true; sfx('stamp', null, 0.8); } } else { s.next = 0; s.bad = 0.8; sfx('error', null, 0.5); } }); };
     s.move = () => {}; s.up = () => {}; s.update = (dt) => { if (s.bad > 0) s.bad -= dt; };
     s.draw = (g) => { frame(g, s.title, s.bad > 0 ? '#ff4d4d' : '#ffd400'); txt(g, s.bad > 0 ? 'WRONG ORDER! START AGAIN' : 'TAP THE BOOKINGS: EARLIEST FIRST', S / 2, 74, 18, s.bad > 0 ? '#ff6b6b' : '#fff');
       cells.forEach((c, j) => { const b = box(j), on = c.i < s.next; g.fillStyle = on ? '#1b5e20' : '#f5f0e0'; rr(g, b.x, b.y, b.w, b.h, 10); g.fill();
@@ -148,7 +148,7 @@ const GAMES = {
     const s = { title: o.title || 'WIPE THE TABLES', spots: [], drag: false, done: false, cx: 0, cy: 0 };
     for (let i = 0; i < (o.n || 7); i++) s.spots.push({ x: 100 + Math.random() * 312, y: 140 + Math.random() * 230, r: 28 + Math.random() * 26, a: 1, k: i % 3 === 0 && o.n ? 0.4 : 1, c: R(['#7a4a1a', '#a0522d', '#5a3a1a', '#c8a040']) });
     s.down = (x, y) => { s.drag = true; s.cx = x; s.cy = y; }; s.up = () => { s.drag = false; };
-    s.move = (x, y) => { s.cx = x; s.cy = y; if (!s.drag) return; for (const p of s.spots) if (p.a > 0 && Math.hypot(x - p.x, y - p.y) < p.r + 26) { p.a -= 0.018 * (p.k || 1); if ((s.sq = (s.sq || 0) + 1) % 9 === 0) sfx('scrub', null, 0.25); } if (s.spots.every(p => p.a <= 0)) s.done = true; };
+    s.move = (x, y) => { s.cx = x; s.cy = y; if (!s.drag) return; for (const p of s.spots) if (p.a > 0 && Math.hypot(x - p.x, y - p.y) < p.r + 26) { p.a -= 0.018 * (p.k || 1); if ((s.sq = (s.sq || 0) + 1) % 9 === 0) sfx('wipe', null, 0.25); } if (s.spots.every(p => p.a <= 0)) s.done = true; };
     s.update = () => {};
     s.draw = (g) => { frame(g, s.title); txt(g, 'RUB THE MESS OFF', S / 2, 82, 20);
       g.fillStyle = o.surface || '#8b5a2b'; rr(g, 40, 110, 432, 360, 20); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.25)'; for (let i = 0; i < 8; i++) { g.beginPath(); g.moveTo(40, 130 + i * 44); g.lineTo(472, 140 + i * 44); g.stroke(); }
@@ -162,8 +162,8 @@ const GAMES = {
     const code = String(Math.floor(10000000 + Math.random() * 89999999)), s = { title: o.title || 'RESET THE SLOT MACHINE', typed: '', bad: 0, done: false, show: 4, _code: code };
     const key = (k) => ({ x: 146 + (k === 'C' ? 0 : k === '0' ? 1 : k === 'OK' ? 2 : (Number(k) - 1) % 3) * 76, y: 200 + (k === 'C' || k === '0' || k === 'OK' ? 3 : Math.floor((Number(k) - 1) / 3)) * 70, w: 68, h: 62 });
     const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'];
-    s.down = (x, y) => { for (const k of KEYS) if (inside(x, y, key(k))) { sfx('tap', null, 0.4);
-      if (k === 'C') s.typed = ''; else if (k === 'OK') { if (s.typed === code) { s.done = true; sfx('fixed', null, 0.7); } else { s.bad = 0.9; s.typed = ''; s.show = 3.5; sfx('error', null, 0.5); } } else if (s.typed.length < 8) s.typed += k; } };
+    s.down = (x, y) => { for (const k of KEYS) if (inside(x, y, key(k))) { sfx('keypad', null, 0.4);
+      if (k === 'C') s.typed = ''; else if (k === 'OK') { if (s.typed === code) { s.done = true; sfx('unlock', null, 0.7); } else { s.bad = 0.9; s.typed = ''; s.show = 3.5; sfx('error', null, 0.5); } } else if (s.typed.length < 8) s.typed += k; } };
     s.move = () => {}; s.up = () => {}; s.update = (dt) => { if (s.bad > 0) s.bad -= dt; if (s.show > 0) s.show -= dt; };
     s.draw = (g) => { frame(g, s.title);
       if (s.show <= 0) { g.fillStyle = '#c9b48a'; g.save(); g.translate(40, 70); g.rotate(-0.06); rr(g, 0, 0, 150, 90, 6); g.fill(); txt(g, 'REMEMBER IT?', 75, 45, 15, '#5a3a1a'); g.restore(); } else {
@@ -177,7 +177,7 @@ const GAMES = {
   dial(o = {}) {
     const s = { title: o.title || 'CHECK THE KEG PRESSURE', a: 0, v: 1.6, hits: 0, need: o.need || 3, flash: 0, zone: [0.15, 0.45], done: false };
     const B = { x: 156, y: 400, w: 200, h: 70 };
-    s.down = (x, y) => { if (!inside(x, y, B)) return; const k = (Math.sin(s.a) + 1) / 2; if (k >= s.zone[0] && k <= s.zone[1]) { s.hits++; s.flash = 0.4; sfx('beep', null, 0.6); s.v *= 1.32; const c = 0.15 + Math.random() * 0.55; s.zone = [c, c + 0.28 - s.hits * 0.04]; if (s.hits >= s.need) s.done = true; } else { s.flash = -0.4; s.hits = Math.max(0, s.hits - 1); sfx('thud', null, 0.5); } };
+    s.down = (x, y) => { if (!inside(x, y, B)) return; const k = (Math.sin(s.a) + 1) / 2; if (k >= s.zone[0] && k <= s.zone[1]) { s.hits++; s.flash = 0.4; sfx('gas_hiss', null, 0.4); s.v *= 1.32; const c = 0.15 + Math.random() * 0.55; s.zone = [c, c + 0.28 - s.hits * 0.04]; if (s.hits >= s.need) s.done = true; } else { s.flash = -0.4; s.hits = Math.max(0, s.hits - 1); sfx('error', null, 0.5); } };
     s.move = () => {}; s.up = () => {}; s.update = (dt) => { s.a += dt * s.v; if (s.flash > 0) s.flash = Math.max(0, s.flash - dt); else if (s.flash < 0) s.flash = Math.min(0, s.flash + dt); };
     s.draw = (g) => { frame(g, s.title);
       const cx = 256, cy = 300, r = 170, ang = (k) => Math.PI + k * Math.PI;
@@ -196,7 +196,7 @@ const GAMES = {
     const flip = (i) => { for (const j of [i - 1, i, i + 1]) if (j >= 0 && j < n) on[j] = !on[j]; };
     do { for (let k = 0; k < 3; k++) flip(Math.floor(Math.random() * n)); } while (on.every(Boolean));      // (scrambled from all-on, so it can always be solved)
     const box = (i) => ({ x: 46 + i * 86, y: 170, w: 72, h: 200 });
-    s.down = (x, y) => { for (let i = 0; i < n; i++) if (inside(x, y, box(i))) { flip(i); sfx('toggle', null, 0.6); if (on.every(Boolean)) s.done = true; } };
+    s.down = (x, y) => { for (let i = 0; i < n; i++) if (inside(x, y, box(i))) { flip(i); sfx('breaker', null, 0.6); if (on.every(Boolean)) s.done = true; } };
     s.move = () => {}; s.up = () => {}; s.update = () => {};
     s.draw = (g) => { frame(g, s.title); txt(g, 'ALL UP · EACH ONE FLIPS ITS NEIGHBOURS TOO', S / 2, 90, 18);
       for (let i = 0; i < n; i++) { const b = box(i); g.fillStyle = '#2a2a2a'; rr(g, b.x, b.y, b.w, b.h, 10); g.fill(); g.fillStyle = on[i] ? '#39ff14' : '#ff3b3b'; g.beginPath(); g.arc(b.x + b.w / 2, b.y - 22, 12, 0, 7); g.fill();
@@ -215,14 +215,14 @@ const GAMES = {
     s._tip = () => { const c = s.carry || s.at; return { x: c.x + (s.lifted ? 0 : 70), y: c.y - (s.lifted ? 70 : 0) }; };
     const nope = (m) => { s.msg = m; s.msgT = 1.2; sfx('error', null, 0.4); };
     s.down = (x, y) => { s.grab = null;
-      if (Math.hypot(x - GAS.x, y - GAS.y) < 46) { if (s.step === 0) { s.gasOn = false; s.step = 1; sfx('toggle', null, 0.6); } else if (s.step === 4) { s.gasOn = true; s.step = 5; s.done = true; sfx('psst', null, 0.6); } else nope(s.step < 4 ? 'THE GAS IS OFF: CHANGE THE BARREL' : 'NOT YET'); return; }
+      if (Math.hypot(x - GAS.x, y - GAS.y) < 46) { if (s.step === 0) { s.gasOn = false; s.step = 1; sfx('gas_tap', null, 0.6); } else if (s.step === 4) { s.gasOn = true; s.step = 5; s.done = true; sfx('gas_hiss', null, 0.6); } else nope(s.step < 4 ? 'THE GAS IS OFF: CHANGE THE BARREL' : 'NOT YET'); return; }
       const t2 = s._tip(); if (Math.hypot(x - t2.x, y - t2.y) < 44) { if (s.step === 1 || s.step === 3) s.grab = { k: 'handle', y }; else nope(s.step === 0 ? 'TURN THE GAS OFF FIRST' : 'MOVE THE COUPLER ACROSS'); return; }
       if (Math.hypot(x - s.at.x, y - s.at.y) < 46) { if (s.step === 2) { s.grab = { k: 'coupler' }; s.carry = { x, y }; } else nope(s.step < 2 ? 'LIFT THE HANDLE FIRST' : 'PUSH THE HANDLE DOWN'); } };
     s.move = (x, y) => { const gb = s.grab; if (!gb) return;
-      if (gb.k === 'handle') { if (s.step === 1 && gb.y - y > 50) { s.lifted = true; s.step = 2; s.grab = null; sfx('clack', null, 0.6); } else if (s.step === 3 && y - gb.y > 50) { s.lifted = false; s.step = 4; s.grab = null; sfx('clack', null, 0.6); } }
+      if (gb.k === 'handle') { if (s.step === 1 && gb.y - y > 50) { s.lifted = true; s.step = 2; s.grab = null; sfx('coupler', null, 0.6); } else if (s.step === 3 && y - gb.y > 50) { s.lifted = false; s.step = 4; s.grab = null; sfx('coupler', null, 0.6); } }
       else s.carry = { x, y }; };
     s.up = () => { const gb = s.grab; s.grab = null; if (!gb || gb.k !== 'coupler') return; const c = s.carry; s.carry = null;
-      if (c && Math.hypot(c.x - NEW.x, c.y - NEW.y) < 70) { s.at = NEW; s.step = 3; sfx('can', null, 0.6); } else if (c && Math.hypot(c.x - OLD.x, c.y - OLD.y) > 70) nope('PUT IT ON THE NEW BARREL'); };
+      if (c && Math.hypot(c.x - NEW.x, c.y - NEW.y) < 70) { s.at = NEW; s.step = 3; sfx('keg_roll', null, 0.6); } else if (c && Math.hypot(c.x - OLD.x, c.y - OLD.y) > 70) nope('PUT IT ON THE NEW BARREL'); };
     s.update = (dt) => { if (s.msgT > 0) s.msgT -= dt; };
     return s;
   },
@@ -230,7 +230,7 @@ const GAMES = {
   raise(o = {}) {
     const s = { title: o.title || 'PUT THE PARASOL UP', k: 0, last: null, done: false, click: 0 };
     s.down = (x, y) => { if (Math.abs(x - 256) < 90) s.last = y; };
-    s.move = (x, y) => { if (s.last === null || s.done) return; const d = s.last - y; if (d > 0) { s.k = Math.min(1, s.k + d / 1100); if ((s.cr = (s.cr || 0) + d) > 60) { s.cr = 0; sfx('tick', null, 0.3); } } s.last = y; if (s.k >= 1) { s.done = true; sfx('clack', null, 0.8); } };
+    s.move = (x, y) => { if (s.last === null || s.done) return; const d = s.last - y; if (d > 0) { s.k = Math.min(1, s.k + d / 1100); if ((s.cr = (s.cr || 0) + d) > 60) { s.cr = 0; sfx('pulley', null, 0.3); } } s.last = y; if (s.k >= 1) { s.done = true; sfx('parasol', null, 0.8); } };
     s.up = () => { s.last = null; };
     s.update = (dt) => { if (!s.done && s.last === null && s.k > 0) s.k = Math.max(0, s.k - dt * 0.09); };
     return s;
@@ -242,9 +242,9 @@ const GAMES = {
     const SY = ['🍒', '🍋', '🔔', '🍒', '🍇', '💎'], N = SY.length, CH = (p) => { const i = ((p % N) + N) % N; return i === 0 || i === 3; };
     const s = { title: o.title || 'EMPTY THE FRUIT MACHINE', SY, reels: [1.7, 2.1, 2.5].map(v => ({ p: Math.random() * N, v, stop: false })), cur: 0, msg: '', msgT: 0, win: 0, done: false };
     s.down = (x, y) => { if (s.msgT > 0 || s.win || s.cur > 2) return; if (x > 20 && x < 120 && y > 410) return;      // (NUDGE / HOLD are just for show)
-      const r = s.reels[s.cur]; r.p = Math.round(r.p); r.stop = true; sfx('clack', null, 0.6);
+      const r = s.reels[s.cur]; r.p = Math.round(r.p); r.stop = true; sfx('reel_stop', null, 0.6);
       if (!CH(r.p)) { s.msg = `NO CHERRY ON REEL ${s.cur + 1}! IT SPINS AGAIN`; s.msgT = 0.9; s.missed = s.cur; sfx('error', null, 0.5); return; }
-      sfx('ding', null, 0.4); if (++s.cur >= 3) { s.win = 0.001; sfx('jackpot', null, 0.7); } };
+      sfx('cherry', null, 0.5); if (++s.cur >= 3) { s.win = 0.001; sfx('jackpot', null, 0.7); } };
     s.move = () => {}; s.up = () => {};
     s.update = (dt) => { for (const r of s.reels) if (!r.stop) r.p += r.v * dt;
       if (s.msgT > 0 && (s.msgT -= dt) <= 0 && s.missed !== undefined) { s.reels[s.missed].stop = false; s.reels[s.missed].p += 0.5; s.missed = undefined; }
@@ -261,8 +261,8 @@ const GAMES = {
         s.rolls.push({ x: 60 + Math.random() * 392, y: 110, v: 210 + s.got * 22 + Math.random() * 40, r: Math.random() * 6, wet }); }
       for (const r of s.rolls) { r.y += r.v * dt; r.r += dt * 3;
         if (!r.gone && r.y > 410 && r.y < 450 && Math.abs(r.x - s.bx) < s.bw + 10) { r.gone = true;
-          if (r.wet) { s.got = Math.max(0, s.got - 2); s.msg = 'SOGGY ONE! -2'; s.msgT = 1; sfx('splat', null, 0.5); } else { s.got++; sfx('pickup', null, 0.5); if (s.got >= need) s.done = true; } }
-        if (!r.gone && r.y > 480) { r.gone = true; if (r.wet) continue; if (++s.miss >= s.maxMiss) { s.got = 0; s.miss = 0; s.msg = 'DROPPED TWO! START AGAIN'; s.msgT = 1.2; sfx('error', null, 0.5); } else sfx('land', null, 0.4); } }
+          if (r.wet) { s.got = Math.max(0, s.got - 2); s.msg = 'SOGGY ONE! -2'; s.msgT = 1; sfx('soggy', null, 0.5); } else { s.got++; sfx('loo_catch', null, 0.5); if (s.got >= need) s.done = true; } }
+        if (!r.gone && r.y > 480) { r.gone = true; if (r.wet) continue; if (++s.miss >= s.maxMiss) { s.got = 0; s.miss = 0; s.msg = 'DROPPED TWO! START AGAIN'; s.msgT = 1.2; sfx('error', null, 0.5); } else sfx('hit_cardboard', null, 0.4); } }
       s.rolls = s.rolls.filter(r => !r.gone); };
     return s;
   },
@@ -273,8 +273,8 @@ const GAMES = {
     s.update = (dt) => { if (s.done) return; s.t = (s.t || 0) + dt; s.band = 0.6 + Math.sin(s.t * 0.7) * 0.14;
       if (s.fire > 0) { s.fire -= dt; s.T = Math.max(0.2, s.T - dt * 0.4); return; }
       s.T += (s.heat ? 0.42 : -0.3) * dt + Math.sin(s.t * 3.1) * 0.02 * dt; s.T = Math.max(0, Math.min(1, s.T));
-      if (Math.abs(s.T - s.band) < 0.09) { s.cooked += dt; if ((s.ss = (s.ss || 0) - dt) <= 0) { s.ss = 0.5; sfx('sizzle', null, 0.15); } if (s.cooked >= s.need) { s.done = true; } }
-      if (s.T >= 0.98) { s.fire = 1.6; s.cooked = 0; sfx('smash', null, 0.5); } };
+      if (Math.abs(s.T - s.band) < 0.09) { s.cooked += dt; if ((s.ss = (s.ss || 0) - dt) <= 0) { s.ss = 0.5; sfx('fry', null, 0.25); } if (s.cooked >= s.need) { s.done = true; } }
+      if (s.T >= 0.98) { s.fire = 1.6; s.cooked = 0; sfx('flare', null, 0.6); } };
     s.draw = (g, t) => { frame(g, s.title); txt(g, s.fire > 0 ? '🔥 FIRE! START AGAIN 🔥' : 'HOLD TO HEAT · KEEP IT IN THE GREEN', S / 2, 80, 20, s.fire > 0 ? '#ff6b6b' : '#fff');
       const x = 70, y0 = 120, h = 330; g.fillStyle = '#222'; rr(g, x, y0, 50, h, 25); g.fill();
       g.fillStyle = 'rgba(57,255,20,0.45)'; g.fillRect(x, y0 + h * (1 - s.band - 0.09), 50, h * 0.18);
@@ -292,7 +292,7 @@ const GAMES = {
     const bin = (i) => ({ x: 30 + i * 158, y: 360, w: 140, h: 110 }), next = () => { s.item = Math.floor(Math.random() * 3); s.ix = 256; s.iy = 170; };
     next();
     s.down = (x, y) => { if (Math.hypot(x - s.ix, y - s.iy) < 60) s.drag = true; }; s.move = (x, y) => { if (s.drag) { s.ix = x; s.iy = y; } };
-    s.up = (x, y) => { if (!s.drag) return; s.drag = false; for (let i = 0; i < 3; i++) if (inside(x, y, bin(i))) { if (i === s.item) { s.got++; sfx('glass', null, 0.4); if (s.got >= need) s.done = true; next(); } else { s.got = Math.max(0, s.got - 2); s.bad = 0.8; sfx('error', null, 0.5); next(); } return; } s.ix = 256; s.iy = 170; };
+    s.up = (x, y) => { if (!s.drag) return; s.drag = false; for (let i = 0; i < 3; i++) if (inside(x, y, bin(i))) { if (i === s.item) { s.got++; sfx('dish_splash', null, 0.4); if (s.got >= need) s.done = true; next(); } else { s.got = Math.max(0, s.got - 2); s.bad = 0.8; sfx('error', null, 0.5); next(); } return; } s.ix = 256; s.iy = 170; };
     s.update = (dt) => { if (s.done) return; if (s.bad > 0) s.bad -= dt; if ((s.time -= dt) <= 0) { s.time = 22; s.got = 0; s.bad = 1.2; sfx('error', null, 0.5); } };
     s.draw = (g) => { frame(g, s.title, s.bad > 0 ? '#ff4d4d' : '#ffd400'); txt(g, s.bad > 0 ? 'WRONG RACK!' : 'DRAG EACH ONE TO ITS RACK', S / 2, 80, 20, s.bad > 0 ? '#ff6b6b' : '#fff');
       g.fillStyle = '#333'; rr(g, 40, 104, 432, 14, 7); g.fill(); g.fillStyle = s.time < 6 ? '#ff3b3b' : '#ffd400'; rr(g, 40, 104, 432 * s.time / 22, 14, 7); g.fill();
@@ -325,12 +325,12 @@ const GAMES = {
     const C = ['#ff3b3b', '#2f7bff', '#39ff14', '#ffd400'], s = { title: o.title || 'CLOCK IN FOR YOUR SHIFT', seq: [], len: 3, pos: 0, st: 'wait', t: 0.6, lit: -1, litT: 0, bad: 0, done: false };
     const pad = (i) => ({ x: 96 + (i % 2) * 168, y: 130 + Math.floor(i / 2) * 168, w: 152, h: 152 });
     s.down = (x, y) => { if (s.st !== 'input') return; for (let i = 0; i < 4; i++) if (inside(x, y, pad(i))) { s.lit = i; s.litT = 0.25;
-      if (s.seq[s.pos] === i) { sfx('beep', null, 0.5); if (++s.pos >= s.seq.length) { if (s.len >= 5) s.done = true; else { s.len++; s.st = 'wait'; s.t = 0.7; } } }
+      if (s.seq[s.pos] === i) { sfx('clock_beep', null, 0.5); if (++s.pos >= s.seq.length) { if (s.len >= 5) { s.done = true; sfx('punch_clock', null, 0.8); } else { s.len++; s.st = 'wait'; s.t = 0.7; } } }
       else { s.bad = 1.2; s.len = 3; s.st = 'wait'; s.t = 1.2; sfx('error', null, 0.6); } } };
     s.move = () => {}; s.up = () => {};
     s.update = (dt) => { if (s.done) return; if (s.litT > 0 && (s.litT -= dt) <= 0) s.lit = -1; if (s.bad > 0) s.bad -= dt;
       if (s.st === 'wait' && (s.t -= dt) <= 0) { s.seq = Array.from({ length: s.len }, () => Math.floor(Math.random() * 4)); s.pos = 0; s.st = 'show'; s.t = 0; }
-      else if (s.st === 'show') { s.t += dt; const i = Math.floor(s.t / 0.6); if (i >= s.seq.length) { s.st = 'input'; s.lit = -1; } else if (s.t % 0.6 < 0.4) { if (s.lit !== s.seq[i] || s.litT <= 0) { if (s.lit !== s.seq[i]) sfx('tick', null, 0.4); s.lit = s.seq[i]; s.litT = 0.4 - (s.t % 0.6); } } else s.lit = -1; } };
+      else if (s.st === 'show') { s.t += dt; const i = Math.floor(s.t / 0.6); if (i >= s.seq.length) { s.st = 'input'; s.lit = -1; } else if (s.t % 0.6 < 0.4) { if (s.lit !== s.seq[i] || s.litT <= 0) { if (s.lit !== s.seq[i]) sfx('clock_beep', null, 0.4); s.lit = s.seq[i]; s.litT = 0.4 - (s.t % 0.6); } } else s.lit = -1; } };
     s.draw = (g) => { frame(g, s.title, s.bad > 0 ? '#ff4d4d' : '#ffd400');
       txt(g, s.bad > 0 ? 'WRONG! WATCH AGAIN' : s.st === 'input' ? `NOW COPY IT · ROUND ${s.len - 2} OF 3` : 'WATCH THE PATTERN...', S / 2, 84, 22, s.bad > 0 ? '#ff6b6b' : '#fff');
       for (let i = 0; i < 4; i++) { const b = pad(i); g.globalAlpha = s.lit === i ? 1 : 0.3; g.fillStyle = C[i]; rr(g, b.x, b.y, b.w, b.h, 20); g.fill(); g.globalAlpha = 1; g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,0.5)'; rr(g, b.x, b.y, b.w, b.h, 20); g.stroke(); }
@@ -345,7 +345,7 @@ const GAMES = {
     s.down = (x, y) => { for (const it of s.items) if (!it.on && Math.abs(x - it.x) < 30 && Math.abs(y - it.y) < 60) { s.drag = it; s.ox = x - it.x; s.oy = y - it.y; return; } };
     s.move = (x, y) => { if (s.drag) { s.drag.x = x - s.ox; s.drag.y = y - s.oy; } };
     s.up = () => { const it = s.drag; if (!it) return; s.drag = null; const sl = slots.find(q => !q.f && Math.hypot(q.x - it.x, q.y - it.y) < 44);
-      if (sl && sl.k === it.k) { sl.f = it; it.on = sl; it.x = sl.x; it.y = sl.y; sfx('clack', null, 0.5); if (slots.every(q => q.f)) s.done = true; }
+      if (sl && sl.k === it.k) { sl.f = it; it.on = sl; it.x = sl.x; it.y = sl.y; sfx('cutlery', null, 0.5); if (slots.every(q => q.f)) s.done = true; }
       else { if (sl) { s.msg = it.k === 'fork' ? 'FORKS GO ON THE LEFT' : 'KNIVES GO ON THE RIGHT'; s.msgT = 1.2; sfx('error', null, 0.4); } it.x = it.hx; it.y = it.hy; } };
     s.update = (dt) => { if (s.msgT > 0) s.msgT -= dt; };
     const draw1 = (g, k, x, y) => { g.save(); g.translate(x, y); g.fillStyle = '#d8dce0'; g.strokeStyle = '#7a7f87'; g.lineWidth = 2;
@@ -364,9 +364,9 @@ const GAMES = {
     const C = [[96, 300], [176, 260], [256, 300], [336, 260], [416, 300]], s = { _C: C, title: o.title || 'LIGHT THE CANDLES', lit: C.map(() => false), heat: C.map(() => 0), mx: -99, my: -99, hold: false, gust: 3.2, blow: 0, done: false };
     s.down = (x, y) => { s.hold = true; s.mx = x; s.my = y; }; s.move = (x, y) => { s.mx = x; s.my = y; }; s.up = () => { s.hold = false; };
     s.update = (dt) => { if (s.done) return; if (s.blow > 0) s.blow -= dt;
-      C.forEach(([x, y], i) => { if (!s.lit[i] && s.hold && Math.hypot(s.mx - x, s.my - (y - 70)) < 34) { s.heat[i] += dt; if (s.heat[i] > 0.55) { s.lit[i] = true; s.heat[i] = 0; sfx('zap', null, 0.25); } } else if (!s.lit[i]) s.heat[i] = Math.max(0, s.heat[i] - dt); });
+      C.forEach(([x, y], i) => { if (!s.lit[i] && s.hold && Math.hypot(s.mx - x, s.my - (y - 70)) < 34) { s.heat[i] += dt; if (s.heat[i] > 0.55) { s.lit[i] = true; s.heat[i] = 0; sfx('match', null, 0.4); } } else if (!s.lit[i]) s.heat[i] = Math.max(0, s.heat[i] - dt); });
       if (s.lit.every(Boolean)) { s.done = true; return; }
-      if ((s.gust -= dt) <= 0) { s.gust = 2.2 + Math.random() * 1.6; const on = s.lit.map((v, i) => v ? i : -1).filter(i => i >= 0); if (on.length) { s.lit[on[Math.floor(Math.random() * on.length)]] = false; s.blow = 0.8; sfx('throw', null, 0.5); } } };
+      if ((s.gust -= dt) <= 0) { s.gust = 2.2 + Math.random() * 1.6; const on = s.lit.map((v, i) => v ? i : -1).filter(i => i >= 0); if (on.length) { s.lit[on[Math.floor(Math.random() * on.length)]] = false; s.blow = 0.8; sfx('gust', null, 0.5); } } };
     s.draw = (g, t) => { frame(g, s.title); txt(g, s.blow > 0 ? '💨 WHOOSH! ONE BLEW OUT' : 'HOLD THE MATCH ON EACH WICK', S / 2, 80, 20, s.blow > 0 ? '#9fd8ff' : '#fff');
       g.fillStyle = '#3a2416'; rr(g, 40, 330, 432, 30, 10); g.fill();
       C.forEach(([x, y], i) => { g.fillStyle = '#f5eedc'; g.fillRect(x - 16, y - 60, 32, 90); g.fillStyle = '#222'; g.fillRect(x - 2, y - 72, 4, 12);
@@ -382,8 +382,8 @@ const GAMES = {
     const newRow = () => { const top = s.rows[s.rows.length - 1]; s.cur = { x: 40, w: top.w, v: 170 + s.rows.length * 34 }; s.dir = 1; };
     newRow(); const H = 40, base = 450;
     s.down = () => { if (s.msgT > 0 || s.done) return; const top = s.rows[s.rows.length - 1], c = s.cur, l = Math.max(c.x, top.x), r = Math.min(c.x + c.w, top.x + top.w);
-      if (r - l < 14) { s.msg = 'CRASH! START AGAIN'; s.msgT = 1.2; sfx('smash', null, 0.6); return; }
-      s.rows.push({ x: l, w: r - l }); sfx('glass', null, 0.5); if (s.rows.length - 1 >= need) { s.done = true; s.cur = null; return; } newRow(); };
+      if (r - l < 14) { s.msg = 'CRASH! START AGAIN'; s.msgT = 1.2; sfx('shatter', null, 0.6); return; }
+      s.rows.push({ x: l, w: r - l }); sfx('glass_stack', null, 0.5); if (s.rows.length - 1 >= need) { s.done = true; s.cur = null; return; } newRow(); };
     s.move = () => {}; s.up = () => {};
     s.update = (dt) => { if (s.msgT > 0) { if ((s.msgT -= dt) <= 0) { s.rows = [{ x: 156, w: 200 }]; newRow(); } return; } const c = s.cur; if (!c) return; c.x += c.v * s.dir * dt; if (c.x + c.w > 472) { c.x = 472 - c.w; s.dir = -1; } if (c.x < 40) { c.x = 40; s.dir = 1; } };
     const tray = (g, x, y, w) => { g.fillStyle = '#8d6e63'; g.fillRect(x, y + H - 8, w, 8); for (let gx = x + 6; gx + 18 < x + w; gx += 24) { g.fillStyle = 'rgba(220,240,255,0.35)'; g.strokeStyle = '#e8f4ff'; g.lineWidth = 2; g.beginPath(); g.moveTo(gx, y + 4); g.lineTo(gx + 18, y + 4); g.lineTo(gx + 15, y + H - 8); g.lineTo(gx + 3, y + H - 8); g.closePath(); g.fill(); g.stroke(); } };
@@ -399,8 +399,8 @@ const GAMES = {
     for (let i = 0; i < 12; i++) s.bits.push({ x: 70 + Math.random() * 372, y: 120 + Math.random() * 220, r: Math.random() * 6, n: 3 + Math.floor(Math.random() * 3), got: false });
     s.down = (x, y) => { s.px = x; s.py = y; }; s.up = () => { s.px = null; };
     s.move = (x, y) => { if (s.px === null) return; const dx = x - s.px, dy = y - s.py; for (const b of s.bits) if (!b.got && Math.hypot(b.x - x, b.y - y) < 46) { b.x = Math.max(30, Math.min(482, b.x + dx * 0.9)); b.y = Math.max(110, Math.min(476, b.y + dy * 0.9)); b.r += dx * 0.02;
-        if (inside(b.x, b.y, PAN)) { b.got = true; sfx('glass', null, 0.3); } }
-      s.px = x; s.py = y; if (s.bits.every(b => b.got)) s.done = true; if ((s.sw = (s.sw || 0) + Math.hypot(dx, dy)) > 120) { s.sw = 0; sfx('scrub', null, 0.2); } };
+        if (inside(b.x, b.y, PAN)) { b.got = true; sfx('shard', null, 0.4); } }
+      s.px = x; s.py = y; if (s.bits.every(b => b.got)) s.done = true; if ((s.sw = (s.sw || 0) + Math.hypot(dx, dy)) > 120) { s.sw = 0; sfx('broom', null, 0.25); } };
     s.update = () => {};
     s.draw = (g) => { frame(g, s.title); txt(g, 'SWEEP EVERY BIT INTO THE DUSTPAN', S / 2, 80, 20);
       g.fillStyle = '#3d3f43'; rr(g, 26, 104, 460, 380, 18); g.fill();
@@ -425,7 +425,7 @@ const GAMES = {
       while (q.length) { const [x, y] = q.shift(); for (const [d, dx, dy] of DIRS) if (g2[y][x] & d) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= NN || ny >= NN) continue; if (!(g2[ny][nx] & OPP[d]) || seen.has(ny * NN + nx)) continue; seen.add(ny * NN + nx); q.push([nx, ny]); } }
       s.on = seen; return seen.has(r1 * NN + NN - 1) && (g2[r1][NN - 1] & 2); };
     flow();
-    s.down = (x, y) => { if (s.win) return; const cx = Math.floor((x - X0) / T), cy = Math.floor((y - Y0) / T); if (cx < 0 || cy < 0 || cx >= NN || cy >= NN) return; g2[cy][cx] = rot(g2[cy][cx]); sfx('tick', null, 0.4); if (flow()) { s.win = 0.001; sfx('zap', null, 0.6); } };
+    s.down = (x, y) => { if (s.win) return; const cx = Math.floor((x - X0) / T), cy = Math.floor((y - Y0) / T); if (cx < 0 || cy < 0 || cx >= NN || cy >= NN) return; g2[cy][cx] = rot(g2[cy][cx]); sfx('pipe_turn', null, 0.4); if (flow()) { s.win = 0.001; sfx('barrier', null, 0.7); } };
     s.move = () => {}; s.up = () => {}; s.update = (dt) => { if (s.win) { s.win += dt; if (s.win > 0.9) s.done = true; } };
     s.draw = (g) => { frame(g, s.title); txt(g, s.win ? '⚡ BARRIER UP!' : 'TAP TILES TO TURN THEM · POWER TO THE BARRIER', S / 2, 80, 17, s.win ? '#39ff14' : '#fff');
       for (let y = 0; y < NN; y++) for (let x = 0; x < NN; x++) { const px = X0 + x * T, py = Y0 + y * T, m = g2[y][x], live = s.on.has(y * NN + x);
@@ -843,18 +843,18 @@ const NEW_GAMES = {
       else if (s.ph === 1 && y < 330) s.wy = y;
       else if (s.ph === 2) s.ty = y; };
     s.move = (x, y) => {
-      if (s.ph === 0 && s.lastX !== null) { const dx = x - s.lastX; s.lastX = x; if (!dx) return; const d = Math.sign(dx); if (d !== s.dir && Math.abs(s.acc) > 36) { s.screw++; s.acc = 0; sfx('tick', null, 0.35); if (s.screw >= s.need) { s.ph = 1; s.lastX = null; sfx('clack', null, 0.5); } } if (d !== s.dir) s.acc = 0; s.dir = d; s.acc += dx; }
-      else if (s.ph === 1 && s.wy !== null) { const d = y - s.wy; s.wy = y; if (d > 0) s.wing = Math.min(1, s.wing + d / 230); if (s.wing >= 1) { s.ph = 2; s.pop = 1; s.wy = null; sfx('pop', null, 0.9); } }
+      if (s.ph === 0 && s.lastX !== null) { const dx = x - s.lastX; s.lastX = x; if (!dx) return; const d = Math.sign(dx); if (d !== s.dir && Math.abs(s.acc) > 36) { s.screw++; s.acc = 0; sfx('corkscrew', null, 0.35); if (s.screw >= s.need) { s.ph = 1; s.lastX = null; sfx('corkscrew', null, 0.7); } } if (d !== s.dir) s.acc = 0; s.dir = d; s.acc += dx; }
+      else if (s.ph === 1 && s.wy !== null) { const d = y - s.wy; s.wy = y; if (d > 0) s.wing = Math.min(1, s.wing + d / 230); if (s.wing >= 1) { s.ph = 2; s.pop = 1; s.wy = null; sfx('cork', null, 0.9); } }
       else if (s.ph === 2 && s.ty !== null) s.tilt = Math.max(0, Math.min(1, (y - s.ty) / 170)); };
     s.up = () => { s.lastX = null; s.wy = null;
       if (s.ph === 2 && s.ty !== null) { s.ty = null; s.tilt = 0; const f = s.fill[s.gi];
-        if (f >= s.LINE[0] && f <= s.LINE[1]) { s.ok[s.gi] = true; sfx('clink', null, 0.6); s.gi++; if (s.gi >= 3) s.done = true; }
+        if (f >= s.LINE[0] && f <= s.LINE[1]) { s.ok[s.gi] = true; sfx('wine_glass', null, 0.6); s.gi++; if (s.gi >= 3) s.done = true; }
         else if (f > 0.05) { s.msg = 'NOT ENOUGH — TOP IT UP TO THE LINE'; s.msgT = 1.4; } } };
     s.update = (dt) => { if (s.pop > 0) s.pop -= dt * 1.5; if (s.msgT > 0) s.msgT -= dt;
       if (s.spill > 0) { s.spill -= dt; if (s.spill <= 0) s.fill[s.gi] = 0; return; }
       if (s.ph === 1 && s.wy === null && s.wing > 0 && s.wing < 1) s.wing = Math.max(0, s.wing - dt * 0.6);
-      if (s.ph === 2 && s.gi < 3) { const flow = Math.max(0, s.tilt - 0.3) / 0.7; if (flow > 0) { s.fill[s.gi] += flow * dt * 0.42; if ((s.pt = (s.pt || 0) - dt) <= 0) { s.pt = 0.2; sfx('pour', null, 0.12); } }
-        if (s.fill[s.gi] > 0.86) { s.spill = 1.3; s.tilt = 0; s.ty = null; s.msg = 'OVERFLOWED! WIPE IT UP · POUR THAT ONE AGAIN'; s.msgT = 1.6; sfx('splat', null, 0.6); } } };
+      if (s.ph === 2 && s.gi < 3) { const flow = Math.max(0, s.tilt - 0.3) / 0.7; if (flow > 0) { s.fill[s.gi] += flow * dt * 0.42; if ((s.pt = (s.pt || 0) - dt) <= 0) { s.pt = 0.2; sfx('wine_pour', null, 0.15); } }
+        if (s.fill[s.gi] > 0.86) { s.spill = 1.3; s.tilt = 0; s.ty = null; s.msg = 'OVERFLOWED! WIPE IT UP · POUR THAT ONE AGAIN'; s.msgT = 1.6; sfx('spill', null, 0.6); } } };
     const glass = (g, x, y, f, ok, cur) => { const w = 44, h = 70;
       if (cur) { g.fillStyle = 'rgba(255,212,0,0.18)'; g.beginPath(); g.ellipse(x, y + 4, 54, 12, 0, 0, 7); g.fill(); }
       g.save(); g.beginPath(); g.moveTo(x - w, y - 130); g.quadraticCurveTo(x - w - 6, y - 70, x, y - 60); g.quadraticCurveTo(x + w + 6, y - 70, x + w, y - 130); g.closePath(); g.clip();
@@ -902,7 +902,7 @@ const NEW_GAMES = {
     s.move = () => {};
     s.up = (x, y) => { if (s.st !== 'input' || s.sx === null) return; const dx = x - s.sx, dy = y - s.sy; s.sx = null; if (Math.hypot(dx, dy) < 45) return;
       const k = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
-      if (k === s.seq[s.step]) { s.step++; sfx('rustle', null, 0.5); if (s.step >= 4) { s.n++; sfx('ding', null, 0.5); if (s.n >= s.need) s.done = true; else { s.st = 'next'; s.T = 0.9; } } }
+      if (k === s.seq[s.step]) { s.step++; sfx('napkin', null, 0.5); if (s.step >= 4) { s.n++; sfx('fold_done', null, 0.5); if (s.n >= s.need) s.done = true; else { s.st = 'next'; s.T = 0.9; } } }
       else { s.crumple = 1; s.st = 'crumple'; s.T = 1.1; sfx('error', null, 0.5); s.msg = `WRONG FOLD (THAT WAS ${D[k][2]}) — NEW NAPKIN`; s.msgT = 1.6; } };
     s.update = (dt) => { if (s.msgT > 0) s.msgT -= dt; if (s.crumple > 0) s.crumple = Math.max(0, s.crumple - dt); if (s.st === 'input') return; if ((s.T -= dt) <= 0) { if (s.st === 'show') s.st = 'input'; else fresh(); } };
     s.draw = (g, t) => {
@@ -938,14 +938,14 @@ const NEW_GAMES = {
     const hit = (x, y) => arms.findIndex(a => Math.hypot(a.x - x, a.y + 26 - y) < 40);
     s.down = (x, y) => { if (s.win > 0 || s.zap > 0) return; s.mx = x; s.my = y;
       if (inside(x, y, s.SW)) { const all = s.st.every(v => v === 'ok'); if (!s.power && s.st.some(v => v === 'empty')) { s.msg = 'A SOCKET\'S STILL EMPTY'; s.msgT = 1.2; sfx('error', null, 0.4); return; }
-        s.power = !s.power; sfx('toggle', null, 0.6); if (s.power && all) { s.win = 0.001; sfx('ding', null, 0.6); } return; }
+        s.power = !s.power; sfx('lightswitch', null, 0.6); if (s.power && all) { s.win = 0.001; sfx('bulbs_on', null, 0.6); } return; }
       if (inside(x, y, s.BOX)) { s.drag = { x, y }; return; }
-      const i = hit(x, y); if (i < 0) return; if (s.st[i] === 'blown') { if (s.power) { s.zap = 0.9; s.msg = 'ZZZT! TURN THE POWER OFF FIRST'; s.msgT = 1.4; sfx('zap', null, 0.9); return; } s.hold = i; s.ht = 0; } };
+      const i = hit(x, y); if (i < 0) return; if (s.st[i] === 'blown') { if (s.power) { s.zap = 0.9; s.msg = 'ZZZT! TURN THE POWER OFF FIRST'; s.msgT = 1.4; sfx('shock', null, 0.9); return; } s.hold = i; s.ht = 0; } };
     s.move = (x, y) => { s.mx = x; s.my = y; if (s.hold >= 0 && hit(x, y) !== s.hold) { s.hold = -1; s.ht = 0; } };
-    s.up = (x, y) => { s.hold = -1; s.ht = 0; if (!s.drag) return; s.drag = null; const i = hit(x ?? s.mx, y ?? s.my); if (i >= 0 && s.st[i] === 'empty') { s.st[i] = 'new'; sfx('clack', null, 0.5); } };
+    s.up = (x, y) => { s.hold = -1; s.ht = 0; if (!s.drag) return; s.drag = null; const i = hit(x ?? s.mx, y ?? s.my); if (i >= 0 && s.st[i] === 'empty') { s.st[i] = 'new'; sfx('bulb_in', null, 0.5); } };
     s.update = (dt) => { if (s.zap > 0) s.zap -= dt; if (s.msgT > 0) s.msgT -= dt; if (s.win > 0) { s.win += dt; if (s.win > 0.8) s.done = true; return; }
       for (let i = 0; i < N; i++) if (s.st[i] === 'new') s.st[i] = 'ok';
-      if (s.hold >= 0) { s.ht += dt; if ((s.tk = (s.tk || 0) - dt) <= 0) { s.tk = 0.15; sfx('tick', null, 0.2); } if (s.ht >= 0.7) { s.st[s.hold] = 'empty'; s.hold = -1; s.ht = 0; sfx('glass', null, 0.4); } } };
+      if (s.hold >= 0) { s.ht += dt; if ((s.tk = (s.tk || 0) - dt) <= 0) { s.tk = 0.15; sfx('bulb_twist', null, 0.25); } if (s.ht >= 0.7) { s.st[s.hold] = 'empty'; s.hold = -1; s.ht = 0; sfx('bulb_out', null, 0.4); } } };
     const bulb = (g, x, y, lit, dead, t) => { if (lit) { const gr = g.createRadialGradient(x, y + 28, 2, x, y + 28, 50); gr.addColorStop(0, 'rgba(255,230,150,0.9)'); gr.addColorStop(1, 'rgba(255,200,80,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y + 28, 50, 0, 7); g.fill(); }
       g.fillStyle = lit ? '#fff4c0' : dead ? '#5a5a5a' : '#e8e4d8'; g.beginPath(); g.moveTo(x - 9, y + 10); g.quadraticCurveTo(x - 14, y + 30, x, y + 50); g.quadraticCurveTo(x + 14, y + 30, x + 9, y + 10); g.fill();          // a candle bulb
       if (dead) { g.strokeStyle = '#222'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x - 4, y + 22); g.lineTo(x - 1, y + 30); g.moveTo(x + 4, y + 22); g.lineTo(x + 2, y + 34); g.stroke(); g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.arc(x, y + 34, 6, 0, 7); g.fill(); }
@@ -984,13 +984,13 @@ const NEW_GAMES = {
     const s = { title: o.title || 'FLIP THE BURGERS', need, served: 0, burnt: 0, slots: SL.map(() => null), spawnT: 0.3, flare: SL.map(() => 0), msg: '', msgT: 0, plate: [], done: false, _SL: SL };
     s.down = (x, y) => { if (s.done) return; const i = SL.findIndex(p => Math.hypot(p.x - x, p.y - y) < 52); if (i < 0) return; const b = s.slots[i]; if (!b) return;
       const c = b.side ? b.c1 : b.c0; if (c < 0.6) { s.msg = 'NOT BROWNED YET'; s.msgT = 0.8; sfx('tap', null, 0.3); return; }
-      if (!b.side) { b.side = 1; b.flip = 1; sfx('sizzle', null, 0.6); } else { s.slots[i] = null; s.served++; s.plate.push(1); sfx('ding', null, 0.5); if (s.served >= need) s.done = true; } };
+      if (!b.side) { b.side = 1; b.flip = 1; sfx('flip', null, 0.6); } else { s.slots[i] = null; s.served++; s.plate.push(1); sfx('plate_down', null, 0.5); if (s.served >= need) s.done = true; } };
     s.move = () => {}; s.up = () => {};
     s.update = (dt) => { if (s.done) return; if (s.msgT > 0) s.msgT -= dt;
-      if ((s.spawnT -= dt) <= 0) { const free = s.slots.map((b, i) => b ? -1 : i).filter(i => i >= 0); if (free.length && s.slots.filter(Boolean).length < 4) { const i = free[Math.floor(Math.random() * free.length)]; s.slots[i] = { c0: 0, c1: 0, side: 0, rate: 0.2 + Math.random() * 0.12, flip: 0 }; sfx('sizzle', null, 0.3); } s.spawnT = 1.4 + Math.random() * 0.8; }
+      if ((s.spawnT -= dt) <= 0) { const free = s.slots.map((b, i) => b ? -1 : i).filter(i => i >= 0); if (free.length && s.slots.filter(Boolean).length < 4) { const i = free[Math.floor(Math.random() * free.length)]; s.slots[i] = { c0: 0, c1: 0, side: 0, rate: 0.2 + Math.random() * 0.12, flip: 0 }; sfx('grill', null, 0.3); } s.spawnT = 1.4 + Math.random() * 0.8; }
       s.slots.forEach((b, i) => { if (s.flare[i] > 0) s.flare[i] -= dt; else if (b && Math.random() < dt * 0.05) s.flare[i] = 1.4;
         if (!b) return; if (b.flip > 0) b.flip -= dt * 3; const k = b.rate * dt * (s.flare[i] > 0 ? 2 : 1); if (b.side) b.c1 += k; else b.c0 += k;
-        if ((b.side ? b.c1 : b.c0) > 1.15) { s.slots[i] = null; s.burnt++; sfx('splat', null, 0.4); s.msg = `BURNT! ${s.burnt}/3 IN THE BIN`; s.msgT = 1.2; if (s.burnt >= 3) { s.msg = 'THREE BURNT — START AGAIN'; s.msgT = 1.8; s.burnt = 0; s.served = 0; s.plate = []; s.slots = SL.map(() => null); } } }); };
+        if ((b.side ? b.c1 : b.c0) > 1.15) { s.slots[i] = null; s.burnt++; sfx('bin', null, 0.5); s.msg = `BURNT! ${s.burnt}/3 IN THE BIN`; s.msgT = 1.2; if (s.burnt >= 3) { s.msg = 'THREE BURNT — START AGAIN'; s.msgT = 1.8; s.burnt = 0; s.served = 0; s.plate = []; s.slots = SL.map(() => null); } } }); };
     const col = (c) => { const k = Math.min(1.2, c); if (k < 0.6) { const u = k / 0.6; return `rgb(${Math.round(214 - 40 * u)},${Math.round(110 - 20 * u)},${Math.round(120 - 50 * u)})`; } if (k <= 1) { const u = (k - 0.6) / 0.4; return `rgb(${Math.round(150 - 50 * u)},${Math.round(84 - 34 * u)},${Math.round(40 - 16 * u)})`; } return '#1e1612'; };
     s.draw = (g, t) => {
       P.scene(g, s.title, () => { g.fillStyle = P.grad(g, 0, 0, 0, S, ['#8fd0ff', '#d8f0ff']); g.fillRect(0, 0, S, 200); g.fillStyle = '#5aa83a'; g.fillRect(0, 160, S, 360);
@@ -1029,11 +1029,11 @@ const NEW_GAMES = {
     const spout = () => [s.mx - 46, s.my - 34];
     s.down = (x, y) => { s.hold = true; s.mx = x; s.my = y; }; s.move = (x, y) => { s.mx = x; s.my = y; }; s.up = () => { s.hold = false; };
     s.update = (dt) => { if (s.done) return; s.t += dt; if (s.msgT > 0) s.msgT -= dt; const [sx, sy] = spout();
-      s.filling = s.hold && inside(s.mx, s.my, s.TAP); if (s.filling) { s.tank = Math.min(1, s.tank + dt * 0.7); if ((s.ft = (s.ft || 0) - dt) <= 0) { s.ft = 0.25; sfx('pour', null, 0.12); } }
+      s.filling = s.hold && inside(s.mx, s.my, s.TAP); if (s.filling) { s.tank = Math.min(1, s.tank + dt * 0.7); if ((s.ft = (s.ft || 0) - dt) <= 0) { s.ft = 0.25; sfx('tap_fill', null, 0.15); } }
       s.pouring = s.hold && !s.filling && s.tank > 0 && s.my > 120; s.target = -1;
       if (s.pouring) { s.tank = Math.max(0, s.tank - dt * 0.16); if (s.tank <= 0) { s.msg = 'THE CAN\'S EMPTY — FILL IT AT THE TAP'; s.msgT = 1.5; }
-        const i = B.findIndex(b => !b.ok && Math.abs(s.bx(b) - sx) < 30 && sy < b.y + 30); s.target = i; if (i >= 0) { const b = B[i]; b.m += dt * 0.3; b.still = 0; if ((s.pt = (s.pt || 0) - dt) <= 0) { s.pt = 0.22; sfx('pour', null, 0.1); } if (b.m > 1) { b.m = 0.35; b.drip = 1.6; s.msg = 'DROWNED IT! IT ALL POURED OUT'; s.msgT = 1.4; sfx('splat', null, 0.5); } } }
-      B.forEach((b, i) => { if (b.drip > 0) b.drip -= dt; if (b.ok) return; if (i !== s.target) { b.m = Math.max(0, b.m - dt * 0.012); if (b.m >= s.BAND[0] && b.m <= s.BAND[1]) { b.still += dt; if (b.still > 0.8) { b.ok = true; sfx('ding', null, 0.4); } } else b.still = 0; } });
+        const i = B.findIndex(b => !b.ok && Math.abs(s.bx(b) - sx) < 30 && sy < b.y + 30); s.target = i; if (i >= 0) { const b = B[i]; b.m += dt * 0.3; b.still = 0; if ((s.pt = (s.pt || 0) - dt) <= 0) { s.pt = 0.22; sfx('watering', null, 0.15); } if (b.m > 1) { b.m = 0.35; b.drip = 1.6; s.msg = 'DROWNED IT! IT ALL POURED OUT'; s.msgT = 1.4; sfx('spill', null, 0.5); } } }
+      B.forEach((b, i) => { if (b.drip > 0) b.drip -= dt; if (b.ok) return; if (i !== s.target) { b.m = Math.max(0, b.m - dt * 0.012); if (b.m >= s.BAND[0] && b.m <= s.BAND[1]) { b.still += dt; if (b.still > 0.8) { b.ok = true; sfx('bloom', null, 0.5); } } else b.still = 0; } });
       if (B.every(b => b.ok)) s.done = true; };
     s.draw = (g, t) => {
       P.scene(g, s.title, () => { g.fillStyle = '#1e2228'; g.fillRect(0, 0, S, S); for (let y = 60; y < 420; y += 18) { g.fillStyle = '#2a2e36'; g.fillRect(0, y, S, 4); g.fillStyle = '#121418'; g.fillRect(0, y + 16, S, 2); }   // black weatherboard
@@ -1074,15 +1074,15 @@ const NEW_GAMES = {
     for (let i = 0; i < 4; i++) { spawn(); s.items[i].x = 40 + i * 110; }
     s.down = (x, y) => { if (s.stun > 0) return; s.hold = true; s.mx = x; s.my = y; }; s.move = (x, y) => { s.mx = x; s.my = y; };
     s.up = (x, y) => { if (!s.hold) return; s.hold = false; if (x != null) { s.mx = x; s.my = y; } if (!s.inNet.length) return;
-      if (inside(s.mx, s.my, BIN)) { s.got += s.inNet.length; sfx('can', null, 0.6); s.inNet = []; if (s.got >= need) s.done = true; }
-      else { for (const it of s.inNet) { it.x = s.mx; it.y = Math.max(Y0 + 20, Math.min(Y1 - 20, s.my)); s.items.push(it); } s.inNet = []; sfx('splat', null, 0.3); s.msg = 'DROPPED IT BACK IN! EMPTY THE NET IN THE BIN'; s.msgT = 1.3; } };
+      if (inside(s.mx, s.my, BIN)) { s.got += s.inNet.length; sfx('litter_bin', null, 0.6); s.inNet = []; if (s.got >= need) s.done = true; }
+      else { for (const it of s.inNet) { it.x = s.mx; it.y = Math.max(Y0 + 20, Math.min(Y1 - 20, s.my)); s.items.push(it); } s.inNet = []; sfx('plop', null, 0.4); s.msg = 'DROPPED IT BACK IN! EMPTY THE NET IN THE BIN'; s.msgT = 1.3; } };
     s.update = (dt) => { if (s.done) return; if (s.msgT > 0) s.msgT -= dt; if (s.stun > 0) s.stun -= dt;
       if ((s.spawnT -= dt) <= 0) { if (s.items.length < 7) spawn(); s.spawnT = 0.9 + Math.random() * 0.7; }
       const wet = s.hold && s.my > Y0 && s.my < Y1;
       for (let i = s.items.length - 1; i >= 0; i--) { const it = s.items[i]; it.x += it.v * dt; it.b += dt * 3; it.r += dt * (it.k === 'duck' ? 0 : 0.6);
         if (it.x > S + 50) { s.items.splice(i, 1); continue; }
-        if (wet && Math.hypot(it.x - s.mx, it.y - s.my) < 40) { if (it.k === 'duck') { s.items.splice(i, 1); for (const q of s.inNet) { q.x = s.mx; s.items.push(q); } s.inNet = []; s.hold = false; s.stun = 0.9; s.msg = 'QUACK! YOU NETTED A DUCK — DROPPED THE LOT'; s.msgT = 1.6; sfx('aww', null, 0.5); s.flap = { x: it.x, y: it.y, t: 1 }; continue; }
-          if (s.inNet.length < 3) { s.inNet.push(it); s.items.splice(i, 1); sfx('splat', null, 0.25); } } }
+        if (wet && Math.hypot(it.x - s.mx, it.y - s.my) < 40) { if (it.k === 'duck') { s.items.splice(i, 1); for (const q of s.inNet) { q.x = s.mx; s.items.push(q); } s.inNet = []; s.hold = false; s.stun = 0.9; s.msg = 'QUACK! YOU NETTED A DUCK — DROPPED THE LOT'; s.msgT = 1.6; sfx('quack', null, 0.5); s.flap = { x: it.x, y: it.y, t: 1 }; continue; }
+          if (s.inNet.length < 3) { s.inNet.push(it); s.items.splice(i, 1); sfx('net_scoop', null, 0.3); } } }
       if (s.flap) { s.flap.t -= dt; s.flap.x += dt * 160; s.flap.y -= dt * 120; if (s.flap.t <= 0) s.flap = null; } };
     const litter = (g, it, x, y) => { g.save(); g.translate(x, y); g.rotate(it.k === 'duck' ? 0 : Math.sin(it.r) * 0.6);
       if (it.k === 'can') { g.fillStyle = '#c62828'; rr(g, -9, -16, 18, 32, 4); g.fill(); g.fillStyle = '#ddd'; g.fillRect(-9, -16, 18, 4); g.fillStyle = '#fff'; g.fillRect(-5, -4, 10, 6); }

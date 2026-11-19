@@ -221,7 +221,7 @@ export class Character {
     this.rag.moveVel.set(0, 0, 0);
     this.pendingLine = line;
     this.bubble.visible = false; this.speakT = 0; if (this.voicePending) { this.voicePending = false; cancelLine('npc_' + this.id); }      // (a line still getting ready isn't said now)
-    sfx('boing', this.headPos(_v), 1);
+    sfx('ko', this.headPos(_v), 1);
     this.onEvent && this.onEvent('ko', this);
   }
 

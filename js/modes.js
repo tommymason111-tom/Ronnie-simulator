@@ -51,7 +51,7 @@ export function modesFor(place) {
 }
 const ATTACKS = {
   tommy:  [{ key: 'trip', icon: '🟤', title: 'TOMMY HAS ATTACKED YOU WITH HIS FINAL BALL', sub: 'DOWN FOR 2.5 SECONDS' }],
-  noah:   [{ key: 'tackle', icon: '🏉', title: 'TACKLED BY NOAH!', sub: 'FLOORED!' }],
+  noah:   [{ key: 'tackle', icon: '🏉', title: 'TACKLED BY NOAH!', sub: 'FLOORED!', sfx: 'tackle' }],
   aidan:  [{ key: 'beer', icon: '🍺', title: 'AIDAN FORCES YOU TO HAVE ONE MORE BEER!', sub: 'DIZZY!', sfx: 'glass' }],
   harry:  [{ key: 'dating', icon: '💘', title: 'HARRY DISTRACTS YOU WITH HIS DATING HISTORY', sub: 'STUCK LISTENING!', sfx: 'kiss' }],
   ethan:  [{ key: 'pepsi', icon: '🥤', title: 'ETHAN HITS YOU WITH A PEPSI MAX ATTACK!', sub: 'FIZZED! NO EATING!', sfx: 'psst' }],
@@ -228,7 +228,7 @@ export class Director {
     else this.player2 = null;
     // IMPOSTER (multiplayer, the Oysterfleet): no food, no squad, no Tommy: see imposter.js
     if (id === 'imposter' || id === 'imposter2') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null);
-      this.imposter = g.makeImposter ? g.makeImposter(id === 'imposter2' ? 2 : 1) : null; sfx('fanfare', null, 1); return; }
+      this.imposter = g.makeImposter ? g.makeImposter(id === 'imposter2' ? 2 : 1) : null; sfx('gamestart', null, 1); return; }
     if (this.remote) { tommy.attacks = false; tommy.directed = false; if (g.fx) g.fx.setCountdown(null); return; }
     if (id === 'date') this.startDate();
     if (g.room.name === 'Lidl' && (id === 'sweep' || id === 'roam')) this.setupLidlStaff(id);    // uniforms, and people on the tills
@@ -255,7 +255,7 @@ export class Director {
       roam: 'Free roam, Ron. Have a wander. Nobody\'s attacking you. Today.',
     }[id], this.noNpc ? 0 : 5);
     if (this.noNpc) { this.hideTommy(true); tommy.active = false; }
-    sfx('fanfare', null, 1);
+    sfx('gamestart', null, 1);
   }
 
   // Tommy sits Imposter out (out of sight, out of the way)
@@ -339,7 +339,7 @@ export class Director {
       chonkoff: 'Time! ...the scales have left the building.',
       chonkoff2: 'Time! ...both of you are a disgrace. I\'m very proud.',
     }[this.mode], 5);
-    sfx('fanfare', null, 1);
+    sfx('timeup', null, 1);
     // squad goes quiet
     for (const c of this.cast.slice(1)) c.active = false;
   }
@@ -442,7 +442,7 @@ export class Director {
     const st = this.g.room.spawns, free = st.slice(0, 5).find(p => this.g.items.items.every(it => it.pos.distanceToSquared(p) > 0.12 * 0.12)) || st[0];
     const it = this.g.items.spawn(type, free);
     it.temp = false; it.placedAt = performance.now(); it.placedBy = who;
-    sfx('spawn', free, 0.5);
+    sfx('plate_down', free, 0.5);
   }
   // Each person's signature move on Ronnie: a banner saying exactly what happened,
   // and a short stun (dizzy, frozen, thrown, hooked...).
@@ -456,7 +456,7 @@ export class Director {
     const vs = who.mpTarget && who.mpTarget.id ? who.mpTarget.name : (this.mp && this.mp.on ? (this.mp.net.name || 'the host') : null);
     if (this.mp && this.mp.on && this.mp.host) this.mp.net.send({ t: 'announce', who: who.id, key, target: vs, targetId: who.mpTarget && who.mpTarget.id });
     this.showAnnounce(who, key, who.mpTarget && who.mpTarget.id ? vs : null);
-    sfx('notify', null, 0.7);
+    sfx('attack_in', null, 0.7);
     this.markUsed(who, key);
     // the attack WILL happen once the pop-up has been up for ANNOUNCE_T seconds. Noah's
     // tackle and Tommy's trip land when they reach you, with this as a backstop.
@@ -468,7 +468,7 @@ export class Director {
     const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
     if (fx) fx.showCard({ vs: vsName, name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
     else g.showBanner(A.title, A.sub);
-    if (this.remote) { sfx('notify', null, 0.7); setTimeout(() => fx && fx.hideCard(), (ANNOUNCE_T + 0.3) * 1000); }
+    if (this.remote) { sfx('attack_in', null, 0.7); setTimeout(() => fx && fx.hideCard(), (ANNOUNCE_T + 0.3) * 1000); }
   }
   // 2) the attack itself: the pop-up goes, and the effects and animation play
   stun(who, key, fromNet = false) {
@@ -515,7 +515,7 @@ export class Director {
         setTimeout(() => { fx.cutscene('siu', 2.6); shout('Siuuuuuuu!', { rate: 0.55, pitch: 1.3, volume: 0.9 }); }, 900);
         break;
       }
-      case 'rod': P.effect('tether', 5, { r: 0.45 }); who.reeling = 5; sfx('throw', null, 0.8); fx.cutscene('rod', 5); break;
+      case 'rod': P.effect('tether', 5, { r: 0.45 }); who.reeling = 5; sfx('cast', null, 0.8); fx.cutscene('rod', 5); break;
       case 'bbq': break;      // Ian sets up the barbecue and throws the food himself (squad.js)
       case 'diet': {          // a sad salad held up in front of you
         P.effect('noEat', 6); tint(0x6aaa3a, 6, 0.1);
@@ -981,7 +981,7 @@ export class Director {
         c.say(['Ooh, is that the waiter?', 'Just checking my phone, babe.', '...anyway.', 'Is that a pigeon? Inside?', 'That painting looks like a sausage roll.'][Math.floor(Math.random() * 5)], 2);
       }
     } else {
-      if (!d.warned && d.t < 0.6) { d.warned = true; sfx('notify', c.headPos(_v), 1); g.words.show('!', c.headPos(_v).add({ x: 0, y: 0.35, z: 0 }), '#B57BFF', 0.25, 0.6); }
+      if (!d.warned && d.t < 0.6) { d.warned = true; sfx('warn', c.headPos(_v), 1); g.words.show('!', c.headPos(_v).add({ x: 0, y: 0.35, z: 0 }), '#B57BFF', 0.25, 0.6); }
       if (d.t <= 0) { d.look = true; d.t = 2.5 + Math.random() * 3; d.grace = 0.5; c.lookOverride = null; }
     }
     this.g.G.wristDirty = true;
@@ -991,7 +991,7 @@ export class Director {
     const d = this.date, g = this.g;
     if (d.cool > 0) return;
     d.cool = 2.5; d.catches++;
-    sfx('boing', null, 0.8);
+    sfx('record_scratch', null, 0.8);
     g.words.show('BUSTED!', g.player.head.clone().addScaledVector(g.player.fwd, 0.8), '#B57BFF', 0.2, 1.4);
     d.chloe.say(['RONNIE.', 'Ronnie. Put. It. Down.', 'I SAW that, babe.'][Math.min(2, d.catches - 1)], 5);
     if (d.catches >= 3) { d.chloe.say('That\'s it. I\'ve ordered you a salad.', 6); setTimeout(() => this.end(), 1800); }
@@ -1007,7 +1007,7 @@ export class Director {
     grp.position.copy(pos);
     this.g.scene.add(grp);
     this.bubbles.push({ grp, word, who, t: 0, phase: Math.random() * 6, vel: new THREE.Vector3() });
-    sfx('spawn', pos, 0.25);
+    sfx('bubble', pos, 0.3);
   }
   removeBubble(b) { this.g.scene.remove(b.grp); b.grp.children[1].material.dispose(); }
   updateBubbles(dt, ctx) {
@@ -1034,7 +1034,7 @@ export class Director {
         if (d < 0.2 * p.scale) {
           this.stats && this.running && this.stats.roasted++;
           g.words.show(b.word, p.head.clone().addScaledVector(p.fwd, 0.6), '#FF8FC7', 0.14, 1.2);
-          sfx('ding', null, 0.6);
+          sfx('roast', null, 0.6);
           if (b.who && Math.random() < 0.4) b.who.say('chatter', 2);
         }
         this.removeBubble(b); this.bubbles.splice(i, 1);
