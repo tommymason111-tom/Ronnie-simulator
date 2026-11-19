@@ -389,6 +389,9 @@ const SOUNDS = {
     const lp = filt(d, 'lowpass', 2600, 1.5);
     for (const [dt, len] of [[0, 0.12], [0.18, 0.12], [0.36, 0.55]]) for (const f of [415, 523, 622]) { const o = tone(lp, t + dt, 'sawtooth', f, f * 0.995, len, 0.09, 0.008); wobble(o, t + dt, len + 0.05, 30, 3); }
   },
+  whistle_ref(d, t) {  // a referee's pea whistle: a short peep and a long trilling blast
+    for (const [dt, len] of [[0, 0.12], [0.2, 0.55]]) { const o = tone(d, t + dt, 'sine', 2950, 2900, len, 0.22, 0.01); wobble(o, t + dt, len + 0.05, 28, 140); noise(d, t + dt, len, 'bandpass', 3000, 3, 0.12, 0.01); }
+  },
   // ---- the lobby and voice chat
   ready(d, t) { tone(d, t, 'triangle', 660, 680, 0.06, 0.28, 0.003); tone(d, t + 0.07, 'triangle', 990, 1000, 0.12, 0.28, 0.003); bell(d, t + 0.07, 1980, 0.25, 0.08); },
   join(d, t) { [523, 659, 784].forEach((f, i) => tone(d, t + i * 0.07, 'sine', f, f, 0.22, 0.22, 0.006)); },
@@ -615,7 +618,7 @@ const _recent = {};
 export const SOUND_NAMES = Object.keys(SOUNDS);
 export const hasSound = (name) => !!(SOUNDS[name] || SOUNDS[ALIAS[name]]);
 export const SOUND_GROUPS = [
-  ['GAME & STINGS', ['combo', 'stageup', 'meterpop', 'countdown', 'go', 'gamestart', 'timeup', 'award', 'drumroll', 'victory', 'loadwhoosh', 'airhorn', 'fanfare', 'sadviolin', 'trumpet', 'bwoomp', 'powerup', 'powerdown']],
+  ['GAME & STINGS', ['combo', 'stageup', 'meterpop', 'countdown', 'go', 'gamestart', 'timeup', 'award', 'drumroll', 'victory', 'loadwhoosh', 'airhorn', 'whistle_ref', 'fanfare', 'sadviolin', 'trumpet', 'bwoomp', 'powerup', 'powerdown']],
   ['LOBBY & CHAT', ['ready', 'join', 'leave', 'kick', 'mic_on', 'mic_off', 'tap', 'toggle', 'notify', 'error', 'tick', 'beep']],
   ['IMPACTS', ['hit_wood', 'hit_metal', 'hit_glass', 'hit_soft', 'hit_plastic', 'hit_ceramic', 'hit_cardboard', 'shatter', 'smash', 'slosh', 'tipjar', 'land', 'thud', 'body_fall', 'bonk', 'ko', 'tackle', 'punch', 'slap', 'thwack', 'splat']],
   ['CROWDS', ['crowd_ooh', 'crowd_laugh', 'cheer', 'aww', 'brawl', 'oneeighty', 'anthem', 'siu']],
