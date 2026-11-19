@@ -1095,7 +1095,11 @@ export function buildGarden(scene) {
   scene.fog = new THREE.Fog(0xcfe0ee, 22, 40);                                   // summer haze, fading the far edge into the sky
   // the sun itself, glowing in the sky
   { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunGlowTex(), color: 0xfff6e0, transparent: true, depthWrite: false, fog: false }));
-    sp.position.copy(SUN_DIR).multiplyScalar(28); sp.scale.setScalar(9); sp.renderOrder = -97; sp.frustumCulled = false; skyRig.add(sp); }
+    sp.position.copy(SUN_DIR).multiplyScalar(28); sp.scale.setScalar(9); sp.renderOrder = -97; sp.frustumCulled = false; skyRig.add(sp);
+    room.skyRefs = { sky, sunSprite: sp, clouds };      // (weather.js: the sun moves round the sky, the clouds go grey) 
+    // (weather.js: indoors = the house, the garage and the outside loo, the shed, the cabin)
+    const IN = [[-6.5, 2, 4.5, 12], [2.1, F(-5.95), 6.5, -0.3], [4.25, F(-8.25), 6.4, F(-5.95)], [-4.5, F(-16.2), 5.0, F(-11)]];
+    room.indoors = (x, z) => IN.some(([a, b, c, d]) => x > a && x < c && z > b && z < d); }
   // butterflies flutter round the flowers; the squad cast shadows too
   const baseUpdate = room.update.bind(room); let shT = 0;
   room.update = (dt) => {

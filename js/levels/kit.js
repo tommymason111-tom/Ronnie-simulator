@@ -316,6 +316,7 @@ export class Kit {
           p.position.copy(L.l.position); p.color.copy(L.l.color); p.distance = L.l.distance; p.intensity = L.l.intensity * p.userData.w; }
       };
     }
+    room.kitLights = { lamps: this.lamps, halos: this.halos, lights, windows: this.wxWindows };      // (weather.js: a warm pool under the outdoor lamps at night)
     room.nav = new NavGrid(room);
     room.tommySpots = room.nav.sampleSpots(spotCount);
     room.zfixed = this.zfixed;
@@ -402,6 +403,10 @@ export { canvasTex, signTex, fitText, FONT };
 
 // a night-time view out of a window: sky, terraced houses with lit windows, a street lamp
 export function streetViewTex(seed = 0, day = false) {
+  const t = streetViewTex0(seed, day); t.userData.view = { make: (d) => streetViewTex0(seed, d), day };      // (weather.js: the same view by day and by night)
+  return t;
+}
+function streetViewTex0(seed, day) {
   return canvasTex(512, 384, (g, w, h) => {
     const sky = g.createLinearGradient(0, 0, 0, h * 0.7);
     if (day) { sky.addColorStop(0, '#7ec8ff'); sky.addColorStop(1, '#d8f0ff'); } else { sky.addColorStop(0, '#0a1230'); sky.addColorStop(1, '#3a3a6a'); }

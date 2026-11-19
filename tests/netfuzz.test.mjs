@@ -23,7 +23,7 @@ export default async function () {
         const J = [null, undefined, NaN, Infinity, -Infinity, 1e308, -1, 0, '', 'x', 'x'.repeat(5000), [], [NaN, NaN, NaN], [1, 2], [1, 2, 3, 4, 5, 6, 7, 8], {}, { x: 1 }, true];
         const BOSS_T = ['bossS', 'bossA', 'bossHit', 'bossP', 'bossHi', 'end', 'hitc', 'snap'];
         const types = boss ? BOSS_T : [...new Set(Object.getOwnPropertyNames(Object.getPrototypeOf(mp)).filter(k => k.startsWith('on_')).map(k => k.slice(3))
-          .concat(['p', 'hi', 'chat', 'emote', 'char', 'setup', 'host', 'join', 'leave', 'welcome', 'pong', 'ver', 'pu', 'pug', 'restart', 'end', 'endGame', 'giveHost', 'grab', 'rel', 'save', 'imp', 'vote', 'kill', 'say', 'music', 'tv'].concat(BOSS_T)))];
+          .concat(['p', 'hi', 'chat', 'emote', 'char', 'setup', 'host', 'join', 'leave', 'welcome', 'pong', 'ver', 'pu', 'pug', 'restart', 'end', 'endGame', 'giveHost', 'grab', 'rel', 'save', 'imp', 'vote', 'kill', 'say', 'music', 'tv', 'wx'].concat(BOSS_T)))];
         const fields = ['h', 'q', 'l', 'rh', 's', 'st', 'flat', 'c', 'e', 'id', 'it', 'k', 'v', 'p', 'm', 'at', 'to', 'name', 'text', 'side', 'target', 'ts', 'fc', 'pos', 'vel', 'place', 'mode', 'players', 'lines', 'who', 'n', 'x', 'y', 'z'];
         const send = (m) => { try { n.handle(JSON.parse(JSON.stringify(m))); } catch (e) { out.thrown.push(`${m.t}.${Object.keys(m).filter(k => k !== 't' && k !== 'f').join(',')}: ${e.message}`); } };
         let steps = 0;

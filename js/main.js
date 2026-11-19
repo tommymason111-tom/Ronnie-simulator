@@ -42,6 +42,7 @@ import { Imposter } from './imposter.js';
 import { BossFight } from './boss.js';      // (BOSS FIGHT)
 import { TVs } from './tv.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
+import { setupWeather } from './weather.js';      // (weather and the time of day; importing it also readies every shader for it)
 
 // start downloading everyone's 3D model now, while the menu is still up
 const MEDIA_ON = false;      // the DJ booth / music and the TVs (off for now)
@@ -97,6 +98,7 @@ atlasSigns(scene); mergeMaterialGroups(scene);      // (fewer draws, same pictur
 const learnShader = learnShaders(renderer, scene);
 const levelMeshes = []; scene.traverse(o => { if (o.isMesh) levelMeshes.push(o); });      // (the level itself: see memory.js)
 releaseLevelGeometry(levelMeshes, Infinity); noteLevelTextures(levelMeshes);      // (each piece's spare copy goes the moment it's first sent to the graphics chip: the peak while loading is what phones close a page for)
+const weather = setupWeather({ renderer, scene, room, camera, place: BUILD[SEL.place] ? SEL.place : 'bedroom' });      // WEATHER + DAY/NIGHT (weather.js): its map of the level, sky, rain; weather.update(dt) each frame
 FLOOR.at = room.floorAt || null;
 if (room.familyPhotos) setTimeout(() => import('./portraits.js').then(m => m.paintPhotos(renderer, room.familyPhotos)).catch(e => console.warn('photos', e)), 400);   // family photos from the models            // (raised floors: the ragdolls stand on them)
 if (room.shadows) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }     // sunny places get real sun shadows
@@ -1246,6 +1248,7 @@ function frame(simDt) {
     menuCam.rotation.set(-0.12, menuShot.yaw, 0, 'YXZ');
     if (menuCam.aspect !== camera.aspect) { menuCam.aspect = camera.aspect; menuCam.fov = camera.fov; menuCam.updateProjectionMatrix(); }
     room.camera = menuCam; room.update(dt); room.camera = camera;
+    weather.update(dt, menuCam);      // (weather.js)
     renderer.render(scene, menuCam);
     return;
   }
@@ -1323,6 +1326,7 @@ function frame(simDt) {
   crumbs.update(dt);
   words.update(dt);
   room.update(dt);
+  weather.update(dt, camera);      // weather and the time of day (weather.js)
   for (const gm of room.games || []) { gm.allowed = director.mode === 'roam'; gm.update(dt, player); }     // darts / table tennis: Free Roam only
 
   if (bannerT > 0) {
@@ -1521,6 +1525,7 @@ body.mpon #vc-list.any { display: flex; }
 }
 // the shared game (food and people): see mpsync.js
 const mp = new MPSync({ net, scene, room, physics, player, items, cast, director, words, fx: attackFx, G, tommy });
+weather.attachNet(net);      // (in a room the host's weather and time are everyone's: weather.js)
 // who's close enough to hear the squad talk (character.js only lets people chat near a player): you, and when you're
 // running the game for a room, everyone in it too (their games show the lines you send them)
 Character.hearers = () => { const a = [player.head]; if (net.connected && mp.host) for (const p of net.players.values()) if (p.avatar && !p.avatar.gone) a.push(p.avatar.pos); return a; };

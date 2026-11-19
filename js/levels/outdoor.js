@@ -50,7 +50,7 @@ const WATER_VS = `varying vec3 vW;
 void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vec4 mvPosition = viewMatrix * w; gl_Position = projectionMatrix * mvPosition;
 #include <fog_vertex>
 }`;
-const WATER_FS = `uniform float uTime; uniform vec3 uDeep, uShallow, uSun; uniform float uFlow, uScale; varying vec3 vW;
+const WATER_FS = `uniform float uTime; uniform vec3 uDeep, uShallow, uSun, uSkyH, uSkyZ; uniform float uFlow, uScale, uGlint, uDim; varying vec3 vW;      // (uSkyH/Z, uGlint, uDim: the sky it reflects, the sun glints, the light on it: weather.js)
 #include <fog_pars_fragment>
 ` + NOISE + `
   void main() {
@@ -65,11 +65,11 @@ const WATER_FS = `uniform float uTime; uniform vec3 uDeep, uShallow, uSun; unifo
     vec3 v = normalize(cameraPosition - vW);
     float fres = 0.04 + 0.96 * pow(1.0 - max(dot(n, v), 0.0), 5.0);
     vec3 r = reflect(-v, n);
-    vec3 sky = mix(vec3(0.74, 0.86, 0.97), vec3(0.3, 0.52, 0.86), pow(max(r.y, 0.0), 0.6));
-    vec3 body = mix(uDeep, uShallow, 0.35 + 0.4 * h0);
+    vec3 sky = mix(uSkyH, uSkyZ, pow(max(r.y, 0.0), 0.6));
+    vec3 body = mix(uDeep, uShallow, 0.35 + 0.4 * h0) * uDim;
     vec3 col = mix(body, sky, clamp(fres * 1.15, 0.0, 0.85));
     float spec = pow(max(dot(r, normalize(uSun)), 0.0), 220.0);
-    col += vec3(1.0, 0.95, 0.8) * spec * 2.2;
+    col += vec3(1.0, 0.95, 0.8) * spec * 2.2 * uGlint;
     col += vec3(0.9) * smoothstep(0.72, 0.9, h0) * 0.06;                  // a few bright crests
     gl_FragColor = vec4(col, 1.0);
     #include <colorspace_fragment>
@@ -77,7 +77,8 @@ const WATER_FS = `uniform float uTime; uniform vec3 uDeep, uShallow, uSun; unifo
   }`;
 const waters = [];
 export function waterMaterial({ deep = 0x1e3a3a, shallow = 0x4a7a72, flow = 0.05, scale = 0.6, sun = [-0.4, 0.55, 0.7] } = {}) {
-  const m = new THREE.ShaderMaterial({ fog: true, uniforms: { ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), uTime: { value: 0 }, uDeep: { value: new THREE.Color(deep) }, uShallow: { value: new THREE.Color(shallow) }, uSun: { value: new THREE.Vector3(...sun) }, uFlow: { value: flow }, uScale: { value: scale } },
+  const m = new THREE.ShaderMaterial({ fog: true, uniforms: { ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), uTime: { value: 0 }, uDeep: { value: new THREE.Color(deep) }, uShallow: { value: new THREE.Color(shallow) }, uSun: { value: new THREE.Vector3(...sun) }, uFlow: { value: flow }, uScale: { value: scale },
+      uSkyH: { value: new THREE.Color().setRGB(0.74, 0.86, 0.97, THREE.LinearSRGBColorSpace) }, uSkyZ: { value: new THREE.Color().setRGB(0.3, 0.52, 0.86, THREE.LinearSRGBColorSpace) }, uGlint: { value: 1 }, uDim: { value: 1 } },
     vertexShader: WATER_VS, fragmentShader: WATER_FS, side: THREE.DoubleSide });
   waters.push(m); return m;
 }

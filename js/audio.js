@@ -949,3 +949,74 @@ export function setMuted(on) {
   if (!ctx || !master) return;
   master.gain.setTargetAtTime(on ? 0 : 0.8, ctx.currentTime, 0.05);
 }
+
+// ---- WEATHER (weather.js drives it): rain hissing and pattering (drumming on the roof when you're in), wind and its
+// gusts, hail clattering, thunder rolling in after the flash. All of it goes through one low-pass filter that closes
+// right down indoors, so through the walls it's a muffled rumble. All made from noise, like everything else here.
+let wx = null;
+function wxSetup() {
+  if (wx || !ctx || !master) return wx;
+  const len = ctx.sampleRate * 3, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const filt = (type, f, q) => { const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; };
+  const gain = (v = 0) => { const g = ctx.createGain(); g.gain.value = v; return g; };
+  const bus = gain(0), lp = filt('lowpass', 16000, 0.4); bus.connect(lp); lp.connect(master);
+  const voice = (rate, ...nodes) => { const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.playbackRate.value = rate; let a = s; for (const n of nodes) { a.connect(n); a = n; } const g = gain(0); a.connect(g); g.connect(bus); s.start(ctx.currentTime, Math.random() * 2.5); return g; };
+  const windF = filt('bandpass', 420, 1.1), whistleF = filt('bandpass', 950, 9);
+  wx = { buf, bus, lp, windF, whistleF, next: 0, last: {},
+    rain: voice(1, filt('bandpass', 1900, 0.45)), sizzle: voice(1.13, filt('highpass', 5200, 0.6)), body: voice(0.71, filt('lowpass', 380, 0.7)),
+    wind: voice(0.55, windF), whistle: voice(0.8, whistleF) };
+  return wx;
+}
+// a single tick: a rain drop splatting close by, or a hailstone hitting something
+function wxTick(t, f, peak, dur) {
+  const s = ctx.createBufferSource(); s.buffer = wx.buf; s.playbackRate.value = 1.3 + Math.random();
+  const b = ctx.createBiquadFilter(); b.type = 'bandpass'; b.frequency.value = f; b.Q.value = 2.5;
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(b); b.connect(g); g.connect(wx.bus); s.start(t, Math.random() * 2.5); s.stop(t + dur + 0.02);
+  s.onended = () => { try { s.disconnect(); b.disconnect(); g.disconnect(); } catch (e) {} };
+}
+// how much of each there is (0..1), and how far indoors you are (0 out in it .. 1 inside)
+export function weatherSound({ rain = 0, heavy = 0, wind = 0, hail = 0, snow = 0, indoor = 0 } = {}) {
+  if (!ctx || ctx.state !== 'running') return; if (!wx && rain + wind + hail < 0.02) return;
+  const w = wxSetup(); if (!w) return;
+  const now = ctx.currentTime, set = (k, node, v, tc = 0.4) => { if (Math.abs((w.last[k] ?? -1) - v) < 0.004) return; w.last[k] = v; node.setTargetAtTime(v, now, tc); };
+  const out = 1 - indoor;
+  set('bus', w.bus.gain, hush ? 0 : 1 - indoor * 0.3, 0.15);
+  set('lp', w.lp.frequency, 16000 * Math.pow(650 / 16000, indoor), 0.25);
+  set('rain', w.rain.gain, rain * 0.16 * (0.6 + 0.4 * out));
+  set('sizzle', w.sizzle.gain, rain * 0.07 * out + hail * 0.05);
+  set('body', w.body.gain, (heavy * 0.32 + rain * 0.06 + hail * 0.12) * (1 + indoor * 0.8));
+  set('wind', w.wind.gain, wind * wind * 0.3 * (1 - snow * 0.3));
+  set('whistle', w.whistle.gain, Math.max(0, wind - 0.55) * 0.05 * out);
+  set('windf', w.windF.frequency, 260 + wind * 520, 0.8); set('whf', w.whistleF.frequency, 700 + wind * 700, 1.2);
+  if (hush || indoor > 0.97) { w.next = now; return; }
+  // close drops and hailstones, one at a time
+  if (w.next < now) w.next = now;
+  const rate = hail * 38 + rain * 16 * out;
+  while (rate > 0.3 && w.next < now + 0.2) { const t = w.next; w.next += -Math.log(1 - Math.random() * 0.999) / rate;
+    if (Math.random() * (hail + rain) < hail) wxTick(t, 2600 + Math.random() * 3000, (0.05 + Math.random() * 0.1) * out, 0.03 + Math.random() * 0.03);
+    else wxTick(t, 3500 + Math.random() * 5000, (0.02 + Math.random() * 0.05) * out, 0.015 + Math.random() * 0.02); }
+}
+// thunder: dist 0 (right overhead: a crack, then a long roll) .. 1 (miles off: a low grumble)
+export function thunder(dist = 0.5, indoor = 0, vol = 1) {
+  if (!ctx || ctx.state !== 'running' || hush) return; const w = wxSetup(); if (!w) return;
+  const t = ctx.currentTime + 0.02, near = 1 - dist, nodes = [], dur = 4 + dist * 3.5;
+  const out = ctx.createGain(); out.gain.value = vol * (1 - indoor * 0.2); out.connect(w.bus); nodes.push(out);
+  if (near > 0.45) { const s = ctx.createBufferSource(); s.buffer = w.buf; const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1400; const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.55 * near, t + 0.004); g.gain.exponentialRampToValueAtTime(0.05 * near, t + 0.12); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+    s.connect(f); f.connect(g); g.connect(out); s.start(t, Math.random()); s.stop(t + 0.5); nodes.push(s, f, g); }
+  // the roll: low noise swelling and falling a few times as it echoes round
+  { const s = ctx.createBufferSource(); s.buffer = w.buf; s.loop = true; s.playbackRate.value = 0.32 + Math.random() * 0.08;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 150 + near * 260; f.Q.value = 0.8; f.frequency.setTargetAtTime(90, t + 1, dur / 3);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); let k = t + 0.06 + dist * 0.25, pk = (0.5 + near * 0.6) * vol;
+    g.gain.exponentialRampToValueAtTime(pk, k);
+    while (k < t + dur - 0.5) { k += 0.35 + Math.random() * 0.9; pk *= 0.55 + Math.random() * 0.5; g.gain.exponentialRampToValueAtTime(Math.max(0.002, pk * (0.4 + Math.random() * 0.6)), k); }
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(out); s.start(t, Math.random() * 2); s.stop(t + dur + 0.1); nodes.push(s, f, g); }
+  // the thump you feel more than hear
+  { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(58, t); o.frequency.exponentialRampToValueAtTime(28, t + 1.6);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.45 * near * vol + 0.02, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.8);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + 1.9); nodes.push(o, g); }
+  setTimeout(() => { for (const n of nodes) try { n.disconnect(); } catch (e) {} }, (dur + 0.6) * 1000);
+}

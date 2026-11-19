@@ -581,7 +581,7 @@ export function buildSupermarket(scene) {
 }
 
 function carParkTex(seed) {
-  return canvasTex(512, 384, (g, w, h) => {
+  const t = canvasTex(512, 384, (g, w, h) => {
     let s = seed * 97 + 13; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
     const sky = g.createLinearGradient(0, 0, 0, h * 0.45); sky.addColorStop(0, '#8fc4ec'); sky.addColorStop(1, '#dceefa'); g.fillStyle = sky; g.fillRect(0, 0, w, h * 0.45);
     for (let i = 0; i < 4; i++) { g.fillStyle = 'rgba(255,255,255,0.85)'; g.beginPath(); g.ellipse(r() * w, 30 + r() * 60, 50 + r() * 40, 12, 0, 0, 7); g.fill(); }
@@ -597,6 +597,7 @@ function carParkTex(seed) {
     g.fillStyle = '#555'; for (const x of [140, 400]) { g.fillRect(x, h * 0.2, 4, h * 0.3); g.fillRect(x - 14, h * 0.2, 30, 5); }                        // lamp posts
     g.fillStyle = '#1e4ea8'; g.fillRect(w * 0.7, h * 0.47, 60, 30); g.fillStyle = '#ffd400'; g.fillRect(w * 0.7 + 4, h * 0.47 + 4, 52, 8);            // trolley shelter
   });
+  t.userData.view = { lamps: [[140 / 512, 0.2], [400 / 512, 0.2]] }; return t;      // (weather.js: the weather and the time of day out of the window; its lamps light up at night)
 }
 function ovenTex() {
   return canvasTex(256, 96, (g, w, h) => {
