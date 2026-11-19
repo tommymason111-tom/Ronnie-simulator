@@ -51,6 +51,12 @@ const SCHEMA = {
   save: { 'd!': 'obj' }, emote: { 'e!': 'str' }, char: { 'c!': 'str' }, chat: { 's!': 'str' }, say: { 'text!': 'str' }, stun: { who: 'id' }, coming: { who: 'id' }, setup: { place: 'str', mode: 'str' },
   songpart: { i: 'num', n: 'num', d: 'str' }, vidpart: { i: 'num', n: 'num', d: 'str' }, own: { 'nid!': 'id', id: 'id' }, grab: { 'nid!': 'id' }, gone: { 'nid!': 'id' }, end: { lines: 'arr' },
   welcome: { players: 'arr' }, join: { 'id!': 'id' }, leave: { 'id!': 'id' }, host: { 'id!': 'id' },
+  // PROP HUNT (prophunt.js)
+  phChk: { v: 'str', p: 'v3' }, phProp: { 'k!': 'str', id: 'id' }, phLock: { p: 'v2', y: 'num' }, phTaunt: { i: 'num' }, phLobby: { n: 'num' },
+  phRound: { 'list!': 'arr', 'seek!': 'arr', hide: 'arr', lay: 'arr', r: 'num', of: 'num', ht: 'num', st: 'num', tot: 'obj' }, phGo: { st: 'num' }, phClock: { ph: 'str', left: 'num' },
+  phFound: { 'v!': 'id', 'by!': 'id', p: 'v3', k: 'str', hp: 'num' }, phMiss: { 'by!': 'id', hp: 'num', d: 'num' }, phOut: { 'id!': 'id', secs: 'num' }, phBack: { 'id!': 'id', hp: 'num' },
+  phPts: { 'id!': 'id', d: 'num', why: 'str' }, phAuto: { 'id!': 'id', i: 'num' }, phEnd: { tot: 'obj', rp: 'obj', alive: 'arr', stats: 'obj', why: 'str', win: 'str' }, phOver: { tot: 'obj', aw: 'arr', stats: 'obj' },
+  phState: { round: 'obj', ph: 'str', left: 'num', kinds: 'obj', locks: 'obj', found: 'arr', hp: 'obj', tot: 'obj' },
 };
 function okMessage(m) {
   if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.t !== 'string' || !m.t || m.t.length > 24) return false;

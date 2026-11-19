@@ -642,6 +642,7 @@ export class Player {
     g.save(); g.translate(0, 64);
     if (state.pub) { this.drawPubBox(g, w, h, state); g.restore(); this.wristTex.needsUpdate = true; return; }
     if (state.imp) { this.drawImpBox(g, w, h, state.imp); g.restore(); this.wristTex.needsUpdate = true; return; }
+    if (state.custom) { state.custom(g, w, h); g.restore(); this.wristTex.needsUpdate = true; return; }      // (a mode that draws its own: PROP HUNT)
     g.fillStyle = '#111827'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill();
     g.lineWidth = 8; g.strokeStyle = state.loco > 0 ? '#ff9a1f' : '#39ff14'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();
     g.textAlign = 'left'; g.textBaseline = 'middle';

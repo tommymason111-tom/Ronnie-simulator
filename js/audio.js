@@ -326,6 +326,21 @@ const SOUNDS = {
   rustle(d, t) { for (let i = 0; i < 5; i++) noise(d, t + i * 0.03 + Math.random() * 0.02, 0.04, 'highpass', 3500 + Math.random() * 2000, 1, 0.3, 0.002); },                               // a crisp packet
   strum(d, t) { [196, 247, 294, 392, 494, 587].forEach((f, i) => { tone(d, t + i * 0.018, 'triangle', f, f, 0.9, 0.06, 0.002); tone(d, t + i * 0.018, 'sawtooth', f * 2, f * 2, 0.15, 0.015, 0.002); }); },   // a guitar chord
   burp(d, t) { const o = tone(d, t, 'sawtooth', 95, 70, 0.55, 0.45, 0.03); wobble(o, t, 0.6, 22, 14); noise(d, t, 0.5, 'lowpass', 500, 4, 0.3, 0.03); },
+  // ---- PROP HUNT (prophunt.js): turning into a prop, the hiders' taunts, a find, a wrong guess, the lock
+  ph_poof(d, t) { const f = noise(d, t, 0.38, 'lowpass', 2600, 1, 0.7, 0.004); f.frequency.exponentialRampToValueAtTime(260, t + 0.38); tone(d, t, 'sine', 760, 170, 0.2, 0.35, 0.002); [1760, 2349, 2794].forEach((fq, i) => bell(d, t + 0.08 + i * 0.05, fq, 0.25, 0.12)); },
+  ph_quack(d, t) { for (const dt of [0, 0.2]) { const o = tone(d, t + dt, 'sawtooth', 640, 430, 0.13, 0.32, 0.006); wobble(o, t + dt, 0.15, 30, 40); noise(d, t + dt, 0.1, 'bandpass', 1200, 3, 0.35, 0.004); } },
+  ph_kazoo(d, t) { const o = tone(d, t, 'sawtooth', 300, 320, 0.28, 0.26, 0.02); wobble(o, t, 0.3, 7, 10); const o2 = tone(d, t + 0.32, 'sawtooth', 400, 240, 0.45, 0.28, 0.02); wobble(o2, t + 0.32, 0.5, 9, 14); noise(d, t, 0.75, 'bandpass', 1500, 4, 0.12, 0.02); },
+  ph_airhorn(d, t) { for (const dt of [0, 0.42, 0.84]) for (const fq of [440, 554, 659]) tone(d, t + dt, 'sawtooth', fq, fq * 0.99, dt === 0.84 ? 0.6 : 0.3, 0.12, 0.01); },
+  ph_raspberry(d, t) { const o = tone(d, t, 'sawtooth', 95, 62, 0.7, 0.4, 0.02); wobble(o, t, 0.75, 38, 26); noise(d, t, 0.65, 'lowpass', 700, 3, 0.35, 0.02); },
+  ph_honk(d, t) { for (const dt of [0, 0.22]) { tone(d, t + dt, 'square', 392, 380, 0.15, 0.2, 0.004); tone(d, t + dt, 'sawtooth', 196, 190, 0.15, 0.16, 0.004); } },
+  ph_cuckoo(d, t) { for (const dt of [0, 0.62]) { tone(d, t + dt, 'sine', 784, 780, 0.2, 0.35, 0.01); tone(d, t + dt + 0.24, 'sine', 622, 618, 0.3, 0.35, 0.01); } },
+  ph_oi(d, t) { for (const dt of [0, 0.34]) { tone(d, t + dt, 'sawtooth', 190, 250, 0.22, 0.22, 0.01); tone(d, t + dt, 'sine', 600, 2300, 0.22, 0.16, 0.01); noise(d, t + dt, 0.04, 'bandpass', 1800, 2, 0.15, 0.002); } },
+  ph_found(d, t) { [523, 659, 784, 1047, 1319].forEach((fq, i) => bell(d, t + i * 0.07, fq, 0.5, 0.35)); noise(d, t, 0.25, 'highpass', 2500, 0.7, 0.4, 0.002); tone(d, t, 'sine', 180, 60, 0.25, 0.5, 0.002); },
+  ph_wrong(d, t) { const o = tone(d, t, 'sawtooth', 120, 100, 0.42, 0.3, 0.005); wobble(o, t, 0.45, 18, 10); tone(d, t, 'square', 90, 86, 0.42, 0.14, 0.005); click(d, t, 900, 0.5); },
+  ph_lock(d, t) { click(d, t, 1900, 0.8); tone(d, t + 0.02, 'sine', 320, 210, 0.08, 0.35, 0.002); click(d, t + 0.07, 1200, 0.6); },
+  ph_unlock(d, t) { click(d, t, 1200, 0.6); tone(d, t + 0.02, 'sine', 210, 340, 0.08, 0.3, 0.002); },
+  ph_count(d, t) { tone(d, t, 'sine', 880, 880, 0.12, 0.35, 0.003); tone(d, t, 'triangle', 1760, 1760, 0.08, 0.1, 0.003); },
+  ph_check(d, t) { const f = noise(d, t, 0.16, 'bandpass', 700, 3, 0.4, 0.004); f.frequency.exponentialRampToValueAtTime(3200, t + 0.16); bell(d, t + 0.1, 2400, 0.18, 0.2); },
 };
 // old names still used by a few things (kept, but pointed at the new sounds)
 const ALIAS = {};
