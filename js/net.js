@@ -51,6 +51,10 @@ const SCHEMA = {
   save: { 'd!': 'obj' }, emote: { 'e!': 'str' }, char: { 'c!': 'str' }, chat: { 's!': 'str' }, say: { 'text!': 'str' }, stun: { who: 'id' }, coming: { who: 'id' }, setup: { place: 'str', mode: 'str' },
   songpart: { i: 'num', n: 'num', d: 'str' }, vidpart: { i: 'num', n: 'num', d: 'str' }, own: { 'nid!': 'id', id: 'id' }, grab: { 'nid!': 'id' }, gone: { 'nid!': 'id' }, end: { lines: 'arr' },
   welcome: { players: 'arr' }, join: { 'id!': 'id' }, leave: { 'id!': 'id' }, host: { 'id!': 'id' },
+  // BOSS FIGHT (boss.js): the host's word on the boss, its moves, a joiner's hit on it, a joiner's hearts
+  bossS: { 'b!': 'str', 'hp!': 'num', 'mx!': 'num', ph: 'num', st: 'str', a: 'str', at: 'num', x: 'num', z: 'num', y: 'num', s: 'num', dy: 'num', mi: 'arr', tm: 'num', o: 'num' },
+  bossA: { 'k!': 'str', x: 'num', y: 'num', z: 'num', x0: 'num', y0: 'num', z0: 'num', x1: 'num', z1: 'num', r: 'num', r0: 'num', d: 'num', w: 'num', f: 'num', ph: 'num', s: 'str', a: 'str', it: 'str', ids: 'arr' },
+  bossHit: { 'd!': 'num', p: 'v3', w: 'num' }, bossP: { hp: 'num', kd: 'num', mk: 'str' },
 };
 function okMessage(m) {
   if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.t !== 'string' || !m.t || m.t.length > 24) return false;

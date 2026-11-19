@@ -8,19 +8,22 @@ import { launch, newPage, startGame, checker } from './lib/game.mjs';
 export default async function () {
   const C = checker('netfuzz'), b = await launch();
   try {
-    for (const asHost of [true, false]) {
+    // (and the BOSS FIGHT's own messages, in a boss fight, as its host and as a guest following someone else's boss)
+    for (const [asHost, boss] of [[true, false], [false, false], [true, true], [false, true]]) {
       const p = await newPage(b, { width: 640, height: 400 });
       if (process.env.VERBOSE) console.log('  loading', asHost ? 'host' : 'guest'); await startGame(p, { place: 'pub', mode: 'roam' }); if (process.env.VERBOSE) console.log('  loaded');
-      const r = await p.evaluate(async (asHost) => {
+      const r = await p.evaluate(async ([asHost, boss]) => {
         const n = RS.net, mp = RS.mp, out = { thrown: [], nan: [] };
         // pretend we're in a room with one real mate (FRIEND), as host or guest
         n.ws = { readyState: 1, send() {}, close() {} }; n.status = 'on'; n.id = 'meeeeeee'; n.code = 'TEST'; n.host = asHost; n.hostId = asHost ? n.id : 'frienddd'; n.char = 'lewis';
         n.handle({ t: 'join', id: 'frienddd', name: 'FRIEND' });
+        if (boss) { if (!asHost) RS.director.remote = true; RS.newGame('boss'); RS.sim(0.5, 0.05); }
         const pose = (o) => Object.assign({ t: 'p', f: 'frienddd', c: 'chloe', h: [1, 1.6, -3], q: [0, 0, 0, 1], l: [1.2, 1.2, -3], rh: [0.8, 1.2, -3], s: 1, st: 0, flat: 0, ts: performance.now() }, o);
         for (let i = 0; i < 20; i++) { n.handle(pose({ ts: performance.now() + i * 50 })); RS.sim(0.05, 0.05); }
         const J = [null, undefined, NaN, Infinity, -Infinity, 1e308, -1, 0, '', 'x', 'x'.repeat(5000), [], [NaN, NaN, NaN], [1, 2], [1, 2, 3, 4, 5, 6, 7, 8], {}, { x: 1 }, true];
-        const types = [...new Set(Object.getOwnPropertyNames(Object.getPrototypeOf(mp)).filter(k => k.startsWith('on_')).map(k => k.slice(3))
-          .concat(['p', 'hi', 'chat', 'emote', 'char', 'setup', 'host', 'join', 'leave', 'welcome', 'pong', 'ver', 'pu', 'pug', 'restart', 'end', 'endGame', 'giveHost', 'grab', 'rel', 'save', 'imp', 'vote', 'kill', 'say', 'music', 'tv']))];
+        const BOSS_T = ['bossS', 'bossA', 'bossHit', 'bossP', 'bossHi', 'end', 'hitc', 'snap'];
+        const types = boss ? BOSS_T : [...new Set(Object.getOwnPropertyNames(Object.getPrototypeOf(mp)).filter(k => k.startsWith('on_')).map(k => k.slice(3))
+          .concat(['p', 'hi', 'chat', 'emote', 'char', 'setup', 'host', 'join', 'leave', 'welcome', 'pong', 'ver', 'pu', 'pug', 'restart', 'end', 'endGame', 'giveHost', 'grab', 'rel', 'save', 'imp', 'vote', 'kill', 'say', 'music', 'tv'].concat(BOSS_T)))];
         const fields = ['h', 'q', 'l', 'rh', 's', 'st', 'flat', 'c', 'e', 'id', 'it', 'k', 'v', 'p', 'm', 'at', 'to', 'name', 'text', 'side', 'target', 'ts', 'fc', 'pos', 'vel', 'place', 'mode', 'players', 'lines', 'who', 'n', 'x', 'y', 'z'];
         const send = (m) => { try { n.handle(JSON.parse(JSON.stringify(m))); } catch (e) { out.thrown.push(`${m.t}.${Object.keys(m).filter(k => k !== 't' && k !== 'f').join(',')}: ${e.message}`); } };
         let steps = 0;
@@ -28,6 +31,16 @@ export default async function () {
           send({ t, f: 'frienddd', [f]: j }); send({ t, f: 'strangerX', [f]: j });
           if (t === 'p') send(pose({ [f]: j }));
           if (++steps % 60 === 0) { try { RS.sim(0.05, 0.05); } catch (e) { out.thrown.push('sim after ' + t + '.' + f + ': ' + e.message); } }
+        }
+        // the boss fight's messages, whole and sensible, then with nonsense in one field at a time (every kind of move)
+        if (boss) {
+          const BASE = [{ t: 'bossS', b: 'noah', hp: 700, mx: 900, ph: 2, st: 'idle', a: '', at: 0.5, x: 9.6, z: -18, y: 0.4, s: 2.3, dy: 0, mi: ['harry'], tm: 30, o: 0 },
+            ...['say', 'land', 'tele', 'slam', 'drop', 'charge', 'thud', 'tired', 'summon', 'hit', 'blocked', 'stagger', 'dead', 'phase', 'win', 'lose', 'nonsense'].map(k => ({ t: 'bossA', k, a: 'slam', s: 'Hello', x: 9.6, y: 2, z: -18, x0: 9.6, y0: 3, z0: -18, x1: 9.6, z1: -14, r: 4, r0: 2, d: 1.2, w: 1.5, f: 1.2, ph: 2, it: 'orange', ids: ['harry'], b: 'frienddd' })),
+            { t: 'bossHit', d: 30, w: 1, p: [9.6, 3, -18] }, { t: 'bossP', hp: 3, kd: 2, out: 0, mk: 'harry' }];
+          for (const base of BASE) { send({ ...base, f: 'frienddd' }); for (const k of Object.keys(base)) if (k !== 't') for (const j of J) { send({ ...base, f: 'frienddd', [k]: j }); if (++steps % 60 === 0) { try { RS.sim(0.05, 0.05); } catch (e) { out.thrown.push('sim after ' + base.t + '.' + k + ': ' + e.message); } } } }
+          for (let i = 0; i < 40; i++) { try { RS.sim(0.1, 0.05); } catch (e) { out.thrown.push('sim after the boss messages: ' + e.message); break; } }
+          out.boss = RS.director.boss ? { st: RS.director.boss.st, hp: RS.director.boss.hp, x: RS.director.boss.x } : null;
+          if (out.boss && !(isFinite(out.boss.hp) && isFinite(out.boss.x))) out.nan.push('the boss: ' + JSON.stringify(out.boss));
         }
         // and the whole thing at once, and nothing at all
         for (const m of [{}, { t: null }, { t: 123 }, { t: {} }, { t: 'p' }, { t: 'p', f: 'frienddd' }, { t: 'leave' }, { t: 'leave', id: 'frienddd' }, { t: 'join' }, { t: 'host' }, { t: 'welcome' }, { t: 'welcome', players: 'x' }]) send(m);
@@ -37,8 +50,8 @@ export default async function () {
         const ph = RS.physics.world.bodies.filter(bd => !(isFinite(bd.position.x) && isFinite(bd.position.y) && isFinite(bd.position.z))).length;
         out.nanBodies = ph; out.player = [RS.player.head.x, RS.player.head.y, RS.player.head.z].every(isFinite); out.types = types.length; out.sent = steps;
         return out;
-      }, asHost);
-      const label = asHost ? 'as host' : 'as guest';
+      }, [asHost, boss]);
+      const label = (asHost ? 'as host' : 'as guest') + (boss ? ' (boss fight)' : '');
       C.ok(!r.thrown.length, `${label}: ${r.thrown.length} hostile messages threw: ` + [...new Set(r.thrown.map(x => x.replace(/: .*/, m => m.slice(0, 90))))].slice(0, 8).join(' | '));
       C.ok(!r.nan.length && !r.nanBodies, `${label}: NaN positions after the attack: ${r.nan.slice(0, 5).join(', ')} / ${r.nanBodies} physics bodies`);
       C.ok(r.player, `${label}: the player's own position went NaN`);

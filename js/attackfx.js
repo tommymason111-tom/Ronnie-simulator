@@ -30,7 +30,7 @@ export class AttackFX {
   }
 
   // ---------------------------------------------------------------- the attack card
-  showCard({ name, title, sub, icon, color = '#c62828', style = null, vs = null }) {
+  showCard({ name, title, sub, icon, color = '#c62828', style = null, vs = null, top: topLine = null }) {      // (top: the card's own top line instead of "NAME ATTACKS!": the boss fight's cards)
     const g = this.cardCanvas.getContext('2d'), w = 1024, h = 420;
     g.clearRect(0, 0, w, h);
     // drop shadow + panel in the person's colour with a yellow comic border
@@ -50,7 +50,7 @@ export class AttackFX {
     g.restore();
     // name tag, title, effect
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-    g.font = `900 44px ${FONT}`; g.fillStyle = '#ffd400'; { const top = vs ? `${name.toUpperCase()} IS ATTACKING ${vs.toUpperCase()}!` : `${name.toUpperCase()} ATTACKS!`; let f = 44; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(top).width > w - 380 && f > 20); g.fillText(top, 330, 92); }
+    g.font = `900 44px ${FONT}`; g.fillStyle = '#ffd400'; { const top = topLine || (vs ? `${name.toUpperCase()} IS ATTACKING ${vs.toUpperCase()}!` : `${name.toUpperCase()} ATTACKS!`); let f = 44; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(top).width > w - 380 && f > 20); g.fillText(top, 330, 92); }
     let size = 64; const words = title.split(' '), maxW = w - 380;
     let lines;
     for (; size > 30; size -= 4) {

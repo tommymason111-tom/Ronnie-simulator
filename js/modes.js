@@ -36,15 +36,17 @@ export const MODES = {
   date:         { name: 'DATE NIGHT', desc: 'Eat when Chloe looks away. 3 catches and it\'s salad.', time: 180, place: 'restaurant' },
   imposter:     { name: 'IMPOSTER', desc: 'Multiplayer at the Oysterfleet. Do your jobs, find the imposter, vote them out.', time: 0, place: 'pub', mp: true, hidden: true },
   imposter2:    { name: 'IMPOSTER', desc: 'Multiplayer at the Oysterfleet, with two imposters.', time: 0, place: 'pub', mp: true, hidden: true },
+  boss:         { name: 'BOSS FIGHT', desc: 'A giant mate. Eat to power up, throw food to bring them down. Solo or co-op.', time: 0, places: ['pub', 'garden'] },      // (BOSS FIGHT: boss.js)
 };
 // which modes each place offers (also used by the start screen)
 export function modesFor(place) {
-  const only = { shop: ['sweep', 'roam'], garden: ['bbq', 'roam'], restaurant: ['date', 'roam'], grid: ['roam'] }[place];     // these places have one game each (and free roam)
+  const only = { shop: ['sweep', 'roam'], garden: ['bbq', 'boss', 'roam'], restaurant: ['date', 'roam'], grid: ['roam'] }[place];      // (boss: BOSS FIGHT)     // these places have one game each (and free roam)
   if (only) return only;
   return Object.keys(MODES).filter(id => {
     const m = MODES[id];
     if (m.hidden) return false;
     if (m.place && m.place !== place) return false;
+    if (m.places && !m.places.includes(place)) return false;
     if (m.big && place === 'bedroom') return false;
     return true;
   });
@@ -180,6 +182,7 @@ export class Director {
     const g = this.g, m = MODES[id];
     if (!m) return;
     if (this.imposter) { this.imposter.dispose(); this.imposter = null; }
+    if (this.boss) { this.boss.dispose(); this.boss = null; }      // (BOSS FIGHT: boss.js)
     this.hideTommy(false);
     this.mode = id; globalThis.RS_MODE = id; this.running = true; this.used.clear(); this.pending = null;
     this.timeLeft = m.time;
@@ -223,12 +226,15 @@ export class Director {
     });
     if (this.runpub) { this.runpub.cleanup(); this.runpub = null; }
     const SHORT = { imposter: 'THERE IS AN IMPOSTER AMONG US', imposter2: 'THERE ARE TWO IMPOSTERS AMONG US', runpub: 'SERVE THE PUNTERS', sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
-    g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');
+    if (id !== 'boss') g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');      // (the boss fight has its own entrance)
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
     // IMPOSTER (multiplayer, the Oysterfleet): no food, no squad, no Tommy: see imposter.js
     if (id === 'imposter' || id === 'imposter2') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null);
       this.imposter = g.makeImposter ? g.makeImposter(id === 'imposter2' ? 2 : 1) : null; sfx('fanfare', null, 1); return; }
+    // BOSS FIGHT (the pub's car park, Lewis's garden): no squad, Tommy sits it out, the fight lives in boss.js (host and joiners alike)
+    if (id === 'boss') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null); this.removeTrolley();
+      this.boss = g.makeBoss ? g.makeBoss() : null; return; }
     if (this.remote) { tommy.attacks = false; tommy.directed = false; if (g.fx) g.fx.setCountdown(null); return; }
     if (id === 'date') this.startDate();
     if (g.room.name === 'Lidl' && (id === 'sweep' || id === 'roam')) this.setupLidlStaff(id);    // uniforms, and people on the tills
@@ -307,6 +313,8 @@ export class Director {
       lines.push([st.veg === 0 ? 'Ian: "You didn\'t touch my peppers."' : 'Ian: "See? HEALTHY. Lewy, he loved it."', '']);
     } else if (this.mode === 'runpub' && this.runpub) {
       lines.length = 1; lines.push(...this.runpub.summary());
+    } else if (this.mode === 'boss' && this.boss) {      // (BOSS FIGHT: boss.js)
+      lines.length = 0; lines.push(...this.boss.summary());
     } else if (this.mode === 'catch') {
       lines.push(['CATCHES', `${st.caught} / ${st.thrown}`]);
       lines.push(['Harry: "Terrible decision."', '']);
@@ -348,6 +356,7 @@ export class Director {
   update(dt, ctx) {
     const g = this.g;
     if (this.imposter) { this.imposter.update(dt); return; }
+    if (this.boss) { this.boss.update(dt, ctx); this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } return; }      // (BOSS FIGHT: boss.js)
     if (this.remote) { this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
     if (this.pending) {                       // an announced attack that hasn't landed yet
       const pd = this.pending, P = g.player;
@@ -415,6 +424,7 @@ export class Director {
   // ------------------------------------------------------------------ events from the game
   onAte(item, chonk) {
     if (!this.running) return;
+    if (this.boss) this.boss.onAte(item, chonk);      // (BOSS FIGHT: eating powers you up)
     if (this.mode === 'date') this.dateEat();
     this.stats.chonk += Math.max(0, chonk);
     if (this.mode === 'intervention') { this.meter = Math.min(1, this.meter + Math.max(0, chonk) / 30); this.nextAttackT -= Math.max(0, chonk) / 6; }   // the more you eat, the sooner they intervene
@@ -422,6 +432,7 @@ export class Director {
   }
   // the whole item has gone (last bite / drink finished)
   onFinished(item) {
+    if (this.boss) this.boss.onFinished(item);      // (BOSS FIGHT: a whole bit of food eaten = a heart back)
     if (this.guilt && !item.def.veg) {
       const who = this.guilt; this.guilt = null;
       this.g.addChonk((item.def.chonk || 10) * 0.5);
@@ -1091,6 +1102,7 @@ export class Director {
 
   hud() {
     if (this.imposter) return null;
+    if (this.boss) return this.boss.hud();      // (BOSS FIGHT)
     if (this.remote) return this.hostHud || null;
     if (!this.running || this.mode === 'classic') return null;
     const t = this.timeLeft, mm = Math.floor(t / 60), ss = String(Math.floor(t % 60)).padStart(2, '0');
