@@ -958,7 +958,8 @@ renderer.xr.addEventListener('sessionend', () => { if (vrEC) vrEmoteView(false);
 function setPaused(on) {
   if (!on && G.over && renderer.xr.isPresenting) return;        // (no un-pausing back into a finished game)
   // (a menu open: you stay put until you close it, even in multiplayer where the game carries on)
-  paused = on; player.menuLock = on; pauseEl.classList.toggle('on', on); pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-chars', 'show-ctrls', 'show-modes', 'show-music', 'show-tv'); vrPause && vrPause.close(); }
+  paused = on; player.menuLock = on; pauseEl.classList.toggle('on', on); document.body.classList.toggle('paused', on);      // (body.paused: anything that floats over the game (the dev button, the voice bar...) steps aside for the menu)
+  pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-chars', 'show-ctrls', 'show-modes', 'show-music', 'show-tv', 'show-set', 'show-mix'); delete pauseEl.dataset.from; vrPause && vrPause.close(); }
   if (on) { const guest = !!(net.connected && !net.host);   // multiplayer: only the host changes the game or restarts it
     document.getElementById('pause-mode').style.display = guest ? 'none' : ''; document.getElementById('pause-restart').style.display = guest ? 'none' : ''; document.getElementById('pause-char').style.display = net.connected ? '' : 'none';
     const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = (t ? t.textContent : '') + (guest ? ' · the host picks the game' : ''); try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
@@ -982,8 +983,12 @@ setInterval(() => { if (!showStats) return; const n = (window.ronnieMP && window
   statsEl.innerHTML = `FPS <b style="color:${G.fps >= 50 ? '#7cff6a' : G.fps >= 28 ? '#ffd400' : '#ff5252'}">${G.fps}</b>` + (on ? ` · PING <b style="color:${col}">${ping}ms</b> · ${n.players.size + 1} IN ROOM` : ' · SOLO'); }, 500);
 // SOUND & FEEL: the sound mix and the buzz (mixui.js)
 { const st = document.createElement('style'); st.textContent = MIX_CSS; document.head.appendChild(st); }
-document.getElementById('pause-mix').addEventListener('click', () => { buildMix(document.getElementById('pause-mix-body')); pauseEl.classList.add('show-mix'); });
-document.getElementById('pause-mix-back').addEventListener('click', () => pauseEl.classList.remove('show-mix'));
+// SETTINGS (sound, sound & feel, controls, FPS): their own page; its pages come back to it
+document.getElementById('pause-settings').addEventListener('click', () => { pauseEl.classList.add('show-set'); });
+document.getElementById('pause-set-back').addEventListener('click', () => { pauseEl.classList.remove('show-set'); });
+const backToSettings = () => { if (pauseEl.dataset.from === 'set') { pauseEl.classList.add('show-set'); delete pauseEl.dataset.from; } };
+document.getElementById('pause-mix').addEventListener('click', () => { buildMix(document.getElementById('pause-mix-body')); pauseEl.dataset.from = 'set'; pauseEl.classList.remove('show-set'); pauseEl.classList.add('show-mix'); });
+document.getElementById('pause-mix-back').addEventListener('click', () => { pauseEl.classList.remove('show-mix'); backToSettings(); });
 // the buzz: VR controllers' rumble while in the headset, and where your head is (only your own sounds buzz)
 haptics.hookShake((k) => player.shake(k));
 haptics.hook((strength, ms) => { if (!renderer.xr.isPresenting) return false; for (const h of player.hands) if (h.source && h.pulse) h.pulse(strength, Math.max(20, ms)); return true; }, () => player.head);
@@ -996,6 +1001,7 @@ document.getElementById('pause').addEventListener('click', (e) => { if (performa
 document.getElementById('pause-controls').addEventListener('click', () => {
   const touchy = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window;
   document.querySelectorAll('#pause .clist').forEach(l => l.classList.toggle('on', l.dataset.d === (renderer.xr.isPresenting ? 'vr' : touchy ? 'touch' : 'pc')));
+  if (pauseEl.classList.contains('show-set')) { pauseEl.dataset.from = 'set'; pauseEl.classList.remove('show-set'); }
   pauseEl.classList.add('show-ctrls');
 });
 // change game mode from the pause menu (only the games this place has)
@@ -1045,7 +1051,7 @@ function showPauseChars() {
 document.getElementById('pause-char').addEventListener('click', showPauseChars);
 document.getElementById('pause-chars-back').addEventListener('click', () => pauseEl.classList.remove('show-chars'));
 document.getElementById('pause-modes-back').addEventListener('click', () => pauseEl.classList.remove('show-modes'));
-document.getElementById('pause-ctrls-back').addEventListener('click', () => pauseEl.classList.remove('show-ctrls'));
+document.getElementById('pause-ctrls-back').addEventListener('click', () => { pauseEl.classList.remove('show-ctrls'); backToSettings(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && player.flatMode) setPaused(!paused); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && player.flatMode && !paused) setPaused(true); });   // switching apps pauses
 

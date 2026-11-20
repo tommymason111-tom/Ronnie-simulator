@@ -28,6 +28,7 @@ html = re.sub(r'<script type="importmap">.*?</script>', lambda _: block, html, c
 html = re.sub(r"window\.GAME_BUILD = '[^']*'", "window.GAME_BUILD = '" + v + "'", html)
 html = re.sub(r'src="\./js/menu\.js(\?v=[^"]*)?"', 'src="./js/menu.js?v=' + v + '"', html)
 html = re.sub(r'src="\./js/howto\.js(\?v=[^"]*)?"', 'src="./js/howto.js?v=' + v + '"', html)
+html = re.sub(r'src="\./js/fasttap\.js(\?v=[^"]*)?"', 'src="./js/fasttap.js?v=' + v + '"', html)
 html = re.sub(r'src="\./js/crash\.js(\?v=[^"]*)?"', 'src="./js/crash.js?v=' + v + '"', html)
 open(p, 'w').write(html)
 open(os.path.join(ROOT, 'version.json'), 'w').write(json.dumps({'v': v}) + '\n')

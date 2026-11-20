@@ -745,7 +745,7 @@ export function setupWeather({ renderer, scene, room, camera, place }) {
 #pause .wx-note { font: 700 12px Arial, sans-serif; color: #ffb3d4; margin-top: 8px; }`;
     document.head.appendChild(st);
     const btn = document.createElement('button'); btn.className = 'alt'; btn.id = 'pause-wx'; btn.textContent = '🌦️ WEATHER & TIME';
-    const after = document.getElementById('pause-sound'); if (after && after.parentNode === box0) box0.insertBefore(btn, after); else box0.appendChild(btn);
+    const grid = box0.querySelector('.pgrid'); btn.classList.add('tile'); if (grid) grid.insertBefore(btn, document.getElementById('pause-settings')); else box0.appendChild(btn);      // (a tile in the pause menu's grid)
     const box = document.createElement('div'); box.className = 'box wxbox'; box.id = 'pause-wxbox';
     box.innerHTML = `<h2>🌦️ WEATHER</h2><p class="wx-now" id="wx-now"></p><h4>THE WEATHER</h4><div class="wx-grid" id="wx-w"></div><h4>THE TIME</h4><div class="wx-grid" id="wx-t"></div><p class="wx-note" id="wx-note"></p><button class="resume" id="wx-back">⬅ BACK</button>`;
     pause.appendChild(box);
@@ -756,7 +756,7 @@ export function setupWeather({ renderer, scene, room, camera, place }) {
     tb.addEventListener('click', (e) => { const b = e.target.closest('button[data-t]'); if (b && !b.disabled) setTime(b.dataset.t); });
     btn.addEventListener('click', () => { window.__menuOpenAt = performance.now(); drawUI(); pause.classList.add('show-wx'); });
     box.querySelector('#wx-back').addEventListener('click', () => pause.classList.remove('show-wx'));
-    new MutationObserver(() => { if (!pause.classList.contains('on')) pause.classList.remove('show-wx'); }).observe(pause, { attributes: true, attributeFilter: ['class'] });
+    new MutationObserver(() => { if (!pause.classList.contains('on') && pause.classList.contains('show-wx')) pause.classList.remove('show-wx'); })      // (only when it's there: removing a class that isn't there still rewrites the attribute, which woke this up again, for ever: the whole page froze when the pause menu closed).observe(pause, { attributes: true, attributeFilter: ['class'] });
     ui = { box, wb, tb, now: box.querySelector('#wx-now'), note: box.querySelector('#wx-note') };
     setInterval(() => { if (pause.classList.contains('show-wx')) drawUI(); }, 1000);
     drawUI();
