@@ -249,7 +249,7 @@ export class BossFight {
   get playerCount() { return 1 + (this.mpOn ? this.g.net.players.size : 0); }
 
   // ---------------------------------------------------------------- set up (host)
-  begin(id) {
+  begin(id) { this.seenAtk = new Set();
     this.id = BOSSES[id] ? id : 'noah';
     this.mx = Math.round(900 * (1 + 0.6 * (this.playerCount - 1))); this.hp = this.mx;
     this.ph = 1; this.S0 = this.def.S; this.S = this.S0;
@@ -382,10 +382,12 @@ export class BossFight {
     const ph = this.ph - 1, W = { ...WEIGHTS[ph] };
     if (this.lastAtk) W[this.lastAtk] = (W[this.lastAtk] || 0) * 0.25;
     if (this.minions.some(c => !c.disposed)) delete W.summon;
+    // (every move it has gets a go before any comes round again: a quick fight used to finish without ever showing one)
+    const seen = this.seenAtk || (this.seenAtk = new Set()), fresh = Object.keys(W).filter(k => W[k] > 0 && !seen.has(k)); if (fresh.length) for (const k in W) if (!fresh.includes(k)) delete W[k];
     let tot = 0; for (const k in W) tot += W[k]; let r = Math.random() * tot, pick = 'throw';
     for (const k in W) { r -= W[k]; if (r <= 0) { pick = k; break; } }
     if (this.forceNext) { pick = this.forceNext; this.forceNext = null; }      // (a new phase opens with one of its new moves)
-    this.lastAtk = pick; this.nAttacks++;
+    this.lastAtk = pick; this.nAttacks++; this.seenAtk.add(pick);
     this.again = pick === 'slam' && ph === 2 ? 1 : pick === 'charge' && ph >= 1 && Math.random() < (ph === 2 ? 0.8 : 0.4) ? 1 : 0;
     this.tele(pick);
   }

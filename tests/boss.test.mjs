@@ -27,7 +27,7 @@ const BOT = () => {
     let mx = 0, mz = 0;
     for (const h of B.hazards) {
       if (h.kind !== 'tele') continue;
-      if (h.__skip === undefined) h.__skip = (s.nTele = (s.nTele || 0) + 1) === 3;      // (a human misses one now and then: the third warning isn't dodged, so the boss's hits always get tested)
+      if (h.__skip === undefined) h.__skip = [3, 7, 11].includes(s.nTele = (s.nTele || 0) + 1);      // (a human misses one now and then: three warnings early on isn't dodged, so the boss's hits always get tested)
       if (h.__skip) continue; const dx = me.x - B.x, dz = me.z - B.z, d = Math.hypot(dx, dz) || 1;
       if (h.a === 'slam' && d < h.r + 0.8) { mx += dx / d; mz += dz / d; }
       if (h.a === 'wave' && d > h.r0 - 0.7) { mx -= dx / d; mz -= dz / d; }
@@ -135,8 +135,10 @@ export default async function () {
           const c = RS.cast.find(x => x.bossMinion); if (!c) return { none: true };
           await new Promise(r => setTimeout(r, 1500)); RS.sim(0.1, 1 / 30);
           const cp = c.pos.clone(); P.rig.position.x += cp.x + 2.5 - P.head.x; P.rig.position.z += cp.z - P.head.z; RS.sim(0.1, 1 / 30);
-          const it = RS.items.items.find(i => !i.dead && !i.heldBy && !i.def.veg && !i.def.prop && !i.def.drink); P.flatGrab(it); RS.sim(0.4, 1 / 30);      // (in the hand first)
-          P.flatThrow(7); B.aimAt(it, c.rag.pos('chest', new T.Vector3()), 7); RS.sim(1, 1 / 30);
+          for (let k = 0; k < 3 && !(B.stats.minions > 0); k++) {      // (up to three goes: a lad running at you is a moving target)
+            const cp2 = c.pos.clone(); P.rig.position.x += cp2.x + 2.2 - P.head.x; P.rig.position.z += cp2.z - P.head.z; RS.sim(0.05, 1 / 30);
+            const it = RS.items.items.find(i => !i.dead && !i.heldBy && !i.def.veg && !i.def.prop && !i.def.drink); P.flatGrab(it); RS.sim(0.4, 1 / 30);      // (in the hand first)
+            P.flatThrow(7); B.aimAt(it, c.rag.pos('chest', new T.Vector3()), 7); RS.sim(1, 1 / 30); }
           return { down: c.down || c.bossGone, ko: B.stats.minions, n: B.minions.length }; });
         C.ok(mn.ko > 0, `a lad the boss called in wasn't knocked out by a throw: ${JSON.stringify(mn)}`);
         // nothing from the old fights left lying about
