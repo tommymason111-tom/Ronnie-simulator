@@ -77,6 +77,16 @@ export default async function () {
     // max players 4 and unlocked: fine; then a screenshot of the lobby on a phone
     await ev(H, () => document.querySelector('#room-opts [data-lock]').click()); await sleep(800);
     await sleep(700); await G.screenshot({ path: `${dir}/lobby-phone.png`, fullPage: false, timeout: 120000 }).catch(() => {});
+    // the phone lobby: the code and READY at the top, the extras top-right, the chat sheet with its CLOSE on screen
+    const top = await ev(G, () => { const q = (s) => document.querySelector(s).getBoundingClientRect(); const code = q('#room-code'), ready = q('#room-ready'), chat = q('#room-chat-btn'), link = q('#room-copy');
+      return { code: Math.round(code.bottom), ready: Math.round(ready.bottom), chatTR: chat.top < 90 && chat.right > innerWidth - 230, linkTR: link.top < 90 }; });
+    C.ok(top.code < 260 && top.ready < 300 && top.chatTR && top.linkTR, `phone lobby: the code and READY should be at the top and the buttons top-right: ${JSON.stringify(top)}`);
+    await cl(G, '#room-chat-btn'); await sleep(500);
+    const sheet = await ev(G, () => { const c = document.querySelector('#room-chat .sh-close'), r = c.getBoundingClientRect(), u = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return { in: r.top >= 0 && r.bottom <= innerHeight && r.right <= innerWidth, top: u === c }; });
+    await G.screenshot({ path: `${dir}/lobby-phone-chat.png`, fullPage: false, timeout: 120000 }).catch(() => {});
+    await ev(G, () => document.querySelector('#room-chat .sh-close').click()); await sleep(300);
+    const shut = await ev(G, () => getComputedStyle(document.querySelector('#room-chat')).display === 'none' && !document.querySelector('#room-sheet-bg').classList.contains('on'));
+    C.ok(sheet.in && sheet.top && shut, `phone lobby: the chat's CLOSE isn't on screen / on top, or didn't close it: ${JSON.stringify(sheet)} closed ${shut}`);
     const fit = await ev(G, () => { const bad = []; for (const el of document.querySelectorAll('.screen.on[data-s="room"] *')) { const r = el.getBoundingClientRect(); if (r.width && r.right > innerWidth + 1) bad.push(el.id || el.className || el.tagName); } return bad.slice(0, 5); });
     C.ok(!fit.length, `lobby doesn't fit a phone: ${fit}`);
     // start a game: short and no attacks, on both

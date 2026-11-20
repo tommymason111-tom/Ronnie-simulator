@@ -521,7 +521,8 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
 #imp-splash.on { display: flex; } #imp-splash h1 { font-size: clamp(34px, 9vw, 80px); margin: 0; letter-spacing: 2px; } #imp-splash p { font-size: clamp(15px, 3.6vw, 26px); margin: 10px 18px; } #imp-splash .imgs { display: flex; gap: 12px; margin-top: 12px; } #imp-splash img { width: 92px; height: 92px; border-radius: 50%; border: 4px solid currentColor; object-fit: cover; }
 #imp-alert { position: fixed; left: 50%; top: max(70px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 44; display: none; padding: 8px 18px; border-radius: 14px; background: rgba(150,0,0,0.85); border: 3px solid #fff; color: #fff; font: 900 16px "Arial Black", Arial; text-align: center; pointer-events: none; animation: impflash 0.8s infinite alternate; }
 #imp-alert.on { display: block; } @keyframes impflash { from { background: rgba(150,0,0,0.85); } to { background: rgba(255,40,40,0.95); } }
-#imp-map { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 70; display: none; pointer-events: none; } #imp-map-close { position: absolute; top: 6px; right: 6px; pointer-events: auto; font: 900 17px system-ui, sans-serif; color: #111; background: #ffd400; border: 3px solid #111; border-radius: 12px; padding: 7px 14px; box-shadow: 0 3px 0 #111; cursor: pointer; } #imp-map-close:active { transform: translateY(2px); box-shadow: 0 1px 0 #111; } #imp-map.on { display: block; } #imp-map canvas { display: block; width: auto; height: auto; max-width: 94vw; max-height: calc(100vh - 24px); border-radius: 16px; border: 4px solid #ffd400; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
+#imp-map { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 70; display: none; pointer-events: none; } #imp-map-close { position: absolute; top: 6px; right: 6px; z-index: 2; pointer-events: auto; font: 900 17px system-ui, sans-serif; color: #111; background: #ffd400; border: 3px solid #111; border-radius: 12px; padding: 7px 14px; box-shadow: 0 3px 0 #111; cursor: pointer; } #imp-map-close:active { transform: translateY(2px); box-shadow: 0 1px 0 #111; } #imp-map.on { display: block; } @media (max-width: 500px) { #imp-map-close { font-size: 14px !important; padding: 5px 10px !important; } }
+#imp-map canvas { display: block; width: auto; height: auto; max-width: calc(100vw - 16px); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); border-radius: 16px; border: 4px solid #ffd400; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
 #imp-sabm { position: fixed; inset: 0; z-index: 67; display: none; align-items: center; justify-content: center; gap: 16px; background: rgba(0,0,0,0.55); flex-wrap: wrap; } #imp-sabm.on { display: flex; }
 #imp-sabm button { width: 150px; height: 150px; border-radius: 22px; border: 4px solid #fff; background: #6a1b9a; color: #fff; font: 900 16px "Arial Black", Arial; } #imp-sabm button b { display: block; font-size: 48px; }`;
     document.head.appendChild(st); this.style = st;
@@ -744,15 +745,27 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     // On a landscape screen it's turned on its side (so it fills the screen), on a portrait one it's upright
     const land = false, c = this.mapCv,      // (always upright: north at the top, the long way down the screen, on phones held either way)
       Bx = [-29.6, 16.8], Bz = [-24.4, 42.6], TOP = 44, PAD = 14;
-    const W = land ? 1100 : 720, H = land ? 760 : 1040; if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
-    const x = c.getContext('2d'), sc = land ? Math.min((W - PAD * 2) / (Bz[1] - Bz[0]), (H - TOP - PAD) / (Bx[1] - Bx[0])) : Math.min((W - PAD * 2) / (Bx[1] - Bx[0]), (H - TOP - PAD) / (Bz[1] - Bz[0]));
+    const W = land ? 1100 : 720, H = land ? 760 : 1040, S = Math.min(2, Math.max(1, window.devicePixelRatio || 1)); if (c.width !== W * S || c.height !== H * S) { c.width = W * S; c.height = H * S; c.style.aspectRatio = W + ' / ' + H; }
+    const x = c.getContext('2d'); x.setTransform(S, 0, 0, S, 0, 0); const sc = land ? Math.min((W - PAD * 2) / (Bz[1] - Bz[0]), (H - TOP - PAD) / (Bx[1] - Bx[0])) : Math.min((W - PAD * 2) / (Bx[1] - Bx[0]), (H - TOP - PAD) / (Bz[1] - Bz[0]));
     const ox = land ? (W - (Bz[1] - Bz[0]) * sc) / 2 : (W - (Bx[1] - Bx[0]) * sc) / 2;
     // world (X, Z) -> map: upright = north up; on its side = the garden off to the right, the restaurant at the bottom
     const P = (X, Z) => land ? [ox + (Z - Bz[0]) * sc, TOP + (Bx[1] - X) * sc] : [ox + (X - Bx[0]) * sc, TOP + (Z - Bz[0]) * sc];
     x.fillStyle = '#2f6b33'; x.fillRect(0, 0, W, H); for (let i = 0; i < 420; i++) { x.fillStyle = i % 2 ? '#357a3a' : '#2a5f2e'; x.fillRect((i * 97) % W, (i * 53) % H, 6, 6); }
-    const poly = (pts, col, name, sz = 15, edge = '#2b1a10') => { x.fillStyle = col; x.strokeStyle = edge; x.lineWidth = 4; x.beginPath(); pts.forEach(([X, Z], i) => { const [u, v] = P(X, Z); i ? x.lineTo(u, v) : x.moveTo(u, v); }); x.closePath(); x.fill(); x.stroke();
+    // floors: tiles in the kitchens and loos, boards in the bar, carpet in the restaurant and booths (drawn faintly over the room's colour)
+    const FLOOR = { "MEN'S": 'tile', "WOMEN'S": 'tile', DISABLED: 'tile', KITCHEN: 'tile', 'R. KITCHEN': 'tile', RESTAURANT: 'carpet', 'RAISED BOOTHS': 'carpet', 'STAFF ROOM': 'boards', 'KEG ROOM': 'grate', RECEPTION: 'boards', CONSERVATORY: 'tile', GAMBLING: 'carpet', DECK: 'deck', 'GARDEN BAR': 'boards' };
+    const pats = this.mapPats || (this.mapPats = {}), pat = (kind) => { if (pats[kind]) return pats[kind]; const t = document.createElement('canvas'); t.width = t.height = 16; const g = t.getContext('2d');
+      if (kind === 'tile') { g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 1; g.strokeRect(0.5, 0.5, 16, 16); }
+      else if (kind === 'boards') { g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, 0, 16, 1); g.fillRect(0, 8, 16, 1); g.fillRect(6, 0, 1, 8); g.fillRect(13, 8, 1, 8); }
+      else if (kind === 'deck') { g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, 0, 1, 16); g.fillRect(8, 0, 1, 16); }
+      else if (kind === 'carpet') { g.fillStyle = 'rgba(255,220,150,0.16)'; for (const [a, b] of [[3, 3], [11, 11], [11, 3], [3, 11]]) { g.beginPath(); g.arc(a, b, 1.6, 0, 7); g.fill(); } }
+      else if (kind === 'grate') { g.strokeStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.moveTo(0, 0); g.lineTo(16, 16); g.moveTo(16, 0); g.lineTo(0, 16); g.stroke(); }
+      return (pats[kind] = x.createPattern(t, 'repeat')); };
+    const ICON = { RESTAURANT: '🍽️', 'R. KITCHEN': '🍳', KITCHEN: '🍳', "MEN'S": '🚹', "WOMEN'S": '🚺', DISABLED: '♿', RECEPTION: '🛎️', 'STAFF ROOM': '☕', 'KEG ROOM': '🛢️', 'RAISED BOOTHS': '🛋️', CONSERVATORY: '🌿', GAMBLING: '🎰', DECK: '🪵', 'GARDEN BAR': '🍹' };
+    const poly = (pts, col, name, sz = 15, edge = '#2b1a10') => { x.fillStyle = col; x.strokeStyle = edge; x.lineWidth = 4; x.beginPath(); pts.forEach(([X, Z], i) => { const [u, v] = P(X, Z); i ? x.lineTo(u, v) : x.moveTo(u, v); }); x.closePath(); x.fill();
+      if (FLOOR[name]) { x.save(); x.clip(); x.fillStyle = pat(FLOOR[name]); x.fillRect(0, 0, W, H); x.restore(); x.beginPath(); pts.forEach(([X, Z], i) => { const [u, v] = P(X, Z); i ? x.lineTo(u, v) : x.moveTo(u, v); }); x.closePath(); }
+      x.save(); x.shadowColor = 'rgba(0,0,0,0.45)'; x.shadowBlur = 6; x.stroke(); x.restore();
       if (name) { let cx = 0, cz = 0, u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9; for (const [X, Z] of pts) { cx += X; cz += Z; const [u, v] = P(X, Z); u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
-        const [u, v] = P(cx / pts.length, cz / pts.length); labels.push([name, u, v, sz, u1 - u0, v1 - v0]); } };
+        const [u, v] = P(cx / pts.length, cz / pts.length); labels.push([(ICON[name] && (u1 - u0) > 60 ? ICON[name] + ' ' : '') + name, u, v, sz, u1 - u0, v1 - v0]); } };
     // every room's name, written last (so the next room along never paints over it) and always whole: it gets smaller
     // to fit inside its room, and goes onto two lines if it's still too wide
     const nameBoxes = [];      // (where the room names went: the job tags keep off them)
@@ -788,8 +801,11 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     { const cols = (this.g.room && this.g.room.colliders) || []; x.fillStyle = 'rgba(30,16,8,0.32)'; x.strokeStyle = 'rgba(0,0,0,0.35)'; x.lineWidth = 1;
       for (const c of cols) { if (c.max.y > 1.6 || c.min.y > 1.2) continue; const w = c.max.x - c.min.x, d = c.max.z - c.min.z; if (w > 6 || d > 6 || w * d < 0.04) continue;
         if (c.max.x < Bx[0] || c.min.x > Bx[1] || c.max.z < Bz[0] || c.min.z > Bz[1]) continue;
-        const [u0, v0] = P(c.min.x, c.min.z), [u1, v1] = P(c.max.x, c.max.z); const ux = Math.min(u0, u1), vy = Math.min(v0, v1), uw = Math.abs(u1 - u0), vh = Math.abs(v1 - v0); x.fillRect(ux, vy, uw, vh); if (uw > 6 && vh > 6) x.strokeRect(ux, vy, uw, vh); } }
+        const [u0, v0] = P(c.min.x, c.min.z), [u1, v1] = P(c.max.x, c.max.z); const ux = Math.min(u0, u1), vy = Math.min(v0, v1), uw = Math.abs(u1 - u0), vh = Math.abs(v1 - v0), tall = c.max.y > 0.95;
+        x.fillStyle = 'rgba(0,0,0,0.22)'; rr(x, ux + 1.5, vy + 2, uw, vh, Math.min(4, uw / 3, vh / 3)); x.fill();      // (a little shadow)
+        x.fillStyle = tall ? 'rgba(70,60,55,0.75)' : 'rgba(120,72,36,0.7)'; rr(x, ux, vy, uw, vh, Math.min(4, uw / 3, vh / 3)); x.fill(); if (uw > 6 && vh > 6) { x.strokeStyle = 'rgba(0,0,0,0.45)'; x.lineWidth = 1; x.stroke(); } } }
     for (const L of labels) fitLabel(...L);
+    { const [u, v] = P(0, 39.5); txt(x, '🌳 BEER GARDEN', u, v, 17, '#fff'); } { const [u, v] = P(11.5, -17.5); txt(x, '🚗 CAR PARK', u, v, 15, '#fff'); } { const [u, v] = P(3.6, 2.6); txt(x, 'THE BAR', u, v, 12, '#fff'); }      // (again, on top of the furniture)
     const dot = (X, Z, r, col, edge, label, lsz = 13, lcol = '#111') => { const [u, v] = P(X, Z); x.fillStyle = col; x.strokeStyle = edge || '#111'; x.lineWidth = 3; x.beginPath(); x.arc(u, v, r, 0, 7); x.fill(); if (edge) x.stroke(); if (label) txt(x, label, u, v + 1, lsz, lcol); };
     // the bell, the jobs, the fixes, the trapdoors, you
     dot(CENTRE.x, CENTRE.z, 12, '#d81b2a', '#fff', '🔔', 13);

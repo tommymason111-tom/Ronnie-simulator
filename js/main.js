@@ -911,13 +911,53 @@ body.flat.mpon #chat-log { display: flex; }
   inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') send(); if (e.key === 'Escape') close(); });
   inp.addEventListener('keyup', (e) => e.stopPropagation());
   const add = (name, text) => { const d = document.createElement('div'); d.innerHTML = `<b></b> `; d.querySelector('b').textContent = name + ':'; d.appendChild(document.createTextNode(text)); log.appendChild(d);
-    while (log.children.length > 5) log.firstChild.remove(); setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 700); }, 15000); };
+    while (log.children.length > 5) log.firstChild.remove(); setTimeout(() => { d.style.opacity = '0'; setTimeout(() => { d.remove(); layout(); }, 700); }, 15000); layout(); };
   // the log sits just under the Eat Meter, wherever that is on this screen
   const corners = [[-0.05, -0.03125], [0.05, -0.03125]].map(([x, y]) => new THREE.Vector3(x, y, 0)), v = new THREE.Vector3();
-  const place = () => { if (!player.wrist || !player.wrist.visible) return; let x0 = 1e9, y1 = -1e9; player.wrist.updateMatrixWorld();
-    for (const c of corners) { v.copy(c).applyMatrix4(player.wrist.matrixWorld).project(camera); const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight; x0 = Math.min(x0, sx); y1 = Math.max(y1, sy); }
-    if (isFinite(x0)) { log.style.left = Math.max(6, x0) + 'px'; log.style.top = (y1 + 6) + 'px'; } };
-  return { add, update() { document.body.classList.toggle('mpon', !!net.connected); if (net.connected && player.flatMode) place(); }, get typing() { return box.classList.contains('on'); } };
+  // THE SCREEN'S EDGES, laid out so nothing sits on anything else (phones especially):
+  //   left column:  the Eat Meter (drawn in 3D), then the room chip, then the chat lines
+  //   right column: PAUSE, CHAT, VOICE, then who's talking
+  //   middle:       the NEXT ATTACK pill and the hints go below whichever columns they'd otherwise run into
+  const corners4 = [[-0.05, -0.03125], [0.05, -0.03125], [-0.05, 0.03125], [0.05, 0.03125]].map(([x, y]) => new THREE.Vector3(x, y, 0));
+  const R = (el) => { if (!el) return null; const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden') return null; const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2 ? r : null; };
+  const meterRect = () => { if (!player.wrist || !player.wrist.visible) return null; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; player.wrist.updateMatrixWorld();
+    for (const c of corners4) { v.copy(c).applyMatrix4(player.wrist.matrixWorld).project(camera); const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
+    return isFinite(x0) ? { left: x0, right: x1, top: y0, bottom: y1 } : null; };
+  const over = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  const layout = () => {
+    const m = meterRect(), narrow = innerWidth < 760, gap = 6, $ = (id) => document.getElementById(id);
+    const put = (el, x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.right = 'auto'; el.style.transform = 'none'; };
+    const unput = (el) => { el.style.left = ''; el.style.top = ''; el.style.right = ''; el.style.transform = ''; };
+    const placed = [];      // (everything already laid out: nothing after it may sit on it)
+    if (m) placed.push(m);
+    // the right column first: PAUSE, then CHAT and VOICE in a room, Run the Pub's orders, the eat-off's score
+    let ry = null, rightLeft = innerWidth;
+    for (const id of ['menu-btn', 'chat-btn', 'vc-bar', 'rp-orders', 'snackscore']) { const el = $(id), r = R(el); if (!r) continue;
+      if (ry !== null) el.style.top = ry + 'px'; const r2 = R(el); ry = r2.bottom + gap; rightLeft = Math.min(rightLeft, r2.left); placed.push(r2); }
+    const rightBottom = ry === null ? 0 : ry;
+    // then the left column, under the Eat Meter: a game's own panel (Imposter's jobs, Prop Hunt's feed, Run the Pub's
+    // events), the room chip, the chat lines. Anything that would land on something already there steps down below it
+    let y = m ? m.bottom + gap : 10; const x = m ? Math.max(6, m.left) : 10;
+    const drop = (el) => { let r = R(el); for (let k = 0; k < 8 && r; k++) { const hit = placed.find(p => over(r, p)); if (!hit) break; el.style.top = (hit.bottom + gap) + 'px'; r = R(el); } return r; };
+    for (const id of ['imp-tasks', 'ph-feed', 'rp-events']) { const el = $(id); if (!el) continue; if (!narrow) { unput(el); continue; } if (!R(el)) continue; put(el, x, y); const r = drop(el); if (r) { y = r.bottom + gap; placed.push(r); } }
+    const chip = $('mp-chip');
+    if (chip) { if (narrow && chip.classList.contains('on')) { put(chip, x, y); const cr = drop(chip); if (cr) { y = cr.bottom + gap; placed.push(cr); const pop = $('roster-pop'); if (pop && R(pop)) put(pop, Math.max(6, Math.min(cr.left, innerWidth - R(pop).width - 6)), cr.bottom + 4); } }
+      else { unput(chip); const pop = $('roster-pop'); if (pop) unput(pop); } }
+    if (net.connected) { log.style.left = x + 'px'; log.style.top = y + 'px'; let lr = log.children.length ? drop(log) : null;
+      // (never down into the touch controls: on a landscape phone there's little room, so the oldest lines go first)
+      let ctl = innerHeight; for (const id of ['btn-sprint', 'btn-emote', 'knob']) { const r = R($(id)); if (r && lr && r.left < lr.right) ctl = Math.min(ctl, r.top); }
+      while (lr && log.children.length > 1 && lr.bottom > ctl - gap) { log.firstChild.remove(); lr = R(log); }
+      if (lr && log.children.length) { y = lr.bottom + gap; placed.push(lr); } }
+    // the middle: the attack pill, hints, Prop Hunt's and Imposter's banners: below anything they'd run into
+    let mid = 0; const lane = (el) => { if (!el) return; if (el.dataset.top0 === undefined) el.dataset.top0 = el.style.top; el.style.top = el.dataset.top0; let r = R(el); if (!r) return;
+      if (r.top < mid) { el.style.top = mid + 'px'; r = R(el); }
+      r = drop(el) || r; mid = r.bottom + gap; placed.push(r); };
+    for (const id of ['ph-top', 'nextAttack', 'imp-alert', 'hint', 'dev-tag']) lane($(id));
+  };
+  window.__layoutHud = layout;
+  setInterval(() => { try { if (player.flatMode && !document.hidden && document.body.classList.contains('flat')) layout(); } catch (e) {} }, 300);      // (as well as from the game loop: some modes' loops don't come by here every frame)
+  let layT = 0;
+  return { add, update() { document.body.classList.toggle('mpon', !!net.connected); if (player.flatMode && (layT = (layT + 1) % 4) === 0) layout(); }, layout, get typing() { return box.classList.contains('on'); } };
 })();
 
 // ---------------- main loop ----------------

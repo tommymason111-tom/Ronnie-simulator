@@ -229,6 +229,8 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   $('#cog').addEventListener('click', () => { $('#settings').hidden = false; });
   $('#lb-open').addEventListener('click', () => { import('./leaderboard.js').then(m => m.openBoards()).catch(() => {}); });
   $('#set-close').addEventListener('click', () => { $('#settings').hidden = true; });
+  $('#set-x').addEventListener('click', () => { $('#settings').hidden = true; });
+  $('#settings').addEventListener('click', (e) => { if (e.target.id === 'settings') $('#settings').hidden = true; });      // (a tap outside the box closes it too)
   // developer mode is behind a code. Get it wrong once and it's locked on this device for good
   { const LOCK = 'rs_dev_locked', locked = () => { try { return localStorage.getItem(LOCK) === '1'; } catch (e) { return false; } };
     const showLocked = () => { const b = $('#set-dev'); b.classList.add('locked'); b.disabled = true; b.textContent = '🔒 DEVELOPER MODE LOCKED'; $('#dev-code').hidden = true; };
@@ -574,14 +576,20 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     if (!p || !confirm(`Remove ${p.name || 'this player'} from the room?`)) return; mp.net.send({ t: 'kick', to: p.id, why: 'kick' }); sysChat(`${p.name || 'A player'} was removed`); });
   // the host's room options (everyone else sees them, greyed)
   const drawRoomOpts = (boss) => { const el = $('#room-opts'), RO = mp.RO, ob = $('#room-opts-btn'); if (!el || !RO) return;
-    ob.hidden = !boss; if (!boss) { el.classList.remove('open'); ob.setAttribute('aria-expanded', 'false'); el.innerHTML = ''; el._html = ''; return; }      // (only the host sees the room's options)
-    el.innerHTML = `<h4>⚙️ ROOM OPTIONS${boss ? '' : ' (THE HOST PICKS)'}</h4>` + RO.OPT_DEFS.map(d => `${d.imp && d.k === RO.OPT_DEFS.find(x => x.imp).k ? '<h5>🔪 FOR IMPOSTER</h5>' : ''}<div class="ro"><span>${d.ico} ${d.imp ? d.name.replace('IMPOSTER: ', '') : d.name}</span><div class="seg">${d.vals.map(v => `<button type="button" data-ok="${d.k}" data-ov="${v[0]}" class="${RO.roomOpts[d.k] === v[0] ? 'on' : ''}"${boss ? '' : ' disabled'}>${v[1]}</button>`).join('')}</div></div>`).join('')
+    ob.hidden = !boss; if (!boss) { if (el.classList.contains('open')) closeSheets(); el.innerHTML = ''; return; }      // (only the host sees the room's options)
+    el.innerHTML = `<div class="sh-head"><b>⚙️ ROOM OPTIONS</b><button type="button" class="sh-close" data-close="opts">✕ CLOSE</button></div>` + RO.OPT_DEFS.map(d => `${d.imp && d.k === RO.OPT_DEFS.find(x => x.imp).k ? '<h5>🔪 FOR IMPOSTER</h5>' : ''}<div class="ro"><span>${d.ico} ${d.imp ? d.name.replace('IMPOSTER: ', '') : d.name}</span><div class="seg">${d.vals.map(v => `<button type="button" data-ok="${d.k}" data-ov="${v[0]}" class="${RO.roomOpts[d.k] === v[0] ? 'on' : ''}"${boss ? '' : ' disabled'}>${v[1]}</button>`).join('')}</div></div>`).join('')
       + (boss ? `<button type="button" class="lock${mp.locked ? ' on' : ''}" data-lock="1">${mp.locked ? '🔒 ROOM LOCKED: NOBODY ELSE CAN JOIN' : '🔓 ROOM OPEN: TAP TO LOCK IT'}</button>` : '') + `<p class="note">Options count in this room's games. Playing on your own is always the normal game.</p>`; };
-  const toggle = (btn, el, on) => { on = on === undefined ? !el.classList.contains('open') : on; el.classList.toggle('open', on); btn.setAttribute('aria-expanded', on ? 'true' : 'false'); return on; };
+  const sheets = () => [[$('#room-opts-btn'), $('#room-opts')], [$('#room-chat-btn'), $('#room-chat')]];
+  const toggle = (btn, el, on) => { on = on === undefined ? !el.classList.contains('open') : on;
+    for (const [b2, e2] of sheets()) if (e2 !== el && e2.classList.contains('open')) { e2.classList.remove('open'); b2.setAttribute('aria-expanded', 'false'); }      // (one at a time)
+    el.classList.toggle('open', on); btn.setAttribute('aria-expanded', on ? 'true' : 'false'); $('#room-sheet-bg').classList.toggle('on', sheets().some(([, e2]) => e2.classList.contains('open'))); return on; };
+  const closeSheets = () => { for (const [b2, e2] of sheets()) { e2.classList.remove('open'); b2.setAttribute('aria-expanded', 'false'); } $('#room-sheet-bg').classList.remove('on'); };
+  $('#room-sheet-bg').addEventListener('click', closeSheets);
+  $('#room-chat').addEventListener('click', (e) => { if (e.target.closest('[data-close]')) closeSheets(); });
   $('#room-opts-btn').addEventListener('click', () => { toggle($('#room-opts-btn'), $('#room-opts')); blip(600, 0.05); });
   $('#room-chat-btn').addEventListener('click', () => { if (toggle($('#room-chat-btn'), $('#room-chat'))) { roomUnread = 0; drawBadge(); const l = $('#room-chat-log'); l.scrollTop = l.scrollHeight; } blip(600, 0.05); });
   let roomUnread = 0; const drawBadge = () => { const b = $('#room-chat-badge'); b.hidden = !roomUnread; b.textContent = roomUnread > 9 ? '9+' : String(roomUnread); };
-  $('#room-opts').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.disabled || !mp.net || !mp.RO) return;
+  $('#room-opts').addEventListener('click', (e) => { if (e.target.closest('[data-close]')) { closeSheets(); return; } const b = e.target.closest('button'); if (!b || b.disabled || !mp.net || !mp.RO) return;
     if (b.dataset.lock) mp.locked = !mp.locked; else mp.RO.setOpts({ [b.dataset.ok]: b.dataset.ov });
     mp.net.send({ t: 'ropts', o: { ...mp.RO.roomOpts }, lock: mp.locked ? 1 : 0 }); blip(820, 0.05); lobby(); });
   // INVITE: a link straight into this room (the phone's share sheet, or copied)
@@ -592,7 +600,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   $('#room-share').addEventListener('click', async () => { if (!mp.net) return; const u = inviteURL();
     if (navigator.share) { try { await navigator.share({ title: 'Ronnie Simulator', text: `Come and eat with me! Room ${mp.net.code}`, url: u }); linkMsg('Invite sent!'); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
     copyLink(); });
-  $('#room-leave').addEventListener('click', () => { try { localStorage.removeItem('rs_mp_last'); } catch (e) {} if (mp.net) mp.net.leave(); mp.net = null; mp.role = null; $('#mp-code-chip').textContent = ''; show('mp', -1); });
+  $('#room-leave').addEventListener('click', () => { closeSheets(); try { localStorage.removeItem('rs_mp_last'); } catch (e) {} if (mp.net) mp.net.leave(); mp.net = null; mp.role = null; $('#mp-code-chip').textContent = ''; show('mp', -1); });
   $('#mp-code2').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
   $('#mp-join2').addEventListener('click', async () => {
     const code = ($('#mp-code2').value || '').toUpperCase().trim();

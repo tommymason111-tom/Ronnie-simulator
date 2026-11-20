@@ -15,7 +15,7 @@
   addEventListener('pointerup', (e) => {
     const d = down; down = null;
     if (!d || e.pointerId !== d.id || e.pointerType !== 'touch') return;
-    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12 || e.timeStamp - d.t > 900) return;      // (a drag or a scroll, or a long press: not a tap. Timed by when the finger went down and came up, not when the page got round to it: a busy page used to turn every tap into a "long press")
+    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12) return;      // (a drag or a scroll: not a tap. However long the finger stayed down, it's a press: a busy page can make even a quick tap look long)
     const under = document.elementFromPoint(e.clientX, e.clientY);
     if (!under || !d.b.contains(under) || !d.b.isConnected || d.b.disabled) return;
     quiet = { b: d.b, x: e.clientX, y: e.clientY, until: performance.now() + 700 };
