@@ -5,6 +5,7 @@
 // (a check that's too strict breaks the game quietly), no errors, no crash reports.
 import { launch, newPage, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
+const readyUp = async (ps) => { for (const q of ps) await q.evaluate(() => { const m = window.ronnieMP; if (m && m.net && m.role === 'join' && !m.ready) document.querySelector('#room-ready').click(); }).catch(() => {}); await new Promise(r => setTimeout(r, 1500)); };      // (guests ready up: the host's START waits for everyone)
 
 export default async function () {
   const C = checker('mp'), host = await startRoomHost(), b = await launch();
@@ -20,7 +21,7 @@ export default async function () {
     await cl(H, '#room-go'); await sleep(400); await ev(H, () => document.querySelector('.scene[data-id="pub"]').click()); await sleep(300);
     await ev(H, () => document.querySelector('.screen[data-s="place"] .bigbtn').click()); await sleep(500);
     await ev(H, () => { const f = () => document.querySelector('.flip[data-id="everyone"]'); f().click(); f().click(); }); await sleep(300);
-    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await cl(H, '#go');
+    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await readyUp([G]); await cl(H, '#go');
     for (const p of [H, G]) { await p.waitForFunction(() => document.querySelector('.screen[data-s="intro"].on') || document.body.classList.contains('ready'), null, { timeout: 120000 }); await ev(p, () => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click(); }); }
     for (const p of [H, G]) { await p.waitForFunction(() => window.RS && document.body.classList.contains('ready'), null, { timeout: 180000 }); await ev(p, () => document.getElementById('play-flat').click()); }
     // play: both run their games (no drawing) and walk about; the guest grabs and throws food, punches, chats, emotes

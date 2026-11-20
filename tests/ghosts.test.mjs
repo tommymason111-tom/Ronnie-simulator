@@ -8,6 +8,7 @@
 //   - no errors anywhere
 import { launch, newPage, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
+const readyUp = async (ps) => { for (const q of ps) await q.evaluate(() => { const m = window.ronnieMP; if (m && m.net && m.role === 'join' && !m.ready) document.querySelector('#room-ready').click(); }).catch(() => {}); await new Promise(r => setTimeout(r, 1500)); };      // (guests ready up: the host's START waits for everyone)
 
 const WHO = [['HOSTY', 'lewis'], ['BETH', 'chloe'], ['CARL', 'harry'], ['DAVE', 'ethan'], ['EDDY', 'aidan']];
 
@@ -27,7 +28,7 @@ export default async function () {
     await cl(H, '#room-go'); await sleep(400); await ev(H, () => document.querySelector('.scene[data-id="pub"]').click()); await sleep(300);
     await ev(H, () => document.querySelector('.screen[data-s="place"] .bigbtn').click()); await sleep(500);
     await ev(H, () => { const f = () => document.querySelector('.flip[data-id="roam"]'); f() && f().click(); }); await sleep(300);      // (everyone in first, then the host changes the game to Imposter below)
-    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await cl(H, '#go');
+    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await readyUp(pages); await cl(H, '#go');
     // (each game, host first: through the how-to-play page, PLAY, and into the pub; the others follow the host in)
     const tapIn = (p) => p.waitForFunction(() => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click();
       const st = document.getElementById('start'), inGame = window.RS && document.body.classList.contains('ready') && st && st.classList.contains('gone');

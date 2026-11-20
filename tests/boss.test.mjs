@@ -8,6 +8,7 @@
 //   - two real games in a room (the real room server): both see the same boss health, and the joiner's throws count
 import { launch, newPage, startGame, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
+const readyUp = async (ps) => { for (const q of ps) await q.evaluate(() => { const m = window.ronnieMP; if (m && m.net && m.role === 'join' && !m.ready) document.querySelector('#room-ready').click(); }).catch(() => {}); await new Promise(r => setTimeout(r, 1500)); };      // (guests ready up: the host's START waits for everyone)
 
 // the bot, in the page: one frame's decision (runs between RS.sim steps)
 const BOT = () => {
@@ -181,7 +182,7 @@ async function multiplayer(C, b) {
     await cl(H, '#room-go'); await sleep(400); await ev(H, () => document.querySelector('.scene[data-id="pub"]').click()); await sleep(300);
     await ev(H, () => document.querySelector('.screen[data-s="place"] .bigbtn').click()); await sleep(500);
     await ev(H, () => { const f = () => document.querySelector('.flip[data-id="roam"]'); f() && f().click(); }); await sleep(300);
-    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await cl(H, '#go');
+    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await readyUp(pages); await cl(H, '#go');
     const tapIn = (p) => p.waitForFunction(() => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click();
       const st = document.getElementById('start'), inGame = window.RS && document.body.classList.contains('ready') && st && st.classList.contains('gone');
       if (inGame) { const bb = document.querySelector('#play-flat'); if (bb && bb.offsetParent) bb.click(); }

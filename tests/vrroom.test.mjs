@@ -12,6 +12,7 @@
 import { launch, newPage, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
 import { startBot } from './lib/bots.mjs';
+const readyUp = async (ps) => { for (const q of ps) await q.evaluate(() => { const m = window.ronnieMP; if (m && m.net && m.role === 'join' && !m.ready) document.querySelector('#room-ready').click(); }).catch(() => {}); await new Promise(r => setTimeout(r, 1500)); };      // (guests ready up: the host's START waits for everyone)
 
 const SECS = +(process.env.SECS || 6);
 // PLAYERS: who joins, in order (the first one hosts): Q a headset on controllers, H a headset on hand tracking, P a phone.
@@ -47,7 +48,7 @@ export default async function () {
     await cl(H, '#room-go'); await sleep(400); await ev(H, () => document.querySelector('.scene[data-id="pub"]').click()); await sleep(300);
     await ev(H, () => document.querySelector('.screen[data-s="place"] .bigbtn').click()); await sleep(500);
     await ev(H, () => { const f = () => document.querySelector('.flip[data-id="roam"]'); f() && f().click(); }); await sleep(300);
-    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await cl(H, '#go');
+    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await readyUp(pages); await cl(H, '#go');
     for (const p of pages) { await p.waitForFunction(() => document.querySelector('.screen[data-s="intro"].on') || document.body.classList.contains('ready'), null, { timeout: 150000 * Math.max(1, pages.length / 4) }).catch(async (e) => { throw new Error(p.pname + ' never started: ' + (await states()).join(' | ')); }); await ev(p, () => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click(); }); }
     for (const p of pages) await p.waitForFunction(() => window.RS && document.body.classList.contains('ready'), null, { timeout: 200000 * Math.max(1, pages.length / 4) });
     if (await ev(H, () => RS.director.mode !== 'roam')) await ev(H, () => RS.newGame('roam0'));

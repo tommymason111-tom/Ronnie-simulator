@@ -40,7 +40,8 @@ import { buildMix, MIX_CSS } from './mixui.js';
 import { haptics } from './haptics.js';
 import { Imposter } from './imposter.js';
 import { BossFight } from './boss.js';      // (BOSS FIGHT)
-import { PropHunt } from './prophunt.js';      // (PROP HUNT)
+import { PropHunt } from './prophunt.js';
+import { createReadyCheck } from './readycheck.js';      // (READY CHECK before a room's new game)      // (PROP HUNT)
 import { TVs } from './tv.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
 import { setupWeather } from './weather.js';      // (weather and the time of day; importing it also readies every shader for it)
@@ -725,7 +726,9 @@ function newGame(id, why) {
   if (why) showBanner(why, (PAUSE_MODES[id] ? PAUSE_MODES[id][1] : id.toUpperCase()));
 }
 // the host changes the game (or restarts it): everyone in the room starts the new one together, from the start
-function hostNewGame(id) { newGame(id); if (net.connected && net.host) net.send({ t: 'restart', mode: id }); }
+// (in a room with other people, the host's new game waits for everyone to ready up first: readycheck.js)
+function hostNewGame(id) { if (window.__rc && net.connected && net.host && net.players.size) { setPaused(false); window.__rc.begin(id); return; } startForAll(id); }
+function startForAll(id) { newGame(id); if (net.connected && net.host) net.send({ t: 'restart', mode: id }); }
 function startFlat() {
   initAudio();
   player.enterFlat();
@@ -1489,14 +1492,15 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
     $('mp-chip').textContent = re ? `📶 RECONNECTING TO ROOM ${net.code}…` : `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`;
     $('mp-chip').classList.toggle('on', net.connected || re); $('mp-chip').classList.toggle('re', re); };
   // the host tells anyone who joins late which place and game to load
-  net.on.join = (m) => { chip(); if (m.quiet) { net.send({ t: 'hi', to: m.id, name: net.name, char: net.char }); return; } if (net.host) net.send({ t: 'setup', to: m.id, place: room.placeId, mode: director.fullMode || director.mode || SEL.mode }); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
+  net.on.join = (m) => { chip(); if (m.quiet) { net.send({ t: 'hi', to: m.id, name: net.name, char: net.char }); return; } if (net.host) net.send({ t: 'setup', to: m.id, place: room.placeId, mode: director.fullMode || director.mode || SEL.mode }); window.__rc && window.__rc.joined(m.id); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
   // someone waiting in the room asking what's on (they missed the start, or came back to the lobby): the host tells them
   net.on.whatgame = (m, p) => { if (net.host && p && p.id) net.send({ t: 'setup', to: p.id, place: room.placeId, mode: director.fullMode || director.mode || SEL.mode }); };
-  net.on.leave = () => chip(); net.on.status = () => chip();
+  net.on.leave = () => { chip(); window.__rc && window.__rc.left(); }; net.on.status = () => chip();
+  window.__rc = createReadyCheck({ net, start: (id) => startForAll(id), modeName: (id) => (PAUSE_MODES[id] ? PAUSE_MODES[id][1] : String(id).toUpperCase()), inVR: () => renderer.xr.isPresenting, portrait: (ch) => './assets/portraits/' + String(ch || 'ronnie').replace(/[^a-z0-9_]/gi, '') + '.webp' });
   // a new host (the old one left, or handed it over): everyone's told who; if it's you, your game takes over running
   // everything (the squad, the food, the game) from exactly where it was
   net.on.host = (m, was) => { chip();
-    if (m.id === net.id && !was) { mp.becomeHost(); director.imposter && director.imposter.becomeHost && director.imposter.becomeHost(); director.prophunt && director.prophunt.becomeHost(); showBanner('👑 YOU\'RE THE HOST NOW', m.why === 'given' ? 'HANDED BACK TO YOU' : 'THE HOST LEFT: YOU\'RE RUNNING THE GAME'); }
+    if (m.id === net.id && !was) { mp.becomeHost(); window.__rc && window.__rc.becameHost(); director.imposter && director.imposter.becomeHost && director.imposter.becomeHost(); director.prophunt && director.prophunt.becomeHost(); showBanner('👑 YOU\'RE THE HOST NOW', m.why === 'given' ? 'HANDED BACK TO YOU' : 'THE HOST LEFT: YOU\'RE RUNNING THE GAME'); }
     else if (m.id !== net.id) showBanner('👑 ' + String(m.name || 'SOMEONE').toUpperCase() + ' IS THE HOST', m.why === 'given' ? 'HOSTING WAS HANDED OVER' : 'THE HOST LEFT');
     if (was && m.id !== net.id) mp.becomeGuest && mp.becomeGuest(); };
   // your progress (how big you've got, what you've eaten), kept by the room: drop out and come back, and it's yours again

@@ -8,6 +8,7 @@
 //   - in a room the host's weather and time are everyone's (two real games through the real room server)
 import { launch, newPage, startGame, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
+const readyUp = async (ps) => { for (const q of ps) await q.evaluate(() => { const m = window.ronnieMP; if (m && m.net && m.role === 'join' && !m.ready) document.querySelector('#room-ready').click(); }).catch(() => {}); await new Promise(r => setTimeout(r, 1500)); };      // (guests ready up: the host's START waits for everyone)
 
 const BUDGET = { pub: 560, shop: 800, restaurant: 220, garden: 400, bedroom: 120 };
 const MODES = { pub: 'roam', shop: 'roam0', restaurant: 'roam0', garden: 'roam0', bedroom: 'roam0' };
@@ -107,7 +108,7 @@ async function multiplayer(b, C) {
     await cl(H, '#room-go'); await sleep(400); await ev(H, () => document.querySelector('.scene[data-id="pub"]').click()); await sleep(300);
     await ev(H, () => document.querySelector('.screen[data-s="place"] .bigbtn').click()); await sleep(500);
     await ev(H, () => { const f = () => document.querySelector('.flip[data-id="everyone"]'); f().click(); f().click(); }); await sleep(300);
-    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await cl(H, '#go');
+    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await readyUp([G]); await cl(H, '#go');
     for (const p of [H, G]) { await p.waitForFunction(() => document.querySelector('.screen[data-s="intro"].on') || document.body.classList.contains('ready'), null, { timeout: 300000 }); await ev(p, () => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click(); }); }
     for (const p of [H, G]) { await p.waitForFunction(() => window.RS && window.__weather && document.body.classList.contains('ready'), null, { timeout: 300000 }); await ev(p, () => document.getElementById('play-flat').click()); }
     for (const p of [H, G]) await ev(p, () => { RS.renderer.setAnimationLoop(null); window.__run = setInterval(() => { try { RS.sim(0.1, 0.05); } catch (e) {} }, 100); });

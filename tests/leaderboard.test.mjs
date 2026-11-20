@@ -7,6 +7,7 @@
 //   - a real ranked eat-off between two games: both receipts get the placings and the rating changes
 import { launch, newPage, startGame, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
+const readyUp = async (ps) => { for (const q of ps) await q.evaluate(() => { const m = window.ronnieMP; if (m && m.net && m.role === 'join' && !m.ready) document.querySelector('#room-ready').click(); }).catch(() => {}); await new Promise(r => setTimeout(r, 1500)); };      // (guests ready up: the host's START waits for everyone)
 
 export default async function () {
   const C = checker('leaderboard'), host = await startRoomHost(), http = host.url.replace(/^ws/, 'http'), b = await launch();
@@ -61,7 +62,7 @@ export default async function () {
     await ev(H, () => document.querySelector('.screen[data-s="place"] .bigbtn').click()); await sleep(500);
     await ev(H, () => { const c = document.querySelector('.flip[data-id="eatoff"]'); c.click(); document.querySelector('.flip[data-id="eatoff"] [data-pp="2"]').click(); }); await sleep(300);
     const picked = await ev(H, () => document.querySelector('.flip[data-id="eatoff"] [data-pp="2"]').textContent);
-    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await cl(H, '#go');
+    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await readyUp([G]); await cl(H, '#go');
     for (const q of [H, G]) { await q.waitForFunction(() => document.querySelector('.screen[data-s="intro"].on') || document.body.classList.contains('ready'), null, { timeout: 180000 }); await ev(q, () => { const r = document.querySelector('#intro-ready'); if (r && r.offsetParent) r.click(); }); }
     for (const q of [H, G]) { await q.waitForFunction(() => window.RS && document.body.classList.contains('ready'), null, { timeout: 180000 }); await ev(q, () => document.getElementById('play-flat').click()); }
     await sleep(2500);

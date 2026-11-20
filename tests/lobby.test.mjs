@@ -93,12 +93,39 @@ export default async function () {
     await cl(H, '#room-go'); await sleep(400); await ev(H, () => document.querySelector('.scene[data-id="pub"]').click()); await sleep(300);
     await ev(H, () => document.querySelector('.screen[data-s="place"] .bigbtn').click()); await sleep(500);
     await ev(H, () => { const f = () => document.querySelector('.flip[data-id="everyone"]'); f().click(); f().click(); }); await sleep(300);
-    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500); await cl(H, '#go');
+    await ev(H, () => document.querySelector('.screen[data-s="mode"] .bigbtn').click()); await sleep(500);
+    // START is locked until everyone's ready: the guest un-readies, the host can't start, and sees who it's waiting for
+    await cl(G, '#room-ready'); await sleep(1200);
+    const goLock = await ev(H, () => { document.querySelector("#go").click(); return { txt: document.querySelector('#go').textContent, wait: document.querySelector('#go-wait').textContent, still: !!document.querySelector('.screen.on[data-s="ready"]'), going: document.getElementById('loadscreen').classList.contains('on') }; });
+    C.ok(/WAITING FOR 1/.test(goLock.txt) && /GUESTY/.test(goLock.wait) && goLock.still && !goLock.going, `START should be locked while someone is not ready: ${JSON.stringify(goLock)}`);
+    // the bit at the top of the guest's room: a button listing who's ready
+    await cl(G, '#room-count'); await sleep(400);
+    const who = await ev(G, () => ({ open: getComputedStyle(document.querySelector('#room-who')).display !== 'none', rows: [...document.querySelectorAll('#room-who-list .rw')].map(r => r.className + ':' + r.textContent) }));
+    C.ok(who.open && who.rows.some(r => /no/.test(r) && /GUESTY/.test(r)) && who.rows.some(r => /HOSTY/.test(r)), `the WHO'S READY list: ${JSON.stringify(who)}`);
+    await ev(G, () => document.querySelector('#room-who .sh-close').click()); await sleep(200);
+    await cl(G, '#room-ready'); await sleep(1500);
+    const open = await ev(H, () => document.querySelector('#go').textContent);
+    C.ok(/START/.test(open), `START didn't unlock when everyone was ready: ${open}`);
+    await cl(H, '#go');
     for (const p of [H, G]) { await p.waitForFunction(() => document.querySelector('.screen[data-s="intro"].on') || document.body.classList.contains('ready'), null, { timeout: 120000 }); await ev(p, () => { const r = document.querySelector('#intro-ready'); if (r && r.offsetParent) r.click(); }); }
     for (const p of [H, G]) { await p.waitForFunction(() => window.RS && document.body.classList.contains('ready'), null, { timeout: 180000 }); await ev(p, () => document.getElementById('play-flat').click()); }
     await sleep(3000);
     await ev(H, () => { RS.renderer.setAnimationLoop(null); RS.director.nextAttackT = 0.5; RS.sim(3, 1 / 30); });
     const after = await ev(H, () => ({ attacking: RS.director.attackInProgress(), current: !!RS.director.current }));
+    // the host starts a new game mid-play: everyone gets the READY card; START waits for the guest
+    await ev(H, () => { document.getElementById('menu-btn').click(); document.getElementById('pause-restart').click(); }); await sleep(1500);
+    const rc1 = await ev(H, () => { const c = document.getElementById('rc-card'), g = c.querySelector('.rc-go'); return { on: c.classList.contains('on'), go: g && g.disabled, txt: c.textContent.slice(0, 80) }; });
+    await G.waitForFunction(() => document.getElementById('rc-card').classList.contains('on'), null, { timeout: 10000 }).catch(() => {});
+    const rcG = await ev(G, () => ({ on: document.getElementById('rc-card').classList.contains('on'), btn: !!document.querySelector('#rc-card .rc-ready') }));
+    C.ok(rc1.on && rc1.go && rcG.on && rcG.btn, `the ready card didn't come up for both (START should wait): host ${JSON.stringify(rc1)} guest ${JSON.stringify(rcG)}`);
+    await ev(G, () => document.querySelector('#rc-card .rc-ready').click());
+    await H.waitForFunction(() => { const g = document.querySelector('#rc-card .rc-go'); return g && !g.disabled; }, null, { timeout: 10000 }).catch(() => {});
+    const rc2 = await ev(H, () => { const g = document.querySelector('#rc-card .rc-go'); return g && !g.disabled; });
+    C.ok(rc2, 'START didn\'t unlock on the ready card once the guest was ready');
+    await ev(H, () => document.querySelector('#rc-card .rc-go').click());
+    await G.waitForFunction(() => !document.getElementById('rc-card').classList.contains('on'), null, { timeout: 10000 }).catch(() => {});
+    const gone = await ev(G, () => !document.getElementById('rc-card').classList.contains('on'));
+    C.ok(gone, 'the guest\'s ready card didn\'t go when the host started');
     await ev(H, () => { RS.newGame('runpub'); RS.sim(0.2, 1 / 30); }); await sleep(1500);      // (a timed game: six minutes, normally)
     const game = await ev(H, () => ({ left: RS.director.timeLeft, mode: RS.director.mode }));
     console.log(`  game: ${JSON.stringify(game)}; after the attack timer ran out: ${JSON.stringify(after)}`);
