@@ -1747,7 +1747,7 @@ class SquadPuppet {
       this.placeTag(); return; }
     // (which way they face, from their head's turn alone: worked out from the look direction, it went wild whenever they
     // looked down at food or up at the ceiling, and their own emote camera ended up round the side or behind them)
-    const q = _avQ.set(...pose.q); _avE.setFromQuaternion(q, 'YXZ'); let yaw = _avE.y + Math.PI;
+    const q = _avQ.set(...pose.q), f = new THREE.Vector3(0, 0, -1).applyQuaternion(q); _avE.setFromQuaternion(q, 'YXZ'); let yaw = _avE.y + Math.PI;      // (f: where they look, for the head's nod below)
     if (this.emote && this.emote.active && this.p && this.p.self && this.emYaw != null) yaw = this.emYaw;      // (your own emote: you stay facing where you were when it started, so the camera in front of you stays in front of you)
     let dy = yaw - this.yaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI;
     // (turning on a spring: speeds up and slows down smoothly. Eased straight in, a quick about-turn was fastest in its very
