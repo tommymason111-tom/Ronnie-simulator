@@ -701,6 +701,12 @@ function updateTouchUI() {
   touch.setEatLabel(gun ? (director.runpub.bar.gunFlavour ? 'FANTA ⇄' : 'COKE ⇄') : held && held.def.drink ? 'DRINK' : 'EAT', gun || (!!held && !held.empty && !held.def.prop));
   touch.setThrowEnabled(!!held);
   touch.setEmoteAvailable(!!net.connected);
+  // the buttons each mode needs: SUPERMARKET SWEEP grabs into the trolley (nothing to eat or throw); RUN THE PUB has no
+  // food, so EAT only shows for the soda gun or a drink in your hand, THROW only while you're holding something;
+  // BOSS FIGHT is mostly throwing, so THROW is the big button
+  const m = director.mode, sweep = m === 'sweep', pub = !!director.runpub, boss = !!director.boss;
+  const key = `${sweep || (pub && !gun && !(held && held.def.drink)) ? 1 : 0}${sweep || (pub && !held) ? 1 : 0}${boss ? 1 : 0}`;
+  if (key !== G.uiKey) { G.uiKey = key; const b = document.body.classList; b.toggle('ui-noeat', key[0] === '1'); b.toggle('ui-nothrow', key[1] === '1'); b.toggle('ui-throwbig', key[2] === '1'); }
 }
 function mpAfterStart() { if (director.remote) mp.becomeClient(); }
 // back to the start of the map (in multiplayer, spread out a little so nobody spawns inside anyone else)
@@ -727,6 +733,25 @@ function newGame(id, why) {
 }
 // the host changes the game (or restarts it): everyone in the room starts the new one together, from the start
 // (in a room with other people, the host's new game waits for everyone to ready up first: readycheck.js)
+// THE TOP-LEFT BOX, made to fit the mode: the eat meter where eating's the game, with the mode's own bits under it
+// (the clock, BUSTED by Chloe, off the grill...); SUPERMARKET SWEEP (a trolley) and BOSS FIGHT (the boss) get boxes of
+// their own. null: the plain mode line.
+function hudExtras() {
+  const d = director; if (window.__devMode || window.__devPending || !d.running || d.remote || d.imposter || d.prophunt || d.runpub) return null;
+  const t = Math.max(0, d.timeLeft || 0), clock = `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`, m = d.mode, low = t > 0 && t < 15;
+  const T = () => ({ t: '⏱ ' + clock, c: low ? '#ff5252' : '#ffffff', pulse: low });
+  const kcal = (n) => Math.round(n).toLocaleString('en-GB');
+  if (d.boss) { const b = d.boss; if (!b.id) return { chips: [{ t: '👹 GET READY...', c: '#ff6b6b', pulse: true }] };
+    return { box: { col: '#ff3b3b', label: `👹 ${String(b.def.name).toUpperCase()}`, big: Math.ceil(b.pct * 100) + '%', sub: 'BOSS HEALTH', bar: { k: b.pct, col: '#ff3b3b' },
+      chips: [{ t: b.out > 0 ? `😵 OUT ${Math.ceil(b.out)}s` : ('❤'.repeat(Math.max(0, b.hearts)) || '💀'), c: '#ff6b6b' }, { t: `⚡ POWER x${b.power.toFixed(1)}`, c: '#ffd400' }] } }; }
+  if (m === 'sweep' && d.sweep) return { box: { col: '#ffd400', label: '🛒 IN YOUR TROLLEY', big: kcal(d.sweep.total), unit: 'kcal', sub: `${d.sweep.items} ITEM${d.sweep.items === 1 ? '' : 'S'}`, bar: { k: t / (MODES.sweep.time || 90), col: low ? '#ff5252' : '#39ff14', text: clock + ' LEFT' } } };
+  if (m === 'everyone') { const ac = d.attackClock(); return { chips: [{ t: '⚠ ' + ac, c: /PROGRESS|ANY SECOND/.test(ac) ? '#ff5252' : '#ffd400', pulse: /PROGRESS/.test(ac) }] }; }
+  if (m === 'bbq' && d.bbq) return { chips: [T(), { t: `🍖 ${d.bbq.ate} OFF THE GRILL`, c: '#ffb37a' }] };
+  if (m === 'date' && d.date) { const c = Math.min(3, d.date.catches || 0); return { chips: [T(), { t: '💔'.repeat(c) + '🤍'.repeat(3 - c), c: '#fff' }, d.date.look ? { t: '👀 LOOKING!', c: '#ff5252', pulse: true } : { t: '😋 EAT NOW!', c: '#39ff14' }] }; }
+  if (/^chonkoff/.test(m)) return { chips: [T(), { t: `🍔 ${G.eaten} EATEN`, c: '#ffd400' }] };
+  if (m === 'roam') return { chips: [{ t: '🚶 NO TIMER · NO ATTACKS', c: '#9fd8ff' }, { t: `🍔 ${G.eaten}`, c: '#ffd400' }] };
+  return null;
+}
 function hostNewGame(id) { if (window.__rc && net.connected && net.host && net.players.size) { setPaused(false); window.__rc.begin(id); return; } startForAll(id); }
 function startForAll(id) { newGame(id); if (net.connected && net.host) net.send({ t: 'restart', mode: id }); }
 function startFlat() {
@@ -1409,6 +1434,8 @@ function frame(simDt) {
     if (G.meterFlash > 0) G.meterFlash = Math.max(0, G.meterFlash - dt * 2.2);
     const comboLive = G.combo >= 2 && time - G.comboAt < COMBO_GAP; if (!comboLive && G.combo >= 2 && time - G.comboAt >= COMBO_GAP) { G.combo = 0; G.wristDirty = true; }
     if (Math.abs(want - G.fillShown) > 0.002 || G.meterFlash > 0 || comboLive || (!max0 && want > 0.85)) { G.wristDirty = true; if (G.wristT > 1 / 30) G.wristT = 1 / 30; } }
+  // (the top-left box's mode bits, the clock and the like: redrawn when they change)
+  if ((G.hxT = (G.hxT || 0) - dt) <= 0) { G.hxT = 0.25; const k = JSON.stringify(hudExtras()); if (k !== G.hxK) { G.hxK = k; G.wristDirty = true; } }
   if (G.wristDirty && G.wristT <= 0) {
     G.wristDirty = false; G.wristT = 0.1;
     const max = G.stage === STAGES.length - 1;
@@ -1421,6 +1448,7 @@ function frame(simDt) {
       pub: director.runpub ? director.runpub.hudState(director.timeLeft) : null,
       imp: director.imposter ? director.imposter.hudState() : null,
       custom: director.prophunt ? (g2, w, h) => director.prophunt.drawWrist(g2, w, h) : null,      // (PROP HUNT draws its own wrist)
+      extras: hudExtras(),      // (what this mode shows under the meter, or a box of its own: SWEEP, BOSS FIGHT)
     });
   }
 
@@ -1901,7 +1929,7 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { emoteCamAt: () => { const c = emoteCam(); return c ? c.position.toArray() : null; }, selfBody: () => selfBody, onFrame: [], vrPanels: () => ({ pause: vrPause.panel, dev: vrDev.menu.panel }), resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { hudExtras: () => hudExtras(), emoteCamAt: () => { const c = emoteCam(); return c ? c.position.toArray() : null; }, selfBody: () => selfBody, onFrame: [], vrPanels: () => ({ pause: vrPause.panel, dev: vrDev.menu.panel }), resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
 // developer mode (Settings cog -> DEVELOPER MODE): the test bench comes up once you press PLAY. (Only for this visit:
 // starting the page again goes back to normal)
 { let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; sessionStorage.removeItem('rs_dev'); } catch (e) {} window.__devPending = dev;

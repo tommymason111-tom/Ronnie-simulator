@@ -663,6 +663,7 @@ export class Player {
     if (state.pub) { this.drawPubBox(g, w, h, state); g.restore(); this.wristTex.needsUpdate = true; return; }
     if (state.imp) { this.drawImpBox(g, w, h, state.imp); g.restore(); this.wristTex.needsUpdate = true; return; }
     if (state.custom) { state.custom(g, w, h); g.restore(); this.wristTex.needsUpdate = true; return; }      // (a mode that draws its own: PROP HUNT)
+    if (state.extras && state.extras.box) { this.drawStatBox(g, w, h, state.extras.box, state.fps); g.restore(); this.wristTex.needsUpdate = true; return; }      // (SWEEP, BOSS FIGHT)
     g.fillStyle = '#111827'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill();
     // (nearly the next size: the border glows gold, pulsing)
     g.lineWidth = 8 + (state.glow || 0) * 6; g.strokeStyle = state.loco > 0 ? '#ff9a1f' : state.glow ? `rgb(255,${Math.round(212 + 30 * state.glow)},${Math.round(40 * state.glow)})` : '#39ff14'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();
@@ -700,6 +701,7 @@ export class Player {
     } else if (state.stout > 0) {
       g.fillStyle = '#f3e6c8'; g.font = `900 36px ${FONT}`;
       g.fillText(`STOUT MODE x2 · ${state.stout.toFixed(1)}s`, 30, 262);
+    } else if (state.extras && state.extras.chips) { this.drawChips(g, 30, 256, w - 60, state.extras.chips);
     } else if (state.modeLine) {
       g.fillStyle = '#ffd400'; g.font = `900 32px ${FONT}`;
       let size = 32; while (g.measureText(state.modeLine).width > w - 60 && size > 14) { size -= 2; g.font = `900 ${size}px ${FONT}`; }
@@ -714,6 +716,32 @@ export class Player {
     g.fillText(`${state.fps} fps`, w - 30, 296);
     g.restore();
     this.wristTex.needsUpdate = true;
+  }
+  // a row of rounded chips (the clock, BUSTED hearts...): shrunk to fit; a pulsing one breathes
+  drawChips(g, x, y, maxW, chips) {
+    const pulse = 0.65 + 0.35 * Math.sin(performance.now() / 140); let f = 30, ws;
+    const measure = () => { g.font = `900 ${f}px ${FONT}`; ws = chips.map(c => g.measureText(c.t).width + 32); return ws.reduce((a, b) => a + b, 0) + (chips.length - 1) * 10; };
+    while (measure() > maxW && f > 14) f -= 2;
+    g.textAlign = 'center'; g.textBaseline = 'middle'; let cx = x;
+    chips.forEach((c, i) => { const cw = ws[i], hh = f + 18; g.globalAlpha = c.pulse ? pulse : 1;
+      g.fillStyle = 'rgba(255,255,255,0.08)'; roundRect(g, cx, y - hh / 2, cw, hh, hh / 2); g.fill(); g.lineWidth = 3; g.strokeStyle = c.c || '#fff'; roundRect(g, cx, y - hh / 2, cw, hh, hh / 2); g.stroke();
+      g.fillStyle = c.c || '#fff'; g.fillText(c.t, cx + cw / 2, y + 1); cx += cw + 10; });
+    g.globalAlpha = 1; g.textAlign = 'left';
+  }
+  // a mode's own box in place of the eat meter: a label, one big number, a bar, chips (SUPERMARKET SWEEP, BOSS FIGHT)
+  drawStatBox(g, w, h, b, fps) {
+    const col = b.col || '#39ff14';
+    g.fillStyle = '#111827'; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill(); g.lineWidth = 8; g.strokeStyle = col; roundRect(g, 4, 4, w - 8, h - 8, 40); g.stroke();
+    g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = '#c3cad6'; { let f = 34; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(b.label).width > w - 60 && f > 16); } g.fillText(b.label, 30, 44);
+    const roomy = !b.chips, bigY = roomy ? 120 : 104;      // (no chips: a bigger number and the bar lower down)
+    g.fillStyle = '#ffffff'; g.font = `900 ${roomy ? 84 : 64}px ${FONT}`; g.fillText(b.big, 30, bigY); const bw = g.measureText(b.big).width;
+    if (b.unit) { g.fillStyle = col; g.font = `900 34px ${FONT}`; g.fillText(b.unit, 42 + bw, bigY + 14); }
+    if (b.sub) { g.textAlign = 'right'; g.fillStyle = '#9aa4b8'; g.font = `900 30px ${FONT}`; g.fillText(b.sub, w - 30, bigY + 8); g.textAlign = 'left'; }
+    if (b.bar) { const bx = 30, by = roomy ? 190 : 150, bW = w - 60, bh = roomy ? 56 : 46, k = Math.max(0, Math.min(1, b.bar.k));
+      g.fillStyle = '#374151'; roundRect(g, bx, by, bW, bh, 23); g.fill(); if (k > 0.01) { g.fillStyle = b.bar.col || col; roundRect(g, bx, by, Math.max(46, bW * k), bh, 23); g.fill(); }
+      if (b.bar.text) { g.fillStyle = '#fff'; g.font = `900 30px ${FONT}`; g.textAlign = 'center'; g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,0.55)'; g.strokeText(b.bar.text, w / 2, by + bh / 2 + 1); g.fillText(b.bar.text, w / 2, by + bh / 2 + 1); g.textAlign = 'left'; } }
+    if (b.chips) this.drawChips(g, 30, 248, w - 60, b.chips);
+    g.textAlign = 'right'; g.font = `900 24px ${FONT}`; g.fillStyle = fps >= 70 ? '#39ff14' : fps >= 60 ? '#ffe600' : '#ff4d4d'; g.fillText(`${fps} fps`, w - 30, 296); g.textAlign = 'left';
   }
   // IMPOSTER: who you are, the task bar, your jobs (ticked off), the kill cooldown, any sabotage
   drawImpBox(g, w, h, st) {

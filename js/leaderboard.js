@@ -50,6 +50,7 @@ export function openBoards(first = 'eatoff') {
     you.textContent = d.me ? `YOU: #${d.me.rank} of ${d.n} · ${UNIT[b](d.me.s)}` : 'Play it to get on the board!';
   };
   el.querySelector('.tabs').addEventListener('click', (e) => { const t = e.target.closest('[data-b]'); if (t) show(t.dataset.b); });
-  el.querySelector('.close').addEventListener('click', () => el.remove()); el.addEventListener('click', (e) => { if (e.target === el) el.remove(); });
+  const bye = () => { if (el.classList.contains('bye')) return; el.classList.add('bye'); setTimeout(() => el.remove(), 170); };      // (it fades out first)
+  el.querySelector('.close').addEventListener('click', bye); el.addEventListener('click', (e) => { if (e.target === el) bye(); });
   show(LB_NAMES[first] ? first : 'eatoff');
 }
