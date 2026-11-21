@@ -3,6 +3,8 @@
 //   ATTACKS   set off any character's attack on you, there and then
 //   IMPOSTER  play any Imposter job (and the two sabotage fixes) straight away, without a game
 //   SOUNDS    every sound effect by name, with a play button and a search box, to audition them all
+//   MULTIPLAYER  a test room: you host a real room with as many fake players (fakeplayers.js) as you pick, 1 to 11,
+//             who join, ready up and play along in every mode, so any mode can be tried with a crowd on your own
 // Nothing here changes the game itself: the random attacks are switched off while it's open, that's all.
 import * as THREE from 'three';
 import { EMOTES, CHAR_EMOTES, emoteInfo } from './emotes.js';
@@ -46,6 +48,8 @@ export function startDev(RS) {
   #dev-panel .dv-note { color: #6fdf6a; font-weight: 600; font-size: 12px; margin: 2px 2px 6px; }
   #dev-panel .dv-note::before { content: '// '; }
   #dev-panel .dv-search { width: 100%; box-sizing: border-box; font: 800 14px 'Courier New', monospace; padding: 9px 10px; margin: 2px 0 4px; border-radius: 6px; border: 1px solid #39ff14; background: rgba(0,0,0,0.6); color: #b8ffb0; }
+  #dev-panel .dv-fk { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 10px 0; } #dev-panel .dv-fk > div { text-align: center; } #dev-panel .dv-fk b { display: block; font-size: 44px; color: #39ff14; text-shadow: 0 0 12px #39ff14; line-height: 1; } #dev-panel .dv-fk small { font-size: 11px; color: #6fdf6a; }
+  #dev-panel .dv-fkb { width: 54px; height: 54px; justify-content: center; font-size: 26px; } #dev-panel .dv-fkq { justify-content: center; margin-bottom: 10px; } #dev-panel .dv-fkq .dv-chip { min-width: 44px; text-align: center; }
   #dev-panel .dv-snd { grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
   #dev-panel .dv-snd .dv-act { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #dev-panel .dv-snd .dv-act.on { background: #39ff14; color: #001a00; }
@@ -103,7 +107,7 @@ export function startDev(RS) {
 
   // ---- the panel's pages
   const chars = ['tommy', ...Object.keys(CHAR_EMOTES).filter(c => c !== 'tommy')].filter(c => c === 'tommy' || SQUAD[c]);
-  let tab = 'emotes', sel = chars[0], sq = '';
+  let tab = 'emotes', sel = chars[0], sq = '', nFake = (() => { try { return Math.max(1, Math.min(11, +localStorage.getItem('rs_dev_nfake') || 3)); } catch (e) { return 3; } })();
   // the sound board: audio.js's groups, then anything that isn't in one
   const soundGroups = () => { const seen = new Set(), g = SOUND_GROUPS.map(([n, l]) => [n, l.filter(s => SOUND_NAMES.includes(s) && !seen.has(s) && seen.add(s))]);
     g.push(['EVERYTHING ELSE', SOUND_NAMES.filter(s => !seen.has(s))]); return g.filter(x => x[1].length); };
@@ -126,6 +130,11 @@ export function startDev(RS) {
       body += `<div class="dv-note">Tap one: it switches on now, as if you'd picked it up.</div><div class="dv-grid">`;
       for (const [k, P] of Object.entries(POWERUPS)) body += `<button class="dv-act" data-pu="${k}"><i>${P.icon}</i>${P.name}<small>${P.dur ? P.dur + 's' : 'NOW'}</small></button>`;
       body += `</div>`;
+    } else if (tab === 'mp') {
+      body += `<div class="dv-note">Test any mode with a crowd: you host a real room and fake players join it. They ready up, walk about and play along (Prop Hunt, Imposter, Boss Fight and the rest). Pick how many, then choose the game in the lobby as normal.</div>`;
+      body += `<div class="dv-fk"><button class="dv-act dv-fkb" data-fk="-1">−</button><div><b>${nFake}</b><small>FAKE PLAYER${nFake === 1 ? '' : 'S'} · ${nFake + 1} IN THE ROOM WITH YOU</small></div><button class="dv-act dv-fkb" data-fk="1">+</button></div>`;
+      body += `<div class="dv-row dv-fkq">${[1, 2, 3, 5, 7, 11].map(k => `<button class="dv-chip ${k === nFake ? 'on' : ''}" data-fkn="${k}">${k}</button>`).join('')}</div>`;
+      body += `<div class="dv-grid"><button class="dv-act dv-wide" data-mproom="1">▶ OPEN A TEST ROOM</button></div><div class="dv-note">You can add or remove fake players in the lobby too (the green bar). It needs the internet: it's a real room on the room server.</div>`;
     } else if (tab === 'sounds') {
       body += `<div class="dv-note">Every sound effect (${SOUND_NAMES.length}). Tap one to hear it.</div><input class="dv-search" type="search" placeholder="SEARCH SOUNDS..." autocomplete="off">`;
       for (const [g, list] of soundGroups()) body += `<div class="dv-sgrp"><h5>${g}</h5><div class="dv-grid dv-snd">${list.map(s => `<button class="dv-act" data-snd="${s}"><i>▶</i>${s}</button>`).join('')}</div></div>`;
@@ -135,7 +144,7 @@ export function startDev(RS) {
       body += `</div><h5>SABOTAGE FIXES</h5><div class="dv-grid"><button class="dv-act" data-fix="lights"><i>💡</i>Fix the lights<small>FUSE BOX</small></button><button class="dv-act" data-fix="valve"><i>🛢️</i>Release a keg valve<small>KEG PRESSURE</small></button></div>`;
       body += `<h5>SECURITY</h5><div class="dv-grid"><button class="dv-act" data-cams="1"><i>📹</i>Security cameras<small>STAFF ROOM</small></button></div>`;
     }
-    panel.innerHTML = `<div class="dv-tabs">${T('emotes', '🎭 EMOTES')}${T('attacks', '💥 ATTACKS')}${T('imposter', '🔪 IMPOSTER JOBS')}${T('power', '⚡ POWER-UPS')}${T('sounds', '🔊 SOUNDS')}</div><div class="dv-body">${body}</div>`;
+    panel.innerHTML = `<div class="dv-tabs">${T('emotes', '🎭 EMOTES')}${T('attacks', '💥 ATTACKS')}${T('imposter', '🔪 IMPOSTER JOBS')}${T('power', '⚡ POWER-UPS')}${T('sounds', '🔊 SOUNDS')}${T('mp', '👥 MULTIPLAYER')}</div><div class="dv-body">${body}</div>`;
     if (tab === 'sounds') { panel.querySelector('.dv-search').value = sq; filterSounds(); }
   };
   panel.addEventListener('input', (e) => { if (e.target.matches('.dv-search')) { sq = e.target.value; filterSounds(); } });
@@ -143,6 +152,8 @@ export function startDev(RS) {
     if (d.tab) { tab = d.tab; render(); return; }
     if (d.snd) { try { initAudio(); sfx(d.snd); } catch (err) { console.warn('dev sound', err); } b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 250); return; }
     if (d.ch) { sel = d.ch; render(); return; }
+    if (d.fk || d.fkn) { nFake = Math.max(1, Math.min(11, d.fkn ? +d.fkn : nFake + +d.fk)); try { localStorage.setItem('rs_dev_nfake', nFake); } catch (er) {} render(); return; }
+    if (d.mproom) { try { sessionStorage.setItem('rs_devmp_ok', '1'); } catch (er) {} location.href = location.pathname + '?devmp=' + nFake; return; }
     if (d.all) return playAll(d.all);
     if (d.em) return play(sel, d.em);
     if (d.who) return attack(d.who, d.key);
