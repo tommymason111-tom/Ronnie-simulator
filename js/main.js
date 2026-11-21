@@ -501,11 +501,16 @@ function showBanner(top, big) {
     g.font = '900 64px "Courier New", monospace'; g.fillStyle = '#39ff14'; g.fillText('>_ DEVELOPER MODE', w / 2, 120); g.font = '900 40px "Courier New", monospace'; g.fillStyle = '#b8ffb0'; g.fillText('SYSTEM ONLINE · TAP  >_ DEV', w / 2, 230); g.shadowBlur = 0;
     bannerTex.needsUpdate = true; bannerT = 3.2; banner.visible = true; return; }
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-  let ts = 70; g.font = `900 ${ts}px ${FONT}`; while (g.measureText(top).width > w - 60 && ts > 30) { ts -= 4; g.font = `900 ${ts}px ${FONT}`; }
-  g.lineWidth = 16; g.strokeStyle = '#111'; g.strokeText(top, w / 2, 90); g.fillStyle = '#39ff14'; g.fillText(top, w / 2, 90);
-  let size = 130; g.font = `900 ${size}px ${FONT}`;
-  while (g.measureText(big).width > w - 60 && size > 40) { size -= 6; g.font = `900 ${size}px ${FONT}`; }
-  g.lineWidth = 22; g.strokeText(big, w / 2, 240); g.fillStyle = '#ffd400'; g.fillText(big, w / 2, 240);
+  // (each line is shrunk to fit; a long one that would get too small goes over two lines instead of running off the edge)
+  const fit = (text, max, min, room) => { let f = max; g.font = `900 ${f}px ${FONT}`; while (g.measureText(text).width > room && f > min) { f -= 2; g.font = `900 ${f}px ${FONT}`; } return g.measureText(text).width <= room ? f : 0; };
+  const lines = (text, max, comfy, floor, room) => { const one = fit(text, max, comfy, room); if (one) return { f: one, l: [text] };
+    const words = String(text).split(' '); let best = null; for (let i = 1; i < words.length; i++) { const a = words.slice(0, i).join(' '), b = words.slice(i).join(' '); g.font = `900 ${max}px ${FONT}`; const wd = Math.max(g.measureText(a).width, g.measureText(b).width); if (!best || wd < best.wd) best = { wd, l: [a, b] }; }
+    if (!best) { let f = comfy; g.font = `900 ${f}px ${FONT}`; while (g.measureText(text).width > room && f > 12) { f -= 2; g.font = `900 ${f}px ${FONT}`; } return { f, l: [text] }; }
+    let f = max; g.font = `900 ${f}px ${FONT}`; while (best.l.some(x => g.measureText(x).width > room) && f > floor) { f -= 2; g.font = `900 ${f}px ${FONT}`; } return { f, l: best.l }; };
+  const T = lines(top, 70, 40, 24, w - 60); g.font = `900 ${T.f}px ${FONT}`; g.lineWidth = Math.max(8, T.f * 0.23); g.strokeStyle = '#111'; g.fillStyle = '#39ff14';
+  T.l.forEach((x, i) => { const y = T.l.length === 1 ? 90 : 62 + i * T.f * 1.0; g.strokeText(x, w / 2, y); g.fillText(x, w / 2, y); });
+  const Bg = lines(big, 130, 72, 30, w - 60); g.font = `900 ${Bg.f}px ${FONT}`; g.lineWidth = Math.max(10, Bg.f * 0.17); g.fillStyle = '#ffd400';
+  Bg.l.forEach((x, i) => { const y = Bg.l.length === 1 ? 240 : 240 + (i - 0.5) * Bg.f * 1.05; g.strokeText(x, w / 2, y); g.fillText(x, w / 2, y); });
   bannerTex.needsUpdate = true;
   bannerT = 2.6; banner.visible = true;
 }
@@ -977,7 +982,8 @@ body.flat.mpon #chat-log { display: flex; }
       while (lr && log.children.length > 1 && lr.bottom > ctl - gap) { log.firstChild.remove(); lr = R(log); }
       if (lr && log.children.length) { y = lr.bottom + gap; placed.push(lr); } }
     // the middle: the attack pill, hints, Prop Hunt's and Imposter's banners: below anything they'd run into
-    let mid = 0; const lane = (el) => { if (!el) return; if (el.dataset.top0 === undefined) el.dataset.top0 = el.style.top; el.style.top = el.dataset.top0; let r = R(el); if (!r) return;
+    let mid = 0; { const bh = R($('boss-hud')); if (bh && bh.top < innerHeight * 0.3) mid = bh.bottom + gap; }      // (BOSS FIGHT: its health bar is along the top, so these go under it)
+    const lane = (el) => { if (!el) return; if (el.dataset.top0 === undefined) el.dataset.top0 = el.style.top; el.style.top = el.dataset.top0; let r = R(el); if (!r) return;
       if (r.top < mid) { el.style.top = mid + 'px'; r = R(el); }
       r = drop(el) || r; mid = r.bottom + gap; placed.push(r); };
     for (const id of ['ph-top', 'nextAttack', 'imp-alert', 'hint', 'dev-tag']) lane($(id));
@@ -1413,7 +1419,8 @@ function frame(simDt) {
     bannerT -= dt;
     const k = 2.6 - bannerT;
     const pop = k < 0.25 ? k / 0.25 * 1.15 : 1.15 - Math.min(0.15, (k - 0.25));
-    const bs = renderer.xr.isPresenting ? 0.6 : 1;        // (headset: smaller, so it's all in the middle of your view)
+    let bs = renderer.xr.isPresenting ? 0.6 : 1;        // (headset: smaller, so it's all in the middle of your view)
+    if (!renderer.xr.isPresenting) { const D = 1.3, seen = 2 * D * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect; bs = Math.min(1, seen * 0.94 / (1.2 * 1.15)); }      // (a portrait phone: shrunk to fit across the screen, never off its edges)
     banner.scale.set(1.2 * pop * player.scale * bs, 0.45 * pop * player.scale * bs, 1);
     banner.position.copy(player.head).addScaledVector(player.fwd, 1.3 * player.scale);
     banner.material.opacity = bannerT < 0.4 ? bannerT / 0.4 : 1;

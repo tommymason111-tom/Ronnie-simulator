@@ -200,7 +200,7 @@ body.boss-cine #touch, body.boss-cine #menu-btn, body.boss-cine #mp-chip, body.b
 #boss-intro.plate .bi-plate { transform: none; }
 #boss-intro .bi-plate img { width: min(18vw, 84px); height: min(18vw, 84px); border-radius: 50%; border: 5px solid #ffd400; object-fit: cover; flex: none; background: #222; }
 #boss-intro .bi-k { font-size: clamp(11px, 2.6vw, 15px); letter-spacing: 3px; color: #ffd400; }
-#boss-intro .bi-n { font-size: clamp(36px, 11vw, 78px); line-height: 0.95; -webkit-text-stroke: 2px #111; text-shadow: 0 5px 0 #111; }
+#boss-intro .bi-n { font-size: clamp(36px, 11vw, 78px); line-height: 1.08; margin: 2px 0; -webkit-text-stroke: 2px #111; text-shadow: 0 5px 0 #111; }
 #boss-intro .bi-t { font-size: clamp(14px, 4vw, 24px); letter-spacing: 2px; text-shadow: 0 3px 0 #111; }
 #boss-intro .bi-q { position: absolute; left: 50%; top: calc(11vh + 3vh); transform: translateX(-50%); width: min(88vw, 640px); text-align: center; font: italic 700 clamp(14px, 3.8vw, 22px) Arial, sans-serif; text-shadow: 0 2px 0 #000, 0 0 12px #000; opacity: 0; transition: opacity .4s; }
 #boss-intro.plate .bi-q { opacity: 1; }
