@@ -124,14 +124,22 @@ async function onePlace(place, WHO) {
         return null; }, [id, tries]);
       if (!at) return false;
       await H.waitForFunction(([id, x, z]) => { const q = RS.director.prophunt.posOf(id); return q && Math.hypot(q.x - x, q.z - z) < 0.8; }, [sId, at[0], at[1]], { timeout: 45000, polling: 300 }).catch(() => {});      // (the host's game sees the seeker there)
-      await ev(p, (id) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, pr = m.props.get(id); if (!pr) return; const o = new T.Vector3(P.head.x, P.head.y, P.head.z), c = new T.Vector3(pr.pos.x, pr.pos.y + m.K[pr.kind].h / 2, pr.pos.z); m.chkCD = 0; m.doCheck(new T.Ray(o, c.sub(o).normalize())); }, id); return true; };
+      await ev(p, (id) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, pr = m.props.get(id); if (!pr) return; const o = new T.Vector3(P.head.x, P.head.y, P.head.z), c = new T.Vector3(pr.pos.x, pr.pos.y + m.K[pr.kind].h / 2, pr.pos.z); m.chkCD = 0; m.doCheck(new T.Ray(o, c.sub(o).normalize())); }, id);
+      for (let k = 1; k < 3; k++) { await sleep(450); await ev(p, (id) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, pr = m.props.get(id); if (!pr || pr.gone) return; const o = new T.Vector3(P.head.x, P.head.y, P.head.z), c = new T.Vector3(pr.pos.x, pr.pos.y + m.K[pr.kind].h / 2, pr.pos.z); m.chkCD = 0; m.doCheck(new T.Ray(o, c.sub(o).normalize())); }, id); }
+      return true; };
     const decoy = await findDecoy(S);
     C.ok(decoy, 'no decoy the seeker could check');
     if (decoy) { await lookAt(S, decoy); await H.waitForFunction(([id, x, z]) => { const q = RS.director.prophunt.posOf(id); return q && Math.hypot(q.x - x, q.z - z) < 0.8; }, [sId, decoy.ox, decoy.oz], { timeout: 20000, polling: 300 }).catch(() => {});
       await ev(S, ([x, y, z]) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, o = new T.Vector3(P.head.x, P.head.y, P.head.z); m.chkCD = 0; m.doCheck(new T.Ray(o, new T.Vector3(x, y, z).sub(o).normalize())); }, [decoy.x, decoy.y, decoy.z]);
       await S.waitForFunction(() => RS.director.prophunt.mine().hp < 100, null, { timeout: 45000 }).catch(() => {}); const hp = await ev(S, () => RS.director.prophunt.mine().hp), hph = await ev(H, (id) => RS.director.prophunt.H.hp[id], sId);
       C.ok(hp === 90 && hph === 90, `a wrong guess didn't cost 10 health (seeker sees ${hp}, host ${hph})`); }
-    // the seeker finds every hider
+    // the seekers have guns: theirs in front of them, everyone else sees it in their hand; a shot reaches everyone
+    C.ok(await ev(S, () => { const g = RS.director.prophunt.vGun; return !!(g && g.visible); }), 'the seeker has no gun in front of them');
+    for (const p of pages) if (p !== S) { const g = await ev(p, (id) => { const m = RS.director.prophunt.rGuns.get(id); return !!(m && m.visible); }, sId); C.ok(g, `${p.pname} doesn't see the gun in the seeker's hand`); }
+    const nShots = async () => { const r = []; for (const p of pages) if (p !== S) r.push(await ev(p, () => RS.director.prophunt.shotN || 0)); return r; };
+    await ev(S, () => { const m = RS.director.prophunt; m.chkCD = 0; const P = RS.player, T = RS.THREE; m.doCheck(new T.Ray(new T.Vector3(P.head.x, P.head.y, P.head.z), new T.Vector3(0, -1, 0.0001))); });
+    await sleep(1500); const sh = await nShots(); C.ok(sh.every(n => n > 0), `a shot (into the floor) wasn't seen by everyone: ${sh}`);
+    // the seeker finds every hider (three hits each)
     for (const i of hiders) { const id = info[i].id;
       for (let tries = 0; tries < 3; tries++) {
         if (!(await checkHider(S, id, tries))) break; await pages[i].waitForFunction(() => { const me = RS.director.prophunt.mine(); return !!(me && me.found); }, null, { timeout: 15000 }).catch(() => {});

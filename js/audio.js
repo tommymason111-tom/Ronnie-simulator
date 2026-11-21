@@ -619,6 +619,8 @@ const SOUNDS = {
   ph_lock(d, t) { click(d, t, 1900, 0.8); tone(d, t + 0.02, 'sine', 320, 210, 0.08, 0.35, 0.002); click(d, t + 0.07, 1200, 0.6); },
   ph_unlock(d, t) { click(d, t, 1200, 0.6); tone(d, t + 0.02, 'sine', 210, 340, 0.08, 0.3, 0.002); },
   ph_count(d, t) { tone(d, t, 'sine', 880, 880, 0.12, 0.35, 0.003); tone(d, t, 'triangle', 1760, 1760, 0.08, 0.1, 0.003); },
+  ph_shot(d, t) { noise(d, t, 0.09, 'lowpass', 3200, 0.8, 0.75, 0.001); tone(d, t, 'square', 1250, 140, 0.16, 0.32, 0.001); tone(d, t, 'sine', 160, 45, 0.18, 0.55, 0.001); click(d, t, 4200, 0.4); },
+  ph_hit(d, t) { tone(d, t, 'triangle', 620, 980, 0.07, 0.4, 0.002); tone(d, t + 0.07, 'triangle', 980, 420, 0.16, 0.38, 0.002); noise(d, t, 0.05, 'bandpass', 2600, 4, 0.35, 0.001); },
   ph_check(d, t) { const f = noise(d, t, 0.16, 'bandpass', 700, 3, 0.4, 0.004); f.frequency.exponentialRampToValueAtTime(3200, t + 0.16); bell(d, t + 0.1, 2400, 0.18, 0.2); },
 };
 // old names still used by a few things (kept, but pointed at the new sounds)

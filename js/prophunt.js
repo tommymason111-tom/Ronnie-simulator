@@ -6,9 +6,10 @@
 //     map's own things (a keg, a bar stool, a wheelie bin, a gnome...): look at one and BECOME it, or pick from the PROPS
 //     list. There are plenty of the real ones dotted about, so a keg in the corner might be a keg, or might be Lewis.
 //     LOCK yourself in place so you don't turn with the camera (a keg that turns round when you walk past is a giveaway).
-//   - THE SEEK (2½-4 minutes): seekers CHECK things (tap it, click it, or pull the trigger at it). A hider: FOUND!
-//     They're out (a ghost: watch the rest). The real thing: it costs the seeker 10 health. No health left and they're
-//     knackered for 10 seconds. Finding someone gives health back.
+//   - THE SEEK (2½-4 minutes): seekers have a GUN (a big toy blaster). Shoot anything that looks off (tap it, click
+//     it, or pull the trigger at it), from right across the room. A hider takes three hits: FOUND! They're out (a ghost:
+//     watch the rest). Shoot the real thing: it costs the seeker 10 health. No health left and they're knackered for 10
+//     seconds. Finding someone gives health back. Everyone sees (and hears) every shot.
 //   - TAUNTS: hiders can taunt (a quack, a kazoo, an airhorn...) from wherever they are. Every taunt scores points (more if
 //     a seeker's close by: BRAVE TAUNT), and going 45 seconds without one taunts for you anyway, and costs you.
 //   - The round's over when every hider's found (seekers win) or the clock runs out (the hiders left win). Points add
@@ -25,7 +26,7 @@ import { pottedPlant } from './levels/outdoor.js';
 import { FONT } from './textures.js';
 
 export const PH = {
-  MIN: 2, HIDE_T: 40, SEEK_BASE: 150, SEEK_PER: 15, SEEK_MAX: 240, END_T: 10, HP: 100, MISS: 10, HEAL: 20, CHECK_R: 4.5, CHECK_CD: 0.6,
+  MIN: 2, HIDE_T: 40, SEEK_BASE: 150, SEEK_PER: 15, SEEK_MAX: 240, END_T: 10, HP: 100, MISS: 10, HEAL: 20, SHOOT_R: 22, SHOOT_CD: 0.4, HIDER_HITS: 3,
   OUT_T: 10, OUT_HP: 60, TAUNT_CD: 8, QUIET_T: 45, PICK_R: 3.2, SWAP_CD: 2, BRAVE_R: 6,
   PTS: { find: 100, survive: 100, perSec: 1, taunt: 10, brave: 25, quiet: -15, out: -25, sweep: 50 },
 };
@@ -141,7 +142,7 @@ export class PropHunt {
     this.grp = new THREE.Group(); this.grp.name = 'prop hunt'; g.scene.add(this.grp);
     this.panel = new Panel({ scene: g.scene, player: g.player, renderer: g.renderer });
     this.buildKinds(); this.buildDecoyMeshes(); this.buildUI(); this.buildWorldBits(); this.walled(new THREE.Ray(), 0);
-    this.props = new Map(); this.fx = []; this.puffs = [];
+    this.props = new Map(); this.fx = []; this.puffs = []; this.shots = []; this.gunKick = {}; this.rGuns = new Map();
     this.clearFood();
     // nobody hits, grabs or throws anything; hiders can't chat or emote mid-round (a chat bubble over a keg...);
     // found hiders only talk to each other
@@ -153,10 +154,14 @@ export class PropHunt {
     this.handlers = {};
     const on = (k, f) => { this.handlers[k] = f; this.net.on[k] = (m, p) => { try { f(m, p); } catch (e) { console.error('prophunt', k, e); } }; };
     on('phChk', (m, p) => { if (this.host && p) this.hostIn('phChk', m, p.id); });
-    for (const k of ['phLobby', 'phRound', 'phGo', 'phClock', 'phFound', 'phMiss', 'phOut', 'phBack', 'phPts', 'phAuto', 'phEnd', 'phOver', 'phState']) on(k, (m, p) => { if (!this.host && (!m.to || m.to === this.me) && (!p || p.id === this.net.hostId)) this.apply(k, m); });
+    for (const k of ['phLobby', 'phRound', 'phGo', 'phClock', 'phFound', 'phHit', 'phMiss', 'phOut', 'phBack', 'phPts', 'phAuto', 'phEnd', 'phOver', 'phState']) on(k, (m, p) => { if (!this.host && (!m.to || m.to === this.me) && (!p || p.id === this.net.hostId)) this.apply(k, m); });
     // (a hider's own news: which prop, locked or not, a taunt. Straight from them to everyone)
     on('phProp', (m, p) => { if (!p) return; const id = m.id != null && p.id === this.net.hostId ? m.id : p.id; this.setKind(id, m.k); });
     on('phLock', (m, p) => { if (p) this.setLock(p.id, m); });
+    // (a seeker's shot: everyone sees the tracer and hears the bang, from where they fired)
+    on('phShot', (m, p) => { if (!p) return; const S = this.players.get(p.id), ok = (v) => Array.isArray(v) && v.length === 3 && v.every(n => typeof n === 'number' && isFinite(n));
+      if (!S || S.role !== 'seeker' || this.phase !== 'seek' || !ok(m.a) || !ok(m.b)) return; const a = new THREE.Vector3(...m.a), b = new THREE.Vector3(...m.b); if (a.distanceTo(b) > PH.SHOOT_R + 3) return;
+      this.shotFx(a, b, !!m.h, false); this.gunKick[p.id] = 1; sfx('ph_shot', a, 0.75); });
     on('phTaunt', (m, p) => { if (!p) return; if (this.taunted(p.id, m.i, false) && this.host) this.hostTaunt(p.id); });
     on('phHello', (m, p) => { if (this.host && p) this.hostHello(p.id); });
     this.leaveWas = this.net.on.leave; this.net.on.leave = (m) => { this.leaveWas && this.leaveWas(m); if (this.host) this.hostLeft(m.id); };
@@ -280,7 +285,7 @@ export class PropHunt {
     const order = shuffle(list).sort((a, b) => (H.sought[a.id] || 0) - (H.sought[b.id] || 0) || (H.lastSought[a.id] || 0) - (H.lastSought[b.id] || 0));
     const seek = order.slice(0, nS).map(p => p.id), hide = list.map(p => p.id).filter(id => !seek.includes(id));
     for (const id of seek) { H.sought[id] = (H.sought[id] || 0) + 1; H.lastSought[id] = H.r; H.hp[id] = PH.HP; }
-    H.rp = {}; H.found = new Set(); H.lastTaunt = {}; H.outUntil = {}; H.seekStart = 0; H.foundAt = {};
+    H.rp = {}; H.hits = {}; H.found = new Set(); H.lastTaunt = {}; H.outUntil = {}; H.seekStart = 0; H.foundAt = {};
     const st = Math.min(PH.SEEK_MAX, PH.SEEK_BASE + PH.SEEK_PER * hide.length);
     this.roundMsg = { r: H.r, of: H.of, seek, hide, list, ht: PH.HIDE_T, st, lay: this.hostLayout(), tot: H.tot };
     H.ends = now() + PH.HIDE_T; H.seekT = st; H.clockT = 2;
@@ -295,19 +300,21 @@ export class PropHunt {
   }
   hostIn(k, m, from) {
     const H = this.H; if (!H || k !== 'phChk') return; const P = this.players.get(from);
-    if (this.phase !== 'seek' || !P || P.role !== 'seeker' || P.gone || (H.outUntil[from] || 0) > now() || now() - (H.chkAt[from] || 0) < PH.CHECK_CD * 0.7) return;
+    if (this.phase !== 'seek' || !P || P.role !== 'seeker' || P.gone || (H.outUntil[from] || 0) > now() || now() - (H.chkAt[from] || 0) < PH.SHOOT_CD * 0.7) return;
     H.chkAt[from] = now(); const sp = this.posOf(from, new THREE.Vector3()); if (!sp) return;
     const v = typeof m.v === 'string' ? m.v : '', at = Array.isArray(m.p) && m.p.length === 3 && m.p.every(n => typeof n === 'number' && isFinite(n)) ? new THREE.Vector3(...m.p) : null;
     if (v.startsWith('h:')) { const id = v.slice(2), T = this.players.get(id), tp = T && this.posOf(id, new THREE.Vector3());
       const lp = T && T.locked && T.lp ? new THREE.Vector3(T.lp[0], 0, T.lp[1]) : null, q = lp || tp;
-      if (T && T.role === 'hider' && !T.found && !T.gone && q && this.hd(sp, q) < PH.CHECK_R + 1.6 && (!at || this.hd(at, q) < 1.8)) {
+      if (T && T.role === 'hider' && !T.found && !T.gone && q && this.hd(sp, q) < PH.SHOOT_R + 1.6 && (!at || this.hd(at, q) < 1.8)) {
+        const hits = H.hits || (H.hits = {}); hits[id] = (hits[id] || 0) + 1;
+        if (hits[id] < PH.HIDER_HITS) { this.send('phHit', { v: id, by: from, n: PH.HIDER_HITS - hits[id], p: [q.x, (at ? at.y : 0.5), q.z] }); return; }
         H.found.add(id); const secs = Math.max(0, now() - H.seekStart); this.stat(id).hidden += secs; this.stat(from).finds++;
         H.hp[from] = Math.min(PH.HP, (H.hp[from] || PH.HP) + PH.HEAL);
         this.send('phFound', { v: id, by: from, p: [q.x, (at ? at.y : 0.5), q.z], k: T.kind || '', hp: H.hp[from] });
         this.addPts(from, PH.PTS.find, 'FOUND ' + this.nameOf(id).toUpperCase()); this.addPts(id, Math.floor(secs * PH.PTS.perSec), 'HID FOR ' + Math.floor(secs) + 's');
         this.hostCheckEnd(); return; }
       this.send('phMiss', { by: from, hp: H.hp[from] ?? PH.HP, d: -1 }); return; }      // (a hider that wasn't there by the time it got here: no penalty)
-    if (v.startsWith('d:')) { const i = Number(v.slice(2)), d = this.decoys[i]; if (!Number.isInteger(i) || !d || this.hd(sp, d) > PH.CHECK_R + 1.6) return;
+    if (v.startsWith('d:')) { const i = Number(v.slice(2)), d = this.decoys[i]; if (!Number.isInteger(i) || !d || this.hd(sp, d) > PH.SHOOT_R + 1.6) return;
       this.stat(from).wrong++; H.hp[from] = Math.max(0, (H.hp[from] ?? PH.HP) - PH.MISS); this.send('phMiss', { by: from, hp: H.hp[from], d: i });
       if (H.hp[from] <= 0) { H.outUntil[from] = now() + PH.OUT_T; this.send('phOut', { id: from, secs: PH.OUT_T }); this.addPts(from, PH.PTS.out, 'KNACKERED'); } }
   }
@@ -337,7 +344,7 @@ export class PropHunt {
     const H = this.H, list = this.roster().map(p => p.id), aw = [];
     const top = (f, min = 1) => { let best = null, bv = min - 1e-9; for (const id of list) { const v = f(this.stat(id)); if (v > bv) { bv = v; best = id; } } return best ? [best, Math.round(bv)] : null; };
     const a = (ico, name, r, unit) => { if (r) aw.push([ico, name, r[0], r[1] + unit]); };
-    a('👁️', 'EAGLE EYE', top(s => s.finds), ' FOUND'); a('🫥', 'MASTER OF DISGUISE', top(s => s.hidden, 10), 's HIDDEN'); a('📯', 'GOBBY', top(s => s.taunts), ' TAUNTS'); a('🤦', 'POKED A BIN', top(s => s.wrong), ' WRONG');
+    a('👁️', 'EAGLE EYE', top(s => s.finds), ' FOUND'); a('🫥', 'MASTER OF DISGUISE', top(s => s.hidden, 10), 's HIDDEN'); a('📯', 'GOBBY', top(s => s.taunts), ' TAUNTS'); a('🤦', 'SHOT A BIN', top(s => s.wrong), ' WRONG');
     this.overMsg = { tot: H.tot, aw, stats: H.stats }; this.send('phOver', { ...this.overMsg });
   }
   // someone's dropped out: 20 seconds to come back, then they're out of the round
@@ -375,6 +382,7 @@ export class PropHunt {
     if (k === 'phClock') { const l = Number(m.left); if (isFinite(l) && (m.ph === this.phase)) this.endsAt = now() + l; return; }
     if (k === 'phFound') return this.found(m);
     if (k === 'phMiss') return this.missed(m);
+    if (k === 'phHit') return this.shotHit(m);
     if (k === 'phOut') { const p = this.players.get(m.id); if (p) { p.out = now() + (Number(m.secs) || PH.OUT_T); p.hp = 0; } if (m.id === this.me) this.knackered(); else this.feed(`😵 ${esc(this.nameOf(m.id))} IS KNACKERED`); return; }
     if (k === 'phBack') { const p = this.players.get(m.id); if (p) { p.out = 0; p.hp = Number(m.hp) || PH.OUT_HP; } if (m.id === this.me) { this.toast('BACK ON YOUR FEET!'); this.flashEl.className = ''; } return; }
     if (k === 'phPts') { const id = m.id, d = Number(m.d) || 0; this.tot[id] = (this.tot[id] || 0) + d; if (id === this.me) this.pop((d > 0 ? '+' : '') + d + ' ' + (m.why || ''), d > 0 ? '#39ff14' : '#ff5252'); return; }
@@ -409,7 +417,7 @@ export class PropHunt {
     const me = this.mine(); this.blind(false);
     if (me && me.role === 'hider' && !me.kind && !quiet) this.toast('YOU DIDN\'T PICK! YOU\'RE A RANDOM THING NOW');
     if (quiet) return; sfx('whistle_ref', null, 1); setTimeout(() => sfx('whistle_ref', null, 0.8), 380);
-    this.splash(me && me.role === 'seeker' ? '#ff9f1c' : '#39ff14', me && me.role === 'seeker' ? '<p>READY OR NOT...</p><h1>GO GET \'EM!</h1><p>Tap anything that looks off. The wrong thing costs you ❤</p>' : '<p>READY OR NOT...</p><h1>HERE THEY COME!</h1><p>Stay still. Lock in. Taunt for points.</p>', 2200);
+    this.splash(me && me.role === 'seeker' ? '#ff9f1c' : '#39ff14', me && me.role === 'seeker' ? '<p>READY OR NOT...</p><h1>GO GET \'EM!</h1><p>🔫 Shoot anything that looks off. Three hits finds a hider. Shooting the real thing costs you ❤</p>' : '<p>READY OR NOT...</p><h1>HERE THEY COME!</h1><p>Stay still. Lock in. Taunt for points.</p>', 2200);
     if (this.g.renderer.xr.isPresenting) this.g.showBanner('READY OR NOT', me && me.role === 'seeker' ? 'GO GET \'EM!' : 'HERE THEY COME!');
   }
   found(m) {
@@ -425,6 +433,15 @@ export class PropHunt {
     if (m.by === this.me) { this.pop('FOUND ' + this.nameOf(m.v).toUpperCase() + '! +❤', '#39ff14'); if (this.g.renderer.xr.isPresenting) this.g.showBanner('FOUND!', this.nameOf(m.v).toUpperCase()); }
     this.syncPuppets();
   }
+  // a hider shot but not out yet: their prop jumps, everyone sees the sparks; they get told to MOVE
+  shotHit(m) {
+    const vic = this.players.get(m.v); if (!vic) return; const n = Math.max(1, Number(m.n) || 1), pr = this.props.get(m.v);
+    const at = pr ? pr.pos.clone().add({ x: 0, y: this.K[pr.kind] ? this.K[pr.kind].h * 0.6 : 0.5, z: 0 }) : (Array.isArray(m.p) ? new THREE.Vector3(m.p[0], m.p[1], m.p[2]) : null);
+    if (pr) pr.jig = 0.001; if (at) { this.burst(at, [0xff3b3b, 0xffd400, 0xffffff], 14, 1.6); sfx('ph_hit', at, 1); }
+    if (m.v === this.me) { this.pop(`🔫 YOU'VE BEEN SHOT! ${n} MORE AND YOU'RE OUT. MOVE!`, '#ff5252'); this.flashEl.className = 'hurt'; void this.flashEl.offsetWidth; this.flashEl.className = 'hurt on'; for (const h of this.g.player.hands || []) h.pulse && h.pulse(0.8, 160);
+      if (this.g.renderer.xr.isPresenting) this.g.showBanner('YOU\'VE BEEN SHOT!', `${n} MORE AND YOU'RE OUT`); }
+    if (m.by === this.me) this.pop(`🎯 HIT! ${n} MORE TO FIND THEM`, '#39ff14');
+  }
   missed(m) {
     const S = this.players.get(m.by); if (S && m.hp != null) S.hp = Number(m.hp); const i = Number(m.d), d = Number.isInteger(i) && i >= 0 ? this.decoys[i] : null;
     if (d) { d.wob = 0.001; this.burst(new THREE.Vector3(d.x, (d.e ? d.e.pos.y : d.y) + this.K[d.k].h, d.z), [0xff3b3b, 0xffffff], 10, 1.4); }
@@ -434,7 +451,7 @@ export class PropHunt {
     this.flashEl.className = 'hurt'; void this.flashEl.offsetWidth; this.flashEl.className = 'hurt on'; this.topEl.classList.remove('shake'); void this.topEl.offsetWidth; this.topEl.classList.add('shake');
     const P = this.g.player; for (const h of P.hands || []) h.pulse && h.pulse(0.6, 120);
   }
-  knackered() { this.flashEl.className = 'out'; this.splash('#ff9f1c', '<p>😵 YOU POKED ONE BIN TOO MANY</p><h1>KNACKERED!</h1><p>Have a sit down for 10 seconds</p>', 3000); sfx('sadviolin', null, 0.7); if (this.g.renderer.xr.isPresenting) this.g.showBanner('KNACKERED!', 'BACK IN 10s'); }
+  knackered() { this.flashEl.className = 'out'; this.splash('#ff9f1c', '<p>😵 YOU SHOT ONE BIN TOO MANY</p><h1>KNACKERED!</h1><p>Have a sit down for 10 seconds</p>', 3000); sfx('sadviolin', null, 0.7); if (this.g.renderer.xr.isPresenting) this.g.showBanner('KNACKERED!', 'BACK IN 10s'); }
   roundOver(m) {
     if (!m || typeof m !== 'object') return; const obj = (o) => o && typeof o === 'object' && !Array.isArray(o) ? o : {};
     m = { ...m, tot: obj(m.tot), rp: obj(m.rp), stats: obj(m.stats), alive: Array.isArray(m.alive) ? m.alive.map(String) : [], r: Number(m.r) || this.round, of: Number(m.of) || this.of }; this.phase = 'roundend'; this.lastEndMsg = m; this.endsAt = now() + PH.END_T; this.blind(false); this.lockOff(true); this.closePicker();
@@ -542,12 +559,77 @@ export class PropHunt {
   // ------------------------------------------------------------------ seekers: check
   doCheck(ray) {
     const me = this.mine(); if (!me || me.role !== 'seeker' || this.phase !== 'seek' || this.panel.open) return;
-    if (me.out > now()) { this.toast('YOU\'RE KNACKERED. HAVE A SIT DOWN'); return; } if (now() < (this.chkCD || 0)) return; this.chkCD = now() + PH.CHECK_CD;
+    if (me.out > now()) { this.toast('YOU\'RE KNACKERED. HAVE A SIT DOWN'); return; } if (now() < (this.chkCD || 0)) return; this.chkCD = now() + PH.SHOOT_CD;
     if (!ray) ray = this.aimRay(); if (!ray) return;
-    const hit = this.pick(ray, { maxD: PH.CHECK_R + 1 }), P = this.g.player; sfx('ph_check', null, 0.7);
-    const end = hit ? new THREE.Vector3(hit.x, hit.y, hit.z) : ray.origin.clone().addScaledVector(ray.direction, PH.CHECK_R); this.zap(ray.origin, end, !!hit);
-    if (!hit || Math.hypot(hit.x - P.head.x, hit.z - P.head.z) > PH.CHECK_R) { this.pop(hit ? 'TOO FAR AWAY' : 'NOTHING THERE', '#c9d3ff'); return; }
-    this.ask('phChk', { v: hit.kind === 'h' ? 'h:' + hit.id : 'd:' + hit.i, p: [Math.round(hit.x * 100) / 100, Math.round(hit.y * 100) / 100, Math.round(hit.z * 100) / 100] });
+    const hit = this.pick(ray, { maxD: PH.SHOOT_R }), P = this.g.player;
+    const end = hit ? new THREE.Vector3(hit.x, hit.y, hit.z) : ray.origin.clone().addScaledVector(ray.direction, this.wallT(ray, PH.SHOOT_R));
+    const from = this.muzzle(ray), r2 = (v) => [Math.round(v.x * 100) / 100, Math.round(v.y * 100) / 100, Math.round(v.z * 100) / 100];
+    this.shotFx(from, end, !!hit, true); this.gunKick[this.me] = 1; sfx('ph_shot', null, 0.85); for (const h of P.hands || []) if (h.handedness === 'right') h.pulse && h.pulse(0.7, 70);
+    this.net.send({ t: 'phShot', a: r2(from), b: r2(end), h: hit ? 1 : 0 });
+    if (!hit) return;      // (a wall or the floor: no harm done)
+    this.ask('phChk', { v: hit.kind === 'h' ? 'h:' + hit.id : 'd:' + hit.i, p: r2(end) });
+  }
+  // how far a shot goes before a wall, a tall shelf or the floor stops it
+  wallT(ray, max) {
+    let t = max; if (!this.walls) this.walled(ray, 0);
+    for (const b of this.walls) { if (b.containsPoint(ray.origin)) continue; const p = ray.intersectBox(b, _hit); if (p) t = Math.min(t, p.distanceTo(ray.origin)); }
+    if (ray.direction.y < -0.02) t = Math.min(t, (ray.origin.y - this.floor(ray.origin.x, ray.origin.z)) / -ray.direction.y);
+    return Math.max(0.3, t);
+  }
+  // the end of the gun's barrel (where the tracer starts)
+  muzzle(ray) {
+    const g = this.vGun && this.vGun.visible ? this.vGun : this.vrGun && this.vrGun.parent && this.vrGun.visible ? this.vrGun : null;
+    if (g) { g.updateMatrixWorld(true); return g.localToWorld(new THREE.Vector3(0, 0.035, -0.34)); }
+    return ray.origin.clone().addScaledVector(ray.direction, 0.3).add({ x: 0, y: -0.12, z: 0 });
+  }
+  // ------------------------------------------------------------------ the gun: a chunky toy blaster
+  gunGeo() {
+    if (this._gunGeo) return this._gunGeo; const p = [], X = [Math.PI / 2, 0, 0];
+    B(p, 0.064, 0.075, 0.25, 0xff7a1a, 0, 0.02, -0.085); B(p, 0.066, 0.014, 0.2, 0xffffff, 0, 0.0, -0.09);      // the body, a white stripe
+    C(p, 0.019, 0.019, 0.15, 0x2a2a2a, 0, 0.035, -0.26, X, 12); C(p, 0.026, 0.026, 0.026, 0xffd400, 0, 0.035, -0.33, X, 14);      // barrel, muzzle
+    C(p, 0.013, 0.013, 0.03, 0x111111, 0, 0.035, -0.345, X, 10);
+    B(p, 0.046, 0.12, 0.052, 0x222222, 0, -0.055, 0.005, [0.28, 0, 0]); B(p, 0.05, 0.02, 0.056, 0x3a3a3a, 0, -0.11, 0.02, [0.28, 0, 0]);      // the grip
+    B(p, 0.012, 0.045, 0.012, 0x111111, 0, -0.032, -0.06, [0.3, 0, 0]); T(p, 0.028, 0.006, 0x222222, 0, -0.03, -0.055, [0, Math.PI / 2, 0], Math.PI);      // trigger and guard
+    C(p, 0.027, 0.027, 0.13, 0x39ff14, 0, 0.083, -0.075, X, 14); for (const z of [-0.13, -0.02]) C(p, 0.029, 0.029, 0.012, 0x1d8a0a, 0, 0.083, z, X, 14);      // the tank on top
+    B(p, 0.012, 0.024, 0.012, 0x111111, 0, 0.07, 0.03); B(p, 0.01, 0.02, 0.01, 0x111111, 0, 0.065, -0.205);      // sights
+    return (this._gunGeo = merge(p));
+  }
+  newGun() { return new THREE.Mesh(this.gunGeo(), vcLambert); }
+  // the shot: a streak of light from the barrel to where it landed, a flash at the gun, sparks where it hit
+  shotFx(a, b, hit, mine) {
+    if (!this.tracerGeo) { this.tracerGeo = new THREE.CylinderGeometry(1, 1, 1, 6, 1, true); this.tracerGeo.rotateX(Math.PI / 2); this.tracerGeo.translate(0, 0, 0.5); this.flashGeo = new THREE.OctahedronGeometry(0.06); }
+    const d = a.distanceTo(b); if (d < 0.05) return; this.shotN = (this.shotN || 0) + 1;
+    const tr = new THREE.Mesh(this.tracerGeo, new THREE.MeshBasicMaterial({ color: hit ? 0xffe066 : 0xfff3c4, transparent: true, opacity: 0.95, depthWrite: false }));
+    tr.position.copy(a); tr.lookAt(b); tr.scale.set(mine ? 0.007 : 0.012, mine ? 0.007 : 0.012, d); tr.frustumCulled = false; tr.userData.t = 0; tr.userData.life = 0.16; this.grp.add(tr); this.shots.push(tr);
+    const fl = new THREE.Mesh(this.flashGeo, new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 1, depthWrite: false }));
+    fl.position.copy(a); fl.rotation.set(Math.random() * 3, Math.random() * 3, 0); fl.userData.t = 0; fl.userData.life = 0.09; fl.userData.grow = 1; this.grp.add(fl); this.shots.push(fl);
+    this.burst(b, hit ? [0xffd400, 0xffffff, 0xff9f1c] : [0xbfbfbf, 0x8a8a8a, 0xffe066], hit ? 8 : 5, 0.7);
+  }
+  // seekers hold their gun: yours in front of you (phone/computer) or on your right controller (VR); everyone else's
+  // in their right hand, the arm up, pointing where they look
+  guns(dt, me, seeker, xr) {
+    const P = this.g.player, show = this.inRound() && this.phase !== 'roundend', t = now();
+    for (const id in this.gunKick) this.gunKick[id] = Math.max(0, this.gunKick[id] - dt * 7);
+    const mineOn = !!(show && seeker && !(me.out > t) && !this.blindOn);
+    // phone / computer: in front of the camera, bottom right, kicking back when it fires
+    const flatOn = mineOn && !xr && P.flatMode && !!P.camera;
+    if (flatOn && !this.vGun) { this.vGun = this.newGun(); this.vGun.scale.setScalar(0.85); P.camera.add(this.vGun); }
+    if (this.vGun) { this.vGun.visible = flatOn; if (flatOn) { const k = this.gunKick[this.me] || 0, bob = Math.sin(t * 7) * 0.004 * Math.min(1, (P.flatMove ? Math.hypot(P.flatMove.x, P.flatMove.z) : 0));
+      this.vGun.position.set(0.17, -0.17 + bob + k * 0.012, -0.37 + k * 0.05); this.vGun.rotation.set(k * 0.35, 0.06, 0); } }
+    const grip = P.flatGrip; if (grip) { if (flatOn && grip.visible) { grip.visible = false; this.gunHidGrip = true; } else if (!flatOn && this.gunHidGrip) { grip.visible = true; this.gunHidGrip = false; } }
+    // VR: on the right controller, along the pointer
+    const h = xr ? (P.hands || []).find(h => h.source && h.handedness === 'right' && h.ctrl) : null, vrOn = mineOn && !!h;
+    if (vrOn && !this.vrGun) this.vrGun = this.newGun();
+    if (this.vrGun) { if (vrOn && this.vrGun.parent !== h.ctrl) h.ctrl.add(this.vrGun); if (!vrOn && this.vrGun.parent) this.vrGun.parent.remove(this.vrGun); this.vrGun.visible = vrOn;
+      if (vrOn) { const k = this.gunKick[this.me] || 0; this.vrGun.position.set(0, -0.03, 0.09 + k * 0.04); this.vrGun.rotation.set(k * 0.3, 0, 0); } }
+    // everyone else's
+    const live = new Set();
+    if (show) for (const p of this.players.values()) { if (p.role !== 'seeker' || p.id === this.me || p.gone) continue; const np = this.net.players.get(p.id), av = np && np.avatar; if (!av || !np.pose || !Array.isArray(np.pose.q)) continue;
+      live.add(p.id); let gm = this.rGuns.get(p.id); if (!gm) { gm = this.newGun(); gm.scale.setScalar(1.15); this.grp.add(gm); this.rGuns.set(p.id, gm); }
+      const out = p.out > t; av.gunArm = !out; gm.visible = !out && !(av.emote && av.emote.active); if (!gm.visible) continue;
+      const hp = av.handPos ? av.handPos() : null; if (!hp || !isFinite(hp.x)) { gm.visible = false; continue; }
+      gm.quaternion.set(...np.pose.q); const k = this.gunKick[p.id] || 0; gm.position.copy(hp); gm.rotateX(k * 0.35); }
+    for (const [id, gm] of this.rGuns) if (!live.has(id)) { this.grp.remove(gm); this.rGuns.delete(id); const np = this.net.players.get(id); if (np && np.avatar) np.avatar.gunArm = false; }
   }
   // spectating (found, or sat out): whose eyes next
   doWatch() { const live = [...this.players.values()].filter(p => p.id !== this.me && !p.found && p.role !== 'spec'); if (!live.length) { this.spect = null; return; }
@@ -638,7 +720,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     const ui = document.createElement('div'); ui.id = 'ph-ui';
     ui.innerHTML = `<div class="row"><button class="watch" hidden><b>👀</b>WATCH<i>V</i></button><button class="props" hidden><b>🎭</b>PROPS<i>Q</i></button></div>
 <div class="row"><button class="lock" hidden><b>🔓</b>LOCK<i>L</i></button><div style="display:flex;flex-direction:column;gap:4px;align-items:center"><div id="ph-quiet" hidden><u></u></div><button class="taunt" hidden><span class="cdv"></span><b>📯</b>TAUNT<span class="num"></span><i>T</i></button></div></div>
-<div class="row"><button class="become" hidden><b>✨</b>BECOME<i>E</i></button><button class="check" hidden><b>🔍</b>CHECK<i>F</i></button><button class="start" hidden><b>▶</b>START<i>E</i></button></div>`;
+<div class="row"><button class="become" hidden><b>✨</b>BECOME<i>E</i></button><button class="check" hidden><b>🔫</b>SHOOT<i>F</i></button><button class="start" hidden><b>▶</b>START<i>E</i></button></div>`;
     document.body.appendChild(ui); this.ui = ui; document.body.classList.add('prophunt');
     const Q = (c) => ui.querySelector('.' + c); this.B = { watch: Q('watch'), props: Q('props'), lock: Q('lock'), taunt: Q('taunt'), become: Q('become'), check: Q('check'), start: Q('start') }; this.quietEl = ui.querySelector('#ph-quiet');
     const tap = (el, f) => el.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); f(); });
@@ -659,7 +741,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     // a seeker's check: a flash of light out to what they checked
     this.zapLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0 })); this.zapLine.frustumCulled = false; this.grp.add(this.zapLine);
     // VR: a seeker's pointer, and the blindfold (a black ball round your head)
-    this.laser = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -PH.CHECK_R)]), new THREE.LineBasicMaterial({ color: 0xff7043, transparent: true, opacity: 0.7 })); this.laser.visible = false; this.laser.frustumCulled = false; this.grp.add(this.laser);
+    this.laser = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -6)]), new THREE.LineBasicMaterial({ color: 0xff7043, transparent: true, opacity: 0.7 })); this.laser.visible = false; this.laser.frustumCulled = false; this.grp.add(this.laser);
     this.blindBall = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 10), new THREE.MeshBasicMaterial({ color: 0x050505, side: THREE.BackSide, transparent: true, opacity: 0.985, depthTest: false, depthWrite: false })); this.blindBall.renderOrder = 60; this.blindBall.visible = false; this.grp.add(this.blindBall);
   }
   doStart() { if (this.phase !== 'waiting' && this.phase !== 'over') return; if (!this.host) { this.toast('THE HOST STARTS THE GAME'); return; } if (this.roster().length < PH.MIN) { this.toast(`NEED ${PH.MIN}+ PLAYERS TO START`); return; } this.panel.close(true); sfx('ph_airhorn', null, 0.8); this.hostStart(); }
@@ -671,8 +753,8 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
   lockFx(on) { const e = this.lockEl; e.textContent = on ? '🔒' : '🔓'; e.className = ''; void e.offsetWidth; e.className = 'on'; }
   showRole() {
     const me = this.mine(); if (!me) return; const hiders = this.hiders(), seekers = this.seekers(), imgs = (l) => l.map(p => `<img src="./assets/portraits/${esc(p.char || 'ronnie')}.webp" title="${esc(p.name)}">`).join('');
-    if (me.role === 'seeker') { this.splash('#ff9f1c', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>SEEKING 🔍</h1><p>${hiders.length} hider${hiders.length === 1 ? '' : 's'} turning into stuff. Count to ${PH.HIDE_T}, no peeking.</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_seekrole', null, 0.8); }
-    else if (me.role === 'hider') { this.splash('#39ff14', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>HIDING 🙈</h1><p>Find a thing. BECOME it. LOCK in. Taunt for points.</p><p class="sm">${seekers.map(p => esc(p.name)).join(' & ')} ${seekers.length > 1 ? 'are' : 'is'} counting to ${PH.HIDE_T}...</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_hiderole', null, 0.8); }
+    if (me.role === 'seeker') { this.splash('#ff9f1c', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>SEEKING 🔫</h1><p>${hiders.length} hider${hiders.length === 1 ? '' : 's'} turning into stuff. Count to ${PH.HIDE_T}, no peeking.</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_seekrole', null, 0.8); }
+    else if (me.role === 'hider') { this.splash('#39ff14', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>HIDING 🙈</h1><p>Find a thing. BECOME it. LOCK in. Taunt for points. The seekers have guns: three shots and you're out.</p><p class="sm">${seekers.map(p => esc(p.name)).join(' & ')} ${seekers.length > 1 ? 'are' : 'is'} counting to ${PH.HIDE_T}...</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_hiderole', null, 0.8); }
     else this.splash('#9fb3d9', '<h1>SIT THIS ONE OUT</h1><p>You\'ll be in next round. Watch the fun.</p>', 3000);
     if (this.g.renderer.xr.isPresenting) this.g.showBanner(`ROUND ${this.round} · YOU'RE`, me.role === 'seeker' ? 'SEEKING' : me.role === 'hider' ? 'HIDING' : 'WATCHING');
   }
@@ -762,12 +844,13 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     // a hider looking at a prop: it glows and its card comes up; a seeker's crosshair warms up over something checkable
     if ((this.aimT = (this.aimT || 0) - dt) <= 0) { this.aimT = 0.08; this.aimed = null; this.hot = null;
       if (hider && this.playing() && !this.panel.open) { const r = this.aimRay(); if (r) this.aimed = this.pick(r, { near: P.head, nearR: PH.PICK_R }); if (this.aimed && me.kind === this.aimed.k) this.aimed = null; }
-      if (seeker && this.phase === 'seek' && !this.panel.open && !out) { const r = this.aimRay(); if (r) { const h = this.pick(r, { maxD: PH.CHECK_R + 1 }); this.hot = h && Math.hypot(h.x - P.head.x, h.z - P.head.z) <= PH.CHECK_R ? h : null; } } }
+      if (seeker && this.phase === 'seek' && !this.panel.open && !out) { const r = this.aimRay(); if (r) { const h = this.pick(r, { maxD: PH.SHOOT_R + 1 }); this.hot = h || null; } } }
     this.highlight(this.aimed);
     this.animFx(dt);
     if (this.syncT === undefined || (this.syncT -= dt) <= 0) { this.syncT = 0.3; this.syncPuppets(); }
     // decoys being checked wobble
     for (const d of this.decoys) if (d.wob > 0) { d.wob += dt; const k = d.wob > 0.6 ? 0 : Math.sin(d.wob * 40) * 0.12 * (1 - d.wob / 0.6); this.decoyMatrix(d, k); if (d.wob > 0.6) d.wob = 0; }
+    this.guns(dt, me, seeker, xr);
     if (xr) this.vrInput(P, me); else { this.drawHud(me, hider, seeker, ghost); if (P.wrist && P.flatMode) P.wrist.visible = false; }
     this.laser.visible = xr && seeker && this.phase === 'seek';
     if (this.laser.visible) { const h = (P.hands || []).find(h => h.source && h.handedness === 'right' && h.ctrl); if (h) { h.ctrl.getWorldPosition(this.laser.position); h.ctrl.getWorldQuaternion(this.laser.quaternion); this.laser.material.color.setHex(this.hot ? 0xffd400 : 0xff7043); } else this.laser.visible = false; }
@@ -815,7 +898,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     if (hider && play) { B.lock.classList.toggle('on', !!me.locked); B.lock.classList.toggle('off', !me.kind); B.lock.querySelector('b').textContent = me.locked ? '🔒' : '🔓'; B.lock.childNodes[1].textContent = me.locked ? 'LOCKED' : 'LOCK';
       const cd = Math.max(0, (this.tauntCD || 0) - t); B.taunt.style.setProperty('--k', Math.round(cd / PH.TAUNT_CD * 100) + '%'); B.taunt.querySelector('.num').textContent = cd > 0 ? Math.ceil(cd) : ''; B.taunt.classList.toggle('off', !me.kind);
       const q = Math.min(1, (t - (this.lastTaunt || t)) / PH.QUIET_T); this.quietEl.firstChild.style.width = (q * 100) + '%'; }
-    if (seeker) B.check.classList.toggle('off', me.out > t || !this.hot);
+    if (seeker) B.check.classList.toggle('off', me.out > t);
     this.crossEl.classList.toggle('on', (seeker && this.phase === 'seek') || (hider && play && !this.panel.open)); this.crossEl.classList.toggle('hot', !!(this.hot || this.aimed));
     if ((this.hudT = (this.hudT || 0) - 1) > 0) return; this.hudT = 6;
     let h = '';
@@ -850,7 +933,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     W(me.found ? '👻 FOUND' : me.role === 'seeker' ? '🔍 SEEKER' : me.role === 'hider' ? '🙈 HIDER' : '👀 WATCHING', 30, 42, 32, col);
     W(`R${this.round}/${this.of} ${this.phase === 'hide' ? 'HIDE' : this.phase === 'seek' ? 'SEEK' : 'END'} ${fmt(this.endsAt - t)}`, w - 28, 42, 30, this.phase === 'seek' && this.endsAt - t < 30 ? '#ff6b6b' : '#fff', 'right');
     W(`🙈 ${this.left().length}/${this.hiders().length} HIDERS LEFT`, 30, 96, 28, '#c9d3ff');
-    if (me.role === 'seeker') { const hp = Math.max(0, me.hp ?? PH.HP); g.fillStyle = '#333'; rr(g, 30, 130, w - 60, 40, 20); g.fill(); g.fillStyle = '#ff3b3b'; if (hp > 0) { rr(g, 30, 130, (w - 60) * hp / 100, 40, 20); g.fill(); } W(me.out > t ? `😵 KNACKERED ${Math.ceil(me.out - t)}s` : `❤ ${hp}`, w / 2, 151, 26, '#fff', 'center'); W('TRIGGER: CHECK WHAT YOU POINT AT', 30, 200, 22, '#ffd400'); }
+    if (me.role === 'seeker') { const hp = Math.max(0, me.hp ?? PH.HP); g.fillStyle = '#333'; rr(g, 30, 130, w - 60, 40, 20); g.fill(); g.fillStyle = '#ff3b3b'; if (hp > 0) { rr(g, 30, 130, (w - 60) * hp / 100, 40, 20); g.fill(); } W(me.out > t ? `😵 KNACKERED ${Math.ceil(me.out - t)}s` : `❤ ${hp}`, w / 2, 151, 26, '#fff', 'center'); W('🔫 TRIGGER: SHOOT', 30, 200, 22, '#ffd400'); }
     else if (me.role === 'hider' && !me.found) { W(me.kind ? `${this.K[me.kind].icon} ${this.K[me.kind].name}${me.locked ? ' 🔒' : ''}` : 'PICK A PROP! (A or Y)', 30, 146, 28, '#fff');
       const cd = Math.max(0, (this.tauntCD || 0) - t); W(cd > 0 ? `📯 TAUNT IN ${Math.ceil(cd)}s` : '📯 TAUNT READY (X)', 30, 192, 24, cd > 0 ? '#999' : '#ff4fa3'); W('A BECOME · B LOCK · Y LIST', 30, 232, 22, '#9fb3d9'); }
     W(`⭐ ${this.tot[this.me] || 0} POINTS`, 30, h - 40, 26, '#ffd400');
@@ -867,6 +950,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
   }
   zap(a, b, hit) { const pa = this.zapLine.geometry.attributes.position; pa.setXYZ(0, a.x, a.y - 0.15, a.z); pa.setXYZ(1, b.x, b.y, b.z); pa.needsUpdate = true; this.zapLine.geometry.computeBoundingSphere(); this.zapLine.material.color.setHex(hit ? 0xffe066 : 0xaaaaaa); this.zapT = 0.25; }
   animFx(dt) {
+    this.shots = this.shots.filter(m => { const u = m.userData; u.t += dt; const k = u.t / u.life; if (k >= 1) { this.grp.remove(m); m.material.dispose(); return false; } m.material.opacity = 1 - k; if (u.grow) m.scale.setScalar(1 + k * 1.5); return true; });
     this.fx = this.fx.filter(m => { const u = m.userData; u.t += dt; u.v.y -= 6 * dt; m.position.addScaledVector(u.v, dt); m.rotation.x += dt * 8; m.rotation.y += dt * 6; m.material.opacity = Math.max(0, 1 - u.t / 1.1); if (u.t > 1.1) { this.grp.remove(m); m.geometry.dispose(); m.material.dispose(); return false; } return true; });
     this.puffs = this.puffs.filter(m => { const u = m.userData; u.t += dt; u.v.multiplyScalar(Math.exp(-dt * 3)); m.position.addScaledVector(u.v, dt); m.scale.setScalar(1 + u.t * 2.2); m.material.opacity = Math.max(0, 0.6 * (1 - u.t / 0.9) * (1 - u.t / 0.9)); if (u.t > 0.9) { this.grp.remove(m); m.material.dispose(); return false; } return true; });
     if (this.zapT > 0) { this.zapT -= dt; this.zapLine.material.opacity = Math.max(0, this.zapT / 0.25); } else this.zapLine.material.opacity = 0;
@@ -876,6 +960,8 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
   dispose() {
     const g = this.g; this.blind(false); this.panel.close(true); this.panel.wrap.remove(); g.scene.remove(this.panel.mesh, this.panel.dot); g.scene.remove(this.grp);
     for (const id of [...this.props.keys()]) this.dropProp(id);
+    if (this.vGun) this.vGun.parent && this.vGun.parent.remove(this.vGun); if (this.vrGun && this.vrGun.parent) this.vrGun.parent.remove(this.vrGun); if (g.player.flatGrip && this.gunHidGrip) g.player.flatGrip.visible = true;
+    for (const [id] of this.rGuns) { const np = this.net.players.get(id); if (np && np.avatar) np.avatar.gunArm = false; } this.rGuns.clear();
     for (const el of [this.ui, this.style, this.topEl, this.crossEl, this.cardEl, this.splashEl, this.blindEl, this.countEl, this.feedEl, this.popEl, this.foundEl, this.flashEl, this.ghostEl, this.lockEl]) el && el.remove();
     document.body.classList.remove('prophunt', 'ph-hider'); window.removeEventListener('keydown', this.onKey, true);
     for (const k in this.handlers) delete this.net.on[k]; this.net.on.leave = this.leaveWas;

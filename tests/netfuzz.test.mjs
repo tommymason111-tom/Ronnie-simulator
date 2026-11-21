@@ -57,7 +57,7 @@ export default async function () {
         const n = RS.net, out = { thrown: [], nan: [], on: false };
         RS.newGame('prophunt'); for (let i = 0; i < 10; i++) RS.sim(0.05, 0.05); out.on = !!RS.director.prophunt;
         const J = [null, NaN, Infinity, -1, 0, 1e9, '', 'x', 'x'.repeat(3000), [], [NaN, NaN, NaN], [1, 2], [1, 2, 3], ['frienddd', 'meeeeeee'], [{ id: 'frienddd' }, { id: null }, 5], {}, { frienddd: 'keg', meeeeeee: 9 }, { x: [1, 2, 3] }, true];
-        const types = ['phChk', 'phProp', 'phLock', 'phTaunt', 'phHello', 'phLobby', 'phRound', 'phGo', 'phClock', 'phFound', 'phMiss', 'phOut', 'phBack', 'phPts', 'phAuto', 'phEnd', 'phOver', 'phState'];
+        const types = ['phChk', 'phProp', 'phLock', 'phTaunt', 'phHello', 'phLobby', 'phRound', 'phGo', 'phClock', 'phFound', 'phHit', 'phShot', 'phMiss', 'phOut', 'phBack', 'phPts', 'phAuto', 'phEnd', 'phOver', 'phState'];
         const fields = ['v', 'p', 'k', 'id', 'y', 'on', 'i', 'n', 'list', 'seek', 'hide', 'lay', 'r', 'of', 'ht', 'st', 'tot', 'ph', 'left', 'by', 'hp', 'd', 't', 'why', 'rp', 'alive', 'stats', 'win', 'last', 'aw', 'round', 'kinds', 'locks', 'found', 'to'];
         const send = (m) => { try { n.handle(JSON.parse(JSON.stringify(m))); } catch (e) { out.thrown.push(`${m.t}.${Object.keys(m).filter(k => k !== 't' && k !== 'f').join(',')}: ${e.message}`); } };
         // (a round dealt by the friend, as if they were the host, so the hider and seeker messages have someone to be about)

@@ -1793,7 +1793,7 @@ class SquadPuppet {
       const hv = h.distanceTo(this.prevH[side]) / Math.max(dt, 1e-3); this.prevH[side].copy(h);
       const atMouth = h.distanceTo(head) < 0.28, swinging = !pose.flat && hv > 2.2;
       const punching = this.swingT > 0 && (side === (this.swingSide || 'R') || !pose.flat);
-      if (!pose.flat || atMouth || swinging || punching) this.armT[side] = 0.45;
+      if (!pose.flat || atMouth || swinging || punching || (this.gunArm && side === 'R')) this.armT[side] = 0.45;
       else this.armT[side] -= dt;
       let want = this.armT[side] > 0 ? 1 : 0;
       if (!pose.flat) this.armW[side] += (want - this.armW[side]) * Math.min(1, dt * (want ? 14 : 5));
