@@ -6,9 +6,10 @@
 //     map's own things (a keg, a bar stool, a wheelie bin, a gnome...): look at one and BECOME it, or pick from the PROPS
 //     list. There are plenty of the real ones dotted about, so a keg in the corner might be a keg, or might be Lewis.
 //     LOCK yourself in place so you don't turn with the camera (a keg that turns round when you walk past is a giveaway).
-//   - THE SEEK (2½-4 minutes): seekers have a GUN (a big toy blaster). Shoot anything that looks off (tap it, click
-//     it, or pull the trigger at it), from right across the room. A hider takes three hits: FOUND! They're out (a ghost:
-//     watch the rest). Shoot the real thing: it costs the seeker 10 health. No health left and they're knackered for 10
+//   - THE SEEK (2½-4 minutes): seekers have a GUN (a toy rifle). Shoot anything that looks off (tap it, click it, or
+//     pull the trigger at it), from right across the room. Hiders have HEALTH: a hit takes 25 off, unlocks them and
+//     gives them a few seconds' burst of speed to leg it; they heal back up if they go 6 seconds without being hit.
+//     No health left: FOUND! They're out (a ghost: watch the rest). Shoot the real thing: it costs the seeker 10 health. No health left and they're knackered for 10
 //     seconds. Finding someone gives health back. Everyone sees (and hears) every shot.
 //   - TAUNTS: hiders can taunt (a quack, a kazoo, an airhorn...) from wherever they are. Every taunt scores points (more if
 //     a seeker's close by: BRAVE TAUNT), and going 45 seconds without one taunts for you anyway, and costs you.
@@ -26,7 +27,7 @@ import { pottedPlant } from './levels/outdoor.js';
 import { FONT } from './textures.js';
 
 export const PH = {
-  MIN: 2, HIDE_T: 40, SEEK_BASE: 150, SEEK_PER: 15, SEEK_MAX: 240, END_T: 10, HP: 100, MISS: 10, HEAL: 20, SHOOT_R: 22, SHOOT_CD: 0.4, HIDER_HITS: 3,
+  MIN: 2, HIDE_T: 40, SEEK_BASE: 150, SEEK_PER: 15, SEEK_MAX: 240, END_T: 10, HP: 100, MISS: 10, HEAL: 20, SHOOT_R: 22, SHOOT_CD: 0.4, DMG: 25, REGEN_DELAY: 6, REGEN: 6, RUN_T: 3, RUN_MUL: 1.6,
   OUT_T: 10, OUT_HP: 60, TAUNT_CD: 8, QUIET_T: 45, PICK_R: 3.2, SWAP_CD: 2, BRAVE_R: 6,
   PTS: { find: 100, survive: 100, perSec: 1, taunt: 10, brave: 25, quiet: -15, out: -25, sweep: 50 },
 };
@@ -154,7 +155,7 @@ export class PropHunt {
     this.handlers = {};
     const on = (k, f) => { this.handlers[k] = f; this.net.on[k] = (m, p) => { try { f(m, p); } catch (e) { console.error('prophunt', k, e); } }; };
     on('phChk', (m, p) => { if (this.host && p) this.hostIn('phChk', m, p.id); });
-    for (const k of ['phLobby', 'phRound', 'phGo', 'phClock', 'phFound', 'phHit', 'phMiss', 'phOut', 'phBack', 'phPts', 'phAuto', 'phEnd', 'phOver', 'phState']) on(k, (m, p) => { if (!this.host && (!m.to || m.to === this.me) && (!p || p.id === this.net.hostId)) this.apply(k, m); });
+    for (const k of ['phLobby', 'phRound', 'phGo', 'phClock', 'phFound', 'phHit', 'phHp', 'phMiss', 'phOut', 'phBack', 'phPts', 'phAuto', 'phEnd', 'phOver', 'phState']) on(k, (m, p) => { if (!this.host && (!m.to || m.to === this.me) && (!p || p.id === this.net.hostId)) this.apply(k, m); });
     // (a hider's own news: which prop, locked or not, a taunt. Straight from them to everyone)
     on('phProp', (m, p) => { if (!p) return; const id = m.id != null && p.id === this.net.hostId ? m.id : p.id; this.setKind(id, m.k); });
     on('phLock', (m, p) => { if (p) this.setLock(p.id, m); });
@@ -285,7 +286,7 @@ export class PropHunt {
     const order = shuffle(list).sort((a, b) => (H.sought[a.id] || 0) - (H.sought[b.id] || 0) || (H.lastSought[a.id] || 0) - (H.lastSought[b.id] || 0));
     const seek = order.slice(0, nS).map(p => p.id), hide = list.map(p => p.id).filter(id => !seek.includes(id));
     for (const id of seek) { H.sought[id] = (H.sought[id] || 0) + 1; H.lastSought[id] = H.r; H.hp[id] = PH.HP; }
-    H.rp = {}; H.hits = {}; H.found = new Set(); H.lastTaunt = {}; H.outUntil = {}; H.seekStart = 0; H.foundAt = {};
+    H.rp = {}; H.hhp = {}; H.hitAt = {}; H.found = new Set(); H.lastTaunt = {}; H.outUntil = {}; H.seekStart = 0; H.foundAt = {};
     const st = Math.min(PH.SEEK_MAX, PH.SEEK_BASE + PH.SEEK_PER * hide.length);
     this.roundMsg = { r: H.r, of: H.of, seek, hide, list, ht: PH.HIDE_T, st, lay: this.hostLayout(), tot: H.tot };
     H.ends = now() + PH.HIDE_T; H.seekT = st; H.clockT = 2;
@@ -295,7 +296,7 @@ export class PropHunt {
   hostHello(id) {
     if (!this.H || this.phase === 'waiting') { this.net.send({ t: 'phLobby', n: this.roster().length }); return; }
     const kinds = {}, locks = {}, found = [], hp = {};
-    for (const p of this.players.values()) { if (p.kind) kinds[p.id] = p.kind; if (p.locked && p.lp) locks[p.id] = [p.lp[0], p.lp[1], p.ly || 0]; if (p.found) found.push(p.id); if (p.role === 'seeker') hp[p.id] = this.H.hp[p.id] ?? PH.HP; }
+    for (const p of this.players.values()) { if (p.kind) kinds[p.id] = p.kind; if (p.locked && p.lp) locks[p.id] = [p.lp[0], p.lp[1], p.ly || 0]; if (p.found) found.push(p.id); if (p.role === 'seeker') hp[p.id] = this.H.hp[p.id] ?? PH.HP; else if (p.role === 'hider' && this.H.hhp && this.H.hhp[p.id] != null) hp[p.id] = Math.round(this.H.hhp[p.id]); }
     this.net.send({ t: 'phState', to: id, round: this.roundMsg, ph: this.phase, left: Math.max(0, (this.phase === 'roundend' ? this.H.nextAt : this.H.ends) - now()), kinds, locks, found, hp, tot: this.H.tot, last: this.lastEnd || null, over: this.overMsg || null });
   }
   hostIn(k, m, from) {
@@ -306,8 +307,8 @@ export class PropHunt {
     if (v.startsWith('h:')) { const id = v.slice(2), T = this.players.get(id), tp = T && this.posOf(id, new THREE.Vector3());
       const lp = T && T.locked && T.lp ? new THREE.Vector3(T.lp[0], 0, T.lp[1]) : null, q = lp || tp;
       if (T && T.role === 'hider' && !T.found && !T.gone && q && this.hd(sp, q) < PH.SHOOT_R + 1.6 && (!at || this.hd(at, q) < 1.8)) {
-        const hits = H.hits || (H.hits = {}); hits[id] = (hits[id] || 0) + 1;
-        if (hits[id] < PH.HIDER_HITS) { this.send('phHit', { v: id, by: from, n: PH.HIDER_HITS - hits[id], p: [q.x, (at ? at.y : 0.5), q.z] }); return; }
+        const hh = H.hhp || (H.hhp = {}), ha = H.hitAt || (H.hitAt = {}); hh[id] = Math.max(0, (hh[id] ?? PH.HP) - PH.DMG); ha[id] = now();
+        if (hh[id] > 0) { this.send('phHit', { v: id, by: from, hp: Math.round(hh[id]), p: [q.x, (at ? at.y : 0.5), q.z] }); return; }
         H.found.add(id); const secs = Math.max(0, now() - H.seekStart); this.stat(id).hidden += secs; this.stat(from).finds++;
         H.hp[from] = Math.min(PH.HP, (H.hp[from] || PH.HP) + PH.HEAL);
         this.send('phFound', { v: id, by: from, p: [q.x, (at ? at.y : 0.5), q.z], k: T.kind || '', hp: H.hp[from] });
@@ -351,7 +352,7 @@ export class PropHunt {
   hostLeft(id) { const p = this.players.get(id); if (!p || p.gone) return; clearTimeout(p.awayT); p.awayT = setTimeout(() => { if (!this.net.players.has(id) && this.host) { p.gone = true; this.hostCheckEnd(); } }, 20000); }
   becomeHost() {
     if (this.host) return; this.host = true; const list = this.roster(), H = this.H = { r: this.round, of: this.of, tot: { ...this.tot }, stats: this.stats || {}, sought: {}, lastSought: {}, hp: {}, chkAt: {}, outUntil: {}, lastTaunt: {}, rp: {}, found: new Set(), foundAt: {} };
-    for (const p of this.players.values()) { if (p.role === 'seeker') { H.sought[p.id] = 1; H.hp[p.id] = p.hp ?? PH.HP; } if (p.found) H.found.add(p.id); }
+    H.hhp = {}; H.hitAt = {}; for (const p of this.players.values()) { if (p.role === 'hider' && p.hp != null && p.hp < PH.HP) H.hhp[p.id] = p.hp; if (p.role === 'seeker') { H.sought[p.id] = 1; H.hp[p.id] = p.hp ?? PH.HP; } if (p.found) H.found.add(p.id); }
     H.ends = this.endsAt; H.nextAt = this.endsAt; H.seekT = this.seekT || PH.SEEK_BASE; H.seekStart = this.phase === 'seek' ? this.endsAt - H.seekT : 0; H.clockT = 0;
     if (this.lastRound) this.roundMsg = this.lastRound;
     for (const p of this.players.values()) if (p.id !== this.me && !this.net.players.has(p.id)) this.hostLeft(p.id);
@@ -367,6 +368,9 @@ export class PropHunt {
       H.ends = t + H.seekT; H.seekStart = t; for (const p of this.hiders()) H.lastTaunt[p.id] = t; this.send('phGo', { st: H.seekT }); return; }
     if (this.phase === 'seek') {
       if (t >= H.ends) { this.hostEnd('hiders', 'TIME! THE HIDERS LEFT WIN'); return; }
+      if (H.hhp) { const tick = (H.regenT = (H.regenT || 0) - dt) <= 0; if (tick) H.regenT = 1;
+        for (const p of this.left()) { const v = H.hhp[p.id]; if (v == null || v >= PH.HP || t - (H.hitAt[p.id] || 0) < PH.REGEN_DELAY) continue; H.hhp[p.id] = Math.min(PH.HP, v + PH.REGEN * dt);
+          if (tick || H.hhp[p.id] >= PH.HP) this.send('phHp', { id: p.id, hp: Math.round(H.hhp[p.id]) }); } }
       for (const id in H.outUntil) if (H.outUntil[id] && t >= H.outUntil[id]) { H.outUntil[id] = 0; H.hp[id] = PH.OUT_HP; this.send('phBack', { id, hp: PH.OUT_HP }); }
       for (const p of this.left()) if (t - (H.lastTaunt[p.id] || t) > PH.QUIET_T) { H.lastTaunt[p.id] = t; const i = Math.floor(Math.random() * TAUNTS.length); this.send('phAuto', { id: p.id, i }); this.addPts(p.id, PH.PTS.quiet, 'TOO QUIET!'); }
       this.hostCheckEnd(); }
@@ -383,6 +387,7 @@ export class PropHunt {
     if (k === 'phFound') return this.found(m);
     if (k === 'phMiss') return this.missed(m);
     if (k === 'phHit') return this.shotHit(m);
+    if (k === 'phHp') { const p = this.players.get(m.id), hp = Number(m.hp); if (!p || !isFinite(hp)) return; const was = p.hp; p.hp = Math.max(0, Math.min(PH.HP, hp)); if (m.id === this.me && p.hp >= PH.HP && was < PH.HP) this.pop('💚 HEALED UP! YOU GOT AWAY', '#39ff14'); return; }
     if (k === 'phOut') { const p = this.players.get(m.id); if (p) { p.out = now() + (Number(m.secs) || PH.OUT_T); p.hp = 0; } if (m.id === this.me) this.knackered(); else this.feed(`😵 ${esc(this.nameOf(m.id))} IS KNACKERED`); return; }
     if (k === 'phBack') { const p = this.players.get(m.id); if (p) { p.out = 0; p.hp = Number(m.hp) || PH.OUT_HP; } if (m.id === this.me) { this.toast('BACK ON YOUR FEET!'); this.flashEl.className = ''; } return; }
     if (k === 'phPts') { const id = m.id, d = Number(m.d) || 0; this.tot[id] = (this.tot[id] || 0) + d; if (id === this.me) this.pop((d > 0 ? '+' : '') + d + ' ' + (m.why || ''), d > 0 ? '#39ff14' : '#ff5252'); return; }
@@ -417,7 +422,7 @@ export class PropHunt {
     const me = this.mine(); this.blind(false);
     if (me && me.role === 'hider' && !me.kind && !quiet) this.toast('YOU DIDN\'T PICK! YOU\'RE A RANDOM THING NOW');
     if (quiet) return; sfx('whistle_ref', null, 1); setTimeout(() => sfx('whistle_ref', null, 0.8), 380);
-    this.splash(me && me.role === 'seeker' ? '#ff9f1c' : '#39ff14', me && me.role === 'seeker' ? '<p>READY OR NOT...</p><h1>GO GET \'EM!</h1><p>🔫 Shoot anything that looks off. Three hits finds a hider. Shooting the real thing costs you ❤</p>' : '<p>READY OR NOT...</p><h1>HERE THEY COME!</h1><p>Stay still. Lock in. Taunt for points.</p>', 2200);
+    this.splash(me && me.role === 'seeker' ? '#ff9f1c' : '#39ff14', me && me.role === 'seeker' ? '<p>READY OR NOT...</p><h1>GO GET \'EM!</h1><p>🔫 Shoot anything that looks off. Hiders have ❤ 100: each hit takes 25. Shooting the real thing costs you ❤</p>' : '<p>READY OR NOT...</p><h1>HERE THEY COME!</h1><p>Stay still. Lock in. Taunt for points.</p>', 2200);
     if (this.g.renderer.xr.isPresenting) this.g.showBanner('READY OR NOT', me && me.role === 'seeker' ? 'GO GET \'EM!' : 'HERE THEY COME!');
   }
   found(m) {
@@ -435,12 +440,14 @@ export class PropHunt {
   }
   // a hider shot but not out yet: their prop jumps, everyone sees the sparks; they get told to MOVE
   shotHit(m) {
-    const vic = this.players.get(m.v); if (!vic) return; const n = Math.max(1, Number(m.n) || 1), pr = this.props.get(m.v);
+    const vic = this.players.get(m.v); if (!vic) return; const hp = Math.max(1, Math.min(PH.HP, Number(m.hp) || 1)), pr = this.props.get(m.v); vic.hp = hp;
     const at = pr ? pr.pos.clone().add({ x: 0, y: this.K[pr.kind] ? this.K[pr.kind].h * 0.6 : 0.5, z: 0 }) : (Array.isArray(m.p) ? new THREE.Vector3(m.p[0], m.p[1], m.p[2]) : null);
-    if (pr) pr.jig = 0.001; if (at) { this.burst(at, [0xff3b3b, 0xffd400, 0xffffff], 14, 1.6); sfx('ph_hit', at, 1); }
-    if (m.v === this.me) { this.pop(`🔫 YOU'VE BEEN SHOT! ${n} MORE AND YOU'RE OUT. MOVE!`, '#ff5252'); this.flashEl.className = 'hurt'; void this.flashEl.offsetWidth; this.flashEl.className = 'hurt on'; for (const h of this.g.player.hands || []) h.pulse && h.pulse(0.8, 160);
-      if (this.g.renderer.xr.isPresenting) this.g.showBanner('YOU\'VE BEEN SHOT!', `${n} MORE AND YOU'RE OUT`); }
-    if (m.by === this.me) this.pop(`🎯 HIT! ${n} MORE TO FIND THEM`, '#39ff14');
+    if (pr) pr.jig = 0.001; if (at) { this.burst(at, [0xff3b3b, 0xffd400, 0xffffff], 14, 1.6); sfx('ph_hit', at, 1); this.g.words && this.g.words.show(`❤ ${hp}`, at.clone().add({ x: 0, y: 0.7, z: 0 }), hp > 50 ? '#ffd400' : '#ff5252', 0.3, 1.4); }
+    if (m.v === this.me) {      // shot: unlocked, and a burst of speed to get away
+      this.lockOff(true); this.runUntil = now() + PH.RUN_T; this.g.player.speedMul = PH.RUN_MUL;
+      this.pop(`🔫 SHOT! ❤ ${hp} LEFT. RUN!`, '#ff5252'); this.flashEl.className = 'hurt'; void this.flashEl.offsetWidth; this.flashEl.className = 'hurt on'; for (const h of this.g.player.hands || []) h.pulse && h.pulse(0.8, 160);
+      if (this.g.renderer.xr.isPresenting) this.g.showBanner('YOU\'VE BEEN SHOT! RUN!', `❤ ${hp} LEFT`); }
+    if (m.by === this.me) this.pop(`🎯 HIT! THEY'VE GOT ❤ ${hp} LEFT`, '#39ff14');
   }
   missed(m) {
     const S = this.players.get(m.by); if (S && m.hp != null) S.hp = Number(m.hp); const i = Number(m.d), d = Number.isInteger(i) && i >= 0 ? this.decoys[i] : null;
@@ -579,50 +586,57 @@ export class PropHunt {
   // the end of the gun's barrel (where the tracer starts)
   muzzle(ray) {
     const g = this.vGun && this.vGun.visible ? this.vGun : this.vrGun && this.vrGun.parent && this.vrGun.visible ? this.vrGun : null;
-    if (g) { g.updateMatrixWorld(true); return g.localToWorld(new THREE.Vector3(0, 0.035, -0.36)); }
+    if (g) { g.updateMatrixWorld(true); return g.localToWorld(new THREE.Vector3(0, 0.03, -0.45)); }
     return ray.origin.clone().addScaledVector(ray.direction, 0.3).add({ x: 0, y: -0.12, z: 0 });
   }
   // ------------------------------------------------------------------ the gun: a chunky toy blaster
   gunGeo() {
-    if (this._gunGeo) return this._gunGeo; const p = [], X = [Math.PI / 2, 0, 0], SX = [0, 0, Math.PI / 2], YZ = [0, Math.PI / 2, 0];
-    const OR = 0xff7a1a, OR2 = 0xd85a10, BK = 0x1c1c1e, GY = 0x3a3f47, SL = 0xc8ccd2, YL = 0xffd400, GR = 0x39ff14, GR2 = 0x1d8a0a, WH = 0xf4f4f4;
-    // the body: a boxy receiver with a rounded top and a darker belly, a white racing stripe down each side
-    B(p, 0.06, 0.062, 0.22, OR, 0, 0.018, -0.085); C(p, 0.03, 0.03, 0.22, OR, 0, 0.049, -0.085, X, 18);
-    B(p, 0.054, 0.022, 0.19, OR2, 0, -0.022, -0.09); B(p, 0.05, 0.02, 0.05, OR2, 0, 0.03, 0.035, [-0.35, 0, 0]);      // the belly, the sloped back
-    for (const sx of [-1, 1]) { const x = sx * 0.0305;
-      B(p, 0.003, 0.012, 0.2, WH, x, 0.0, -0.09); B(p, 0.003, 0.004, 0.2, 0xff3b3b, x, -0.009, -0.09);      // stripe, a thin red pinstripe
-      B(p, 0.004, 0.034, 0.085, GY, x, 0.03, -0.06);      // the side panel...
-      for (let i = 0; i < 4; i++) B(p, 0.005, 0.004, 0.06, BK, x + sx * 0.0008, 0.019 + i * 0.008, -0.06);      // ...with its cooling slots
-      for (const [y, z] of [[0.044, -0.1], [0.044, -0.02], [0.016, -0.1], [0.016, -0.02]]) C(p, 0.004, 0.004, 0.004, SL, x + sx * 0.002, y, z, SX, 8);      // screws
-      B(p, 0.012, 0.01, 0.018, BK, x + sx * 0.007, 0.042, 0.005);      // the charging handle sticking out
-    }
-    // the front: a shroud with vent holes and yellow bands, the barrel, a chunky muzzle with three prongs
-    C(p, 0.027, 0.027, 0.075, GY, 0, 0.035, -0.225, X, 18); for (const z of [-0.192, -0.258]) T(p, 0.027, 0.0045, YL, 0, 0.035, z, null);
-    for (let i = 0; i < 3; i++) B(p, 0.008, 0.004, 0.012, BK, 0, 0.062, -0.205 - i * 0.02); for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) C(p, 0.0045, 0.0045, 0.004, BK, sx * 0.026, 0.035, -0.205 - i * 0.02, SX, 8);
-    C(p, 0.016, 0.016, 0.07, BK, 0, 0.035, -0.29, X, 14); C(p, 0.024, 0.022, 0.03, YL, 0, 0.035, -0.33, X, 18); T(p, 0.024, 0.004, BK, 0, 0.035, -0.345, null);
-    C(p, 0.011, 0.011, 0.012, 0x050505, 0, 0.035, -0.345, X, 12);
-    for (let i = 0; i < 3; i++) { const a = i * Math.PI * 2 / 3 + Math.PI / 2; B(p, 0.007, 0.007, 0.02, YL, Math.cos(a) * 0.026, 0.035 + Math.sin(a) * 0.026, -0.352, [0, 0, a]); }
-    // the pump under the barrel: grippy ridges
-    C(p, 0.017, 0.017, 0.085, BK, 0, -0.012, -0.215, X, 14); for (let i = 0; i < 5; i++) T(p, 0.018, 0.0035, GY, 0, -0.012, -0.185 - i * 0.015, null);
-    B(p, 0.012, 0.03, 0.012, BK, 0, 0.008, -0.178);
-    // the grip: angled, ridged at the front for your fingers, a cap on the bottom
-    B(p, 0.044, 0.12, 0.05, BK, 0, -0.06, 0.005, [0.28, 0, 0]); for (let i = 0; i < 4; i++) B(p, 0.046, 0.007, 0.006, GY, 0, -0.03 - i * 0.022, -0.016 + i * 0.006, [0.28, 0, 0]);
-    for (const sx of [-1, 1]) B(p, 0.003, 0.07, 0.034, GY, sx * 0.023, -0.06, 0.008, [0.28, 0, 0]);      // rubber panels
-    B(p, 0.05, 0.018, 0.058, OR2, 0, -0.118, 0.022, [0.28, 0, 0]);
-    // the trigger, its guard, the hammer at the back
-    B(p, 0.01, 0.034, 0.01, YL, 0, -0.032, -0.058, [0.35, 0, 0]); T(p, 0.03, 0.005, BK, 0, -0.028, -0.055, YZ, Math.PI);
-    B(p, 0.014, 0.02, 0.012, SL, 0, 0.068, 0.04, [-0.5, 0, 0]);
-    // the tank on top: green, rounded ends, a red filler cap, a pressure gauge, and a hose round the back into the body
-    C(p, 0.027, 0.027, 0.12, GR, 0, 0.09, -0.08, X, 18); S(p, 0.027, GR, 0, 0.09, -0.14, [1, 1, 0.55]); S(p, 0.027, GR, 0, 0.09, -0.02, [1, 1, 0.55]);
-    for (const z of [-0.125, -0.035]) T(p, 0.0285, 0.0035, GR2, 0, 0.09, z, null); B(p, 0.01, 0.014, 0.1, GR2, 0, 0.068, -0.08);      // bands, the bracket
-    C(p, 0.009, 0.009, 0.012, 0xe0202a, 0, 0.12, -0.11, null, 12); C(p, 0.011, 0.011, 0.004, 0xb01018, 0, 0.127, -0.11, null, 12);      // the cap
-    C(p, 0.013, 0.013, 0.006, WH, 0.027, 0.095, -0.06, SX, 16); T(p, 0.013, 0.002, BK, 0.03, 0.095, -0.06, [0, Math.PI / 2, 0]); B(p, 0.002, 0.002, 0.01, 0xe0202a, 0.0315, 0.098, -0.062, [0.6, 0, 0]);      // the gauge
-    T(p, 0.032, 0.006, GR2, 0, 0.06, -0.012, YZ, Math.PI * 0.6);
-    // sights: a rear notch, a front post with a red dot
-    for (const sx of [-1, 1]) B(p, 0.005, 0.016, 0.008, BK, sx * 0.007, 0.088, 0.008); B(p, 0.022, 0.006, 0.012, BK, 0, 0.081, 0.008);
-    B(p, 0.005, 0.02, 0.006, BK, 0, 0.07, -0.25); S(p, 0.0045, 0xff2020, 0, 0.081, -0.25);
-    // a little light on the back: it's armed
-    B(p, 0.016, 0.008, 0.004, GR, 0, 0.05, 0.061, [-0.35, 0, 0]);
+    if (this._gunGeo) return this._gunGeo; const p = [], X = [Math.PI / 2, 0, 0], SX = [0, 0, Math.PI / 2], YZ = [0, Math.PI / 2, 0], XZ = [Math.PI / 2, 0, 0];
+    const BK = 0x17181a, GM = 0x3a3e44, GM2 = 0x2a2d32, DS = 0x50555c, ST = 0x8a9098, GL = 0x1e2b36, OR = 0xff6a00;
+    // the receiver: upper (gunmetal) on lower, the ejection port and its door on the right, the forward assist, takedown pins
+    B(p, 0.05, 0.044, 0.2, GM, 0, 0.03, -0.07); B(p, 0.047, 0.034, 0.15, GM2, 0, -0.008, -0.05);
+    B(p, 0.052, 0.004, 0.2, GM2, 0, 0.0085, -0.07);      // the seam between them
+    B(p, 0.003, 0.016, 0.045, BK, 0.0255, 0.034, -0.07); C(p, 0.002, 0.002, 0.05, ST, 0.0265, 0.024, -0.07, X, 6);
+    C(p, 0.008, 0.008, 0.026, DS, 0.03, 0.04, -0.005, [Math.PI / 2, 0.35, 0], 10); C(p, 0.01, 0.01, 0.006, GM2, 0.034, 0.04, 0.008, [Math.PI / 2, 0.35, 0], 10);
+    for (const sx of [-1, 1]) for (const z of [-0.105, 0.012]) C(p, 0.005, 0.005, 0.052, ST, 0, -0.004, z, SX, 8);
+    for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) B(p, 0.002, 0.003, 0.05, GM2, sx * 0.025, 0.044 - i * 0.008, -0.13);      // machined grooves
+    // the magazine: well, curved mag with ribs, a steel base plate; the mag release and the selector
+    B(p, 0.042, 0.032, 0.056, GM2, 0, -0.036, -0.1); B(p, 0.034, 0.095, 0.046, BK, 0, -0.088, -0.112, [-0.2, 0, 0]);
+    for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) B(p, 0.003, 0.006, 0.036, GM2, sx * 0.0175, -0.06 - i * 0.017, -0.106 - i * 0.0035, [-0.2, 0, 0]);
+    B(p, 0.038, 0.01, 0.054, DS, 0, -0.137, -0.122, [-0.2, 0, 0]);
+    C(p, 0.006, 0.006, 0.006, DS, 0.025, -0.02, -0.072, SX, 10);
+    C(p, 0.008, 0.008, 0.004, DS, -0.025, 0.002, -0.012, SX, 12); B(p, 0.003, 0.004, 0.018, ST, -0.0275, 0.002, -0.017, [0.6, 0, 0]);
+    // the charging handle at the back, a folding rear sight
+    B(p, 0.034, 0.008, 0.02, BK, 0, 0.054, 0.036); B(p, 0.05, 0.008, 0.01, BK, 0, 0.054, 0.046);
+    B(p, 0.022, 0.006, 0.016, BK, 0, 0.059, 0.012); for (const sx of [-1, 1]) B(p, 0.005, 0.016, 0.008, BK, sx * 0.007, 0.068, 0.012);
+    // a rail along the top (with its teeth) and a red-dot sight on it: housing, hood, tinted glass, the turrets
+    B(p, 0.022, 0.006, 0.36, BK, 0, 0.055, -0.15); for (let i = 0; i < 24; i++) B(p, 0.026, 0.005, 0.0065, BK, 0, 0.0605, 0.02 - i * 0.0148);
+    B(p, 0.022, 0.012, 0.044, GM2, 0, 0.068, -0.055); for (const sx of [-1, 1]) C(p, 0.005, 0.005, 0.004, ST, sx * 0.012, 0.066, -0.055, SX, 8);
+    C(p, 0.019, 0.019, 0.056, BK, 0, 0.092, -0.055, X, 18); C(p, 0.021, 0.021, 0.012, BK, 0, 0.092, -0.087, X, 18);
+    C(p, 0.016, 0.016, 0.002, GL, 0, 0.092, -0.093, X, 18); C(p, 0.016, 0.016, 0.002, GL, 0, 0.092, -0.026, X, 18); S(p, 0.0025, 0xff2020, 0, 0.092, -0.03);
+    C(p, 0.007, 0.007, 0.012, DS, 0, 0.115, -0.055, null, 12); C(p, 0.007, 0.007, 0.012, DS, 0.024, 0.092, -0.055, SX, 12);
+    // the handguard: an eight-sided tube with slots down the sides and underneath, a barrel nut, a vertical grip with rings
+    C(p, 0.028, 0.028, 0.165, GM2, 0, 0.03, -0.253, [Math.PI / 2, 0, Math.PI / 8], 8); T(p, 0.029, 0.004, BK, 0, 0.03, -0.172, null);
+    for (let i = 0; i < 4; i++) { const z = -0.2 - i * 0.033; for (const sx of [-1, 1]) B(p, 0.003, 0.009, 0.022, BK, sx * 0.027, 0.03, z); B(p, 0.009, 0.003, 0.022, BK, 0, 0.003, z); }
+    C(p, 0.014, 0.012, 0.072, BK, 0, -0.03, -0.27, null, 14); for (let i = 0; i < 4; i++) T(p, 0.0142, 0.0028, GM2, 0, -0.012 - i * 0.015, -0.27, XZ, Math.PI * 2);
+    C(p, 0.016, 0.016, 0.008, DS, 0, -0.068, -0.27, null, 14);
+    // the barrel, a front sight, the flash hider with its slots, and the toy's orange safety tip
+    C(p, 0.011, 0.011, 0.07, DS, 0, 0.03, -0.37, X, 12); B(p, 0.012, 0.026, 0.01, BK, 0, 0.072, -0.32); B(p, 0.004, 0.012, 0.004, ST, 0, 0.083, -0.32);
+    C(p, 0.016, 0.016, 0.045, BK, 0, 0.03, -0.415, X, 12);
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; B(p, 0.004, 0.004, 0.026, GM2, Math.cos(a) * 0.0155, 0.03 + Math.sin(a) * 0.0155, -0.42, [0, 0, a]); }
+    C(p, 0.0165, 0.0165, 0.01, OR, 0, 0.03, -0.441, X, 14); C(p, 0.008, 0.008, 0.012, 0x050505, 0, 0.03, -0.442, X, 10);
+    // the pistol grip: angled, with grip texture on the sides, finger grooves, a beavertail; the trigger in its guard
+    B(p, 0.036, 0.1, 0.046, BK, 0, -0.06, 0.006, [0.3, 0, 0]);
+    for (const sx of [-1, 1]) for (let i = 0; i < 6; i++) B(p, 0.002, 0.004, 0.034, GM2, sx * 0.0185, -0.028 - i * 0.012, 0.0 + i * 0.0036, [0.3, 0, 0]);
+    for (let i = 0; i < 3; i++) S(p, 0.0095, BK, 0, -0.04 - i * 0.022, -0.02 + i * 0.0068, [1.6, 1, 1]);
+    B(p, 0.03, 0.01, 0.024, BK, 0, -0.012, 0.03, [-0.3, 0, 0]); B(p, 0.038, 0.01, 0.05, GM2, 0, -0.11, 0.022, [0.3, 0, 0]);
+    B(p, 0.008, 0.006, 0.064, GM2, 0, -0.04, -0.04); B(p, 0.008, 0.026, 0.006, GM2, 0, -0.027, -0.072);
+    B(p, 0.006, 0.02, 0.006, DS, 0, -0.026, -0.04, [0.25, 0, 0]); B(p, 0.006, 0.01, 0.006, DS, 0, -0.038, -0.035, [0.7, 0, 0]);
+    // the stock: buffer tube, an adjustable stock with a cheek rest, its lever, a sling loop and a rubber butt pad
+    C(p, 0.014, 0.014, 0.1, GM2, 0, 0.03, 0.075, X, 14); for (let i = 0; i < 5; i++) B(p, 0.006, 0.004, 0.006, DS, 0, 0.016, 0.05 + i * 0.015);
+    B(p, 0.04, 0.062, 0.095, BK, 0, 0.02, 0.118); B(p, 0.03, 0.012, 0.075, GM2, 0, 0.056, 0.115); B(p, 0.016, 0.008, 0.03, DS, 0, -0.014, 0.1);
+    T(p, 0.009, 0.0025, DS, 0, -0.012, 0.145, YZ, Math.PI * 2); B(p, 0.044, 0.078, 0.012, DS, 0, 0.016, 0.171);
+    for (let i = 0; i < 4; i++) B(p, 0.046, 0.004, 0.013, BK, 0, -0.012 + i * 0.018, 0.171);
     return (this._gunGeo = merge(p));
   }
   newGun() { return new THREE.Mesh(this.gunGeo(), vcLambert); }
@@ -646,13 +660,13 @@ export class PropHunt {
     const flatOn = mineOn && !xr && P.flatMode && !!P.camera;
     if (flatOn && !this.vGun) { this.vGun = this.newGun(); this.vGun.scale.setScalar(0.85); P.camera.add(this.vGun); }
     if (this.vGun) { this.vGun.visible = flatOn; if (flatOn) { const k = this.gunKick[this.me] || 0, bob = Math.sin(t * 7) * 0.004 * Math.min(1, (P.flatMove ? Math.hypot(P.flatMove.x, P.flatMove.z) : 0));
-      this.vGun.position.set(0.17, -0.17 + bob + k * 0.012, -0.37 + k * 0.05); this.vGun.rotation.set(k * 0.35, 0.06, 0); } }
+      this.vGun.position.set(0.16, -0.16 + bob + k * 0.012, -0.34 + k * 0.05); this.vGun.rotation.set(k * 0.35, 0.06, 0); } }
     const grip = P.flatGrip; if (grip) { if (flatOn && grip.visible) { grip.visible = false; this.gunHidGrip = true; } else if (!flatOn && this.gunHidGrip) { grip.visible = true; this.gunHidGrip = false; } }
     // VR: on the right controller, along the pointer
     const h = xr ? (P.hands || []).find(h => h.source && h.handedness === 'right' && h.ctrl) : null, vrOn = mineOn && !!h;
     if (vrOn && !this.vrGun) this.vrGun = this.newGun();
     if (this.vrGun) { if (vrOn && this.vrGun.parent !== h.ctrl) h.ctrl.add(this.vrGun); if (!vrOn && this.vrGun.parent) this.vrGun.parent.remove(this.vrGun); this.vrGun.visible = vrOn;
-      if (vrOn) { const k = this.gunKick[this.me] || 0; this.vrGun.position.set(0, -0.03, 0.09 + k * 0.04); this.vrGun.rotation.set(k * 0.3, 0, 0); } }
+      if (vrOn) { const k = this.gunKick[this.me] || 0; this.vrGun.position.set(0, -0.03, 0.04 + k * 0.04); this.vrGun.rotation.set(k * 0.3, 0, 0); } }
     // everyone else's
     const live = new Set();
     if (show) for (const p of this.players.values()) { if (p.role !== 'seeker' || p.id === this.me || p.gone) continue; const np = this.net.players.get(p.id), av = np && np.avatar; if (!av || !np.pose || !Array.isArray(np.pose.q)) continue;
@@ -715,7 +729,7 @@ body.prophunt.flat #ph-top { display: flex; }
 @keyframes phhurry { to { transform: scale(1.06); } }
 #ph-top .left { display: flex; gap: 3px; align-items: center; background: rgba(10,12,30,0.7); border-radius: 14px; padding: 2px 8px; font-size: 11px; white-space: nowrap; } #ph-top .left span { margin-right: 4px; }
 #ph-top .left img { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #39ff14; object-fit: cover; } #ph-top .left img.gone { border-color: #555; filter: grayscale(1) brightness(0.5); }
-#ph-top .hp { width: 180px; max-width: 46vw; height: 18px; border-radius: 9px; background: rgba(0,0,0,0.6); border: 2px solid #fff; position: relative; overflow: hidden; } #ph-top .hp u { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #ff3b3b, #ff7a59); transition: width .3s; } #ph-top .hp span { position: absolute; inset: 0; text-align: center; font: 900 11px Arial; line-height: 15px; text-shadow: 0 1px 2px #000; }
+#ph-top .hp.hid u { background: linear-gradient(90deg, #00b16a, #39ff14); } #ph-top .hp { width: 180px; max-width: 46vw; height: 18px; border-radius: 9px; background: rgba(0,0,0,0.6); border: 2px solid #fff; position: relative; overflow: hidden; } #ph-top .hp u { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #ff3b3b, #ff7a59); transition: width .3s; } #ph-top .hp span { position: absolute; inset: 0; text-align: center; font: 900 11px Arial; line-height: 15px; text-shadow: 0 1px 2px #000; }
 #ph-top .role { font-size: 11px; padding: 2px 10px; border-radius: 10px; } #ph-top .role.hider { background: #00b16a; } #ph-top .role.seeker { background: #ff5722; } #ph-top .role.ghost { background: #6a7fa8; }
 #ph-top.shake { animation: phshake .35s; } @keyframes phshake { 20% { transform: translateX(calc(-50% - 8px)); } 40% { transform: translateX(calc(-50% + 8px)); } 60% { transform: translateX(calc(-50% - 5px)); } 80% { transform: translateX(calc(-50% + 4px)); } }
 #ph-cross { position: fixed; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; z-index: 43; display: none; pointer-events: none; border-radius: 50%; border: 3px solid rgba(255,255,255,0.85); box-shadow: 0 0 0 2px rgba(0,0,0,0.4); transition: transform .15s, border-color .15s; }
@@ -785,7 +799,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
   showRole() {
     const me = this.mine(); if (!me) return; const hiders = this.hiders(), seekers = this.seekers(), imgs = (l) => l.map(p => `<img src="./assets/portraits/${esc(p.char || 'ronnie')}.webp" title="${esc(p.name)}">`).join('');
     if (me.role === 'seeker') { this.splash('#ff9f1c', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>SEEKING 🔫</h1><p>${hiders.length} hider${hiders.length === 1 ? '' : 's'} turning into stuff. Count to ${PH.HIDE_T}, no peeking.</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_seekrole', null, 0.8); }
-    else if (me.role === 'hider') { this.splash('#39ff14', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>HIDING 🙈</h1><p>Find a thing. BECOME it. LOCK in. Taunt for points. The seekers have guns: three shots and you're out.</p><p class="sm">${seekers.map(p => esc(p.name)).join(' & ')} ${seekers.length > 1 ? 'are' : 'is'} counting to ${PH.HIDE_T}...</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_hiderole', null, 0.8); }
+    else if (me.role === 'hider') { this.splash('#39ff14', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>HIDING 🙈</h1><p>Find a thing. BECOME it. LOCK in. Taunt for points. The seekers have guns. Get shot? RUN: you get a burst of speed, and you heal if they lose you.</p><p class="sm">${seekers.map(p => esc(p.name)).join(' & ')} ${seekers.length > 1 ? 'are' : 'is'} counting to ${PH.HIDE_T}...</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_hiderole', null, 0.8); }
     else this.splash('#9fb3d9', '<h1>SIT THIS ONE OUT</h1><p>You\'ll be in next round. Watch the fun.</p>', 3000);
     if (this.g.renderer.xr.isPresenting) this.g.showBanner(`ROUND ${this.round} · YOU'RE`, me.role === 'seeker' ? 'SEEKING' : me.role === 'hider' ? 'HIDING' : 'WATCHING');
   }
@@ -882,6 +896,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     // decoys being checked wobble
     for (const d of this.decoys) if (d.wob > 0) { d.wob += dt; const k = d.wob > 0.6 ? 0 : Math.sin(d.wob * 40) * 0.12 * (1 - d.wob / 0.6); this.decoyMatrix(d, k); if (d.wob > 0.6) d.wob = 0; }
     this.guns(dt, me, seeker, xr);
+    if (this.runUntil && (t >= this.runUntil || !hider || !this.playing())) { this.runUntil = 0; P.speedMul = 1; }
     if (xr) this.vrInput(P, me); else { this.drawHud(me, hider, seeker, ghost); if (P.wrist && P.flatMode) P.wrist.visible = false; }
     this.laser.visible = xr && seeker && this.phase === 'seek';
     if (this.laser.visible) { const h = (P.hands || []).find(h => h.source && h.handedness === 'right' && h.ctrl); if (h) { h.ctrl.getWorldPosition(this.laser.position); h.ctrl.getWorldQuaternion(this.laser.quaternion); this.laser.material.color.setHex(this.hot ? 0xffd400 : 0xff7043); } else this.laser.visible = false; }
@@ -939,6 +954,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
       h = `<div class="clock${this.phase === 'seek' && left < 30 ? ' hurry' : ''}"><small>R${this.round}/${this.of} · ${lab}</small><b>${fmt(left)}</b></div>`;
       if (me) h += `<span class="role ${me.found ? 'ghost' : me.role}">${me.found ? '👻 FOUND · SPECTATING' : me.role === 'seeker' ? '🔍 SEEKER' : me.role === 'hider' ? (me.kind ? `🙈 ${esc(this.K[me.kind].name)}${me.locked ? ' 🔒' : ''}` : '🙈 HIDER · PICK A PROP!') : '👀 WATCHING'}</span>`;
       const hs = this.hiders(); h += `<div class="left"><span>🙈 ${this.left().length}/${hs.length} LEFT</span>${hs.map(p => `<img class="${p.found || p.gone ? 'gone' : ''}" src="./assets/portraits/${esc(p.char || 'ronnie')}.webp">`).join('')}</div>`;
+      if (hider) { const hp = Math.max(0, Math.round(me.hp ?? PH.HP)), run = this.runUntil > t; h += `<div class="hp hid"><u style="width:${hp}%"></u><span>${run ? '🏃 RUN! ' : ''}❤ ${hp}</span></div>`; }
       if (seeker) { const hp = Math.max(0, me.hp ?? PH.HP); h += `<div class="hp"><u style="width:${hp}%"></u><span>${me.out > t ? '😵 KNACKERED ' + Math.ceil(me.out - t) + 's' : '❤ ' + hp}</span></div>`; } }
     if (h !== this.topHtml) { this.topHtml = h; this.topEl.innerHTML = h; }
   }
@@ -965,7 +981,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     W(`R${this.round}/${this.of} ${this.phase === 'hide' ? 'HIDE' : this.phase === 'seek' ? 'SEEK' : 'END'} ${fmt(this.endsAt - t)}`, w - 28, 42, 30, this.phase === 'seek' && this.endsAt - t < 30 ? '#ff6b6b' : '#fff', 'right');
     W(`🙈 ${this.left().length}/${this.hiders().length} HIDERS LEFT`, 30, 96, 28, '#c9d3ff');
     if (me.role === 'seeker') { const hp = Math.max(0, me.hp ?? PH.HP); g.fillStyle = '#333'; rr(g, 30, 130, w - 60, 40, 20); g.fill(); g.fillStyle = '#ff3b3b'; if (hp > 0) { rr(g, 30, 130, (w - 60) * hp / 100, 40, 20); g.fill(); } W(me.out > t ? `😵 KNACKERED ${Math.ceil(me.out - t)}s` : `❤ ${hp}`, w / 2, 151, 26, '#fff', 'center'); W('🔫 TRIGGER: SHOOT', 30, 200, 22, '#ffd400'); }
-    else if (me.role === 'hider' && !me.found) { W(me.kind ? `${this.K[me.kind].icon} ${this.K[me.kind].name}${me.locked ? ' 🔒' : ''}` : 'PICK A PROP! (A or Y)', 30, 146, 28, '#fff');
+    else if (me.role === 'hider' && !me.found) { W((me.kind ? `${this.K[me.kind].icon} ${this.K[me.kind].name}${me.locked ? ' 🔒' : ''}` : 'PICK A PROP! (A or Y)') + `  ❤ ${Math.round(me.hp ?? PH.HP)}`, 30, 146, 28, this.runUntil > t ? '#ff5252' : '#fff');
       const cd = Math.max(0, (this.tauntCD || 0) - t); W(cd > 0 ? `📯 TAUNT IN ${Math.ceil(cd)}s` : '📯 TAUNT READY (X)', 30, 192, 24, cd > 0 ? '#999' : '#ff4fa3'); W('A BECOME · B LOCK · Y LIST', 30, 232, 22, '#9fb3d9'); }
     W(`⭐ ${this.tot[this.me] || 0} POINTS`, 30, h - 40, 26, '#ffd400');
   }
@@ -994,7 +1010,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     if (this.vGun) this.vGun.parent && this.vGun.parent.remove(this.vGun); if (this.vrGun && this.vrGun.parent) this.vrGun.parent.remove(this.vrGun); if (g.player.flatGrip && this.gunHidGrip) g.player.flatGrip.visible = true;
     for (const [id] of this.rGuns) { const np = this.net.players.get(id); if (np && np.avatar) np.avatar.gunArm = false; } this.rGuns.clear();
     for (const el of [this.ui, this.style, this.topEl, this.crossEl, this.cardEl, this.splashEl, this.blindEl, this.countEl, this.feedEl, this.popEl, this.foundEl, this.flashEl, this.ghostEl, this.lockEl]) el && el.remove();
-    document.body.classList.remove('prophunt', 'ph-hider'); window.removeEventListener('keydown', this.onKey, true);
+    document.body.classList.remove('prophunt', 'ph-hider'); if (this.runUntil) { this.runUntil = 0; g.player.speedMul = 1; } window.removeEventListener('keydown', this.onKey, true);
     for (const k in this.handlers) delete this.net.on[k]; this.net.on.leave = this.leaveWas;
     const mp = g.mp; mp.noPunch = false; mp.chatGate = null; mp.chatRecvGate = null; mp.emoteGate = null; g.player.noGrab = false; g.player.ghost = false;
     if (g.player.flatGrip && this.gripHid) g.player.flatGrip.visible = true; if (g.player.wrist && g.player.flatMode) g.player.wrist.visible = true;

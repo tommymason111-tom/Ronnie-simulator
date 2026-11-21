@@ -125,8 +125,15 @@ async function onePlace(place, WHO) {
       if (!at) return false;
       await H.waitForFunction(([id, x, z]) => { const q = RS.director.prophunt.posOf(id); return q && Math.hypot(q.x - x, q.z - z) < 0.8; }, [sId, at[0], at[1]], { timeout: 45000, polling: 300 }).catch(() => {});      // (the host's game sees the seeker there)
       await ev(p, (id) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, pr = m.props.get(id); if (!pr) return; const o = new T.Vector3(P.head.x, P.head.y, P.head.z), c = new T.Vector3(pr.pos.x, pr.pos.y + m.K[pr.kind].h / 2, pr.pos.z); m.chkCD = 0; m.doCheck(new T.Ray(o, c.sub(o).normalize())); }, id);
-      for (let k = 1; k < 3; k++) { await sleep(450); await ev(p, (id) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, pr = m.props.get(id); if (!pr || pr.gone) return; const o = new T.Vector3(P.head.x, P.head.y, P.head.z), c = new T.Vector3(pr.pos.x, pr.pos.y + m.K[pr.kind].h / 2, pr.pos.z); m.chkCD = 0; m.doCheck(new T.Ray(o, c.sub(o).normalize())); }, id); }
+      for (let k = 1; k < 5; k++) { await sleep(450); await ev(p, (id) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, pr = m.props.get(id); if (!pr || pr.gone) return; const o = new T.Vector3(P.head.x, P.head.y, P.head.z), c = new T.Vector3(pr.pos.x, pr.pos.y + m.K[pr.kind].h / 2, pr.pos.z); m.chkCD = 0; m.doCheck(new T.Ray(o, c.sub(o).normalize())); }, id); }
       return true; };
+    const checkHider1 = async (p, id) => { const at = await ev(p, (id) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, pr = m.props.get(id); if (!pr) return null;
+        const c = new T.Vector3(pr.pos.x, pr.pos.y + m.K[pr.kind].h / 2, pr.pos.z);
+        for (let k = 0; k < 24; k++) { const a = k * 0.785, r = 1.4 + (k % 3) * 0.6, o = new T.Vector3(c.x + Math.cos(a) * r, P.head.y, c.z + Math.sin(a) * r), q = RS.room.nav.idx(o.x, o.z);
+          if (q < 0 || !RS.room.nav.free[q]) continue; const h = m.pick(new T.Ray(o, c.clone().sub(o).normalize()), { maxD: 5 }); if (h && h.kind === 'h' && h.id === id) { m.teleport(o.x, o.z); return [P.head.x, P.head.z]; } }
+        return null; }, id); if (!at) return false;
+      await H.waitForFunction(([id, x, z]) => { const q = RS.director.prophunt.posOf(id); return q && Math.hypot(q.x - x, q.z - z) < 0.8; }, [sId, at[0], at[1]], { timeout: 45000, polling: 300 }).catch(() => {});
+      await ev(p, (id) => { const m = RS.director.prophunt, P = RS.player, T = RS.THREE, pr = m.props.get(id); if (!pr) return; const o = new T.Vector3(P.head.x, P.head.y, P.head.z), c = new T.Vector3(pr.pos.x, pr.pos.y + m.K[pr.kind].h / 2, pr.pos.z); m.chkCD = 0; m.doCheck(new T.Ray(o, c.sub(o).normalize())); }, id); return true; };
     const decoy = await findDecoy(S);
     C.ok(decoy, 'no decoy the seeker could check');
     if (decoy) { await lookAt(S, decoy); await H.waitForFunction(([id, x, z]) => { const q = RS.director.prophunt.posOf(id); return q && Math.hypot(q.x - x, q.z - z) < 0.8; }, [sId, decoy.ox, decoy.oz], { timeout: 20000, polling: 300 }).catch(() => {});
@@ -139,7 +146,17 @@ async function onePlace(place, WHO) {
     const nShots = async () => { const r = []; for (const p of pages) if (p !== S) r.push(await ev(p, () => RS.director.prophunt.shotN || 0)); return r; };
     await ev(S, () => { const m = RS.director.prophunt; m.chkCD = 0; const P = RS.player, T = RS.THREE; m.doCheck(new T.Ray(new T.Vector3(P.head.x, P.head.y, P.head.z), new T.Vector3(0, -1, 0.0001))); });
     await sleep(1500); const sh = await nShots(); C.ok(sh.every(n => n > 0), `a shot (into the floor) wasn't seen by everyone: ${sh}`);
-    // the seeker finds every hider (three hits each)
+    // a hit: 25 off the hider's health, they're unlocked and get a burst of speed; left alone, they heal
+    { const hid = info[hiders[0]].id, HP0 = pages[hiders[0]];
+      await checkHider1(S, hid);
+      await HP0.waitForFunction(() => RS.director.prophunt.mine().hp === 75, null, { timeout: 20000 }).catch(() => {});
+      const st = await ev(HP0, () => { const m = RS.director.prophunt; return { hp: m.mine().hp, locked: !!m.mine().locked, run: RS.player.speedMul }; });
+      C.ok(st.hp === 75 && !st.locked && st.run > 1, `a hit didn't take 25 health, unlock and speed up the hider: ${JSON.stringify(st)}`);
+      for (const p of pages) { const hp = await ev(p, (id) => RS.director.prophunt.players.get(id).hp, hid); C.ok(hp === 75, `${p.pname} sees the shot hider on ${hp} health`); }
+      await ev(H, (id) => { RS.director.prophunt.H.hitAt[id] = 0; }, hid);
+      await HP0.waitForFunction(() => RS.director.prophunt.mine().hp > 75, null, { timeout: 20000 }).catch(() => {});
+      const hp2 = await ev(HP0, () => RS.director.prophunt.mine().hp); C.ok(hp2 > 75, `the hider didn't heal after getting away: ${hp2}`); }
+    // the seeker finds every hider (four hits each, more if they've healed)
     for (const i of hiders) { const id = info[i].id;
       for (let tries = 0; tries < 3; tries++) {
         if (!(await checkHider(S, id, tries))) break; await pages[i].waitForFunction(() => { const me = RS.director.prophunt.mine(); return !!(me && me.found); }, null, { timeout: 15000 }).catch(() => {});
