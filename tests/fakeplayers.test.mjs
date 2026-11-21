@@ -63,6 +63,14 @@ export default async function () {
       C.ok(jobs, `Imposter: no fake crewmate did a job: ${JSON.stringify(st)}`);
       console.log(`  imposter: ${JSON.stringify(st)}`); }
     C.ok(!p.errors.length, 'page errors: ' + [...new Set(p.errors)].slice(0, 3).join(' | '));
+    // the dev panel's request still opens the room when the address loses it on the way (an update reload, an old cached
+    // page): it's in the tab's storage too (it used to land on the title screen and sit there)
+    const q = await newPage(b, { width: 390, height: 844, mobile: true });
+    await q.addInitScript(() => { try { if (!sessionStorage.getItem('__once')) { sessionStorage.setItem('__once', '1'); sessionStorage.setItem('rs_devmp_ok', '1'); sessionStorage.setItem('rs_devmp_req', JSON.stringify({ n: 2, t: Date.now() })); } } catch (e) {} });
+    await q.goto(`http://game.local/index.html?relay=${encodeURIComponent(host.url)}`, { timeout: 240000 });
+    const viaStore = await q.waitForFunction(() => { const m = window.ronnieMP; return m && m.net && m.net.players.size === 2 && document.querySelector('.screen.on[data-s="room"]'); }, null, { timeout: 90000 }).then(() => true, () => false);
+    C.ok(viaStore, 'the test room didn\'t open from the stored request (no ?devmp in the address): ' + await q.evaluate(() => (document.querySelector('.screen.on') || {}).dataset?.s));
+    C.ok(!q.errors.length, 'stored request: page errors: ' + [...new Set(q.errors)].slice(0, 3).join(' | '));
   } finally { await b.close(); await host.close(); }
   return C.fails;
 }

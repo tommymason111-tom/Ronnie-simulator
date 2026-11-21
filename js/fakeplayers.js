@@ -148,7 +148,7 @@ class FakePlayer {
 
 export function startFakePlayers(code, n, relay = RELAY, pids = []) {
   const bots = []; let raf = 0, last = performance.now();
-  const tick = () => { const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now; for (const b of bots) b.update(dt); raf = requestAnimationFrame(tick); };
+  const tick = () => { const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now; for (const b of bots) { try { b.update(dt); } catch (e) { if (!b.warned) { b.warned = true; console.warn('fake player', e); } } } raf = requestAnimationFrame(tick); };      // (one fake player tripping up never stops the rest, or the game)
   const ctl = {
     bots, code,
     set(k) { k = Math.max(0, Math.min(11, k | 0)); while (bots.length > k) bots.pop().stop(); while (bots.length < k) bots.push(new FakePlayer(code, bots.length, relay, pids[bots.length])); return bots.length; },
@@ -156,6 +156,6 @@ export function startFakePlayers(code, n, relay = RELAY, pids = []) {
     stop() { cancelAnimationFrame(raf); clearInterval(ctl.bg); while (bots.length) bots.pop().stop(); },
   };
   ctl.set(n); raf = requestAnimationFrame(tick);
-  ctl.bg = setInterval(() => { if (document.hidden) { const now = performance.now(), dt = Math.min(0.5, (now - last) / 1000); last = now; for (const b of bots) b.update(dt); } }, 250);      // (keeps going in a background tab)
+  ctl.bg = setInterval(() => { if (document.hidden) { const now = performance.now(), dt = Math.min(0.5, (now - last) / 1000); last = now; for (const b of bots) { try { b.update(dt); } catch (e) {} } } }, 250);      // (keeps going in a background tab)
   return ctl;
 }

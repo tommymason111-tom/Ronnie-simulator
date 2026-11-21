@@ -153,7 +153,9 @@ export function startDev(RS) {
     if (d.snd) { try { initAudio(); sfx(d.snd); } catch (err) { console.warn('dev sound', err); } b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 250); return; }
     if (d.ch) { sel = d.ch; render(); return; }
     if (d.fk || d.fkn) { nFake = Math.max(1, Math.min(11, d.fkn ? +d.fkn : nFake + +d.fk)); try { localStorage.setItem('rs_dev_nfake', nFake); } catch (er) {} render(); return; }
-    if (d.mproom) { try { sessionStorage.setItem('rs_devmp_ok', '1'); } catch (er) {} location.href = location.pathname + '?devmp=' + nFake; return; }
+    if (d.mproom) {      // (the request goes in this tab's storage as well as the address, and the address can't be an old cached copy: either way the menu opens the room)
+      try { sessionStorage.setItem('rs_devmp_ok', '1'); sessionStorage.setItem('rs_devmp_req', JSON.stringify({ n: nFake, t: Date.now() })); } catch (er) {}
+      b.textContent = '⏳ OPENING THE TEST ROOM…'; setTimeout(() => { location.href = location.pathname + '?devmp=' + nFake + '&u=' + Date.now(); }, 60); return; }
     if (d.all) return playAll(d.all);
     if (d.em) return play(sel, d.em);
     if (d.who) return attack(d.who, d.key);
