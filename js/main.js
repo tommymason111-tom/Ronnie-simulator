@@ -1433,17 +1433,21 @@ function frame(simDt) {
 // your own emote, on a phone or a computer: the camera swings round in front of you so you can watch your character do
 // it (your own head shows while it does), then back to your eyes when it's done
 const thirdCam = new THREE.PerspectiveCamera(55, 1, 0.05, 200); let ecK = 0, ecHidHand = false, ecLock = null;
+const _avQ = new THREE.Quaternion(), _avE = new THREE.Euler();
 function emoteCam() {
   const sb = selfBody, on = !!(sb && player.flatMode && !renderer.xr.isPresenting && sb.emote && sb.emote.active);
   ecK = on ? Math.min(1, ecK + 0.06) : 0;
   if (sb && sb.c && sb.c.rag) sb.c.rag.hideHead = !on && !vrEC;
   // (your first-person hand, floating by the camera, mustn't show while you watch yourself from out front)
   if (player.flatGrip) { if (on && player.flatGrip.visible) { player.flatGrip.visible = false; ecHidHand = true; } else if (!on && ecHidHand) { player.flatGrip.visible = true; ecHidHand = false; } }
-  if (!on) { ecLock = null; return null; }
+  if (!on) { ecLock = null; if (sb) sb.emYaw = null; return null; }
   // where it sits and what it looks at are worked out once, when the emote starts, then held completely still (no
   // following the bob of the body or where your head's turned)
   if (!ecLock || ecLock.em !== sb.emote.id || (sb.emote.t || 0) < ecLock.lastT) {
-    const r = sb.c.rag, f = sb.fwd(), a = 0.3, ch = r.drawn ? r.drawn(r.pos('chest', new THREE.Vector3())) : r.pos('chest', new THREE.Vector3());
+    // (you face exactly where you were looking, and the camera goes out in front of that: your body could still be
+    // turning to catch up with your view, and the camera went round the side)
+    _avE.setFromQuaternion(camera.getWorldQuaternion(_avQ), 'YXZ'); const hy = _avE.y + Math.PI; sb.yaw = hy; sb.yawV = 0; sb.emYaw = hy;
+    const r = sb.c.rag, f = new THREE.Vector3(Math.sin(hy), 0, Math.cos(hy)), a = 0.3, ch = r.drawn ? r.drawn(r.pos('chest', new THREE.Vector3())) : r.pos('chest', new THREE.Vector3());
     const big = r.group ? r.group.scale.y : 1, ei = sb.emote.id && emoteInfo(sb.emote.id), dist = 2.9 * big * ((ei && ei.cam) || 1), side = new THREE.Vector3(f.z, 0, -f.x);
     const look = new THREE.Vector3(r.root.x, Math.max(0.6, ch.y * 0.85), r.root.z), want = emoteBestSpot(look, f, dist, 1.55 * big);
     ecLock = { em: sb.emote.id, lastT: 0, want, look }; }
@@ -1461,10 +1465,11 @@ const _ecBox = new THREE.Box3(), _ecHit = new THREE.Vector3(), _ecRay = new THRE
 // whichever spot sees you from furthest away (the ones nearer straight-on win if they're nearly as good)
 function emoteBestSpot(look, f, dist, y) {
   const side = new THREE.Vector3(f.z, 0, -f.x); let best = null;
-  for (const [i, a] of [0.3, -0.3, 0.75, -0.75, 1.25, -1.25, 1.8, -1.8].entries()) {
+  for (const [i, a] of [0, 0.3, -0.3, 0.75, -0.75, 1.25, -1.25, 1.8, -1.8].entries()) {      // (straight in front of you first)
     const w = new THREE.Vector3(look.x, y, look.z).addScaledVector(f, Math.cos(a) * dist).addScaledVector(side, Math.sin(a) * dist);
-    emoteCamSpot(look, w); const d = Math.hypot(w.x - look.x, w.z - look.z) - i * 0.04;
-    if (!best || d > best.d) best = { d, w }; if (d >= dist * 0.97) break; }
+    emoteCamSpot(look, w); const clear = Math.hypot(w.x - look.x, w.z - look.z), d = clear - i * 0.04;
+    if (clear >= Math.min(dist, 1.7) * 0.95) return w;      // (the first one, from straight in front, round, that sees you properly: in front wins whenever it can)
+    if (!best || d > best.d) best = { d, w }; }
   return best.w;
 }
 function emoteCamSpot(look, want) {
@@ -1740,7 +1745,10 @@ class SquadPuppet {
     if (this.down > 0) { this.down -= dt; r.sync(); const pl = r.parts.pelvis.body.position; c.fx.position.set(pl.x, 0, pl.z);
       if (this.down <= 0) { c.state = 'idle'; c.setIdlePose(c.t); r.pose.head.identity(); r.getUp(0.9); }
       this.placeTag(); return; }
-    const q = new THREE.Quaternion(...pose.q), f = new THREE.Vector3(0, 0, -1).applyQuaternion(q); const yaw = Math.atan2(f.x, f.z);
+    // (which way they face, from their head's turn alone: worked out from the look direction, it went wild whenever they
+    // looked down at food or up at the ceiling, and their own emote camera ended up round the side or behind them)
+    const q = _avQ.set(...pose.q); _avE.setFromQuaternion(q, 'YXZ'); let yaw = _avE.y + Math.PI;
+    if (this.emote && this.emote.active && this.p && this.p.self && this.emYaw != null) yaw = this.emYaw;      // (your own emote: you stay facing where you were when it started, so the camera in front of you stays in front of you)
     let dy = yaw - this.yaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI;
     // (turning on a spring: speeds up and slows down smoothly. Eased straight in, a quick about-turn was fastest in its very
     // first frame, the hands swinging round at 8 m/s)
@@ -1893,7 +1901,7 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { onFrame: [], vrPanels: () => ({ pause: vrPause.panel, dev: vrDev.menu.panel }), resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { emoteCamAt: () => { const c = emoteCam(); return c ? c.position.toArray() : null; }, selfBody: () => selfBody, onFrame: [], vrPanels: () => ({ pause: vrPause.panel, dev: vrDev.menu.panel }), resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
 // developer mode (Settings cog -> DEVELOPER MODE): the test bench comes up once you press PLAY. (Only for this visit:
 // starting the page again goes back to normal)
 { let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; sessionStorage.removeItem('rs_dev'); } catch (e) {} window.__devPending = dev;
