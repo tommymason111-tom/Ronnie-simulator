@@ -195,7 +195,7 @@ export class Director {
     if (this.boss) { this.boss.dispose(); this.boss = null; }      // (BOSS FIGHT: boss.js)
     if (this.prophunt) { this.prophunt.dispose(); this.prophunt = null; }      // (PROP HUNT)
     this.hideTommy(false);
-    this.mode = id; globalThis.RS_MODE = id; this.running = true; this.used.clear(); this.pending = null;
+    this.mode = id; globalThis.RS_MODE = id; this.running = true; this.used.clear(); this.pending = null; this.lastHit = null;
     this.timeLeft = m.time > 0 && id !== 'imposter' && id !== 'chonkoffr' ? Math.round(m.time * roomNum('len')) : m.time;      // (a room's GAME LENGTH: short, normal, long)
     this.stats = { chonk: 0, veg: 0, swats: 0, popped: 0, roasted: 0, caught: 0, thrown: 0, attempts: 0, fails: [] };
     this.meter = 0; this.nextIntervener = 0; this.waveT = 2.5; this.spawned = 0;
@@ -509,11 +509,17 @@ export class Director {
     if (!fromNet && this.mp && this.mp.on && this.mp.host && this.mp.sendStun(who, key)) { this.pending = null; if (fx) fx.hideCard(); return; }   // (aimed at another player: it lands on their game)
     key = LEGACY_KEY[key] || key || (ATTACKS[who.id] || [])[0]?.key;
     const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
+    // (one attack lands once: Tommy's trip and Noah's tackle have a backstop timer as well as the moment they reach you,
+    // and when both went off you went down twice, the second time straight after getting up)
+    const now = performance.now(), lh = this.lastHit;
+    if (lh && lh.who === who && lh.key === key && now - lh.t < 9000) { if (this.pending && this.pending.who === who && this.pending.key === key) this.pending = null; return; }
     const prev = this.pending && this.pending.key === key ? this.pending : null;
     this.pending = null;
     // Ronnie's busy (on the floor, mid-air, in Ben's film): hold the attack until he isn't
     if (P.knock || P.throwAnim || (fx && fx.inCutscene)) { this.pending = { who, key, t: 0, wait: prev ? prev.wait : 0 }; return; }
     if (fx) fx.hideCard();
+    this.lastHit = { who, key, t: now };
+    if (who.ball) { who.ball = null; if (who.ballMesh) who.ballMesh.visible = false; }      // (Tommy's ball, still on its way: it's done its job)
     sfx(A.sfx || 'thud', null, 1); track('ouch');
     const tint = (color, t, op = 0.3) => { G.fxTint = color; G.fxTintT = t; G.fxTintOp = op; };
     const away = { x: P.head.x - who.pos.x, z: P.head.z - who.pos.z };
