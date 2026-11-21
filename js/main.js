@@ -730,7 +730,7 @@ function newGame(id, why) {
   { const ok = PLACE_GAMES[room.placeId]; if (ok && !ok.includes(id)) { console.warn('not a game for ' + room.placeId + ': ' + id); id = ok[0]; } }
   if (G.over) { G.over = false; player.menuLock = false; player.noTurn = false; document.body.classList.remove('gameover'); pauseEl.classList.remove('show-end'); if (player.flatMode) touch.show(true); if (player.wrist) player.wrist.visible = true;
     const rc = director.receipt; if (rc && rc.parent === camera) { camera.remove(rc); rc.visible = false; } }
-  setPaused(false); attackFx.removeAll(); SEL.mode = id;
+  setPaused(false); attackFx.removeAll(); SEL.mode = id; if (warm) { warm = null; warmUI.draw(); }
   const tag = document.getElementById('ready-tag'); if (tag && PAUSE_MODES[id]) tag.textContent = tag.textContent.replace(/·.*$/, '· ' + PAUSE_MODES[id][1]);
   director.start(id); mpAfterStart(); rewarm(); if (director.imposter) director.imposter.needSpawn = 2; else respawnPlayer();
   setTimeout(() => { try { sweep(scene); } catch (e) {} }, 1500);      // (Imposter puts everyone round the bell)
@@ -742,6 +742,7 @@ function newGame(id, why) {
 // (the clock, BUSTED by Chloe, off the grill...); SUPERMARKET SWEEP (a trolley) and BOSS FIGHT (the boss) get boxes of
 // their own. null: the plain mode line.
 function hudExtras() {
+  if (warm) return { chips: [{ t: net.host ? '▶ YOU START IT' : '⏳ WAITING FOR THE HOST', c: net.host ? '#39ff14' : '#ffd400', pulse: true }, { t: `👥 ${net.players.size + 1}`, c: '#9fd8ff' }] };
   const d = director; if (window.__devMode || window.__devPending || !d.running || d.remote || d.imposter || d.prophunt || d.runpub) return null;
   const t = Math.max(0, d.timeLeft || 0), clock = `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`, m = d.mode, low = t > 0 && t < 15;
   const T = () => ({ t: '⏱ ' + clock, c: low ? '#ff5252' : '#ffffff', pulse: low });
@@ -758,7 +759,7 @@ function hudExtras() {
   return null;
 }
 function hostNewGame(id) { if (window.__rc && net.connected && net.host && net.players.size) { setPaused(false); window.__rc.begin(id); return; } startForAll(id); }
-function startForAll(id) { newGame(id); if (net.connected && net.host) net.send({ t: 'restart', mode: id }); }
+function startForAll(id) { warm = null; newGame(id); if (net.connected && net.host) net.send({ t: 'restart', mode: id }); warmUI.draw(); }
 function startFlat() {
   initAudio();
   player.enterFlat();
@@ -769,7 +770,46 @@ function startFlat() {
 // the game starts once: pressing PLAY again, or going into VR after starting flat, must never restart it (an Imposter
 // game already dealt would drop the host back to the lobby, still being asked to ring the bell)
 let gameBegun = false;
-function startOnce() { if (gameBegun && director.running) return; gameBegun = true; director.start(chosenMode()); mpAfterStart(); rewarm(); }
+function startOnce() { if (gameBegun && director.running) return; gameBegun = true; const m = window.__pendingWarm && MODES[window.__pendingWarm] ? window.__pendingWarm : chosenMode(); window.__pendingWarm = null; if (needsWarm(m)) { enterWarm(m); return; } director.start(m); mpAfterStart(); rewarm(); }
+// THE WARM-UP (multiplayer): everyone arrives in the map first and can walk about (free roam: no clock, no attacks, no
+// boss yet) until the host presses START on their screen; then the game begins for everyone together. Imposter and Prop
+// Hunt have their own START already, and free roam needs none. The host tells late arrivals with 'warm'.
+let warm = null;
+const inRoom = () => !!(window.ronnieMP && window.ronnieMP.role);
+function needsWarm(m) { let skip = false; try { skip = sessionStorage.getItem('rs_nowarm') === '1'; } catch (e) {}
+  if (!inRoom() || /^(roam|imposter|prophunt)/.test(m) || window.__devMode || skip) return false;
+  // (a guest joining a game that's already going: the host said whether it's still the warm-up; from the lobby, everyone's in it together)
+  if (window.ronnieMP.role === 'join' && window.__setupWarm === false && !window.__pendingWarm) return false;
+  return true; }      // (rs_nowarm: the test pages that test the modes themselves)
+function enterWarm(mode) {
+  warm = { mode, sayT: 0 }; SEL.mode = mode; director.start('roam'); mpAfterStart(); rewarm(); respawnPlayer();
+  showBanner(renderer.xr.isPresenting && net.host ? 'WARM-UP · MENU BUTTON → START' : 'WARM-UP', (PAUSE_MODES[mode] ? PAUSE_MODES[mode][1] : mode.toUpperCase()) + ' NEXT'); warmUI.draw(); }
+function warmStart() {
+  if (!warm || !net.host) return; const mode = warm.mode; warm = null; warmUI.draw();
+  startForAll(mode); showBanner('GO!', PAUSE_MODES[mode] ? PAUSE_MODES[mode][1] : mode.toUpperCase()); sfx('whistle_ref', null, 1); }
+const warmUI = (() => {
+  const st = document.createElement('style'); st.textContent = `
+#warm-bar { position: fixed; left: 50%; top: calc(max(10px, env(safe-area-inset-top)) + 40px); transform: translateX(-50%); z-index: 21; display: none; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; max-width: calc(100vw - 24px); text-align: center; }
+body.flat #warm-bar.on { display: flex; } body.gameover #warm-bar, body.paused #warm-bar { display: none !important; }
+#warm-bar .wl { font: 900 12px Arial, sans-serif; letter-spacing: 1px; color: #ffd400; background: rgba(10,14,40,0.88); border: 2px solid rgba(255,212,0,0.7); border-radius: 12px; padding: 5px 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.45); }
+#warm-bar button { pointer-events: auto; font: 900 18px "Arial Black", Arial, sans-serif; padding: 12px 26px; border-radius: 16px; border: 3px solid #111; background: #39ff14; color: #111; box-shadow: 0 5px 0 #1d8a0a, 0 0 22px rgba(57,255,20,0.55); animation: wbpulse 1s ease-in-out infinite alternate; cursor: pointer; }
+#warm-bar button:active { transform: translateY(3px); box-shadow: 0 2px 0 #1d8a0a; }
+@keyframes wbpulse { to { box-shadow: 0 5px 0 #1d8a0a, 0 0 34px rgba(57,255,20,0.9); } }
+#warm-bar .ww { font: 800 13px Arial, sans-serif; color: #fff; background: rgba(0,0,0,0.6); border-radius: 12px; padding: 7px 14px; }`;
+  document.head.appendChild(st);
+  const esc = (t) => String(t == null ? '' : t).replace(/[<>&"]/g, '');
+  const el = document.createElement('div'); el.id = 'warm-bar'; document.body.appendChild(el);
+  el.addEventListener('click', (e) => { if (e.target.closest('button')) { initAudio(); warmStart(); } });
+  let key = '';
+  const pw = document.getElementById('pause-warm'); if (pw) pw.addEventListener('click', () => { setPaused(false); initAudio(); warmStart(); });      // (the pause menu's START: the way in from a headset)
+  const draw = () => { const on = !!warm && director.running; el.classList.toggle('on', on); document.body.classList.toggle('warming', on);
+    if (pw) { pw.style.display = on && net.host ? '' : 'none'; if (on) pw.textContent = '▶ START ' + (PAUSE_MODES[warm.mode] ? PAUSE_MODES[warm.mode][1] : warm.mode.toUpperCase()); }
+    if (!on) { key = ''; return; }
+    const name = PAUSE_MODES[warm.mode] ? PAUSE_MODES[warm.mode][1] : warm.mode.toUpperCase(), n = net.players.size + 1, k = `${net.host}|${name}|${n}|${net.hostName}`; if (k === key) return; key = k;
+    el.innerHTML = `<div class="wl">🚶 WARM-UP · ${n} IN THE GAME · ${esc(name)} NEXT</div>` + (net.host ? `<button type="button">▶ START ${esc(name)}</button>` : `<div class="ww">⏳ Have a wander: ${esc(net.hostName || 'the host')} starts it when everyone's here</div>`); };
+  return { draw };
+})();
+
 // once a game's people are in: build their shaders (and their shadows') now, not the first time each is seen (shaderwarm.js)
 // (a character's model has just loaded: once the last of a batch is in, build its shaders too)
 { let t = null; window.__onModelReady = () => { clearTimeout(t); window.__shaderWarm = null; t = setTimeout(rewarm, 500); }; }
@@ -928,6 +968,7 @@ body.flat.mpon #chat-btn { display: block; }
 #chat-box { position: fixed; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 45; display: none; gap: 6px; background: rgba(10,12,30,0.92); padding: 8px; border-radius: 16px; border: 3px solid #ffd400; width: min(520px, 92vw); box-sizing: border-box; }
 #chat-box.on { display: flex; } #chat-box input { flex: 1; min-width: 0; font: 700 16px Arial; padding: 9px 10px; border-radius: 10px; border: 0; }
 #chat-box button { font: 900 13px Arial; border: 0; border-radius: 10px; padding: 0 12px; background: #39ff14; color: #111; } #chat-box button.x { background: #444; color: #fff; }
+#chat-btn { position: fixed; } #chat-badge { position: absolute; top: -8px; right: -8px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 10px; background: #ff3b3b; color: #fff; font: 900 12px/16px Arial, sans-serif; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.5); animation: cbpop .3s cubic-bezier(.2,1.6,.4,1); } #chat-badge[hidden] { display: none; } @keyframes cbpop { from { transform: scale(0); } }
 #chat-log { position: fixed; z-index: 19; pointer-events: none; display: none; flex-direction: column; gap: 3px; max-width: 46vw; }
 body.flat.mpon #chat-log { display: flex; }
 #chat-log div { font: 700 12px Arial, sans-serif; color: #fff; background: rgba(0,0,0,0.55); padding: 3px 8px; border-radius: 8px; text-shadow: 0 1px 2px #000; transition: opacity .6s; }
@@ -939,11 +980,13 @@ body.flat.mpon #chat-log { display: flex; }
   const inp = box.querySelector('input');
   const close = () => { box.classList.remove('on'); inp.blur(); };
   const send = () => { if (mp.chat(inp.value)) inp.value = ''; close(); };
-  btn.addEventListener('click', () => { box.classList.add('on'); setTimeout(() => inp.focus(), 30); });
+  btn.innerHTML = '💬 CHAT<span id="chat-badge" hidden>0</span>'; let unread = 0;
+  const badge = () => { const b = btn.querySelector('#chat-badge'); b.hidden = !unread; b.textContent = unread > 9 ? '9+' : String(unread); };
+  btn.addEventListener('click', () => { box.classList.add('on'); unread = 0; badge(); setTimeout(() => inp.focus(), 30); });
   box.querySelector('#chat-send').addEventListener('click', send); box.querySelector('#chat-x').addEventListener('click', close);
   inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') send(); if (e.key === 'Escape') close(); });
   inp.addEventListener('keyup', (e) => e.stopPropagation());
-  const add = (name, text) => { const d = document.createElement('div'); d.innerHTML = `<b></b> `; d.querySelector('b').textContent = name + ':'; d.appendChild(document.createTextNode(text)); log.appendChild(d);
+  const add = (name, text, mine) => { if (!mine && !box.classList.contains('on')) { unread++; badge(); } const d = document.createElement('div'); d.innerHTML = `<b></b> `; d.querySelector('b').textContent = name + ':'; d.appendChild(document.createTextNode(text)); log.appendChild(d);
     while (log.children.length > 5) log.firstChild.remove(); setTimeout(() => { d.style.opacity = '0'; setTimeout(() => { d.remove(); layout(); }, 700); }, 15000); layout(); };
   // the log sits just under the Eat Meter, wherever that is on this screen
   const corners = [[-0.05, -0.03125], [0.05, -0.03125]].map(([x, y]) => new THREE.Vector3(x, y, 0)), v = new THREE.Vector3();
@@ -986,7 +1029,7 @@ body.flat.mpon #chat-log { display: flex; }
     const lane = (el) => { if (!el) return; if (el.dataset.top0 === undefined) el.dataset.top0 = el.style.top; el.style.top = el.dataset.top0; let r = R(el); if (!r) return;
       if (r.top < mid) { el.style.top = mid + 'px'; r = R(el); }
       r = drop(el) || r; mid = r.bottom + gap; placed.push(r); };
-    for (const id of ['ph-top', 'nextAttack', 'imp-alert', 'hint', 'dev-tag']) lane($(id));
+    for (const id of ['warm-bar', 'ph-top', 'nextAttack', 'imp-alert', 'hint', 'dev-tag']) lane($(id));
   };
   window.__layoutHud = layout;
   setInterval(() => { try { if (player.flatMode && !document.hidden && document.body.classList.contains('flat')) layout(); } catch (e) {} }, 300);      // (as well as from the game loop: some modes' loops don't come by here every frame)
@@ -1443,6 +1486,7 @@ function frame(simDt) {
     if (Math.abs(want - G.fillShown) > 0.002 || G.meterFlash > 0 || comboLive || (!max0 && want > 0.85)) { G.wristDirty = true; if (G.wristT > 1 / 30) G.wristT = 1 / 30; } }
   // (the top-left box's mode bits, the clock and the like: redrawn when they change)
   if ((G.hxT = (G.hxT || 0) - dt) <= 0) { G.hxT = 0.25; const k = JSON.stringify(hudExtras()); if (k !== G.hxK) { G.hxK = k; G.wristDirty = true; } }
+  if (warm && (warm.sayT -= dt) <= 0) { warm.sayT = 1; warmUI.draw(); }
   if (G.wristDirty && G.wristT <= 0) {
     G.wristDirty = false; G.wristT = 0.1;
     const max = G.stage === STAGES.length - 1;
@@ -1451,7 +1495,7 @@ function frame(simDt) {
     player.drawWrist({
       stage: G.stage, stages: STAGES.length, name: stageNameOf(G.stage), chonk: G.chonk, next, max,
       fill: G.fillShown ?? (max ? 1 : (G.chonk - cur) / (next - cur)), loco: G.locoT, combo: tierNow ? { n: G.combo, col: tierNow[1], word: tierNow[2], left: 1 - (time - G.comboAt) / COMBO_GAP } : null, flash: G.meterFlash || 0, glow: !max && (G.chonk - cur) / (next - cur) > 0.85 ? 0.5 + 0.5 * Math.sin(time * 9) : 0, stout: G.stoutT, eaten: G.eaten, swats: G.swats, fps: G.fps,
-      modeLine: (window.__devMode || window.__devPending) ? 'TEST BENCH · NO RANDOM ATTACKS' : director.hud(), title: (window.__devMode || window.__devPending) ? 'DEVELOPER MODE' : modeTitle(), dev: !!(window.__devMode || window.__devPending),
+      modeLine: (window.__devMode || window.__devPending) ? 'TEST BENCH · NO RANDOM ATTACKS' : director.hud(), title: (window.__devMode || window.__devPending) ? 'DEVELOPER MODE' : warm ? 'WARM-UP · ' + (PAUSE_MODES[warm.mode] ? PAUSE_MODES[warm.mode][1] : warm.mode.toUpperCase()) + ' NEXT' : modeTitle(), dev: !!(window.__devMode || window.__devPending),
       pub: director.runpub ? director.runpub.hudState(director.timeLeft) : null,
       imp: director.imposter ? director.imposter.hudState() : null,
       custom: director.prophunt ? (g2, w, h) => director.prophunt.drawWrist(g2, w, h) : null,      // (PROP HUNT draws its own wrist)
@@ -1532,9 +1576,9 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
     $('mp-chip').textContent = re ? `📶 RECONNECTING TO ROOM ${net.code}…` : `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`;
     $('mp-chip').classList.toggle('on', net.connected || re); $('mp-chip').classList.toggle('re', re); };
   // the host tells anyone who joins late which place and game to load
-  net.on.join = (m) => { chip(); if (m.quiet) { net.send({ t: 'hi', to: m.id, name: net.name, char: net.char }); return; } if (net.host) net.send({ t: 'setup', to: m.id, place: room.placeId, mode: director.fullMode || director.mode || SEL.mode }); window.__rc && window.__rc.joined(m.id); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
+  net.on.join = (m) => { chip(); if (m.quiet) { net.send({ t: 'hi', to: m.id, name: net.name, char: net.char }); return; } if (net.host) net.send({ t: 'setup', to: m.id, warm: warm ? 1 : 0, place: room.placeId, mode: (warm && warm.mode) || director.fullMode || director.mode || SEL.mode }); window.__rc && window.__rc.joined(m.id); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
   // someone waiting in the room asking what's on (they missed the start, or came back to the lobby): the host tells them
-  net.on.whatgame = (m, p) => { if (net.host && p && p.id) net.send({ t: 'setup', to: p.id, place: room.placeId, mode: director.fullMode || director.mode || SEL.mode }); };
+  net.on.whatgame = (m, p) => { if (net.host && p && p.id) net.send({ t: 'setup', to: p.id, place: room.placeId, mode: (warm && warm.mode) || director.fullMode || director.mode || SEL.mode, warm: warm ? 1 : 0 }); };
   net.on.leave = () => { chip(); window.__rc && window.__rc.left(); }; net.on.status = () => chip();
   window.__rc = createReadyCheck({ net, start: (id) => startForAll(id), modeName: (id) => (PAUSE_MODES[id] ? PAUSE_MODES[id][1] : String(id).toUpperCase()), inVR: () => renderer.xr.isPresenting, portrait: (ch) => './assets/portraits/' + String(ch || 'ronnie').replace(/[^a-z0-9_]/gi, '') + '.webp' });
   // a new host (the old one left, or handed it over): everyone's told who; if it's you, your game takes over running
@@ -1619,7 +1663,9 @@ body.mpon #vc-list.any { display: flex; }
     for (const d of list.children) { const v = lv.get(d.dataset.v === 'me' ? 'me' : d.dataset.v) || 0; d.classList.toggle('talk', v > 0); } };
 }
   // the host started a new game (changed the mode, or restarted): everyone starts it, back at the start of the map
-  net.on.restart = (m) => { if (net.host || !m.mode) return; newGame(m.mode, 'NEW GAME'); };
+  net.on.restart = (m) => { if (net.host || !m.mode) return; newGame(m.mode, warm ? 'GO!' : 'NEW GAME'); };
+  net.on.warm = (m, p) => { if (net.host || !p || !p.host || typeof m.mode !== 'string' || !MODES[m.mode]) return; if (!gameBegun) { window.__pendingWarm = m.mode; return; } if (!warm && director.running) enterWarm(m.mode); else if (warm) warm.mode = m.mode; warmUI.draw(); };      // (still loading: remembered for when the game starts)
+  setInterval(() => { if (warm && net.host && net.connected) net.send({ t: 'warm', mode: warm.mode }); }, 1500);      // (on a timer, not the game's frames: it keeps going while the host's page is in the background)
   if (net.connected) chip();
 }
 // the shared game (food and people): see mpsync.js
@@ -1633,7 +1679,7 @@ director.startRemote = (id) => { if (!net.host && director.mode && (PAUSE_MODES[
 powerups = new PowerUps({ scene, room, items, player, sfx, words, net, mp, eatWhole: (it) => hooverEat(it),
   enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter', 'prophunt'].includes(director.mode) && roomNum('powerups') > 0 });
 mp.selfBody = () => selfBody;      // (your emotes play on your own body too)
-mp.onChat = (text, p) => { chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text); if (!p) voiceLine(net.char, text, player.head, { key: 'chat_me' }); };      // (you hear your own message in your character's voice too)
+mp.onChat = (text, p) => { chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text, !p); if (!p) voiceLine(net.char, text, player.head, { key: 'chat_me' }); };      // (you hear your own message in your character's voice too)
 mp.voiceWarm = (text) => VOICED.has(net.char) ? warmLine(net.char, text) : null;      // (voices.js)
 mp.onChatBlocked = (why) => words.show(why || 'NOT NOW', player.head.clone().addScaledVector(player.fwd, 0.8), '#ff5252', 0.07, 1.4);
 // music from the speakers (the DJ booth, the hi-fi, the tannoy): only the host picks, everyone hears it
@@ -1936,7 +1982,7 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { hudExtras: () => hudExtras(), emoteCamAt: () => { const c = emoteCam(); return c ? c.position.toArray() : null; }, selfBody: () => selfBody, onFrame: [], vrPanels: () => ({ pause: vrPause.panel, dev: vrDev.menu.panel }), resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS = { warm: () => warm && warm.mode, warmStart: () => warmStart(), hudExtras: () => hudExtras(), emoteCamAt: () => { const c = emoteCam(); return c ? c.position.toArray() : null; }, selfBody: () => selfBody, onFrame: [], vrPanels: () => ({ pause: vrPause.panel, dev: vrDev.menu.panel }), resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
 // developer mode (Settings cog -> DEVELOPER MODE): the test bench comes up once you press PLAY. (Only for this visit:
 // starting the page again goes back to normal)
 { let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; sessionStorage.removeItem('rs_dev'); } catch (e) {} window.__devPending = dev;

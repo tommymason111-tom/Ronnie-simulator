@@ -15,9 +15,12 @@ export async function launch({ args = [] } = {}) {
   return chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info', '--disable-features=BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights,LocalNetworkAccessChecks', '--no-proxy-server', ...args] });
 }
 // a page on http://game.local/ serving the repo; every crash report the game sends lands in page.crashes
-export async function newPage(browser, { width = 900, height = 560, mobile = false, xr = false } = {}) {
+export async function newPage(browser, { width = 900, height = 560, mobile = false, xr = false, warm = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, isMobile: mobile, hasTouch: mobile });
   const page = await ctx.newPage(); page.errors = []; page.crashes = [];
+  // (a room's games normally open with a WARM-UP until the host presses START: the tests of the modes themselves skip
+  // it, so they start straight into the mode as before; warmup.test.mjs tests the warm-up, with { warm: true })
+  if (!warm) await page.addInitScript(() => { try { sessionStorage.setItem('rs_nowarm', '1'); } catch (e) {} });
   page.on('pageerror', e => page.errors.push('pageerror: ' + e.message));
   page.on('console', m => { const t = m.text(); if (m.type() === 'error' && !/Failed to load resource|net::ERR|WebSocket connection|Navigated away from page/.test(t)) page.errors.push('console: ' + t.slice(0, 300)); });
   await page.route('**/*', async (r) => {

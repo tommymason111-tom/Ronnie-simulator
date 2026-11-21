@@ -56,7 +56,7 @@ const SCHEMA = {
   bossA: { 'k!': 'str', x: 'num', y: 'num', z: 'num', x0: 'num', y0: 'num', z0: 'num', x1: 'num', z1: 'num', r: 'num', r0: 'num', d: 'num', w: 'num', f: 'num', ph: 'num', s: 'str', a: 'str', it: 'str', ids: 'arr' },
   bossHit: { 'd!': 'num', p: 'v3', w: 'num' }, bossP: { hp: 'num', kd: 'num', mk: 'str' },
   wx: { w: 'str', a: 'num', tm: 'num', c: 'str', ds: 'num' },
-  rcheck: { 'k!': 'str', 'mode!': 'str' }, rready: { 'k!': 'str', r: 'num' }, rstat: { 'k!': 'str', ready: 'arr' }, rdone: { 'k!': 'str' },      // (the READY CHECK before a room's new game: readycheck.js)      // (the host's weather and time of day: weather.js)
+  rcheck: { 'k!': 'str', 'mode!': 'str' }, rready: { 'k!': 'str', r: 'num' }, rstat: { 'k!': 'str', ready: 'arr' }, rdone: { 'k!': 'str' }, warm: { 'mode!': 'str' },      // (the READY CHECK before a room's new game: readycheck.js)      // (the host's weather and time of day: weather.js)
   // PROP HUNT (prophunt.js)
   phChk: { v: 'str', p: 'v3' }, phProp: { 'k!': 'str', id: 'id' }, phLock: { p: 'v2', y: 'num' }, phTaunt: { i: 'num' }, phLobby: { n: 'num' },
   phRound: { 'list!': 'arr', 'seek!': 'arr', hide: 'arr', lay: 'arr', r: 'num', of: 'num', ht: 'num', st: 'num', tot: 'obj' }, phGo: { st: 'num' }, phClock: { ph: 'str', left: 'num' },
