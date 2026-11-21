@@ -579,19 +579,50 @@ export class PropHunt {
   // the end of the gun's barrel (where the tracer starts)
   muzzle(ray) {
     const g = this.vGun && this.vGun.visible ? this.vGun : this.vrGun && this.vrGun.parent && this.vrGun.visible ? this.vrGun : null;
-    if (g) { g.updateMatrixWorld(true); return g.localToWorld(new THREE.Vector3(0, 0.035, -0.34)); }
+    if (g) { g.updateMatrixWorld(true); return g.localToWorld(new THREE.Vector3(0, 0.035, -0.36)); }
     return ray.origin.clone().addScaledVector(ray.direction, 0.3).add({ x: 0, y: -0.12, z: 0 });
   }
   // ------------------------------------------------------------------ the gun: a chunky toy blaster
   gunGeo() {
-    if (this._gunGeo) return this._gunGeo; const p = [], X = [Math.PI / 2, 0, 0];
-    B(p, 0.064, 0.075, 0.25, 0xff7a1a, 0, 0.02, -0.085); B(p, 0.066, 0.014, 0.2, 0xffffff, 0, 0.0, -0.09);      // the body, a white stripe
-    C(p, 0.019, 0.019, 0.15, 0x2a2a2a, 0, 0.035, -0.26, X, 12); C(p, 0.026, 0.026, 0.026, 0xffd400, 0, 0.035, -0.33, X, 14);      // barrel, muzzle
-    C(p, 0.013, 0.013, 0.03, 0x111111, 0, 0.035, -0.345, X, 10);
-    B(p, 0.046, 0.12, 0.052, 0x222222, 0, -0.055, 0.005, [0.28, 0, 0]); B(p, 0.05, 0.02, 0.056, 0x3a3a3a, 0, -0.11, 0.02, [0.28, 0, 0]);      // the grip
-    B(p, 0.012, 0.045, 0.012, 0x111111, 0, -0.032, -0.06, [0.3, 0, 0]); T(p, 0.028, 0.006, 0x222222, 0, -0.03, -0.055, [0, Math.PI / 2, 0], Math.PI);      // trigger and guard
-    C(p, 0.027, 0.027, 0.13, 0x39ff14, 0, 0.083, -0.075, X, 14); for (const z of [-0.13, -0.02]) C(p, 0.029, 0.029, 0.012, 0x1d8a0a, 0, 0.083, z, X, 14);      // the tank on top
-    B(p, 0.012, 0.024, 0.012, 0x111111, 0, 0.07, 0.03); B(p, 0.01, 0.02, 0.01, 0x111111, 0, 0.065, -0.205);      // sights
+    if (this._gunGeo) return this._gunGeo; const p = [], X = [Math.PI / 2, 0, 0], SX = [0, 0, Math.PI / 2], YZ = [0, Math.PI / 2, 0];
+    const OR = 0xff7a1a, OR2 = 0xd85a10, BK = 0x1c1c1e, GY = 0x3a3f47, SL = 0xc8ccd2, YL = 0xffd400, GR = 0x39ff14, GR2 = 0x1d8a0a, WH = 0xf4f4f4;
+    // the body: a boxy receiver with a rounded top and a darker belly, a white racing stripe down each side
+    B(p, 0.06, 0.062, 0.22, OR, 0, 0.018, -0.085); C(p, 0.03, 0.03, 0.22, OR, 0, 0.049, -0.085, X, 18);
+    B(p, 0.054, 0.022, 0.19, OR2, 0, -0.022, -0.09); B(p, 0.05, 0.02, 0.05, OR2, 0, 0.03, 0.035, [-0.35, 0, 0]);      // the belly, the sloped back
+    for (const sx of [-1, 1]) { const x = sx * 0.0305;
+      B(p, 0.003, 0.012, 0.2, WH, x, 0.0, -0.09); B(p, 0.003, 0.004, 0.2, 0xff3b3b, x, -0.009, -0.09);      // stripe, a thin red pinstripe
+      B(p, 0.004, 0.034, 0.085, GY, x, 0.03, -0.06);      // the side panel...
+      for (let i = 0; i < 4; i++) B(p, 0.005, 0.004, 0.06, BK, x + sx * 0.0008, 0.019 + i * 0.008, -0.06);      // ...with its cooling slots
+      for (const [y, z] of [[0.044, -0.1], [0.044, -0.02], [0.016, -0.1], [0.016, -0.02]]) C(p, 0.004, 0.004, 0.004, SL, x + sx * 0.002, y, z, SX, 8);      // screws
+      B(p, 0.012, 0.01, 0.018, BK, x + sx * 0.007, 0.042, 0.005);      // the charging handle sticking out
+    }
+    // the front: a shroud with vent holes and yellow bands, the barrel, a chunky muzzle with three prongs
+    C(p, 0.027, 0.027, 0.075, GY, 0, 0.035, -0.225, X, 18); for (const z of [-0.192, -0.258]) T(p, 0.027, 0.0045, YL, 0, 0.035, z, null);
+    for (let i = 0; i < 3; i++) B(p, 0.008, 0.004, 0.012, BK, 0, 0.062, -0.205 - i * 0.02); for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) C(p, 0.0045, 0.0045, 0.004, BK, sx * 0.026, 0.035, -0.205 - i * 0.02, SX, 8);
+    C(p, 0.016, 0.016, 0.07, BK, 0, 0.035, -0.29, X, 14); C(p, 0.024, 0.022, 0.03, YL, 0, 0.035, -0.33, X, 18); T(p, 0.024, 0.004, BK, 0, 0.035, -0.345, null);
+    C(p, 0.011, 0.011, 0.012, 0x050505, 0, 0.035, -0.345, X, 12);
+    for (let i = 0; i < 3; i++) { const a = i * Math.PI * 2 / 3 + Math.PI / 2; B(p, 0.007, 0.007, 0.02, YL, Math.cos(a) * 0.026, 0.035 + Math.sin(a) * 0.026, -0.352, [0, 0, a]); }
+    // the pump under the barrel: grippy ridges
+    C(p, 0.017, 0.017, 0.085, BK, 0, -0.012, -0.215, X, 14); for (let i = 0; i < 5; i++) T(p, 0.018, 0.0035, GY, 0, -0.012, -0.185 - i * 0.015, null);
+    B(p, 0.012, 0.03, 0.012, BK, 0, 0.008, -0.178);
+    // the grip: angled, ridged at the front for your fingers, a cap on the bottom
+    B(p, 0.044, 0.12, 0.05, BK, 0, -0.06, 0.005, [0.28, 0, 0]); for (let i = 0; i < 4; i++) B(p, 0.046, 0.007, 0.006, GY, 0, -0.03 - i * 0.022, -0.016 + i * 0.006, [0.28, 0, 0]);
+    for (const sx of [-1, 1]) B(p, 0.003, 0.07, 0.034, GY, sx * 0.023, -0.06, 0.008, [0.28, 0, 0]);      // rubber panels
+    B(p, 0.05, 0.018, 0.058, OR2, 0, -0.118, 0.022, [0.28, 0, 0]);
+    // the trigger, its guard, the hammer at the back
+    B(p, 0.01, 0.034, 0.01, YL, 0, -0.032, -0.058, [0.35, 0, 0]); T(p, 0.03, 0.005, BK, 0, -0.028, -0.055, YZ, Math.PI);
+    B(p, 0.014, 0.02, 0.012, SL, 0, 0.068, 0.04, [-0.5, 0, 0]);
+    // the tank on top: green, rounded ends, a red filler cap, a pressure gauge, and a hose round the back into the body
+    C(p, 0.027, 0.027, 0.12, GR, 0, 0.09, -0.08, X, 18); S(p, 0.027, GR, 0, 0.09, -0.14, [1, 1, 0.55]); S(p, 0.027, GR, 0, 0.09, -0.02, [1, 1, 0.55]);
+    for (const z of [-0.125, -0.035]) T(p, 0.0285, 0.0035, GR2, 0, 0.09, z, null); B(p, 0.01, 0.014, 0.1, GR2, 0, 0.068, -0.08);      // bands, the bracket
+    C(p, 0.009, 0.009, 0.012, 0xe0202a, 0, 0.12, -0.11, null, 12); C(p, 0.011, 0.011, 0.004, 0xb01018, 0, 0.127, -0.11, null, 12);      // the cap
+    C(p, 0.013, 0.013, 0.006, WH, 0.027, 0.095, -0.06, SX, 16); T(p, 0.013, 0.002, BK, 0.03, 0.095, -0.06, [0, Math.PI / 2, 0]); B(p, 0.002, 0.002, 0.01, 0xe0202a, 0.0315, 0.098, -0.062, [0.6, 0, 0]);      // the gauge
+    T(p, 0.032, 0.006, GR2, 0, 0.06, -0.012, YZ, Math.PI * 0.6);
+    // sights: a rear notch, a front post with a red dot
+    for (const sx of [-1, 1]) B(p, 0.005, 0.016, 0.008, BK, sx * 0.007, 0.088, 0.008); B(p, 0.022, 0.006, 0.012, BK, 0, 0.081, 0.008);
+    B(p, 0.005, 0.02, 0.006, BK, 0, 0.07, -0.25); S(p, 0.0045, 0xff2020, 0, 0.081, -0.25);
+    // a little light on the back: it's armed
+    B(p, 0.016, 0.008, 0.004, GR, 0, 0.05, 0.061, [-0.35, 0, 0]);
     return (this._gunGeo = merge(p));
   }
   newGun() { return new THREE.Mesh(this.gunGeo(), vcLambert); }
