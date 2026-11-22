@@ -760,12 +760,14 @@ export function stopLocoMusic() {
 let ambKind = null, ambGain = null, ambTimer = null, ambNext = 0, ambBar = 0, ambListener = null, ambStarted = false, nextEvent = {};
 export function setAmbience(kind, listenerFn) { ambKind = kind; ambListener = listenerFn; startAmbience(); }
 function startAmbience() {
-  if (!ctx || ambStarted || !ambKind || !['shop', 'restaurant'].includes(ambKind)) return;     // (no background noise in the pub: the music from the DJ booth is there instead)
+  if (!ctx || ambStarted || !ambKind || !BAR[ambKind]) return;     // (every place has its own quiet background: Lidl's radio, the restaurant's piano, the pub's chatter, the garden's birds, the house's hush)
   ambStarted = true;
   ambGain = ctx.createGain(); ambGain.gain.value = 0; ambGain.connect(BUS.ambience || master);
   ambGain.gain.setTargetAtTime(1, ctx.currentTime + 0.2, 1.5);    // fade in
   ambNext = ctx.currentTime + 0.3; ambBar = 0; nextEvent = { a: ctx.currentTime + 3, b: ctx.currentTime + 6, c: ctx.currentTime + 25 };
   if (ambKind === 'pub') pubMurmur();
+  if (ambKind === 'garden') { roomTone([[900, 0.012, 0.07], [2400, 0.004, 0.11]]); }      // (a breeze through the trees)
+  if (ambKind === 'bedroom') roomTone([[120, 0.01, 0.05]]);      // (a quiet house: the fridge humming)
   const tick = () => {
     if (ctx.state === 'running') { while (ambNext < ctx.currentTime + 1.2) ambNext = BAR[ambKind](ambNext); if (!hush) events(); }
     else ambNext = ctx.currentTime + 0.3;
@@ -785,20 +787,19 @@ function randAround(r0, r1) {
 
 // one bar of music each call; returns when the next bar starts
 const SHOP_CHORDS = [[0, 4, 7, 11], [-3, 0, 4, 7], [-7, -3, 0, 4], [-5, -1, 2, 7]];   // Cmaj7 Am7 Fmaj7 G
+// (the radio's tune: four bars, each a few notes at half-beat steps, over the chords)
+const SHOP_TUNE = [[[0, 7], [2, 4], [4, 7], [6, 11]], [[0, 9], [3, 7], [6, 4]], [[0, 5], [2, 9], [4, 12], [6, 9]], [[0, 7], [3, 11], [5, 14]]];
 const PENTA = [0, 2, 4, 7, 9, 12, 14, 16];
 let melIdx = 3;
 const WALTZ = [[5, 9, 12], [2, 5, 9], [-2, 2, 5], [0, 4, 7, 10]];                     // F Dm Bb C7
 const BAR = {
-  shop(t) {
-    const beat = 0.54, ch = SHOP_CHORDS[ambBar++ % 4], d = ambGain;
-    for (const s of ch) { note(d, t, 'sine', hz(s), 1.0, 0.03, 0.02); note(d, t, 'triangle', hz(s + 12), 0.6, 0.008, 0.02); }
-    for (const s of ch.slice(1)) note(d, t + beat * 1.5, 'sine', hz(s), 0.7, 0.022, 0.02);
-    note(d, t, 'triangle', hz(ch[0] - 24), 0.45, 0.11); note(d, t + beat * 2, 'triangle', hz(ch[0] - 17), 0.45, 0.09);
-    for (let i = 0; i < 4; i++) noise(d, t + beat * (i + 0.5), 0.03, 'highpass', 7000, 0.7, 0.018, 0.002);
-    for (let i = 0; i < 8; i++) if (Math.random() < 0.45) {
-      melIdx = Math.max(0, Math.min(PENTA.length - 1, melIdx + Math.floor(Math.random() * 3) - 1));
-      note(d, t + i * beat / 2, 'sine', hz(PENTA[melIdx] + 12), 0.28, 0.035, 0.01);
-    }
+  shop(t) {      // Lidl's in-store radio: soft electric piano chords, a round bass, a gentle tune that repeats. Quiet, no hiss
+    const beat = 0.6, bar = ambBar++, ch = SHOP_CHORDS[bar % 4], d = ambGain;
+    for (const s of ch) { note(d, t, 'sine', hz(s), 1.6, 0.016, 0.04); note(d, t, 'sine', hz(s + 12), 0.9, 0.004, 0.04); }
+    for (const s of ch.slice(1)) note(d, t + beat * 2, 'sine', hz(s), 1.1, 0.011, 0.04);
+    note(d, t, 'sine', hz(ch[0] - 24), 0.7, 0.05, 0.02); note(d, t + beat * 2, 'sine', hz(ch[0] - 17), 0.6, 0.04, 0.02);
+    const m = SHOP_TUNE[bar % SHOP_TUNE.length];
+    for (const [i, k] of m) note(d, t + i * beat / 2, 'sine', hz(k + 12), 0.5, 0.014, 0.03);
     return t + beat * 4;
   },
   restaurant(t) {
@@ -812,19 +813,21 @@ const BAR = {
     return t + beat * 3;
   },
   pub(t) { return t + 1; },
+  garden(t) { return t + 1; },
+  bedroom(t) { return t + 1; },
 };
 
 // little background events: tannoy chimes, cutlery, clinking glasses, laughter, chatter
 function events() {
   const now = ctx.currentTime;
   if (ambKind === 'shop' && now > nextEvent.c) {
-    nextEvent.c = now + 50 + Math.random() * 40;
+    nextEvent.c = now + 80 + Math.random() * 60;
     note(ambGain, now + 0.05, 'sine', 784, 0.6, 0.12); note(ambGain, now + 0.45, 'sine', 622, 0.9, 0.12);      // ding-dong
     setTimeout(() => announce(SHOP_ANNOUNCEMENTS[Math.floor(Math.random() * SHOP_ANNOUNCEMENTS.length)]), 1300);
   }
   if ((ambKind === 'restaurant' || ambKind === 'pub') && now > nextEvent.a) {
     nextEvent.a = now + (ambKind === 'pub' ? 2.5 : 3.5) + Math.random() * 4;
-    const p = randAround(3, 7), d = out(p, ambKind === 'pub' ? 0.22 : 0.14);
+    const p = randAround(3, 7), d = out(p, ambKind === 'pub' ? 0.12 : 0.14);
     tone(d, now + 0.02, 'triangle', 1700 + Math.random() * 600, 1650, 0.15, 0.25, 0.001);
     if (Math.random() < 0.5) tone(d, now + 0.12, 'triangle', 1900 + Math.random() * 500, 1850, 0.12, 0.18, 0.001);
     _endT = now + 0.4; release(d);
@@ -835,8 +838,14 @@ function events() {
       const d = out(randAround(4, 8), 0.12);
       for (let i = 0; i < 4; i++) tone(d, now + i * 0.14, 'sine', 320 - i * 18, 280 - i * 18, 0.08, 0.5, 0.01);
       _endT = now + 0.8; release(d);
-    } else babbleAt(randAround(3.5, 8), 0.07, 0.8 + Math.random() * 0.5);
+    } else babbleAt(randAround(3.5, 8), 0.04, 0.8 + Math.random() * 0.5);
   }
+  if (ambKind === 'garden' && now > nextEvent.a) {      // birds: a few chirps from somewhere in the trees
+    nextEvent.a = now + 2 + Math.random() * 5; const d = out(randAround(6, 14), 0.05), base = 2600 + Math.random() * 1400, n = 2 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i++) tone(d, now + 0.02 + i * (0.09 + Math.random() * 0.05), 'sine', base * (1 + Math.random() * 0.2), base * (0.8 + Math.random() * 0.5), 0.07, 0.5, 0.004);
+    _endT = now + n * 0.15 + 0.2; release(d); }
+  if (ambKind === 'bedroom' && now > nextEvent.c) {      // a car going past outside, now and then
+    nextEvent.c = now + 25 + Math.random() * 30; const d = out(randAround(10, 14), 0.05); noise(d, now + 0.05, 3.2, 'lowpass', 500, 0.7, 0.4, 1.4); _endT = now + 3.5; release(d); }
   if (ambKind === 'restaurant' && now > nextEvent.b) { nextEvent.b = now + 2 + Math.random() * 3; babbleAt(randAround(4, 8), 0.035, 0.9 + Math.random() * 0.4); }
 }
 function babbleAt(pos, vol, pitch) {
@@ -851,9 +860,19 @@ function babbleAt(pos, vol, pitch) {
   }
   _endT = t + 0.2; release(d);
 }
+// a quiet background bed: filtered noise at a few pitches, gently rising and falling (a breeze, a fridge)
+function roomTone(bands) {
+  for (const [freq, vol, rate] of bands) {
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true; src.playbackRate.value = 0.5;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 0.7;
+    const g = ctx.createGain(); g.gain.value = vol;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = rate; const lg = ctx.createGain(); lg.gain.value = vol * 0.6; lfo.connect(lg); lg.connect(g.gain);
+    src.connect(f); f.connect(g); g.connect(ambGain); src.start(); lfo.start();
+  }
+}
 // a constant low hum of a busy pub, gently rising and falling
 function pubMurmur() {
-  for (const [freq, vol, rate] of [[320, 0.05, 0.13], [800, 0.02, 0.21]]) {
+  for (const [freq, vol, rate] of [[320, 0.03, 0.13], [800, 0.012, 0.21]]) {
     const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true; src.playbackRate.value = 0.6;
     const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 0.9;
     const g = ctx.createGain(); g.gain.value = vol;

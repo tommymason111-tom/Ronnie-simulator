@@ -18,9 +18,9 @@ import { track } from './awards.js';
 import { Item } from './foods.js';
 import { FONT, roundRect } from './textures.js';
 
-export const SLAP_STAGE = 2, BARGE_STAGE = 4, KOS_TO_WIN = 3;      // (stage numbers count from 0: STAGE 3 and STAGE 5 on screen)
+export const SLAP_STAGE = 2, BARGE_STAGE = 4, KOS_TO_WIN = 5, FEEDS_TO_LOSE = 3;      // (five knock-downs and he gives up: you win; force-fed three times: you lose)      // (stage numbers count from 0: STAGE 3 and STAGE 5 on screen)
 const FEED_MAX = 7;           // seconds of shoving before you've lost
-const ASK_T = 7, INSIST_T = 14, GIVE_UP_T = 34;      // chase phases (seconds since he set off)
+const ASK_T = 3, INSIST_T = 6, GIVE_UP_T = 30;      // (he doesn't hang about: a quick ask, then he means it)      // chase phases (seconds since he set off)
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
@@ -119,7 +119,11 @@ export class BbqMode {
     ian.actUpdate = (dt, ctx) => this.ianAct(dt, ctx);
     ian.actAfter = () => this.placeProps();
     const proto = Object.getPrototypeOf(ian);
-    ian.slap = (part, point, vel) => { const r = proto.slap.call(ian, part, point, vel); if (r && r !== 'ko' && !this.strong() && vel.length() > 1.5) this.tickle(); return r; };
+    // every slap, punch or bit of thrown food that lands is a HIT. 10 to 15 of them and he goes down (it's never one
+    // hit: he's a big lad, like Noah); the next knock-down needs a fresh 10 to 15
+    ian.slap = (part, point, vel) => { const r = proto.slap.call(ian, part, point, vel); if (r && vel.length() > 1.2) this.hitIan(1, { x: vel.x, z: vel.z }); return r; };
+    ian.hitBy = (part, point, impulse, isVeg) => { const r = proto.hitBy.call(ian, part, point, impulse, isVeg); if (r && impulse.length() > 1.0) this.hitIan(1, { x: impulse.x, z: impulse.z }); return r; };
+    this.newNeed();
     const ev0 = ian.onEvent; ian.onEvent = (name, who) => { ev0 && ev0(name, who); if (name === 'ko' || name === 'flung') this.ianDown(); };
     setTimeout(() => { if (this.ian && !this.disposed) ian.say('Right, Lewy, get the plates! Ronnie, you\'re on the HEALTHY ones. Tofu. Lovely.', 5); }, 1500);
   }
@@ -130,6 +134,17 @@ export class BbqMode {
     return st;
   }
   strong() { return this.nearStage() >= SLAP_STAGE; }
+  newNeed() { this.need = 10 + Math.floor(Math.random() * 6); this.hits = 0; }      // (10 to 15 hits to put him down)
+  // a hit landed on Ian (host or solo): count it; enough and over he goes
+  hitIan(n, dir) {
+    const ian = this.ian; if (!ian || ian.down || this.gaveUp || !this.host) return;
+    const now = performance.now(); if (now - (this.hitAt || 0) < 150) return; this.hitAt = now;
+    this.hits = Math.min(this.need, (this.hits || 0) + n); const left = this.need - this.hits;
+    this.g.words.show(left > 0 ? `${this.hits} / ${this.need}` : 'DOWN HE GOES!', ian.headPos(_v).clone().add({ x: 0, y: 0.45, z: 0 }), left > 0 ? '#ffd400' : '#39ff14', 0.12, 0.9);
+    if (left <= 0) { this.newNeed(); this.knockIan(dir || { x: 0, z: 1 }, 4.5); }
+    else if (left <= 3 && Math.random() < 0.5) ian.say(pick(['Ow! OW! Alright, Ronnie!', 'I\'m going! I\'m GOING!', 'Mind the tongs!']), 2.5);
+    this.broadcast(true);
+  }
   targetStage() { const t = this.ian && this.ian.mpTarget; if (!t || !t.id || !this.net) return this.g.G.stage; const pl = this.net.players.get(t.id); return (pl && pl.pose && pl.pose.st) || 0; }
   tickle() { const now = performance.now(); if (now - (this.tickleAt || 0) < 3500) return; this.tickleAt = now;
     this.ian.say(pick(LINES.tickle), 4); this.g.words.show('TOO SMALL! GET TO STAGE 3', this.ian.headPos(_v).clone().add({ x: 0, y: 0.35, z: 0 }), '#ffd400', 0.11, 1.4); }
@@ -150,7 +165,7 @@ export class BbqMode {
       }
       case 'ask': case 'insist': case 'force': {
         const head = ctx.head, scale = this.targetScale(), stopAt = this.phase === 'ask' ? 1.25 + 0.3 * scale : this.phase === 'insist' ? 0.95 + 0.3 * scale : 0;
-        const speed = this.phase === 'ask' ? 1.25 : this.phase === 'insist' ? 2.0 : 2.85;
+        const speed = this.phase === 'ask' ? 2.2 : this.phase === 'insist' ? 2.9 : 3.3;      // (marching over, then a run: still slower than you sprinting)
         const d = ian.chaseTo(head.x, head.z, dt, speed, stopAt);
         if (d <= stopAt + 0.05) { ian.turnTo(Math.atan2(head.x - ian.pos.x, head.z - ian.pos.z), dt, 6); }
         // holding it out to you on its plate
@@ -223,7 +238,7 @@ export class BbqMode {
   }
   // Ian hit the deck (a slap, a barge, being pushed off, thrown in a headset...)
   ianDown() {
-    const big = this.nearStage() >= SLAP_STAGE || this.bigWin;
+    const big = this.bigWin;      // (only a proper knock-down, after enough hits, counts)
     this.bigWin = false;
     if (this.feed && this.phase === 'feed') this.endFeed(true, true);
     if (this.phase !== 'cook') { this.phase = 'down'; this.t = 0; } else this.phase = 'downCook';
@@ -233,7 +248,7 @@ export class BbqMode {
     if (!big || this.gaveUp) return;
     this.stats.ko++; track('ko'); sfx('cheer', null, 0.7);
     this.g.words.show(`IAN DOWN! ${this.stats.ko}/${KOS_TO_WIN}`, this.ian.pos.clone().add({ x: 0, y: 1.6, z: 0 }), '#39ff14', 0.2, 1.8);
-    if (this.stats.ko >= KOS_TO_WIN) { this.gaveUp = true; setTimeout(() => { if (this.disposed) return; this.g.showBanner('IAN GIVES UP!', 'PROPER BURGERS FOR EVERYONE'); sfx('victory', null, 0.9); this.ian && this.ian.say(pick(LINES.giveUp), 6); }, 2600); }
+    if (this.stats.ko >= KOS_TO_WIN) { this.gaveUp = true; setTimeout(() => { if (this.disposed) return; this.g.showBanner('IAN GIVES UP!', 'PROPER BURGERS FOR EVERYONE'); sfx('victory', null, 0.9); this.ian && this.ian.say(pick(LINES.giveUp), 6); this.finish(true); }, 2600); }
     else if (!this.mpOn || !(this.ian.mpTarget && this.ian.mpTarget.id)) this.g.showBanner(`IAN DOWN! ${this.stats.ko}/${KOS_TO_WIN}`, this.stats.ko === KOS_TO_WIN - 1 ? 'ONE MORE AND HE GIVES UP' : 'BACK TO THE GRILL WITH HIM');
     this.broadcast(true);
   }
@@ -247,19 +262,19 @@ export class BbqMode {
   hostUpdate(dt) {
     const ian = this.ian, g = this.g, P = this.P;
     if (!ian || ian.disposed) { this.cookFood(dt, null); return; }
-    ian.koMul = this.strong() ? 0.6 : 1e3;      // (small: slaps and food bounce off him)
+    ian.koMul = 1e3;      // (he only goes over after enough hits: hitIan)
     if (ian.prop) ian.prop.visible = false;      // (no fishing rod today)
     if (ian.down) { this.cookFood(dt, null); return; }
     if (ian.state !== 'act') { ian.state = 'act'; ian.stateT = 0; if (this.phase === 'down' || this.phase === 'downCook') this.setPhase(this.phase === 'downCook' && Math.hypot(ian.pos.x - IAN_SPOT.x, ian.pos.z - IAN_SPOT.z) < 0.5 ? 'cook' : 'return'); }
     // barging him over (STAGE 5+): walk into him
     if (!this.feed && g.G.stage >= BARGE_STAGE && this.speed > 0.8) {
       const d = Math.hypot(ian.pos.x - P.head.x, ian.pos.z - P.head.z);
-      if (d < 0.45 * P.scale + 0.25) this.knockIan({ x: ian.pos.x - P.head.x, z: ian.pos.z - P.head.z }, 5.5);
+      if (d < 0.45 * P.scale + 0.25 && performance.now() - (this.bargeAt || 0) > 600) { this.bargeAt = performance.now(); this.hitIan(3, { x: ian.pos.x - P.head.x, z: ian.pos.z - P.head.z }); }
     }
     if (this.mpOn && this.net && !this.feed) for (const pl of this.net.players.values()) {      // (other players barging him)
       const av = pl.avatar; if (!av || !av.headPos) continue; const h = av.headPos(), prev = this.prevAv.get(pl.id), sp = prev ? Math.hypot(h.x - prev.x, h.z - prev.z) / Math.max(dt, 1e-3) : 0;
       this.prevAv.set(pl.id, { x: h.x, z: h.z });
-      if (((pl.pose && pl.pose.st) || 0) >= BARGE_STAGE && sp > 0.8 && !ian.down && Math.hypot(ian.pos.x - h.x, ian.pos.z - h.z) < 0.5 + 0.45 * STAGES[Math.min(STAGES.length - 1, pl.pose.st)].scale) this.knockIan({ x: ian.pos.x - h.x, z: ian.pos.z - h.z }, 5.5);
+      if (((pl.pose && pl.pose.st) || 0) >= BARGE_STAGE && sp > 0.8 && !ian.down && Math.hypot(ian.pos.x - h.x, ian.pos.z - h.z) < 0.5 + 0.45 * STAGES[Math.min(STAGES.length - 1, pl.pose.st)].scale && performance.now() - (this.bargeAt || 0) > 600) { this.bargeAt = performance.now(); this.hitIan(3, { x: ian.pos.x - h.x, z: ian.pos.z - h.z }); }
     }
     if (this.phase === 'cook') {
       this.cookFood(dt, ian);
@@ -326,17 +341,17 @@ export class BbqMode {
   broadcast(now) {
     if (!this.host || !this.mpOn || !this.net) return; this.bcastT = 0.5; void now;
     const t = this.ian && this.ian.mpTarget, net = this.net;      // (tg: who he's after; the host's own id when it's the host)
-    net.send({ t: 'bbqS', ph: this.phase, n: Math.round(this.nextT * 10) / 10, ko: this.stats.ko, gu: this.gaveUp ? 1 : 0, tg: t && t.id ? t.id : (net.id || ''), tn: String((t && t.id ? t.name : net.name) || '').slice(0, 24), f: this.food, at: roomNum('attacks') });
+    net.send({ t: 'bbqS', ph: this.phase, n: Math.round(this.nextT * 10) / 10, ko: this.stats.ko, h: this.hits || 0, nd: this.need || 15, gu: this.gaveUp ? 1 : 0, tg: t && t.id ? t.id : (net.id || ''), tn: String((t && t.id ? t.name : net.name) || '').slice(0, 24), f: this.food, at: roomNum('attacks') });
   }
-  onState(m) { if (this.host) return; const s = {}; s.ph = typeof m.ph === 'string' ? m.ph.slice(0, 10) : 'cook'; s.n = typeof m.n === 'number' && isFinite(m.n) ? m.n : 0; s.ko = Math.max(0, Math.min(KOS_TO_WIN, +m.ko || 0)); s.gu = !!m.gu; s.tg = typeof m.tg === 'string' ? m.tg : ''; s.tn = typeof m.tn === 'string' ? m.tn.slice(0, 24) : ''; s.f = m.f === 'hotdog' ? 'hotdog' : 'burger'; s.at = typeof m.at === 'number' ? m.at : 1; this.remote = s; this.stats.ko = s.ko; this.gaveUp = s.gu; this.food = s.f; }
+  onState(m) { if (this.host) return; const s = {}; s.ph = typeof m.ph === 'string' ? m.ph.slice(0, 10) : 'cook'; s.n = typeof m.n === 'number' && isFinite(m.n) ? m.n : 0; s.ko = Math.max(0, Math.min(KOS_TO_WIN, +m.ko || 0)); s.gu = !!m.gu; s.tg = typeof m.tg === 'string' ? m.tg : ''; s.tn = typeof m.tn === 'string' ? m.tn.slice(0, 24) : ''; s.f = m.f === 'hotdog' ? 'hotdog' : 'burger'; s.at = typeof m.at === 'number' ? m.at : 1; this.remote = s; this.stats.ko = s.ko; this.hits = Math.max(0, Math.min(15, +m.h || 0)); this.need = Math.max(10, Math.min(15, +m.nd || 15)); this.gaveUp = s.gu; this.food = s.f; }
   // (a joining player's game) the host says Ian's caught you
   onFeedMsg(m) { if (this.host || this.feed || !this.d.running) return; this.beginFeed(m.f === 'hotdog' ? 'hotdog' : 'burger'); }
   // (the host) how it went on their game
   onResult(m, p) {
     if (!this.host || this.phase !== 'feedR' || !p || p.id !== this.feedR) return; this.feedR = null;
     const st = Math.max(0, Math.min(STAGES.length - 1, +m.st || 0));
-    if (m.w) { this.stats.fought++; if (st >= SLAP_STAGE && this.ian) { const h = this.lastCtx ? this.lastCtx.head : this.ian.pos; this.knockIan({ x: this.ian.pos.x - h.x, z: this.ian.pos.z - h.z }, 4.5); } else { this.ian && this.ian.say(pick(LINES.pushed), 4); this.backToGrill(12); } }
-    else { this.stats.fed++; this.ian && this.ian.say(pick(LINES.fed), 4); this.backToGrill(12); }
+    if (m.w) { this.stats.fought++; if (this.ian) { const h = this.lastCtx ? this.lastCtx.head : this.ian.pos; this.ian.say(pick(LINES.pushed), 4); this.hitIan(3, { x: this.ian.pos.x - h.x, z: this.ian.pos.z - h.z }); if (!this.ian.down) this.backToGrill(12); } }
+    else { this.stats.fed++; this.ian && this.ian.say(pick(LINES.fed), 4); this.backToGrill(12); this.fedOne(p.id); }
   }
 
   // ---------------------------------------------------------------- the cut scene: fight him off
@@ -412,8 +427,7 @@ export class BbqMode {
       this.stats.fought++; sfx('punch', null, 1); sfx('cheer', null, 0.5);
       g.words.show('GET OFF, IAN!', P.head.clone().addScaledVector(P.fwd, 0.8 * P.scale).add({ x: 0, y: 0.15, z: 0 }), '#39ff14', 0.13 * P.scale, 1.2);
       if (this.host && !already && ian) {
-        if (G.stage >= SLAP_STAGE) this.knockIan({ x: ian.pos.x - P.head.x, z: ian.pos.z - P.head.z }, 4.5);
-        else { ian.say(pick(LINES.pushed), 4); const a = this.feedYaw; ian.rag.root.x += Math.sin(a) * 0.5; ian.rag.root.z += Math.cos(a) * 0.5; this.backToGrill(12); }
+        ian.say(pick(LINES.pushed), 4); const a = this.feedYaw; ian.rag.root.x += Math.sin(a) * 0.5; ian.rag.root.z += Math.cos(a) * 0.5; this.hitIan(3, { x: Math.sin(a), z: Math.cos(a) }); if (!ian.down) this.backToGrill(12);
       }
       if (!this.host && this.net) this.net.send({ t: 'bbqR', w: 1, st: G.stage });
     } else {
@@ -427,7 +441,7 @@ export class BbqMode {
       P.effect('noEat', 3); P.effect('dizzy', 3, { amp: 1.4 }); P.effect('slow', 4); P.effect('frozen', 1.2);
       G.fxTint = 0x6aaa3a; G.fxTintT = 3; G.fxTintOp = 0.2;
       try { navigator.vibrate && navigator.vibrate([120, 60, 200]); } catch (e) {}
-      if (this.host && ian) { ian.say(pick(LINES.fed), 4); this.backToGrill(12); }
+      if (this.host && ian) { ian.say(pick(LINES.fed), 4); this.backToGrill(12); this.fedOne(this.g.net && this.g.net.id || 'me'); }
       if (!this.host && this.net) this.net.send({ t: 'bbqR', w: 0, st: G.stage });
     }
     G.wristDirty = true; this.drawPanel();
@@ -495,15 +509,20 @@ export class BbqMode {
   // ---------------------------------------------------------------- the HUD and the receipt
   hudExtras(T) {
     const ko = this.stats.ko, st = this.g.G.stage, P = this.P;
-    const goal = this.gaveUp ? { t: '🏆 IAN GAVE UP!', c: '#39ff14' } : st < SLAP_STAGE ? { t: '💪 STAGE 3 TO FIGHT IAN', c: '#ffb37a', pulse: this.phase === 'force' } : { t: `🥊 KO IAN ${ko}/${KOS_TO_WIN}`, c: '#39ff14' };
+    const goal = this.gaveUp ? { t: '🏆 IAN GAVE UP!', c: '#39ff14' } : { t: `🥊 KO IAN ${ko}/${KOS_TO_WIN} · HITS ${Math.min(this.hits || 0, this.need || 15)}/${this.need || 15}`, c: '#39ff14', pulse: this.phase === 'force' };
     const chips = [T(), goal];
     if (!P.flatMode) { const pl = this.pill(this.state()); if (pl) chips.splice(1, 0, { t: pl.replace(/^\S+ /, ''), c: '#ff6b6b', pulse: /FORC|RUN/.test(pl) }); }      // (a headset has no red bar at the top: it's on the wrist)
     return { chips };
   }
   hudLine() { return `Ian KO ${this.stats.ko}/${KOS_TO_WIN} · ${(this.pill(this.state()) || '').replace(/^\S+ /, '')}`; }
+  // (host) someone's been force-fed: three times and that's the game. Five knock-downs and Ian gives up: that's the game too
+  fedOne(id) { if (!this.host) return; const m = this.fedBy || (this.fedBy = new Map()), n = (m.get(id) || 0) + 1; m.set(id, n);
+    if (n >= FEEDS_TO_LOSE && !this.over) { const who = id === 'me' || id === (this.g.net && this.g.net.id) ? null : ((this.g.net && this.g.net.players.get(id)) || {}).name;
+      setTimeout(() => { if (this.disposed) return; this.g.showBanner('FORCE-FED THREE TIMES!', who ? `${String(who).toUpperCase()}'S HAD THEIR FIVE A DAY. GAME OVER` : 'IAN WINS. GAME OVER'); this.ian && this.ian.say('Three healthy meals! You\'re a NEW MAN, Ronnie!', 5); this.finish(false); }, 1600); } }
+  finish(won) { if (this.over || !this.host) return; this.over = true; this.won = won; setTimeout(() => { if (!this.disposed && this.d.running) this.d.end(); }, 3200); }
   summary() {
     const s = this.stats;
-    return [['IAN KNOCKED OVER', `${s.ko} / ${KOS_TO_WIN}`], ['FORCE-FED', s.fed], ['FOUGHT HIM OFF', s.fought], ['OFF THE GRILL', s.ate],
+    return [['RESULT', this.won ? 'IAN GAVE UP! YOU WIN' : this.won === false ? 'FORCE-FED. IAN WINS' : 'TIME UP'], ['IAN KNOCKED OVER', `${s.ko} / ${KOS_TO_WIN}`], ['FORCE-FED', s.fed], ['FOUGHT HIM OFF', s.fought], ['OFF THE GRILL', s.ate],
       [this.gaveUp ? 'Ian: "Proper burgers next year. PROPER ones."' : s.fed === 0 ? 'Ian: "You didn\'t touch my tofu. Not once."' : 'Ian: "See? HEALTHY. Lewy, he loved it."', '']];
   }
   end() { if (this.feed) this.endFeed(null); if (this.ian) { this.ian.approach = 0; } this.hideProps(); if (this.fx && this.fx.setCountdown) this.fx.setCountdown(null); }

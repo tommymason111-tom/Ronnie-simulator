@@ -717,7 +717,7 @@ function updateTouchUI() {
   // food, so EAT only shows for the soda gun or a drink in your hand, THROW only while you're holding something;
   // BOSS FIGHT is mostly throwing, so THROW is the big button
   const m = director.mode, sweep = m === 'sweep', pub = !!director.runpub, boss = !!director.boss;
-  const key = `${sweep || (pub && !gun && !(held && held.def.drink)) ? 1 : 0}${sweep || (pub && !held) ? 1 : 0}${boss ? 1 : 0}`;
+  const key = `${sweep || (pub && !gun && !(held && held.def.drink)) ? 1 : 0}${sweep || (pub && !held) || m === 'date' ? 1 : 0}${boss ? 1 : 0}`;      // (DATE NIGHT: sat at the table, nothing to throw)
   if (key !== G.uiKey) { G.uiKey = key; const b = document.body.classList; b.toggle('ui-noeat', key[0] === '1'); b.toggle('ui-nothrow', key[1] === '1'); b.toggle('ui-throwbig', key[2] === '1'); b.toggle('ui-boss', key[2] === '1'); }
 }
 function mpAfterStart() { if (director.remote) mp.becomeClient(); }
@@ -1068,7 +1068,7 @@ body.flat.mpon #chat-log { display: flex; }
       for (const [el, left] of [[rpE, m8], [rpO, m8 + half + gap]]) { if (!el || !R(el)) continue; put(el, left, top); el.style.width = half + 'px'; el.style.maxHeight = cap + 'px'; el.style.overflow = 'hidden'; el.style.boxSizing = 'border-box'; el.dataset.tight = '1'; placed.push(R(el)); }
       y = Math.max(y, top + cap + gap); }
     else for (const el of [rpO, rpE]) if (el && el.dataset.tight) { el.dataset.tight = ''; el.style.width = ''; el.style.maxHeight = ''; el.style.overflow = ''; if (el === rpO) { el.style.width = 'min(230px,52vw)'; unput(el); el.style.right = 'max(10px,env(safe-area-inset-right))'; el.style.top = '62px'; } }
-    for (const id of ['imp-tasks', 'ph-feed', 'rp-events']) { const el = $(id); if (!el) continue; if (tight && id === 'rp-events') continue; if (!narrow || side) { unput(el); continue; } /* (on its side, a phone's left edge is the joystick's: these keep their own place) */ if (!R(el)) continue; put(el, x, y); const r = drop(el); if (r) { y = r.bottom + gap; placed.push(r); } }
+    for (const id of ['imp-tasks', 'ph-feed', 'rp-events']) { const el = $(id); if (!el) continue; if (id === 'rp-events' && (tight || R($('rp-orders')))) continue;      /* (Run the Pub's TO DO: placed by layout on an upright phone (beside ORDERS), otherwise by pubjobs.js (under ORDERS). Both moving it, it jumped between the two: the flicker) */ if (!narrow || side) { unput(el); continue; } /* (on its side, a phone's left edge is the joystick's: these keep their own place) */ if (!R(el)) continue; put(el, x, y); const r = drop(el); if (r) { y = r.bottom + gap; placed.push(r); } }
     if (net.connected) { log.style.left = x + 'px'; log.style.top = y + 'px'; let lr = log.children.length ? drop(log) : null;
       // (never down into the touch controls: on a landscape phone there's little room, so the oldest lines go first)
       // (the touch buttons it would run into: a phone on its side has SPRINT up beside it, so the lines go below any it'd
@@ -1363,7 +1363,7 @@ function selfBodyUpdate(dt) {
   selfBody.update(dt, player.vrEmoteHold ? { ...player.vrEmoteHold, st: G.stage } : live);
   // in VR your own arms aren't drawn on your body (your real hands are right there: the body's copy of them only lagged
   // behind and jittered about). Everyone else still sees them, smoothed. They're back for an emote, watched from out front
-  const r = selfBody.c.rag, hideArms = vr && !emo; if (!r.partHide) r.partHide = {};
+  const r = selfBody.c.rag, hideArms = !emo;      // (your own body's arms and hands: never on your own screen (phone, computer or headset): you've got the hand that eats and grabs. Shown in an emote, when the camera's round the front) if (!r.partHide) r.partHide = {};
   for (const n of ['uArmL', 'lArmL', 'uArmR', 'lArmR']) r.partHide[n] = hideArms;
   if (!r.handHide) return;
   if (hideArms) { r.handHide.lArmL = r.handHide.lArmR = true; selfBody.armsHid = true; } else if (selfBody.armsHid) { r.handHide.lArmL = r.handHide.lArmR = false; selfBody.armsHid = false; }
