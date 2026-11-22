@@ -751,16 +751,16 @@ function newGame(id, why) {
 // their own. null: the plain mode line.
 function hudExtras() {
   if (warm) return { chips: [{ t: net.host ? '▶ YOU START IT' : '⏳ WAITING FOR THE HOST', c: net.host ? '#39ff14' : '#ffd400', pulse: true }, { t: `👥 ${net.players.size + 1}`, c: '#9fd8ff' }] };
-  const d = director; if (window.__devMode || window.__devPending || !d.running || d.remote || d.imposter || d.prophunt || d.runpub) return null;
+  const d = director; if (window.__devMode || window.__devPending || !d.running || (d.remote && !d.bbqm) || d.imposter || d.prophunt || d.runpub) return null;      // (IAN'S BARBECUE: a guest's box too, from the host's word)
   const t = Math.max(0, d.timeLeft || 0), clock = `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`, m = d.mode, low = t > 0 && t < 15;
   const T = () => ({ t: '⏱ ' + clock, c: low ? '#ff5252' : '#ffffff', pulse: low });
+  if (m === 'bbq' && d.bbqm) return d.bbqm.hudExtras(T);
   const kcal = (n) => Math.round(n).toLocaleString('en-GB');
   if (d.boss) { const b = d.boss; if (!b.id) return { chips: [{ t: '👹 GET READY...', c: '#ff6b6b', pulse: true }] };
     return { box: { col: '#ff3b3b', label: `👹 ${String(b.def.name).toUpperCase()}`, big: Math.ceil(b.pct * 100) + '%', sub: 'BOSS HEALTH', bar: { k: b.pct, col: '#ff3b3b' },
       chips: [{ t: b.out > 0 ? `😵 OUT ${Math.ceil(b.out)}s` : ('❤'.repeat(Math.max(0, b.hearts)) || '💀'), c: '#ff6b6b' }, { t: `⚡ POWER x${b.power.toFixed(1)}`, c: '#ffd400' }] } }; }
   if (m === 'sweep' && d.sweep) return { box: { col: '#ffd400', label: '🛒 IN YOUR TROLLEY', big: kcal(d.sweep.total), unit: 'kcal', sub: `${d.sweep.items} ITEM${d.sweep.items === 1 ? '' : 'S'}`, bar: { k: t / (MODES.sweep.time || 90), col: low ? '#ff5252' : '#39ff14', text: clock + ' LEFT' } } };
   if (m === 'everyone') { if (!player.flatMode) { const ac = d.attackClock(); return { chips: [{ t: '⚠ ' + ac, c: /PROGRESS|ANY SECOND/.test(ac) ? '#ff5252' : '#ffd400', pulse: /PROGRESS/.test(ac) }] }; } return { chips: [{ t: `🍔 ${G.eaten} EATEN`, c: '#ffd400' }, { t: `👋 ${G.swats} SWATS`, c: '#9fd8ff' }] }; }      // (a phone or computer has the red NEXT ATTACK bar at the top; a headset's wrist shows it here)
-  if (m === 'bbq' && d.bbq) return { chips: [T(), { t: `🍖 ${d.bbq.ate} OFF THE GRILL`, c: '#ffb37a' }] };
   if (m === 'date' && d.date) { const c = Math.min(3, d.date.catches || 0); return { chips: [T(), { t: '💔'.repeat(c) + '🤍'.repeat(3 - c), c: '#fff' }, d.date.look ? { t: '👀 LOOKING!', c: '#ff5252', pulse: true } : { t: '😋 EAT NOW!', c: '#39ff14' }] }; }
   if (/^chonkoff/.test(m)) return { chips: [T(), { t: `🍔 ${G.eaten} EATEN`, c: '#ffd400' }] };
   if (m === 'roam') return { chips: [{ t: `🍔 ${G.eaten} EATEN`, c: '#ffd400' }] };      // (free roam: nothing to count down; the mode's name over the box says the rest)
@@ -1188,7 +1188,7 @@ const PAUSE_MODES = {
   chonkoff2: ['🆚', 'EAT-OFF · 2 PLAYERS', 'Pass-and-play: who eats more?'],
   chonkoffr: ['🏅', 'RANKED EAT-OFF', 'Everyone at once, 60 seconds: your online rating is on the line'],
   sweep: ['🛒', 'SUPERMARKET SWEEP', 'Grab the most calories. Dodge security'],
-  bbq: ['🍖', "IAN'S BARBECUE", 'Eat off the grill before Ian makes it healthy'],
+  bbq: ['🍖', "IAN'S BARBECUE", 'Get big enough to fight off Ian\'s healthy burgers'],
   date: ['💜', 'DATE NIGHT', 'Eat when Chloe looks away'],
   roam: ['🚶', 'FREE ROAM · WITH THE SQUAD', 'Have a look round. Everyone\'s about, nobody attacks'],
   roam0: ['🧍', 'FREE ROAM · JUST YOU', 'The place to yourself: no NPCs at all'],

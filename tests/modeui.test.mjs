@@ -7,7 +7,7 @@ import { launch, newPage, startGame, sleep, checker } from './lib/game.mjs';
 const MODES = [
   ['pub', 'everyone', { eat: true, thr: true, chips: /EATEN/ }],      // (the attack countdown is the red bar at the top on a phone)
   ['shop', 'sweep', { eat: false, thr: false, box: /TROLLEY/ }],
-  ['garden', 'bbq', { eat: true, thr: true, chips: /GRILL/ }],
+  ['garden', 'bbq', { eat: true, thr: true, chips: /IAN/ }],
   ['restaurant', 'date', { eat: true, thr: true, chips: /EAT NOW|LOOKING/ }],
   ['bedroom', 'chonkoff', { eat: true, thr: true, chips: /EATEN/ }],
   ['pub', 'runpub', { eat: false, thr: false }],

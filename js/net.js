@@ -55,6 +55,8 @@ const SCHEMA = {
   bossS: { 'b!': 'str', 'hp!': 'num', 'mx!': 'num', ph: 'num', st: 'str', a: 'str', at: 'num', x: 'num', z: 'num', y: 'num', s: 'num', dy: 'num', mi: 'arr', tm: 'num', o: 'num' },
   bossA: { 'k!': 'str', x: 'num', y: 'num', z: 'num', x0: 'num', y0: 'num', z0: 'num', x1: 'num', z1: 'num', r: 'num', r0: 'num', d: 'num', w: 'num', f: 'num', ph: 'num', s: 'str', a: 'str', it: 'str', ids: 'arr' },
   bossHit: { 'd!': 'num', p: 'v3', w: 'num' }, bossP: { hp: 'num', kd: 'num', mk: 'str' },
+  // IAN'S BARBECUE (bbqmode.js): the host's word on Ian, "he's caught you", and how the shoving match went
+  bbqS: { ph: 'str', n: 'num', ko: 'num', gu: 'num', tg: 'str', tn: 'str', f: 'str', at: 'num' }, bbqF: { f: 'str' }, bbqR: { w: 'num', st: 'num' },
   wx: { w: 'str', a: 'num', tm: 'num', c: 'str', ds: 'num' },
   rcheck: { 'k!': 'str', 'mode!': 'str' }, rready: { 'k!': 'str', r: 'num' }, rstat: { 'k!': 'str', ready: 'arr' }, rdone: { 'k!': 'str' }, warm: { 'mode!': 'str' },      // (the READY CHECK before a room's new game: readycheck.js)      // (the host's weather and time of day: weather.js)
   // PROP HUNT (prophunt.js)

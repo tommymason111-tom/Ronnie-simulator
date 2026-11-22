@@ -213,7 +213,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   const MODES = [
     { id: 'everyone', ico: '👥', name: 'THE WHOLE SQUAD', desc: 'The main game. Everyone is here, taking turns to attack you while you eat. A countdown shows the next one.', stars: 3, who: 'Everyone' },
     { id: 'sweep', ico: '🛒', name: 'SUPERMARKET SWEEP', desc: '90 seconds and a trolley in Lidl. Grab the most calories you can. Oliver and Aidan W are on security (Aidan W is slow: knee).', stars: 2, who: 'Oliver, Aidan W', place: 'shop' },
-    { id: 'bbq', ico: '🍖', name: "IAN'S BARBECUE", desc: "Round Lewis's house. Grab the food off the grill before Ian makes it healthy and throws it at you.", stars: 2, who: 'Ian, Lewis + the lads', place: 'garden' },
+    { id: 'bbq', ico: '🍖', name: "IAN'S BARBECUE", desc: "Round Lewis's house. Ian WILL make you eat a healthy burger. Pinch his proper ones, get big, fight back.", stars: 2, who: 'Ian, Lewis + the lads', place: 'garden' },
     { id: 'date', ico: '💜', name: 'DATE NIGHT', desc: "Eat when Chloe looks away. Three catches and it's salad.", stars: 2, who: 'Chloe + the lads', place: 'restaurant' },
     { id: 'eatoff', ico: '⏱️', name: 'EAT-OFF', desc: '60 seconds. Eat everything. On your own, or pass-and-play: who eats more?', stars: 1, who: '1 or 2 players' },
     { id: 'runpub', ico: '🍺', name: 'RUN THE PUB', desc: 'Work behind the bar at the Oysterfleet with Aidan, Connor and Chloe (Lewis is on the restaurant, Ben\'s in the kitchen). Serve the punters the right drinks, break up fights, catch runaway kids. Six-minute shift.', stars: 3, who: 'The staff, the locals, whoever turns up', place: 'pub' },
@@ -796,7 +796,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       runpub: ['Tip: pour the right drink, earn the tip', 'Tip: kids want soft drinks. Do NOT give them a Guinness.', 'Tip: a spilt pint needs mopping before someone slips', 'Ben is watching the till.'],
       chonkoff: ['Tip: 60 seconds. Eat everything.', 'Tip: chain bites for a combo', 'Your personal best is watching you.'], chonkoff2: ['Tip: pass the phone. No peeking.', 'Most eaten wins. Chew faster.'], chonkoffr: ['Ranked: beat everyone in the room to climb the leaderboard', 'Tip: combos. Combos win ranked games.', 'Your rating goes up for every mate you out-eat'],
       sweep: ['Tip: fill the trolley, dodge security', 'Tip: big items are worth more'], date: ['Tip: only eat when she looks away', 'Three strikes and the date\'s over'],
-      bbq: ['Tip: grab it off the grill', 'Tip: dodge the salad. It\'s a trap.'], roam: ['Tip: no attacks, no timer. Have a proper look round.'], roam0: ['Tip: the place to yourself. Have a proper look round.'],
+      bbq: ['Tip: pinch it off the grill while Ian\'s busy', 'Tip: when he gets you, tap like your life depends on it', 'Tip: STAGE 3 and you can slap him over'], roam: ['Tip: no attacks, no timer. Have a proper look round.'], roam0: ['Tip: the place to yourself. Have a proper look round.'],
     };
     window.__lsShow = (place, mode) => showLoading(document.getElementById('loadscreen'), place, mode);      // (tests)
     const loadTips = (mode) => (TIPS[mode] || TIPS[cardOf(mode)] || []).concat(TIPS.all);
@@ -804,7 +804,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     const CARDS = {
       everyone: { ac: '#ffd400', ac2: '#ff8a00', chips: [['🍔', 'Eat it all'], ['⚔️', 'Squad attacks'], ['🏆', '10 sizes']] },
       sweep:    { ac: '#4fb3ff', ac2: '#1e4ea8', chips: [['⏱️', '90 seconds'], ['🛒', 'Fill the trolley'], ['👮', 'Dodge security']] },
-      bbq:      { ac: '#ff9a3c', ac2: '#c2410c', chips: [['🍖', 'Off the grill'], ['🥗', 'Dodge the salad'], ['⏱️', '2 minutes']] },
+      bbq:      { ac: '#ff9a3c', ac2: '#c2410c', chips: [['🍖', 'Off the grill'], ['🥗', 'Fight off Ian'], ['💪', 'Get big']] },
       date:     { ac: '#e879f9', ac2: '#86198f', chips: [['👀', 'When she looks away'], ['❌', '3 strikes'], ['🍷', 'Date night']] },
       chonkoff: { ac: '#facc15', ac2: '#ca8a04', chips: [['⏱️', '60 seconds'], ['🍟', 'Eat everything'], ['🏆', 'Beat your best']] },
       chonkoffr:{ ac: '#ffb020', ac2: '#b45309', chips: [['⏱️', '60 seconds'], ['👥', 'Everyone at once'], ['🏅', 'Your rating']] },
@@ -856,9 +856,11 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
           { pic: 'lidl', title: 'GREEN GLOW = TROLLEY', lines: ['Grab anything that glows green', '🥦 Fruit and veg COST you: things come back out of the trolley', 'You\'re faster than normal: leg it round the shop'] },
           { pic: 'squad', who: ['Oliver', 'Aidan W'], title: 'SECURITY', lines: ['Oliver and Aidan W are on security', 'If they catch you, things come out of your trolley', 'Aidan W is slow (it\'s the knee). Oliver isn\'t'] } ],
         bbq: [
-          { pic: 'bbq', title: 'IAN\'S BARBECUE', lines: ['Round Lewis\'s house. Ian\'s on the grill', 'Grab the food off the barbecue and eat it before Ian gets to it', 'Fill your EAT METER before time runs out'] },
+          { pic: 'bbq', title: 'IAN\'S BARBECUE', lines: ['Round Lewis\'s house. Ian\'s on the grill, cooking proper burgers "for the lads"', 'Pinch them off the barbecue and eat them', 'Every bite fills your EAT METER and makes you BIGGER'] },
           controls,
-          { pic: 'bbq', title: 'IAN MAKES IT HEALTHY', lines: ['Leave food too long and Ian swaps it for veg', 'Then he throws it at you: ' + (vr ? 'swat it with a fast swing' : (pc ? 'click' : 'tap') + ' it to swat it'), 'Lewis is fetching plates. The lads will try to get in the way', C.pause] } ],
+          { pic: 'bbq:chase', title: 'HEALTHY SECONDS?', lines: ['Every so often Ian comes round with a HEALTHY one for you. It\'s tofu', 'First he asks. Then he insists. Then he CHASES you', 'The red bar at the top counts down to his next go'] },
+          { pic: 'bbq:feed', title: 'FIGHT HIM OFF', lines: ['If he catches you, he shoves it in your face', vr ? '🎮 Pull the triggers as fast as you can to push him off' : pc ? '🖱️ Click (or hammer any key) as fast as you can to push him off' : '👆 Tap the screen as fast as you can to push him off', 'Lose and you\'re FORCE-FED: BLEURGH, and your EAT METER drops'] },
+          { pic: 'bbq:big', title: 'GET BIG, FIGHT BACK', lines: ['The bigger you are, the easier he is to push off', 'STAGE 3: ' + (vr ? 'slap' : (pc ? 'click' : 'tap')) + ' him and over he goes. STAGE 5: just walk into him', 'Knock him over 3 times and he gives up for good', C.pause] } ],
         date: [
           { pic: 'date', title: 'DATE NIGHT', lines: ['Dinner with Chloe at La Grande Portion', 'Eat as much as you can... but ONLY when Chloe isn\'t looking', 'Three catches and it\'s salad. Game over'] },
           controls,
