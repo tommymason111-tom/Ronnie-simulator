@@ -1030,7 +1030,8 @@ body.flat.mpon #chat-log { display: flex; }
     if (compact) { let xr = innerWidth - Math.max(10, safeR()), top = null;
       let rowH = 0; for (const id of ROW) { const el = $(id), r = R(el); if (!r) continue; if (top === null) { top = r.top; rowH = r.height; } put(el, xr - r.width, top + Math.max(0, (rowH - r.height) / 2)); const r2 = R(el); xr = r2.left - gap; rightLeft = Math.min(rightLeft, r2.left); placed.push(r2); ry = Math.max(ry || 0, r2.bottom + gap); } }
     else for (const id of ['menu-btn', 'chat-btn', 'vc-bar']) { const el = $(id); if (el && el.dataset.rowed) { unput(el); } }
-    for (const id of compact ? ['rp-orders', 'snackscore'] : ['menu-btn', 'chat-btn', 'vc-bar', 'rp-orders', 'snackscore']) { const el = $(id), r = R(el); if (!r) continue;
+    const rpTight = compact && innerWidth < innerHeight && !(innerWidth >= 760);
+    for (const id of compact ? (rpTight ? ['snackscore'] : ['rp-orders', 'snackscore']) : ['menu-btn', 'chat-btn', 'vc-bar', 'rp-orders', 'snackscore']) { const el = $(id), r = R(el); if (!r) continue;
       if (ry !== null) el.style.top = ry + 'px'; const r2 = R(el); ry = r2.bottom + gap; rightLeft = Math.min(rightLeft, r2.left); placed.push(r2); }
     for (const id of ['menu-btn', 'chat-btn', 'vc-bar']) { const el = $(id); if (el) el.dataset.rowed = compact ? '1' : ''; }
     const rightBottom = ry === null ? 0 : ry;
@@ -1043,7 +1044,15 @@ body.flat.mpon #chat-log { display: flex; }
     let y = m ? m.bottom + gap : Math.max(10, safeT()); const x = m ? Math.max(6, m.left) : Math.max(10, safeL());
     if (bhr && bhr.left < x + 200) y = Math.max(y, bhr.bottom + gap);      // (nothing on the left goes up under the boss's bar)
     const drop = (el) => { let r = R(el); for (let k = 0; k < 8 && r; k++) { const hit = placed.find(p => over(r, p)); if (!hit) break; el.style.top = (hit.bottom + gap) + 'px'; r = R(el); } return r; };
-    for (const id of ['imp-tasks', 'ph-feed', 'rp-events']) { const el = $(id); if (!el) continue; if (!narrow || side) { unput(el); continue; } /* (on its side, a phone's left edge is the joystick's: these keep their own place) */ if (!R(el)) continue; put(el, x, y); const r = drop(el); if (r) { y = r.bottom + gap; placed.push(r); } }
+    // RUN THE PUB on an upright phone: TO DO (left) and ORDERS (right) side by side under the box, short versions of both
+    // (body.rp-tight), and never further down than 36% of the screen: the middle stays clear for the game and its banners
+    const rpO = $('rp-orders'), rpE = $('rp-events'), tight = compact && !side && innerHeight > innerWidth && !!R(rpO);
+    if (document.body.classList.contains('rp-tight') !== tight) document.body.classList.toggle('rp-tight', tight);
+    if (tight) { const m8 = Math.max(8, safeL()), half = Math.floor((innerWidth - 2 * m8 - gap) / 2), top = Math.round(Math.max(m ? m.bottom : 0, rightBottom - gap) + gap), cap = Math.max(70, Math.round(innerHeight * 0.36) - top);
+      for (const [el, left] of [[rpE, m8], [rpO, m8 + half + gap]]) { if (!el || !R(el)) continue; put(el, left, top); el.style.width = half + 'px'; el.style.maxHeight = cap + 'px'; el.style.overflow = 'hidden'; el.style.boxSizing = 'border-box'; el.dataset.tight = '1'; placed.push(R(el)); }
+      y = Math.max(y, top + cap + gap); }
+    else for (const el of [rpO, rpE]) if (el && el.dataset.tight) { el.dataset.tight = ''; el.style.width = ''; el.style.maxHeight = ''; el.style.overflow = ''; if (el === rpO) { el.style.width = 'min(230px,52vw)'; unput(el); el.style.right = 'max(10px,env(safe-area-inset-right))'; el.style.top = '62px'; } }
+    for (const id of ['imp-tasks', 'ph-feed', 'rp-events']) { const el = $(id); if (!el) continue; if (tight && id === 'rp-events') continue; if (!narrow || side) { unput(el); continue; } /* (on its side, a phone's left edge is the joystick's: these keep their own place) */ if (!R(el)) continue; put(el, x, y); const r = drop(el); if (r) { y = r.bottom + gap; placed.push(r); } }
     const chip = $('mp-chip');
     if (chip && side) { const cr = R(chip), pop = $('roster-pop'); if (cr && pop && R(pop)) put(pop, Math.max(6, Math.min(cr.left, innerWidth - R(pop).width - 6)), cr.bottom + 4); }
     else if (chip) { if (narrow && chip.classList.contains('on')) { put(chip, x, y); const cr = drop(chip); if (cr) { y = cr.bottom + gap; placed.push(cr); const pop = $('roster-pop'); if (pop && R(pop)) put(pop, Math.max(6, Math.min(cr.left, innerWidth - R(pop).width - 6)), cr.bottom + 4); } }
@@ -2044,7 +2053,7 @@ function meshBox(m) { const b = new THREE.Box3().setFromObject(m, true); if (b.i
   for (const X of [b.min.x, b.max.x]) for (const Y of [b.min.y, b.max.y]) for (const Z of [b.min.z, b.max.z]) { _nv.set(X, Y, Z).project(camera); if (_nv.z > 1) return null; const x = (_nv.x + 1) / 2 * W, y = (1 - _nv.y) / 2 * H; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
   return { x0, y0, x1, y1 }; }
 const noteHit = (a, b, m = 4) => a.x0 < b.x1 + m && a.x1 > b.x0 - m && a.y0 < b.y1 + m && a.y1 > b.y0 - m;
-const NOTE_DOM = ['nextAttack', 'hint', 'imp-alert', 'ph-top', 'ph-pop', 'pu', 'pu-hud', 'warm-bar', 'boss-hud', 'rp-jobpop', 'rp-note', 'mp-chip', 'chat-log'];
+const NOTE_DOM = ['nextAttack', 'hint', 'imp-alert', 'ph-top', 'ph-pop', 'pu', 'pu-hud', 'warm-bar', 'boss-hud', 'rp-jobpop', 'rp-note', 'rp-orders', 'rp-events', 'imp-tasks', 'ph-feed', 'mp-chip', 'chat-log'];
 function arbitrateNotes() {
   if (!player.flatMode || renderer.xr.isPresenting) { for (const c of cast) if (c.bubble && c.bubble.material.opacity === 0) c.bubble.material.opacity = 1; return; }
   camera.updateMatrixWorld(); camera.getWorldPosition(_ncp);

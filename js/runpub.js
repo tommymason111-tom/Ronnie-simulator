@@ -353,10 +353,11 @@ export class RunPub {
   }
   drawOrders(dt) {
     if ((this.ordersT = (this.ordersT || 0) - dt) > 0) return; this.ordersT = 0.25;
-    const list = this.waiting().slice(0, 6), vr = !this.g.player.flatMode;
-    const rows = list.map((c, i) => { const rp = c.rp, o = rp.order, k = 1 - rp.wait / rp.patience; return { icon: o.icon, guin: o.guin, name: o.name, who: c.name, k, kid: rp.kidBooze, how: i === 0 ? (rp.kidBooze ? 'they\'re a KID: give them a soft drink' : o.how) : '' }; });
+    const tight = document.body.classList.contains('rp-tight'), all = this.waiting(), list = all.slice(0, tight ? 3 : 6), vr = !this.g.player.flatMode;
+    const rows = list.map((c, i) => { const rp = c.rp, o = rp.order, k = 1 - rp.wait / rp.patience; return { icon: o.icon, guin: o.guin, name: o.name, who: c.name, k, kid: rp.kidBooze, how: i === 0 ? (rp.kidBooze ? (tight ? 'a KID: soft drink' : 'they\'re a KID: give them a soft drink') : (tight ? '' : o.how)) : '' }; });
     this.ordersEl.style.display = vr ? 'none' : 'block';
     this.ordersEl.innerHTML = '<div style="font:900 13px Arial Black,Arial;color:#ffd400;margin-bottom:3px">🧾 ORDERS</div>' + (rows.length ? rows.map(r => `<div style="margin:3px 0"><div style="display:flex;justify-content:space-between"><span>${r.guin ? GUIN_HTML : r.icon} ${r.name}${r.kid ? ' <b style="color:#ff5a5a">🧒</b>' : ''}</span><span style="color:#c9d3ff">${r.who}</span></div><div style="height:4px;background:rgba(255,255,255,0.2);border-radius:2px"><div style="height:4px;width:${Math.max(0, r.k) * 100}%;background:${r.k > 0.5 ? '#39ff14' : r.k > 0.25 ? '#ffd400' : '#ff3a3a'};border-radius:2px"></div></div>${r.how ? `<div style="color:#9fe;font-size:11px">➜ ${r.how}</div>` : ''}</div>`).join('') : '<div style="color:#c9d3ff">Nobody waiting. Wipe the bar.</div>');
+    if (tight && all.length > list.length) this.ordersEl.insertAdjacentHTML('beforeend', `<div style="color:#c9d3ff;font-size:11px;margin-top:2px">+${all.length - list.length} more waiting</div>`);
     // VR wrist
     const P = this.g.player, h = (P.hands || []).find(h => h.handedness === 'left' && h.tracked);
     this.wrist.visible = vr && !!h; if (!this.wrist.visible) return;

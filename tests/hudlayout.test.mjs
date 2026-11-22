@@ -40,6 +40,9 @@ export default async function () {
           const hit = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
           return ['chat-log', 'mp-chip', 'boss-hud', 'imp-tasks', 'ph-feed', 'rp-events', 'rp-orders'].flatMap(i => ['btn-sprint', 'btn-emote', 'btn-eat', 'btn-throw', 'knob'].filter(j => hit(box(i), box(j))).map(j => `${i} on ${j}`)); });
         C.ok(!onBtns.length, `${W}x${H} ${mode}: panels over the touch buttons: ${onBtns.join(', ')}`);
+        if (mode === 'runpub' && H > W) { const rp = await ev(() => ['rp-orders', 'rp-events'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return { t: r.top, b: r.bottom, l: r.left, r: r.right }; }));
+          C.ok(Math.abs(rp[0].t - rp[1].t) < 2 && (rp[1].r <= rp[0].l || rp[0].r <= rp[1].l), `${W}x${H} runpub: ORDERS and TO DO aren't side by side: ${JSON.stringify(rp)}`);
+          C.ok(rp.every(q => q.b <= H * 0.36 + 2), `${W}x${H} runpub: ORDERS / TO DO run down into the middle of the screen: ${JSON.stringify(rp)}`); }
         if (mode === 'boss' && (W < 760 || H < 500)) C.ok(await ev(() => { const v = (id) => { const e = document.getElementById(id); return !!e && !!e.offsetParent && getComputedStyle(e).visibility !== 'hidden' && e.classList.contains('show'); }; return !v('btn-emote') && getComputedStyle(document.getElementById('mp-chip')).display === 'none'; }), `${W}x${H} boss: the EMOTE button or the room chip is still on a phone's screen`);
         if (mode === 'boss') C.ok(!info.meter, `${W}x${H} boss: the top-left box is showing (the boss's bar says it all)`);
         if (W < 760 || H < 500) C.ok(await ev(() => document.body.classList.contains('compact-ui') && document.getElementById('menu-btn').textContent.trim() === '⏸'), `${W}x${H} ${mode}: the corner's buttons aren't the compact row`);
