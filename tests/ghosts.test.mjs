@@ -80,6 +80,16 @@ export default async function () {
         return { mine: b.id === m.me, char: av && av.p && av.p.char, want: pl && pl.char, shown, flat: ch ? +(ch.y - (RS.room.floorAt ? RS.room.floorAt(ch.x, ch.z) : 0)).toFixed(2) : null, near: ch ? +Math.hypot(ch.x - b.at.x, ch.z - b.at.z).toFixed(2) : null, blob: b.grp.children.some(o => o.geometry && o.geometry.type === 'CapsuleGeometry'), order: pool && out ? out.renderOrder > pool.renderOrder : false }; }); });
       C.ok(bs.length === 2, `${p.pname}: ${bs.length} bodies, not 2`);
       for (const x of bs) C.ok(x.shown && !x.blob && x.char === x.want && x.flat != null && x.flat < 0.45 && x.near < 1.2 && x.order, `${p.pname}: a body${x.mine ? ' (their own)' : ''} isn't their character laid out on the floor: ${JSON.stringify(x)}`); }
+    // WATCH: a ghost watching someone is locked on them, and turning the view swings the camera round them (they're the
+    // pivot): still the same distance away, still looking straight at them, from somewhere else
+    { const wid = info[living[0]].id, look = () => ev(A, (id) => { const T = RS.THREE, m = RS.director.imposter, q = m.posOf(id), cam = RS.player.camera, c = cam.getWorldPosition(new T.Vector3()), d = cam.getWorldDirection(new T.Vector3()), to = new T.Vector3(q.x, q.y - 0.3, q.z).sub(c);
+        return { d: +to.length().toFixed(2), aim: +d.dot(to.normalize()).toFixed(3), at: [+c.x.toFixed(2), +c.y.toFixed(2), +c.z.toFixed(2)] }; }, wid);
+      await ev(A, (id) => { RS.director.imposter.spect = id; }, wid); await sleep(1500); const w1 = await look();
+      await ev(A, () => { RS.player.flatYaw += 1.6; RS.player.flatPitch = -0.9; }); await sleep(1500); const w2 = await look();
+      const moved = Math.hypot(w1.at[0] - w2.at[0], w1.at[2] - w2.at[2]);
+      C.ok(Math.abs(w1.d - 2.3) < 0.4 && Math.abs(w2.d - 2.3) < 0.4 && w1.aim > 0.97 && w2.aim > 0.97 && moved > 1.2 && w2.at[1] > w1.at[1] + 0.5, `WATCH isn't locked on them, orbiting: ${JSON.stringify({ w1, w2, moved })}`);
+      await ev(A, () => { RS.director.imposter.spect = null; }); await sleep(600);
+      C.ok(await ev(A, () => !RS.player.camLift), `the WATCH camera's height stayed after watching`); }
     // the living see no ghost at all
     for (const i of living) { const lv = await ev(pages[i], (ids) => { const m = RS.director.imposter; return { copies: m.ghostPups ? m.ghostPups.size : 0, ghost: !!RS.player.ghost,
         shown: ids.filter(id => { const pl = RS.net.players.get(id), av = pl && pl.avatar; return av && !av.impHidden && !av.impBody; }) }; }, [idA, idB]);

@@ -488,7 +488,9 @@ export class Director {
     const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
     const vs = who.mpTarget && who.mpTarget.id ? who.mpTarget.name : (this.mp && this.mp.on ? (this.mp.net.name || 'the host') : null);
     if (this.mp && this.mp.on && this.mp.host) this.mp.net.send({ t: 'announce', who: who.id, key, target: vs, targetId: who.mpTarget && who.mpTarget.id });
-    this.showAnnounce(who, key, who.mpTarget && who.mpTarget.id ? vs : null);
+    const tid = who.mpTarget && who.mpTarget.id; this.showAnnounce(who, key, tid ? vs : (this.mp && this.mp.on ? 'YOU' : null));
+    // (everyone else sees a target over the head of whoever's getting it)
+    if (tid && fx && fx.markTarget) fx.markTarget(() => { const pl = this.mp.net.players.get(tid); return pl && pl.avatar && pl.avatar.headPos ? pl.avatar.headPos() : null; }, who.name || who.id, (SQUAD[who.id] && SQUAD[who.id].color) || '#ff1744', ANNOUNCE_T + 5);
     sfx('attack_in', null, 0.7);
     this.markUsed(who, key);
     // the attack WILL happen once the pop-up has been up for ANNOUNCE_T seconds. Noah's
@@ -499,7 +501,7 @@ export class Director {
   showAnnounce(who, key, vsName = null) {
     const g = this.g, fx = g.fx;
     const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
-    if (fx) fx.showCard({ vs: vsName, name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
+    if (fx) fx.showCard({ key, vs: vsName, name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
     else g.showBanner(A.title, A.sub);
     if (this.remote) { sfx('attack_in', null, 0.7); setTimeout(() => fx && fx.hideCard(), (ANNOUNCE_T + 0.3) * 1000); }
   }

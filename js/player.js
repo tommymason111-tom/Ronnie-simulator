@@ -554,7 +554,7 @@ export class Player {
     this.camera.rotation.set(this.flatPitch, this.flatYaw, 0, 'YXZ');
     // darts zoom: lean your view in towards where you're looking (your hand and the dart come with it)
     this.zoomLean = (this.zoomLean || 0) + ((this.zoom ? (this.zoomDist || 1.4) : 0) - (this.zoomLean || 0)) * Math.min(1, dt * 7);
-    this.camera.position.set(0, 1.6, 0);
+    this.camera.position.set(0, 1.6 + (this.camLift || 0), 0);      // (camLift: a camera off your own head: Imposter's WATCH, orbiting the player you're watching)
     // a hit lands: the view jolts and settles (a few quick decaying wobbles; never in VR)
     if (this.shakeA > 0.002) { this.shakeT = (this.shakeT || 0) + dt; const a = this.shakeA, t = this.shakeT * 38;
       this.camera.position.x += a * 0.035 * Math.sin(t); this.camera.position.y += a * 0.025 * Math.sin(t * 1.37 + 1); this.camera.rotation.z += a * 0.02 * Math.sin(t * 0.9 + 2);

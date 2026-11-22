@@ -94,7 +94,8 @@ function paintingTex(seed) {
   });
 }
 
-export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
+export function buildRestaurant(k, scene, { chairsAt = [], tables = [] } = {}) {
+  let curT = null;      // (the dining table being laid: its chairs are its seats. Run the Pub numbers the tables from these, one number each)
   const P = (geo, color, pos = [0, 0, 0], rot = [0, 0, 0], scl = [1, 1, 1]) => k.parts.push(part(geo, color, pos, rot, scl));
   const R = (x0, z0, x1, z1, h, y, color, opts) => k.box(Math.abs(x1 - x0), h, Math.abs(z1 - z0), (x0 + x1) / 2, y ?? h / 2, (z0 + z1) / 2, color, opts);
   const blk = (x0, z0, x1, z1, y1 = H) => k.blockers.push({ x0, x1, z0, z1, y1 });
@@ -246,7 +247,7 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
     { const g = new THREE.BoxGeometry(0.44, 0.075, 0.03, 6, 1, 1), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const t = p.getX(i) / 0.22; p.setZ(i, p.getZ(i) + 0.035 * t * t); } g.computeVertexNormals(); L(g, C, x, z, ry, 0, 0.93, 0.245, 0.07); }   // curved top rail
     L(new THREE.BoxGeometry(0.38, 0.03, 0.025), C, x, z, ry, 0, 0.6, 0.225, 0.07);
     for (const t of [-0.12, -0.04, 0.04, 0.12]) L(new THREE.BoxGeometry(0.045, 0.3, 0.014), C, x, z, ry, t, 0.755, 0.235 + Math.abs(t) * 0.04, 0.07);   // slats
-    k.blockers.push({ x0: x - 0.24, x1: x + 0.24, z0: z - 0.24, z1: z + 0.24, y1: 0.5 }); chairsAt.push([x, z, ry]);
+    k.blockers.push({ x0: x - 0.24, x1: x + 0.24, z0: z - 0.24, z1: z + 0.24, y1: 0.5 }); chairsAt.push([x, z, ry]); if (curT) curT.seats.push([x, z]);
   };
   // ---------------------------------------------------------------- a laid place: plate, folded napkin, knife, fork, spoon, wine glass, water glass
   const setting = (px, pz, fx, fz, y) => {
@@ -263,6 +264,7 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
   // ---------------------------------------------------------------- a dressed table: white cloth to the knees, places laid, candles
   const TY = 0.77;
   const clothTable = (x, z, w, d, ry, perSide, ends = false) => {
+    curT = { x, z, seats: [] }; tables.push(curT);
     L(new THREE.BoxGeometry(w, 0.03, d), CLOTH, x, z, ry, 0, TY - 0.015, 0);
     for (const sd of [-1, 1]) { L(new THREE.BoxGeometry(w + 0.02, 0.3, 0.006), 0xf1f0ea, x, z, ry, 0, TY - 0.15, sd * (d / 2 + 0.005)); L(new THREE.BoxGeometry(0.006, 0.3, d + 0.02), 0xf1f0ea, x, z, ry, sd * (w / 2 + 0.005), TY - 0.15, 0); }
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) { L(new THREE.BoxGeometry(0.05, 0.3, 0.05), 0xf6f5ef, x, z, ry, sx * (w / 2 + 0.01), TY - 0.16, sz * (d / 2 + 0.01), 0, 0, Math.PI / 4); L(new THREE.BoxGeometry(0.055, 0.47, 0.055), 0x4a2a16, x, z, ry, sx * (w / 2 - 0.1), 0.235, sz * (d / 2 - 0.1)); }   // corner folds, legs
@@ -285,6 +287,7 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
     spawnsOn.push([x, z]);
   };
   const roundTable = (x, z, r, n) => {
+    curT = { x, z, seats: [] }; tables.push(curT);
     P(new THREE.CylinderGeometry(r, r, 0.03, 40), CLOTH, [x, TY - 0.015, z]); P(new THREE.CylinderGeometry(r + 0.008, r + 0.06, 0.34, 40, 1, true), 0xf1f0ea, [x, TY - 0.17, z]);
     P(new THREE.CylinderGeometry(0.06, 0.08, TY - 0.34, 12), 0x4a2a16, [x, (TY - 0.34) / 2, z]); P(new THREE.CylinderGeometry(0.32, 0.36, 0.04, 20), 0x4a2a16, [x, 0.02, z]);
     k.colliders.push({ min: new THREE.Vector3(x - r * 0.75, TY - 0.05, z - r * 0.75), max: new THREE.Vector3(x + r * 0.75, TY, z + r * 0.75) });
@@ -308,11 +311,12 @@ export function buildRestaurant(k, scene, { chairsAt = [] } = {}) {
   clothTable(-26.7, 7.0, 1.5, 0.9, along(me[7]), 2);                           // bottom-left corner, along the angled wall
   clothTable(-24.3, 8.35, 0.9, 1.5, 0, 0); { /* chairs for the two long-ways tables are laid by perSide on their long sides */ }
   clothTable(-21.0, 8.35, 0.9, 1.5, 0, 0);
-  for (const tx of [-24.3, -21.0]) for (const [lz, sd] of [[-0.35, 1], [0.35, 1], [-0.35, -1], [0.35, -1]]) { const cx = tx + sd * 0.79, cz = 8.35 + lz; chair(cx, cz, Math.atan2(cx - tx, 0)); setting(tx + sd * 0.29, cz, -sd, 0, TY); }
+  for (const tx of [-24.3, -21.0]) for (const [lz, sd] of [[-0.35, 1], [0.35, 1], [-0.35, -1], [0.35, -1]]) { curT = tables.find(t => t.x === tx && t.z === 8.35); const cx = tx + sd * 0.79, cz = 8.35 + lz; chair(cx, cz, Math.atan2(cx - tx, 0)); setting(tx + sd * 0.29, cz, -sd, 0, TY); }
   clothTable(-16.95, 6.5, 1.5, 0.9, along(me[5]), 2);                          // bottom-right corner, along the angled wall
 
   // ---------------------------------------------------------------- the side room: three long banqueting tables
   for (const z of [-5.6, -2.4, 0.8]) clothTable(-34.1, z, 6.2, 1.0, 0, 9, true);
+  curT = null;
 
   // ---------------------------------------------------------------- brass chandeliers with yellow drum shades (like the photo)
   const chandelier = (x, z, arms = 5, drop = 0.75, TOPH = H) => {

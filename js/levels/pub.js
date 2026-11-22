@@ -1638,7 +1638,7 @@ export function buildPub(scene) {
       }
     }
   }
-  buildRestaurant(k, scene, { chairsAt });
+  const diningTables = []; buildRestaurant(k, scene, { chairsAt, tables: diningTables });
   buildCarPark(k, scene, { brick: oldBrickTex() });
   // the pub's outside, from the photo of the real Oysterfleet (see oysterExterior.js): soft orange-red brick on every
   // wall that faces out, up to where the black weatherboarding of the floors above starts
@@ -1670,7 +1670,7 @@ export function buildPub(scene) {
   room.indoors = (x, z) => z < GZ - 0.02 && inside(x, z);      // (weather.js: indoors = under the pub's roofs; the beer garden's out in it)
   room.skyRefs = { dome: sky.mesh.material };                    // (weather.js: the sun moves round this sky)
   for (const o of scene.children.slice(sceneStart)) if (o.isMesh || o.isInstancedMesh) { o.updateMatrix(); o.updateMatrixWorld(true); o.matrixAutoUpdate = false; }   // (static: no per-frame matrix work)
-  room.chairsAt = chairsAt; room.dormant = dorm; room.tvs = tvs; k.room = room;
+  room.chairsAt = chairsAt; room.diningTables = diningTables; room.dormant = dorm; room.tvs = tvs; k.room = room;
   room.barSpots = barSpots.concat([-6.4, -4.6, -2.8, -1.0, 0.8].map(z => ({ x: -18.1, z, yaw: Math.PI / 2 })));   // (the pub bar, and the restaurant's)
   // From the pub you can only see the restaurant down the corridor, through its doorway in the pub's left wall:
   // anything of the restaurant's outside that line of sight is behind walls, so it isn't drawn.

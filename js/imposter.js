@@ -870,7 +870,17 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     if (this.phase === 'meeting' || this.phase === 'eject') { P.flatMove = { x: 0, z: 0 }; }
     if (this.vented) { P.flatMove = { x: 0, z: 0 }; const v = this.vented; if (this.hd(P.head, V(...v.at)) > 0.4) this.teleport(v.at[0], v.at[1]); }
     // ghost watching someone: stand just behind them
-    if (this.spect && (!me || !me.alive)) { const q = this.posOf(this.spect), pl = this.net.players.get(this.spect); if (q && this.alive(this.spect) && P.flatMode) { const qq = pl && pl.pose && pl.pose.q ? new THREE.Quaternion(...pl.pose.q) : null, f = qq ? new THREE.Vector3(0, 0, -1).applyQuaternion(qq).setY(0).normalize() : new THREE.Vector3(0, 0, -1); this.teleport(q.x - f.x * 1.8, q.z - f.z * 1.8, Math.atan2(-f.x, -f.z)); } else this.spect = null; }
+    // WATCH: locked on them, and your look turns the camera round them (they're the pivot): drag / the right stick / the
+    // mouse to go round, up over them or down low. It starts behind them, looking the way they look
+    if (this.spect && (!me || !me.alive)) { const q = this.posOf(this.spect), pl = this.net.players.get(this.spect);
+      if (q && this.alive(this.spect) && P.flatMode) {
+        if (this.spectWas !== this.spect) { this.spectWas = this.spect; const qq = pl && pl.pose && pl.pose.q ? new THREE.Quaternion(...pl.pose.q) : null, f = qq ? new THREE.Vector3(0, 0, -1).applyQuaternion(qq).setY(0).normalize() : new THREE.Vector3(0, 0, -1); P.flatYaw = Math.atan2(-f.x, -f.z) - P.rig.rotation.y; P.flatPitch = -0.3; }
+        P.flatPitch = THREE.MathUtils.clamp(P.flatPitch, -1.25, 0.3);
+        const yw = P.flatYaw + P.rig.rotation.y, pt = P.flatPitch, fx = -Math.sin(yw) * Math.cos(pt), fy = Math.sin(pt), fz = -Math.cos(yw) * Math.cos(pt), D = 2.3, piv = { x: q.x, y: q.y - 0.3, z: q.z };
+        const ex = piv.x - fx * D, ez = piv.z - fz * D, base = P.rig.position.y, ey = Math.max(base + 0.35, piv.y - fy * D);
+        this.teleport(ex, ez); P.camLift = ey - (base + 1.6);
+      } else { this.spect = null; } }
+    if (!this.spect && (this.spectWas || P.camLift)) { this.spectWas = null; P.camLift = 0; }
     // markers: my jobs still to do; the fixes when something's sabotaged
     for (const [key, m] of this.marks) {
       let on = false; if (this.phase === 'play' && me) { if (TASK[key]) on = me.tasks.includes(key) && !me.done.has(key); else if (key === 'fuse') on = !!(this.sab && this.sab.k === 'lights'); else on = !!(this.sab && this.sab.k === 'keg' && !this.sab.fixed[Number(key.slice(5))]); }
@@ -996,7 +1006,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     } catch (e) { console.warn('ghost warm-up', e); }
   }
   dispose() {
-    for (const gp of (this.ghostPups || new Map()).values()) gp.dispose(); this.ghostPups = null; if (this.ghostEl) { this.ghostEl.remove(); this.ghostEl = null; } this.g.player.ghost = false;
+    for (const gp of (this.ghostPups || new Map()).values()) gp.dispose(); this.ghostPups = null; if (this.ghostEl) { this.ghostEl.remove(); this.ghostEl = null; } this.g.player.ghost = false; this.g.player.camLift = 0;
     this.dim(false); if (this.camsGame) { this.camsGame.dispose(); this.camsGame = null; }
     this.panel.close(true); this.panel.wrap.remove(); this.g.scene.remove(this.panel.mesh, this.panel.dot); this.g.scene.remove(this.grp);
     for (const el of [this.ui, this.splash, this.alertEl, this.mapEl, this.sabEl, this.style, this.tasksEl]) el && el.remove(); if (this.g.player.wrist && this.g.player.flatMode) this.g.player.wrist.visible = true;

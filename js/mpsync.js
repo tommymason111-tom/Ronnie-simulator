@@ -346,7 +346,10 @@ export class MPSync {
   // the attack lands: on whoever it's aimed at
   sendStun(who, key) { const t = who.mpTarget; if (!t || !t.id) return false; this.net.send({ t: 'stun', to: t.id, who: who.id, key }); return true; }
   on_stun(m) { const c = this.cast.find(x => x.id === m.who) || this.tommy; this.director.stun(c, m.key, true); }
-  on_announce(m) { if (this.host) return; this.director.showAnnounce && this.director.showAnnounce(this.cast.find(x => x.id === m.who) || { id: m.who, name: (SQUAD[m.who] || {}).name || m.who }, m.key, m.targetId && m.targetId === this.net.id ? null : m.target); }
+  on_announce(m) { if (this.host) return; const who = this.cast.find(x => x.id === m.who) || { id: m.who, name: (SQUAD[m.who] || {}).name || m.who }, mine = m.targetId && m.targetId === this.net.id;
+    this.director.showAnnounce && this.director.showAnnounce(who, m.key, mine ? 'YOU' : m.target);
+    // (someone else is getting it: a target over their head. No targetId: it's the host)
+    if (!mine && this.fx && this.fx.markTarget) { const pl = () => m.targetId ? this.net.players.get(m.targetId) : [...this.net.players.values()].find(p => p.host); this.fx.markTarget(() => { const p = pl(); return p && p.avatar && p.avatar.headPos ? p.avatar.headPos() : null; }, who.name || m.who, (SQUAD[m.who] && SQUAD[m.who].color) || '#ff1744', 7); } }
   on_coming(m) { if (this.host) return; const c = this.cast.find(x => x.id === m.who); if (!c) return; const mine = m.target === this.net.id; this.fx && this.fx.coming(c, mine ? null : m.name); }
 
   // ------------------------------------------------------------------ getting hit by food, punching each other

@@ -1124,14 +1124,17 @@ function setPaused(on) {
   paused = on; player.menuLock = on; pauseEl.classList.toggle('on', on); document.body.classList.toggle('paused', on);      // (body.paused: anything that floats over the game (the dev button, the voice bar...) steps aside for the menu)
   pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-chars', 'show-ctrls', 'show-modes', 'show-music', 'show-tv', 'show-set', 'show-mix'); delete pauseEl.dataset.from; vrPause && vrPause.close(); }
   if (on) { const guest = !!(net.connected && !net.host);   // multiplayer: only the host changes the game or restarts it
-    document.getElementById('pause-mode').style.display = guest ? 'none' : ''; document.getElementById('pause-restart').style.display = guest ? 'none' : ''; document.getElementById('pause-char').style.display = net.connected ? '' : 'none';
+    document.getElementById('pause-mode').style.display = guest ? 'none' : ''; for (const id of ['pause-restart', 'pause-restart2']) { const b = document.getElementById(id); b.style.display = ''; b.textContent = guest ? '🔄 ASK FOR A RESTART' : '🔄 RESTART ROUND'; }      // (a guest can't restart it, but can ask the host) document.getElementById('pause-char').style.display = net.connected ? '' : 'none';
     const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = (t ? t.textContent : '') + (guest ? ' · the host picks the game' : ''); try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
   setMuted(on || soundOff);
 }
 let soundOff = false;
 document.getElementById('menu-btn').addEventListener('click', () => setPaused(true));
 document.getElementById('pause-resume').addEventListener('click', () => { initAudio(); setPaused(false); });
-document.getElementById('pause-restart').addEventListener('click', () => { hostNewGame(curMode()); });
+// RESTART ROUND (on the pause menu and in its SETTINGS too): the host restarts it for everyone; a guest asks the host
+// (a message in the chat, over their head, at most once every 10 seconds)
+const restartTap = () => { if (net.connected && !net.host) { const n = performance.now(); if (n - (G.askRestartAt || -1e9) < 10000) { showBanner('ALREADY ASKED', 'the host decides'); return; } G.askRestartAt = n; mp.chat('🔄 Can we restart the round?'); setPaused(false); showBanner('ASKED THE HOST', 'to restart the round'); return; } hostNewGame(curMode()); };
+document.getElementById('pause-restart').addEventListener('click', restartTap); document.getElementById('pause-restart2').addEventListener('click', restartTap);
 function curMode() { return director.mode ? director.fullMode : chosenMode(); }
 // the FPS / ping display (switched on and off from the pause menu; remembered on this device)
 const statsEl = document.createElement('div'); statsEl.id = 'net-stats';

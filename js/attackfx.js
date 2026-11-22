@@ -30,59 +30,118 @@ export class AttackFX {
   }
 
   // ---------------------------------------------------------------- the attack card
-  showCard({ name, title, sub, icon, color = '#c62828', style = null, vs = null, top: topLine = null }) {      // (top: the card's own top line instead of "NAME ATTACKS!": the boss fight's cards)
-    const g = this.cardCanvas.getContext('2d'), w = 1024, h = 420;
-    g.clearRect(0, 0, w, h);
-    // drop shadow + panel in the person's colour with a yellow comic border
-    g.fillStyle = 'rgba(0,0,0,0.45)'; roundRect(g, 22, 26, w - 36, h - 36, 46); g.fill();
-    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, shade(color, 1.25)); gr.addColorStop(1, shade(color, 0.7));
-    g.fillStyle = gr; roundRect(g, 10, 10, w - 36, h - 36, 46); g.fill();
-    if (style === 'portugal') {   // Portugal design: green and red flag halves, gold trim
-      g.save(); roundRect(g, 10, 10, w - 36, h - 36, 46); g.clip();
-      g.fillStyle = '#046a38'; g.fillRect(0, 0, 400, h); g.fillStyle = '#da291c'; g.fillRect(400, 0, w, h);
-      g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, h - 120, w, 120); g.restore();
-    }
-    g.lineWidth = 14; g.strokeStyle = style === 'portugal' ? '#ffcc29' : '#ffd400'; roundRect(g, 10, 10, w - 36, h - 36, 46); g.stroke();
-    // comic burst behind the icon
-    g.save(); g.translate(170, 205); g.fillStyle = '#fff3b0';
-    g.beginPath(); for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2, r = i % 2 ? 105 : 150; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); g.fill();
-    g.font = '150px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(icon || '!', 0, 8);
-    g.restore();
-    // name tag, title, effect
+  // Every attack has its own card: its own look (a gig ticket for Dylan, a boarding pass for Ben, a Polaroid for Oliver,
+  // an X-ray for Aidan W's knee...), its own way in (dropped and bouncing, spun in, stamped down, flashed up...) and its
+  // own bits flying off it (bubbles, hearts, shamrocks, music notes, embers...). In multiplayer, everyone who isn't the
+  // target is told who's getting it: "OLIVER ➜ BETH" and the line itself says BETH, not YOU.
+  showCard({ name, title, sub, icon, color = '#c62828', style = null, vs = null, top: topLine = null, key = null }) {      // (top: the card's own top line instead of "NAME ATTACKS!": the boss fight's cards)
+    const g = this.cardCanvas.getContext('2d'), w = 1024, h = 420, th = THEMES[key] || (style === 'portugal' ? THEMES.siu : null) || { enter: 'slam', parts: 'star' };
+    if (vs && vs !== 'YOU') { title = aimAt(title, vs); sub = sub && aimAt(sub, vs); }
+    const c0 = th.bg ? th.bg[0] : shade(color, 1.25), c1 = th.bg ? th.bg[1] : shade(color, 0.7), edge = th.edge || '#ffd400';
+    g.clearRect(0, 0, w, h); g.save();
+    // the card's shape: a ticket (notches and a tear line), or the usual rounded one
+    const shape = () => { roundRect(g, 10, 10, w - 36, h - 36, th.ticket ? 22 : 46); if (th.ticket) { g.moveTo(10 + 270 + 26, 10); g.arc(10 + 270, 10, 26, 0, Math.PI, false); g.moveTo(10 + 270 + 26, h - 26); g.arc(10 + 270, h - 26, 26, 0, Math.PI, true); } };
+    g.fillStyle = 'rgba(0,0,0,0.45)'; g.translate(12, 16); g.beginPath(); shape(); g.fill('evenodd'); g.setTransform(1, 0, 0, 1, 0, 0);
+    const gr = g.createLinearGradient(0, 0, w * 0.3, h); gr.addColorStop(0, c0); gr.addColorStop(1, c1);
+    g.beginPath(); shape(); g.fillStyle = gr; g.fill('evenodd');
+    g.save(); g.beginPath(); shape(); g.clip('evenodd'); pattern(g, th.pat, w, h); g.restore();
+    g.beginPath(); shape(); g.lineWidth = 14; g.strokeStyle = edge; g.stroke();
+    if (th.ticket) { g.setLineDash([14, 12]); g.lineWidth = 5; g.strokeStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.moveTo(280, 44); g.lineTo(280, h - 60); g.stroke(); g.setLineDash([]); }
+    // the badge behind the icon: each theme's own (a burst, a round mat, a film frame...)
+    g.save(); g.translate(158, 200); badge(g, th.badge || 'burst', th.badgeCol || '#fff3b0');
+    g.font = '138px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#000'; g.fillText(icon || '!', 0, 8); g.restore();
+    // the top line: who's attacking (and who they're attacking), on a tab
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-    g.font = `900 44px ${FONT}`; g.fillStyle = '#ffd400'; { const top = topLine || (vs ? `${name.toUpperCase()} IS ATTACKING ${vs.toUpperCase()}!` : `${name.toUpperCase()} ATTACKS!`); let f = 44; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(top).width > w - 380 && f > 20); g.fillText(top, 330, 92); }
-    let size = 64; const words = title.split(' '), maxW = w - 380;
-    let lines;
-    for (; size > 30; size -= 4) {
-      g.font = `900 ${size}px ${FONT}`; lines = []; let cur = '';
+    const top = topLine || (vs ? `${name.toUpperCase()}  ➜  ${vs.toUpperCase()}` : `${name.toUpperCase()} ATTACKS!`);
+    { let f = 42; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(top).width > w - 400 && f > 20); const tw = g.measureText(top).width;
+      g.fillStyle = vs ? '#ff1744' : 'rgba(0,0,0,0.55)'; roundRect(g, 312, 40, tw + 36, 64, 18); g.fill(); g.fillStyle = vs ? '#fff' : (th.topCol || '#ffd400'); g.fillText(top, 330, 88); }
+    let size = 64; const words = title.split(' '), maxW = w - 380; let lines;
+    for (; size > 30; size -= 4) { g.font = `900 ${size}px ${FONT}`; lines = []; let cur = '';
       for (const wd of words) { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > maxW && cur) { lines.push(cur); cur = wd; } else cur = t; }
-      lines.push(cur);
-      if (lines.length * size * 1.05 <= 190) break;
-    }
+      lines.push(cur); if (lines.length * size * 1.05 <= 190) break; }
     g.lineJoin = 'round';
-    lines.forEach((ln, i) => { const y = 160 + i * size * 1.05; g.lineWidth = 12; g.strokeStyle = '#111'; g.strokeText(ln, 330, y); g.fillStyle = '#fff'; g.fillText(ln, 330, y); });
-    if (sub) { g.font = `900 46px ${FONT}`; g.lineWidth = 10; g.strokeStyle = '#111'; g.strokeText(sub, 330, h - 58); g.fillStyle = '#ffd400'; g.fillText(sub, 330, h - 58); }
+    lines.forEach((ln, i) => { const y = 170 + i * size * 1.05; g.lineWidth = 13; g.strokeStyle = '#111'; g.strokeText(ln, 330, y); g.fillStyle = th.ink || '#fff'; g.fillText(ln, 330, y); });
+    if (sub) { let f = 46; do { g.font = `900 ${f}px ${FONT}`; f -= 2; } while (g.measureText(sub).width > maxW && f > 24); g.lineWidth = 10; g.strokeStyle = '#111'; g.strokeText(sub, 330, h - 56); g.fillStyle = th.subCol || '#ffd400'; g.fillText(sub, 330, h - 56); }
+    g.restore();
     this.cardTex.needsUpdate = true;
-    this.cardT = 0; this.cardOut = -1; this.card.visible = true;
+    this.cardTh = th; this.cardT = 0; this.cardOut = -1; this.card.visible = true; this.cardPartT = 0; this.cardFlash = th.enter === 'flash' ? 1 : 0;
+  }
+  // bits flying off the card (in front of your eyes, so in the camera's space)
+  cardBit(kind) {
+    const T = BIT[kind]; if (!T) return; if (!this.bitTex) this.bitTex = {}; const tex = this.bitTex[kind] || (this.bitTex[kind] = T.glyph ? glyphTex(T.glyph, T.col) : this.dotTex);
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, color: T.glyph ? 0xffffff : new THREE.Color(T.col) })); s.renderOrder = 41; s.frustumCulled = false;
+    const c = this.card, side = Math.random() < 0.5 ? -1 : 1, x = c.position.x + (T.from === 'edge' ? side * 0.3 * c.scale.x : (Math.random() - 0.5) * 0.55 * c.scale.x), y = c.position.y + (T.from === 'top' ? 0.13 * c.scale.y : T.from === 'bottom' ? -0.12 * c.scale.y : (Math.random() - 0.5) * 0.2 * c.scale.y);
+    s.position.set(x, y, -0.72); const sz = (T.size || 0.035) * (0.7 + Math.random() * 0.6); s.scale.setScalar(sz);
+    const v = new THREE.Vector3((T.vx || 0) * (T.from === 'edge' ? side : Math.random() - 0.5) * 2, (T.vy || 0.1) * (0.6 + Math.random() * 0.8), 0);
+    this.camera.add(s); (this.cardParts || (this.cardParts = [])).push({ s, v, life: T.life || 1, max: T.life || 1, sz, spin: (Math.random() - 0.5) * (T.spin || 0), grav: T.grav || 0 });
   }
   updateCard(dt) {
+    // (the bits already flying carry on, even after the card's gone)
+    if (this.cardParts) for (let i = this.cardParts.length - 1; i >= 0; i--) { const p = this.cardParts[i]; p.life -= dt; p.v.y -= p.grav * dt; p.s.position.addScaledVector(p.v, dt); p.s.material.rotation += p.spin * dt; p.s.material.opacity = Math.min(1, p.life / p.max * 2); if (p.life <= 0) { this.camera.remove(p.s); p.s.material.dispose(); this.cardParts.splice(i, 1); } }
     if (this.cardT < 0) return;
     this.cardT += dt;
-    const t = this.cardT, c = this.card, s = this.player.scale || 1;
-    // stays up (centred, big) until the attack actually starts, then flies off
+    const t = this.cardT, c = this.card, th = this.cardTh || {};
+    // stays up (centred, big) until the attack actually starts, then goes
     if (this.cardOut < 0 && t > 8) this.hideCard();
-    let x = 0, y = 0.05, rot = 0, sc = 1.15, op = 1;
+    let x = 0, y = 0.05, rot = 0, sc = 1.15, op = 1, sx = 1;
+    const E = 0.45, u = Math.min(1, t / E), k = Math.max(0, t - E);
     if (this.vr) {                     // headset: smaller, in the middle of your view, a smooth pop (nothing flying in from the side)
-      const u = Math.min(1, t / 0.3); y = 0.02; sc = 0.6 * (0.85 + 0.15 * easeOutBack(u)); op = u; }
-    else if (t < 0.35) { const u = t / 0.35; x = 0.9 * (1 - easeOutBack(u)); rot = -0.5 * (1 - u); sc = 0.7 + 0.45 * u; }       // slams in from the right
-    else { const k = t - 0.35; rot = Math.sin(k * 18) * 0.08 * Math.exp(-k * 3); sc = 1.15 + Math.sin(k * 5) * 0.04; }  // judders, settles, pulses
-    if (this.cardOut >= 0) {
-      this.cardOut += dt; const u = Math.min(1, this.cardOut / 0.35);
-      if (this.vr) y += u * 0.08;      // (a phone/PC: shrinks and fades where it is: flying off took it through the eat meter in the corner)
-      op = Math.min(op, 1 - u); sc *= 1 - u * (this.vr ? 0.15 : 0.4);
-      if (u >= 1) { c.visible = false; this.cardT = -1; this.cardOut = -1; return; }
+      const v = Math.min(1, t / 0.3); y = 0.02; sc = 0.6 * (0.85 + 0.15 * easeOutBack(v)); op = v; }
+    else {
+      switch (th.enter) {
+        case 'drop': y = 0.05 + (u < 1 ? 0.6 * (1 - u) * (1 - u) : 0) + (t < 1.1 ? Math.abs(Math.sin(Math.max(0, t - E) * 9)) * 0.05 * Math.exp(-Math.max(0, t - E) * 5) : 0); sc = 1.15 * (u < 1 ? 1 : 1 + 0.06 * Math.exp(-k * 8) * Math.sin(k * 30)); break;      // falls in and bounces
+        case 'left': x = -0.95 * (1 - easeOutBack(u)); rot = 0.4 * (1 - u); sc = 0.8 + 0.35 * u; break;      // charges in from the left
+        case 'spin': rot = (1 - easeOutBack(u)) * Math.PI * 2; sc = 1.15 * easeOutBack(u); break;      // spins in
+        case 'zoom': sc = 1.15 * (u < 1 ? 0.1 + 1.1 * easeOutBack(u) : 1); op = u; break;      // from far away, right up to your face
+        case 'stamp': sc = 1.15 * (u < 1 ? 2.6 - 1.6 * u * u : 1); op = Math.min(1, u * 2); break;      // stamped down onto the screen
+        case 'flash': sc = 1.15 * (0.9 + 0.1 * easeOutBack(u)); op = u; break;      // a white flash, then there it is
+        case 'flicker': op = u < 1 ? (Math.sin(t * 70) > -0.3 ? 1 : 0.15) : 1; sc = 1.15; break;      // flickers on like an X-ray light box
+        case 'swing': { const a = 0.9 * Math.exp(-t * 2.6) * Math.cos(t * 7); rot = a; y = 0.05 + (u < 1 ? 0.5 * (1 - u) : 0); x = Math.sin(a) * 0.05; break; }      // swings on a line, like it's been reeled in
+        case 'fly': x = 1.0 * (1 - u) * (1 - u); y = 0.05 + 0.25 * (1 - u) * (1 - u) - 0.04 * Math.sin(u * Math.PI); rot = -0.35 * (1 - u); sc = 0.7 + 0.45 * u; break;      // flies in like a plane coming in to land
+        case 'rise': y = 0.05 - 0.6 * (1 - easeOutBack(u)); sc = 1.15; break;      // comes up from the bottom, like heat
+        case 'pop': sc = 1.15 * easeOutBack(u); sx = u < 1 ? 1 + 0.25 * Math.sin(u * Math.PI) : 1; break;      // pops up like a phone notification
+        default: if (t < 0.35) { const v = t / 0.35; x = 0.9 * (1 - easeOutBack(v)); rot = -0.5 * (1 - v); sc = 0.7 + 0.45 * v; }      // slams in from the right
+      }
+      // once it's in: its own way of sitting there
+      if (u >= 1) switch (th.idle) {
+        case 'wobble': rot += Math.sin(k * 3.2) * 0.07; x += Math.sin(k * 1.6) * 0.02; break;      // (dizzy: a pint too many)
+        case 'shake': x += (Math.random() - 0.5) * 0.012; y += (Math.random() - 0.5) * 0.012; break;      // (fizzing)
+        case 'bob': y += Math.sin(k * 4) * 0.012; rot += Math.sin(k * 2) * 0.03; break;
+        case 'beat': sc *= 1 + 0.05 * Math.max(0, Math.sin(k * 9)); break;      // (to the music)
+        case 'jig': rot += Math.sin(k * 10) * 0.06; y += Math.abs(Math.sin(k * 10)) * 0.015; break;
+        default: if (th.enter !== 'swing') { rot += Math.sin(k * 18) * 0.06 * Math.exp(-k * 3); sc *= 1 + Math.sin(k * 5) * 0.03; }
+      }
+      // its bits
+      if (th.parts && this.cardOut < 0 && (this.cardPartT -= dt) <= 0) { this.cardPartT = BIT[th.parts] ? BIT[th.parts].every || 0.12 : 0.12; this.cardBit(th.parts); if (t < 0.6) this.cardBit(th.parts); }
     }
-    c.position.set(x, y * 0.9, -0.75); c.rotation.set(0, 0, rot); c.scale.setScalar(sc); c.material.opacity = op;
+    if (this.cardOut >= 0) {
+      this.cardOut += dt; const v = Math.min(1, this.cardOut / 0.35);
+      if (this.vr) y += v * 0.08;      // (a phone/PC: shrinks and fades where it is: flying off took it through the eat meter in the corner)
+      op = Math.min(op, 1 - v); sc *= 1 - v * (this.vr ? 0.15 : 0.4); rot += v * (th.enter === 'spin' ? 1.2 : 0);
+      if (v >= 1) { c.visible = false; this.cardT = -1; this.cardOut = -1; this.flashEl && (this.flashEl.style.opacity = 0); return; }
+    }
+    c.position.set(x, y * 0.9, -0.75); c.rotation.set(0, 0, rot); c.scale.set(sc * sx, sc, sc); c.material.opacity = op;
+    // Oliver's: the camera flash going off first (a white screen fading)
+    if (this.cardFlash > 0 && !this.vr) { this.cardFlash = Math.max(0, this.cardFlash - dt * 2.2); if (!this.flashEl) { const f = document.createElement('div'); f.style.cssText = 'position:fixed;inset:0;background:#fff;pointer-events:none;z-index:19;opacity:0;transition:none'; document.body.appendChild(f); this.flashEl = f; } this.flashEl.style.opacity = this.cardFlash; }
+  }
+  // a marker over the player being attacked (multiplayer, on everyone else's screen): a red target and "OLIVER ➜"
+  markTarget(getPos, name, color = '#ff1744', dur = 7) {
+    if (!this.tgt) { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 300; this.tgtCv = cv; this.tgtTex = new THREE.CanvasTexture(cv); this.tgtTex.colorSpace = THREE.SRGBColorSpace;
+      this.tgt = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tgtTex, transparent: true, depthTest: false, depthWrite: false })); this.tgt.renderOrder = 13; this.tgt.visible = false; this.scene.add(this.tgt); }
+    const g = this.tgtCv.getContext('2d'); g.clearRect(0, 0, 256, 300);
+    g.font = `900 34px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; let f = 34; while (g.measureText(name.toUpperCase() + ' ➜').width > 236 && f > 16) { f -= 2; g.font = `900 ${f}px ${FONT}`; }
+    const tw = g.measureText(name.toUpperCase() + ' ➜').width; g.fillStyle = color; roundRect(g, 128 - tw / 2 - 12, 4, tw + 24, 48, 14); g.fill(); g.lineWidth = 4; g.strokeStyle = '#111'; g.stroke(); g.fillStyle = '#fff'; g.fillText(name.toUpperCase() + ' ➜', 128, 30);
+    g.translate(128, 170); for (const [r, lw] of [[84, 12], [52, 10]]) { g.beginPath(); g.arc(0, 0, r, 0, 7); g.lineWidth = lw + 6; g.strokeStyle = '#111'; g.stroke(); g.lineWidth = lw; g.strokeStyle = '#ff1744'; g.stroke(); }
+    for (let i = 0; i < 4; i++) { g.save(); g.rotate(i * Math.PI / 2); g.fillStyle = '#111'; g.fillRect(-7, -112, 14, 46); g.fillStyle = '#ff1744'; g.fillRect(-4, -110, 8, 42); g.restore(); }
+    g.beginPath(); g.arc(0, 0, 14, 0, 7); g.fillStyle = '#ff1744'; g.fill(); g.setTransform(1, 0, 0, 1, 0, 0);
+    this.tgtTex.needsUpdate = true; this.tgtPos = getPos; this.tgtT = 0; this.tgtDur = dur; this.tgt.visible = true;
+  }
+  updateTarget(dt) {
+    if (!this.tgt || !this.tgt.visible) return;
+    this.tgtT += dt; let p = null; try { p = this.tgtPos && this.tgtPos(); } catch (e) { p = null; }
+    if (!p || this.tgtT > this.tgtDur) { this.tgt.visible = false; return; }
+    const t = this.tgtT, pop = Math.min(1, t / 0.3), pulse = 1 + 0.08 * Math.sin(t * 9), fade = Math.min(1, (this.tgtDur - t) / 0.5), d = this.camera.getWorldPosition(_v).distanceTo(p), big = Math.max(1, d / 4);
+    this.tgt.position.set(p.x, p.y + 0.55 + 0.05 * Math.sin(t * 4), p.z); this.tgt.scale.set(0.42 * easeOutBack(pop) * pulse * big, 0.49 * easeOutBack(pop) * pulse * big, 1); this.tgt.material.opacity = fade; this.tgt.material.rotation = 0;
   }
 
   // the "NEXT ATTACK IN 12" counter at the top of the view (null hides it).
@@ -142,7 +201,7 @@ export class AttackFX {
     this.items.push({ obj, t: 0, dur, update, parent: this.scene, base: obj.position.clone() });
     return obj;
   }
-  removeAll() { for (const it of this.items) it.parent.remove(it.obj); this.items = []; for (const p of this.parts) this.scene.remove(p.sprite); this.parts = []; this.endCutscene(); }
+  removeAll() { if (this.cardParts) { for (const p of this.cardParts) { this.camera.remove(p.s); p.s.material.dispose(); } this.cardParts = []; } if (this.tgt) this.tgt.visible = false; if (this.flashEl) this.flashEl.style.opacity = 0; for (const it of this.items) it.parent.remove(it.obj); this.items = []; for (const p of this.parts) this.scene.remove(p.sprite); this.parts = []; this.endCutscene(); }
 
   // ---------------------------------------------------------------- particles
   notes(pos, n = 1) {
@@ -266,6 +325,7 @@ export class AttackFX {
   }
 
   update(dt) {
+    this.updateTarget(dt);
     this.updateCard(dt);
     this.updateCutscene(dt);
     this.updateComing(dt);
@@ -311,3 +371,82 @@ function tallFrame(g, film, t) {
   const px = ((t * 120) % (W + 200)) - 100, py = fy + fh + (H - fy - fh) / 2; g.font = '80px serif'; g.fillText('✈️', px, py);
   g.font = '900 30px Arial Black, Arial'; g.lineWidth = 8; g.strokeStyle = '#111'; g.strokeText('NEW HAIRLINE INCOMING', W / 2, H - 50); g.fillStyle = '#fff'; g.fillText('NEW HAIRLINE INCOMING', W / 2, H - 50);
 }
+
+// ---------------------------------------------------------------- each attack's card: look, way in, way of sitting, bits
+const THEMES = {
+  trip:    { bg: ['#8d5a2b', '#3e2410'], pat: 'dots', enter: 'drop', idle: 'bob', parts: 'ball', badge: 'round', badgeCol: '#f5d7a1' },            // Tommy's final ball: dropped in, bouncing
+  tackle:  { bg: ['#2e8b3a', '#124d1c'], pat: 'pitch', enter: 'left', parts: 'dust', badge: 'shield', badgeCol: '#ffffff', edge: '#ffffff' },     // Noah: charges in across a rugby pitch
+  beer:    { bg: ['#f6b21b', '#9a5b06'], pat: 'bubbles', enter: 'zoom', idle: 'wobble', parts: 'bubble', badge: 'round', badgeCol: '#fff8e1', foam: true, edge: '#fffbe6' },      // Aidan: a pint glass, foam on top, dizzy
+  dating:  { bg: ['#ff5c8a', '#b0124a'], pat: 'hearts', enter: 'pop', idle: 'bob', parts: 'heart', badge: 'round', badgeCol: '#ffffff', edge: '#ffffff' },     // Harry: a dating app notification
+  pepsi:   { bg: ['#0b2a7a', '#020a24'], pat: 'fizz', enter: 'slam', idle: 'shake', parts: 'fizz', badge: 'round', badgeCol: '#e3f2fd', edge: '#e53935' },     // Ethan: a Pepsi Max can, fizzing
+  jig:     { bg: ['#169b62', '#0b5a38'], pat: 'tricolour', enter: 'spin', idle: 'jig', parts: 'shamrock', badge: 'burst', badgeCol: '#fff3d6', edge: '#ff883e' },      // Connor: green, white and orange, jigging
+  siu:     { bg: ['#046a38', '#da291c'], pat: 'portugal', enter: 'zoom', parts: 'gold', badge: 'burst', badgeCol: '#ffe082', edge: '#ffcc29' },      // Lewis: Portugal, gold
+  bbq:     { bg: ['#e8501c', '#4e1206'], pat: 'flames', enter: 'rise', idle: 'shake', parts: 'ember', badge: 'burst', badgeCol: '#ffe0b2', edge: '#ffb300' },      // Ian's barbecue: up in flames
+  rod:     { bg: ['#0288d1', '#01325a'], pat: 'waves', enter: 'swing', parts: 'drop', badge: 'round', badgeCol: '#e1f5fe', edge: '#ffffff' },      // Ian's rod: reeled in on a line
+  diet:    { bg: ['#8bc34a', '#33691e'], pat: 'notepad', enter: 'stamp', parts: 'leaf', badge: 'round', badgeCol: '#f1f8e9', edge: '#ffffff' },      // Chloe: a diet plan, stamped
+  knee:    { bg: ['#263845', '#05090c'], pat: 'xray', enter: 'flicker', parts: 'ouch', badge: 'cross', badgeCol: '#ffffff', edge: '#90caf9', subCol: '#90caf9' },      // Aidan W: an X-ray on a light box
+  flash:   { bg: ['#fafafa', '#cfd8dc'], pat: 'polaroid', enter: 'flash', parts: 'sparkle', badge: 'film', badgeCol: '#212121', edge: '#212121', topCol: '#212121' },     // Oliver: a Polaroid, after the flash
+  oasis:   { bg: ['#262626', '#3d2a0c'], pat: 'gig', enter: 'left', idle: 'beat', parts: 'note', badge: 'round', badgeCol: '#ffd54f', ticket: true, edge: '#ffd54f' },      // Dylan: a gig ticket, to the beat
+  nutmeg:  { bg: ['#00a37a', '#004d38'], pat: 'pitch', enter: 'spin', parts: 'ball2', badge: 'round', badgeCol: '#ffffff', edge: '#ffffff' },      // Alfie: spun round on the pitch
+  turkey:  { bg: ['#e30a17', '#7a0710'], pat: 'pass', enter: 'fly', idle: 'bob', parts: 'cloud', badge: 'crescent', badgeCol: '#ffffff', ticket: true, edge: '#ffffff' },      // Ben: a boarding pass to Turkey, flown in
+};
+// the bits: glyph, colour, where from, speed, how long, how often
+const BIT = {
+  ball: { glyph: '🟤', col: '#8d5a2b', from: 'bottom', vy: 0.25, grav: 0.9, vx: 0.15, life: 1.0, every: 0.25, size: 0.04, spin: 4 },
+  dust: { glyph: '💨', col: '#fff', from: 'edge', vx: 0.25, vy: 0.04, life: 0.8, every: 0.15 },
+  bubble: { col: '#fff8e1', from: 'bottom', vy: 0.18, vx: 0.03, life: 1.2, every: 0.07, size: 0.02 },
+  heart: { glyph: '💖', col: '#ff4f7b', from: 'top', vy: 0.12, vx: 0.06, life: 1.3, every: 0.18, spin: 1 },
+  fizz: { col: '#bbdefb', from: 'top', vy: 0.3, vx: 0.14, grav: 0.5, life: 0.9, every: 0.04, size: 0.014 },
+  shamrock: { glyph: '☘️', col: '#2e7d32', from: 'top', vy: 0.15, vx: 0.12, life: 1.2, every: 0.16, spin: 3 },
+  gold: { glyph: '★', col: '#ffd400', from: 'edge', vy: 0.12, vx: 0.2, life: 1.0, every: 0.08, spin: 4 },
+  ember: { col: '#ffab40', from: 'bottom', vy: 0.22, vx: 0.05, life: 1.0, every: 0.05, size: 0.016 },
+  drop: { glyph: '💧', col: '#4fc3f7', from: 'bottom', vy: 0.1, vx: 0.08, grav: 0.6, life: 0.9, every: 0.14 },
+  leaf: { glyph: '🥬', col: '#7cb342', from: 'top', vy: -0.04, vx: 0.1, grav: 0.2, life: 1.3, every: 0.2, spin: 2 },
+  ouch: { glyph: '⚡', col: '#ffeb3b', from: 'edge', vy: 0.06, vx: 0.12, life: 0.6, every: 0.22 },
+  sparkle: { glyph: '✦', col: '#ffffff', from: 'edge', vy: 0.05, vx: 0.2, life: 0.7, every: 0.07, spin: 6 },
+  note: { glyph: '♫', col: '#ffd54f', from: 'top', vy: 0.14, vx: 0.08, life: 1.2, every: 0.16, spin: 1 },
+  ball2: { glyph: '⚽', col: '#fff', from: 'edge', vy: 0.1, vx: 0.3, life: 0.8, every: 0.3, spin: 9 },
+  cloud: { glyph: '☁️', col: '#fff', from: 'edge', vy: 0.0, vx: 0.18, life: 1.4, every: 0.28, size: 0.05 },
+  star: { glyph: '★', col: '#ffd400', from: 'edge', vy: 0.1, vx: 0.18, life: 0.9, every: 0.15, spin: 4 },
+};
+// "...YOU..." to everyone else: their name. ("ETHAN HITS YOU WITH A PEPSI MAX ATTACK!" -> "ETHAN HITS BETH WITH...")
+export function aimAt(s, who) {
+  const N = String(who).toUpperCase();
+  return String(s).replace(/\bYOU HAVE\b/g, N + ' HAS').replace(/\bYOU'RE\b/g, N + "'S").replace(/\bYOUR\b/g, N + "'S").replace(/\bYOU\b/g, N).replace(/\bRONNIE\b/g, N);
+}
+// the background patterns
+function pattern(g, k, w, h) {
+  g.save();
+  const rnd = mulberry(k ? k.length * 97 : 1);
+  if (k === 'dots') { g.fillStyle = 'rgba(255,255,255,0.09)'; for (let y = 20; y < h; y += 40) for (let x = (y / 40 % 2) * 20; x < w; x += 40) { g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill(); } }
+  else if (k === 'pitch') { for (let x = 0; x < w; x += 110) { g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(x, 0, 55, h); } g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 5; g.beginPath(); g.moveTo(w * 0.62, 0); g.lineTo(w * 0.62, h); g.stroke(); g.beginPath(); g.arc(w * 0.62, h / 2, 70, 0, 7); g.stroke(); }
+  else if (k === 'bubbles') { for (let i = 0; i < 46; i++) { g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 2; g.beginPath(); g.arc(rnd() * w, rnd() * h, 3 + rnd() * 9, 0, 7); g.stroke(); } g.fillStyle = '#fffbe6'; g.beginPath(); g.moveTo(0, 0); g.lineTo(w, 0); g.lineTo(w, 34); for (let x = w; x >= 0; x -= 44) g.quadraticCurveTo(x - 22, 62 + rnd() * 10, x - 44, 34); g.closePath(); g.fill(); }
+  else if (k === 'hearts') { g.font = '40px sans-serif'; g.fillStyle = 'rgba(255,255,255,0.14)'; for (let i = 0; i < 26; i++) g.fillText('♥', rnd() * w, rnd() * h); }
+  else if (k === 'fizz') { g.fillStyle = 'rgba(255,255,255,0.12)'; for (let i = 0; i < 120; i++) { g.beginPath(); g.arc(rnd() * w, rnd() * h, 1 + rnd() * 3, 0, 7); g.fill(); } g.fillStyle = 'rgba(229,57,53,0.85)'; g.beginPath(); g.moveTo(0, h * 0.78); g.bezierCurveTo(w * 0.3, h * 0.6, w * 0.6, h * 0.98, w, h * 0.72); g.lineTo(w, h * 0.8); g.bezierCurveTo(w * 0.6, h * 1.06, w * 0.3, h * 0.68, 0, h * 0.86); g.fill(); g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(0, h * 0.86, w, 4); }
+  else if (k === 'tricolour') { g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(w * 0.6, 0, w * 0.14, h); g.fillStyle = 'rgba(255,136,62,0.5)'; g.fillRect(w * 0.74, 0, w * 0.3, h); g.font = '46px sans-serif'; g.fillStyle = 'rgba(255,255,255,0.12)'; for (let i = 0; i < 12; i++) g.fillText('☘', rnd() * w * 0.6, rnd() * h); }
+  else if (k === 'portugal') { g.fillStyle = '#046a38'; g.fillRect(0, 0, 400, h); g.fillStyle = '#da291c'; g.fillRect(400, 0, w, h); g.fillStyle = 'rgba(255,204,41,0.9)'; g.beginPath(); g.arc(400, h / 2, 44, 0, 7); g.fill(); g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, h - 120, w, 120); }
+  else if (k === 'flames') { for (let i = 0; i < 18; i++) { const x = rnd() * w, hh = 80 + rnd() * 150; const gr = g.createLinearGradient(0, h, 0, h - hh); gr.addColorStop(0, 'rgba(255,214,0,0.5)'); gr.addColorStop(1, 'rgba(255,82,0,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(x - 40, h); g.quadraticCurveTo(x - 30, h - hh * 0.5, x, h - hh); g.quadraticCurveTo(x + 30, h - hh * 0.5, x + 40, h); g.fill(); } g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 8; for (let x = 20; x < w; x += 60) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x - 80, h); g.stroke(); } }
+  else if (k === 'waves') { g.strokeStyle = 'rgba(255,255,255,0.16)'; g.lineWidth = 6; for (let y = 30; y < h; y += 42) { g.beginPath(); for (let x = 0; x <= w; x += 20) g.lineTo(x, y + Math.sin(x / 40 + y) * 8); g.stroke(); } g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 3; g.beginPath(); g.moveTo(w * 0.9, 0); g.lineTo(w * 0.9, h * 0.3); g.stroke(); }
+  else if (k === 'notepad') { g.fillStyle = 'rgba(255,255,255,0.9)'; g.fillRect(300, 0, w, h); g.strokeStyle = 'rgba(66,133,244,0.35)'; g.lineWidth = 2; for (let y = 60; y < h; y += 44) { g.beginPath(); g.moveTo(300, y); g.lineTo(w, y); g.stroke(); } g.strokeStyle = 'rgba(229,57,53,0.6)'; g.beginPath(); g.moveTo(316, 0); g.lineTo(316, h); g.stroke();
+    g.save(); g.translate(w - 150, h - 120); g.rotate(-0.25); g.strokeStyle = 'rgba(211,47,47,0.75)'; g.lineWidth = 7; g.strokeRect(-110, -36, 220, 72); g.font = `900 40px ${FONT}`; g.fillStyle = 'rgba(211,47,47,0.75)'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('NO CARBS', 0, 2); g.restore(); }
+  else if (k === 'xray') { g.strokeStyle = 'rgba(144,202,249,0.1)'; g.lineWidth = 1; for (let x = 0; x < w; x += 24) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); } for (let y = 0; y < h; y += 24) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+    g.save(); g.translate(w - 62, h / 2 + 10); g.scale(0.7, 0.7); g.fillStyle = 'rgba(227,242,253,0.22)'; g.beginPath(); g.ellipse(0, -110, 30, 80, 0, 0, 7); g.fill(); g.beginPath(); g.ellipse(0, 100, 26, 90, 0, 0, 7); g.fill(); g.beginPath(); g.arc(0, 0, 34, 0, 7); g.fill(); g.strokeStyle = 'rgba(255,82,82,0.9)'; g.lineWidth = 6; g.beginPath(); g.arc(0, 0, 48, 0, 7); g.stroke(); g.restore(); }
+  else if (k === 'polaroid') { g.fillStyle = 'rgba(0,0,0,0.06)'; g.fillRect(300, 112, w - 360, h - 190); g.fillStyle = 'rgba(255,235,59,0.18)'; g.beginPath(); g.arc(w - 140, 70, 46, 0, 7); g.fill(); }
+  else if (k === 'gig') { g.fillStyle = 'rgba(255,213,79,0.08)'; g.font = `900 120px ${FONT}`; g.fillText('LIVE', 420, h - 40); g.fillStyle = 'rgba(255,255,255,0.6)'; g.font = `900 20px ${FONT}`; g.fillText('ADMIT ONE · ROW D · SEAT 7 · NO RE-ENTRY', 330, h - 18); for (let i = 0; i < 30; i++) { g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(w - 80 + (i % 3) * 3, 40 + i * 10, 2 + (i % 4), 6); } }
+  else if (k === 'pass') { g.fillStyle = 'rgba(255,255,255,0.1)'; g.beginPath(); g.arc(w - 160, h / 2, 110, 0, 7); g.fill(); g.fillStyle = 'rgba(227,10,23,1)'; g.beginPath(); g.arc(w - 135, h / 2, 92, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.6)'; g.font = `900 20px ${FONT}`; g.fillText('LGW ✈ IST · GATE 9 · BOARDING NOW', 330, h - 18); for (let i = 0; i < 30; i++) { g.fillRect(w - 60 + (i % 3) * 3, 40 + i * 10, 2 + (i % 4), 6); } }
+  g.restore();
+}
+// the badge behind the icon
+function badge(g, k, col) {
+  g.fillStyle = col; g.strokeStyle = '#111'; g.lineWidth = 8; g.beginPath();
+  if (k === 'round') g.arc(0, 0, 122, 0, 7);
+  else if (k === 'shield') { g.moveTo(-110, -110); g.lineTo(110, -110); g.lineTo(110, 10); g.quadraticCurveTo(100, 100, 0, 135); g.quadraticCurveTo(-100, 100, -110, 10); g.closePath(); }
+  else if (k === 'cross') { for (const [x, y, ww, hh] of [[-40, -120, 80, 240], [-120, -40, 240, 80]]) g.rect(x, y, ww, hh); }
+  else if (k === 'film') { g.rect(-118, -118, 236, 236); }
+  else if (k === 'crescent') { g.arc(0, 0, 122, 0, 7); }
+  else for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2, r = i % 2 ? 100 : 145; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+  g.closePath(); g.stroke(); g.fill();
+  if (k === 'film') { g.fillStyle = '#eee'; for (let i = 0; i < 6; i++) { g.fillRect(-108 + i * 38, -112, 18, 14); g.fillRect(-108 + i * 38, 98, 18, 14); } }
+}
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }

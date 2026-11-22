@@ -31,6 +31,9 @@ export class PubJobs {
   buildPlaces() {
     const chairs = (this.g.room.chairsAt || []).filter(s => s[0] < -14.5), cl = [];
     for (const [x, z] of chairs) { let c = cl.find(c => Math.hypot(c.x - x, c.z - z) < 1.5); if (!c) { c = { x, z, n: 0, seats: [] }; cl.push(c); } c.seats.push([x, z]); c.n++; c.x = c.seats.reduce((a, s) => a + s[0], 0) / c.n; c.z = c.seats.reduce((a, s) => a + s[1], 0) / c.n; }
+    // (one number a table: the restaurant says which chairs are whose table. Grouping chairs that sat near each other
+    // split the long tables into lots of 'tables', each with its own number over it)
+    const real = (this.g.room.diningTables || []).filter(t => t.x < -14.5 && t.seats.length); if (real.length) { cl.length = 0; for (const t of real) cl.push({ x: t.x, z: t.z, n: t.seats.length, seats: t.seats.slice() }); }
     cl.sort((a, b) => (a.z - b.z) || (a.x - b.x)); this.tables = cl.map((c, i) => ({ n: i + 1, at: V(c.x, 0, c.z), seats: c.seats }));
     for (const t of this.tables) { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; const x = cv.getContext('2d'); x.fillStyle = '#1a0f0a'; x.beginPath(); x.roundRect(4, 4, 248, 88, 20); x.fill(); x.lineWidth = 6; x.strokeStyle = '#d4af37'; x.stroke();
       x.font = '900 52px Arial Black, Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffd400'; x.fillText('TABLE ' + t.n, 128, 52); const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
