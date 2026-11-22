@@ -155,7 +155,7 @@ function bbq(g, W, H, arg, device) {
   }
   if (arg === 'big') {
     bg(g, W, H, '#1f4f1a', '#0c2a0a');
-    const steps = [['STAGE 1-2', 'TOO SMALL', '😋', 34, '#ff8a8a'], ['STAGE 3+', device === 'vr' ? 'SLAP HIM OVER' : device === 'pc' ? 'CLICK HIM OVER' : 'TAP HIM OVER', '👋', 50, '#ffd400'], ['STAGE 5+', 'JUST WALK INTO HIM', '💥', 66, '#39ff14']];
+    const steps = [['HIT HIM', device === 'vr' ? 'SLAP / THROW FOOD' : device === 'pc' ? 'CLICK / THROW FOOD' : 'TAP / THROW FOOD', '👋', 34, '#ffd400'], ['10-15 HITS', 'AND OVER HE GOES', '💥', 50, '#ff8a3a'], ['5 KNOCK-DOWNS', 'IAN GIVES UP!', '🏆', 66, '#39ff14']];
     steps.forEach(([st, what, e, s, c], i) => { const x = W * (0.2 + i * 0.3); emoji(g, '😋', x, H * 0.5 - (s - 34) * 0.3, s); emoji(g, e, x + s * 0.55, H * 0.5 - s * 0.45, 26); label(g, st, x, H * 0.5 + 56, { size: 15, border: c }); label(g, what, x, H * 0.5 + 86, { size: 13, col: c, border: c }); });
     label(g, '💥 💥 💥  KNOCK IAN OVER 3 TIMES: HE GIVES UP', W / 2, 32, { size: 16, border: '#39ff14' });
     return;

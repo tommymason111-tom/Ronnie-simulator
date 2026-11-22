@@ -58,7 +58,7 @@ export default async function () {
         C.ok(cook.m && cook.phase === 'cook' && cook.nearGrill < 0.6, `${tag}: Ian isn't cooking at the grill: ${JSON.stringify(cook)}`);
         C.ok(cook.grill > 0 && cook.spat && cook.smoke > 0, `${tag}: no food / spatula / smoke at the grill: ${JSON.stringify(cook)}`);
         C.ok(/IAN'S COMING IN \d+/.test(cook.pill), `${tag}: no countdown to Ian's next go: "${cook.pill}"`);
-        C.ok(/STAGE 3 TO FIGHT IAN/.test(cook.box), `${tag}: the top-left box doesn't say what to do: ${cook.box}`);
+        C.ok(/KO IAN 0\/5 · HITS 0\/1[0-5]/.test(cook.box), `${tag}: the top-left box doesn't say what to do: ${cook.box}`);
         // a slap while you're small only tickles him
         const tickle = await p.evaluate(() => { const ian = RS.cast.find(c => c.id === 'ian'), part = ian.rag.parts.chest || ian.rag.list[0]; const at = ian.headPos(new RS.THREE.Vector3()); const r = ian.slap(part, at, new RS.THREE.Vector3(4.2, 0, 0)); RS.sim(0.5); return { r, down: ian.down }; });
         C.ok(tickle.r !== 'ko' && !tickle.down, `${tag}: a small Ronnie's slap knocked Ian over: ${JSON.stringify(tickle)}`);
@@ -89,19 +89,21 @@ export default async function () {
           const res = m.feed && m.feed.done; return { res, before, after: G.chonk, noEat: P.fx.noEat, slow: P.fx.slow, fed: m.stats.fed, t }; });
         C.ok(fail.res === 'lost' && fail.after < fail.before && fail.noEat > 0 && fail.fed === 1, `${tag}: not tapping didn't force-feed you (with a penalty): ${JSON.stringify(fail)}`);
         await p.evaluate(() => RS.sim(3));
-        // 5) bigger: STAGE 3 pushes him over, a STAGE 3 slap floors him, STAGE 5 barges him; three times and he gives up
+        // 5) bigger: pushing him off counts 3 hits, 10-15 slaps floor him, STAGE 5 barges count 3; five times and he gives up
         const big = await p.evaluate(() => { const m = RS.director.bbqm, ian = RS.cast.find(c => c.id === 'ian'), P = RS.player, G = RS.G, out = {};
           const upAgain = () => { let t = 0; while ((ian.down || ian.state !== 'act') && t < 15) { RS.sim(0.1); t += 0.1; } RS.sim(0.5); };
           RS.addChonk(100 - G.chonk); out.stage = G.stage;
-          upAgain(); m.setPhase('force'); m.t = 20; m.feedYaw = 0; m.setPhase('feed'); m.beginFeed('burger'); const cv = RS.renderer.domElement;
+          upAgain(); m.hits = 0; m.setPhase('force'); m.t = 20; m.feedYaw = 0; m.setPhase('feed'); m.beginFeed('burger'); const cv = RS.renderer.domElement;
           for (let i = 0; i < 60 && m.feed && !m.feed.done; i++) { cv.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); RS.sim(1 / 6); }
-          RS.sim(0.3); out.pushKO = ian.down; out.ko1 = m.stats.ko; RS.sim(1.5);
+          RS.sim(0.3); out.pushKO = ian.down; out.pushHits = m.hits; out.need = m.need; out.ko1 = m.stats.ko; RS.sim(1.5);
           const st = RS.room.start, open = () => { const dx0 = P.rig.position.x - P.head.x, dz0 = P.rig.position.z - P.head.z; P.rig.position.x = st.x + dx0; P.rig.position.z = st.z + dz0; ian.rag.placeAt(st.x, st.z - 1.6, 0); RS.sim(1 / 30); };      // (out in the open: the start spot, Ian beside it)
           upAgain(); open(); const part = ian.rag.parts.chest || ian.rag.list[0];
-          out.slap = ian.slap(part, ian.headPos(new RS.THREE.Vector3()), new RS.THREE.Vector3(-4.2, 0, 0)); RS.sim(0.3); out.ko2 = m.stats.ko; RS.sim(1.5);
+          out.slap = ian.slap(part, ian.headPos(new RS.THREE.Vector3()), new RS.THREE.Vector3(-4.2, 0, 0)); RS.sim(0.1); out.downAfterOne = ian.down;
+          let n = 1; for (; n < 30 && !ian.down; n++) { ian.slapCool = 0; m.hitAt = 0; ian.slap(part, ian.headPos(new RS.THREE.Vector3()), new RS.THREE.Vector3(-4.2, 0, 0)); RS.sim(1 / 30); }
+          out.slaps = n; RS.sim(0.3); out.ko2 = m.stats.ko; RS.sim(1.5);
           upAgain(); RS.addChonk(140 - G.chonk); out.stage2 = G.stage;
           // walk straight into him (the last of the five: he gives up, and that's the game)
-          m.stats.ko = 4; const end0 = RS.director.end; window.__ended = 0; RS.director.end = () => { window.__ended++; };
+          m.stats.ko = 4; m.hits = m.need - 3; const end0 = RS.director.end; window.__ended = 0; RS.director.end = () => { window.__ended++; };
           open();
           for (let i = 0; i < 40 && !ian.down; i++) { const ex = ian.pos.x - P.head.x, ez = ian.pos.z - P.head.z, l = Math.hypot(ex, ez) || 1; P.rig.position.x += ex / l * 0.1; P.rig.position.z += ez / l * 0.1; RS.sim(1 / 30); }
           out.barge = ian.down; out.ko3 = m.stats.ko; RS.sim(3); out.gaveUp = m.gaveUp; out.box = JSON.stringify(RS.hudExtras()); out.pill = (document.getElementById('nextAttack') || {}).textContent;
@@ -111,8 +113,8 @@ export default async function () {
         await sleep(7000); const endLose = await p.evaluate(() => { const n = window.__ended, m = RS.director.bbqm; const r = { n, won: m.won }; RS.director.end = window.__end0; m.over = false; m.won = undefined; return r; });
         C.ok(endWin.n === 1, `${tag}: five knock-downs and the game didn't end: ${JSON.stringify(endWin)}`);
         C.ok(endLose.n === 2 && endLose.won === false, `${tag}: force-fed three times and the game didn't end: ${JSON.stringify(endLose)}`);
-        C.ok(big.stage >= 2 && big.pushKO && big.ko1 === 1, `${tag}: at STAGE 3 pushing Ian off didn't floor him: ${JSON.stringify(big)}`);
-        C.ok(big.slap === 'ko' && big.ko2 === 2, `${tag}: at STAGE 3 a slap didn't floor him: ${JSON.stringify(big)}`);
+        C.ok(!big.pushKO && big.pushHits === 3 && big.ko1 === 0 && big.need >= 10 && big.need <= 15, `${tag}: pushing Ian off should count 3 hits, not floor him: ${JSON.stringify(big)}`);
+        C.ok(!big.downAfterOne && big.ko2 === 1 && big.slaps + 3 >= 10 && big.slaps + 3 <= 15, `${tag}: Ian should go down after 10 to 15 hits, not one: ${JSON.stringify(big)}`);
         C.ok(big.stage2 >= 4 && big.barge && big.ko3 === 5 && big.gaveUp, `${tag}: at STAGE 5 walking into him didn't floor him / five KOs and he didn't give up: ${JSON.stringify(big)}`);
         C.ok(/GAVE UP/.test(big.box) && /GAVE UP/.test(big.pill || ''), `${tag}: the HUD doesn't say he gave up: ${big.box} / ${big.pill}`);
         // 6) the chase on screen (a fresh one, from the start): nothing covering anything
