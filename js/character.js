@@ -83,6 +83,7 @@ export class Character {
     this.active = true;         // false = standing aside (doesn't wander or attack)
     this.setIdlePose(0);
     // keep animated characters inside the room and out of the furniture
+    const prev = { x: 1e9, z: 1e9 };      // (where the root was last time: see below)
     this.rag.constrain = (root) => {
       const b = this.room.bounds, m = 0.3;
       root.x = THREE.MathUtils.clamp(root.x, b.x0 + m, b.x1 - m);
@@ -92,14 +93,19 @@ export class Character {
       const x0 = root.x, z0 = root.z, out = (list) => { for (const k of list) {
         const p = 0.22;
         if (root.x > k.x0 - p && root.x < k.x1 + p && root.z > k.z0 - p && root.z < k.z1 + p) {
-          const dl = root.x - (k.x0 - p), dr = (k.x1 + p) - root.x, dn = root.z - (k.z0 - p), df = (k.z1 + p) - root.z;
-          const mn = Math.min(dl, dr, dn, df);
-          if (mn === dl) root.x = k.x0 - p; else if (mn === dr) root.x = k.x1 + p; else if (mn === dn) root.z = k.z0 - p; else root.z = k.z1 + p;
+          // back out the side they came in from (where they were last frame): the nearest side, for something thin like a
+          // bench, was the far side once they were half-way in, and they popped straight through it
+          const pv = prev && Math.hypot(prev.x - x0, prev.z - z0) < 1 ? prev : null, pin = pv && pv.x > k.x0 - p && pv.x < k.x1 + p && pv.z > k.z0 - p && pv.z < k.z1 + p;
+          if (pv && !pin) { if (pv.x <= k.x0 - p) root.x = k.x0 - p; else if (pv.x >= k.x1 + p) root.x = k.x1 + p; else if (pv.z <= k.z0 - p) root.z = k.z0 - p; else root.z = k.z1 + p; }
+          else { const dl = root.x - (k.x0 - p), dr = (k.x1 + p) - root.x, dn = root.z - (k.z0 - p), df = (k.z1 + p) - root.z;
+            const mn = Math.min(dl, dr, dn, df);
+            if (mn === dl) root.x = k.x0 - p; else if (mn === dr) root.x = k.x1 + p; else if (mn === dn) root.z = k.z0 - p; else root.z = k.z1 + p; }
           if (Math.abs(root.x - x0) > NEAR_SAFE || Math.abs(root.z - z0) > NEAR_SAFE) far = true;
         }
       } };
       let far = false; out(nearBlockers(this.room, x0, z0));
       if (far) { root.x = x0; root.z = z0; out(this.room.blockers); }
+      prev.x = root.x; prev.z = root.z;
     };
     const sp = cfg.spawn || [room.tommySpots[0].x, room.tommySpots[0].y, 0];
     this.rag.placeAt(sp[0], sp[1], sp[2] || 0);
@@ -396,6 +402,9 @@ export class Character {
     const toPlayerYaw = Math.atan2(_v.x, _v.z);
     this.distToPlayer = _v.length();
     r.moveVel.set(0, 0, 0);
+    // gliding the last bit back into their seat / spot (backTo): smooth, never a jump
+    if (this.glide) { const g = this.glide; if (this.down || this.state !== 'idle') this.glide = null; else { g.t += dt; const k = Math.min(1, g.t / g.dur), e = k * k * (3 - 2 * k);
+      r.root.x = g.x0 + (g.x - g.x0) * e; r.root.z = g.z0 + (g.z - g.z0) * e; r.yaw = g.y0 + wrapAngle(g.yaw - g.y0) * e; if (k >= 1) this.glide = null; } }
 
     switch (this.state) {
       case 'enter':
@@ -472,7 +481,7 @@ export class Character {
       case 'recover':                // blend from where they landed back to standing
         this.setIdlePose(this.t);
         if (r.mode === 'anim') {
-          this.state = 'idle'; this.stateT = 0;
+          this.state = 'idle'; this.stateT = 0; this.upAt = this.t;
           if (this.pendingLine) { this.say(this.pendingLine, 4); this.pendingLine = null; }
           this.onEvent && this.onEvent('up', this);
         }
@@ -589,6 +598,19 @@ export class Character {
   }
 
   // Walk somewhere (x, z); state goes back to idle (or `after`) on arrival.
+  // Back to their own spot (a chair, a till, a job) after being knocked away from it: they WALK back. Only the last few
+  // centimetres go in one step; true once they're there. (Every mode used to put them straight back the moment they were
+  // up: a knocked-over squad member got up and vanished back into their chair, metres away.) Only if three walks there in
+  // a row get nowhere is it the instant way, so nobody's stuck for ever
+  backTo(x, z, yaw) {
+    if (this.glide) return false;
+    const rt = this.rag.root, d = Math.hypot(rt.x - x, rt.z - z);
+    if (d <= 0.12) { this.backTries = 0; this.rag.placeAt(x, z, yaw); return true; }
+    // close (a chair is inside the furniture, so walking stops short of it), or the walks keep failing: a smooth glide in
+    if (d <= 1.5 || (this.backTries || 0) >= 3) { if (this.state === 'idle' && this.rag.mode === 'anim') { this.backTries = 0; this.seated = true; this.glide = { x0: rt.x, z0: rt.z, x, z, y0: this.rag.yaw, yaw, t: 0, dur: Math.max(0.35, d * 0.45) }; } return false; }
+    if (this.state === 'idle' && this.rag.mode === 'anim') { this.backTries = (this.backTries || 0) + 1; this.seated = false; this.activity = null; this.goTo(x, z, 1.0); }
+    return false;
+  }
   goTo(x, z, speed = 0.9, after = null) {
     // big levels: follow a path round the furniture
     const nav = this.room.nav, pos = this.pos;

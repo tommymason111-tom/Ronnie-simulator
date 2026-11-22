@@ -604,7 +604,7 @@ export class Director {
     if (this.nextAttackT > 0) { g.fx && g.fx.setCountdown(`NEXT ATTACK IN ${Math.ceil(this.nextAttackT)}`); return; }
     g.fx && g.fx.setCountdown('NEXT ATTACK: ANY SECOND...');
     // anyone who's up and about can be picked (wherever they are: they walk over)
-    const pool = this.cast.filter(c => !c.down && !c.benched && (c.state === 'idle' || c.state === 'walk' || c.state === 'enter') && (c !== g.tommy || g.tommy.attacks));
+    const pool = this.cast.filter(c => !c.down && !c.benched && !(c.upAt != null && c.t - c.upAt < 6) && (c.state === 'idle' || c.state === 'walk' || c.state === 'enter') && (c !== g.tommy || g.tommy.attacks));
     const pick = this.pickAttacker(pool);
     if (!pick || !this.launch(pick)) return;        // nobody free right now: try again next frame
     sfx('notify', null, 0.6);
@@ -841,10 +841,10 @@ export class Director {
     this.roamActs = this.roamActs.filter(a => !a.temp || a.who);           // (one-off spots go once nobody's using them)
     for (const c of this.cast) {
       if (!c.roamAct || c.down) continue;
-      if (c.roamGoing && c.state === 'idle') this.settleAct(c);
+      if (c.roamGoing && c.state === 'idle') { if (!c.backTo(c.roamAct.x, c.roamAct.z, c.roamAct.yaw)) continue; this.settleAct(c); }      // (knocked over on the way: up, and on they walk)
       if (c.roamGoing || c.state !== 'idle') continue;
       // knocked out of their seat? back into it
-      if (c.seated && Math.hypot(c.pos.x - c.roamAct.x, c.pos.z - c.roamAct.z) > 0.3) this.settleAct(c);
+      if ((c.seated || c.goingBack) && Math.hypot(c.pos.x - c.roamAct.x, c.pos.z - c.roamAct.z) > 0.3) { c.goingBack = true; if (!c.backTo(c.roamAct.x, c.roamAct.z, c.roamAct.yaw)) continue; c.goingBack = false; this.settleAct(c); }
       if (c.chatWith && c.chatWith.chatWith === c) { const o = c.chatWith; c.faceYaw = Math.atan2(o.pos.x - c.pos.x, o.pos.z - c.pos.z); c.activity = 'chat';
         if ((c.chatTalkT = (c.chatTalkT || 3 + Math.random() * 4) - dt) <= 0) { c.chatTalkT = 5 + Math.random() * 6; if (o.speakT <= 0 && Math.hypot(c.pos.x - this.g.player.head.x, c.pos.z - this.g.player.head.z) < 9) c.say('chatter', 1); } }
       if (c.stayPut) continue;          // (the knee)
@@ -873,7 +873,7 @@ export class Director {
     for (const c of this.cast) {
       if (!c.tillJob || c.down) continue;
       const t = c.tillJob;
-      if (c.state === 'idle' && c.rag.mode === 'anim' && Math.hypot(c.pos.x - t.x, c.pos.z - t.z) > 0.35) { c.rag.placeAt(t.x, t.z, t.yaw); c.faceYaw = t.yaw; }
+      if (c.state === 'idle' && c.rag.mode === 'anim' && Math.hypot(c.pos.x - t.x, c.pos.z - t.z) > 0.35 && !c.backTo(t.x, t.z, t.yaw)) continue;
       c.faceYaw = t.yaw; c.stayPut = true; c.active = false;
       if ((c.tillT -= dt) <= 0) { c.tillT = 14 + Math.random() * 20; if (c.state === 'idle' && Math.hypot(c.pos.x - this.g.player.head.x, c.pos.z - this.g.player.head.z) < 7) c.say(LINES[Math.floor(Math.random() * LINES.length)], 4); }
     }
@@ -971,7 +971,7 @@ export class Director {
     for (const grp of this.dinerGroups) for (const c of grp) {
       if (c.lookT > 0 && (c.lookT -= dt) <= 0) c.lookOverride = 0;
       // knocked off their chair? back in it once they're up
-      if (c.state === 'idle' && c.rag.mode === 'anim' && Math.hypot(c.pos.x - c.seat.x, c.pos.z - c.seat.z) > 0.25) { c.seated = true; c.faceYaw = c.seat.yaw; c.rag.placeAt(c.seat.x, c.seat.z, c.seat.yaw); }
+      if (c.state === 'idle' && c.rag.mode === 'anim' && Math.hypot(c.pos.x - c.seat.x, c.pos.z - c.seat.z) > 0.25 && c.backTo(c.seat.x, c.seat.z, c.seat.yaw)) { c.seated = true; c.faceYaw = c.seat.yaw; }
     }
     if ((this.chatT -= dt) > 0) return;
     this.chatT = 2.5 + Math.random() * 3;

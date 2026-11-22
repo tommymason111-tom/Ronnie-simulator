@@ -71,6 +71,17 @@ export default async function () {
     const viaStore = await q.waitForFunction(() => { const m = window.ronnieMP; return m && m.net && m.net.players.size === 2 && document.querySelector('.screen.on[data-s="room"]'); }, null, { timeout: 90000 }).then(() => true, () => false);
     C.ok(viaStore, 'the test room didn\'t open from the stored request (no ?devmp in the address): ' + await q.evaluate(() => (document.querySelector('.screen.on') || {}).dataset?.s));
     C.ok(!q.errors.length, 'stored request: page errors: ' + [...new Set(q.errors)].slice(0, 3).join(' | '));
+    // the update check reloading the page into a newer version while the room's being set up (the owner's phone, testing
+    // straight after an update): it used to land on the title screen. Now it carries on (or rejoins the room it opened)
+    const u = await newPage(b, { width: 390, height: 844, mobile: true });
+    await u.route('**/version.json*', async (r) => { await sleep(2500); r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ v: '9.9.9' }) }); });
+    await u.addInitScript(() => { try { sessionStorage.setItem('rs_devmp_ok', '1'); } catch (e) {} });
+    await u.goto(`http://game.local/index.html?devmp=2&relay=${encodeURIComponent(host.url)}`, { timeout: 240000 });
+    const reloaded = await u.waitForFunction(() => /[?&]v=9\.9\.9/.test(location.search) || sessionStorage.getItem('rs_reload_9.9.9'), null, { timeout: 60000 }).then(() => true, () => false);
+    let viaUpdate = false; for (let k = 0; k < 60 && !viaUpdate; k++) { await sleep(2000);      // (polled: the reload throws away anything waiting in the old page)
+      viaUpdate = await u.evaluate(() => { const m = window.ronnieMP; return !!(m && m.net && m.net.players.size === 2 && document.querySelector('.screen.on[data-s="room"]')); }).catch(() => false); }
+    const after = await u.evaluate(() => { const m = window.ronnieMP; return m && m.net ? [...m.net.players.values()].map(q => `${q.name}${q.away ? "(away)" : ""}`).join(", ") : "-"; }).catch(() => "?");
+    C.ok(reloaded && viaUpdate, `an update reload while the test room was opening didn't end in the room (reloaded ${reloaded}, players: ${after}): on the ${await u.evaluate(() => (document.querySelector('.screen.on') || {}).dataset?.s)} screen`);
   } finally { await b.close(); await host.close(); }
   return C.fails;
 }

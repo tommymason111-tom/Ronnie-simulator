@@ -198,7 +198,7 @@ export class RunPub {
     for (const c of this.cast) {
       if (!c.rpJob || c.down) continue;
       if (c.rpJob === 'restaurant') { this.lewis(c, dt); continue; }
-      if (c.state === 'idle' && c.rag.mode === 'anim' && Math.hypot(c.pos.x - c.rpSpot[0], c.pos.z - c.rpSpot[1]) > 0.5) { c.rag.placeAt(c.rpSpot[0], c.rpSpot[1], c.rpSpot[2]); }
+      if (c.state === 'idle' && c.rag.mode === 'anim' && Math.hypot(c.pos.x - c.rpSpot[0], c.pos.z - c.rpSpot[1]) > 0.5) c.backTo(c.rpSpot[0], c.rpSpot[1], c.rpSpot[2]);
       c.faceYaw = c.rpSpot[2]; c.active = false; c.stayPut = true;
       if (c.id === 'ben' && Math.random() < dt / 25) { c.say(R(['SERVICE!', 'Two scampi, one pie, table nine!', 'Who ordered the Ronnie Platter? ...Ronnie did.', 'CHIPS ARE UP!', 'Ronnie, get your hands OFF the pass!']), 3); sfx('bell', c.pos, 0.6); }
     }
@@ -256,7 +256,7 @@ export class RunPub {
     if (c.down) return;
     switch (rp.phase) {
       case 'enter': case 'return':
-        if (c.state === 'idle') this.settleHome(c);
+        if (c.state === 'idle' && c.backTo(c.rp.home.x, c.rp.home.z, c.rp.home.yaw)) this.settleHome(c);
         break;
       case 'settled':
         if (rp.kind !== 'hool' && (rp.t > rp.stay || rp.drinks >= rp.maxDrinks) && rp.kind !== 'kid') { if (rp.family) { if (rp.family[0] === c) for (const f of rp.family) this.leave(f, f === c ? 'Right, come on, kids. Home.' : null); } else this.leave(c, R(['Night all.', 'Same time tomorrow.', 'Right. One for the road. No. Home.'])); break; }
@@ -267,7 +267,7 @@ export class RunPub {
         }
         break;
       case 'toBar':
-        if (c.state === 'idle') { c.rag.placeAt(rp.spot.x, rp.spot.z, rp.spot.yaw); this.order(c); }
+        if (c.state === 'idle' && c.backTo(rp.spot.x, rp.spot.z, rp.spot.yaw)) this.order(c);
         break;
       case 'waiting': {
         rp.wait += dt; const k = 1 - rp.wait / rp.patience;
@@ -379,7 +379,7 @@ export class RunPub {
   }
   dropInTick(c, dt) {
     const d = c.dropIn; d.t -= dt; if (c.down) return;
-    if (d.phase === 'in' && c.state === 'idle') { d.phase = 'here'; if (d.spot) { c.rag.placeAt(d.spot.x, d.spot.z, d.spot.yaw); c.faceYaw = d.spot.yaw; } c.activity = 'drink'; }
+    if (d.phase === 'in' && c.state === 'idle' && (!d.spot || c.backTo(d.spot.x, d.spot.z, d.spot.yaw))) { d.phase = 'here'; if (d.spot) c.faceYaw = d.spot.yaw; c.activity = 'drink'; }
     if (d.phase === 'here' && d.t <= 0) { d.phase = 'out'; for (const [s, w] of this.barTaken) if (w === c) this.barTaken.delete(s); c.activity = null; c.faceYaw = null; c.say(R(['Right, I\'m off. Don\'t eat the stock, Ron.', 'See you later, landlord!', 'Laters, Ron.']), 3); c.goTo(DOOR.x, DOOR.z + 0.4, 1.0); }
     if (d.phase === 'out' && (c.state === 'idle' || Math.hypot(c.pos.x - DOOR.x, c.pos.z - DOOR.z) < 0.9)) { const i = this.g.cast.indexOf(c); if (i >= 0) this.g.cast.splice(i, 1); c.dispose(); }
   }
