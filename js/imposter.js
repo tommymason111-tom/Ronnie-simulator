@@ -629,7 +629,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   }
   startMeeting(m) {
     this.bellT = 0.001;
-    this.phase = 'meeting'; this.panel.close(true); this.setVent(null); this.sabEl.classList.remove('on'); this.toggleMap(false); this.spect = null;
+    this.phase = 'meeting'; document.body.classList.add('imp-meeting'); this.panel.close(true); this.setVent(null); this.sabEl.classList.remove('on'); this.toggleMap(false); this.spect = null;
     if (this.sab) { this.sab = null; this.sabAlert(false); }
     const body = m.body ? this.bodies.find(b => b.id === m.body) : null; if (body) body.found = true;
     this.meeting = { by: m.by, body: m.body, end: now() + m.dur, voted: new Set(), myVote: null, pick: null, res: null };
@@ -703,7 +703,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     } };
   }
   endMeeting() {
-    this.panel.close(true); this.meeting = null; this.phase = 'play';
+    this.panel.close(true); this.meeting = null; this.phase = 'play'; document.body.classList.remove('imp-meeting');
     for (const b of this.bodies) { b.cleared = true; this.dropBody(b); } this.syncPuppets();
     this.killCD = IMP.KILL_CD; this.emergCD = IMP.EMERG_CD; this.sabCD = Math.max(this.sabCD, 10);
     this.toast('BACK TO WORK');
@@ -862,6 +862,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     this.panel.update(dt);
     if (this.camsGame && (this.panel.cur !== this.camsGame || !(this.mine() && this.mine().alive))) { if (this.panel.cur === this.camsGame) this.panel.close(true); this.closeCams(); }
     if (this.camLeds) { const on = this.camWatchers.size > 0 && Math.floor(performance.now() / 450) % 2 === 0; for (const l of this.camLeds) l.material.color.setHex(on ? 0xff2020 : 0x330000); }
+    { const mt = this.phase === 'meeting'; if (document.body.classList.contains('imp-meeting') !== mt) document.body.classList.toggle('imp-meeting', mt); }      // (the meeting: PAUSE, CHAT and VOICE over the vote screen, however the meeting started or ended)
     if (this.phase === 'intro') { this.introT -= dt; if (this.introT <= 0) { this.phase = 'play'; this.setFog(); this.warmGhosts(); } }
     this.updateGhosts(dt);
     const me = this.mine(), alive = !!(me && me.alive);
@@ -1006,6 +1007,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     } catch (e) { console.warn('ghost warm-up', e); }
   }
   dispose() {
+    document.body.classList.remove('imp-meeting');
     for (const gp of (this.ghostPups || new Map()).values()) gp.dispose(); this.ghostPups = null; if (this.ghostEl) { this.ghostEl.remove(); this.ghostEl = null; } this.g.player.ghost = false; this.g.player.camLift = 0;
     this.dim(false); if (this.camsGame) { this.camsGame.dispose(); this.camsGame = null; }
     this.panel.close(true); this.panel.wrap.remove(); this.g.scene.remove(this.panel.mesh, this.panel.dot); this.g.scene.remove(this.grp);
