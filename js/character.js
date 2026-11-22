@@ -86,6 +86,7 @@ export class Character {
     this.setIdlePose(0);
     // keep animated characters inside the room and out of the furniture
     const prev = { x: 1e9, z: 1e9 };      // (where the root was last time: see below)
+    this.rag.constrainForget = () => { prev.x = 1e9; prev.z = 1e9; };      // (after a jump to somewhere new: no 'side they came in from')
     this.rag.constrain = (root) => {
       const b = this.room.bounds, m = 0.3;
       root.x = THREE.MathUtils.clamp(root.x, b.x0 + m, b.x1 - m);

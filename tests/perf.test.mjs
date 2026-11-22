@@ -46,7 +46,7 @@ export default async function () {
           const ref = (root) => { for (const k of room.blockers) { const p = 0.22; if (root.x > k.x0 - p && root.x < k.x1 + p && root.z > k.z0 - p && root.z < k.z1 + p) { const dl = root.x - (k.x0 - p), dr = (k.x1 + p) - root.x, dn = root.z - (k.z0 - p), df = (k.z1 + p) - root.z; const mn = Math.min(dl, dr, dn, df); if (mn === dl) root.x = k.x0 - p; else if (mn === dr) root.x = k.x1 + p; else if (mn === dn) root.z = k.z0 - p; else root.z = k.z1 + p; } } };
           const cc = RS.cast.find(x => x.rag && x.rag.constrain); if (cc) { const seat = cc.seated; cc.seated = false; let s = 7;
             const rnd = () => (s = s * 16807 % 2147483647) / 2147483647;
-            for (let i = 0; i < 3000; i++) { const x = B.x0 + 0.3 + rnd() * (B.x1 - B.x0 - 0.6), z = B.z0 + 0.3 + rnd() * (B.z1 - B.z0 - 0.6), a = { x, z }, q = { x, z }; cc.rag.constrain(a); ref(q); if (a.x !== q.x || a.z !== q.z) diff++; }
+            for (let i = 0; i < 3000; i++) { const x = B.x0 + 0.3 + rnd() * (B.x1 - B.x0 - 0.6), z = B.z0 + 0.3 + rnd() * (B.z1 - B.z0 - 0.6), a = { x, z }, q = { x, z }; cc.rag.constrainForget && cc.rag.constrainForget(); cc.rag.constrain(a); ref(q); if (a.x !== q.x || a.z !== q.z) diff++; }
             cc.seated = seat; }
           out.pushDiff = diff;
           // path finding: the same routes as a fresh search (the working arrays thrown away before each one)

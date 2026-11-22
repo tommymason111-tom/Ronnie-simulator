@@ -860,7 +860,7 @@ export class Ragdoll {
 
   // Spawn / teleport: stand at (x, z) facing yaw, animated.
   placeAt(x, z, yaw) {
-    this.yaw = yaw; this.root.set(x, 0, z); this._lastP = null;
+    this.yaw = yaw; this.root.set(x, 0, z); this._lastP = null; this.constrainForget && this.constrainForget();
     this.setMode('anim');
     this.animate(0);
     for (const p of this.list) { p.body.velocity.setZero(); p.body.angularVelocity.setZero(); }
