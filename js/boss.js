@@ -179,7 +179,8 @@ body.boss-cine #touch, body.boss-cine #menu-btn, body.boss-cine #mp-chip, body.b
 #boss-hud.hit .bh-bar { animation: bhhit .18s; } @keyframes bhhit { 0% { transform: translateX(-4px); } 50% { transform: translateX(4px); } 100% { transform: none; } }
 #boss-hud.shield .bh-fill { filter: grayscale(0.7) brightness(1.4); }
 #boss-hud .bh-me { display: flex; justify-content: center; gap: 10px; margin-top: 5px; font-size: 13px; }
-#boss-hud .bh-me span { background: rgba(0,0,0,0.6); padding: 3px 9px; border-radius: 9px; white-space: nowrap; }
+#boss-hud .bh-me .bh-st { display: inline-flex; flex-direction: column; align-items: center; background: rgba(0,0,0,0.6); padding: 2px 9px 3px; border-radius: 9px; white-space: nowrap; line-height: 1.1; }
+#boss-hud .bh-me .bh-st small { font: 900 9.5px Arial, sans-serif; letter-spacing: 1px; color: #c9d3ff; text-shadow: none; }      /* (a little label over each: whose health, whose power) */
 #boss-hud .bh-warn { margin: 6px auto 0; width: fit-content; max-width: 100%; text-align: center; font-size: 14px; padding: 5px 12px; border-radius: 11px; background: rgba(200,0,0,0.88); border: 2px solid #ffd400; display: none; animation: bhwarn .35s infinite alternate; }
 #boss-hud .bh-warn.on { display: block; } #boss-hud .bh-warn.good { background: rgba(0,140,40,0.9); } @keyframes bhwarn { to { transform: scale(1.06); } }
 @media (max-aspect-ratio: 1/1) { #boss-hud { width: calc(100vw - 20px); min-width: 0; } #boss-hud .bh-name { font-size: 19px; } #boss-hud .bh-face { width: 34px; height: 34px; } }
@@ -188,7 +189,7 @@ body.compact-ui #boss-hud { display: none; grid-template-columns: 1fr auto; grid
 body.compact-ui.flat #boss-hud.on { display: grid; }
 body.compact-ui #boss-hud .bh-top { grid-area: top; align-items: center; gap: 6px; margin: 0 0 4px; min-width: 0; }
 body.compact-ui #boss-hud .bh-me { grid-area: me; margin: 0 0 4px; gap: 4px; font-size: 11px; justify-content: flex-end; }
-body.compact-ui #boss-hud .bh-me span { padding: 2px 6px; }
+body.compact-ui #boss-hud .bh-me .bh-st { padding: 1px 6px 2px; } body.compact-ui #boss-hud .bh-me .bh-st small { font-size: 8.5px; }
 body.compact-ui #boss-hud .bh-bar { grid-area: bar; height: 18px; } body.compact-ui #boss-hud .bh-hp { font-size: 11px; }
 body.compact-ui #boss-hud .bh-warn { grid-area: warn; font-size: 12px; padding: 4px 10px; margin-top: 5px; }
 body.compact-ui #boss-hud .bh-say { grid-area: say; font-size: 12px; padding: 3px 10px; margin-top: 5px; }
@@ -1038,7 +1039,7 @@ export class BossFight {
   buildHud() {
     const mk = (id) => { let el = document.getElementById(id); if (!el) { el = document.createElement('div'); el.id = id; document.body.appendChild(el); } el.className = ''; return el; };
     this.hudEl = mk('boss-hud'); this.introEl = mk('boss-intro'); this.overEl = mk('boss-over');
-    this.hudEl.innerHTML = '<div class="bh-top"><img class="bh-face" alt=""><div style="min-width:0"><div class="bh-name"></div><div class="bh-title"></div></div><div class="bh-ph"></div></div><div class="bh-bar"><i class="bh-trail"></i><i class="bh-fill"></i><b style="left:33.3%"></b><b style="left:66.6%"></b><span class="bh-hp"></span></div><div class="bh-me"><span class="bh-hearts"></span><span class="bh-pow"></span></div><div class="bh-warn"></div><div class="bh-say"></div>';
+    this.hudEl.innerHTML = '<div class="bh-top"><img class="bh-face" alt=""><div style="min-width:0"><div class="bh-name"></div><div class="bh-title"></div></div><div class="bh-ph"></div></div><div class="bh-bar"><i class="bh-trail"></i><i class="bh-fill"></i><b style="left:33.3%"></b><b style="left:66.6%"></b><span class="bh-hp"></span></div><div class="bh-me"><span class="bh-st"><small>YOUR HEALTH</small><span class="bh-hearts"></span></span><span class="bh-st"><small>YOUR POWER</small><span class="bh-pow"></span></span></div><div class="bh-warn"></div><div class="bh-say"></div>';
     const q = (s) => this.hudEl.querySelector(s);
     this.ui = { face: q('.bh-face'), name: q('.bh-name'), title: q('.bh-title'), ph: q('.bh-ph'), fill: q('.bh-fill'), trail: q('.bh-trail'), hp: q('.bh-hp'), hearts: q('.bh-hearts'), pow: q('.bh-pow'), warn: q('.bh-warn'), say: q('.bh-say') };
     // in the headset: a bar over its head
@@ -1059,7 +1060,7 @@ export class BossFight {
       ui.fill.style.width = pct.toFixed(1) + '%'; ui.trail.style.width = pct.toFixed(1) + '%'; ui.hp.textContent = `${Math.ceil(this.hp)} / ${this.mx}`;
       this.hudEl.classList.toggle('ph2', this.ph === 2); this.hudEl.classList.toggle('ph3', this.ph === 3); this.hudEl.classList.toggle('low', pct < 15 && pct > 0); this.hudEl.classList.toggle('shield', this.shielded);
       ui.hearts.textContent = this.out > 0 ? `💫 OUT · ${Math.ceil(this.out)}s` : '❤️'.repeat(this.hearts) + '🖤'.repeat(MAX_HEARTS - this.hearts);
-      ui.pow.textContent = `💪 POWER x${this.power.toFixed(1)}`;
+      ui.pow.textContent = `💪 x${this.power.toFixed(1)}`;      // (the label over it says YOUR POWER)
       const on = this.warnT > 0 && this.warnText; ui.warn.classList.toggle('on', !!on); ui.warn.classList.toggle('good', !!this.warnGood); if (on) ui.warn.textContent = this.warnText;
       const sy = this.sayT > 0 && this.sayText; ui.say.classList.toggle('on', !!sy); if (sy) ui.say.innerHTML = `<b>${esc(d.name)}</b>“${esc(this.sayText)}”`;
       this.drawBar3();

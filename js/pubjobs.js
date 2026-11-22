@@ -216,7 +216,10 @@ body.rp-tight #rp-events .job img, body.rp-tight #rp-events .step:not(.now) { di
 #rp-stamp.on { transform: translate(-50%,-50%) rotate(-12deg) scale(1); opacity: 0.95; }`;
     document.head.appendChild(st); this.css = st;
     const mk = (id) => { const d = document.createElement('div'); d.id = id; document.body.appendChild(d); return d; };
-    this.panel = mk('rp-events'); this.pop = mk('rp-jobpop'); this.note = mk('rp-note'); this.stamp = mk('rp-stamp');
+    this.panel = mk('rp-events');
+    try { this.minimised = localStorage.getItem('rs_rp_min_todo') === '1'; } catch (e) { this.minimised = false; }
+    this.panel.addEventListener('pointerdown', (e) => { if (!e.target.closest('[data-min]')) return; e.preventDefault(); e.stopPropagation();
+      this.minimised = !this.minimised; try { localStorage.setItem('rs_rp_min_todo', this.minimised ? '1' : ''); } catch (er) {} this.drawT = 0; this.draw(0); window.__layoutHud && window.__layoutHud(); }); this.pop = mk('rp-jobpop'); this.note = mk('rp-note'); this.stamp = mk('rp-stamp');
     // VR: a little TO DO board on the left wrist, next to the orders
     const cv = this.vrCv = document.createElement('canvas'); cv.width = 256; cv.height = 256; this.vrTex = new THREE.CanvasTexture(cv); this.vrTex.colorSpace = THREE.SRGBColorSpace;
     this.vr = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.1), new THREE.MeshBasicMaterial({ map: this.vrTex, transparent: true, depthTest: false })); this.vr.renderOrder = 20; this.vr.visible = false; this.g.scene.add(this.vr);
@@ -250,7 +253,9 @@ body.rp-tight #rp-events .job img, body.rp-tight #rp-events .step:not(.now) { di
     if ((this.drawT = (this.drawT || 0) - dt) > 0) return; this.drawT = 0.25;
     const P = this.g.player, vr = !P.flatMode, evs = this.items(), j = this.job, esc = (t) => String(t).replace(/</g, '&lt;');
     const col = (k) => k > 0.5 ? '#39ff14' : k > 0.25 ? '#ffd400' : '#ff3a3a';
-    let html = '<h4>⚠ TO DO</h4>';
+    const nTodo = evs.length + (j ? 1 : 0);
+    let html = `<h4 data-min="1" style="display:flex;justify-content:space-between;align-items:center;gap:6px;min-height:22px;pointer-events:auto;cursor:pointer;margin-bottom:${this.minimised ? 0 : 3}px"><span>⚠ TO DO${this.minimised ? ` (${nTodo})` : ''}</span><b style="font:900 13px Arial;color:#fff;background:rgba(255,255,255,0.14);border-radius:7px;padding:1px 7px">${this.minimised ? '▸' : '▾'}</b></h4>`;
+    if (this.minimised) { this.panel.style.display = vr ? 'none' : 'block'; this.panel.innerHTML = html; return; }
     if (!evs.length && !j) html += '<div class="ev" style="opacity:.7">All quiet. For now.</div>';
     const tight = document.body.classList.contains('rp-tight');
     for (const e of evs) html += `<div class="ev" style="border-left:5px solid ${e.col || '#29b6ff'};padding-left:6px"><b>${e.icon} ${esc(e.title)}</b>${tight ? '' : esc(e.how)}<div class="bar"><i style="width:${Math.max(4, e.k * 100)}%;background:${col(e.k)}"></i></div></div>`;

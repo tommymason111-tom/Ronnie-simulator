@@ -42,7 +42,17 @@ export default async function () {
         C.ok(!onBtns.length, `${W}x${H} ${mode}: panels over the touch buttons: ${onBtns.join(', ')}`);
         if (mode === 'runpub' && H > W) { const rp = await ev(() => ['rp-orders', 'rp-events'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return { t: r.top, b: r.bottom, l: r.left, r: r.right }; }));
           C.ok(Math.abs(rp[0].t - rp[1].t) < 2 && (rp[1].r <= rp[0].l || rp[0].r <= rp[1].l), `${W}x${H} runpub: ORDERS and TO DO aren't side by side: ${JSON.stringify(rp)}`);
-          C.ok(rp.every(q => q.b <= H * 0.36 + 2), `${W}x${H} runpub: ORDERS / TO DO run down into the middle of the screen: ${JSON.stringify(rp)}`); }
+          C.ok(rp.every(q => q.b <= H * 0.36 + 2), `${W}x${H} runpub: ORDERS / TO DO run down into the middle of the screen: ${JSON.stringify(rp)}`);
+          // each folds away to its header with a tap there, and opens again (remembered)
+          for (const id of ['rp-orders', 'rp-events']) {
+            const hb = await ev((i) => { const r = document.querySelector(`#${i} [data-min]`).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, h: document.getElementById(i).getBoundingClientRect().height }; }, id);
+            await p.touchscreen.tap(hb.x, hb.y); await sleep(700);
+            const shut = await ev((i) => ({ h: document.getElementById(i).getBoundingClientRect().height, txt: document.querySelector(`#${i} [data-min]`).textContent, keep: localStorage.getItem(i === 'rp-orders' ? 'rs_rp_min_orders' : 'rs_rp_min_todo') }), id);
+            C.ok(shut.h < 46 && /\(\d+\)/.test(shut.txt) && shut.keep === '1', `${W}x${H} runpub: tapping ${id}'s header didn't fold it away: ${JSON.stringify(shut)} (was ${Math.round(hb.h)}px)`);
+            const hb2 = await ev((i) => { const r = document.querySelector(`#${i} [data-min]`).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, id);
+            await p.touchscreen.tap(hb2.x, hb2.y); await sleep(700);
+            const open = await ev((i) => document.getElementById(i).getBoundingClientRect().height, id);
+            C.ok(open > shut.h + 10, `${W}x${H} runpub: tapping ${id}'s header again didn't open it (${Math.round(open)}px)`); } }
         if (mode === 'boss' && (W < 760 || H < 500)) C.ok(await ev(() => { const v = (id) => { const e = document.getElementById(id); return !!e && !!e.offsetParent && getComputedStyle(e).visibility !== 'hidden' && e.classList.contains('show'); }; return !v('btn-emote') && getComputedStyle(document.getElementById('mp-chip')).display === 'none'; }), `${W}x${H} boss: the EMOTE button or the room chip is still on a phone's screen`);
         if (mode === 'boss') C.ok(!info.meter, `${W}x${H} boss: the top-left box is showing (the boss's bar says it all)`);
         if (W < 760 || H < 500) C.ok(await ev(() => document.body.classList.contains('compact-ui') && document.getElementById('menu-btn').textContent.trim() === '⏸'), `${W}x${H} ${mode}: the corner's buttons aren't the compact row`);
