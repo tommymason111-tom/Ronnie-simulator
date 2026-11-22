@@ -150,6 +150,11 @@ export class MPSync {
     const { items, director } = this;
     director.remote = true; if (this.minFood0 === undefined) this.minFood0 = items.minFood;
     items.minFood = 0; items.respawnQueue.length = 0; items.clientMode = true;
+    // (from now on the host says what food there is. What we had becomes theirs to tell us about: the next full update
+    // keeps what they've got, adds what we haven't and clears the rest. Kept as our own, a game that had been host and
+    // handed it back (a phone away for a moment) ignored the host's food and was left with none to eat)
+    this.dead.clear();
+    for (const it of items.items) { if (it.dead || it.heldBy) continue; it.netMirror = true; it.netSent = false; if (it.nid) this.byNid.set(it.nid, it); }
     for (const it of items.items.slice()) if (!it.netMirror) { it.dropNoTell = true; items.remove(it); }
     for (const c of this.cast.slice(1)) c.dispose();
     this.cast.length = 1;
@@ -316,7 +321,11 @@ export class MPSync {
     if (!voiceLine(c.id, m.text, c.headPos(new THREE.Vector3()), { key: 'npc_' + c.id, onStart: (dur) => c.showLine(m.text, 3, dur) })) c.showLine(m.text, 3, 0); }
   on_dir(m) { if (this.host) return; const d = this.director; d.hostHud = m.hud; d.timeLeft = m.left; if (m.mode && m.mode !== (d.fullMode || d.mode) && d.startRemote) d.startRemote(m.mode); }
   on_woke(m) { const D = this.room.dormant; if (!D) return; const e = D.entries[m.i]; if (e && !e.woken) { e.woken = true; for (const im of e.group.meshes) { im.setMatrixAt(e.index, new THREE.Matrix4().makeScale(0, 0, 0)); im.instanceMatrix.needsUpdate = true; } } }
-  on_end(m) { if (this.host) return; this.director.running = false; this.director.showReceipt && this.director.showReceipt(m.lines); this.director.receiptT = 1e9; this.director.g.onGameOver && this.director.g.onGameOver(m.lines); }
+  // the game's over: the host's receipt, with YOUR score on it (it carried the host's own EAT SCORE, size and records)
+  on_end(m) { if (this.host) return; this.director.running = false;
+    const own = Array.isArray(m.lines) ? m.lines.filter(l => Array.isArray(l) && !/^(NEW RECORD!|BEST EVER)$/.test(l[0])).map(l => l[0] === 'EAT SCORE' ? ['EAT SCORE', Math.round(this.G.chonk || 0)] : l[0] === 'FINAL SIZE' && this.director.g.stageName ? ['FINAL SIZE', this.director.g.stageName()] : l) : m.lines;
+    m = { ...m, lines: own };
+    this.director.showReceipt && this.director.showReceipt(m.lines); this.director.receiptT = 1e9; this.director.g.onGameOver && this.director.g.onGameOver(m.lines); }
 
   // ------------------------------------------------------------------ the squad picks on one of you at a time
   // everyone who can be attacked: me, and each other player with a body in the game

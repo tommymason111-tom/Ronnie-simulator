@@ -87,7 +87,8 @@ document.getElementById('app').appendChild(renderer.domElement);
 // phone's memory), so a context that comes back empty can't be filled again, and every frame drawn then threw
 window.__glLost = false;
 renderer.domElement.addEventListener('webglcontextlost', (e) => { e.preventDefault(); window.__glLost = true; console.warn('graphics context lost'); }, false);
-renderer.domElement.addEventListener('webglcontextrestored', () => { window.__glLost = true; location.reload(); }, false);
+renderer.domElement.addEventListener('webglcontextrestored', () => { window.__glLost = true;      // (a phone that dropped the graphics while the game was in the background: start again, back in your room, or the same place and game)
+  try { if (net.connected && net.code) { location.href = location.pathname + '?lobby=' + encodeURIComponent(net.code) + '&u=' + Date.now(); return; } if (room && room.placeId && director.fullMode) { location.href = location.pathname + '?go=1&place=' + encodeURIComponent(room.placeId) + '&mode=' + encodeURIComponent(director.fullMode) + '&u=' + Date.now(); return; } } catch (e) {} location.reload(); }, false);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9db7ff);
@@ -239,6 +240,10 @@ function openBag(bag) {
     clearTimeout(openBag.t); openBag.t = setTimeout(() => el.classList.remove('show'), 2600 + n * 220);
   }
   sfx('rustle', bag.pos, 0.8);
+  // SUPERMARKET SWEEP: you can't throw anything, so an empty bag's no use: it goes (a puff, out of your hand) once
+  // the food's out of it, and the food goes in the trolley when you grab it
+  if (director.running && director.mode === 'sweep') setTimeout(() => { if (bag.dead) return; const h = bag.heldBy; if (h) h.held = null; bag.heldBy = null;
+    crumbs.burst && crumbs.burst(bag.pos.clone(), [0x0050aa, 0xffd400, 0xe60a14], 14, 1.6); sfx('popout', bag.pos, 0.5); items.remove(bag); }, 650);
   found.forEach((t, i) => setTimeout(() => {
     const from = _a.copy(player.head).addScaledVector(player.fwd, 0.55 * player.scale); from.y -= 0.25 * player.scale;
     const v = new THREE.Vector3(player.fwd.x * 0.6 + (Math.random() - 0.5) * 0.8, 2.0 + Math.random() * 0.6, player.fwd.z * 0.6 + (Math.random() - 0.5) * 0.8);
@@ -1130,7 +1135,7 @@ function setPaused(on) {
   paused = on; player.menuLock = on; pauseEl.classList.toggle('on', on); document.body.classList.toggle('paused', on);      // (body.paused: anything that floats over the game (the dev button, the voice bar...) steps aside for the menu)
   pauseEl.classList.toggle('in-vr', renderer.xr.isPresenting); if (!on) { pauseEl.classList.remove('show-chars', 'show-ctrls', 'show-modes', 'show-music', 'show-tv', 'show-set', 'show-mix'); delete pauseEl.dataset.from; vrPause && vrPause.close(); }
   if (on) { const guest = !!(net.connected && !net.host);   // multiplayer: only the host changes the game or restarts it
-    document.getElementById('pause-mode').style.display = guest ? 'none' : ''; for (const id of ['pause-restart', 'pause-restart2']) { const b = document.getElementById(id); b.style.display = ''; b.textContent = guest ? '🔄 ASK FOR A RESTART' : '🔄 RESTART ROUND'; }      // (a guest can't restart it, but can ask the host) document.getElementById('pause-char').style.display = net.connected ? '' : 'none';
+    document.getElementById('pause-mode').style.display = ''; document.getElementById('pause-receipt').style.display = director.lastLines && !renderer.xr.isPresenting ? '' : 'none';      /* (the same menu for everyone: a guest's GAME MODE asks the host for one) */ for (const id of ['pause-restart', 'pause-restart2']) { const b = document.getElementById(id); b.style.display = ''; b.textContent = guest ? '🔄 ASK FOR A RESTART' : '🔄 RESTART ROUND'; }      // (a guest can't restart it, but can ask the host) document.getElementById('pause-char').style.display = net.connected ? '' : 'none';
     const t = document.getElementById('ready-tag'); document.getElementById('pause-where').textContent = (t ? t.textContent : '') + (guest ? ' · the host picks the game' : ''); try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
   setMuted(on || soundOff);
 }
@@ -1198,17 +1203,25 @@ const PAUSE_MODES = {
 const PLACE_GAMES = { pub: ['everyone', 'runpub1', 'runpub', 'runpub3', 'imposter', 'imposter2', 'boss', 'prophunt', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], shop: ['sweep', 'prophunt', 'roam', 'roam0'], garden: ['bbq', 'boss', 'prophunt', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'] };
 const modeTitle = () => { const m = director.fullMode; return (PAUSE_MODES[m] && PAUSE_MODES[m][1]) || (m === 'classic' ? 'CLASSIC' : m === 'intervention' ? 'THE SQUAD' : (m || '').toUpperCase()); };
 function showPauseModes() {
-  const list = document.getElementById('pause-mode-list'), cur = director.fullMode;
+  const list = document.getElementById('pause-mode-list'), cur = director.fullMode, guest = !!(net.connected && !net.host);
   list.innerHTML = (PLACE_GAMES[room.placeId] || PLACE_GAMES.bedroom).filter(id => net.connected || !PAUSE_MODES[id] || !/^(imposter|prophunt)/.test(id)).map(id => { const [ico, name, desc] = PAUSE_MODES[id];
-    return `<button class="alt mode-opt${id === cur ? ' cur' : ''}" data-id="${id}">${ico} ${name}<small>${id === cur ? 'Playing now · tap to restart' : desc}</small></button>`; }).join('');
+    return `<button class="alt mode-opt${id === cur ? ' cur' : ''}" data-id="${id}">${ico} ${name}<small>${id === cur ? (guest ? 'Playing now' : 'Playing now · tap to restart') : guest ? 'Ask the host for this one' : desc}</small></button>`; }).join('');
   list.querySelectorAll('.mode-opt').forEach(b => b.addEventListener('click', () => {
-    const id = b.dataset.id; SEL.mode = id;
+    const id = b.dataset.id;
+    if (guest) { const n = performance.now(); if (n - (G.askModeAt || -1e9) < 8000) { showBanner('ALREADY ASKED', 'the host decides'); return; } G.askModeAt = n; mp.chat(`🎲 Can we play ${PAUSE_MODES[id] ? PAUSE_MODES[id][1] : id}?`); pauseEl.classList.remove('show-modes'); setPaused(false); showBanner('ASKED THE HOST', 'for ' + (PAUSE_MODES[id] ? PAUSE_MODES[id][1] : id)); return; }
+    SEL.mode = id;
     try { const st = JSON.parse(localStorage.getItem('rs_menu') || '{}'); st.mode = id; localStorage.setItem('rs_menu', JSON.stringify(st)); } catch (e) {}
     initAudio(); hostNewGame(id);
   }));
   pauseEl.classList.add('show-modes');
 }
 document.getElementById('pause-mode').addEventListener('click', showPauseModes);
+// 🧾 LAST RECEIPT (pause menu): the last game's receipt again, as big as fits, for as long as you like (it went too quickly
+// at the end of an eat-off, and once it had gone there was no getting it back)
+function showLastReceipt() { const rc = director.rc; if (!rc || !director.lastLines) return;
+  let v = document.getElementById('rc-view'); if (!v) { v = document.createElement('div'); v.id = 'rc-view'; v.innerHTML = '<img alt="Your receipt"><button type="button">✕ CLOSE</button>'; document.body.appendChild(v); v.querySelector('button').addEventListener('click', () => v.classList.remove('on')); }
+  v.querySelector('img').src = rc.toDataURL('image/png'); v.classList.add('on'); }
+document.getElementById('pause-receipt').addEventListener('click', showLastReceipt); window.__showReceipt = showLastReceipt;
 // multiplayer: change who you're playing as without leaving the game (body, name on the HUD, emotes all switch)
 function showPauseChars() {
   const grid = document.getElementById('pause-char-grid'), taken = new Set([...net.players.values()].map(p => p.char).filter(c => c && c !== 'ronnie'));
@@ -1649,13 +1662,22 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
   // a new host (the old one left, or handed it over): everyone's told who; if it's you, your game takes over running
   // everything (the squad, the food, the game) from exactly where it was
   net.on.host = (m, was) => { chip();
+    if (m.id === net.id && m.why === 'given' && m.from) { G.gotHostFrom = m.from; G.gotHostAt = performance.now(); }      // (handed it while they're away: theirs again when they're back)
+    if (m.id === net.id) G.handedOffAt = 0;
     if (m.id === net.id && !was) { mp.becomeHost(); window.__rc && window.__rc.becameHost(); director.imposter && director.imposter.becomeHost && director.imposter.becomeHost(); director.prophunt && director.prophunt.becomeHost(); showBanner('👑 YOU\'RE THE HOST NOW', m.why === 'given' ? 'HANDED BACK TO YOU' : 'THE HOST LEFT: YOU\'RE RUNNING THE GAME'); }
     else if (m.id !== net.id) showBanner('👑 ' + String(m.name || 'SOMEONE').toUpperCase() + ' IS THE HOST', m.why === 'given' ? 'HOSTING WAS HANDED OVER' : 'THE HOST LEFT');
     if (was && m.id !== net.id) mp.becomeGuest && mp.becomeGuest(); };
   // your progress (how big you've got, what you've eaten), kept by the room: drop out and come back, and it's yours again
   // the host's phone locked or went to another app: a phone stops the page, so everyone's game would stop with it.
   // Hand hosting on to the next player before it does (the room tells everyone; it can be handed back later)
-  const handOff = () => { if (!net.connected || !net.host || !net.players.size) return; const next = [...net.players.values()][0]; if (next) net.send({ t: 'giveHost', to: next.id }); };
+  // (only to a real player: the developer's fake players run on this very page, so they'd be hosting a game nobody's
+  // running: the food went and nothing could be eaten. And back it comes when you return, see hostBack)
+  const handOff = () => { if (!net.connected || !net.host || !net.players.size || G.over) return; const next = [...net.players.values()].find(p => !/^BOT /.test(p.name || '')); if (next) { net.send({ t: 'giveHost', to: next.id }); G.handedOffAt = performance.now(); } };
+  // back after a moment away (another app, the lock button): ask for hosting back. Whoever it went to gives it back if
+  // they only had it because you'd gone (within 2 minutes)
+  document.addEventListener('visibilitychange', () => { if (document.hidden) return; const ask = () => { if (net.connected && !net.host && G.handedOffAt && performance.now() - G.handedOffAt < 120000) net.send({ t: 'hostBack' }); };
+    ask(); setTimeout(ask, 2500); });
+  net.on.hostBack = (m, p) => { if (net.host && p && p.id && G.gotHostFrom === p.id && performance.now() - (G.gotHostAt || 0) < 120000) { G.gotHostFrom = null; net.send({ t: 'giveHost', to: p.id }); } };
   document.addEventListener('visibilitychange', () => { if (document.hidden && !renderer.xr.isPresenting) handOff(); });
   window.addEventListener('pagehide', handOff);
   setInterval(() => { if (net.connected) try { localStorage.setItem('rs_mp_last', JSON.stringify({ code: net.code, t: Date.now() })); } catch (e) {} }, 5000);      // (the home screen's REJOIN button)
@@ -1879,12 +1901,12 @@ class SquadPuppet {
       this.c.rag.bulk = (sNow > 1.001 || f > 0.001) ? { h: sNow, w: sNow * (1 + 0.55 * f) } : null; }
     // (a last touch of smoothing on the body: light on a steady connection (it's all lag there), more on a jittery one)
     const J0 = this.jit, kr = J0 ? 25 + 35 * THREE.MathUtils.clamp(1 - (J0.dev - 30) / 60, 0, 1) : 25;
-    const c = this.c, r = c.rag, k = this.first ? 1 : Math.min(1, dt * kr);
+    const c = this.c, r = c.rag, k = this.first || this.p.self ? 1 : Math.min(1, dt * kr);      // (your own body: exactly where you are. Smoothed like everyone else's it trailed behind you, and walking backwards you saw it out in front)
     // (no body moves faster than a person can: where the playback's own target jumps (its guess corrected as a late pose
     // comes in after a hiccup), the jump is taken up and let out over a moment, the whole body and its hands together.
     // A real jump (a respawn: 2m or more) still snaps straight there)
     const tH = _a.set(...pose.h), off = this.hOff || (this.hOff = new THREE.Vector3());
-    if (this.lastH && !this.first) { const d = _c.copy(tH).sub(this.lastH), L = d.length(), lim = 4 * Math.max(dt, 1 / 120) + 0.005; if (L >= 2) off.set(0, 0, 0); else if (L > lim) off.addScaledVector(d, -(1 - lim / L)); }
+    if (this.lastH && !this.first && !this.p.self) { const d = _c.copy(tH).sub(this.lastH), L = d.length(), lim = 4 * Math.max(dt, 1 / 120) + 0.005; if (L >= 2) off.set(0, 0, 0); else if (L > lim) off.addScaledVector(d, -(1 - lim / L)); }
     (this.lastH || (this.lastH = new THREE.Vector3())).copy(tH); off.multiplyScalar(Math.exp(-dt / 0.15)); tH.add(off);
     const prev = this.pos.clone(); this.pos.lerp(tH, k); if (pose.flat) { this.rh.lerp(_b.set(...pose.rh).add(off), k); this.lh.lerp(_b.set(...pose.l).add(off), k); } else { this.rh.set(...pose.rh).add(off); this.lh.set(...pose.l).add(off); }
     // knocked flat: a limp ragdoll (like the NPCs), then up again where they landed

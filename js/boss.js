@@ -313,6 +313,7 @@ export class BossFight {
     this.updateHazards(dt);
     this.updateProjs(dt);
     this.foodHits();
+    if (this.g.renderer && this.g.renderer.xr.isPresenting) this.handPunches();
     this.updateMinions(dt);
     this.updateMe(dt);
     if (this.host) this.ammo(dt);
@@ -952,14 +953,35 @@ export class BossFight {
     it.vel.set(d.x / t, vy, d.z / t); it.thrownByPlayer = true;
   }
   // phones: tap the boss while holding food and it's thrown at where you tapped
+  // A PUNCH (tap them up close on a phone; swing a hand into them in VR): a small hit, every 0.35s at most. Thrown food
+  // does three to ten times as much, so it's for when you've nothing to throw
+  punch(at, w = 0, dir = null) {
+    if (!this.c || this.over || this.st === 'none' || this.st === 'wait') return false;
+    const now = performance.now(); if (now - (this.punchAt || 0) < 350) return false; this.punchAt = now;
+    const dmg = Math.round(clamp((w ? 8 : 5) * this.power * (this.st === 'tired' ? 1.5 : 1), 3, 30));
+    sfx('punch', at, 1); this.g.crumbs && this.g.crumbs.burst(at, [0xffffff, 0xffd400], 8, 1.4); this.g.words && this.g.words.show(['POW!', 'BIFF!', 'WHACK!'][Math.floor(Math.random() * 3)], at.clone().add({ x: 0, y: 0.25, z: 0 }), '#ff5a36', 0.22, 0.8);
+    this.g.net && this.g.net.connected && this.g.mp && this.g.mp.swing && this.g.mp.swing('R');
+    if (this.host) this.damage(dmg, at, w, null);
+    else { this.hitFx(this.shielded ? 0 : dmg, at, w, true); if (!this.shielded) { this.stats.dmg += dmg; this.stats.hits++; } this.g.net.send({ t: 'bossHit', d: dmg, w, p: [r2(at.x), r2(at.y), r2(at.z)] }); }
+    return true;
+  }
+  // (VR) a hand swung into the boss
+  handPunches() {
+    const P = this.g.player; if (!this.c || !P.hands) return; let B = null;
+    for (const h of P.hands) { if (!h.tracked || h.held || h.speed < 1.6) continue; B = B || this.boxes();
+      for (const b of B) if (b.c.distanceTo(h.palm) < b.r + 0.05) { if (this.punch(h.palm.clone(), b.head ? 1 : 0)) h.pulse && h.pulse(1, 80); break; } }
+  }
   tap(ray) {
     if (!this.c || this.over || !this.c.rag.list.length) return false;
     const B = this.boxes(); let best = null, bd = Infinity;
     for (const b of B) { const along = _v.subVectors(b.c, ray.origin).dot(ray.direction); if (along > 0 && along < bd && ray.distanceSqToPoint(b.c) < b.r * b.r * 1.3) { bd = along; best = b; } }
     if (!best) return false;
     const P = this.g.player, f = P.flatHolder, it = f && f.held;
-    if (!it) { this.g.hint && this.g.hint('Grab some food first, then tap ' + this.def.name + ' to throw it'); return true; }
     const at = ray.at(bd, new THREE.Vector3()); at.lerp(best.c, 0.5);
+    // nothing in your hand: punch them (close enough to reach), for a little damage. Thrown food's the real weapon
+    if (!it) { const reach = 1.7 * Math.max(1, P.scale || 1) + best.r + 0.3; if (Math.hypot(P.head.x - best.c.x, P.head.z - best.c.z) > reach) {      // (along the ground to them: they're a giant, so their chest is way up above you)
+ this.g.hint && this.g.hint('Get closer to punch ' + this.def.name + ', or grab some food and throw it'); return true; }
+      this.punch(at, best.head ? 1 : 0, P.fwd); return true; }
     P.flatThrow(9);
     if (!it.dead) this.aimAt(it, at, 12, true);
     return true;

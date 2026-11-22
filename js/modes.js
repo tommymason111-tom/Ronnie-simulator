@@ -16,7 +16,7 @@ import { sfx, playTune, shout } from './audio.js';
 import { Item } from './foods.js';
 import { TURKEY_LEN } from './cutscenes.js';
 import { BBQ_SPOT, IAN_SPOT, IAN_YAW } from './levels/garden.js';
-import { pickVeg, pickJunk } from './config.js';
+import { pickVeg, pickJunk, FOODS } from './config.js';
 import { RunPub } from './runpub.js';
 import { SpriteLayer } from './perf.js';
 import { resetAwards, pickAwards, track } from './awards.js';
@@ -249,7 +249,7 @@ export class Director {
     // PROP HUNT (multiplayer, the pub / Lidl / Lewis's): no food, no squad, no Tommy: see prophunt.js
     if (id === 'prophunt') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null); this.removeTrolley();
       this.prophunt = g.makePropHunt ? g.makePropHunt() : null; sfx('gamestart', null, 1); return; }
-    if (this.remote) { tommy.attacks = false; tommy.directed = false; if (g.fx) g.fx.setCountdown(null); return; }
+    if (this.remote) { tommy.attacks = false; tommy.directed = false; if (g.fx) g.fx.setCountdown(null); if (id === 'sweep') this.startSweep(true); else this.removeTrolley(); return; }      // (a guest in the sweep: their own trolley and score; the host runs the food and the squad)
     if (id === 'date') this.startDate();
     if (g.room.name === 'Lidl' && (id === 'sweep' || id === 'roam')) this.setupLidlStaff(id);    // uniforms, and people on the tills
     if (id === 'sweep') this.startSweep();
@@ -353,7 +353,8 @@ export class Director {
     const board = this.mode === 'chonkoff' ? ['eatoff', Math.round(st.chonk)] : this.mode === 'sweep' && this.sweep ? ['sweep', Math.round(this.sweep.total)] : this.mode === 'runpub' && this.runpub ? [this.fullMode, Math.round(this.runpub.money)] : null;
     if (board && !(this.mp && this.mp.on && !this.mp.host && this.mode === 'runpub')) submitScore(board[0], board[1]).then(r => { if (!r || this.lastLines !== lines) return; lines.push([r.best ? 'NEW ONLINE BEST! RANK' : 'ONLINE RANK', '#' + r.rank]); const k = this.receiptT; this.showReceipt(lines); this.receiptT = k; });
     this.showReceipt(lines);
-    if (!this.player2) { this.receiptT = 1e9; this.g.onGameOver && this.g.onGameOver(lines); }      // (the final scoreboard: stays up till you leave; not between the two players' goes of an eat-off)
+    if (!this.player2) { this.receiptT = 1e9; this.g.onGameOver && this.g.onGameOver(lines); }
+    else this.receiptT = 60;      // (an eat-off's PLAYER 1 receipt: a minute to read it and pass the phone, and 🧾 LAST RECEIPT in the pause menu after)      // (the final scoreboard: stays up till you leave; not between the two players' goes of an eat-off)
     if (this.mp && this.mp.on && this.mp.host) { this.mp.net.send({ t: 'end', lines }); this.mp.net.send({ t: 'endGame' }); }      // (the game's over: the room forgets everyone's progress)
     g.tommy.say({
       intervention: 'Another intervention, another failure. I\'ll tell your mum you were good. I\'ll lie.',
@@ -379,7 +380,7 @@ export class Director {
     if (this.imposter) { this.imposter.update(dt); return; }
     if (this.boss) { this.boss.update(dt, ctx); this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } return; }      // (BOSS FIGHT: boss.js)
     if (this.prophunt) { this.prophunt.update(dt); return; }      // (PROP HUNT)
-    if (this.remote) { this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
+    if (this.remote) { if (this.mode === 'sweep' && this.sweep) { this.trolleyFollow(dt); this.othersTrolleys(dt); } this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
     if (this.pending) {                       // an announced attack that hasn't landed yet
       const pd = this.pending, P = g.player;
       pd.t -= dt; pd.age = (pd.age || 0) + dt;
@@ -514,7 +515,8 @@ export class Director {
     // (one attack lands once: Tommy's trip and Noah's tackle have a backstop timer as well as the moment they reach you,
     // and when both went off you went down twice, the second time straight after getting up)
     const now = performance.now(), lh = this.lastHit;
-    if (lh && lh.who === who && lh.key === key && now - lh.t < 9000) { if (this.pending && this.pending.who === who && this.pending.key === key) this.pending = null; return; }
+    if (lh && lh.who === who && lh.key === key && (key === 'trip' || key === 'tackle') && now - lh.t < 9000) {      // (only those two: for anyone else it threw away a real second go, e.g. Dylan's set off twice in a row)
+      if (this.pending && this.pending.who === who && this.pending.key === key) this.pending = null; return; }
     const prev = this.pending && this.pending.key === key ? this.pending : null;
     this.pending = null;
     // Ronnie's busy (on the floor, mid-air, in Ben's film): hold the attack until he isn't
@@ -668,12 +670,13 @@ export class Director {
   // Everything you pick up goes straight into your trolley (which rolls along in
   // front of you). Bigger and better food is worth more. Oliver's on security:
   // if he catches you, three things come back out of the trolley.
-  startSweep() {
+  startSweep(guest = false) {
     const g = this.g;
     this.sweep = { items: 0, total: 0, caught: 0, cool: 3, list: [] };
     if (!this.trolley) this.trolley = makeTrolley();
     this.trolley.visible = true; this.trolley.children.slice(TROLLEY_PARTS).forEach(m => this.trolley.remove(m));
     g.scene.add(this.trolley);
+    if (guest) { g.player.speedMul = 1.7; return; }
     g.items.minFood = 140; g.items.respawnDelay = 0.5; g.items.topUpEvery = 0.25; g.items.vegShare = 0.2; this.clearGlows();
     g.player.speedMul = 1.7;                                   // it's a SWEEP: you leg it round the shop
     // fill the shelves straight away: food on every free spot, and some fruit and veg as traps
@@ -691,7 +694,7 @@ export class Director {
     if (aw) { aw.active = false; setTimeout(() => aw.say('I\'m on shift too, Ron. I\'ll catch you. Slowly. It\'s the knee.', 5), 5200); }
     this.sweep.awCool = 3;
   }
-  removeTrolley() { if (this.trolley) { this.trolley.visible = false; this.g.scene.remove(this.trolley); } if (this.g.items) { this.g.items.minFood = this.g.room.big ? 150 : 0; this.g.items.topUpEvery = 1; this.g.items.vegShare = 0; } if (this.g.player) this.g.player.speedMul = 1; this.clearGlows(); }
+  removeTrolley() { if (this.trolley) { this.trolley.visible = false; this.g.scene.remove(this.trolley); } if (this.otherTrolleys) { for (const o of this.otherTrolleys.values()) this.g.scene.remove(o.g); this.otherTrolleys.clear(); } if (this.g.items) { this.g.items.minFood = this.g.room.big ? 150 : 0; this.g.items.topUpEvery = 1; this.g.items.vegShare = 0; } if (this.g.player) this.g.player.speedMul = 1; this.clearGlows(); }
   // the game calls this when Ronnie picks something up during the sweep
   sweepGrab(it) {
     if (!this.running || this.mode !== 'sweep') return false;
@@ -712,17 +715,35 @@ export class Director {
     const n = this.trolley.children.length - TROLLEY_PARTS;
     m.position.set(-0.22 + (n % 4) * 0.15, 0.62 + Math.floor(n / 12) * 0.08, -0.2 + (Math.floor(n / 4) % 3) * 0.18);
     m.rotation.set(Math.random(), Math.random() * 6, Math.random());
-    m.userData.kcal = price; this.trolley.add(m); sw.list.push(m);
+    m.userData.kcal = price; m.userData.type = it.type; this.trolley.add(m); sw.list.push(m);
     g.items.remove(it); g.items.queueRespawn(it.type, 1.2);
     return true;
   }
+  // the trolley rolls along in front of Ronnie
+  trolleyFollow(dt) { const P = this.g.player; if (!this.trolley || !P) return;
+    const f = new THREE.Vector3(P.fwd.x, 0, P.fwd.z).normalize(), want = P.head.clone().addScaledVector(f, 0.75); want.y = 0;
+    this.trolley.position.lerp(want, Math.min(1, dt * 8)); this.trolley.rotation.y = Math.atan2(f.x, f.z);
+    // (multiplayer) what's in it, for everyone else's game: sent when it changes, at most twice a second
+    const net = this.mp && this.mp.on && this.mp.net; if (!net || !this.sweep) return;
+    const types = (this.sweep.list || []).map(m => m.userData.type).filter(Boolean).slice(-36), key = types.join(','), now = performance.now(), ago = now - (this.swSentAt || 0);
+    if ((key !== this.swSent && ago > 500) || ago > 4000) { this.swSent = key; this.swSentAt = now; net.send({ t: 'swT', l: types }); } }
+  // MULTIPLAYER: everyone else's trolley, rolling along in front of them, with what they've got in it
+  othersTrolleys(dt) {
+    const net = this.mp && this.mp.on && this.mp.net; if (!net) return;
+    if (this.swWired !== net) { this.swWired = net; net.on.swT = (m, p) => { if (!p || !Array.isArray(m.l)) return; p.swList = m.l.filter(t => typeof t === 'string' && Object.prototype.hasOwnProperty.call(FOODS, t)).slice(0, 36); }; }
+    const live = new Set();
+    for (const p of net.players.values()) { const av = p.avatar; if (!av || !av.headPos || av.impHidden) continue; live.add(p.id);
+      const T = this.otherTrolleys || (this.otherTrolleys = new Map()); let o = T.get(p.id);
+      if (!o) { o = { g: makeTrolley(), shown: '' }; T.set(p.id, o); this.g.scene.add(o.g); }
+      const hd = av.headPos(), f = av.fwd ? av.fwd() : new THREE.Vector3(0, 0, -1); f.y = 0; if (f.lengthSq() < 1e-6) f.set(0, 0, -1); f.normalize();
+      const want = hd.clone().addScaledVector(f, 0.75); want.y = 0; if (o.g.position.lengthSq() === 0) o.g.position.copy(want); else o.g.position.lerp(want, Math.min(1, dt * 8)); o.g.rotation.y = Math.atan2(f.x, f.z);
+      const key = (p.swList || []).join(','); if (key !== o.shown) { o.shown = key; o.g.children.slice(TROLLEY_PARTS).forEach(m => o.g.remove(m));
+        (p.swList || []).forEach((t, n) => { const m = new Item(t).obj; m.scale.setScalar(0.8); m.position.set(-0.22 + (n % 4) * 0.15, 0.62 + Math.floor(n / 12) * 0.08, -0.2 + (Math.floor(n / 4) % 3) * 0.18); m.rotation.set(n * 1.3, n * 2.1, n * 0.7); o.g.add(m); }); } }
+    if (this.otherTrolleys) for (const [id, o] of this.otherTrolleys) if (!live.has(id)) { this.g.scene.remove(o.g); this.otherTrolleys.delete(id); }
+  }
   updateSweep(dt, ctx) {
     const g = this.g, P = g.player, sw = this.sweep; if (!sw) return;
-    // the trolley rolls along in front of Ronnie
-    const f = new THREE.Vector3(P.fwd.x, 0, P.fwd.z).normalize();
-    const want = P.head.clone().addScaledVector(f, 0.75); want.y = 0;
-    this.trolley.position.lerp(want, Math.min(1, dt * 8));
-    this.trolley.rotation.y = Math.atan2(f.x, f.z);
+    this.trolleyFollow(dt); this.othersTrolleys(dt);
     // glows: green on the food you want in the trolley; fruit and veg flicker red AND green (trust nothing)
     const t = performance.now() / 1000;
     // (all drawn together as one layer: perf.js SpriteLayer. A sprite each was a draw each: ~170 in Lidl)

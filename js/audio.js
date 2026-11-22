@@ -24,7 +24,15 @@ let musicGain = null;
 let pitchScale = 1;
 let _pv = 1;                   // this sound's own little pitch wobble (the same sound twice in a row never sounds identical)            // eating sounds get deeper as Ronnie grows
 
+// back from the background on an iPhone: its audio is 'suspended' or 'interrupted' and stays silent until something
+// resumes it, and a resume only works from a tap. So: try as soon as the page is back, and again on the next touch
+let wakeHooked = false;
+function hookWake() { if (wakeHooked) return; wakeHooked = true;
+  const wake = () => { try { if (ctx && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume(); } catch (e) {} };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+  for (const ev of ['pointerdown', 'touchend', 'keydown']) window.addEventListener(ev, wake, { capture: true, passive: true }); }
 export function initAudio() {
+  hookWake();
   if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
