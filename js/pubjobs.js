@@ -258,14 +258,14 @@ body.rp-tight #rp-events .job img, body.rp-tight #rp-events .step:not(.now) { di
     const col = (k) => k > 0.5 ? '#39ff14' : k > 0.25 ? '#ffd400' : '#ff3a3a';
     const nTodo = evs.length + (j ? 1 : 0);
     let html = `<h4 data-min="1" style="display:flex;justify-content:space-between;align-items:center;gap:6px;min-height:22px;pointer-events:auto;cursor:pointer;margin-bottom:${this.minimised ? 0 : 3}px"><span>⚠ TO DO${this.minimised ? ` (${nTodo})` : ''}</span><b style="font:900 13px Arial;color:#fff;background:rgba(255,255,255,0.14);border-radius:7px;padding:1px 7px">${this.minimised ? '▸' : '▾'}</b></h4>`;
-    if (this.minimised) { this.panel.style.display = vr ? 'none' : 'block'; this.panel.innerHTML = html; return; }
+    if (this.minimised) { this.panel.style.display = vr ? 'none' : 'block'; if (this.panel.__html !== html) { this.panel.__html = html; this.panel.innerHTML = html; }      /* (only when it changes: no flicker) */ return; }
     if (!evs.length && !j) html += '<div class="ev" style="opacity:.7">All quiet. For now.</div>';
     const tight = document.body.classList.contains('rp-tight');
     for (const e of evs) html += `<div class="ev" style="border-left:5px solid ${e.col || '#29b6ff'};padding-left:6px"><b>${e.icon} ${esc(e.title)}</b>${tight ? '' : esc(e.how)}<div class="bar"><i style="width:${Math.max(4, e.k * 100)}%;background:${col(e.k)}"></i></div></div>`;
     if (j) { const k = 1 - j.t / j.limit; html += `<div class="ev job" style="border-left:5px solid ${COL.job};padding-left:6px"><img src="${this.portrait(j.from)}" onerror="this.style.display='none'"><div><b>${j.icon} ${esc(j.title)} <span style="color:#9fe8ff;font-weight:700">(${esc(j.from.name)})</span></b>${j.steps.map((s, i) => `<div class="step ${s.done ? 'done' : i === j.step ? 'now' : ''}">${i === j.step ? '➜ ' : ''}${esc(s.text)}${s.hold && i === j.step && s.held ? ` ${Math.round(s.held / s.hold * 100)}%` : ''}</div>`).join('')}<div class="bar"><i style="width:${Math.max(4, k * 100)}%;background:${col(k)}"></i></div></div></div>`; }
-    this.panel.style.display = vr ? 'none' : 'block'; this.panel.innerHTML = html;
+    this.panel.style.display = vr ? 'none' : 'block'; if (this.panel.__html !== html) { this.panel.__html = html; this.panel.innerHTML = html; }      /* (only when it changes: no flicker) */
     // (straight under the ORDERS list, the same width: never on top of it. An upright phone: beside it (main.js layout))
-    const oe = this.rp.ordersEl; if (oe && oe.style.display !== 'none' && !tight) { const r = oe.getBoundingClientRect(); this.panel.style.top = Math.round(r.bottom + 8) + 'px'; this.panel.style.right = Math.round(window.innerWidth - r.right) + 'px'; this.panel.style.width = Math.round(r.width) + 'px'; }
+    const oe = this.rp.ordersEl; if (oe && oe.style.display !== 'none' && !tight) { const r = oe.getBoundingClientRect(); this.panel.style.left = 'auto'; this.panel.style.transform = 'none'; this.panel.style.top = Math.round(r.bottom + 8) + 'px'; this.panel.style.right = Math.round(window.innerWidth - r.right) + 'px'; this.panel.style.width = Math.round(r.width) + 'px'; }
     // VR wrist board
     const h = vr && (P.hands || []).find(h => h.handedness === 'left' && h.tracked); this.vr.visible = !!h; if (!h) return;
     const g = this.vrCv.getContext('2d'); g.clearRect(0, 0, 256, 256); g.fillStyle = 'rgba(10,14,40,0.9)'; g.beginPath(); g.roundRect(4, 4, 248, 248, 18); g.fill(); g.lineWidth = 5; g.strokeStyle = '#29b6ff'; g.stroke();

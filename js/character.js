@@ -580,6 +580,7 @@ export class Character {
       const pv = r.parts.pelvis.body.position; r.root.x = pv.x; r.root.z = pv.z; }
     r.sync();
     const pos = this.pos; this.fx.position.set(pos.x, 0, pos.z);
+    this.placeProp && this.placeProp(dt, null);
     const head = this.headPos(_v); this.bubble.position.set(head.x, Math.max(head.y, 0.7) + 0.55, head.z);
     this.updateStars(this.netRag === 1, head);
   }

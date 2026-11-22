@@ -125,6 +125,7 @@ const now = () => performance.now() / 1000;
 const portraits = {};
 const portrait = (c) => { const id = c || 'ronnie'; if (!portraits[id]) { const im = new Image(); im.src = `./assets/portraits/${id}.webp`; portraits[id] = im; } return portraits[id]; };
 
+const _kx = new THREE.Vector3(1, 0, 0);      // (the knife's blade points along its +x)
 export class Imposter {
   // g: { scene, room, player, net, mp, words, renderer, camera, items, tommy, avatarOf(id), selfBody(), charName(c), showBanner, restart(), leave() }
   constructor(g, nImp) {
@@ -276,7 +277,7 @@ export class Imposter {
     }
     if (k === 'imDead') {
       const v = this.players.get(m.v); if (!v) return; v.alive = false; v.killedBy = m.k; this.replay && this.replay.event('kill', { v: m.v, k: m.k, p: m.p });
-      const body = { id: m.v, at: V(m.p[0], m.p[1]), char: v.char, found: false }; this.bodies.push(body); this.makeBody(body);
+      const body = { id: m.v, at: V(m.p[0], m.p[1]), char: v.char, found: false, by: m.k }; this.bodies.push(body); this.makeBody(body);
       if (m.k === this.me) { this.killCD = IMP.KILL_CD; this.teleport(m.p[0], m.p[1]); }
       if (m.v === this.me) this.iDied(m.k, 'killed');
       this.syncPuppets(); return;
@@ -354,9 +355,15 @@ export class Imposter {
         this.grp.add(g); return led; }); }
     this.grp.add(this.station('fuse', FUSE.at, '⚡ FUSE BOX', FUSE.kit)); VALVES.forEach((v, i) => this.grp.add(this.station('valve', v.at, '🛢️ ' + v.name)));
     // a frying pan for the kill (it comes down on their head)
-    this.pan = new THREE.Group(); { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.14, 0.04, 22), lam(0x222222)); this.pan.add(p); const h = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.32, 8), lam(0x5a2e14)); h.rotation.z = Math.PI / 2; h.position.x = 0.32; this.pan.add(h); }
-    this.pan.visible = false; this.grp.add(this.pan);
-    this.panTrail = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.02, 24, 1, false, 0, 1.4), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide })); this.panTrail.visible = false; this.grp.add(this.panTrail);
+    // the kill: a small kitchen knife (blade along +x: the point at the end, the handle back at the origin)
+    this.knife = new THREE.Group(); {
+      const steel = new THREE.MeshPhongMaterial({ color: 0xe6ebf0, shininess: 140, specular: 0xffffff, emissive: 0x2a2a2a }), add = (geo, m, x, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); this.knife.add(o); return o; };
+      const blade = new THREE.Shape(); blade.moveTo(0, -0.012); blade.lineTo(0.13, -0.012); blade.quadraticCurveTo(0.16, -0.008, 0.175, 0.012); blade.lineTo(0, 0.016); blade.closePath();
+      const bg = new THREE.ExtrudeGeometry(blade, { depth: 0.003, bevelEnabled: false }); bg.translate(0.105, 0, -0.0015); this.knifeBlade = add(bg, steel, 0);
+      add(new THREE.BoxGeometry(0.11, 0.024, 0.016), lam(0x1d1d1d), 0.05); for (const x of [0.025, 0.075]) add(new THREE.CylinderGeometry(0.004, 0.004, 0.018, 6), steel, x, 0, 0).rotation.x = Math.PI / 2;      // the handle and its rivets
+      add(new THREE.BoxGeometry(0.008, 0.032, 0.02), steel, 0.105);      // the bolster
+      this.knifeBlood = add(new THREE.BoxGeometry(0.06, 0.02, 0.0045), lam(0x8e0a14), 0.25, 0.003); this.knifeBlood.visible = false; }      // (after the first stab: blood on the end of the blade)
+    this.knife.visible = false; this.grp.add(this.knife);
   }
   // the bodies: the player's own character, flat out on the floor, cartoon style (X eyes, stars going round, a splat)
   makeBody(b) {
@@ -392,8 +399,9 @@ export class Imposter {
     b.stars = []; for (let i = 0; i < 4; i++) { const s = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xffd400 : 0xffffff })); b.grp.add(s); b.stars.push(s); }
     if (!av) { const blob = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.9, 4, 10), new THREE.MeshLambertMaterial({ color: 0x5b6cff })); blob.rotation.z = Math.PI / 2; blob.position.y = 0.2; b.grp.add(blob); }
     // the pan coming down
-    this.panT = 0.001; this.panAt = b.at.clone().setY(fy + 2.0);
-    const w = g.words; w && w.show(['BONK!', 'CLANG!', 'DONK!'][Math.floor(Math.random() * 3)], b.at.clone().setY(fy + 1.9), '#ff5252', 0.22, 1.2);
+    // the knife: two quick stabs from the killer's side, then out and gone
+    { const kp = b.by ? this.posOf(b.by) : null; let dx = kp ? kp.x - b.at.x : Math.sin(yaw), dz = kp ? kp.z - b.at.z : Math.cos(yaw); const l = Math.hypot(dx, dz) || 1;
+      this.knT = 0.001; this.knHits = 0; this.knAt = b.at.clone().setY(fy + 1.18 * kH); this.knDir = new THREE.Vector3(dx / l, 0.25, dz / l).normalize(); this.knifeBlood.visible = false; }
     sfx('kill', b.at, 1); setTimeout(() => sfx('body_fall', b.at, 0.8), 120);
   }
   // one job's station: the kit for it (pub stuff), on the spot, and its sign hanging above
@@ -621,7 +629,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
   iDied(by, how) {
     this.panel.close(true); this.setVent(null);
     const sp = this.splash, k = this.players.get(by);
-    sp.style.color = '#ff5252'; sp.innerHTML = how === 'killed' ? `<p>🍳 BONK! 🍳</p><h1>YOU WERE KILLED</h1><div class="imgs"><img src="./assets/portraits/${k ? k.char || 'ronnie' : 'ronnie'}.webp"></div><p>by <b>${k ? k.name.toUpperCase() : 'SOMEONE'}</b></p><p style="color:#cfe0ff">You're a ghost 👻 Finish your jobs, watch the others. Only ghosts can hear you now.</p>`
+    sp.style.color = '#ff5252'; sp.innerHTML = how === 'killed' ? `<p>🔪 STABBED! 🔪</p><h1>YOU WERE KILLED</h1><div class="imgs"><img src="./assets/portraits/${k ? k.char || 'ronnie' : 'ronnie'}.webp"></div><p>by <b>${k ? k.name.toUpperCase() : 'SOMEONE'}</b></p><p style="color:#cfe0ff">You're a ghost 👻 Finish your jobs, watch the others. Only ghosts can hear you now.</p>`
       : `<h1>THROWN OUT</h1><p style="color:#cfe0ff">You're a ghost 👻 Only ghosts can hear you now.</p>`;
     sp.classList.add('on'); clearTimeout(this.splashT); this.splashT = setTimeout(() => sp.classList.remove('on'), 5500);
     if (this.g.renderer.xr.isPresenting) this.g.showBanner(how === 'killed' ? 'KILLED BY' : 'THROWN OUT', how === 'killed' ? (k ? k.name.toUpperCase() : '?') : 'YOU\'RE A GHOST');
@@ -898,7 +906,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
         if (b.alignT > 0.5 && Math.hypot(dx, dz) > 0.25 && isFinite(pv.x)) { b.grp.rotation.y = Math.atan2(-dx, -dz); b.grp.position.x = pv.x; b.grp.position.z = pv.z; } }
       if (b.pool && b.poolT < 1) { b.poolT = Math.min(1, b.poolT + dt / 2.8); b.pool.scale.setScalar(0.05 + 0.95 * Math.sqrt(b.poolT)); }
       b.stars.forEach((s, i) => { const a = performance.now() / 400 + i * Math.PI / 2; s.position.set(at.x + Math.cos(a) * 0.22, at.y + 0.3, at.z + Math.sin(a) * 0.22); s.rotation.y += dt * 4; }); }
-    if (this.panT > 0) { this.panT += dt; const k = Math.min(1, this.panT / 0.35), sw = (1 - k) * Math.PI * 0.9; this.pan.visible = this.panT < 0.9; this.pan.position.copy(this.panAt).add({ x: Math.sin(sw) * 0.7, y: -1.2 * k * k + Math.cos(sw) * 0.25 - 0.25, z: 0 }); this.pan.rotation.set(-k * 1.4, 0, sw); if (this.panT > 0.35 && this.panT < 0.6) this.pan.position.y += Math.sin((this.panT - 0.35) * 40) * 0.03; if (this.panT > 0.9) this.panT = 0; }
+    if (this.knT > 0) this.animKnife(dt);
     // ghosts (only other ghosts see them): float where they are
     for (const [id, s] of this.ghostTags) { if (!s.visible) continue; const q = this.posOf(id); if (q) s.position.set(q.x, q.y + 0.1 + Math.sin(performance.now() / 500) * 0.05, q.z); }
     // the critical sabotage: alarm, countdown
@@ -945,6 +953,29 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
       sab: this.sab ? (this.sab.until ? `🛢️ KEG! ${Math.max(0, Math.ceil(this.sab.until - now()))}s` : '💡 LIGHTS OUT') : null,
       alive: [...this.players.values()].filter(p => p.alive).length, total: this.players.size };
   }
+  // THE KILL: the knife comes in from the killer's side, two stabs (a flash of the blade, blood, a word), then it's pulled
+  // out and goes. ~1.1s, over the body as it drops
+  animKnife(dt) {
+    const t = (this.knT += dt), K = this.knife, d = this.knDir, at = this.knAt;
+    const seg = (a, b, x) => Math.min(1, Math.max(0, (x - a) / (b - a))), ease = (u) => u * u * (3 - 2 * u);
+    let off = 0.6, sc = 1, tilt = 0;
+    if (t < 0.16) { off = 0.6; sc = ease(seg(0, 0.16, t)); tilt = 0.5 * (1 - sc); }
+    else if (t < 0.28) off = 0.6 - 0.52 * ease(seg(0.16, 0.28, t));      // stab one
+    else if (t < 0.4) off = 0.08 + 0.32 * ease(seg(0.28, 0.4, t));
+    else if (t < 0.5) off = 0.4 - 0.34 * ease(seg(0.4, 0.5, t));      // stab two
+    else if (t < 0.78) off = 0.06 + 0.6 * ease(seg(0.5, 0.78, t));      // pulled out
+    else { off = 0.66; sc = 1 - ease(seg(0.78, 1.1, t)); tilt = -0.9 * (1 - sc); }
+    const hit = (n, tt, word) => { if (this.knHits < n && t >= tt) { this.knHits = n; const p = at.clone().addScaledVector(d, 0.05);
+        this.burst(p, [0x8e0a14, 0xc4121e, 0x5a0008, 0xffffff], 22, 2.2); this.knifeBlood.visible = true; this.knifeBlade.material.emissive && this.knifeBlade.material.emissive.setHex(0x666666);
+        this.g.words && this.g.words.show(word, p.clone().add({ x: 0, y: 0.45, z: 0 }), '#ff5252', 0.2, 1); } };
+    hit(1, 0.27, 'STAB!'); hit(2, 0.49, 'SHANK!');
+    if (this.knifeBlade.material.emissive) { const e = this.knifeBlade.material.emissive; e.multiplyScalar(Math.max(0, 1 - dt * 10)); if (e.r < 0.165) e.setHex(0x2a2a2a); }
+    const KS = 1.6;      // (a small kitchen knife, but big enough to see from across the room)
+    K.visible = t < 1.1 && sc > 0.01; K.scale.setScalar(Math.max(0.01, sc) * KS);
+    K.position.copy(at).addScaledVector(d, off + 0.28 * KS);      // (the knife is 0.28 from the end of its handle to its point: the point's at the chest when off is 0)
+    const back = d.clone().negate(); K.quaternion.setFromUnitVectors(_kx, back); K.rotateX(tilt + Math.sin(t * 30) * 0.05 * (t < 0.6 ? 1 : 0));
+    if (t > 1.1) { this.knT = 0; K.visible = false; }
+  }
   // a burst of little bits (sparkles for a job done, stars for a BONK): they fly out, fall and fade
   burst(at, cols, n = 20, speed = 2.2) {
     this.fx = this.fx || [];
@@ -956,9 +987,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     // the bell: it swings and rings when a meeting's called
     if (this.bellT > 0) { this.bellT += dt; const k = Math.max(0, 1 - this.bellT / 3); this.bell.rotation.z = Math.sin(this.bellT * 18) * 0.6 * k; this.bigBtn.position.y = 1.03 - (this.bellT < 0.3 ? 0.03 : 0); if (this.bellT > 3) { this.bellT = 0; this.bell.rotation.z = 0; } }
     // the pan: a big swing round from behind, a trail behind it, and on the hit a burst of stars and a flash
-    if (this.panT > 0 && this.panTrail) { this.panTrail.visible = this.pan.visible; this.panTrail.position.copy(this.pan.position); this.panTrail.rotation.copy(this.pan.rotation); this.panTrail.material.opacity = 0.35 * (1 - Math.min(1, this.panT / 0.5)); }
-    if (this.panT > 0.33 && !this.panHit) { this.panHit = true; this.burst(this.panAt.clone().add({ x: 0, y: -1.1, z: 0 }), [0xffd400, 0xffffff, 0xff5252], 30, 2.8); }
-    if (this.panT === 0) this.panHit = false;
+    /* (the knife: animKnife) */
   }
   // ------------------------------------------------------------------ ghosts (like Among Us)
   // Dead, you're a ghost: you float through walls (player.js), a little quicker, anywhere in the map, and you see every

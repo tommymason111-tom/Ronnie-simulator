@@ -700,20 +700,26 @@ export class SquadMember extends Character {
       this.guitar.rotation.order = 'YXZ'; this.guitar.rotation.set(0, yaw, 0.45);   // face forward, neck to his left, tilted up
     }
     if (this.state !== 'act' && this.attackProps && this.attackProps.length) this.endAttackProps();
+    this.placeProp(dt, ctx);
+    this.actAfter && this.actAfter(dt, ctx);
+  }
+  // the prop they carry (Lewis's jug, a pint, a phone, Ian's rod): in their hand. Also on a joining player's game, where
+  // the host moves the body: left out there, it stayed where it was made, in the middle of the pub floor
+  placeProp(dt, ctx) {
     if (this.prop) {
       const arm = this.id === 'lewis' ? 'lArmL' : 'lArmR';
       const hand = this.rag.grip(arm, _v);
       this.prop.visible = this.state !== 'act' || (this.id !== 'aidan' && this.id !== 'connor') || !this.pintGiven;
       this.prop.position.copy(hand);
       if (this.def.look.prop === 'phone') {      // screen faces Ronnie, bottom half of the phone in the palm
-        this.prop.lookAt(ctx.head); this.prop.rotateY(Math.PI);
+        if (ctx && ctx.head) { this.prop.lookAt(ctx.head); this.prop.rotateY(Math.PI); } else this.prop.rotation.set(0, this.rag.yaw, 0);
         this.prop.position.add(_v2.set(0, 0.03, 0).applyQuaternion(this.prop.quaternion));
       } else if (this.def.look.prop === 'rod') {  // rod held out in front, tip up
         this.prop.rotation.set(-0.5, this.rag.yaw, 0, 'YXZ');
         // reeling Ronnie in: a taut line from the rod tip to his middle
         if (!this.reelLine) { this.reelLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0xffffff })); this.reelLine.frustumCulled = false; this.scene.add(this.reelLine); this.extra = [...(this.extra || []), this.reelLine]; }
         this.reeling = Math.max(0, (this.reeling || 0) - dt);
-        this.reelLine.visible = this.reeling > 0 && !this.down;
+        this.reelLine.visible = this.reeling > 0 && !this.down && !!(ctx && ctx.head);
         if (this.reelLine.visible) {
           this.prop.updateMatrixWorld(true);
           const tip = _v2.set(0, 0, 1.45).applyMatrix4(this.prop.matrixWorld);
@@ -728,7 +734,6 @@ export class SquadMember extends Character {
         this.holdBeside(arm, this.prop.position, 0.045);
       }
     }
-    this.actAfter && this.actAfter(dt, ctx);
   }
 
   // ---------------------------------------------------------------------------

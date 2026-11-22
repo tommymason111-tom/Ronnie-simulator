@@ -27,7 +27,7 @@ class FakePlayer {
     const pid = this.pid = pid0 || Array.from({ length: 10 }, () => 'abcdefghjkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 31)]).join('');      // (the same id again after a page reload: the room knows it's the same player back)
     this.ws = new WebSocket(`${relay}/room/${code}?name=${encodeURIComponent(this.name)}&pid=${pid}`);
     this.ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (er) { return; } try { this.on(m); } catch (er) { console.warn('fake player', er); } };
-    this.ws.onopen = () => { this.send({ t: 'hi', name: this.name, char: this.char, v: window.GAME_BUILD }); setTimeout(() => this.send({ t: 'ready', r: 1 }), rnd(600, 2200)); };
+    this.ws.onopen = () => { this.send({ t: 'hi', name: this.name, char: this.char, v: window.GAME_BUILD }); setTimeout(() => this.send({ t: 'ready', r: 1 }), rnd(200, 500));      // (straight away: they're there to be tested with, not waited for) };
   }
   send(m) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(m)); }
   later(ms, f) { setTimeout(() => { if (this.ws && this.ws.readyState === 1) f(); }, ms); }
@@ -42,11 +42,11 @@ class FakePlayer {
     if (t === 'leave') { this.poses.delete(m.id); return; }
     if (t === 'p' && m.f && Array.isArray(m.h)) { this.poses.set(m.f, { x: m.h[0], z: m.h[2], at: performance.now() }); return; }
     if (t === 'setup' || t === 'restart') { this.mode = m.mode || this.mode; this.reset(); return; }
-    if (t === 'rcheck' && typeof m.k === 'string') { this.later(rnd(500, 2600), () => this.send({ t: 'rready', k: m.k, r: 1 })); return; }
+    if (t === 'rcheck' && typeof m.k === 'string') { this.later(rnd(150, 450), () => this.send({ t: 'rready', k: m.k, r: 1 })); return; }
     // PROP HUNT
     if (t === 'phRound' && Array.isArray(m.seek)) { this.im = null; this.boss = null; const seeker = m.seek.map(String).includes(String(this.id));
       this.ph = { role: seeker ? 'seeker' : 'hider', phase: 'hide', kind: null, locked: false, found: false, shotT: rnd(2, 4), tauntT: rnd(12, 25) };
-      if (!seeker) this.later(rnd(1500, 5000), () => { const ph = window.RS && window.RS.director && window.RS.director.prophunt, kinds = (ph && ph.kinds) || []; if (!kinds.length || !this.ph) return; this.ph.kind = pick(kinds); this.send({ t: 'phProp', k: this.ph.kind }); });
+      if (!seeker) this.later(rnd(400, 900), () => { const ph = window.RS && window.RS.director && window.RS.director.prophunt, kinds = (ph && ph.kinds) || []; if (!kinds.length || !this.ph) return; this.ph.kind = pick(kinds); this.send({ t: 'phProp', k: this.ph.kind }); });
       this.path = []; this.waitT = 0; return; }
     if (t === 'phGo' && this.ph) { this.ph.phase = 'seek'; return; }
     if ((t === 'phFound' && String(m.v) === String(this.id)) && this.ph) { this.ph.found = true; return; }
@@ -58,7 +58,7 @@ class FakePlayer {
       this.path = []; this.waitT = rnd(1, 3); return; }
     if (t === 'imDead' && this.im) { this.im.dead.add(String(m.v)); if (String(m.v) === String(this.id)) this.alive = false; return; }
     if (t === 'imMeet' && this.im) { this.im.phase = 'meeting'; this.path = []; const dur = Math.max(6, Math.min(30, (Number(m.dur) || 30) * 0.4));
-      if (this.alive) this.later(rnd(2500, dur * 1000), () => { if (!this.im || this.im.phase !== 'meeting') return; const live = [...this.poses.keys(), this.hostId].filter(id => id && !this.im.dead.has(String(id)) && String(id) !== String(this.id) && !(this.im.imp && this.im.imps.has(String(id))));
+      if (this.alive) this.later(rnd(700, 1300), () =>      /* (a vote straight away: the meeting's over as soon as you've voted too) */ { if (!this.im || this.im.phase !== 'meeting') return; const live = [...this.poses.keys(), this.hostId].filter(id => id && !this.im.dead.has(String(id)) && String(id) !== String(this.id) && !(this.im.imp && this.im.imps.has(String(id))));
         this.send({ t: 'imV', v: Math.random() < 0.3 || !live.length ? 'skip' : pick(live) }); }); return; }
     if ((t === 'imRes' || t === 'imRound') && this.im) { this.im.phase = 'play'; this.im.killCD = Math.max(this.im.killCD, IMP.KILL_CD); return; }
     if (t === 'imWin' && this.im) { this.im.phase = 'over'; return; }

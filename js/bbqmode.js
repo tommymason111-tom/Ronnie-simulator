@@ -18,9 +18,9 @@ import { track } from './awards.js';
 import { Item } from './foods.js';
 import { FONT, roundRect } from './textures.js';
 
-export const SLAP_STAGE = 2, BARGE_STAGE = 4, KOS_TO_WIN = 3;      // (stage numbers count from 0: STAGE 3 and STAGE 5 on screen)
+export const SLAP_STAGE = 2, BARGE_STAGE = 4, KOS_TO_WIN = 5, FEEDS_TO_LOSE = 3;      // (five knock-downs and he gives up: you win; force-fed three times: you lose)      // (stage numbers count from 0: STAGE 3 and STAGE 5 on screen)
 const FEED_MAX = 7;           // seconds of shoving before you've lost
-const ASK_T = 7, INSIST_T = 14, GIVE_UP_T = 34;      // chase phases (seconds since he set off)
+const ASK_T = 3, INSIST_T = 6, GIVE_UP_T = 30;      // (he doesn't hang about: a quick ask, then he means it)      // chase phases (seconds since he set off)
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
@@ -150,7 +150,7 @@ export class BbqMode {
       }
       case 'ask': case 'insist': case 'force': {
         const head = ctx.head, scale = this.targetScale(), stopAt = this.phase === 'ask' ? 1.25 + 0.3 * scale : this.phase === 'insist' ? 0.95 + 0.3 * scale : 0;
-        const speed = this.phase === 'ask' ? 1.25 : this.phase === 'insist' ? 2.0 : 2.85;
+        const speed = this.phase === 'ask' ? 2.2 : this.phase === 'insist' ? 2.9 : 3.3;      // (marching over, then a run: still slower than you sprinting)
         const d = ian.chaseTo(head.x, head.z, dt, speed, stopAt);
         if (d <= stopAt + 0.05) { ian.turnTo(Math.atan2(head.x - ian.pos.x, head.z - ian.pos.z), dt, 6); }
         // holding it out to you on its plate
@@ -233,7 +233,7 @@ export class BbqMode {
     if (!big || this.gaveUp) return;
     this.stats.ko++; track('ko'); sfx('cheer', null, 0.7);
     this.g.words.show(`IAN DOWN! ${this.stats.ko}/${KOS_TO_WIN}`, this.ian.pos.clone().add({ x: 0, y: 1.6, z: 0 }), '#39ff14', 0.2, 1.8);
-    if (this.stats.ko >= KOS_TO_WIN) { this.gaveUp = true; setTimeout(() => { if (this.disposed) return; this.g.showBanner('IAN GIVES UP!', 'PROPER BURGERS FOR EVERYONE'); sfx('victory', null, 0.9); this.ian && this.ian.say(pick(LINES.giveUp), 6); }, 2600); }
+    if (this.stats.ko >= KOS_TO_WIN) { this.gaveUp = true; setTimeout(() => { if (this.disposed) return; this.g.showBanner('IAN GIVES UP!', 'PROPER BURGERS FOR EVERYONE'); sfx('victory', null, 0.9); this.ian && this.ian.say(pick(LINES.giveUp), 6); this.finish(true); }, 2600); }
     else if (!this.mpOn || !(this.ian.mpTarget && this.ian.mpTarget.id)) this.g.showBanner(`IAN DOWN! ${this.stats.ko}/${KOS_TO_WIN}`, this.stats.ko === KOS_TO_WIN - 1 ? 'ONE MORE AND HE GIVES UP' : 'BACK TO THE GRILL WITH HIM');
     this.broadcast(true);
   }
@@ -336,7 +336,7 @@ export class BbqMode {
     if (!this.host || this.phase !== 'feedR' || !p || p.id !== this.feedR) return; this.feedR = null;
     const st = Math.max(0, Math.min(STAGES.length - 1, +m.st || 0));
     if (m.w) { this.stats.fought++; if (st >= SLAP_STAGE && this.ian) { const h = this.lastCtx ? this.lastCtx.head : this.ian.pos; this.knockIan({ x: this.ian.pos.x - h.x, z: this.ian.pos.z - h.z }, 4.5); } else { this.ian && this.ian.say(pick(LINES.pushed), 4); this.backToGrill(12); } }
-    else { this.stats.fed++; this.ian && this.ian.say(pick(LINES.fed), 4); this.backToGrill(12); }
+    else { this.stats.fed++; this.ian && this.ian.say(pick(LINES.fed), 4); this.backToGrill(12); this.fedOne(p.id); }
   }
 
   // ---------------------------------------------------------------- the cut scene: fight him off
@@ -427,7 +427,7 @@ export class BbqMode {
       P.effect('noEat', 3); P.effect('dizzy', 3, { amp: 1.4 }); P.effect('slow', 4); P.effect('frozen', 1.2);
       G.fxTint = 0x6aaa3a; G.fxTintT = 3; G.fxTintOp = 0.2;
       try { navigator.vibrate && navigator.vibrate([120, 60, 200]); } catch (e) {}
-      if (this.host && ian) { ian.say(pick(LINES.fed), 4); this.backToGrill(12); }
+      if (this.host && ian) { ian.say(pick(LINES.fed), 4); this.backToGrill(12); this.fedOne(this.g.net && this.g.net.id || 'me'); }
       if (!this.host && this.net) this.net.send({ t: 'bbqR', w: 0, st: G.stage });
     }
     G.wristDirty = true; this.drawPanel();
@@ -501,9 +501,14 @@ export class BbqMode {
     return { chips };
   }
   hudLine() { return `Ian KO ${this.stats.ko}/${KOS_TO_WIN} · ${(this.pill(this.state()) || '').replace(/^\S+ /, '')}`; }
+  // (host) someone's been force-fed: three times and that's the game. Five knock-downs and Ian gives up: that's the game too
+  fedOne(id) { if (!this.host) return; const m = this.fedBy || (this.fedBy = new Map()), n = (m.get(id) || 0) + 1; m.set(id, n);
+    if (n >= FEEDS_TO_LOSE && !this.over) { const who = id === 'me' || id === (this.g.net && this.g.net.id) ? null : ((this.g.net && this.g.net.players.get(id)) || {}).name;
+      setTimeout(() => { if (this.disposed) return; this.g.showBanner('FORCE-FED THREE TIMES!', who ? `${String(who).toUpperCase()}'S HAD THEIR FIVE A DAY. GAME OVER` : 'IAN WINS. GAME OVER'); this.ian && this.ian.say('Three healthy meals! You\'re a NEW MAN, Ronnie!', 5); this.finish(false); }, 1600); } }
+  finish(won) { if (this.over || !this.host) return; this.over = true; this.won = won; setTimeout(() => { if (!this.disposed && this.d.running) this.d.end(); }, 3200); }
   summary() {
     const s = this.stats;
-    return [['IAN KNOCKED OVER', `${s.ko} / ${KOS_TO_WIN}`], ['FORCE-FED', s.fed], ['FOUGHT HIM OFF', s.fought], ['OFF THE GRILL', s.ate],
+    return [['RESULT', this.won ? 'IAN GAVE UP! YOU WIN' : this.won === false ? 'FORCE-FED. IAN WINS' : 'TIME UP'], ['IAN KNOCKED OVER', `${s.ko} / ${KOS_TO_WIN}`], ['FORCE-FED', s.fed], ['FOUGHT HIM OFF', s.fought], ['OFF THE GRILL', s.ate],
       [this.gaveUp ? 'Ian: "Proper burgers next year. PROPER ones."' : s.fed === 0 ? 'Ian: "You didn\'t touch my tofu. Not once."' : 'Ian: "See? HEALTHY. Lewy, he loved it."', '']];
   }
   end() { if (this.feed) this.endFeed(null); if (this.ian) { this.ian.approach = 0; } this.hideProps(); if (this.fx && this.fx.setCountdown) this.fx.setCountdown(null); }
