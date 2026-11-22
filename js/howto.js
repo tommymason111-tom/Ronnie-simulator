@@ -132,14 +132,42 @@ function lidl(g, W, H) {
   emoji(g, '👮', W * 0.55, H - 45, 30); label(g, 'OLIVER', W * 0.55, H - 14, { size: 14, border: '#ff4040' }); emoji(g, '🦵', W * 0.85, H - 45, 28); label(g, 'AIDAN W (SLOW)', W * 0.85, H - 14, { size: 14, border: '#ff4040' });
   label(g, '🟢 GREEN GLOW = GRAB IT', W / 2, 24, { size: 17, border: '#39ff14' });
 }
-function bbq(g, W, H) {
+// IAN'S BARBECUE: the grill ('bbq'), Ian coming round with a healthy one ('bbq:chase'), the shoving match ('bbq:feed'),
+// getting big enough to floor him ('bbq:big')
+function bbq(g, W, H, arg, device) {
+  if (arg === 'chase') {
+    bg(g, W, H, '#4aa8f0', '#5a9a36'); g.fillStyle = '#5a9a36'; g.fillRect(0, H * 0.45, W, H * 0.55);
+    g.fillStyle = 'rgba(160,20,20,0.9)'; rr(g, W / 2 - 150, 14, 300, 34, 12); g.fill(); g.fillStyle = '#fff'; g.font = `900 17px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⚠ IAN IS FORCING IT! RUN!', W / 2, 32);
+    emoji(g, '🏃', W * 0.2, H * 0.62, 70); label(g, 'YOU', W * 0.2, H * 0.62 + 50, { size: 15 });
+    emoji(g, '👨‍🍳', W * 0.68, H * 0.62, 70); emoji(g, '🍔', W * 0.68 - 52, H * 0.6, 34); label(g, 'IAN', W * 0.68, H * 0.62 + 50, { size: 15, border: '#ff4040' });
+    arrow(g, W * 0.6, H * 0.8, W * 0.3, H * 0.8, '#ff5252');
+    const said = [['"Another healthy burger, Ron? It\'s tofu!"', '#ffffff', '#39ff14'], ['"You\'re HAVING one."', '#ffffff', '#ffd400'], ['"Open wide, boy!"', '#ffffff', '#ff4040']];
+    said.forEach(([t, c, b], i) => label(g, t, W * 0.62 - i * 30, 82 + i * 34, { size: 15, col: c, border: b }));
+    return;
+  }
+  if (arg === 'feed') {
+    bg(g, W, H, '#3a1406', '#14060a');
+    emoji(g, '👨‍🍳', W / 2, H * 0.36, 120); emoji(g, '🍔', W / 2 - 10, H * 0.62, 64); emoji(g, '😖', W / 2 + 120, H * 0.66, 50);
+    for (const [x, y, a] of [[W * 0.16, H * 0.28, -0.3], [W * 0.84, H * 0.3, 0.3], [W * 0.14, H * 0.62, 0.2], [W * 0.86, H * 0.64, -0.2]]) { g.save(); g.translate(x, y); g.rotate(a); label(g, device === 'vr' ? 'TRIGGER!' : device === 'pc' ? 'CLICK!' : 'TAP!', 0, 0, { size: 22, col: '#fff', bg: '#c2410c', border: '#ffd400' }); g.restore(); }
+    const bx = 70, by = H - 58, bw = W - 140, bh = 30; g.fillStyle = '#2f7d1f'; rr(g, bx, by, bw, bh, 15); g.fill(); g.fillStyle = '#ffd400'; rr(g, bx, by, bw * 0.62, bh, 15); g.fill(); g.lineWidth = 3; g.strokeStyle = '#fff'; rr(g, bx, by, bw, bh, 15); g.stroke();
+    g.fillStyle = '#111'; g.font = `900 15px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText('😤 YOU', bx + 12, by + bh / 2 + 1); g.textAlign = 'right'; g.fillStyle = '#fff'; g.fillText('IAN 🥗', bx + bw - 12, by + bh / 2 + 1);
+    return;
+  }
+  if (arg === 'big') {
+    bg(g, W, H, '#1f4f1a', '#0c2a0a');
+    const steps = [['STAGE 1-2', 'TOO SMALL', '😋', 34, '#ff8a8a'], ['STAGE 3+', device === 'vr' ? 'SLAP HIM OVER' : device === 'pc' ? 'CLICK HIM OVER' : 'TAP HIM OVER', '👋', 50, '#ffd400'], ['STAGE 5+', 'JUST WALK INTO HIM', '💥', 66, '#39ff14']];
+    steps.forEach(([st, what, e, s, c], i) => { const x = W * (0.2 + i * 0.3); emoji(g, '😋', x, H * 0.5 - (s - 34) * 0.3, s); emoji(g, e, x + s * 0.55, H * 0.5 - s * 0.45, 26); label(g, st, x, H * 0.5 + 56, { size: 15, border: c }); label(g, what, x, H * 0.5 + 86, { size: 13, col: c, border: c }); });
+    label(g, '💥 💥 💥  KNOCK IAN OVER 3 TIMES: HE GIVES UP', W / 2, 32, { size: 16, border: '#39ff14' });
+    return;
+  }
   bg(g, W, H, '#4aa8f0', '#5a9a36');
   g.fillStyle = '#5a9a36'; g.fillRect(0, H * 0.45, W, H * 0.55);
   g.fillStyle = '#222'; rr(g, W / 2 - 90, H * 0.42, 180, 60, 8); g.fill(); g.fillStyle = '#ff6a1a'; for (let i = 0; i < 9; i++) g.fillRect(W / 2 - 80 + i * 20, H * 0.42 + 8, 4, 44);
   for (const [i, e] of ['🍔', '🌭', '🍗', '🍔', '🌭'].entries()) emoji(g, e, W / 2 - 64 + i * 32, H * 0.42 + 30, 24);
   emoji(g, '👨‍🍳', W / 2 + 140, H * 0.45, 46); label(g, 'IAN', W / 2 + 140, H * 0.45 + 40, { size: 15, border: '#ff4040' });
-  arrow(g, W / 2 + 110, H * 0.4, W * 0.18, H * 0.25, '#7cff6a'); emoji(g, '🥦', W * 0.3, H * 0.3, 26); emoji(g, '😋', W * 0.14, H * 0.24, 38);
-  label(g, 'GRAB IT OFF THE GRILL FIRST', W / 2, H - 22, { size: 17 });
+  arrow(g, W / 2 - 60, H * 0.4, W * 0.18, H * 0.25, '#7cff6a'); emoji(g, '🍔', W * 0.3, H * 0.3, 26); emoji(g, '😋', W * 0.14, H * 0.24, 38);
+  label(g, '"FOR THE LADS, RONNIE. NOT YOU."', W / 2 + 120, H * 0.2, { size: 14, border: '#ff4040' });
+  label(g, 'PINCH IT OFF THE GRILL. EAT. GET BIG.', W / 2, H - 22, { size: 17 });
 }
 function dateTable(g, W, H) {
   bg(g, W, H, '#5a0f18', '#1a0508');
@@ -308,7 +336,7 @@ function drawPic(cv, pic, ctx) {
   else if (kind === 'controls') controls(g, W, H, ctx.device);
   else if (kind === 'meter') meter(g, W, H);
   else if (kind === 'lidl') lidl(g, W, H);
-  else if (kind === 'bbq') bbq(g, W, H);
+  else if (kind === 'bbq') bbq(g, W, H, arg, ctx.device);
   else if (kind === 'date') dateTable(g, W, H);
   else if (kind === 'clock') clock(g, W, H, arg === '2');
   else if (kind === 'ph') propHunt(g, W, H, arg);

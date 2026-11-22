@@ -15,7 +15,7 @@ import { canvasTex, fitText, roundRect, FONT } from './textures.js';
 import { sfx, playTune, shout } from './audio.js';
 import { Item } from './foods.js';
 import { TURKEY_LEN } from './cutscenes.js';
-import { BBQ_SPOT, IAN_SPOT, IAN_YAW } from './levels/garden.js';
+import { BbqMode } from './bbqmode.js';
 import { pickVeg, pickJunk } from './config.js';
 import { RunPub } from './runpub.js';
 import { SpriteLayer } from './perf.js';
@@ -35,7 +35,7 @@ export const MODES = {
   chonkoff2:    { name: 'EAT-OFF 2P', desc: 'Pass-and-play: who eats more in 60s?', time: 60 },
   chonkoffr:    { name: 'RANKED EAT-OFF', desc: 'Everyone in the room at once: most eaten in 60s wins, your rating on the line.', time: 60 },
   sweep:        { name: 'SUPERMARKET SWEEP', desc: '90 seconds, one trolley. Grab the most calories. Dodge Oliver.', time: 90, place: 'shop' },
-  bbq:          { name: "IAN'S BARBECUE", desc: 'Round Lewis\'s house. Eat off the grill before Ian makes it healthy.', time: 150, place: 'garden' },
+  bbq:          { name: "IAN'S BARBECUE", desc: 'Round Lewis\'s house. Ian\'s forcing healthy burgers on you: get big enough to fight back.', time: 180, place: 'garden' },
   roam:         { name: 'FREE ROAM', desc: 'Have a look round. Everyone\'s here, nobody attacks.', time: 0 },
   runpub:       { name: 'RUN THE PUB', desc: 'Behind the bar at the Oysterfleet. Serve the punters, break up the fights, don\'t drink the stock.', time: 360, place: 'pub' },
   date:         { name: 'DATE NIGHT', desc: 'Eat when Chloe looks away. 3 catches and it\'s salad.', time: 180, place: 'restaurant' },
@@ -194,6 +194,7 @@ export class Director {
     if (this.imposter) { this.imposter.dispose(); this.imposter = null; }
     if (this.boss) { this.boss.dispose(); this.boss = null; }      // (BOSS FIGHT: boss.js)
     if (this.prophunt) { this.prophunt.dispose(); this.prophunt = null; }      // (PROP HUNT)
+    if (this.bbqm) { this.bbqm.dispose(); this.bbqm = null; }      // (IAN'S BARBECUE: bbqmode.js)
     this.hideTommy(false);
     this.mode = id; globalThis.RS_MODE = id; this.running = true; this.used.clear(); this.pending = null; this.lastHit = null;
     this.timeLeft = m.time > 0 && id !== 'imposter' && id !== 'chonkoffr' ? Math.round(m.time * roomNum('len')) : m.time;      // (a room's GAME LENGTH: short, normal, long)
@@ -236,7 +237,7 @@ export class Director {
       g.cast.push(c);
     });
     if (this.runpub) { this.runpub.cleanup(); this.runpub = null; }
-    const SHORT = { prophunt: 'HIDE AS ANYTHING. FIND THEM ALL', imposter: 'THERE IS AN IMPOSTER AMONG US', imposter2: 'THERE ARE TWO IMPOSTERS AMONG US', runpub: 'SERVE THE PUNTERS', sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'EAT IT OFF THE GRILL', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
+    const SHORT = { prophunt: 'HIDE AS ANYTHING. FIND THEM ALL', imposter: 'THERE IS AN IMPOSTER AMONG US', imposter2: 'THERE ARE TWO IMPOSTERS AMONG US', runpub: 'SERVE THE PUNTERS', sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'DON\'T LET IAN FEED YOU', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
     if (id !== 'boss') g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');      // (the boss fight has its own entrance)
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
@@ -249,11 +250,11 @@ export class Director {
     // PROP HUNT (multiplayer, the pub / Lidl / Lewis's): no food, no squad, no Tommy: see prophunt.js
     if (id === 'prophunt') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null); this.removeTrolley();
       this.prophunt = g.makePropHunt ? g.makePropHunt() : null; sfx('gamestart', null, 1); return; }
+    if (id === 'bbq') this.bbqm = new BbqMode(this);      // (IAN'S BARBECUE: bbqmode.js, on every game in a room)
     if (this.remote) { tommy.attacks = false; tommy.directed = false; if (g.fx) g.fx.setCountdown(null); return; }
     if (id === 'date') this.startDate();
     if (g.room.name === 'Lidl' && (id === 'sweep' || id === 'roam')) this.setupLidlStaff(id);    // uniforms, and people on the tills
     if (id === 'sweep') this.startSweep();
-    if (id === 'bbq') this.startBbq();
     if (id !== 'sweep') this.removeTrolley();
     if (id === 'everyone') { this.nextChaos = 18; tommy.attacks = true; tommy.directed = true; }
     if (id === 'runpub') { tommy.attacks = false; tommy.directed = false; this.pending = null; this.runpub = new RunPub(this); this.runpub.start(); }
@@ -264,7 +265,7 @@ export class Director {
       runpub: 'You\'re behind the bar tonight, Ron. Serve the punters. Do NOT drink the stock.',
       everyone: 'The whole squad\'s out tonight, Ron. Everyone\'s watching what you eat. I\'m just trying to help.',
       sweep: 'Supermarket Sweep! Ninety seconds, Ron. Oliver\'s on security. He takes it VERY seriously.',
-      bbq: 'Ian\'s barbecue, Ron. He says it\'s healthy. It\'s not healthy. Be quick.',
+      bbq: 'Ian\'s barbecue, Ron. He\'s got tofu burgers and he\'s not afraid to use them. Eat. Get BIG.',
       date: 'Date night! I\'m over here on my own table. Behave, Ron. She\'s watching. Mostly.',
       intervention: 'Right, Ron. The whole squad\'s here. It\'s an intervention. I\'m just trying to help.',
       veggie: 'VEGGIE WAR. Everyone, positions. Aim for the mouth.',
@@ -322,10 +323,8 @@ export class Director {
       if (total > best) { safeSet('rs_best_sweep_kcal', total); lines.push(['NEW RECORD!', kc(total)]); } else lines.push(['BEST EVER', kc(best)]);
       lines.push([total >= 2500 ? `That's ${(total / 2500).toFixed(1)} days' worth. Before tea.` : 'Barely a snack, Ron.', '']);
       lines.push(['Oliver: "That\'s going on my story."', '']);
-    } else if (this.mode === 'bbq') {
-      lines.push(['OFF THE GRILL', this.bbq.ate]);
-      lines.push(['GRILLED VEG EATEN', st.veg]);
-      lines.push([st.veg === 0 ? 'Ian: "You didn\'t touch my peppers."' : 'Ian: "See? HEALTHY. Lewy, he loved it."', '']);
+    } else if (this.mode === 'bbq' && this.bbqm) {
+      this.bbqm.end(); lines.push(...this.bbqm.summary());
     } else if (this.mode === 'runpub' && this.runpub) {
       lines.length = 1; lines.push(...this.runpub.summary());
     } else if (this.mode === 'boss' && this.boss) {      // (BOSS FIGHT: boss.js)
@@ -379,7 +378,8 @@ export class Director {
     if (this.imposter) { this.imposter.update(dt); return; }
     if (this.boss) { this.boss.update(dt, ctx); this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } return; }      // (BOSS FIGHT: boss.js)
     if (this.prophunt) { this.prophunt.update(dt); return; }      // (PROP HUNT)
-    if (this.remote) { this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
+    if (this.bbqm) this.bbqm.update(dt, ctx);      // (IAN'S BARBECUE: bbqmode.js)
+    if (this.remote) { this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx && !this.bbqm) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
     if (this.pending) {                       // an announced attack that hasn't landed yet
       const pd = this.pending, P = g.player;
       pd.t -= dt; pd.age = (pd.age || 0) + dt;
@@ -407,7 +407,7 @@ export class Director {
       case 'roam': this.updateRoam(dt); break;
       case 'runpub': this.runpub && this.runpub.update(dt); break;
       case 'sweep': this.updateSweep(dt, ctx); break;
-      case 'bbq': this.updateBbq(dt, ctx); this.updateAttacks(dt); break;
+      case 'bbq': break;      // (bbqmode.js)
       case 'everyone':
       case 'intervention':
         this.updateAttacks(dt);
@@ -448,6 +448,7 @@ export class Director {
     if (!this.running) return;
     if (this.boss) this.boss.onAte(item, chonk);      // (BOSS FIGHT: eating powers you up)
     if (this.mode === 'date') this.dateEat();
+    if (this.bbqm) this.bbqm.onAte(item);
     this.stats.chonk += Math.max(0, chonk);
     if (this.mode === 'intervention') { this.meter = Math.min(1, this.meter + Math.max(0, chonk) / 30); this.nextAttackT -= Math.max(0, chonk) / 6; }   // the more you eat, the sooner they intervene
     for (const c of this.cast) c.onRonnieAte && c.onRonnieAte(item);
@@ -881,54 +882,7 @@ export class Director {
     }
   }
 
-  // ------------------------------------------------------------------ IAN'S BARBECUE (Lewis's house)
-  // Ian's on the grill: every few seconds something comes off it onto the grill
-  // and the side shelves. Get it before he turns it into "healthy" grilled veg
-  // and lobs it at you. The rest of the lads take turns to attack as usual.
-  startBbq() {
-    const g = this.g;
-    this.bbq = { ate: 0, cookT: 3, vegT: 9, grill: [] };
-    g.items.minFood = 0;
-    const ian = this.cast.find(c => c.id === 'ian');
-    if (ian) {
-      ian.active = false; ian.grilling = true;
-      ian.rag.placeAt(IAN_SPOT.x, IAN_SPOT.z, IAN_YAW); ian.faceYaw = IAN_YAW;
-      if (ian.prop) ian.prop.visible = false;
-      setTimeout(() => ian.say('Right, Lewy, get the plates! Ronnie, wait your turn. RONNIE.', 5), 1500);
-    }
-    this.tommyOff = true;
-  }
-  updateBbq(dt, ctx) {
-    const g = this.g, b = this.bbq; if (!b) return;
-    const ian = this.cast.find(c => c.id === 'ian');
-    if (ian && !ian.down && ian.state === 'idle') {
-      ian.faceYaw = IAN_YAW;
-      // flipping burgers
-      ian.rag.aim('uArmR', -0.2, -0.3, 1); ian.rag.aim('lArmR', -0.05, -0.2 + Math.sin(performance.now() / 140) * 0.35, 1);
-      if (ian.prop) ian.prop.visible = false;
-    }
-    b.cookT -= dt;
-    b.grill = b.grill.filter(it => !it.dead && !it.heldBy);
-    if (b.cookT <= 0 && b.grill.length < 4) {
-      b.cookT = 3.5 + Math.random() * 2;
-      const spots = [[-0.3, 0], [0, 0], [0.3, 0], [0.67, 0], [-0.15, 0.1]].map(([dx, dz]) => new THREE.Vector3(BBQ_SPOT.x + dx, 1.05, BBQ_SPOT.z + dz));
-      const free = spots.find(p => b.grill.every(it => it.pos.distanceTo(p) > 0.15));
-      if (free) {
-        const t = ['burger', 'hotdog', 'chicken', 'sausageroll', 'burger', 'kebab'][Math.floor(Math.random() * 6)];
-        const it = g.items.spawn(t, free); it.temp = true; b.grill.push(it);
-        sfx('sizzle', free, 0.6);
-        if (ian && Math.random() < 0.4) ian.say(['Burger\'s up! Lewy! LEWY!', 'Proper meat, that. From the butcher. Not the council.', 'Who wants a hot dog? Not you, Ronnie. Fine. Yes, you.'][Math.floor(Math.random() * 3)], 3);
-      }
-    }
-    // left too long on the grill? Ian swaps it for veg and throws it at you
-    b.vegT -= dt;
-    if (b.vegT <= 0 && ian && !ian.down && ian.state === 'idle') {
-      b.vegT = 9 + Math.random() * 5;
-      const old = b.grill.shift(); if (old && !old.dead) g.items.remove(old);
-      ian.startThrow({ item: ['pepper', 'tomato', 'cauliflower', 'broccoli'][Math.floor(Math.random() * 4)], speed: 3.2, windup: 0.8, spread: 0.08 });
-      ian.say(['Healthy option! Catch!', 'That burger was looking at me funny. Have a pepper.', 'Grilled veg, Ronnie! It\'s basically a steak!'][Math.floor(Math.random() * 3)], 3);
-    }
-  }
+  // IAN'S BARBECUE (Lewis's house): the whole game lives in bbqmode.js
 
   // ------------------------------------------------------------------ DATE NIGHT
   // Chloe sits opposite. When she looks at you, sit still and smile; when she
@@ -1200,7 +1154,7 @@ export class Director {
     else if (this.mode === 'veggie') extra = `Swats ${this.stats.swats} · Veg ${this.stats.veg}`;
     else if (this.mode === 'catch') extra = `Caught ${this.stats.caught}/${this.stats.thrown}`;
     else if (this.mode === 'sweep' && this.sweep) extra = `Trolley ${this.sweep.items} · ${kc(this.sweep.total)}`;
-    else if (this.mode === 'bbq' && this.bbq) extra = `Off the grill ${this.bbq.ate} · ${this.attackClock()}`;
+    else if (this.mode === 'bbq' && this.bbqm) extra = this.bbqm.hudLine();
     else if (this.mode === 'runpub' && this.runpub) extra = this.runpub.hud();
     else if (this.mode === 'date') extra = `Busted ${this.date.catches}/3 · ${this.date.look ? 'SHE\'S LOOKING!' : 'EAT NOW!'}`;
     else if (this.mode === 'everyone') return `THE WHOLE SQUAD · ${this.attackClock()}`;
