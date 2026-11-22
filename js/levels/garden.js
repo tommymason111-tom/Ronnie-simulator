@@ -171,6 +171,7 @@ export function buildGarden(scene) {
     for (const list of [k.colliders]) for (const c of list) { const cz = (c.min.z + c.max.z) / 2; if (crosses(c.min.z, c.max.z) && c.max.z - c.min.z > 1) { c.min.z = F(c.min.z); c.max.z = F(c.max.z); } else { const d = F(cz) - cz; c.min.z += d; c.max.z += d; } }
     for (const b of k.blockers) { const cz = (b.z0 + b.z1) / 2; if (crosses(b.z0, b.z1) && b.z1 - b.z0 > 1) { b.z0 = F(b.z0); b.z1 = F(b.z1); } else { const d = F(cz) - cz; b.z0 += d; b.z1 += d; } }
     for (const p of k.spawns) p.z = F(p.z);
+    for (const s of k.seats || []) s.z = F(s.z);
     for (const L of k.lights || []) L.l.position.z = F(L.l.position.z);
     for (const [col, list] of k.lamps || []) for (const l of list) l[2] = col === 0xfff8e0 ? Gs(l[2]) : F(l[2]);    // (the solar lights follow the stones)
     for (const gb of [k.halos, k.pools]) if (gb) for (const l of gb.list) l[2] = F(l[2]);
@@ -606,7 +607,7 @@ export function buildGarden(scene) {
     const cx = tx - 0.62, cz = tz - 0.12, ry = -Math.PI / 2 - 0.25, c = Math.cos(ry), s = Math.sin(ry);
     const at = (lx, lz) => [cx + lx * c + lz * s, cz - lx * s + lz * c];
     const rb = (w, h, d, lx, y, lz, col) => { const [px, pz] = at(lx, lz); k.box(w, h, d, px, y, pz, col, { rot: [0, ry, 0] }); };
-    k.cyl(0.2, 0.2, 0.02, cx, 0.45, cz, IRON, 16);
+    k.cyl(0.2, 0.2, 0.02, cx, 0.45, cz, IRON, 16); k.seats.push({ x: cx, z: cz, yaw: ry + Math.PI, h: 0.464 });
     for (let i = -3; i <= 3; i++) rb(0.012, 0.004, 0.36, i * 0.05, 0.462, 0, 0x2a2a2a);              // seat slats
     for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) rb(0.02, 0.45, 0.02, a * 0.15, 0.225, b * 0.15, IRON);
     for (const lx of [-0.16, 0.16]) rb(0.02, 0.5, 0.02, lx, 0.7, 0.17, IRON);                        // back uprights
@@ -1138,6 +1139,8 @@ export function buildGarden(scene) {
     { x: -5.12, z: 4.6, yaw: Math.PI / 2, pose: 'sit' },                                            // dining table
     { x: 2.0, z: 8.6, yaw: Math.PI / 2, pose: 'phone' },                                            // in the hall
   ];
+  // (each sitting spot on its seat exactly: the middle of the cushion or chair, facing its way)
+  for (const a of room.activities) if (a.pose === 'sit') { let best = null, bd = 0.5; for (const s of room.seats || []) { const d = Math.hypot(s.x - a.x, s.z - a.z); if (d < bd) { bd = d; best = s; } } if (best) { a.x = best.x; a.z = best.z; a.yaw = best.yaw; } }
   room.familyPhotos = room_photos;
   return room;
 }

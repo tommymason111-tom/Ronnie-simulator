@@ -242,8 +242,9 @@ export function buildPub(scene) {
   let chairN = 0; const chairsAt = [], barSpots = [];
   // the honey-pine wheelback chairs: real things you can pick up and throw (drawn as one batch until you do)
   const pubChair = (x, z, ry) => {
+    if (chairsAt.some(([cx, cz]) => Math.hypot(cx - x, cz - z) < 0.45)) return;      // (two tables' chairs on the same spot: just the one, nobody can sit in a chair inside another)
     const v = chairN % 3; chairN++;
-    const blk2 = { x0: x - 0.24, x1: x + 0.24, z0: z - 0.24, z1: z + 0.24, y1: 0.5 }; k.blockers.push(blk2); const seat = [x, z, ry]; chairsAt.push(seat);
+    const blk2 = { x0: x - 0.24, x1: x + 0.24, z0: z - 0.24, z1: z + 0.24, y1: 0.5 }; k.blockers.push(blk2); const seat = [x, z, ry]; chairsAt.push(seat); k.seats.push({ x, z, yaw: ry + Math.PI, h: 0.48 });
     dorm.add('chair', x, 0.3, z, ry, v, 0, 0, { r: 0.38, onWake: () => { const i = chairsAt.indexOf(seat); if (i >= 0) chairsAt.splice(i, 1); k.room && k.room.takenBlocker && k.room.takenBlocker(blk2); } });
   };
   const tableTop = (x, z, w, d, y = 0.76) => {

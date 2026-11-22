@@ -164,6 +164,7 @@ export class Ragdoll {
     this.strength = 0;          // ragdoll mode only: 0 = limp, >0 = weak flailing muscles (when held)
     this.root = new THREE.Vector3();      // feet position (anim mode)
     this.bob = 0;               // extra hip height (walk bob)
+    this.shiftZ = 0;            // the hips moved forward (+) / back (-) along the way they face (sitting back in a chair)
     this.constrain = null;      // (root) => keeps the root out of walls / furniture
     this._fk = this.defs.map(() => ({ p: new THREE.Vector3(), q: new THREE.Quaternion() }));
     this._from = this.defs.map(() => ({ p: new THREE.Vector3(), q: new THREE.Quaternion() }));
@@ -845,6 +846,7 @@ export class Ragdoll {
   computeFK(out) {
     this.yawQ.setFromAxisAngle(Y_AXIS, this.yaw);
     const base = _v2.set(this.root.x, 0.02 + this.bob + (FLOOR.at ? FLOOR.at(this.root.x, this.root.z) : 0), this.root.z);
+    if (this.shiftZ) { base.x += Math.sin(this.yaw) * this.shiftZ; base.z += Math.cos(this.yaw) * this.shiftZ; }
     this.defs.forEach((d, i) => {     // parents always come first in defs
       const o = out[i];
       o.q.copy(this.yawQ).multiply(this.pose[d.name]);

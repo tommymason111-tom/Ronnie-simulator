@@ -91,7 +91,7 @@ export class Character {
       const b = this.room.bounds, m = 0.3;
       root.x = THREE.MathUtils.clamp(root.x, b.x0 + m, b.x1 - m);
       root.z = THREE.MathUtils.clamp(root.z, b.z0 + m, b.z1 - m);
-      if (this.seated) return;          // sat down in a chair / on a sofa: it's meant to be "in" the furniture
+      if (this.seated || this.glide) return;          // sat down in a chair / on a sofa (or gliding the last bit into one, or into their place at the bar): it's meant to be "in" the furniture
       // (only the furniture near them: perf.js. If being pushed out takes them further than that covers, the whole lot)
       const x0 = root.x, z0 = root.z, out = (list) => { for (const k of list) {
         const p = 0.22;
@@ -298,7 +298,7 @@ export class Character {
     r.bob = -0.008 * Math.abs(shift);
     if (this.drunk) { const sw = Math.sin(t * 1.3 + ph) * 0.09 * this.drunk, sw2 = Math.sin(t * 0.83 + ph) * 0.07 * this.drunk;   // swaying where they stand
       r.pose.chest.premultiply(_q.setFromAxisAngle(_v.set(0, 0, 1), sw)).premultiply(_q.setFromAxisAngle(_v.set(1, 0, 0), sw2 + 0.06 * this.drunk)); r.pose.pelvis.premultiply(_q.setFromAxisAngle(_v.set(0, 0, 1), -sw * 0.5)); }
-    if (this.state === 'idle' && !(this.speakT > 0)) this.fidget(t);
+    if (this.state === 'idle' && !(this.speakT > 0) && !this.clip) this.fidget(t);      // (someone playing a move from punteranims.js has their own)
   }
   // Little things people do while they wait: look round the room, scratch their head, check the time, stretch,
   // rub their hands, put their hands on their hips, fold their arms. One at a time, eased in and out.
@@ -419,7 +419,7 @@ export class Character {
         if (this.headExtra && !this.fidgetK && !(this.speakT > 0)) this.headExtra = null;
         this.setIdlePose(this.t);
         this.personalityPose(this.t);
-        if (this.speakT > 0 && !this.cfg.noTalkPose) this.talkPose(this.t);
+        if (this.speakT > 0 && !this.cfg.noTalkPose && !this.busyHands) this.talkPose(this.t);
         { const want = this.faceYaw ?? toPlayerYaw, dy = wrapAngle(want - r.yaw); if (Math.abs(dy) > 0.35 && !this.seated && !this.activity) this.turnSteps(dt, dy); this.turnTo(want, dt, 3); }
         if (!this.active) break;
         this.nextMove -= dt;
@@ -494,6 +494,7 @@ export class Character {
         break;
     }
 
+    this.afterPose && this.afterPose(dt);      // (sitting down / getting up out of a seat, eased over whatever they're doing)
     // head turns smoothly to look at the player (within reason)
     if (!this.down) {
       const rel = this.lookOverride != null ? this.lookOverride : THREE.MathUtils.clamp(wrapAngle(toPlayerYaw - r.yaw), -0.8, 0.8);
@@ -501,6 +502,8 @@ export class Character {
       this.headYaw = (this.headYaw || 0) + (rel + hx.yaw - (this.headYaw || 0)) * Math.min(1, dt * 5);
       this.headPitch = (this.headPitch || 0) + ((hx.pitch || 0) - (this.headPitch || 0)) * Math.min(1, dt * 6);
       r.pose.head.setFromAxisAngle(_v.set(0, 1, 0), this.headYaw).multiply(_q.setFromAxisAngle(_v.set(1, 0, 0), this.headPitch));
+      this.headRoll = (this.headRoll || 0) + ((hx.roll || 0) - (this.headRoll || 0)) * Math.min(1, dt * 6);
+      if (Math.abs(this.headRoll) > 1e-3) r.pose.head.multiply(_q.setFromAxisAngle(_v.set(0, 0, 1), this.headRoll));      // (a head tilt: singing, laughing, an argument)
       if (this.state !== 'idle' && this.state !== 'walk') this.headExtra = null;
       this.applyFlinch(dt);
     }
@@ -605,12 +608,12 @@ export class Character {
   // centimetres go in one step; true once they're there. (Every mode used to put them straight back the moment they were
   // up: a knocked-over squad member got up and vanished back into their chair, metres away.) Only if three walks there in
   // a row get nowhere is it the instant way, so nobody's stuck for ever
-  backTo(x, z, yaw) {
+  backTo(x, z, yaw, sit = false) {
     if (this.glide) return false;
     const rt = this.rag.root, d = Math.hypot(rt.x - x, rt.z - z);
     if (d <= 0.12) { this.backTries = 0; this.rag.placeAt(x, z, yaw); return true; }
     // close (a chair is inside the furniture, so walking stops short of it), or the walks keep failing: a smooth glide in
-    if (d <= 1.5 || (this.backTries || 0) >= 3) { if (this.state === 'idle' && this.rag.mode === 'anim') { this.backTries = 0; this.seated = true; this.glide = { x0: rt.x, z0: rt.z, x, z, y0: this.rag.yaw, yaw, t: 0, dur: Math.max(0.35, d * 0.45) }; } return false; }
+    if (d <= 1.5 || (this.backTries || 0) >= 3) { if (this.state === 'idle' && this.rag.mode === 'anim') { this.backTries = 0; this.seated = !!sit; this.glide = { x0: rt.x, z0: rt.z, x, z, y0: this.rag.yaw, yaw, t: 0, dur: Math.max(0.35, d * 0.45) }; } return false; }
     if (this.state === 'idle' && this.rag.mode === 'anim') { this.backTries = (this.backTries || 0) + 1; this.seated = false; this.activity = null; this.goTo(x, z, 1.0); }
     return false;
   }

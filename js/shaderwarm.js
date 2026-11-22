@@ -15,6 +15,7 @@ const KEY = 'rs_shader_sigs', MAX_LEARNT = 80;
 // d: two-sided, b: inside-out (back side), t: see-through, i: instanced (c: per-instance colour), a: alpha test,
 // f0: not in the haze. (Each of these is a different program to the graphics chip)
 const SIGS = [
+  'Lvs',      // (s: skinned. Run the Pub's punters: their bodies are drawn in their own vertex colours, and they only turn up once the night's started)
   'L', 'Lm', 'Lv', 'Lvd', 'Ld', 'Lmd', 'Li', 'Lmi', 'Lvi', 'Lic', 'Lma', 'Lt', 'Lmt', 'Lvt', 'Ldt', 'Lmdt',
   'B', 'Bm', 'Bv', 'Bd', 'Bmd', 'Bi', 'Bmi', 'Bic', 'Bma', 'Bf0', 'Bmf0', 'Bt', 'Bmt', 'Bdt', 'Bmdt', 'Bbt', 'Bmbt', 'Bvt', 'Bmtf0', 'Btf0',
   'P', 'Pm', 'Pv', 'Pd', 'Pt', 'Pmt',
@@ -37,7 +38,9 @@ function probe(sig) {
   else {
     mat = new (t === 'L' ? THREE.MeshLambertMaterial : t === 'B' ? THREE.MeshBasicMaterial : THREE.MeshPhongMaterial)(o);
     const g = new THREE.PlaneGeometry(0.01, 0.01); if (has('v')) g.setAttribute('color', new THREE.Float32BufferAttribute(new Array(g.attributes.position.count * 3).fill(1), 3));
-    if (has('i')) { obj = new THREE.InstancedMesh(g, mat, 1); obj.setMatrixAt(0, new THREE.Matrix4()); if (has('c')) obj.setColorAt(0, new THREE.Color(1, 1, 1)); }
+    if (has('s')) { g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Array(g.attributes.position.count * 4).fill(0), 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(new Array(g.attributes.position.count * 4).fill(0).map((v, i) => i % 4 ? 0 : 1), 4));
+      const bone = new THREE.Bone(); obj = new THREE.SkinnedMesh(g, mat); obj.add(bone); obj.bind(new THREE.Skeleton([bone])); }
+    else if (has('i')) { obj = new THREE.InstancedMesh(g, mat, 1); obj.setMatrixAt(0, new THREE.Matrix4()); if (has('c')) obj.setColorAt(0, new THREE.Color(1, 1, 1)); }
     else obj = new THREE.Mesh(g, mat);
   }
   mat.userData.keep = true; obj.frustumCulled = false; obj.raycast = () => {}; obj.layers.set(31);      // (on a layer no camera draws: built, never drawn)

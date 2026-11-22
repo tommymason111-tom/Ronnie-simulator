@@ -597,27 +597,85 @@ export function drawFlash(g, t, dur) {
 }
 // Dylan: a gig in your face. Stage lights, notes, and karaoke lyrics with a bouncing ball
 export function drawOasis(g, t, dur) {
-  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur);
+  g.clearRect(0, 0, W, H); const a = fadeIO(t, dur), k = t / dur * 6.5;      // (k: the same beats as Dylan's moves, x_oasis)
+  const big = (k > 3.4 && k < 4.6) || k > 5.8, port = H > W;
   g.save(); g.globalAlpha = a;
   g.fillStyle = 'rgba(10,0,30,0.45)'; g.fillRect(0, 0, W, H);
-  for (let i = 0; i < 5; i++) {     // sweeping stage lights
-    const x = 100 + i * 200, ang = Math.sin(t * 1.5 + i) * 0.4;
+  for (let i = 0; i < 5; i++) {     // sweeping stage lights (swinging harder on the big notes)
+    const x = 100 + i * ((W - 200) / 4), ang = Math.sin(t * (big ? 3.2 : 1.5) + i) * (big ? 0.6 : 0.4);
     g.save(); g.translate(x, 0); g.rotate(ang); g.globalCompositeOperation = 'lighter';
     const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, ['rgba(255,80,80,0.5)', 'rgba(80,160,255,0.5)', 'rgba(255,220,80,0.5)', 'rgba(160,80,255,0.5)', 'rgba(80,255,160,0.5)'][i]); gr.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = gr; g.beginPath(); g.moveTo(-10, 0); g.lineTo(10, 0); g.lineTo(120, H); g.lineTo(-120, H); g.fill(); g.restore();
   }
-  for (let i = 0; i < 14; i++) { const nx = (rnd(i) * W + t * 40 * (i % 2 ? 1 : -1)) % W, ny = H - ((t * 110 + i * 60) % H); text(g, i % 2 ? '♪' : '♫', nx, ny, 40 + (i % 3) * 10, ['#ffd400', '#7cff6a', '#ff6bd5'][i % 3], { lw: 5 }); }
-  text(g, 'DYLAN — LIVE AT THE OYSTERFLEET', W / 2, H > W ? 130 : 60, 34, '#fff', { lw: 7, maxW: W - 80 });      // (upright phone: clear of the PAUSE button)
-  const LY = ['Today is gonna be the day', 'that you put down the pie', 'and all the roads we have to walk', 'are leading to the chippy', 'don\'t look back in anger, Ron', 'look back at the buffet'];
-  const li = Math.floor(t / (dur / LY.length)) % LY.length, k = (t % (dur / LY.length)) / (dur / LY.length);
-  g.fillStyle = 'rgba(0,0,0,0.6)'; rr(g, 80, H - 120, W - 160, 86, 20); g.fill();
-  g.font = `900 34px ${FONT}`; const lw = g.measureText(LY[li]).width, lx = W / 2 - lw / 2;
-  text(g, LY[li], W / 2, H - 64, 34, '#fff', { maxW: W - 200 });
-  g.save(); g.beginPath(); g.rect(lx, H - 110, lw * k, 70); g.clip(); text(g, LY[li], W / 2, H - 64, 34, '#ffd400', { maxW: W - 200 }); g.restore();
-  g.fillStyle = '#ff4f7b'; g.beginPath(); g.arc(lx + lw * k, H - 108 - Math.abs(Math.sin(k * Math.PI * 6)) * 24, 10, 0, 7); g.fill();
-  text(g, 'YOU CAN\'T LEAVE UNTIL THE B-SIDES ARE DONE', W / 2, H - 14, 20, '#ccc', { weight: 700 });
+  for (let i = 0; i < (big ? 22 : 14); i++) { const nx = (rnd(i) * W + t * 40 * (i % 2 ? 1 : -1)) % W, ny = H - ((t * (big ? 170 : 110) + i * 60) % H); text(g, i % 2 ? '♪' : '♫', nx, ny, 40 + (i % 3) * 10, ['#ffd400', '#7cff6a', '#ff6bd5'][i % 3], { lw: 5 }); }
+  text(g, 'DYLAN — LIVE AT THE OYSTERFLEET', W / 2, port ? 130 : 60, 34, '#fff', { lw: 7, maxW: W - 80 });      // (upright phone: clear of the PAUSE button)
+  // a little cartoon Liam in the corner, doing what Dylan's doing out there
+  liam(g, port ? W * 0.17 : W * 0.1, H - 128, port ? W * 0.36 : H * 0.42, k, t);      // (down in the corner: Dylan himself, out there, is the show)
+  // PASSION, all the way past the top
+  { const px = port ? W / 2 - 150 : W - 330, py = port ? 160 : 92, pk = Math.min(1.1, k / 5.8);
+    g.fillStyle = 'rgba(0,0,0,0.55)'; rr(g, px, py, 300, 40, 12); g.fill();
+    g.fillStyle = pk > 1 ? (Math.sin(t * 20) > 0 ? '#ff4f7b' : '#ffd400') : '#ff4f7b'; rr(g, px + 6, py + 6, 288 * Math.min(1, pk), 28, 9); g.fill();
+    text(g, `PASSION ${Math.round(pk * 100)}%`, px + 150, py + 29, 22, '#fff', { lw: 5 }); }
+  // the words, a line per move
+  const LY = [[0, 'Today is gonna be the day'], [1.2, 'that you put down the pie'], [2.3, 'because maybeeee...'], [3.4, 'YOU\'RE GONNA BE THE ONE'], [4.8, 'that eats ALL of me'], [5.8, 'AND AFTER ALL... YOU\'RE MY WONDERWAAALL']];
+  let li = 0; for (let i = 0; i < LY.length; i++) if (k >= LY[i][0]) li = i;
+  const l0 = LY[li][0], l1 = li + 1 < LY.length ? LY[li + 1][0] : 6.5, lk = Math.min(1, (k - l0) / (l1 - l0)), line = LY[li][1];
+  g.fillStyle = 'rgba(0,0,0,0.6)'; rr(g, 40, H - 120, W - 80, 86, 20); g.fill();
+  let fs = 34; g.font = `900 ${fs}px ${FONT}`; while (g.measureText(line).width > W - 140 && fs > 16) { fs -= 2; g.font = `900 ${fs}px ${FONT}`; }
+  const lw = g.measureText(line).width, lx = W / 2 - lw / 2;
+  text(g, line, W / 2, H - 64, fs, '#fff');
+  g.save(); g.beginPath(); g.rect(lx, H - 110, lw * lk, 70); g.clip(); text(g, line, W / 2, H - 64, fs, '#ffd400'); g.restore();
+  g.fillStyle = '#ff4f7b'; g.beginPath(); g.arc(lx + lw * lk, H - 108 - Math.abs(Math.sin(lk * Math.PI * 6)) * 24, 10, 0, 7); g.fill();
+  // the big note (on his haunches), the point, the finish
+  if (k > 3.7 && k < 4.7) bigWord(g, 'THE BIG NOTE!', W / 2, port ? H * 0.3 : H * 0.36, port ? 56 : 72, '#ffd400', '#5a0a3a', Math.sin(t * 30) * 0.04, 1 + Math.sin(t * 24) * 0.05);
+  if (k > 4.85 && k < 5.5) bigWord(g, 'HE\'S POINTING AT YOU', W / 2, port ? H * 0.3 : H * 0.36, port ? 40 : 54, '#fff', '#3a0a5a', -0.05, 1);
+  if (k > 5.85) { const f = Math.max(0, 1 - (k - 5.85) / 0.25); if (f > 0) { g.fillStyle = `rgba(255,255,255,${f * 0.5})`; g.fillRect(0, 0, W, H); }
+    for (let i = 0; i < 40; i++) { const cx = rnd(i + 50) * W, cy = ((k - 5.85) * 420 + rnd(i + 90) * H * 0.6) % H; g.fillStyle = ['#ffd400', '#ff6bd5', '#7cff6a', '#6ad5ff'][i % 4]; g.save(); g.translate(cx, cy); g.rotate(t * 6 + i); g.fillRect(-6, -3, 12, 6); g.restore(); } }
+  text(g, 'YOU CAN\'T LEAVE UNTIL THE B-SIDES ARE DONE', W / 2, H - 14, 20, '#ccc', { weight: 700, maxW: W - 40 });
   g.restore();
 }
+// Liam (Dylan doing Liam): parka, mop top, round shades; at the mic stand with his hands behind his back, then the mic
+// in one hand and the tambourine in the other, down on his haunches for the big note, pointing, arms up at the end
+function liam(g, x, y, h, k, t) {
+  const s = h / 300, crouch = k > 3.9 && k < 4.7 ? 0.22 : 0, sway = Math.sin(t * 4.4) * (k < 2.1 ? 0.06 : 0.03), lean = k < 2.1 ? 0.25 : k > 5.8 ? -0.12 : 0.05;
+  g.save(); g.translate(x, y); g.scale(s, s);
+  // the stand (until he takes the mic off it)
+  g.strokeStyle = '#cfd3d8'; g.lineWidth = 6; g.beginPath(); g.moveTo(70, 0); g.lineTo(70, -200); g.stroke(); g.fillStyle = '#222'; g.beginPath(); g.ellipse(70, 0, 40, 8, 0, 0, 7); g.fill();
+  if (k < 2.15) { g.fillStyle = '#333'; g.beginPath(); g.ellipse(64, -204, 10, 14, -0.6, 0, 7); g.fill(); }
+  g.translate(0, crouch * 140); g.rotate(sway);
+  const hip = { x: 0, y: -120 }, neck = { x: lean * 120, y: -235 };
+  // legs (bent right down on the big note)
+  g.strokeStyle = '#1d2b5a'; g.lineCap = 'round'; g.lineWidth = 26;
+  for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(hip.x + sx * 14, hip.y); g.lineTo(hip.x + sx * (crouch ? 46 : 22), hip.y + (crouch ? 40 : 60)); g.lineTo(hip.x + sx * 26, -crouch * 140); g.stroke(); }
+  // the parka
+  g.fillStyle = '#2f3a2a'; g.beginPath(); g.moveTo(neck.x - 44, neck.y + 8); g.lineTo(neck.x + 44, neck.y + 8); g.lineTo(hip.x + 50, hip.y + 30); g.lineTo(hip.x - 50, hip.y + 30); g.closePath(); g.fill();
+  g.fillStyle = '#c8b48a'; g.beginPath(); g.ellipse(neck.x, neck.y + 6, 40, 12, 0, 0, 7); g.fill();      // the fur trim
+  // the arms
+  const sh = (sx) => ({ x: neck.x + sx * 40, y: neck.y + 20 });
+  const arm = (sx, e, hnd, col = '#2f3a2a') => { const a0 = sh(sx); g.strokeStyle = col; g.lineWidth = 20; g.beginPath(); g.moveTo(a0.x, a0.y); g.lineTo(e.x, e.y); g.lineTo(hnd.x, hnd.y); g.stroke(); g.fillStyle = '#e8b896'; g.beginPath(); g.arc(hnd.x, hnd.y, 10, 0, 7); g.fill(); };
+  const shake = Math.sin(t * 28) * 8;
+  if (k < 2.15) { arm(-1, { x: -50, y: -170 }, { x: -18, y: -135 }); arm(1, { x: 50, y: -170 }, { x: 18, y: -135 }); }      // hands behind his back
+  else {
+    const mic = { x: neck.x + 26, y: neck.y - 40 }; arm(1, { x: neck.x + 60, y: neck.y + 40 }, mic); g.fillStyle = '#222'; g.beginPath(); g.ellipse(mic.x + 6, mic.y - 6, 9, 13, -0.6, 0, 7); g.fill();
+    let hnd, el;
+    if (k > 5.8) { el = { x: neck.x - 80, y: neck.y - 50 }; hnd = { x: neck.x - 110, y: neck.y - 120 + shake }; }
+    else if (k > 4.85 && k < 5.45) { el = { x: neck.x - 70, y: neck.y + 10 }; hnd = { x: neck.x - 150, y: neck.y + 5 }; }
+    else if (k > 3.9 && k < 4.7) { el = { x: neck.x - 30, y: neck.y + 55 }; hnd = { x: neck.x + 2, y: neck.y + 30 }; }
+    else if (k > 3.4) { el = { x: neck.x - 90, y: neck.y + 10 }; hnd = { x: neck.x - 150, y: neck.y - 20 + shake * 0.5 }; }
+    else { el = { x: neck.x - 60, y: neck.y + 60 }; hnd = { x: neck.x - 50, y: neck.y + 100 + shake }; }
+    arm(-1, el, hnd);
+    if (k > 2.35 && !(k > 3.9 && k < 4.7) && !(k > 4.85 && k < 5.45)) { g.strokeStyle = '#8a1a1a'; g.lineWidth = 7; g.beginPath(); g.arc(hnd.x - 14, hnd.y, 22, 0, 7); g.stroke(); g.fillStyle = '#cfd3d8'; for (let i = 0; i < 6; i++) { const aa = i / 6 * 6.28 + t * 2; g.beginPath(); g.arc(hnd.x - 14 + Math.cos(aa) * 22, hnd.y + Math.sin(aa) * 22, 5, 0, 7); g.fill(); } }
+  }
+  // the head: tipped right back up into the mic, mop top, the round shades
+  g.save(); g.translate(neck.x, neck.y - 32); g.rotate(k < 2.1 || k > 5.8 ? -0.35 : big3(k) ? -0.25 : 0.05);
+  g.fillStyle = '#e8b896'; g.beginPath(); g.arc(0, 0, 30, 0, 7); g.fill();
+  g.fillStyle = '#3a2414'; g.beginPath(); g.arc(0, -6, 33, Math.PI * 0.95, Math.PI * 2.05); g.fill(); g.fillRect(-33, -8, 12, 22); g.fillRect(21, -8, 12, 22);
+  g.fillStyle = '#1a1030'; for (const sx of [-1, 1]) { g.beginPath(); g.arc(sx * 12, 2, 9, 0, 7); g.fill(); } g.strokeStyle = '#111'; g.lineWidth = 2; g.beginPath(); g.moveTo(-3, 2); g.lineTo(3, 2); g.stroke();
+  g.fillStyle = '#5a1010'; g.beginPath(); g.ellipse(0, 18, 7, 4 + Math.abs(Math.sin(t * 9)) * 5, 0, 0, 7); g.fill();      // singing
+  g.restore();
+  g.restore();
+}
+const big3 = (k) => (k > 3.4 && k < 4.6) || k > 5.8;
 // Ian: hooked! Water ripples, the line, and a "catch of the day" weigh-in
 export function drawRod(g, t, dur) {
   g.clearRect(0, 0, W, H); const a = fadeIO(t, dur);

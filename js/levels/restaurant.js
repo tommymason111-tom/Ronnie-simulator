@@ -14,7 +14,7 @@ import { Kit, woodTex, carpetTex, canvasTex, FONT, streetViewTex } from './kit.j
 
 export const DATE_TABLE = { x: 0, z: 0.6 };
 // the other diners' round tables; 4 chairs each at angle i/4*2PI + 0.4 (radius 0.85)
-export const DINER_TABLES = [[-3.5, -4.3], [3.5, -4.3], [-8.5, 1.6], [-4.0, 1.0], [4.0, 1.0], [-8.5, 4.2], [-3.0, 4.4], [3.0, 4.4], [-1.5, -1.0]];      // Ronnie sits at z + 0.8, Chloe at z - 0.75
+export const DINER_TABLES = [[-3.5, -4.3], [3.5, -4.3], [-8.0, 1.2], [-4.0, 1.0], [4.0, 1.0], [-8.5, 4.2], [-3.0, 4.4], [3.0, 4.4], [-1.5, -1.0]];      // Ronnie sits at z + 0.8, Chloe at z - 0.75
 
 const H = 3.4;
 
@@ -87,7 +87,7 @@ export function buildRestaurant(scene) {
   for (let z = -5; z <= 1; z += 2) { k.cyl(0.006, 0.006, 0.9, 10.6, H - 0.45, z, 0x222222, 4); k.lamp(10.6, H - 1.0, z, 0xffb050, 0.14); }
   sign("WINE LIST: RED, WHITE, AND WHATEVER RONNIE HASN'T FINISHED", 2.4, 0.4, [11.88, 3.05, -2.0], [0, -Math.PI / 2, 0], { bg: '#1a0508', fg: '#d4af37', border: GOLD_HEX, size: 40 });
   // lounge: armchairs round low tables, half-screened by a planter
-  const armchair = (x, z, ry) => { k.box(0.75, 0.42, 0.75, x, 0.21, z, VELVET, { rot: [0, ry, 0], block: true }); k.box(0.75, 0.55, 0.16, x + Math.sin(ry) * 0.3, 0.6, z + Math.cos(ry) * 0.3, VELVET, { rot: [0, ry, 0] }); };
+  const armchair = (x, z, ry) => { k.box(0.75, 0.42, 0.75, x, 0.21, z, VELVET, { rot: [0, ry, 0], block: true }); k.seats.push({ x: x - Math.sin(ry) * 0.06, z: z - Math.cos(ry) * 0.06, yaw: ry + Math.PI, h: 0.42 }); k.box(0.75, 0.55, 0.16, x + Math.sin(ry) * 0.3, 0.6, z + Math.cos(ry) * 0.3, VELVET, { rot: [0, ry, 0] }); };
   for (const [x, z] of [[8.0, 2.6], [8.0, -4.2]]) {
     k.cyl(0.4, 0.4, 0.05, x, 0.45, z, DARK, 16, { collide: true, block: true }); k.cyl(0.06, 0.1, 0.42, x, 0.21, z, DARK, 8);
     armchair(x - 0.9, z, -Math.PI / 2); armchair(x + 0.9, z, Math.PI / 2);
@@ -143,7 +143,7 @@ export function buildRestaurant(scene) {
   // grand piano in the corner (with a pianist's empty stool)
   k.cyl(0.85, 0.85, 0.3, -9.6, 0.85, 2.9, 0x0a0a0a, 20, { collide: true, block: true });
   for (const [dx, dz] of [[-0.5, -0.4], [0.5, -0.4], [0, 0.6]]) k.cyl(0.05, 0.05, 0.7, -9.6 + dx, 0.35, 2.9 + dz, 0x0a0a0a, 6);
-  R(-9.7, 1.8, -8.6, 2.1, 0.06, 0.75, 0xffffff); k.stool(-9.1, 1.4, 0x111111, 0x333333, 0.5);
+  R(-9.7, 1.8, -8.6, 2.1, 0.06, 0.75, 0xffffff); k.stool(-9.35, 1.45, 0x111111, 0x333333, 0.5);      // (the table by the piano a little way off: one of its chairs was in the keyboard)
   sign('THE PIANIST QUIT AFTER RONNIE REQUESTED "THE CHEESEBURGER SONG" 40 TIMES', 1.6, 0.4, [-11.88, 2.3, 2.9], [0, Math.PI / 2, 0], { bg: '#1a0508', fg: '#d4af37', border: GOLD_HEX, size: 36 });
   // lobster tank (glowing)
   R(4.6, 6.1, 6.2, 6.3, 0.75, 0.375, DARK, { block: true });

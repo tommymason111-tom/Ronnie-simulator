@@ -13,6 +13,8 @@ import { Item } from './foods.js';
 import { pickVeg, pickJunk } from './config.js';
 import { sfx } from './audio.js';
 import { canvasTex, FONT } from './textures.js';
+import { seatInfo, sitLegs, seatArms, smoothPose } from './seating.js';
+import { playClip, fadeOut, poseAt } from './punteranims.js';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _lq = new THREE.Quaternion(), _lx = new THREE.Vector3(1, 0, 0);
 // how long each signature move lasts (seconds)
@@ -363,13 +365,28 @@ function buildBody(rag, look) {
     hoops: (x, y) => (Math.floor(y / (0.06 * k)) % 2 ? c1 : c2),
     jersey: (x, y) => (y > ch.b.y - 0.07 * k || Math.abs(x) > tw * 0.82 ? c2 : c1),
     polo: (x, y) => (y > ch.b.y - 0.05 * k ? c2 : c1),
+    check: (x, y) => ((Math.floor((x + 1) / (0.045 * k)) + Math.floor(y / (0.045 * k))) % 2 ? c1 : c2),     // a checked shirt
+    hawaii: (x, y, z) => (Math.sin(x * 61) * Math.sin(y * 53) * Math.sin(z * 47) > 0.25 ? c2 : c1),     // loud holiday shirt
     sleeves2: null, parka: null,
   }[look.pattern] || null;
+  // an open jacket / cardigan / tracksuit top over the top: the front left open (the top showing through) and a hen
+  // party's sash across the chest
+  const jC = look.jacket != null ? new THREE.Color(look.jacket) : null, sashC = look.sash != null ? new THREE.Color(look.sash) : null;
+  const torsoCol = (x, y, z, out) => {
+    if (sashC && z > 0 && Math.abs((x - (y - ch.a.y) * 0.55 + 0.06 * k)) < 0.035 * k) return sashC;
+    if (jC && !(z > td * 0.3 && Math.abs(x) < tw * (look.zip ? 0.06 : 0.3))) return jC;
+    return torsoFn ? torsoFn(x, y, z, out) : null;
+  };
   {
     // torso: a capsule exactly as tall as the chest bone, squashed to the right width/depth
     const H = (ch.b.y - ch.a.y) + 0.04 * k, r = Math.min(tw, H * 0.32), len = H - 2 * r;
     const torso = (rr, col, fn, extra = 1) => add(new THREE.CapsuleGeometry(rr, len, 8, 32), col, 'chest', at(0, (ch.a.y + ch.b.y) / 2 - 0.03 * k, 0, tw / rr * 0.95 * extra, 1, td / rr * 1.15 * extra), fn);
-    torso(r, look.top, torsoFn);
+    torso(r, look.top, (jC || sashC) ? torsoCol : torsoFn, jC ? 1.04 : 1);
+    if (jC && !look.zip) for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.05 * k, 0.16 * k, 0.012 * k), new THREE.Color(look.jacket).multiplyScalar(0.85).getHex(), 'chest', at(sx * tw * 0.34, ch.b.y - 0.11 * k, td * 1.12, 1, 1, 1, 0.12, sx * 0.25, sx * 0.35));   // lapels
+    if (look.gut) add(new THREE.SphereGeometry(tw * 0.85, 14, 10), jC && !look.zip ? look.top : look.top, 'chest', at(0, ch.a.y + 0.08 * k, td * 0.55, 1, 0.8, 0.75 * look.gut), torsoFn);     // a proper beer belly out front
+    if (look.chain) add(new THREE.TorusGeometry(0.07 * k, 0.006 * k, 5, 20), look.chain, 'chest', at(0, ch.b.y - 0.045 * k, td * 0.42, 1, 1, 0.75, Math.PI / 2 - 0.5));
+    if (look.logo != null) add(new THREE.CircleGeometry(0.022 * k, 10), look.logo, 'chest', at(tw * 0.42, ch.b.y - 0.1 * k, td * 1.17, 1, 1, 1));
+    if (look.tie != null) { add(new THREE.BoxGeometry(0.035 * k, 0.2 * k, 0.012 * k), look.tie, 'chest', at(0, ch.b.y - 0.13 * k, td * 1.15)); add(new THREE.BoxGeometry(0.03 * k, 0.03 * k, 0.015 * k), look.tie, 'chest', at(0, ch.b.y - 0.025 * k, td * 1.05)); }
     if (look.hood) add(new THREE.SphereGeometry(0.11 * k, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), look.top, 'chest', at(0, ch.b.y - 0.04 * k, -td * 0.9, 1, 0.6, 0.7, -0.4));
     if (look.pattern === 'parka') {   // big parka with a fur-trimmed hood
       torso(r, look.top, null, 1.1);
@@ -386,7 +403,8 @@ function buildBody(rag, look) {
     const col = look.legs === 'bare' ? look.bottom : look.bottom;
     const pr = Math.min(ph[0], ph[1] * 1.1);
     add(new THREE.CapsuleGeometry(pr, Math.max(0.01, ph[1] * 2.2 - 2 * pr), 6, 20), col, 'pelvis', at(0, (pel.a.y + pel.b.y) / 2, 0, ph[0] / pr * 0.95, 1, ph[2] / pr * 1.1));
-    if (look.skirt) add(new THREE.CylinderGeometry(ph[0] * 0.95, ph[0] * 1.5, 0.3 * k, 16, 1, true), look.skirt, 'pelvis', at(0, pel.a.y - 0.08 * k, 0), null);
+    if (look.skirt) add(new THREE.CylinderGeometry(ph[0] * 0.95, ph[0] * 1.5, (look.dress ? 0.42 : 0.3) * k, 16, 1, true), look.skirt, 'pelvis', at(0, pel.a.y - (look.dress ? 0.14 : 0.08) * k, 0), null);
+    if (look.belt != null) { add(new THREE.CylinderGeometry(ph[0] * 1.02, ph[0] * 1.02, 0.03 * k, 18, 1, true), look.belt, 'pelvis', at(0, pel.b.y - 0.03 * k, 0, 1, 1, ph[2] / ph[0] * 1.12)); add(new THREE.BoxGeometry(0.05 * k, 0.035 * k, 0.01 * k), 0xc8a848, 'pelvis', at(0, pel.b.y - 0.03 * k, ph[2] * 1.12)); }
   }
   // ---- arms ----
   for (const s of ['L', 'R']) {
@@ -396,11 +414,13 @@ function buildBody(rag, look) {
     { const { len, m } = between(ua.a, ua.b); add(new THREE.CylinderGeometry(ur, ur * 0.95, len, 10), skin, 'uArm' + s, m); }
     if (look.sleeves !== 'none') {
       const end = ua.a.clone().lerp(ua.b, look.sleeves === 'long' ? 1 : 0.55);
-      const { len, m } = between(ua.a.clone().lerp(ua.b, -0.08), end); add(new THREE.CylinderGeometry(ur * 1.18, ur * 1.12, len, 10), sleeveCol, 'uArm' + s, m);
+      const { len, m } = between(ua.a.clone().lerp(ua.b, -0.08), end); add(new THREE.CylinderGeometry(ur * 1.18, ur * 1.12, len, 10), jC && look.sleeves === 'long' ? look.jacket : sleeveCol, 'uArm' + s, m);
     }
     // shoulder ball
     add(new THREE.SphereGeometry(ur * 1.25, 10, 8), look.sleeves === 'none' ? skin : sleeveCol, 'uArm' + s, at(ua.a.x, ua.a.y, ua.a.z));
-    { const { len, m } = between(la.a, la.b.clone().lerp(la.a, 0.22)); add(new THREE.CylinderGeometry(lr * 0.85, lr, len, 10), look.sleeves === 'long' ? sleeveCol : skin, 'lArm' + s, m); }
+    const ink = look.tattoo && look.sleeves !== 'long' && (look.tattoo === 'both' || look.tattoo === s) ? new THREE.Color(0x3a4a6a) : null, skinC = new THREE.Color(skin);
+    { const { len, m } = between(la.a, la.b.clone().lerp(la.a, 0.22)); add(new THREE.CylinderGeometry(lr * 0.85, lr, len, 10), look.sleeves === 'long' ? (jC ? look.jacket : sleeveCol) : skin, 'lArm' + s, m, ink ? (x, y, z) => (Math.sin(x * 140) * Math.sin(y * 90 + z * 120) > 0.1 ? ink : skinC) : null); }
+    if (look.watch != null && s === 'L') { const wp = la.b.clone().lerp(la.a, 0.25), { m } = between(wp.clone().lerp(la.a, 0.04), wp); add(new THREE.CylinderGeometry(lr * 0.92, lr * 0.92, 0.025 * k, 10), look.watch, 'lArm' + s, m); }
     // hand
     const hp = la.b.clone().lerp(la.a, 0.12);
     add(new THREE.SphereGeometry(0.045 * k, 10, 8), skin, 'lArm' + s, at(hp.x, hp.y, hp.z, 1.3, 0.75, 1));
@@ -417,6 +437,7 @@ function buildBody(rag, look) {
     add(new THREE.SphereGeometry(lr * 0.95, 8, 6), lowerCol, 'lLeg' + s, at(ll.a.x, ll.a.y, ll.a.z));
     // shoe
     add(new THREE.BoxGeometry(0.1 * k, 0.07 * k, 0.24 * k), look.shoes, 'lLeg' + s, at(ll.b.x, 0.035 * k, 0.04 * k));
+    if (look.sole != null) add(new THREE.BoxGeometry(0.106 * k, 0.022 * k, 0.25 * k), look.sole, 'lLeg' + s, at(ll.b.x, 0.011 * k, 0.04 * k));      // trainers: a thick white sole
   }
   // ---- head ----
   {
@@ -430,7 +451,11 @@ function buildBody(rag, look) {
       add(new THREE.SphereGeometry(R * 0.075, 8, 6), 0x2a1d14, 'head', at(c.x + s * R * 0.33, c.y + R * 0.12, fz + R * 0.03, 1, 1, 0.5));
       add(new THREE.BoxGeometry(R * 0.36, R * 0.07, R * 0.08), hairC, 'head', at(c.x + s * R * 0.34, c.y + R * 0.33, fz - R * 0.01, 1, 1, 1, 0, 0, -s * 0.12));
     }
-    add(new THREE.SphereGeometry(R * 0.16, 8, 6), new THREE.Color(skin).multiplyScalar(0.92).getHex(), 'head', at(c.x, c.y - R * 0.08, fz + R * 0.06, 0.8, 1.1, 1));
+    add(new THREE.SphereGeometry(R * (look.bigNose ? 0.22 : 0.16), 8, 6), look.nose ?? new THREE.Color(skin).multiplyScalar(0.92).getHex(), 'head', at(c.x, c.y - R * 0.08, fz + R * 0.06, 0.8, 1.1, 1));
+    if (look.cheeks != null) for (const s of [-1, 1]) add(new THREE.SphereGeometry(R * 0.17, 8, 6), look.cheeks, 'head', at(c.x + s * R * 0.48, c.y - R * 0.2, fz - R * 0.2, 1, 0.7, 0.4));      // rosy cheeks (a kid; an old boy's drinker's flush)
+    if (look.bushy) for (const s of [-1, 1]) add(new THREE.BoxGeometry(R * 0.42, R * 0.13, R * 0.12), hairC, 'head', at(c.x + s * R * 0.34, c.y + R * 0.35, fz, 1, 1, 1, 0, 0, -s * 0.2));      // big bushy eyebrows
+    if (look.earrings != null) for (const s of [-1, 1]) add(new THREE.SphereGeometry(R * 0.07, 6, 4), look.earrings, 'head', at(c.x + s * R * 0.9, c.y - R * 0.25, c.z, 1, 1.4, 1));
+    if (look.wrinkles) for (let i = 0; i < 2; i++) add(new THREE.BoxGeometry(R * 0.6, R * 0.025, R * 0.02), new THREE.Color(skin).multiplyScalar(0.8).getHex(), 'head', at(c.x, c.y + R * (0.5 + i * 0.12), fz - R * (0.12 + i * 0.05), 1, 1, 1, -0.3));
     const bearded = look.beard && (look.beard.style === 'full' || look.beard.style === 'short');
     add(new THREE.BoxGeometry(R * 0.4, R * 0.07, R * 0.06), bearded ? 0xb5655a : look.lips ?? 0x8a4a40, 'head', at(c.x, c.y - R * 0.42, fz + (bearded ? R * 0.16 : -R * 0.06)));
     if (look.hair) hair(add, look.hair, c, R, k);
@@ -445,6 +470,9 @@ function buildBody(rag, look) {
       add(new THREE.SphereGeometry(R * 1.08, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), look.flatcap, 'head', at(c.x, c.y + R * 0.2, c.z - R * 0.05, 1, 0.55, 1.05, -0.12));
       add(new THREE.CylinderGeometry(R * 0.85, R * 0.9, R * 0.08, 16, 1, false, -Math.PI / 2, Math.PI), look.flatcap, 'head', at(c.x, c.y + R * 0.32, c.z + R * 0.75, 1, 1, 0.6, 0.12));
     }
+    if (look.beanie != null) { add(new THREE.SphereGeometry(R * 1.1, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), look.beanie, 'head', at(c.x, c.y + R * 0.12, c.z - R * 0.03, 1, 1.05, 1, -0.2)); add(new THREE.CylinderGeometry(R * 1.08, R * 1.1, R * 0.22, 16, 1, true), new THREE.Color(look.beanie).multiplyScalar(0.8).getHex(), 'head', at(c.x, c.y + R * 0.22, c.z - R * 0.03, 1, 1, 1, -0.2)); }
+    if (look.bucket != null) { add(new THREE.CylinderGeometry(R * 0.95, R * 1.08, R * 0.55, 16), look.bucket, 'head', at(c.x, c.y + R * 0.65, c.z - R * 0.04, 1, 1, 1, -0.12)); add(new THREE.CylinderGeometry(R * 1.55, R * 1.55, R * 0.05, 18), look.bucket, 'head', at(c.x, c.y + R * 0.38, c.z, 1, 1, 1, -0.15)); }
+    if (look.tiara) for (let i = -2; i <= 2; i++) add(new THREE.OctahedronGeometry(R * (i === 0 ? 0.16 : 0.1), 0), 0xf2f2ff, 'head', at(c.x + i * R * 0.22, c.y + R * (1.02 - Math.abs(i) * 0.05), c.z + R * 0.3, 1, 1.3, 1));
     if (look.shades) for (const s of [-1, 1]) add(new THREE.CylinderGeometry(R * 0.2, R * 0.2, R * 0.04, 12), 0x111111, 'head', at(c.x + s * R * 0.3, c.y + R * 0.78, c.z + R * 0.45, 1, 1, 1, 1.1));
     if (look.flower) for (let i = 0; i < 5; i++) { const a = i * 1.256; add(new THREE.SphereGeometry(R * 0.09, 6, 4), 0xff5fa2, 'head', at(c.x + R * 0.8 + Math.cos(a) * R * 0.1, c.y + R * 0.55 + Math.sin(a) * R * 0.1, c.z + R * 0.3)); }
   }
@@ -459,6 +487,17 @@ function hair(add, h, c, R, k) {
   const cap = (scale = 1.06, theta = 0.46) => add(new THREE.SphereGeometry(R * scale, 18, 10, 0, Math.PI * 2, 0, Math.PI * theta), col, 'head', at(c.x, c.y + R * 0.04, c.z - R * 0.04, 1, 1, 1, -0.5));
   switch (h.style) {
     case 'short': cap(1.05, 0.44); break;
+    case 'buzz': cap(1.02, 0.42); break;
+    case 'horseshoe':        // going bald on top: a ring round the back and sides
+      add(new THREE.SphereGeometry(R * 1.05, 18, 8, Math.PI * 0.75, Math.PI * 1.5, Math.PI * 0.3, Math.PI * 0.32), col, 'head', at(c.x, c.y + R * 0.04, c.z - R * 0.02));
+      break;
+    case 'combover': cap(1.04, 0.3); add(new THREE.BoxGeometry(R * 1.5, R * 0.08, R * 1.2), col, 'head', at(c.x, c.y + R * 0.98, c.z - R * 0.05, 1, 1, 1, 0, 0, 0.12)); break;
+    case 'spiky': cap(1.04, 0.42); for (let i = 0; i < 12; i++) { const a = i * 2.4, r = R * (0.2 + (i % 3) * 0.22); add(new THREE.ConeGeometry(R * 0.13, R * 0.42, 5), col, 'head', at(c.x + Math.cos(a) * r, c.y + R * 0.98 - (i % 3) * R * 0.08, c.z + Math.sin(a) * r * 0.8 + R * 0.05, 1, 1, 1, Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4)); } break;
+    case 'quiff': cap(1.05, 0.42); add(new THREE.SphereGeometry(R * 0.45, 12, 8), col, 'head', at(c.x, c.y + R * 0.95, c.z + R * 0.45, 1.3, 0.8, 1, 0.5)); break;
+    case 'bob': cap(1.08, 0.5); for (const s2 of [-1, 1]) add(new THREE.BoxGeometry(R * 0.4, R * 1.05, R * 1.1), col, 'head', at(c.x + s2 * R * 0.92, c.y - R * 0.12, c.z - R * 0.15)); add(new THREE.BoxGeometry(R * 1.85, R * 1.05, R * 0.4), col, 'head', at(c.x, c.y - R * 0.12, c.z - R * 0.85)); break;
+    case 'bun': cap(1.07, 0.5); add(new THREE.SphereGeometry(R * 0.42, 12, 8), col, 'head', at(c.x, c.y + R * 0.8, c.z - R * 0.75)); break;
+    case 'ponytail': cap(1.07, 0.5); add(new THREE.SphereGeometry(R * 0.2, 8, 6), col, 'head', at(c.x, c.y + R * 0.35, c.z - R * 1.0)); add(new THREE.CapsuleGeometry(R * 0.17, R * 1.1, 4, 8), col, 'head', at(c.x, c.y - R * 0.35, c.z - R * 1.12, 1, 1, 1, -0.25)); break;
+    case 'bald': break;
     case 'curtains':
       cap(1.06, 0.45);
       for (const s of [-1, 1]) add(new THREE.SphereGeometry(R * 0.55, 10, 8), col, 'head', at(c.x + s * R * 0.4, c.y + R * 0.55, c.z + R * 0.55, 1, 0.45, 0.75, 0.3, 0, -s * 0.6));
@@ -504,6 +543,7 @@ function beard(add, b, c, R) {
       add(new THREE.SphereGeometry(R * 0.25, 8, 6), col, 'head', at(c.x, c.y - R * 0.7, c.z + R * 0.72, 1, 1.1, 0.6));
       add(new THREE.BoxGeometry(R * 0.45, R * 0.07, R * 0.08), col, 'head', at(c.x, c.y - R * 0.3, c.z + R * 0.86));
       break;
+    case 'tash': add(new THREE.BoxGeometry(R * 0.55, R * 0.12, R * 0.12), col, 'head', at(c.x, c.y - R * 0.3, c.z + R * 0.86, 1, 1, 1, 0, 0, 0)); for (const s of [-1, 1]) add(new THREE.BoxGeometry(R * 0.12, R * 0.25, R * 0.1), col, 'head', at(c.x + s * R * 0.3, c.y - R * 0.43, c.z + R * 0.8)); break;     // an old boy's walrus moustache
     case 'patchy':
       for (let i = 0; i < 7; i++) add(new THREE.SphereGeometry(R * 0.08, 6, 4), col, 'head', at(c.x + (i - 3) * R * 0.18, c.y - R * (0.55 + (i % 2) * 0.15), c.z + R * 0.78));
       break;
@@ -552,6 +592,8 @@ export function makeProp(type, k) {
   return mesh;
 }
 
+// the things someone can do with their hands while they're sat down
+const SAT_ACTS = new Set(['phone', 'drink', 'chat', 'watch', 'waiter']);
 // ---------------------------------------------------------------------------
 // A squad member
 // ---------------------------------------------------------------------------
@@ -585,14 +627,27 @@ export class SquadMember extends Character {
   }
 
   // ---- personality idles ----
-  // sitting on a chair (Date Night): thighs forward, forearms on the table
-  sitPose() {
-    const r = this.rag;
-    r.aim('uLegL', 0.05, -0.1, 1); r.aim('lLegL', 0, -1, 0.06);
-    r.aim('uLegR', -0.05, -0.1, 1); r.aim('lLegR', 0, -1, 0.06);
-    r.aim('uArmL', 0.22, -0.8, 0.5); r.aim('lArmL', -0.25, -0.05, 1);
-    r.aim('uArmR', -0.22, -0.8, 0.5); r.aim('lArmR', 0.25, -0.05, 1);
-    r.bob = 0.5 - this.rag.parts.uLegL.def.a.y;
+  // sitting in a seat (see seating.js): the seat's own height, sat back in it, legs down in front, forearms on the table
+  // if there's one (in the lap if not). The seat's worked out once per place they sit
+  seatHere() { const r = this.rag, rt = r.root, s = this._seat;
+    if (s && Math.abs(s.x - rt.x) < 0.04 && Math.abs(s.z - rt.z) < 0.04) return s.info;
+    const info = seatInfo(this.room, rt.x, rt.z, this.faceYaw ?? r.yaw); this._seat = { x: rt.x, z: rt.z, info }; return info; }
+  sitPose(t = this.t) {
+    const r = this.rag, info = this.seatHere(), legs = sitLegs(this, info, t);
+    r.bob = legs.bob; r.shiftZ = legs.back;
+    r.pose.chest.setFromAxisAngle(_lx, info.table ? 0.06 : -0.04);
+    this.seatArmsAt = seatArms(this, info, legs.bob + r.parts.uLegL.def.a.y + 0.02);
+  }
+  // after the pose for this frame: everything eased (see seating.js smoothPose): quickly while stood or sat about,
+  // slowly for the moments around sitting down or getting up
+  afterPose(dt) {
+    const sat = !!(this.seated && !this.down && (this.state === 'idle' || this.state === 'enter'));
+    if (sat !== this._wasSat) { this._wasSat = sat; this.sitT = this.t; }
+    if (this.state === 'walk' || this.state === 'ko' || this.state === 'grabbed') this.rag.shiftZ = 0;      // (a lunge or sitting back only while stood or sat there)
+    if (this.clipOut) fadeOut(this);
+    const easing = this.t - (this.sitT ?? -9) < 0.7;
+    if (this.state === 'idle' || this.state === 'enter' || (this.state === 'walk' && easing)) smoothPose(this, dt, easing ? 6 : (this.clip ? 16 : 12));
+    else this._smooth = null;
   }
   dancePose(t) {     // Chloe's strange little victory dance
     const r = this.rag, s = Math.sin(t * 7), c2 = Math.cos(t * 7);
@@ -605,7 +660,7 @@ export class SquadMember extends Character {
   }
 
   personalityPose(t) {
-    const r = this.rag;
+    const r = this.rag; r.shiftZ = 0;
     if (this.activity === 'lounge') {      // lying back on a sun lounger: legs out straight, body reclined on the backrest, hands behind the head
       r.aim('uLegL', 0.025, 0.02, 1); r.aim('lLegL', 0.01, 0.0, 1); r.aim('uLegR', -0.025, 0.02, 1); r.aim('lLegR', -0.01, 0.0, 1);   // legs flat along the seat, on top of it
       r.aim('uArmL', 0.7, 0.75, -0.2); r.aim('lArmL', -0.75, 0.2, -0.35); r.aim('uArmR', -0.7, 0.75, -0.2); r.aim('lArmR', 0.75, 0.2, -0.35);
@@ -614,7 +669,9 @@ export class SquadMember extends Character {
       r.bob = 0.49 - r.parts.uLegL.def.a.y;   // hips up on the slats (they're at 0.37)
       return;
     }
-    if (this.seated) { this.sitPose(); return; }
+    if (this.seated) this.sitPose(t);
+    if (this.clip && playClip(this, t)) return;      // (Run the Pub's punters: their library of moves, punteranims.js)
+    if (this.seated && (!this.activity || !SAT_ACTS.has(this.activity))) return;      // (sat at rest; or sat doing something with their hands)
     if (this.dancing) { this.dancePose(t); return; }
     // free roam: what they're up to
     const ph = (this.id.charCodeAt(0) % 7) * 1.3;
@@ -699,6 +756,7 @@ export class SquadMember extends Character {
       this.guitar.position.add(_v.set(Math.sin(yaw) * 0.2 - Math.cos(yaw) * 0.12, -0.18, Math.cos(yaw) * 0.2 + Math.sin(yaw) * 0.12));
       this.guitar.rotation.order = 'YXZ'; this.guitar.rotation.set(0, yaw, 0.45);   // face forward, neck to his left, tilted up
     }
+    if (this.oasisKit) this.placeOasisKit();
     if (this.state !== 'act' && this.attackProps && this.attackProps.length) this.endAttackProps();
     if (this.prop) {
       const arm = this.id === 'lewis' ? 'lArmL' : 'lArmR';
@@ -790,15 +848,28 @@ export class SquadMember extends Character {
       const lab = new THREE.Mesh(new THREE.CylinderGeometry(0.047, 0.047, 0.08, 12), new THREE.MeshLambertMaterial({ color: 0x0b3fa8 })); b.add(lab);
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.05, 8), new THREE.MeshLambertMaterial({ color: 0x111111 })); cap.position.y = 0.14; b.add(cap);
       this.handProp = b;
-    } else if (this.attack === 'oasis') {              // Dylan's acoustic guitar
-      const gtr = add(new THREE.Group());
-      const wood = new THREE.MeshLambertMaterial({ color: 0xc8843a });
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.09, 18), wood); body.rotation.x = Math.PI / 2; gtr.add(body);
-      const body2 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.09, 18), wood); body2.rotation.x = Math.PI / 2; body2.position.x = 0.2; gtr.add(body2);
-      const hole = new THREE.Mesh(new THREE.CircleGeometry(0.05, 14), new THREE.MeshBasicMaterial({ color: 0x111111 })); hole.position.set(0.12, 0, 0.047); gtr.add(hole);
-      const neck = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.03), new THREE.MeshLambertMaterial({ color: 0x5a3a1a })); neck.position.x = 0.55; gtr.add(neck);
-      const head = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.07, 0.03), new THREE.MeshLambertMaterial({ color: 0x2a1a0a })); head.position.x = 0.85; gtr.add(head);
-      this.guitar = gtr;
+    } else if (this.attack === 'oasis') {              // Dylan does Liam: a mic on a stand in front of him, a tambourine, the round shades
+      const k = this.rag.height / 1.68, yaw = this.rag.yaw, blk = new THREE.MeshLambertMaterial({ color: 0x161616 }), chrome = new THREE.MeshLambertMaterial({ color: 0xb8bcc2 });
+      const mouthY = this.headPos(_v).y - 0.05 * k;
+      const stand = add(new THREE.Group());
+      { const base = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.16, 0.025, 20), blk); base.position.y = 0.012; stand.add(base);
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, mouthY - 0.12, 8), chrome); pole.position.y = (mouthY - 0.12) / 2; stand.add(pole);
+        const clip = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.08, 8), blk); clip.position.set(0, mouthY - 0.1, 0.02); clip.rotation.x = -0.9; stand.add(clip); }
+      stand.position.set(P.x + Math.sin(yaw) * 0.36 * k, 0, P.z + Math.cos(yaw) * 0.36 * k); stand.rotation.y = yaw;
+      const mic = add(new THREE.Group());
+      { const h = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.013, 0.13, 12), blk); h.rotation.x = Math.PI / 2; h.position.z = -0.065; mic.add(h);
+        const gr = new THREE.Mesh(new THREE.SphereGeometry(0.028, 12, 8), chrome); mic.add(gr);
+        const band = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.021, 0.012, 12), chrome); band.rotation.x = Math.PI / 2; band.position.z = -0.025; mic.add(band); }
+      const tamb = add(new THREE.Group());
+      { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.018, 6, 22), new THREE.MeshLambertMaterial({ color: 0x8a1a1a })); tamb.add(ring);
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.3; for (const dz of [-0.012, 0.012]) { const j = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.005, 10), chrome); j.rotation.x = Math.PI / 2; j.position.set(Math.cos(a) * 0.1, Math.sin(a) * 0.1, dz); tamb.add(j); } } }
+      tamb.visible = false;
+      const shades = add(new THREE.Group());
+      { const lens = new THREE.MeshLambertMaterial({ color: 0x1a1030 });
+        for (const sx of [-1, 1]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.006, 14), lens); l.rotation.x = Math.PI / 2; l.position.set(sx * 0.034, 0, 0); shades.add(l); }
+        const br = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.004, 0.004), blk); shades.add(br); }
+      shades.scale.setScalar(k);
+      this.oasisKit = { stand, mic, tamb, shades, k, micAt: new THREE.Vector3(stand.position.x + Math.sin(yaw) * -0.05, mouthY + 0.02, stand.position.z + Math.cos(yaw) * -0.05), said: {} };
     } else if (this.attack === 'diet') {               // Chloe holds up a salad
       const bowl = add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 7, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide })));
       for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.03, 0), new THREE.MeshLambertMaterial({ color: [0x4caf3c, 0x7cb342, 0xe53935][i % 3] })); m.position.set(Math.cos(i * 2.4) * 0.05, -0.01, Math.sin(i * 2.4) * 0.05); bowl.add(m); }
@@ -809,7 +880,7 @@ export class SquadMember extends Character {
   }
   endAttackProps() {
     if (this.attackProps) this.attackProps.forEach(o => this.scene.remove(o));
-    this.attackProps = []; this.handProp = null; this.guitar = null; this.bbq = null; this.bbqFood = null; this.strumming = 0; this.jig = 0;
+    this.attackProps = []; this.handProp = null; this.guitar = null; this.oasisKit = null; this.bbq = null; this.bbqFood = null; this.strumming = 0; this.jig = 0;
   }
   // the body language of each attack (t = seconds into it)
   signPose(t, ctx) {
@@ -845,17 +916,34 @@ export class SquadMember extends Character {
       case 'knee': r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), 0.45); r.aim('uArmL', 0.1, -1, 0.5); r.aim('lArmL', 0.1, -0.6, 0.7); r.aim('uArmR', -0.1, -1, 0.5); r.aim('lArmR', -0.1, -0.6, 0.7); r.aim('uLegR', -0.05, -0.85, 0.5); r.bob = -0.06 + Math.sin(t * 9) * 0.01; break;   // bent over, clutching the knee
       case 'diet': r.aim('uArmL', 0.15, 0.25, 1); r.aim('uArmR', -0.15, 0.25, 1); r.aim('lArmL', -0.1, 0.3, 1); r.aim('lArmR', 0.1, 0.3, 1); break;      // holding the salad out
       case 'flash': r.aim('uArmR', -0.1, 0.35, 1); r.aim('lArmR', 0, 0.4, 1); r.aim('uArmL', 0.1, 0.3, 1); r.aim('lArmL', 0, 0.4, 1); break;            // phone up, both hands
-      case 'oasis':                                                                                        // strumming, head nodding, notes flying
-        r.aim('uArmL', 0.5, -0.3, 0.8); r.aim('lArmL', 0.2, 0.2, 1);
-        r.aim('uArmR', -0.15, -0.6, 0.6); r.aim('lArmR', 0.4, -0.3 + s(t * 14) * 0.35, 0.7);
-        r.pose.head.setFromAxisAngle(_v.set(1, 0, 0), s(t * 7) * 0.15);
-        if (fx && Math.random() < 0.12) fx.notes(this.headPos(_v).add({ x: 0, y: 0.2, z: 0 }), 1);
-        if (this.speakT <= 0 && Math.random() < 0.02) this.say(OASIS_LINES[Math.floor(Math.random() * OASIS_LINES.length)], 3);
-        break;
+      case 'oasis': this.oasisPose(t, ctx); break;      // Liam at the mic, then the whole show (punteranims.js x_oasis)
       case 'nutmeg': if (t < 0.5) { r.aim('uLegR', -0.05, -0.6, -0.7); } else { r.aim('uLegR', -0.05, -0.6, 0.9); r.aim('lLegR', 0, -0.7, 0.8); } r.aim('uArmL', 0.8, 0.1, 0); r.aim('uArmR', -0.8, 0.1, 0); break;
       case 'turkey': r.aim('uArmR', -0.2, 0.6, 0.8); r.aim('lArmR', -0.1, 0.9, 0.3); r.aim('uArmL', 0.25, -0.8, 0.4); r.aim('lArmL', 0.2, -0.2, 1); break;   // pointing at his hairline
       default: break;
     }
+  }
+
+  // DYLAN'S OASIS, LIVE: no guitar. Liam at the mic stand (hands behind his back, leaning up into it, swaying), then he
+  // grabs the mic, out comes the tambourine, slapped on his hip as he steps in on Ronnie, arms out wide, right down on
+  // his haunches for the big note, pointing at him, hand on his heart, and the big finish with both arms up. The moves
+  // are keyframed (x_oasis in punteranims.js) over the whole 6.5s; the notes fly thicker on the big lines
+  oasisPose(t, ctx) {
+    const hd = poseAt(this, 'x_oasis', t); if (hd) this.headExtra = { yaw: hd.yaw, pitch: hd.pitch, roll: hd.roll };
+    const dt = Math.max(0, Math.min(0.1, t - (this._oT ?? t))); this._oT = t;
+    // stepping in on him (for the chorus, and the point): never closer than an arm's length
+    if ((t > 2.4 && t < 3.3) || (t > 4.8 && t < 5.3)) { const dx = ctx.head.x - this.pos.x, dz = ctx.head.z - this.pos.z, d = Math.hypot(dx, dz); if (d > 1.05) { this.rag.root.x += dx / d * 0.5 * dt; this.rag.root.z += dz / d * 0.5 * dt; } }
+    const kit = this.oasisKit, fx = this.attackFx, big = (t > 3.4 && t < 4.6) || t > 5.8;
+    if (fx && Math.random() < (big ? 0.4 : 0.14)) fx.notes(this.headPos(_v).add({ x: 0, y: 0.22, z: 0 }), big ? 2 : 1);
+    if (kit) { const say = (at, key, line) => { if (t >= at && !kit.said[key]) { kit.said[key] = true; this.say(line, 2.2); } };
+      say(0.4, 'a', OASIS_LINES[Math.floor(Math.random() * 3)]); say(2.4, 'b', '♪ Because maybeeeee... ♪'); say(3.75, 'c', '♪ YOU\'RE GONNA BE THE ONE THAT— ♪'); say(4.9, 'd', '♪ ...SAVES ME. ♪ (it\'s you, Ron. You need saving.)'); say(5.85, 'e', '♪ AND AFTER ALL... YOU\'RE MY WONDERWAAAALL! ♪'); }
+  }
+  // the mic (on its stand, then in his hand), the tambourine in the other hand, the shades on his face
+  placeOasisKit() {
+    const kit = this.oasisKit, t = this.signT > 0 ? this.signDur - this.signT : 0, r = this.rag;
+    if (t < 2.15) kit.mic.position.copy(kit.micAt); else { r.grip('lArmR', kit.mic.position); kit.mic.position.y += 0.02 * kit.k; }
+    const mouth = this.headPos(_v2).add(_v.set(Math.sin(r.yaw) * 0.08, -0.05, Math.cos(r.yaw) * 0.08)); kit.mic.lookAt(mouth);
+    kit.tamb.visible = t > 2.35 && t < 6.6; if (kit.tamb.visible) { r.grip('lArmL', kit.tamb.position); r.partQuat('lArmL', kit.tamb.quaternion); kit.tamb.rotateY(Math.PI / 2); }
+    { const hp = r.parts.head.body.position; r.partQuat('head', kit.shades.quaternion); kit.shades.position.set(hp.x, hp.y, hp.z).add(_v.set(0, 0.02 * kit.k, 0.112 * kit.k).applyQuaternion(kit.shades.quaternion)); }
   }
 
   cancelAction() {

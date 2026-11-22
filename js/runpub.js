@@ -11,6 +11,8 @@ import { sfx } from './audio.js';
 import { Bar } from './barstations.js';
 import { TipJar, RP_DIFF } from './tipjar.js';
 import { track } from './awards.js';
+import { PunterLife } from './punterlife.js';
+import { giveStyle, setClip, clearClip } from './punteranims.js';
 
 const DOOR = { x: 4.45, z: -12.95 };
 const STAFF_SPOTS = { aidan: [3.45, -8.0, -Math.PI / 2], connor: [3.45, -4.9, -Math.PI / 2], chloe: [4.1, -2.7, -Math.PI / 2], ben: [-13.2, -7.4, -Math.PI / 2] };
@@ -62,27 +64,49 @@ const LAD_BANKS = {
 const HOOL_BANKS = { greet: ['COME ON THEN!'], chatter: ['You looking at my pint?!', 'INGERLAND!', 'OUTSIDE! NOW!', 'Say that again! SAY IT!', 'He spilt my drink!'], hit: ['RIGHT! THAT\'S IT!'], slap: ['Alright! ALRIGHT! I\'m going!'], grabbed: ['Get off me!'], launched: ['NOOOOO—'], angry: ['This pub\'s a joke!'], thanks: ['Cheers.'] };
 
 let pid = 0;
+// everyone's different: build, age, hair, face, clothes, the odd accessory. Each kind of punter has its own wardrobe
+const HAIR_C = [0x2a1a10, 0x5a3a22, 0x111111, 0x8a6a3a, 0x3a2a1a, 0xa0522d, 0xd8b060, 0x6a4a2a];
+const GREYS = [0xb8b8b0, 0xd8d8d0, 0x8a8a84, 0xe8e8e0, 0x9a9690];
+const BRIGHT = [0x2a6ad8, 0xe53935, 0x43a047, 0xffd400, 0xf4f4f4, 0x7e57c2, 0xff8a00, 0x00897b, 0x1d2b5a, 0x222222, 0xc2185b, 0x5d4037];
+const DULL = [0x5a4a3a, 0x6a2a2a, 0x3a4a3a, 0x4a4a5a, 0x7a6a4a, 0x2a3a5a, 0x8a7a6a, 0x4a3a4a, 0x6a6a5a];
+const JEANS = [0x2a4a7a, 0x1a2a4a, 0x3a5a8a, 0x2a2a2a, 0x4a6a9a];
+const SHIRTS = [[0xc8102e, 0xffffff], [0x1d2b5a, 0xffffff], [0x7a1f3d, 0x7ec8e3], [0xf4f4f4, 0x1d2b5a], [0x1e6a32, 0xffffff], [0xffd400, 0x1d2b5a], [0x6cabdd, 0xffffff], [0x111111, 0xffd400]];
+const chance = (p) => Math.random() < p;
 function makePunter(kind, extra = {}) {
-  const id = 'p' + (++pid), rnd = Math.random, skin = R(SKINS);
+  const id = 'p' + (++pid), rnd = Math.random, skin = R(SKINS), hen = !!extra.hen;
+  delete extra.hen;
   let def;
   if (kind === 'old') {
-    const grey = R([0xb8b8b0, 0xd8d8d0, 0x8a8a84, 0xe8e8e0]);
-    def = { name: R(OLD_NAMES), color: '#8a5a2a', voicePitch: 0.7 + rnd() * 0.2, body: { h: 1.66 + rnd() * 0.12, sw: 1.0 + rnd() * 0.15, girth: 1.15 + rnd() * 0.45, limb: 1.0 },
-      look: { skin, hair: rnd() < 0.4 ? null : { style: rnd() < 0.5 ? 'short' : 'shortcurls', color: grey }, beard: rnd() < 0.45 ? { style: rnd() < 0.5 ? 'full' : 'stubble', color: grey } : null,
-        top: R([0x5a4a3a, 0x6a2a2a, 0x3a4a3a, 0x4a4a5a, 0x7a6a4a, 0x2a3a5a, 0x8a7a6a]), top2: 0xe8e0d0, pattern: rnd() < 0.3 ? 'polo' : null, sleeves: 'long', bottom: R([0x3a3a3a, 0x4a3a2a, 0x2a2a3a, 0x5a5040]), legs: 'trousers', shoes: 0x1a1a1a,
-        flatcap: rnd() < 0.45 ? R([0x5a4a3a, 0x3a3a3a, 0x6a5a40, 0x4a3a2a]) : null, glasses: rnd() < 0.35 }, banks: OLD_BANKS };
-  } else if (kind === 'dad' || kind === 'mum' || kind === 'kid' || kind === 'lad' || kind === 'hool') {
-    const kid = kind === 'kid', fem = kind === 'mum' || (kid && rnd() < 0.5);
-    const h = kid ? 1.05 + rnd() * 0.3 : fem ? 1.6 + rnd() * 0.1 : 1.74 + rnd() * 0.12;
-    const hool = kind === 'hool';
-    def = { name: kid ? R(['Tyler', 'Mia', 'Alfie Jr', 'Poppy', 'Harley', 'Ruby', 'Jayden']) : fem ? R(['Sharon', 'Kerry', 'Donna', 'Leanne', 'Michelle', 'Tracey']) : hool ? R(['Gaz', 'Wayne', 'Dean', 'Stevo', 'Lee']) : R(['Darren', 'Craig', 'Lee', 'Steve', 'Paul', 'Jason', 'Ricky']),
-      color: kid ? '#2aa8ff' : fem ? '#e05aa0' : hool ? '#c8102e' : '#2e7d32', voicePitch: kid ? 1.6 : fem ? 1.3 : 0.9,
-      body: { h, sw: kid ? 0.85 : fem ? 0.9 : 1.05 + rnd() * 0.15, girth: kid ? 0.85 : fem ? 0.9 + rnd() * 0.2 : 1.0 + rnd() * 0.3, limb: kid ? 0.8 : 0.95 },
-      look: { skin, hair: fem ? { style: 'long', color: R([0x2a1a10, 0xc8a050, 0x5a3a22, 0x111111]) } : { style: hool ? 'short' : R(['short', 'shortcurls', 'curtains']), color: R([0x2a1a10, 0x5a3a22, 0x111111, 0x8a6a3a]) },
-        beard: !fem && !kid && rnd() < 0.4 ? { style: 'stubble', color: 0x2a1a10 } : null,
-        top: hool ? R([0xf4f4f4, 0x7a1f3d, 0x1d2b5a, 0xc8102e]) : R([0x2a6ad8, 0xe53935, 0x43a047, 0xffd400, 0xf4f4f4, 0x7e57c2, 0xff8a00, 0x00897b]), top2: hool ? R([0xc8102e, 0x7ec8e3, 0xffffff]) : 0xffffff,
-        pattern: hool ? 'jersey' : rnd() < 0.3 ? 'polo' : rnd() < 0.15 ? 'hoops' : null, sleeves: rnd() < 0.5 ? 'short' : 'long', bottom: R([0x1a2a4a, 0x2a2a2a, 0x3a5a8a, 0x5a4a3a]), legs: kid || rnd() < 0.3 ? 'shorts' : 'trousers', shoes: R([0xf4f4f4, 0x1a1a1a, 0x2a4a8a]), cap: hool && rnd() < 0.4 ? 0x1a1a1a : null },
-      banks: kid ? KID_BANKS : hool ? HOOL_BANKS : kind === 'lad' ? LAD_BANKS : FAM_BANKS };
+    const grey = R(GREYS), girth = 1.1 + rnd() * 0.55, boozer = chance(0.55);
+    def = { name: R(OLD_NAMES), color: '#8a5a2a', voicePitch: 0.7 + rnd() * 0.2, body: { h: 1.6 + rnd() * 0.18, sw: 0.95 + rnd() * 0.2, girth, limb: 1.0 },
+      look: { skin, hair: { style: R(['horseshoe', 'horseshoe', 'combover', 'short', 'shortcurls', 'bald']), color: grey },
+        beard: chance(0.45) ? { style: R(['tash', 'tash', 'full', 'stubble', 'short']), color: grey } : null,
+        top: R(DULL), top2: R([0xe8e0d0, 0xf4f4f4, 0xd8c8a8]), pattern: R(['polo', 'check', null, null]), sleeves: 'long', bottom: R([0x3a3a3a, 0x4a3a2a, 0x2a2a3a, 0x5a5040, 0x6a6050]), legs: 'trousers', shoes: R([0x1a1a1a, 0x4a2a1a, 0x5a3a2a]),
+        jacket: chance(0.4) ? R([0x5a4a3a, 0x7a2a2a, 0x3a4a3a, 0x8a7a5a, 0x2a2a3a]) : null, tie: chance(0.15) ? R([0x7a1f24, 0x1d2b5a, 0x2a4a2a]) : null,
+        flatcap: chance(0.45) ? R([0x5a4a3a, 0x3a3a3a, 0x6a5a40, 0x4a3a2a, 0x5a5a6a]) : null, glasses: chance(0.4),
+        nose: boozer ? R([0xd86a5a, 0xc85a4a, 0xe07a6a]) : null, bigNose: chance(0.4), cheeks: boozer ? 0xe08a7a : null, bushy: chance(0.55), wrinkles: true,
+        gut: girth > 1.35 ? 0.9 + rnd() * 0.5 : 0, belt: chance(0.5) ? R([0x2a1a10, 0x4a2a1a]) : null, watch: chance(0.5) ? R([0xc8a848, 0xb8bcc2]) : null }, banks: OLD_BANKS };
+  } else {
+    const kid = kind === 'kid', fem = hen || kind === 'mum' || (kid && rnd() < 0.5), hool = kind === 'hool', lad = kind === 'lad';
+    const h = kid ? 1.02 + rnd() * 0.36 : fem ? 1.56 + rnd() * 0.16 : 1.7 + rnd() * 0.2;
+    const girth = kid ? 0.8 + rnd() * 0.15 : fem ? 0.85 + rnd() * 0.3 : 0.95 + rnd() * (kind === 'dad' ? 0.5 : 0.4);
+    const hc = R(HAIR_C), shirt = R(SHIRTS);
+    const look = { skin, top: R(BRIGHT), top2: 0xffffff, sleeves: chance(0.5) ? 'short' : 'long', bottom: R(JEANS), legs: 'trousers', shoes: R([0xf4f4f4, 0x1a1a1a, 0x2a4a8a, 0x8a1a1a]) };
+    if (kid) Object.assign(look, { hair: { style: fem ? R(['ponytail', 'long', 'bob', 'bun']) : R(['short', 'spiky', 'shortcurls', 'curtains']), color: hc }, cheeks: 0xf2a0a0, pattern: R(['hoops', null, null, 'jersey']), top2: R([0xffffff, 0xffd400, 0x2a6ad8]), legs: chance(0.6) ? 'shorts' : 'trousers', sole: chance(0.6) ? R([0xffffff, 0xff5fa2, 0x39ff14]) : null, sleeves: 'short' });
+    else if (fem) Object.assign(look, { hair: { style: R(['long', 'long', 'bob', 'bun', 'ponytail']), color: hc }, lips: R([0xc8102e, 0xd8506a, 0xa83a4a, 0x8a4a40]), earrings: chance(0.6) ? R([0xc8a848, 0xd8d8e0]) : null,
+      jacket: chance(0.3) ? R([0x1a1a1a, 0xd8c8b0, 0x7a1f3d, 0x2a3a5a]) : null, chain: chance(0.35) ? 0xc8a848 : null, skirt: chance(0.45) ? R([0x1a1a1a, 0x7a1f3d, 0x1d2b5a, 0x5a3a6a]) : null, sleeves: R(['short', 'long', 'none']) });
+    else if (hool) Object.assign(look, { hair: chance(0.5) ? { style: 'buzz', color: hc } : { style: 'bald', color: hc }, top: shirt[0], top2: shirt[1], pattern: 'jersey', logo: shirt[1], tattoo: R(['both', 'R', 'L', null]), bushy: true, cap: chance(0.3) ? 0x1a1a1a : null,
+      jacket: chance(0.3) ? R([0x2a2a2a, 0x4a5a3a, 0x1d2b5a]) : null, zip: true, chain: chance(0.5) ? 0xc8a848 : null, gut: chance(0.35) ? 0.8 : 0, sole: 0xf4f4f4, beard: chance(0.4) ? { style: R(['stubble', 'goatee', 'short']), color: hc } : null });
+    else if (lad) Object.assign(look, { hair: { style: R(['spiky', 'quiff', 'buzz', 'curtains', 'short', 'shortcurls']), color: hc }, cap: chance(0.2) ? R([0x1a1a1a, 0xf4f4f4, 0x1d2b5a]) : null, bucket: chance(0.12) ? R([0xd8c8a0, 0x1a1a1a, 0x7ec8e3]) : null, beanie: chance(0.1) ? R([0x1a1a1a, 0x7a1f24, 0x1d2b5a]) : null,
+      ...(chance(0.35) ? { top: shirt[0], top2: shirt[1], pattern: 'jersey', logo: shirt[1] } : { pattern: R(['polo', null, null, 'hoops', 'check']) }), jacket: chance(0.25) ? R([0x1a1a1a, 0x1d2b5a, 0x7a1f24, 0x2a6a3a]) : null, zip: true,
+      chain: chance(0.3) ? R([0xc8a848, 0xd8d8e0]) : null, tattoo: chance(0.25) ? R(['R', 'L', 'both']) : null, sole: 0xf4f4f4, legs: chance(0.2) ? 'shorts' : 'trousers', beard: chance(0.35) ? { style: R(['stubble', 'short', 'goatee']), color: hc } : null });
+    else Object.assign(look, { hair: { style: R(['short', 'buzz', 'quiff', 'combover', 'curtains', 'shortcurls']), color: chance(0.25) ? R(GREYS) : hc }, pattern: R(['polo', 'check', 'hawaii', null, 'vstripes']), top2: R([0xffffff, 0x1d2b5a, 0xf2e8d0, 0xffd400]),      // a dad
+      beard: chance(0.4) ? { style: R(['stubble', 'short', 'tash']), color: hc } : null, belt: 0x2a1a10, watch: chance(0.6) ? R([0xc8a848, 0xb8bcc2, 0x1a1a1a]) : null, gut: girth > 1.25 ? 0.7 + rnd() * 0.4 : 0, glasses: chance(0.2), sole: chance(0.5) ? 0xf4f4f4 : null, legs: chance(0.25) ? 'shorts' : 'trousers' });
+    if (hen) Object.assign(look, { sash: R([0xff5fa2, 0xffffff, 0xffd400]), tiara: true, top: R([0xff5fa2, 0x111111, 0xf4f4f4, 0xc2185b]), skirt: R([0x111111, 0xff5fa2, 0xc8102e]), dress: true, lips: 0xc8102e, earrings: 0xd8d8e0 });
+    def = { name: kid ? R(['Tyler', 'Mia', 'Alfie Jr', 'Poppy', 'Harley', 'Ruby', 'Jayden', 'Kai', 'Lily-Mae', 'Mason', 'Freya']) : fem ? R(['Sharon', 'Kerry', 'Donna', 'Leanne', 'Michelle', 'Tracey', 'Jade', 'Stacey', 'Bev', 'Nicola', 'Gemma']) : hool ? R(['Gaz', 'Wayne', 'Dean', 'Stevo', 'Lee', 'Big Mark', 'Kenny', 'Shaun']) : R(['Darren', 'Craig', 'Lee', 'Steve', 'Paul', 'Jason', 'Ricky', 'Danny', 'Gav', 'Rob', 'Tony Jr']),
+      color: kid ? '#2aa8ff' : fem ? '#e05aa0' : hool ? '#c8102e' : '#2e7d32', voicePitch: kid ? 1.5 + rnd() * 0.25 : fem ? 1.2 + rnd() * 0.2 : 0.82 + rnd() * 0.18,
+      body: { h, sw: kid ? 0.85 : fem ? 0.88 + rnd() * 0.08 : 1.0 + rnd() * 0.2, girth, limb: kid ? 0.8 : fem ? 0.9 : 0.95 + rnd() * 0.1 },
+      look, banks: kid ? KID_BANKS : hool ? HOOL_BANKS : lad ? LAD_BANKS : FAM_BANKS };
   }
   Object.assign(def, { title: '', fail: '' }, extra);
   SQUAD[id] = def;
@@ -124,7 +148,7 @@ export class RunPub {
     const g = this.g, room = g.room;
     this.diff = RP_DIFF[this.d.rpDiff] || RP_DIFF[2]; this.tips = 0;      // (a quiet night, a Friday, the cup final)
     this.money = 0; this.served = 0; this.walkouts = 0; this.wrong = 0; this.fights = 0; this.rating = 3.5; this.events = 0; this.staffServed = 0;
-    this.punters = []; this.tags = new Map(); this.barTaken = new Map(); this.seatTaken = new Set();
+    this.punters = []; this.tags = new Map(); this.barTaken = new Map(); this.seatTaken = new Set(); this.life = new PunterLife(this);
     this.spawnT = 2; this.dropT = 25 + Math.random() * 20; this.eventT = (55 + Math.random() * 20) * this.diff.events; this.event = null; this.stockT = 0; this.staffT = 6;
     // the staff to their posts
     for (const c of this.cast) {
@@ -166,6 +190,7 @@ export class RunPub {
     this.d.hook(c); const prev = c.onEvent; c.onEvent = (n, w) => { prev && prev(n, w); this.onPunterEvent(c, n); };
     c.active = false; c.rp = { kind, phase: 'enter', t: 0, drinks: 0, maxDrinks: kind === 'old' ? 3 + Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 3), stay: 150 + Math.random() * 120 };
     if (kind === 'old') c.drunk = 0.35 + Math.random() * 0.5; if (kind === 'hool' || kind === 'lad') c.drunk = 0.25 + Math.random() * 0.3;
+    giveStyle(c, kind);      // (their own pace, and which hand: punteranims.js)
     g.cast.push(c); this.punters.push(c); return c;
   }
   remove(c) {
@@ -173,12 +198,15 @@ export class RunPub {
     const tag = this.tags.get(c); if (tag) { this.g.scene.remove(tag); this.tags.delete(c); }
     const i = this.g.cast.indexOf(c); if (i >= 0) this.g.cast.splice(i, 1);
     const j = this.punters.indexOf(c); if (j >= 0) this.punters.splice(j, 1);
+    if (c.punterProp) { this.g.scene.remove(c.punterProp); c.punterProp = null; }      // (the phone or tenner they were holding)
     c.dispose(); delete SQUAD[c.id];
   }
   release(c) { for (const [s, w] of this.barTaken) if (w === c) this.barTaken.delete(s); if (c.rp && c.rp.seat) { this.seatTaken.delete(c.rp.seat); } }
   goHome(c) { const h = c.rp.home; c.seated = false; c.activity = null; c.faceYaw = null; c.goTo(h.x, h.z, c.drunk ? 0.95 : 1.2); c.rp.phase = 'return'; }
-  settleHome(c) { const h = c.rp.home; c.state = 'idle'; if (h.seat) { c.rag.placeAt(h.x, h.z, h.yaw); c.seated = true; } c.faceYaw = h.yaw; c.activity = c.prop ? 'drink' : (c.rp.kind === 'kid' ? null : R(['chat', 'phone', null, 'chat'])); c.rp.phase = 'settled'; }
-  leave(c, line) { this.release(c); c.seated = false; c.activity = null; c.faceYaw = null; if (line) c.say(line, 4); c.goTo(DOOR.x, DOOR.z + 0.4, 0.95); c.rp.phase = 'leaving'; const tag = this.tags.get(c); if (tag) tag.visible = false; }
+  settleHome(c) { const h = c.rp.home; c.state = 'idle'; if (h.seat) { c.rag.placeAt(h.x, h.z, h.yaw); c.seated = true; } c.faceYaw = h.yaw; c.activity = null; c.rp.phase = 'settled'; c.rp.clipT = 0.2; }     // (what they get up to there: punterlife.js)
+  // off home: a wave goodbye first (not if they're storming out or thrown out)
+  leave(c, line, wave = !!line) { this.release(c); c.seated = false; c.activity = null; c.faceYaw = null; if (line) c.say(line, 4); c.rp.phase = 'leaving'; c.rp.ctl = null; const tag = this.tags.get(c); if (tag) tag.visible = false;
+    if (wave && !c.down) { setClip(c, 's_wave_bye', { restart: true }); c.rp.leaveT = 1.3; } else { c.rp.leaveT = 0; clearClip(c); c.goTo(DOOR.x, DOOR.z + 0.4, 0.95); } }
   pay(amount, where, label) { this.money += amount; this.g.words.show(label || ('+£' + amount.toFixed(2)), where, '#39ff14', 0.11, 1.2); sfx('coin', where, 0.6); }
 
   // keep the back bar topped up with pints and bottles of lager for you to hand out
@@ -194,6 +222,7 @@ export class RunPub {
   update(dt) {
     const g = this.g, P = g.player;
     if (this.tipJar) this.tipJar.update(dt);
+    this.life.update(dt);
     // staff at their posts (knocked about? back to them)
     for (const c of this.cast) {
       if (!c.rpJob || c.down) continue;
@@ -226,9 +255,10 @@ export class RunPub {
     this.rating = THREE.MathUtils.clamp(this.rating, 0, 5);
   }
 
-  arrive(kind) {
-    const c = this.add(kind), home = this.pickHome(c, kind);
-    c.rp.home = home; c.goTo(home.x, home.z, c.drunk ? 0.95 : 1.2); c.rp.thirst = 4 + Math.random() * 14;
+  arrive(kind, extra) {
+    const c = this.add(kind, extra), home = this.pickHome(c, kind);
+    c.rp.home = home; c.rp.thirst = 4 + Math.random() * 14;
+    c.rp.enterT = 1.2 + Math.random() * 0.8; setClip(c, Math.random() < 0.3 ? 's_wave_hi' : 's_enter');      // (in through the door: a look round the place first, or a wave to someone they know)
     if (Math.random() < 0.5) setTimeout(() => c.say('greet', 2), 800);
     return c;
   }
@@ -253,16 +283,19 @@ export class RunPub {
 
   punterTick(c, dt, P) {
     const rp = c.rp; rp.t += dt;
+    this.life.tick(c, dt);      // (what they're doing with themselves: punterlife.js)
     if (c.down) return;
+    if (rp.ctl && rp.phase === 'settled') return;      // (arguing, or singing along: not off to the bar or home just now)
     switch (rp.phase) {
       case 'enter': case 'return':
-        if (c.state === 'idle' && c.backTo(c.rp.home.x, c.rp.home.z, c.rp.home.yaw)) this.settleHome(c);
+        if (rp.enterT > 0) { if ((rp.enterT -= dt) <= 0) { clearClip(c); c.goTo(rp.home.x, rp.home.z, c.drunk ? 0.95 : 1.2); } break; }
+        if (c.state === 'idle' && c.backTo(c.rp.home.x, c.rp.home.z, c.rp.home.yaw, !!c.rp.home.seat)) this.settleHome(c);
         break;
       case 'settled':
         if (rp.kind !== 'hool' && (rp.t > rp.stay || rp.drinks >= rp.maxDrinks) && rp.kind !== 'kid') { if (rp.family) { if (rp.family[0] === c) for (const f of rp.family) this.leave(f, f === c ? 'Right, come on, kids. Home.' : null); } else this.leave(c, R(['Night all.', 'Same time tomorrow.', 'Right. One for the road. No. Home.'])); break; }
         if ((rp.thirst -= dt) <= 0) {
           const spot = rp.home.bar || this.freeBarSpot(c.pos); if (!spot) { rp.thirst = 4; break; }
-          this.barTaken.set(spot, c); rp.spot = spot; c.seated = false; c.activity = null; c.faceYaw = null;
+          this.barTaken.set(spot, c); rp.spot = spot; c.seated = false; c.activity = null; c.faceYaw = null; clearClip(c);
           if (rp.home.bar) this.order(c); else { c.goTo(spot.x, spot.z, c.drunk ? 1.0 : 1.25); rp.phase = 'toBar'; }
         }
         break;
@@ -272,7 +305,7 @@ export class RunPub {
       case 'waiting': {
         rp.wait += dt; const k = 1 - rp.wait / rp.patience;
         const tag = this.tags.get(c); if (tag) { const h = c.headPos(new THREE.Vector3()); tag.position.set(h.x, h.y + 0.42, h.z); if ((rp.tagT = (rp.tagT || 0) - dt) <= 0) { rp.tagT = 0.25; tag.draw(rp.order, k, rp.kidBooze); } }
-        c.faceYaw = rp.spot.yaw; c.activity = k < 0.35 ? 'tantrum' : null;
+        c.faceYaw = rp.spot.yaw; c.activity = null;      // (their impatience shows in how they wait: punterlife.js queueClip)
         if (k < 0.35 && !rp.moaned) { rp.moaned = true; c.say(R(['Any chance of a drink?!', 'HELLO? Anyone serving?', 'I\'ll die of thirst here.', 'Ronnie, stop eating and SERVE.']), 4); }
         // handed over (held near them) or thrown to them
         const held = [...(P.hands || []).map(h => h.held), P.flatHolder && P.flatHolder.held].filter(isDrink);
@@ -292,6 +325,7 @@ export class RunPub {
         if ((rp.servedT -= dt) <= 0) { if (rp.home.bar) { rp.phase = 'settled'; c.activity = 'drink'; c.faceYaw = rp.home.yaw; } else { this.release(c); if (rp.home.bar) this.barTaken.set(rp.home.bar, c); this.goHome(c); } rp.thirst = 30 + Math.random() * 35; }
         break;
       case 'leaving':
+        if (rp.leaveT > 0) { if ((rp.leaveT -= dt) <= 0) { clearClip(c); c.goTo(DOOR.x, DOOR.z + 0.4, 0.95); } break; }
         if (c.state === 'idle' || Math.hypot(c.pos.x - DOOR.x, c.pos.z - DOOR.z) < 0.9) this.remove(c);
         break;
       case 'brawl': case 'riot': case 'sing': break;      // (run by the event)
@@ -302,6 +336,7 @@ export class RunPub {
     let key = R(MENU[rp.kind] || MENU.old); rp.kidBooze = false;
     if (kid && Math.random() < 0.3) { key = R(['lager', 'cider', 'guinness']); rp.kidBooze = true; }       // a kid trying their luck
     const o = ORDERS[key];
+    rp.clipT = 0; rp.gotWallet = false;
     rp.order = o; rp.orderKey = key; rp.wait = 0; rp.patience = (rp.kind === 'old' ? 46 : 56) / (1 + 0.12 * (this.np() - 1)) * this.diff.patience; rp.moaned = false; rp.phase = 'waiting';
     c.state = 'idle'; c.faceYaw = rp.spot.yaw; c.say(rp.kidBooze ? R(['Pint of lager please. I\'m eighteen. Honest.', 'A cider. For my... dad.', 'Can I get a GUINNESS? I\'ve got ID. At home.']) : R(o.lines), 4);
     let tag = this.tags.get(c); if (!tag) { tag = orderTag(); this.tags.set(c, tag); this.g.scene.add(tag); } tag.visible = true; rp.tagT = 0;
@@ -325,9 +360,12 @@ export class RunPub {
       if (thrown) { this.thrown = (this.thrown || 0) + 1; this.rating -= 0.08; c.say(R(['Did you just THROW that at me?!', 'Is this how you serve everyone?!', 'Half of it\'s on my shirt now!', 'I\'m leaving a review about this.', 'Charming. Absolutely charming.']), 4); }
       else { this.rating += 0.05 + quick * 0.12; c.say('thanks', 3); }
     } else { this.wrong++; this.served++; const pay = o.price * (thrown ? 0.25 : 0.5); this.pay(pay, where, '+£' + pay.toFixed(2) + ' (WRONG DRINK)'); this.rating -= 0.1; c.say(R(['That\'s not what I asked for!', 'I said ' + o.name.toLowerCase() + '! ...go on then.', 'Are you even listening, Ronnie?']), 4); }
-    rp.drinks++; rp.phase = 'served'; rp.servedT = 1.8; this.dropTag(c);
+    rp.drinks++; rp.phase = 'served'; rp.servedT = 1.8; this.dropTag(c); rp.fuming = false;
     if (!c.prop) { c.prop = makeProp('pint', c.rag.height / 1.68); this.g.scene.add(c.prop); (this.added || (this.added = [])).push(c.prop); }
-    c.activity = 'drink';
+    c.activity = null;
+    // how they take it: a big swig, a shrug at the wrong one, outrage at being pelted, a kid's fist pump
+    const how = thrown ? 'a_wide' : rp.kidBooze ? (it && it.def.booze ? 's_goal' : 'a_shrug') : it && !byStaff && !o.ok(it) ? 'a_shrug' : quick > 0.5 ? 's_cheers' : 's_sip';
+    this.life.react(c, how); rp.servedT = Math.max(rp.servedT, 2.2);
   }
 
   // ------------------------------------------------------------------ what to do next: the arrow and the orders list
@@ -410,23 +448,24 @@ export class RunPub {
     // the newer trouble: a spilt pint, blocked loos, the fuse going, a hen party
     if (r0 < 0.45) { const k = R(['spill', 'loo', 'power', 'hen']); if (this.startEvent2(k)) return; }
     const r = Math.random();
+    if (r >= 0.38 && r < 0.6 && this.life.startArgue()) return;      // an argument at the tables (punterlife.js)
     if (r < 0.45) {                                   // a fight: three lads squaring up in the middle of the pub
       const spot = { x: -1.8 + Math.random() * 2.5, z: -1.5 + Math.random() * 3 }, hs = [this.add('hool'), this.add('hool'), this.add('hool')];
-      hs.forEach((c, i) => { c.rp.phase = 'brawl'; const a = i / 3 * Math.PI * 2; c.rp.brawlAt = { x: spot.x + Math.sin(a) * 0.75, z: spot.z + Math.cos(a) * 0.75 }; c.goTo(c.rp.brawlAt.x, c.rp.brawlAt.z, 1.6); });
+      hs.forEach((c, i) => { c.rp.phase = 'brawl'; c.rp.ctl = 'fight'; const a = i / 3 * Math.PI * 2; c.rp.brawlAt = { x: spot.x + Math.sin(a) * 0.75, z: spot.z + Math.cos(a) * 0.75 }; c.goTo(c.rp.brawlAt.x, c.rp.brawlAt.z, 1.6); });
       this.event = { kind: 'fight', t: 0, who: hs, center: spot, knocked: new Set() };
       g.showBanner('IT\'S KICKING OFF!', 'BREAK UP THE FIGHT');
       sfx('brawl', null, 0.8);
     } else if (r < 0.75) {                            // an old boy singing at the bar
       const c = this.punters.find(p => p.rp.kind === 'old' && !p.down && (p.rp.phase === 'settled' || p.rp.phase === 'waiting'));
       if (!c) { this.event = null; return this.startEvent(); }
-      this.dropTag(c); this.release(c); c.rp.phase = 'sing'; c.activity = 'sing'; c.seated = false; c.faceYaw = Math.random() * 6.28; c.drunk = 1;
+      this.dropTag(c); this.release(c); c.rp.phase = 'sing'; c.rp.ctl = 'sing'; c.activity = null; c.seated = false; c.faceYaw = Math.random() * 6.28; c.drunk = 1;
       this.event = { kind: 'singer', t: 0, who: [c], lineT: 0 };
       g.showBanner(c.name.toUpperCase() + ' IS SINGING', 'SHUT HIM UP');
     } else {                                          // a kid running riot
       const kid = this.punters.find(p => p.rp.kind === 'kid' && !p.down);
       if (!kid) { const c = this.arriveFamilyKid(); if (!c) { this.event = null; return; } }
       const k2 = this.punters.find(p => p.rp.kind === 'kid' && !p.down);
-      k2.rp.phase = 'riot'; k2.seated = false; this.event = { kind: 'kid', t: 0, who: [k2], hopT: 0 };
+      k2.rp.phase = 'riot'; k2.rp.ctl = 'riot'; k2.seated = false; setClip(k2, 'k_tantrum'); this.event = { kind: 'kid', t: 0, who: [k2], hopT: 0 };
       g.showBanner(k2.name.toUpperCase() + ' IS RUNNING RIOT', 'CATCH THE KID');
     }
   }
@@ -443,7 +482,7 @@ export class RunPub {
       if (hemi) hemi.intensity *= 0.3; const fb = new THREE.Group(); const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.12), new THREE.MeshLambertMaterial({ color: 0x7a7f87 })); box.position.y = 1.45; fb.add(box);
       const post = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.06), new THREE.MeshLambertMaterial({ color: 0x222222 })); post.position.y = 0.65; fb.add(post); const front = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.42), new THREE.MeshBasicMaterial({ color: 0xffd400 })); front.position.set(0, 1.45, 0.061); fb.add(front);
       fb.position.set(6.8 + 0.6, 0, -2.0); g.scene.add(fb); this.event.grp = fb; g.showBanner('THE FUSE HAS GONE!', 'RESET IT IN THE STAFF ROOM'); sfx('lightsout', null, 1); return true; }
-    if (kind === 'hen') { const who = []; for (let i = 0; i < 4; i++) setTimeout(() => { const c = this.arrive('mum'); c.rp.thirst = 1 + i * 0.6; c.hen = true; who.push(c); if (i === 0) c.say('WOOOO! HEN DO! FOUR PROSECCOS!', 4); }, i * 500);
+    if (kind === 'hen') { const who = []; for (let i = 0; i < 4; i++) setTimeout(() => { const c = this.arrive('mum', { hen: true }); c.rp.thirst = 1 + i * 0.6; c.hen = true; who.push(c); if (i === 0) c.say('WOOOO! HEN DO! FOUR PROSECCOS!', 4); }, i * 500);
       this.event = { kind, t: 0, who, limit: 80 }; g.showBanner('HEN PARTY!', 'FOUR OF THEM. ALL WANT SERVING NOW.'); sfx('cheer', null, 0.7); return true; }
     return false;
   }
@@ -460,36 +499,34 @@ export class RunPub {
   eventTick(dt) {
     const e = this.event, g = this.g, P = g.player; e.t += dt;
     if (e.kind === 'spill' || e.kind === 'loo' || e.kind === 'power') return this.holdEvent(dt);
+    if (e.kind === 'argue') return this.life.argueTick(e, dt);
     if (e.kind === 'hen') { const live = e.who.filter(c => !c.disposed); if (e.who.length === 4 && live.every(c => c.rp.drinks > 0)) { this.pay(12, P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 }), 'HEN PARTY SORTED! +£12'); this.rating += 0.4; this.event = null; }
       else if (e.t > e.limit) { this.rating -= 0.3; this.event = null; } return; }
     if (e.kind === 'fight') {
       const live = e.who.filter(c => !c.disposed && !e.knocked.has(c));
-      for (const c of live) { if (c.down) continue;
-        if (c.state === 'idle') { const o = live.filter(x => x !== c)[0] || P; const op = o.pos || o.head; c.faceYaw = Math.atan2(op.x - c.pos.x, op.z - c.pos.z); c.activity = 'fight';
-          if (Math.random() < dt * 0.9 && o.flinch) { o.flinch(new THREE.Vector3(op.x - c.pos.x, 0, op.z - c.pos.z), 0.9); sfx('punch', op, 0.6); }
-          if (Math.random() < dt * 0.3) c.say('chatter', 3); } }
+      this.life.fightTick(e, dt);      // (the proper exchanges: punterlife.js)
       this.rating -= dt * 0.035;
-      if (!live.length) { this.fights++; track('fights'); this.pay(20, P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 }), 'FIGHT BROKEN UP! +£20'); this.rating += 0.6; g.showBanner('FIGHT BROKEN UP!', 'THE LANDLORD IS PROUD'); this.event = null; return; }
-      if (e.t > 50) { this.rating -= 0.8; this.money = Math.max(0, this.money - 40); g.showBanner('THEY SMASHED THE PLACE UP', '-£40 IN BROKEN GLASSES'); for (const c of live) this.leave(c, R(['This pub\'s a DUMP!', 'We\'re going!'])); this.event = null; }
+      if (!live.length) { this.life.endFight(e); this.fights++; track('fights'); this.pay(20, P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 }), 'FIGHT BROKEN UP! +£20'); this.rating += 0.6; g.showBanner('FIGHT BROKEN UP!', 'THE LANDLORD IS PROUD'); this.event = null; return; }
+      if (e.t > 50) { this.life.endFight(e); this.rating -= 0.8; this.money = Math.max(0, this.money - 40); g.showBanner('THEY SMASHED THE PLACE UP', '-£40 IN BROKEN GLASSES'); for (const c of live) this.leave(c, R(['This pub\'s a DUMP!', 'We\'re going!'])); this.event = null; }
     } else if (e.kind === 'singer') {
       const c = e.who[0]; if (c.disposed) { this.event = null; return; }
-      if (!c.down) { c.activity = 'sing'; if ((e.lineT -= dt) <= 0) { e.lineT = 3.2; c.say(R(['♪ SWEET CAROLINE! BUM BUM BUM! ♪', '♪ Sooo here it is, merry Christmas! ♪ (it\'s July)', '♪ I\'M FOREVER BLOWING BUBBLES! ♪', '♪ Come on Eileen! ♪ ...Eileen? EILEEN?', '♪ We are the champions! ♪ ...of the pub quiz, 1991!']), 5); sfx('anthem', c.pos, 0.25); } }
+      if (!c.down) { this.life.singTick(e, dt); if ((e.lineT -= dt) <= 0) { e.lineT = 3.2; c.say(R(['♪ SWEET CAROLINE! BUM BUM BUM! ♪', '♪ Sooo here it is, merry Christmas! ♪ (it\'s July)', '♪ I\'M FOREVER BLOWING BUBBLES! ♪', '♪ Come on Eileen! ♪ ...Eileen? EILEEN?', '♪ We are the champions! ♪ ...of the pub quiz, 1991!']), 5); sfx('anthem', c.pos, 0.25); } }
       this.rating -= dt * 0.025;
-      if (e.t > 40 && !c.down) { c.knockOut('hit'); c.say('zzz', 1); this.leaveLater(c, 5); this.event = null; g.showBanner(c.name.toUpperCase() + ' PASSED OUT', 'HE\'LL BE BACK TOMORROW'); }
+      if (e.t > 40 && !c.down) { this.life.endSing(e, false); c.knockOut('hit'); c.say('zzz', 1); this.leaveLater(c, 5); this.event = null; g.showBanner(c.name.toUpperCase() + ' PASSED OUT', 'HE\'LL BE BACK TOMORROW'); }
     } else if (e.kind === 'kid') {
       const c = e.who[0]; if (c.disposed) { this.event = null; return; }
       if (!c.down && c.state !== 'walk') { const s = R(this.g.room.tommySpots.filter(s => s.x > -9.5 && s.y < 7.8 && s.y > -8.8)); if (s) c.goTo(s.x, s.y, 2.4); c.activity = 'tantrum'; if (Math.random() < 0.5) c.say(R(['WHEEEE!', 'CAN\'T CATCH ME!', 'I WANT CHIPS!', 'NYEEEEOWWW!']), 2); }
       this.rating -= dt * 0.015;
       const caught = Math.hypot(c.pos.x - P.head.x, c.pos.z - P.head.z) < 1.0 || c.down;
-      if (caught || e.t > 45) { c.say(caught ? 'Awww. Fine.' : 'MUUUM! I\'m tired!', 3); c.rp.phase = 'enter'; c.goTo(c.rp.home.x, c.rp.home.z, 1.0); if (caught) { this.rating += 0.3; this.pay(5, P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 }), 'KID CAUGHT! +£5'); } this.event = null; }
+      if (caught || e.t > 45) { c.say(caught ? 'Awww. Fine.' : 'MUUUM! I\'m tired!', 3); c.rp.phase = 'enter'; c.rp.ctl = null; clearClip(c); c.goTo(c.rp.home.x, c.rp.home.z, 1.0); if (caught) { this.rating += 0.3; this.pay(5, P.head.clone().addScaledVector(P.fwd, 1).add({ x: 0, y: 0.3, z: 0 }), 'KID CAUGHT! +£5'); } this.event = null; }
     }
   }
-  leaveLater(c, t) { setTimeout(() => { if (!c.disposed && this.punters.includes(c)) this.leave(c, null); }, t * 1000); }
+  leaveLater(c, t) { setTimeout(() => { if (!c.disposed && this.punters.includes(c)) this.leave(c, null, false); }, t * 1000); }
   onPunterEvent(c, name) {
     if (name !== 'ko' || !c.rp) return;
     const e = this.event;
     if (e && e.kind === 'fight' && e.who.includes(c) && !e.knocked.has(c)) { e.knocked.add(c); this.leaveLater(c, 3.5); setTimeout(() => !c.disposed && c.say(R(['Alright! ALRIGHT! I\'m going!', 'I\'m BARRED? From THIS dump?', 'You\'ll be hearing from my mum!']), 4), 2600); }
-    else if (e && e.kind === 'singer' && e.who[0] === c) { this.leaveLater(c, 4); setTimeout(() => !c.disposed && c.say('Alright! I\'ll go home! ♪ ...Sweet Carol— ♪', 4), 2600); this.pay(5, c.headPos(new THREE.Vector3()), 'PEACE AND QUIET! +£5'); this.rating += 0.3; this.event = null; }
+    else if (e && e.kind === 'singer' && e.who[0] === c) { this.life.endSing(e, true); this.leaveLater(c, 4); setTimeout(() => !c.disposed && c.say('Alright! I\'ll go home! ♪ ...Sweet Carol— ♪', 4), 2600); this.pay(5, c.headPos(new THREE.Vector3()), 'PEACE AND QUIET! +£5'); this.rating += 0.3; this.event = null; }
     else if (c.rp.kind !== 'hool') { this.rating -= 0.15; }              // knocking out your customers is bad for business
   }
 

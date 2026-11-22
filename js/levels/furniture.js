@@ -22,6 +22,7 @@ export function sofa(k, { x, z, len, depth = 0.88, ry = 0, color = 0x5a6a7a, sea
   for (let i = 0; i < seats; i++) {
     const lx = x0 + sw * (i + 0.5);
     P(rbox(sw - 0.02, 0.15, depth - 0.24, 0.06), light, lx, 0.39, -0.08);                                 // seat cushion
+    if (k.seats) k.seats.push({ x: x + lx * c - 0.06 * s, z: z - lx * s - 0.06 * c, yaw: ry + Math.PI, h: 0.465 });      // (sat on the cushion: hips a little forward of the back cushions)
     if (back) P(rbox(sw - 0.03, 0.46, 0.2, 0.08), light, lx, 0.66, depth / 2 - 0.22, [-0.16, 0, 0]);     // back cushion, leaning back
   }
   if (back) P(rbox(len - 0.02, 0.62, 0.16, 0.05), color, 0, 0.55, depth / 2 - 0.08);                       // the frame behind

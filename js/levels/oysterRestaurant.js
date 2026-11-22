@@ -247,7 +247,7 @@ export function buildRestaurant(k, scene, { chairsAt = [], tables = [] } = {}) {
     { const g = new THREE.BoxGeometry(0.44, 0.075, 0.03, 6, 1, 1), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const t = p.getX(i) / 0.22; p.setZ(i, p.getZ(i) + 0.035 * t * t); } g.computeVertexNormals(); L(g, C, x, z, ry, 0, 0.93, 0.245, 0.07); }   // curved top rail
     L(new THREE.BoxGeometry(0.38, 0.03, 0.025), C, x, z, ry, 0, 0.6, 0.225, 0.07);
     for (const t of [-0.12, -0.04, 0.04, 0.12]) L(new THREE.BoxGeometry(0.045, 0.3, 0.014), C, x, z, ry, t, 0.755, 0.235 + Math.abs(t) * 0.04, 0.07);   // slats
-    k.blockers.push({ x0: x - 0.24, x1: x + 0.24, z0: z - 0.24, z1: z + 0.24, y1: 0.5 }); chairsAt.push([x, z, ry]); if (curT) curT.seats.push([x, z]);
+    k.blockers.push({ x0: x - 0.24, x1: x + 0.24, z0: z - 0.24, z1: z + 0.24, y1: 0.5 }); chairsAt.push([x, z, ry]); if (k.seats) k.seats.push({ x, z, yaw: ry + Math.PI, h: 0.49 }); if (curT) curT.seats.push([x, z]);
   };
   // ---------------------------------------------------------------- a laid place: plate, folded napkin, knife, fork, spoon, wine glass, water glass
   const setting = (px, pz, fx, fz, y) => {

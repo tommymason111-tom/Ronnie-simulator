@@ -16,6 +16,7 @@ export class Kit {
     this.colliders = [];             // surfaces food can land on / bounce off
     this.blockers = [];              // solid footprints (people walk round them)
     this.spawns = [];                // where food appears
+    this.seats = [];                 // every seat someone can sit on: { x, z, yaw (the way a sitter faces), h (seat top above the floor) }
     this.geoCache = new Map();
   }
   // a coloured box; collide = food can sit on it, block = people/Ronnie can't walk through
@@ -196,7 +197,7 @@ export class Kit {
     const c = Math.cos(ry), s = Math.sin(ry);
     const at = (lx, lz) => [x + lx * c + lz * s, z - lx * s + lz * c];      // local (x right, z back) -> world
     const rb = (w, h, d, lx, y, lz, col) => { const [px, pz] = at(lx, lz); this.box(w, h, d, px, y, pz, col, { rot: [0, ry, 0] }); };
-    rb(0.42, 0.05, 0.42, 0, 0.45, 0, color);
+    rb(0.42, 0.05, 0.42, 0, 0.45, 0, color); this.seats.push({ x, z, yaw: ry + Math.PI, h: seat ? 0.515 : 0.475 });
     if (seat) rb(0.38, 0.05, 0.38, 0, 0.49, 0, seat);                  // padded seat
     rb(0.44, 0.07, 0.05, 0, 0.92, 0.2, color);                          // curved top rail
     for (const t of [-0.15, -0.05, 0.05, 0.15]) rb(0.025, 0.42, 0.025, t, 0.7, 0.2, color);   // spindles
@@ -288,7 +289,7 @@ export class Kit {
     const lights = this.lights || [];
     const room = {
       name, big: true,
-      colliders: this.colliders, blockers: this.blockers, spawns: this.spawns, bounds: this.bounds,
+      colliders: this.colliders, blockers: this.blockers, spawns: this.spawns, bounds: this.bounds, seats: this.seats,
       hemi, sun: dl, start, board, startFood,
       update(dt) {          // flickering lights (fires, candles)
         this.t = (this.t || 0) + dt;

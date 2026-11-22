@@ -72,7 +72,7 @@ const ATTACKS = {
   chloe:  [{ key: 'diet', icon: '🥗', title: 'CHLOE PUTS YOU ON A DIET!', sub: 'NO EATING!', sfx: 'powerdown' }],
   aidanw: [{ key: 'knee', icon: '🦵', title: 'AIDAN W\'S KNEE IS PLAYING UP!', sub: 'YOU HAVE TO HEAR ALL ABOUT IT' }],
   oliver: [{ key: 'flash', icon: '📸', title: 'OLIVER BLINDS YOU WITH HIS CAMERA FLASH!', sub: 'GONE VIRAL!' }],
-  dylan:  [{ key: 'oasis', icon: '🎸', title: 'DYLAN PLAYS YOU OASIS SONGS', sub: 'STUCK LISTENING!', sfx: 'strum' }],
+  dylan:  [{ key: 'oasis', icon: '🎤', title: 'DYLAN SINGS YOU OASIS', sub: 'STUCK LISTENING! WITH FEELING!', sfx: 'strum' }],
   alfie:  [{ key: 'nutmeg', icon: '⚽', title: 'ALFIE NUTMEGS YOU!', sub: 'SPUN ROUND!' }],
   ben:    [{ key: 'turkey', icon: '✈️', title: 'BEN TAKES YOU TO TURKEY!', sub: 'TO GET YOUR HAIRLINE DONE' }],
 };
@@ -865,10 +865,10 @@ export class Director {
     this.roamActs = this.roamActs.filter(a => !a.temp || a.who);           // (one-off spots go once nobody's using them)
     for (const c of this.cast) {
       if (!c.roamAct || c.down) continue;
-      if (c.roamGoing && c.state === 'idle') { if (!c.backTo(c.roamAct.x, c.roamAct.z, c.roamAct.yaw)) continue; this.settleAct(c); }      // (knocked over on the way: up, and on they walk)
+      if (c.roamGoing && c.state === 'idle') { if (!c.backTo(c.roamAct.x, c.roamAct.z, c.roamAct.yaw, c.roamAct.pose === 'sit')) continue; this.settleAct(c); }      // (knocked over on the way: up, and on they walk)
       if (c.roamGoing || c.state !== 'idle') continue;
       // knocked out of their seat? back into it
-      if ((c.seated || c.goingBack) && Math.hypot(c.pos.x - c.roamAct.x, c.pos.z - c.roamAct.z) > 0.3) { c.goingBack = true; if (!c.backTo(c.roamAct.x, c.roamAct.z, c.roamAct.yaw)) continue; c.goingBack = false; this.settleAct(c); }
+      if ((c.seated || c.goingBack) && Math.hypot(c.pos.x - c.roamAct.x, c.pos.z - c.roamAct.z) > 0.3) { c.goingBack = true; if (!c.backTo(c.roamAct.x, c.roamAct.z, c.roamAct.yaw, c.roamAct.pose === 'sit')) continue; c.goingBack = false; this.settleAct(c); }
       if (c.chatWith && c.chatWith.chatWith === c) { const o = c.chatWith; c.faceYaw = Math.atan2(o.pos.x - c.pos.x, o.pos.z - c.pos.z); c.activity = 'chat';
         if ((c.chatTalkT = (c.chatTalkT || 3 + Math.random() * 4) - dt) <= 0) { c.chatTalkT = 5 + Math.random() * 6; if (o.speakT <= 0 && Math.hypot(c.pos.x - this.g.player.head.x, c.pos.z - this.g.player.head.z) < 9) c.say('chatter', 1); } }
       if (c.stayPut) continue;          // (the knee)
@@ -939,7 +939,7 @@ export class Director {
     for (const grp of this.dinerGroups) for (const c of grp) {
       if (c.lookT > 0 && (c.lookT -= dt) <= 0) c.lookOverride = 0;
       // knocked off their chair? back in it once they're up
-      if (c.state === 'idle' && c.rag.mode === 'anim' && Math.hypot(c.pos.x - c.seat.x, c.pos.z - c.seat.z) > 0.25 && c.backTo(c.seat.x, c.seat.z, c.seat.yaw)) { c.seated = true; c.faceYaw = c.seat.yaw; }
+      if (c.state === 'idle' && c.rag.mode === 'anim' && Math.hypot(c.pos.x - c.seat.x, c.pos.z - c.seat.z) > 0.25 && c.backTo(c.seat.x, c.seat.z, c.seat.yaw, true)) { c.seated = true; c.faceYaw = c.seat.yaw; }
     }
     if ((this.chatT -= dt) > 0) return;
     this.chatT = 2.5 + Math.random() * 3;
