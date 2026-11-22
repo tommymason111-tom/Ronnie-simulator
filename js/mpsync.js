@@ -173,7 +173,7 @@ export class MPSync {
     this.lastChar.clear(); this.fullT = 0; this.snapT = 0;
   }
   // we've handed hosting to someone else: from now on their game is the real one and ours shows it
-  becomeGuest() { if (this.director.remote) return; this.becomeClient(); const im = this.director.imposter; if (im && im.becomeGuest) im.becomeGuest(); const ph = this.director.prophunt; if (ph) ph.becomeGuest(); }
+  becomeGuest() { if (this.director.remote) return; this.becomeClient(); const im = this.director.imposter; if (im && im.becomeGuest) im.becomeGuest(); const ph = this.director.prophunt; if (ph) ph.becomeGuest(); const sd = this.director.snd; if (sd) sd.becomeGuest(); }
   // which squad members are being played by someone (left out of the squad)
   takenChars() { const s = new Set(); if (!this.net.connected) return s; if (this.net.char && this.net.char !== 'ronnie') s.add(this.net.char); for (const p of this.net.players.values()) if (p.char && p.char !== 'ronnie') s.add(p.char); return s; }
 

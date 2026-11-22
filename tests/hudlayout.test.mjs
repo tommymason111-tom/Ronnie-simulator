@@ -6,7 +6,7 @@ import fs from 'fs';
 import { launch, newPage, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
 const CHECK = fs.readFileSync(new URL('./lib/textcheck.js', import.meta.url), 'utf8'), SHOTS = process.env.SHOTS || '';
-const LIST = (process.env.MODES || 'garden/boss,pub/everyone,pub/runpub,pub/imposter').split(',');
+const LIST = (process.env.MODES || 'garden/boss,pub/everyone,pub/runpub,pub/imposter,shop/snd').split(',');
 const VIEWS = (process.env.VIEWS || '390x844,844x390').split(',').map(v => v.split('x').map(Number));
 export default async function () {
   const C = checker('hudlayout'), host = await startRoomHost(), b = await launch();

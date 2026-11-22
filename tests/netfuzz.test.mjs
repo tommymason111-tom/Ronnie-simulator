@@ -78,6 +78,33 @@ export default async function () {
         C.ok(ph.on, `${label}: Prop Hunt didn't start`); C.ok(!ph.thrown.length, `${label}: ${ph.thrown.length} hostile messages threw: ` + [...new Set(ph.thrown.map(x => x.slice(0, 120)))].slice(0, 8).join(' | '));
         C.ok(!ph.nan.length, `${label}: NaN positions: ${ph.nan.slice(0, 5).join(', ')}`); C.ok(ph.player, `${label}: the player's own position went NaN`); C.ok(ph.after, `${label}: Prop Hunt left things behind when the game changed`); }
       }
+      if (!boss) {
+      // SEARCH AND DESTROY: its own messages, with a round dealt by the host (us, or the friend)
+      const sd = await p.evaluate(async () => {
+        const n = RS.net, out = { thrown: [], nan: [], on: false };
+        RS.newGame('snd'); for (let i = 0; i < 10; i++) RS.sim(0.05, 0.05); out.on = !!RS.director.snd;
+        const J = [null, NaN, Infinity, -1, 0, 1e9, '', 'x', 'constructor', '__proto__', 'x'.repeat(3000), [], [NaN, NaN, NaN], [1, 2], [1, 2, 3], ['frienddd', 'meeeeeee'], [['frienddd', 'F', 'chloe', 'B', 0], ['meeeeeee', 'ME', 'lewis', 'R', 0], 5, [null]], {}, { frienddd: [1, 2], meeeeeee: 9 }, { x: [1, 2, 3] }, true];
+        const types = ['sdHello', 'sdGun', 'sdShot', 'sdHit', 'sdTake', 'sdPlant', 'sdDefuse', 'sdAct', 'sdWait', 'sdRound', 'sdGo', 'sdClock', 'sdDmg', 'sdKill', 'sdGot', 'sdPk', 'sdBomb', 'sdEnd', 'sdOver', 'sdState', 'sdBots', 'sdHp', 'end'];
+        const fields = ['g', 'a', 'b', 'n', 'id', 'v', 'd', 'hs', 'p', 'i', 's', 'k', 'on', 'list', 'r', 'win', 'half', 'sc', 'att', 'car', 'pk', 'sp', 'gn', 'bt', 'rt', 'sw', 'ph', 'left', 'bl', 'by', 'hp', 'ar', 'w', 'st', 'why', 'mvp', 'last', 'aw', 'round', 'f', 'bomb', 'pkOn', 'over', 'lines', 'to'];
+        const send = (m) => { try { n.handle(JSON.parse(JSON.stringify(m))); } catch (e) { out.thrown.push(`${m.t}.${Object.keys(m).filter(k => k !== 't' && k !== 'f').join(',')}: ${e.message}`); } };
+        const deal = () => n.host ? (() => { try { const s = RS.director.snd; if (!s.H) s.hostStart(); } catch (e) { out.thrown.push('hostStart: ' + e.message); } })()
+          : send({ t: 'sdRound', f: n.hostId, r: 1, win: 4, half: 3, att: 'R', car: 'frienddd', list: [['meeeeeee', 'ME', 'lewis', 'R', 0], ['frienddd', 'FRIEND', 'chloe', 'B', 0], ['bot0', 'BOT', 'noah', 'B', 1]], pk: [['ammo', 1, 1], ['kebab', NaN, 2], ['constructor', 1, 1]], sp: { meeeeeee: [1, 1, 0] }, gn: { bot0: 'gravy' }, bt: 12, rt: 115 });
+        let steps = 0; deal(); RS.sim(0.05, 0.05);
+        for (const t of types) for (const f of fields) for (const j of J) {
+          send({ t, f: 'frienddd', [f]: j }); send({ t, f: 'strangerX', [f]: j }); if ((t === 'sdRound' || t === 'sdEnd' || t === 'sdOver') && j === true) deal();
+          if (++steps % 50 === 0) { try { RS.sim(0.05, 0.05); } catch (e) { out.thrown.push('sim after ' + t + '.' + f + ': ' + e.message); } }
+        }
+        for (const t of types) { send({ t }); send({ t, f: 'frienddd' }); }
+        for (let i = 0; i < 40; i++) { try { RS.sim(0.05, 0.05); } catch (e) { out.thrown.push('sim at the end: ' + e.message); break; } }
+        RS.scene.traverse(o => { if (o.position && !(isFinite(o.position.x) && isFinite(o.position.y) && isFinite(o.position.z))) out.nan.push(o.name || o.type); });
+        out.player = [RS.player.head.x, RS.player.head.y, RS.player.head.z].every(isFinite); out.sent = steps;
+        RS.newGame('roam'); for (let i = 0; i < 5; i++) RS.sim(0.05, 0.05); out.after = !RS.director.snd && !document.querySelector('#sd-ui') && !document.body.classList.contains('snd');
+        return out;
+      });
+      { const label = (asHost ? 'as host' : 'as guest') + ' in Search & Destroy';
+        C.ok(sd.on, `${label}: Search & Destroy didn't start`); C.ok(!sd.thrown.length, `${label}: ${sd.thrown.length} hostile messages threw: ` + [...new Set(sd.thrown.map(x => x.slice(0, 120)))].slice(0, 8).join(' | '));
+        C.ok(!sd.nan.length, `${label}: NaN positions: ${sd.nan.slice(0, 5).join(', ')}`); C.ok(sd.player, `${label}: the player's own position went NaN`); C.ok(sd.after, `${label}: Search & Destroy left things behind when the game changed`); }
+      }
       const label = (asHost ? 'as host' : 'as guest') + (boss ? ' (boss fight)' : '');
       C.ok(!r.thrown.length, `${label}: ${r.thrown.length} hostile messages threw: ` + [...new Set(r.thrown.map(x => x.replace(/: .*/, m => m.slice(0, 90))))].slice(0, 8).join(' | '));
       C.ok(!r.nan.length && !r.nanBodies, `${label}: NaN positions after the attack: ${r.nan.slice(0, 5).join(', ')} / ${r.nanBodies} physics bodies`);
