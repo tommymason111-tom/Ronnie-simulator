@@ -34,6 +34,13 @@ export default async function () {
         const info = await ev(() => ({ meter: !!(RS.player.wrist && RS.player.wrist.visible), warm: RS.warm && RS.warm() }));
         console.log(`  ${W}x${H} ${mode}: top-left box ${info.meter} ${probs.length ? '\n    ' + probs.map(o => `${o.kind}: ${o.text} × ${o.by || ''} | ${o.where}`).join('\n    ') : 'no overlaps'}`);
         for (const o of probs) C.ok(false, `${W}x${H} ${mode}: ${o.kind}: ${o.text} × ${o.by || ''} (${o.where})`);
+        // nothing over the touch buttons (the chat lines used to land on SPRINT with a phone on its side), and the
+        // Boss Fight shows no EMOTE button or room chip on a phone
+        const onBtns = await ev(() => { const box = (id) => { const e = document.getElementById(id); if (!e || !e.offsetParent || getComputedStyle(e).visibility === 'hidden') return null; const r = e.getBoundingClientRect(); return r.width ? r : null; };
+          const hit = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+          return ['chat-log', 'mp-chip', 'boss-hud', 'imp-tasks', 'ph-feed', 'rp-events', 'rp-orders'].flatMap(i => ['btn-sprint', 'btn-emote', 'btn-eat', 'btn-throw', 'knob'].filter(j => hit(box(i), box(j))).map(j => `${i} on ${j}`)); });
+        C.ok(!onBtns.length, `${W}x${H} ${mode}: panels over the touch buttons: ${onBtns.join(', ')}`);
+        if (mode === 'boss' && (W < 760 || H < 500)) C.ok(await ev(() => { const v = (id) => { const e = document.getElementById(id); return !!e && !!e.offsetParent && getComputedStyle(e).visibility !== 'hidden' && e.classList.contains('show'); }; return !v('btn-emote') && getComputedStyle(document.getElementById('mp-chip')).display === 'none'; }), `${W}x${H} boss: the EMOTE button or the room chip is still on a phone's screen`);
         if (mode === 'boss') C.ok(!info.meter, `${W}x${H} boss: the top-left box is showing (the boss's bar says it all)`);
         if (W < 760 || H < 500) C.ok(await ev(() => document.body.classList.contains('compact-ui') && document.getElementById('menu-btn').textContent.trim() === '⏸'), `${W}x${H} ${mode}: the corner's buttons aren't the compact row`);
         C.ok(!p.errors.length, `${W}x${H} ${mode}: errors ${p.errors.slice(0, 2).join(' | ')}`);

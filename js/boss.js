@@ -182,6 +182,22 @@ body.boss-cine #touch, body.boss-cine #menu-btn, body.boss-cine #mp-chip, body.b
 #boss-hud .bh-warn { margin: 6px auto 0; width: fit-content; max-width: 100%; text-align: center; font-size: 14px; padding: 5px 12px; border-radius: 11px; background: rgba(200,0,0,0.88); border: 2px solid #ffd400; display: none; animation: bhwarn .35s infinite alternate; }
 #boss-hud .bh-warn.on { display: block; } #boss-hud .bh-warn.good { background: rgba(0,140,40,0.9); } @keyframes bhwarn { to { transform: scale(1.06); } }
 @media (max-aspect-ratio: 1/1) { #boss-hud { width: calc(100vw - 20px); min-width: 0; } #boss-hud .bh-name { font-size: 19px; } #boss-hud .bh-face { width: 34px; height: 34px; } }
+/* a phone (either way up): the card is one row and the bar; nothing says the same thing twice */
+body.compact-ui #boss-hud { display: none; grid-template-columns: 1fr auto; grid-template-areas: "top me" "bar bar" "warn warn" "say say"; column-gap: 6px; align-items: center; }
+body.compact-ui.flat #boss-hud.on { display: grid; }
+body.compact-ui #boss-hud .bh-top { grid-area: top; align-items: center; gap: 6px; margin: 0 0 4px; min-width: 0; }
+body.compact-ui #boss-hud .bh-me { grid-area: me; margin: 0 0 4px; gap: 4px; font-size: 11px; justify-content: flex-end; }
+body.compact-ui #boss-hud .bh-me span { padding: 2px 6px; }
+body.compact-ui #boss-hud .bh-bar { grid-area: bar; height: 18px; } body.compact-ui #boss-hud .bh-hp { font-size: 11px; }
+body.compact-ui #boss-hud .bh-warn { grid-area: warn; font-size: 12px; padding: 4px 10px; margin-top: 5px; }
+body.compact-ui #boss-hud .bh-say { grid-area: say; font-size: 12px; padding: 3px 10px; margin-top: 5px; }
+body.compact-ui #boss-hud .bh-warn.on ~ .bh-say { display: none; }      /* (a warning up: the quote waits) */
+body.compact-ui #boss-hud .bh-title { display: none; }
+body.compact-ui #boss-hud .bh-face { width: 28px; height: 28px; border-width: 2px; }
+body.compact-ui #boss-hud .bh-name { font-size: 16px; }
+body.compact-ui #boss-hud .bh-ph { margin-left: 4px; font-size: 10px; padding: 2px 6px; }
+body.compact-ui.ui-boss #mp-chip { display: none !important; }
+body.compact-ui.ui-boss #chat-log > :nth-last-child(n+3) { display: none; }
 #boss-over { position: fixed; inset: 0; z-index: 44; display: none; align-items: center; justify-content: center; pointer-events: none; font-family: "Arial Black", Arial, sans-serif; text-align: center; color: #fff; overflow: hidden; }
 #boss-over.on { display: flex; } #boss-over .bo-bg { position: absolute; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0.25), rgba(0,0,0,0.75)); animation: bofade .5s both; }
 #boss-over.win .bo-bg { background: radial-gradient(circle, rgba(255,214,0,0.35), rgba(60,20,0,0.8)); } #boss-over.lose .bo-bg { background: radial-gradient(circle, rgba(120,0,0,0.35), rgba(20,0,0,0.85)); }

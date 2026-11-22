@@ -705,13 +705,13 @@ function updateTouchUI() {
   const gun = held && held.def.gun && director.runpub && director.runpub.bar;
   touch.setEatLabel(gun ? (director.runpub.bar.gunFlavour ? 'FANTA ⇄' : 'COKE ⇄') : held && held.def.drink ? 'DRINK' : 'EAT', gun || (!!held && !held.empty && !held.def.prop));
   touch.setThrowEnabled(!!held);
-  touch.setEmoteAvailable(!!net.connected);
+  touch.setEmoteAvailable(!!net.connected && !director.boss);      // (not in the Boss Fight: nothing to dance for, and the screen's busy)
   // the buttons each mode needs: SUPERMARKET SWEEP grabs into the trolley (nothing to eat or throw); RUN THE PUB has no
   // food, so EAT only shows for the soda gun or a drink in your hand, THROW only while you're holding something;
   // BOSS FIGHT is mostly throwing, so THROW is the big button
   const m = director.mode, sweep = m === 'sweep', pub = !!director.runpub, boss = !!director.boss;
   const key = `${sweep || (pub && !gun && !(held && held.def.drink)) ? 1 : 0}${sweep || (pub && !held) ? 1 : 0}${boss ? 1 : 0}`;
-  if (key !== G.uiKey) { G.uiKey = key; const b = document.body.classList; b.toggle('ui-noeat', key[0] === '1'); b.toggle('ui-nothrow', key[1] === '1'); b.toggle('ui-throwbig', key[2] === '1'); }
+  if (key !== G.uiKey) { G.uiKey = key; const b = document.body.classList; b.toggle('ui-noeat', key[0] === '1'); b.toggle('ui-nothrow', key[1] === '1'); b.toggle('ui-throwbig', key[2] === '1'); b.toggle('ui-boss', key[2] === '1'); }
 }
 function mpAfterStart() { if (director.remote) mp.becomeClient(); }
 // back to the start of the map (in multiplayer, spread out a little so nobody spawns inside anyone else)
@@ -1048,8 +1048,13 @@ body.flat.mpon #chat-log { display: flex; }
       else { unput(chip); const pop = $('roster-pop'); if (pop) unput(pop); } }
     if (net.connected) { log.style.left = x + 'px'; log.style.top = y + 'px'; let lr = log.children.length ? drop(log) : null;
       // (never down into the touch controls: on a landscape phone there's little room, so the oldest lines go first)
-      let ctl = innerHeight; for (const id of ['btn-sprint', 'btn-emote', 'knob']) { const r = R($(id)); if (r && lr && r.left < lr.right) ctl = Math.min(ctl, r.top); }
+      // (the touch buttons it would run into: a phone on its side has SPRINT up beside it, so the lines go below any it'd
+      // start on, never on top of one; then only as many lines as fit above the next; none fit and it waits out of sight)
+      const ctls = ['btn-sprint', 'btn-emote', 'knob'].map(id => R($(id))).filter(r => r && r.width);
+      if (lr) for (let k = 0; k < 3; k++) { const on = ctls.find(r => r.left < lr.right && r.right > lr.left && r.top <= lr.top + 4 && r.bottom > lr.top); if (!on) break; log.style.top = (on.bottom + gap) + 'px'; lr = R(log); }
+      let ctl = innerHeight; for (const r of ctls) if (lr && r.left < lr.right && r.right > lr.left && r.top > lr.top) ctl = Math.min(ctl, r.top);
       while (lr && log.children.length > 1 && lr.bottom > ctl - gap) { log.firstChild.remove(); lr = R(log); }
+      const fits = !lr || lr.bottom <= ctl - gap + 1; log.style.visibility = fits ? '' : 'hidden'; if (!fits) lr = null;
       if (lr && log.children.length) { y = lr.bottom + gap; placed.push(lr); } }
     // the middle: the attack pill, hints, Prop Hunt's and Imposter's banners: below anything they'd run into
     let mid = 0; if (bhr && bhr.top < innerHeight * 0.3) mid = bhr.bottom + gap;      // (BOSS FIGHT: its health bar is along the top, so these go under it)

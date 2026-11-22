@@ -27,6 +27,10 @@ export default async function () {
     C.ok(!cut.length, `${tag}: text cut off: ${cut.slice(0, 4).map(x => `"${x.text}" ${x.kind} (${x.where})`).join(' | ')}`);
     return bad.length + cut.length;
   };
+  // (a menu open: no button outside it may show on the screen: Prop Hunt's START used to, over the pause menu)
+  const strays = (p, keep) => p.evaluate((keep) => [...document.querySelectorAll('button, [role="button"]')].filter(e => { if (e.closest(keep)) return false;
+      for (let a = e; a && a !== document.documentElement; a = a.parentElement) { const c = getComputedStyle(a); if (c.display === 'none' || c.visibility === 'hidden' || +c.opacity < 0.05) return false; }
+      const r = e.getBoundingClientRect(); return r.width > 2 && r.height > 2 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; }).map(e => (e.id ? '#' + e.id + ' ' : '') + '"' + e.textContent.trim().slice(0, 20) + '"'), keep);
   try {
     for (const [w, h, sz] of SIZES) {
       // ---------------------------------------------------------------- the menus before a game
@@ -41,6 +45,7 @@ export default async function () {
           await p.evaluate(() => window.__menuShow('title')); await sleep(600);
           await p.evaluate(() => document.getElementById('cog').click()); await sleep(500);
           await check(p, `${sz} settings`, '#settings');
+          { const st = await strays(p, '#settings'); C.ok(!st.length, `${sz} settings: buttons still showing round it: ${st.slice(0, 5).join(', ')}`); }
           await p.evaluate(() => document.getElementById('set-mixbtn') && document.getElementById('set-mixbtn').click()); await sleep(600);
           await check(p, `${sz} settings + SOUND & FEEL`, '#settings');
           await p.evaluate(() => document.getElementById('set-close').click()); await sleep(500);
@@ -56,6 +61,7 @@ export default async function () {
           await check(p, `${sz} in game`, null);
           await p.evaluate(() => document.getElementById('menu-btn').click()); await sleep(600);
           await check(p, `${sz} pause`, '#pause');
+          { const st = await strays(p, '#pause'); C.ok(!st.length, `${sz} pause: buttons still showing round it: ${st.slice(0, 5).join(', ')}`); }
           for (const [open, cls, back] of [['#pause-settings', 'show-set', null], ['#pause-mix', 'show-mix', '#pause-mix-back'], ['#pause-controls', 'show-ctrls', '#pause-ctrls-back'], ['#pause-set-back', null, null], ['#pause-wx', 'show-wx', '#wx-back'], ['#pause-mode', 'show-modes', '#pause-modes-back']]) {
             await p.evaluate((s) => document.querySelector(s).click(), open); await sleep(600);
             if (cls) { C.ok(await p.evaluate((c) => document.getElementById('pause').classList.contains(c), cls), `${sz}: ${open} didn't open its page`); await check(p, `${sz} pause ${cls}`, '#pause'); }
@@ -104,6 +110,7 @@ export default async function () {
           await p.evaluate(() => document.getElementById('chat-x').click()); await sleep(300);
           await p.evaluate(() => document.getElementById('menu-btn').click()); await sleep(600);
           await check(p, `${sz} room pause`, '#pause');
+          { const st = await strays(p, '#pause'); C.ok(!st.length, `${sz} room pause: buttons still showing round it: ${st.slice(0, 5).join(', ')}`); }
           await p.evaluate(() => document.getElementById('pause-char').click()); await sleep(700);
           await check(p, `${sz} room pause: characters`, '#pause');
           await p.evaluate(() => document.getElementById('pause-chars-back').click()); await sleep(400);
@@ -113,6 +120,15 @@ export default async function () {
           await p.waitForFunction(() => document.body.classList.contains('gameover'), null, { timeout: 20000 }).catch(() => {}); await sleep(1500);
           C.ok(await p.evaluate(() => !document.getElementById('pause').classList.contains('on')), `${sz} room: the pause menu stayed open over the end of the game`);
           await check(p, `${sz} room: end of the game`, '#over');
+          // PROP HUNT (the owner's report: its START button showed over the pause menu)
+          await p.evaluate(() => RS.newGame('prophunt'));
+          await p.waitForFunction(() => { for (const id of ['#intro-ready', '#ui-intro-ready', '.howto-ready']) { const r = document.querySelector(id); if (r && r.offsetParent) r.click(); } return window.RS && RS.director.prophunt && !RS.player.menuLock; }, null, { timeout: 120000, polling: 500 }).catch(() => {});
+          await sleep(2500);
+          C.ok(await p.evaluate(() => [...document.querySelectorAll('#ph-ui button')].some(e => !e.hidden && e.offsetParent)), `${sz} prop hunt: none of its buttons were showing to begin with`);
+          await p.evaluate(() => document.getElementById('menu-btn').click()); await sleep(700);
+          { const st = await strays(p, '#pause'); C.ok(!st.length, `${sz} prop hunt pause: buttons still showing round it: ${st.slice(0, 5).join(', ')}`); }
+          await p.evaluate(() => document.getElementById('pause-resume').click()); await sleep(600);
+          C.ok(await p.evaluate(() => [...document.querySelectorAll('#ph-ui button')].some(e => !e.hidden && e.offsetParent && getComputedStyle(document.getElementById('ph-ui')).visibility !== 'hidden')), `${sz} prop hunt: its buttons didn't come back after the pause menu`);
           C.ok(!p.errors.length, `${sz} room: page errors: ` + [...new Set(p.errors)].slice(0, 3).join(' | '));
         } finally { await p.close().catch(() => {}); } }
     }
