@@ -27,7 +27,7 @@ export function openBoards(first = 'eatoff') {
 @keyframes lbin { from { opacity: 0; transform: scale(0.96); } }
 #lb-modal .box { width: min(560px, 100%); max-height: 100%; display: flex; flex-direction: column; background: #101a5c; border: 4px solid #ffd400; border-radius: 22px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); overflow: hidden; }
 #lb-modal h2 { margin: 12px 0 6px; text-align: center; font: 900 26px "Arial Black", Arial, sans-serif; color: #ffd400; text-shadow: 2px 2px 0 #7a2a00; }
-#lb-modal .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px 10px 8px; scrollbar-width: none; } #lb-modal .tabs::-webkit-scrollbar { display: none; }
+#lb-modal .tabs { display: flex; flex-wrap: wrap; justify-content: center; flex: 0 0 auto; gap: 6px; overflow: visible; padding: 4px 10px 8px; margin: 0; background: none; border-radius: 0; scrollbar-width: none; }      /* (every tab showing, in rows: the box never squashes them) */ #lb-modal .tabs::-webkit-scrollbar { display: none; }
 #lb-modal .tabs button { flex: 0 0 auto; font: 900 12px Arial, sans-serif; padding: 8px 10px; border-radius: 12px; border: 2px solid #5b7cff; background: #1c2a7a; color: #c9d3ff; cursor: pointer; white-space: nowrap; }
 #lb-modal .tabs button.on { background: #ffd400; color: #111; border-color: #111; }
 #lb-modal .list { flex: 1; overflow-y: auto; padding: 0 10px 8px; min-height: 120px; }

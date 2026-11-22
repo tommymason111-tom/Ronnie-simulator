@@ -19,7 +19,9 @@ export default async function () {
   const settle = (p) => p.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running' || (a.effect && a.effect.getTiming && a.effect.getTiming().iterations === Infinity)), null, { timeout: 6000, polling: 150 }).catch(() => {});
   const check = async (p, tag, scope) => {
     await settle(p);
+    await p.evaluate(() => { window.__sc = [...document.querySelectorAll('*')].filter(e => e.scrollTop || e.scrollLeft).map(e => [e, e.scrollTop, e.scrollLeft]); return 1; });
     const bad = await p.evaluate((s) => window.__btnCheck(s), scope);
+    await p.evaluate(() => { for (const e of document.querySelectorAll('*')) if (e.scrollTop || e.scrollLeft) { e.scrollTop = 0; e.scrollLeft = 0; } for (const [e, t, l] of window.__sc) { e.scrollTop = t; e.scrollLeft = l; } }); await sleep(150);
     const cut = (await p.evaluate((s) => window.__textCheck(typeof s === 'string' ? document.querySelector(s) : null), scope)).filter(t => t.kind !== 'covered by other text' || /button/i.test(t.where));
     C.ok(!bad.length, `${tag}: buttons that can't be pressed: ${bad.slice(0, 4).map(x => `${x.what} ${x.why}`).join(' | ')}`);
     C.ok(!cut.length, `${tag}: text cut off: ${cut.slice(0, 4).map(x => `"${x.text}" ${x.kind} (${x.where})`).join(' | ')}`);
@@ -80,7 +82,7 @@ export default async function () {
           await sleep(800); await check(p, `${sz} lobby`, '.screen.on[data-s="room"]');
           for (const id of ['room-opts-btn', 'room-chat-btn', 'room-count']) {
             await p.evaluate((i) => document.getElementById(i).click(), id); await sleep(600);
-            await check(p, `${sz} lobby + ${id}`, '.screen.on[data-s="room"]');
+            await check(p, `${sz} lobby + ${id}`, '.rsheet.open');
             await p.evaluate((i) => document.getElementById(i).click(), id); await sleep(400);
           }
           await p.evaluate(() => document.getElementById('room-go').click()); await sleep(500);
@@ -89,13 +91,16 @@ export default async function () {
           await p.evaluate(() => document.getElementById('go').click());
           await p.waitForFunction(() => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click(); const st = document.getElementById('start'), inGame = window.RS && document.body.classList.contains('ready') && st && st.classList.contains('gone');
             if (inGame) { const bt = document.querySelector('#play-flat'); if (bt && bt.offsetParent) bt.click(); } return inGame && !RS.player.menuLock && RS.director.running; }, null, { timeout: 240000, polling: 700 });
-          await sleep(2500);
+          const lsGone = await p.waitForFunction(() => !document.querySelector('#loadscreen.on'), null, { timeout: 120000 }).then(() => true, () => false);
+          C.ok(lsGone, `${sz} room: the loading screen never went`); await sleep(2500);
           await check(p, `${sz} in a room`, null);
           await p.evaluate(() => document.getElementById('mp-chip').click()); await sleep(500);
-          await check(p, `${sz} in a room + who's here`, null);
+          await check(p, `${sz} in a room + who's here`, '#roster-pop');
           await p.evaluate(() => document.getElementById('mp-chip').click()); await sleep(300);
           await p.evaluate(() => document.getElementById('chat-btn').click()); await sleep(500);
-          await check(p, `${sz} in a room + chat`, null);
+          await check(p, `${sz} in a room + chat`, '#chat-box');
+          const ov = await p.evaluate(() => { const c = document.getElementById('chat-box').getBoundingClientRect(); return ['menu-btn', 'chat-btn', 'vc-btn', 'mp-chip'].filter(id => { const e = document.getElementById(id); if (!e || !e.offsetParent) return false; const r = e.getBoundingClientRect(); return r.width && r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top; }); });
+          C.ok(!ov.length, `${sz} room: the chat box sits on ${ov.join(', ')}`);
           await p.evaluate(() => document.getElementById('chat-x').click()); await sleep(300);
           await p.evaluate(() => document.getElementById('menu-btn').click()); await sleep(600);
           await check(p, `${sz} room pause`, '#pause');

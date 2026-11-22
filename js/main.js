@@ -965,6 +965,7 @@ const chatUI = (() => {
   const st = document.createElement('style'); st.textContent = `
 #chat-btn { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 40px); right: max(10px, env(safe-area-inset-right)); z-index: 20; display: none; font: 900 12px Arial, sans-serif; padding: 8px 12px; border-radius: 12px; border: 0; background: rgba(0,0,0,0.6); color: #fff; }
 body.flat.mpon #chat-btn { display: block; }
+body.compact-ui #chat-box { top: calc(max(10px, env(safe-area-inset-top)) + 56px); }
 #chat-box { position: fixed; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 45; display: none; gap: 6px; background: rgba(10,12,30,0.92); padding: 8px; border-radius: 16px; border: 3px solid #ffd400; width: min(520px, 92vw); box-sizing: border-box; }
 #chat-box.on { display: flex; } #chat-box input { flex: 1; min-width: 0; font: 700 16px Arial; padding: 9px 10px; border-radius: 10px; border: 0; }
 #chat-box button { font: 900 13px Arial; border: 0; border-radius: 10px; padding: 0 12px; background: #39ff14; color: #111; } #chat-box button.x { background: #444; color: #fff; }
