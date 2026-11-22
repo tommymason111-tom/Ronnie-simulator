@@ -1546,7 +1546,13 @@ function frame(simDt) {
   _b.set(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(_q));
   setListener(player.head, player.fwd, _b);
 
-  if (simDt == null) renderer.render(scene, (director.boss && director.boss.cineCam()) || (director.prophunt && director.prophunt.viewCam()) || (director.imposter && director.imposter.replay && director.imposter.replay.cam) || emoteCam() || camera);      // (Imposter's replay, the BOSS FIGHT entrance and a PROP HUNT hider's view of their prop have their own cameras)
+  // (the Boss Fight's intro shot: its camera starts near you, so your own body, and anyone else right by the camera, is
+  // left out of that shot: it used to fill the screen with the back of your own character)
+  const cineC = simDt == null && director.boss && director.boss.cineCam(), cineHid = [];
+  if (cineC) { const cp = cineC.position, groups = [selfBody && selfBody.c && selfBody.c.rag.group, ...[...net.players.values()].map(q => q.avatar && q.avatar.c && q.avatar.c.rag.group), ...cast.filter(c => c !== director.boss.c && c.rag).map(c => c.rag.group)];
+    for (const gr of groups) { if (!gr || !gr.visible) continue; const near = gr === (selfBody && selfBody.c && selfBody.c.rag.group) || (() => { const w = gr.getWorldPosition(new THREE.Vector3()); return Math.hypot(w.x - cp.x, w.z - cp.z) < 1.5; })(); if (near) { gr.visible = false; cineHid.push(gr); } } }
+  if (simDt == null) renderer.render(scene, cineC || (director.prophunt && director.prophunt.viewCam()) || (director.imposter && director.imposter.replay && director.imposter.replay.cam) || emoteCam() || camera);      // (Imposter's replay, the BOSS FIGHT entrance and a PROP HUNT hider's view of their prop have their own cameras)
+  for (const gr of cineHid) gr.visible = true;
   learnShader();      // (a shader built during play: remember its kind, so next time it's built up front)
 }
 // your own emote, on a phone or a computer: the camera swings round in front of you so you can watch your character do
