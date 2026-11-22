@@ -527,10 +527,17 @@ export class Item {
     this.radius = this.def.radius * bigFor(this.def);
     // food you can pick up glows a little (a soft warm halo round it, gently pulsing) so it stands out
     if (bigFor(this.def) !== 1) this.halo = { visible: true, size: this.radius * 7 };      // (drawn by the manager's halo layer)
+    this.sizeK = 1;
     this.vel = new THREE.Vector3();
     this.prev = new THREE.Vector3();   // position last frame (for swept hit tests)
     this.spin = new THREE.Vector3();
     this.reset();
+  }
+  // a bigger (or smaller) piece than usual, model, reach and glow together (the BOSS FIGHT's food: 2x). Back to 1 when the
+  // piece is used again somewhere else
+  setSize(k) {
+    if (k === this.sizeK) return; const m = this.obj.children[0], b = bigFor(this.def);
+    if (m) m.scale.setScalar(b * k); this.radius = this.def.radius * b * k; if (this.halo) this.halo.size = this.radius * 7; this.sizeK = k;
   }
   reset() {
     this.bitesLeft = this.def.bites;
@@ -554,7 +561,7 @@ export class Item {
     this.vel.set(0, 0, 0); this.spin.set(0, 0, 0);
     this.obj.visible = true;
   }
-  setVariant(v) { if (this.variant === v) return; this.variant = v; const s = this.obj.scale.x; this.obj.clear(); this.obj.add(sizedMesh(this.type, v)); this.obj.scale.setScalar(s); }
+  setVariant(v) { if (this.variant === v) return; this.variant = v; const s = this.obj.scale.x; this.obj.clear(); this.obj.add(sizedMesh(this.type, v)); this.obj.scale.setScalar(s); if (this.sizeK !== 1) { const k = this.sizeK; this.sizeK = 1; this.setSize(k); } }
   get pos() { return this.obj.position; }
   get eatFraction() { return this.bitesLeft / this.def.bites; }
 }
@@ -617,6 +624,7 @@ export class ItemManager {
     const pool = this.pool[type] || (this.pool[type] = []);
     const it = pool.pop() || new Item(type, v ?? 0);
     if (v !== null && v !== undefined) it.setVariant(v);
+    if (it.sizeK !== 1) it.setSize(1);
     it.reset();
     it.obj.position.copy(pos);
     it.prev.copy(pos);

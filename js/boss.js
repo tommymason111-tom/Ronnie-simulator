@@ -24,6 +24,7 @@ import { Item } from './foods.js';
 import { FOODS, STAGES, pickJunk } from './config.js';
 import { sfx, bossMusic } from './audio.js';
 import { FONT, roundRect } from './textures.js';
+const BOSS_FOOD = 2;      // (the food in the BOSS FIGHT: twice the usual size, so it reads as ammo for a giant, and it's easy to see, grab and hit with)
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _q = new THREE.Quaternion(), _X = new THREE.Vector3(1, 0, 0), _Y = new THREE.Vector3(0, 1, 0), _Z = new THREE.Vector3(0, 0, 1);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t, ease = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
@@ -314,6 +315,15 @@ export class BossFight {
     this.updateMinions(dt);
     this.updateMe(dt);
     if (this.host) this.ammo(dt);
+    // (every bit of food in the fight is boss-sized, on everyone's screen: a joiner's copies of the host's food, and any that
+    // was already lying about, too)
+    if ((this.sizeT = (this.sizeT || 0) - dt) <= 0) { this.sizeT = 0.25; for (const it of this.g.items.items) if (!it.dead && !it.heldBy && it.sizeK === 1 && !it.def.prop && !it.def.drink && !it.def.poop && it.setSize) it.setSize(BOSS_FOOD); }
+    // (in your hand on a phone or computer, it's its usual size: a boss-sized burger right in front of the camera covered a
+    // third of the screen. It's boss-sized again the moment it leaves your hand, so it still hits like one. A headset's
+    // real hand holds the big one)
+    { const P = this.g.player, held = P.flatMode && P.flatHolder ? P.flatHolder.held : null;
+      if (this.heldSmall && this.heldSmall !== held) { if (!this.heldSmall.dead && this.heldSmall.setSize) this.heldSmall.setSize(BOSS_FOOD); this.heldSmall = null; }
+      if (held && held.sizeK === BOSS_FOOD && held.setSize) { held.setSize(1); this.heldSmall = held; } }
     this.numbers.update(dt);
     this.drawHud(dt);
     this.updateOver(dt);
@@ -917,7 +927,7 @@ export class BossFight {
       if (nav) { const k = nav.idx(x, z); if (k < 0 || !nav.free[k]) continue; }
       if (Math.hypot(x - this.x, z - this.z) < 2.2) continue;
       const it = g.items.spawn(Math.random() < 0.18 ? 'can' : pickJunk(), new THREE.Vector3(x, 3.2, z), new THREE.Vector3(0, -1, 0));
-      it.bossAmmo = true; it.spawnScale = 1; it.obj.scale.setScalar(1);
+      it.bossAmmo = true; it.setSize(BOSS_FOOD); it.spawnScale = 1; it.obj.scale.setScalar(1);
       return;
     }
   }
@@ -1084,6 +1094,7 @@ export class BossFight {
 
   dispose() {
     const g = this.g; this.disposed = true;
+    for (const it of g.items.items) if (it.sizeK !== 1 && it.setSize) it.setSize(1);      // (the fight's over: food back to its usual size)
     bossMusic(false);
     for (const k in this.handlers) { if (this.handlers[k]) g.net.on[k] = this.handlers[k]; else delete g.net.on[k]; }
     g.player.onRelease = this.rel0;
