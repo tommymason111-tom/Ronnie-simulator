@@ -463,7 +463,14 @@ export function buildSupermarket(scene) {
     sign(n, 0.42, 0.42, [x + 0.3, 2.85, 7.1835], [0, Math.PI, 0], { bg: '#1e4ea8', fg: '#ffd400', border: '#ffd400', size: 200 });
     k.spawns.push(new THREE.Vector3(x, 0.95, 8.0), new THREE.Vector3(x, 0.95, 9.2));
     R(x + 0.5, 7.15, x + 0.85, 8.2, 1.3, 0.65, WHITE, { collide: true, block: true });                                                // sweets by the queue
-    for (const [i, y] of [0.45, 0.8, 1.15].entries()) { R(x + 0.84, 7.2, x + 0.86, 8.15, 0.14, y, [RED, YEL, 0x8e24aa][i]); stock.addRun(['choc', 'sweets', 'choc'][i], x + 0.92, y - 0.05, 7.22, 8.13, 1); }
+    // three real shelves on the queue side (the packs used to stand in mid-air in front of it, over a thin coloured strip):
+    // a ledge out from the unit, brackets under it, the coloured price rail along its front edge, the packs sat on top
+    for (const [i, y] of [0.45, 0.8, 1.15].entries()) { const top = y - 0.05;
+      R(x + 0.85, 7.2, x + 1.05, 8.15, 0.02, top - 0.01, LEDGE, { collide: true });
+      for (const bz of [7.24, 8.11]) R(x + 0.85, bz - 0.01, x + 1.0, bz + 0.01, 0.05, top - 0.045, SHELF);
+      R(x + 1.04, 7.2, x + 1.06, 8.15, 0.06, top + 0.005, [RED, YEL, 0x8e24aa][i]);
+      stock.addRun(['choc', 'sweets', 'choc'][i], x + 0.95, top, 7.22, 8.13, 1); }
+    blk(x + 0.85, 7.2, x + 1.06, 8.15, 1.2);
     dorm.add('lidlbag', x - 0.1, 0.88 + 0.16, 11.9, 0.2); dorm.add('lidlbag', x + 0.15, 0.88 + 0.16, 11.45, -0.3);
   });
   k.box(0.94, 0.34, 0.02, -3.15, 2.35, 7.215, 0xffffff);
