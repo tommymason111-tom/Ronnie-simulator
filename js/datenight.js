@@ -22,6 +22,7 @@
 // The director (modes.js) makes one of these for mode 'date' and keeps it as director.date.
 import * as THREE from 'three';
 import { SquadMember } from './squad.js';
+import { Character } from './character.js';
 import { DATE_TABLE, DINER_TABLES } from './levels/restaurant.js';
 import { sfx } from './audio.js';
 import { track } from './awards.js';
@@ -325,6 +326,8 @@ class DateUI {
 export class DateNight {
   constructor(director) {
     this.d = director; this.g = director.g;
+    /* only Chloe and whoever's in the film talk: no Tommy (or the other tables) chattering in the background */
+    this.gate = (c) => c === this.chloe || this.speaking; Character.sayGate = this.gate;
     this.catches = 0; this.look = true; this.state = 'play';
     this.sneaks = 0; this.haul = 0; this.films = 0; this.raided = 0; this.wins = 0; this.log = [];
     this.t = 4; this.warned = false; this.grace = 1.5; this.cool = 0; this.probation = 0; this.awayT = 0; this.shorter = 0;
@@ -395,6 +398,7 @@ export class DateNight {
     this.propList = [ph, this.menu];
   }
   dispose() {
+    if (Character.sayGate === this.gate) Character.sayGate = null;
     this.stop();
     for (const o of this.propList || []) { this.g.scene.remove(o); o.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material) { if (n.material.map) n.material.map.dispose(); n.material.dispose(); } }); }
     this.propList = [];
@@ -697,7 +701,7 @@ export class DateNight {
   // someone says a line: their bubble, the caption, and the time it takes to read
   line(who, text, pri = 5) {
     const name = who ? (who === this.ron ? 'Ronnie' : who.name) : '', col = who ? (who === this.ron ? '#ffd400' : who.color) : '#fff';
-    if (who && !who.disposed && !who.dnHidden) { try { who.say(text, pri); } catch (e) {} if (this.flat && who.bubble) this.bubbleOff = who; }
+    if (who && !who.disposed && !who.dnHidden) { this.speaking = true; try { who.say(text, pri); } catch (e) {} this.speaking = false; if (this.flat && who.bubble) this.bubbleOff = who; }
     this.cap = { name, col, text };
     return readTime(text);
   }
@@ -707,7 +711,7 @@ export class DateNight {
   live(who, text, gap = 2.2) {
     if (gap && this.liveT > 0) return; this.liveT = gap || 1.2;
     const name = who ? (who === this.ron ? 'Ronnie' : who.name) : '', col = who ? (who === this.ron ? '#ffd400' : who.color) : '#fff';
-    if (who && !who.disposed && !who.dnHidden) { try { who.say(text, 5); } catch (e) {} }
+    if (who && !who.disposed && !who.dnHidden) { this.speaking = true; try { who.say(text, 5); } catch (e) {} this.speaking = false; }
     this.cap = { name, col, text };
   }
   titleCard(icon, big, small, dur = 3.0) { this.ui.title(icon, big, small); this.titleT = dur; this.titleS = big; this.ui.slate(`🎬 FILM ${this.films} · ${big}`); }

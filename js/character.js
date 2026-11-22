@@ -141,6 +141,7 @@ export class Character {
   say(bankOrText, priority = null) {
     const isBank = !!(this.banks[bankOrText] || (this.cfg.globalBanks && BANKS[bankOrText]));
     const pri = priority ?? (isBank && BANKS[bankOrText] ? BANKS[bankOrText].pri : 3);
+    if (Character.sayGate && !Character.sayGate(this)) return false;      /* a mode can quiet the background (Date Night: only Chloe and whoever's in the film talk) */
     if (!this.rag.mesh) return false;          // not here yet (still loading): no floating speech bubbles
     if ((this.speakT > 0.6 || this.voicePending) && pri < this.speakPri) return false;
     // only a couple of people talk at once (no wall of bubbles and voices, e.g. everyone greeting you as you join);
