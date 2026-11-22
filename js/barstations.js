@@ -175,7 +175,7 @@ export class Bar {
   // phone / PC: a tap on the tap or the coffee machine (holding the right glass), or on a cup (holding the gun)
   tap(ray) {
     const P = this.g.player, held = P.flatHolder && P.flatHolder.held;
-    const near = (p, r) => { const along = new THREE.Vector3().subVectors(p, ray.origin).dot(ray.direction); return along > 0 && along < 4 && ray.distanceSqToPoint(p) < r * r; };
+    const near = (p, r) => { const along = new THREE.Vector3().subVectors(p, ray.origin).dot(ray.direction); return along > 0 && along < 2.2 && ray.distanceSqToPoint(p) < r * r; };      // (stood at it: not from across the bar)
     const gunSt = this.st.gun, atGun = near(gunSt.at, 0.24) || near(gunSt.at.clone().add(V(0, 0.2, 0)), 0.2);
     if (held && held.type === 'sodagun' && atGun) { this.holster(); return true; }                                     // put the gun back
     if (held && held.type === 'sodagun') { const cup = this.g.items.items.find(i => !i.dead && i.type === 'cup' && near(i.pos, 0.09)); if (cup) { this.autoCup = cup; return true; } }

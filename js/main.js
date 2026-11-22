@@ -617,6 +617,8 @@ const touch = setupTouch({
     ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
     const ray = raycaster.ray, reach = 3 * player.scale;
+    // (buttons on things, a sign, a machine: you have to be stood by them, not just looking at them from across the room)
+    const away = (p) => Math.hypot(p.x - player.head.x, p.z - player.head.z);
     if (director.tapBubble(ray)) return;
     if (director.boss && director.boss.tap(ray)) return;      // (BOSS FIGHT: holding food, tap the boss to throw it there)
     if (MEDIA_ON && music.tap(ray, reach)) return;                       // the music button on the speakers / DJ deck
@@ -627,7 +629,7 @@ const touch = setupTouch({
     if (room.lightbox) { const lb = room.lightbox, lp = lb.mesh.getWorldPosition(_b);
       const along = _a.subVectors(lp, ray.origin).dot(ray.direction);
       if (along > 0 && ray.distanceSqToPoint(lp) < 0.18 * 0.18) {
-        if (along > reach + 1.5) { touch.hint('Walk up to the sign to change it'); return; }
+        if (away(lp) > 2.0) { touch.hint('Walk up to the sign to change it'); return; }
         const t = window.prompt('What should the lightbox say? (use | for a new line, 3 lines max)', lb.text.replace(/\n/g, ' | '));
         if (t !== null) { lb.set(t.replace(/\s*\|\s*/g, '\n')); sfx('toggle', lp, 0.6); }
         return;
@@ -636,7 +638,7 @@ const touch = setupTouch({
     for (const gm of room.games || []) if (gm.button && gm.button.visible) {
       const along = _a.subVectors(gm.button.position, ray.origin).dot(ray.direction);
       if (along > 0 && ray.distanceSqToPoint(gm.button.position) < 0.16 * 0.16 * 4) {
-        if (along > reach + 1.5) { touch.hint('Walk up to it to play'); return; }
+        if (away(gm.button.position) > 2.2) { touch.hint('Walk up to it to play'); return; }
         gm.toggle(); return;
       }
     }
@@ -644,7 +646,7 @@ const touch = setupTouch({
     for (const m of room.machines || []) {
       const along = _a.subVectors(m.front, ray.origin).dot(ray.direction);
       if (along > 0 && ray.distanceSqToPoint(m.screen) < 0.4 * 0.4) {
-        if (along > reach + 0.5) { touch.hint('Walk up to the machine to play it'); return; }
+        if (away(m.front) > 1.5) { touch.hint('Walk up to the machine to play it'); return; }
         if (director.imposter) { director.imposter.useMachine && director.imposter.useMachine(); return; }      // (Imposter: it's your job, not a go on it)
         if (m.spin()) sfx('reels', m.front, 1);
         return;

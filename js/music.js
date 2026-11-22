@@ -142,7 +142,7 @@ export class Music {
   tap(ray, reach) {
     if (!this.button) return false; const p = this.button.position, along = new THREE.Vector3().subVectors(p, ray.origin).dot(ray.direction);
     if (along <= 0 || ray.distanceSqToPoint(p) > 0.2 * 0.2) return false;
-    if (along > reach + 1.5) { this.hint('Walk up to the ' + this.station.name.toLowerCase() + ' to pick a song'); return true; }
+    if (along > 2.2) { this.hint('Walk up to the ' + this.station.name.toLowerCase() + ' to pick a song'); return true; }
     this.ui.open(); return true;
   }
 
