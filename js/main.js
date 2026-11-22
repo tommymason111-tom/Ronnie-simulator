@@ -1027,7 +1027,7 @@ body.flat.mpon #chat-log { display: flex; }
     // (a phone: PAUSE, CHAT and VOICE as one row of round icons in the corner, not a tall stack of wide buttons)
     const compact = narrow; if (document.body.classList.contains('compact-ui') !== compact) { document.body.classList.toggle('compact-ui', compact); labels(); }
     const side = compact && innerWidth >= 760;      // (a phone on its side: little height, so the room chip joins the row along the top)
-    const ROW = side ? ['menu-btn', 'chat-btn', 'vc-bar', 'mp-chip'] : ['menu-btn', 'chat-btn', 'vc-bar'];
+    const ROW = ['menu-btn', 'chat-btn', 'vc-bar'];
     if (compact) { let xr = innerWidth - Math.max(10, safeR()), top = null;
       let rowH = 0; for (const id of ROW) { const el = $(id), r = R(el); if (!r) continue; if (top === null) { top = r.top; rowH = r.height; } put(el, xr - r.width, top + Math.max(0, (rowH - r.height) / 2)); const r2 = R(el); xr = r2.left - gap; rightLeft = Math.min(rightLeft, r2.left); placed.push(r2); ry = Math.max(ry || 0, r2.bottom + gap); } }
     else for (const id of ['menu-btn', 'chat-btn', 'vc-bar']) { const el = $(id); if (el && el.dataset.rowed) { unput(el); } }
@@ -1035,7 +1035,18 @@ body.flat.mpon #chat-log { display: flex; }
     for (const id of compact ? (rpTight ? ['snackscore'] : ['rp-orders', 'snackscore']) : ['menu-btn', 'chat-btn', 'vc-bar', 'rp-orders', 'snackscore']) { const el = $(id), r = R(el); if (!r) continue;
       if (ry !== null) el.style.top = ry + 'px'; const r2 = R(el); ry = r2.bottom + gap; rightLeft = Math.min(rightLeft, r2.left); placed.push(r2); }
     for (const id of ['menu-btn', 'chat-btn', 'vc-bar']) { const el = $(id); if (el) el.dataset.rowed = compact ? '1' : ''; }
-    const rightBottom = ry === null ? 0 : ry;
+    let rightBottom = ry === null ? 0 : ry;
+    const drop = (el) => { let r = R(el); for (let k = 0; k < 8 && r; k++) { const hit = placed.find(p => over(r, p)); if (!hit) break; el.style.top = (hit.bottom + gap) + 'px'; r = R(el); } return r; };
+    // THE ROOM CHIP (👥 5 · CODE 👑): top centre, level with PAUSE / CHAT / VOICE. An upright phone has no room in the
+    // middle (the top-left box and the buttons meet there), so it goes just under the buttons, in their corner
+    { const chip = $('mp-chip'), cr0 = R(chip), pop = $('roster-pop');
+      if (chip && cr0 && chip.classList.contains('on')) {
+        const mb = R($('menu-btn')), rowT = mb ? mb.top : Math.max(10, safeT()), rowH = mb ? mb.height : cr0.height, upright = compact && !side && innerHeight > innerWidth;
+        if (!upright) { let cx = Math.round(innerWidth / 2 - cr0.width / 2); if (m && cx < m.right + gap) cx = Math.round(m.right + gap); if (cx + cr0.width > rightLeft - gap) cx = Math.round(rightLeft - gap - cr0.width);
+          put(chip, cx, Math.round(rowT + (rowH - cr0.height) / 2)); }
+        else put(chip, Math.round(innerWidth - Math.max(10, safeR()) - cr0.width), Math.round(rightBottom));
+        let cr = drop(chip); if (cr) { placed.push(cr); if (upright) rightBottom = Math.max(rightBottom, cr.bottom + gap); if (pop && R(pop)) put(pop, Math.max(6, Math.min(cr.left, innerWidth - R(pop).width - 6)), cr.bottom + 4); } }
+      else if (chip) { unput(chip); if (pop) unput(pop); } }
     // the Boss Fight's health bar: along the top, under the corner's buttons on a phone (they're a row now: it gets the width)
     const bh = $('boss-hud'); let bhr = null;
     if (bh) { if (bh.dataset.top0 === undefined) bh.dataset.top0 = bh.style.top || ''; bh.style.top = bh.dataset.top0; bhr = R(bh);
@@ -1044,7 +1055,6 @@ body.flat.mpon #chat-log { display: flex; }
     // events), the room chip, the chat lines. Anything that would land on something already there steps down below it
     let y = m ? m.bottom + gap : Math.max(10, safeT()); const x = m ? Math.max(6, m.left) : Math.max(10, safeL());
     if (bhr && bhr.left < x + 200) y = Math.max(y, bhr.bottom + gap);      // (nothing on the left goes up under the boss's bar)
-    const drop = (el) => { let r = R(el); for (let k = 0; k < 8 && r; k++) { const hit = placed.find(p => over(r, p)); if (!hit) break; el.style.top = (hit.bottom + gap) + 'px'; r = R(el); } return r; };
     // RUN THE PUB on an upright phone: TO DO (left) and ORDERS (right) side by side under the box, short versions of both
     // (body.rp-tight), and never further down than 36% of the screen: the middle stays clear for the game and its banners
     const rpO = $('rp-orders'), rpE = $('rp-events'), tight = compact && !side && innerHeight > innerWidth && !!R(rpO);
@@ -1054,10 +1064,6 @@ body.flat.mpon #chat-log { display: flex; }
       y = Math.max(y, top + cap + gap); }
     else for (const el of [rpO, rpE]) if (el && el.dataset.tight) { el.dataset.tight = ''; el.style.width = ''; el.style.maxHeight = ''; el.style.overflow = ''; if (el === rpO) { el.style.width = 'min(230px,52vw)'; unput(el); el.style.right = 'max(10px,env(safe-area-inset-right))'; el.style.top = '62px'; } }
     for (const id of ['imp-tasks', 'ph-feed', 'rp-events']) { const el = $(id); if (!el) continue; if (tight && id === 'rp-events') continue; if (!narrow || side) { unput(el); continue; } /* (on its side, a phone's left edge is the joystick's: these keep their own place) */ if (!R(el)) continue; put(el, x, y); const r = drop(el); if (r) { y = r.bottom + gap; placed.push(r); } }
-    const chip = $('mp-chip');
-    if (chip && side) { const cr = R(chip), pop = $('roster-pop'); if (cr && pop && R(pop)) put(pop, Math.max(6, Math.min(cr.left, innerWidth - R(pop).width - 6)), cr.bottom + 4); }
-    else if (chip) { if (narrow && chip.classList.contains('on')) { put(chip, x, y); const cr = drop(chip); if (cr) { y = cr.bottom + gap; placed.push(cr); const pop = $('roster-pop'); if (pop && R(pop)) put(pop, Math.max(6, Math.min(cr.left, innerWidth - R(pop).width - 6)), cr.bottom + 4); } }
-      else { unput(chip); const pop = $('roster-pop'); if (pop) unput(pop); } }
     if (net.connected) { log.style.left = x + 'px'; log.style.top = y + 'px'; let lr = log.children.length ? drop(log) : null;
       // (never down into the touch controls: on a landscape phone there's little room, so the oldest lines go first)
       // (the touch buttons it would run into: a phone on its side has SPRINT up beside it, so the lines go below any it'd
