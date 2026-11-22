@@ -59,6 +59,12 @@ Every update bumps the version (`2.23.x` from the merge on).
 
 ## Testing
 
+**Test order (the owner's rule):** do most testing on a phone held upright, then the Quest, then PC, then anything else:
+1. **Mobile vertical first:** 390×844 with touch (`newPage(b, { width: 390, height: 844, mobile: true })`). New tests default to this, and screenshots for checking a change are taken at this size.
+2. **Meta Quest VR:** the IWER headset (`newPage(b, { xr: true })`, see `tests/vr.test.mjs`).
+3. **PC:** a desktop window (e.g. 1280×720).
+4. **Anything else:** a phone on its side, tablets, other browsers (`BROWSER=webkit`).
+
 **The test suite is in `tests/`** (see `tests/README.md`), and GitHub Actions runs it on every push (`.github/workflows/tests.yml`). Run it before pushing: `cd tests && npm ci && node run.mjs` (or one file: `node run.mjs places`). It covers static checks, the room server under attack, VR regressions, hostile multiplayer messages, two real games playing together, every place and mode, and a seeded chaos bot. A crash you fix gets a test that fails without the fix.
 
 **Crash reports** from players' devices: `js/crash.js` (loaded first) sends them to the server's `/crash`; read them at `https://ronnie-mp12.ronnie-sim.workers.dev/crashes?k=<CRASH_KEY>` (a Worker secret the owner sets). Check them before guessing at a crash.
