@@ -88,6 +88,7 @@ function wordTex(word, color) {
   return t;
 }
 
+const _wv = new THREE.Vector3(), _wc = new THREE.Vector3();
 export class Words {
   constructor(scene) {
     this.pool = [];
@@ -98,7 +99,11 @@ export class Words {
       s.renderOrder = 10; s.visible = false; scene.add(s); this.pool.push(s);
     }
   }
-  show(word, pos, color = '#ffd400', size = 0.35, life = 1.0) {
+  // slot: words of the same kind (the snack word, the +N, a combo) replace each other: the old one goes quickly. And no
+  // word lands on top of another still showing: it's moved up, in screen terms, until it's clear (eating fast used to
+  // stack the snack word, the +N and the combo all on top of each other). Needs this.camera for that (set by main.js)
+  show(word, pos, color = '#ffd400', size = 0.35, life = 1.0, slot = null) {
+    if (slot) for (const w of this.live) if (w.slot === slot && w.life - w.t > 0.12) { w.life = w.t + 0.12; w.slot = null; }
     const s = this.pool.pop() || this.live.shift()?.s;
     if (!s) return;
     s.material.map = wordTex(word, color); s.material.needsUpdate = true;
@@ -107,7 +112,28 @@ export class Words {
     s.visible = true;
     // (a long line is squeezed into the same picture, so its letters come out small: make the whole thing bigger to match)
     const k = word.length > 12 ? Math.min(1.7, 0.55 + word.length / 26) : 1;
-    this.live.push({ s, t: 0, life, size: size * k, vy: 0.35 });
+    const w = { s, t: 0, life, size: size * k, vy: 0.35, slot };
+    this.clear(w);
+    this.live.push(w);
+  }
+  // (on screen: the box a word takes up, at its biggest)
+  rect(w, at) {
+    const c = this.camera; if (!c) return null;
+    _wv.copy(at || w.s.position).project(c); if (_wv.z > 1 || _wv.z < -1) return null;
+    const d = Math.max(0.05, c.getWorldPosition(_wc).distanceTo(at || w.s.position)), half = Math.tan((c.fov || 70) * Math.PI / 360) * d;
+    const h = w.size * 1.25 / half, ww = h * 2.67 / (c.aspect || 1);
+    return { x: _wv.x, y: _wv.y, hw: ww / 2, hh: h / 2, half };
+  }
+  clear(w) {
+    if (!this.camera || !this.live.length) return;
+    this.camera.updateMatrixWorld();
+    for (let tries = 0; tries < 6; tries++) {
+      const r = this.rect(w); if (!r) return; let push = 0;
+      for (const o of this.live) { if (o.t / o.life > 0.85) continue; const q = this.rect(o); if (!q) continue;
+        if (Math.abs(r.x - q.x) < r.hw + q.hw && Math.abs(r.y - q.y) < r.hh + q.hh) push = Math.max(push, (q.y + q.hh + r.hh + 0.01) - r.y); }
+      if (push <= 0) return;
+      w.s.position.y += push * r.half;      // (screen height to metres at its distance)
+    }
   }
   update(dt) {
     for (let i = this.live.length - 1; i >= 0; i--) {

@@ -125,7 +125,7 @@ const cast = [tommy];          // Tommy + whichever squad members the mode bring
 player.cast = cast;
 player.room = room;
 const crumbs = new Crumbs(scene);
-const words = new Words(scene);
+const words = new Words(scene); words.camera = camera;      // (so words can keep out of each other's way on the screen)
 // someone appearing in front of you for an attack: a puff where they were, a puff where they land, a zap
 Character.onBlink = (from, to) => { try { const W = ['#ffffff', '#d8e4ff', '#b8ffb0', '#ffd400']; crumbs.burst(from.clone().setY(1.0), W, 26, 1.4); crumbs.burst(to.clone().setY(1.0), W, 34, 1.6); sfx('blink', to, 0.7);
   words.show('POOF!', to.clone().setY(2.1), '#ffffff', 0.16, 0.7); } catch (e) {} };
@@ -298,10 +298,10 @@ function eatFeedback(amount) {
   G.combo = time - (G.comboAt ?? -99) < COMBO_GAP ? (G.combo || 0) + 1 : 1; G.comboAt = time; G.bestCombo = Math.max(G.bestCombo || 0, G.combo);
   player.wristKick(0.16 + Math.min(0.14, G.combo * 0.012));
   const up = _b.copy(player.mouth).addScaledVector(player.fwd, 0.35 * player.scale).add({ x: 0.06 * player.scale, y: 0.09 * player.scale, z: 0 });
-  words.show('+' + Math.max(1, Math.round(amount)), up, '#39ff14', 0.07 * player.scale, 0.9);
+  words.show('+' + Math.max(1, Math.round(amount)), up, '#39ff14', 0.07 * player.scale, 0.9, 'eatN');
   const tier = comboTier(G.combo);
   if (tier) { sfx('combo', null, 0.5 + Math.min(0.5, G.combo * 0.04));
-    if (G.combo === tier[0] || G.combo % 5 === 0) words.show(`x${G.combo} ${tier[2]}!`, _c.copy(player.head).addScaledVector(player.fwd, 0.9 * player.scale).add({ x: 0, y: 0.18 * player.scale, z: 0 }), tier[1], (0.11 + Math.min(0.08, G.combo * 0.004)) * player.scale, 1.1); }
+    if (G.combo === tier[0] || G.combo % 5 === 0) words.show(`x${G.combo} ${tier[2]}!`, _c.copy(player.head).addScaledVector(player.fwd, 0.9 * player.scale).add({ x: 0, y: 0.18 * player.scale, z: 0 }), tier[1], (0.11 + Math.min(0.08, G.combo * 0.004)) * player.scale, 1.1, 'combo'); }
   G.wristDirty = true;
 }
 function addChonk(n) {
@@ -326,7 +326,7 @@ function bite(it, hand) {
   sfx(SNACK_SFX[it.type] || 'chomp', fx, 1);
   crumbs.burst(fx, CRUMB_COLORS[it.type] || CRUMB_COLORS.burger, 26, 1.5, player.fwd);     // (anything without its own crumbs gets burger crumbs: never nothing)
   const w = SNACK_WORD[it.type] || SNACK_WORD.burger;      // (every food says something, even ones without their own words: a missing one stopped the game)
-  words.show(w[Math.floor(Math.random() * w.length)], _b.copy(player.head).addScaledVector(player.fwd, 0.7 * player.scale).add({ x: 0, y: 0.05, z: 0 }), '#ffd400', 0.12 * player.scale);
+  words.show(w[Math.floor(Math.random() * w.length)], _b.copy(player.head).addScaledVector(player.fwd, 0.7 * player.scale).add({ x: 0, y: 0.05, z: 0 }), '#ffd400', 0.12 * player.scale, 1.0, 'eat');
   hand && hand.pulse(0.9, 70);
   const amount = (it.def.chonk / it.def.bites) * chonkMul();
   addChonk(amount);
@@ -1505,6 +1505,7 @@ function frame(simDt) {
     banner.material.opacity = bannerT < 0.4 ? bannerT / 0.4 : 1;
     if (bannerT <= 0) banner.visible = false;
   }
+  arbitrateNotes();
 
   // fps (shown on the wrist so you can check you're at 72)
   G.fpsFrames++; G.fpsT += dt;
@@ -2021,7 +2022,65 @@ class SquadPuppet {
   doEmote(id) { if (this.down > 0) return; this.emote.start(id); }
   dispose() { if (this.chatS) scene.remove(this.chatS); scene.remove(this.tag); this.tagTex.dispose(); this.emote.dispose(); this.c.dispose(); }
 }
-window.RS = { warm: () => warm && warm.mode, warmStart: () => warmStart(), hudExtras: () => hudExtras(), emoteCamAt: () => { const c = emoteCam(); return c ? c.position.toArray() : null; }, selfBody: () => selfBody, onFrame: [], vrPanels: () => ({ pause: vrPause.panel, dev: vrDev.menu.panel }), resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+// NOTIFICATIONS DON'T PILE UP (a phone or computer): every frame, the things that pop up on the screen are sorted out
+// in order: the attack card first (while it's up, the banner and the hint make way), then what's fixed in place (the
+// banner, the eat meter, the page's notices along the top), then the floating words (eating, combos), which slide up
+// until they're clear or fade out quickly, then the speech bubbles, nearest first, which rise over whatever's in the way
+// or wait out of sight until there's room. (The snack word, the +N and the combo used to land on each other, words ran
+// into the eat meter, and the attack card came up over everyone's speech.)
+const _nv = new THREE.Vector3(), _np = new THREE.Vector3(), _ncp = new THREE.Vector3();
+function noteBox(o, w, h) {      // a sprite / small plane facing the camera: its box on the screen (null: off the screen)
+  o.getWorldPosition(_np); _nv.copy(_np).project(camera); if (_nv.z > 1) return null;
+  const W = innerWidth, H = innerHeight, d = Math.max(0.05, _ncp.distanceTo(_np)), ppm = H / (2 * Math.tan(camera.fov * Math.PI / 360) * d), cx = (_nv.x + 1) / 2 * W, cy = (1 - _nv.y) / 2 * H;
+  return { x0: cx - w * ppm / 2, x1: cx + w * ppm / 2, y0: cy - h * ppm / 2, y1: cy + h * ppm / 2, ppm };
+}
+function meshBox(m) { const b = new THREE.Box3().setFromObject(m, true); if (b.isEmpty()) return null; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; const W = innerWidth, H = innerHeight;
+  for (const X of [b.min.x, b.max.x]) for (const Y of [b.min.y, b.max.y]) for (const Z of [b.min.z, b.max.z]) { _nv.set(X, Y, Z).project(camera); if (_nv.z > 1) return null; const x = (_nv.x + 1) / 2 * W, y = (1 - _nv.y) / 2 * H; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  return { x0, y0, x1, y1 }; }
+const noteHit = (a, b, m = 4) => a.x0 < b.x1 + m && a.x1 > b.x0 - m && a.y0 < b.y1 + m && a.y1 > b.y0 - m;
+const NOTE_DOM = ['nextAttack', 'hint', 'imp-alert', 'ph-top', 'ph-pop', 'pu', 'pu-hud', 'warm-bar', 'boss-hud', 'rp-jobpop', 'rp-note', 'mp-chip', 'chat-log'];
+function arbitrateNotes() {
+  if (!player.flatMode || renderer.xr.isPresenting) { for (const c of cast) if (c.bubble && c.bubble.material.opacity === 0) c.bubble.material.opacity = 1; return; }
+  camera.updateMatrixWorld(); camera.getWorldPosition(_ncp);
+  const placed = [], card = attackFx.card && attackFx.card.visible && attackFx.card.parent && attackFx.card.parent.visible;
+  if (card) { if (banner.visible) { banner.visible = false; bannerT = 0; } const h = document.getElementById('hint'); if (h && h.classList.contains('on')) h.classList.remove('on');
+    const r = meshBox(attackFx.card); if (r) placed.push(r); }
+  if (banner.visible) { const r = noteBox(banner, banner.scale.x, banner.scale.y); if (r) placed.push(r); }
+  if (player.wrist && player.wrist.visible) { const r = meshBox(player.wrist); if (r) placed.push(r); }
+  for (const id of NOTE_DOM) { const e = document.getElementById(id); if (!e || !e.offsetParent) continue; const c = getComputedStyle(e); if (c.visibility === 'hidden' || +c.opacity < 0.2) continue; const r = e.getBoundingClientRect(); if (r.width > 2 && r.height > 2) placed.push({ x0: r.left, y0: r.top, x1: r.right, y1: r.bottom }); }
+  // the floating words, oldest first: slide up clear of everything placed; no room (or off the top), they go quickly
+  for (const w of words.live) { if (w.t / w.life > 0.85) continue; let r = noteBox(w.s, w.s.scale.x * 0.92, w.s.scale.y * 0.8); if (!r) continue;
+    for (let k = 0; k < 5; k++) { let up = 0; for (const q of placed) if (noteHit(r, q)) up = Math.max(up, r.y1 - q.y0 + 6); if (!up) break; w.s.position.y += up / r.ppm; r = noteBox(w.s, w.s.scale.x * 0.92, w.s.scale.y * 0.8); if (!r) break; }
+    if (!r || r.y0 < 0 || placed.some(q => noteHit(r, q))) { w.s.visible = false; w.life = w.t; continue; }      // (no room for it: gone at once, not fading on top of something)
+    placed.push(r); }
+  // the speech bubbles, nearest first: up over what's in the way; still in the way, they wait out of sight this frame
+  const bub = cast.filter(c => c.bubble && c.bubble.visible).sort((a, b) => _ncp.distanceToSquared(a.bubble.position) - _ncp.distanceToSquared(b.bubble.position));
+  for (const c of bub) { const s = c.bubble; s.userData.lift = 0; s.userData.place && s.userData.place(_ncp); let r = noteBox(s, s.scale.x * 0.9, s.scale.y * 0.85); if (!r) continue;
+    for (let k = 0; k < 4; k++) { let up = 0; for (const q of placed) if (noteHit(r, q)) up = Math.max(up, r.y1 - q.y0 + 6); if (!up) break; s.userData.lift += Math.min(0.8, up / r.ppm); s.userData.place && s.userData.place(_ncp); r = noteBox(s, s.scale.x * 0.9, s.scale.y * 0.85); if (!r) break; }
+    const clear = r && r.y0 >= 0 && !placed.some(q => noteHit(r, q));
+    s.material.opacity = clear ? 1 : 0; if (clear) placed.push(r); }
+}
+// (tests: where every notification on the screen is, in pixels: the 3D ones (the banner, the attack card, floating words,
+// speech bubbles, the eat meter) and the page ones. -> [{ k, x0, y0, x1, y1 }])
+function noteRects() {
+  const out = [], W = innerWidth, H = innerHeight, v = new THREE.Vector3(), cp = camera.getWorldPosition(new THREE.Vector3()), tanH = Math.tan(camera.fov * Math.PI / 360);
+  camera.updateMatrixWorld();
+  const visibleUp = (o) => { for (let e = o; e; e = e.parent) if (!e.visible) return false; return true; };
+  const px = (p) => { v.copy(p).project(camera); return v.z < 1 ? [(v.x + 1) / 2 * W, (1 - v.y) / 2 * H] : null; };
+  const sprite = (k, sp, w, h) => { if (!sp || !visibleUp(sp) || (sp.material && sp.material.opacity < 0.2)) return; const c = px(sp.getWorldPosition(new THREE.Vector3())); if (!c) return; const d = Math.max(0.05, cp.distanceTo(sp.getWorldPosition(new THREE.Vector3()))), ppm = H / (2 * tanH * d);
+    out.push({ k, x0: c[0] - w * ppm / 2, x1: c[0] + w * ppm / 2, y0: c[1] - h * ppm / 2, y1: c[1] + h * ppm / 2 }); };
+  const mesh = (k, m) => { if (!m || !visibleUp(m) || (m.material && m.material.opacity < 0.2)) return; const b = new THREE.Box3().setFromObject(m, true); if (b.isEmpty()) return; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const X of [b.min.x, b.max.x]) for (const Y of [b.min.y, b.max.y]) for (const Z of [b.min.z, b.max.z]) { const c = px(v.set(X, Y, Z)); if (!c) return; x0 = Math.min(x0, c[0]); x1 = Math.max(x1, c[0]); y0 = Math.min(y0, c[1]); y1 = Math.max(y1, c[1]); }
+    out.push({ k, x0, y0, x1, y1 }); };
+  if (banner.visible) sprite('banner', banner, banner.scale.x, banner.scale.y);
+  mesh('attack card', attackFx.card); if (attackFx.cdMesh && player.flatMode === false) mesh('countdown', attackFx.cdMesh);
+  for (const w of words.live) if (w.t / w.life < 0.85) sprite('word', w.s, w.s.scale.x * 0.92, w.s.scale.y * 0.8);      // (the text in the picture, not its empty margins)
+  for (const c of cast) if (c.bubble && c.bubble.visible) sprite('speech ' + c.id, c.bubble, c.bubble.scale.x * 0.9, c.bubble.scale.y * 0.85);
+  if (player.wrist && player.wrist.visible && player.flatMode) mesh('eat meter', player.wrist);
+  for (const id of ['nextAttack', 'hint', 'imp-alert', 'ph-top', 'ph-pop', 'pu', 'pu-hud', 'warm-bar', 'boss-hud', 'rp-jobpop', 'rp-note']) { const e = document.getElementById(id); if (!e || !e.offsetParent) continue; const c = getComputedStyle(e); if (c.visibility === 'hidden' || +c.opacity < 0.2) continue; const r = e.getBoundingClientRect(); if (r.width > 2 && r.height > 2) out.push({ k: '#' + id, x0: r.left, y0: r.top, x1: r.right, y1: r.bottom }); }
+  return out.filter(r => r.x1 > 0 && r.x0 < W && r.y1 > 0 && r.y0 < H);
+}
+window.RS = { notes: () => noteRects(), bite: (it) => { G.lastBite = -99; bite(it, null); }, showBanner: (a, b) => showBanner(a, b), attackFx, words, warm: () => warm && warm.mode, warmStart: () => warmStart(), hudExtras: () => hudExtras(), emoteCamAt: () => { const c = emoteCam(); return c ? c.position.toArray() : null; }, selfBody: () => selfBody, onFrame: [], vrPanels: () => ({ pause: vrPause.panel, dev: vrDev.menu.panel }), resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
 // developer mode (Settings cog -> DEVELOPER MODE): the test bench comes up once you press PLAY. (Only for this visit:
 // starting the page again goes back to normal)
 { let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; sessionStorage.removeItem('rs_dev'); } catch (e) {} window.__devPending = dev;

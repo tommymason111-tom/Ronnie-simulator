@@ -78,7 +78,8 @@ export class AttackFX {
     else { const k = t - 0.35; rot = Math.sin(k * 18) * 0.08 * Math.exp(-k * 3); sc = 1.15 + Math.sin(k * 5) * 0.04; }  // judders, settles, pulses
     if (this.cardOut >= 0) {
       this.cardOut += dt; const u = Math.min(1, this.cardOut / 0.35);
-      y += u * (this.vr ? 0.08 : 0.45); op = Math.min(op, 1 - u); sc *= 1 - u * (this.vr ? 0.15 : 0.4);
+      if (this.vr) y += u * 0.08;      // (a phone/PC: shrinks and fades where it is: flying off took it through the eat meter in the corner)
+      op = Math.min(op, 1 - u); sc *= 1 - u * (this.vr ? 0.15 : 0.4);
       if (u >= 1) { c.visible = false; this.cardT = -1; this.cardOut = -1; return; }
     }
     c.position.set(x, y * 0.9, -0.75); c.rotation.set(0, 0, rot); c.scale.setScalar(sc); c.material.opacity = op;

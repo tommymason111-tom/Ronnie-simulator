@@ -54,8 +54,10 @@ export class Character {
     // up close (someone in your face for their attack), a full-size bubble filled the screen and ran off both edges: it's
     // sized for the distance it's seen from as it's drawn (full size from ~2m out), and sits lower over their head
     { const bub = this.bubble, cp = new THREE.Vector3(); bub.userData.head = new THREE.Vector3();
-      bub.onBeforeRender = (r, sc, cam) => { cam.getWorldPosition(cp); const hd = bub.userData.head, k = Math.min(1, Math.max(0.35, hd.distanceTo(cp) * 0.46));
-        bub.scale.set(1.2 * k, 0.6 * k, 1); bub.position.set(hd.x, hd.y + 0.12 + 0.43 * k, hd.z); bub.updateMatrixWorld(); }; }
+      // (sized for how far away it is; lifted by main.js's notification referee if something's in the way: userData.lift)
+      bub.userData.place = (camPos) => { const hd = bub.userData.head, k = Math.min(1, Math.max(0.35, hd.distanceTo(camPos) * 0.46));
+        bub.scale.set(1.2 * k, 0.6 * k, 1); bub.position.set(hd.x, hd.y + 0.12 + 0.43 * k + (bub.userData.lift || 0), hd.z); bub.updateMatrixWorld(); };
+      bub.onBeforeRender = (r, sc, cam) => { cam.getWorldPosition(cp); bub.userData.place(cp); }; }
     this.bubble.visible = false;
     scene.add(this.bubble);
 
