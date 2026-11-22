@@ -717,7 +717,7 @@ function updateTouchUI() {
   // food, so EAT only shows for the soda gun or a drink in your hand, THROW only while you're holding something;
   // BOSS FIGHT is mostly throwing, so THROW is the big button
   const m = director.mode, sweep = m === 'sweep', pub = !!director.runpub, boss = !!director.boss;
-  const key = `${sweep || (pub && !gun && !(held && held.def.drink)) ? 1 : 0}${sweep || (pub && !held) ? 1 : 0}${boss ? 1 : 0}`;
+  const key = `${sweep || (pub && !gun && !(held && held.def.drink)) ? 1 : 0}${sweep || (pub && !held) || m === 'date' ? 1 : 0}${boss ? 1 : 0}`;      // (DATE NIGHT: sat at the table, nothing to throw)
   if (key !== G.uiKey) { G.uiKey = key; const b = document.body.classList; b.toggle('ui-noeat', key[0] === '1'); b.toggle('ui-nothrow', key[1] === '1'); b.toggle('ui-throwbig', key[2] === '1'); b.toggle('ui-boss', key[2] === '1'); }
 }
 function mpAfterStart() { if (director.remote) mp.becomeClient(); }
