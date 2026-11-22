@@ -13,7 +13,7 @@ export default async function () {
       await p.evaluate(() => RS.renderer.setAnimationLoop(null));
       const res = await p.evaluate(() => {
         const bad = new Map(), hit = (a, b) => a.x0 < b.x1 - 2 && a.x1 > b.x0 + 2 && a.y0 < b.y1 - 2 && a.y1 > b.y0 + 2;
-        const look = (tag) => { const n = RS.notes(); for (let i = 0; i < n.length; i++) for (let j = i + 1; j < n.length; j++) if (hit(n[i], n[j])) { const k = `${tag}: ${n[i].k} × ${n[j].k}`; bad.set(k, (bad.get(k) || 0) + 1); if (!window.__dbg) window.__dbg = []; window.__dbg.push(JSON.stringify([n[i], n[j]].map(r => [r.k, Math.round(r.x0), Math.round(r.y0), Math.round(r.x1), Math.round(r.y1)])) + ' cardT=' + (RS.attackFx.cardT || 0).toFixed(2)); } return n.length; };
+        const look = (tag) => { const n = RS.notes(); for (const r of n) if (/^(speech|word)/.test(r.k) && r.y1 > 0 && r.y0 < innerHeight && (r.x0 < -2 || r.x1 > innerWidth + 2)) { const k = `${tag}: ${r.k} runs off the side of the screen`; bad.set(k, (bad.get(k) || 0) + 1); } for (let i = 0; i < n.length; i++) for (let j = i + 1; j < n.length; j++) if (hit(n[i], n[j])) { const k = `${tag}: ${n[i].k} × ${n[j].k}`; bad.set(k, (bad.get(k) || 0) + 1); if (!window.__dbg) window.__dbg = []; window.__dbg.push(JSON.stringify([n[i], n[j]].map(r => [r.k, Math.round(r.x0), Math.round(r.y0), Math.round(r.x1), Math.round(r.y1)])) + ' cardT=' + (RS.attackFx.cardT || 0).toFixed(2)); } return n.length; };
         const food = () => RS.items.items.find(it => !it.heldBy && it.def && !it.def.prop && !it.def.veg && !it.def.poop && it.bitesLeft > 0);
         let most = 0;
         // 1. eating fast: a bite every 0.3s (combos build)

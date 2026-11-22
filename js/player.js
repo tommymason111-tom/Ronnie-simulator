@@ -711,17 +711,21 @@ export class Player {
       g.fillText(`Eaten: ${state.eaten}  Swats: ${state.swats}`, 30, 262);
     }
     if (state.flash > 0) { g.fillStyle = `rgba(255,255,255,${0.75 * state.flash})`; roundRect(g, 4, 4, w - 8, h - 8, 40); g.fill(); }      // (a size up: a white flash)
-    g.textAlign = 'right'; g.font = `900 24px ${FONT}`;
-    g.fillStyle = state.fps >= 70 ? '#39ff14' : state.fps >= 60 ? '#ffe600' : '#ff4d4d';
-    g.fillText(`${state.fps} fps`, w - 30, 296);
+    if (!this.flatMode || window.__devMode) { g.textAlign = 'right'; g.font = `900 24px ${FONT}`;      // (the frame rate: in a headset, or developer mode; on a phone it's just clutter)
+      g.fillStyle = state.fps >= 70 ? '#39ff14' : state.fps >= 60 ? '#ffe600' : '#ff4d4d';
+      g.fillText(`${state.fps} fps`, w - 30, 296); }
     g.restore();
     this.wristTex.needsUpdate = true;
   }
   // a row of rounded chips (the clock, BUSTED hearts...): shrunk to fit; a pulsing one breathes
   drawChips(g, x, y, maxW, chips) {
-    const pulse = 0.65 + 0.35 * Math.sin(performance.now() / 140); let f = 30, ws;
+    // (big enough to read on an upright phone, where the box is small: if they don't all fit, the last ones (the least
+    // important) are left off, rather than everything shrinking to a size nobody can read)
+    const pulse = 0.65 + 0.35 * Math.sin(performance.now() / 140); let f = 36, ws;
     const measure = () => { g.font = `900 ${f}px ${FONT}`; ws = chips.map(c => g.measureText(c.t).width + 32); return ws.reduce((a, b) => a + b, 0) + (chips.length - 1) * 10; };
-    while (measure() > maxW && f > 14) f -= 2;
+    while (measure() > maxW && f > 28) f -= 2;
+    while (chips.length > 1 && measure() > maxW) chips = chips.slice(0, -1);
+    while (measure() > maxW && f > 18) f -= 2;
     g.textAlign = 'center'; g.textBaseline = 'middle'; let cx = x;
     chips.forEach((c, i) => { const cw = ws[i], hh = f + 18; g.globalAlpha = c.pulse ? pulse : 1;
       g.fillStyle = 'rgba(255,255,255,0.08)'; roundRect(g, cx, y - hh / 2, cw, hh, hh / 2); g.fill(); g.lineWidth = 3; g.strokeStyle = c.c || '#fff'; roundRect(g, cx, y - hh / 2, cw, hh, hh / 2); g.stroke();
@@ -741,7 +745,7 @@ export class Player {
       g.fillStyle = '#374151'; roundRect(g, bx, by, bW, bh, 23); g.fill(); if (k > 0.01) { g.fillStyle = b.bar.col || col; roundRect(g, bx, by, Math.max(46, bW * k), bh, 23); g.fill(); }
       if (b.bar.text) { g.fillStyle = '#fff'; g.font = `900 30px ${FONT}`; g.textAlign = 'center'; g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,0.55)'; g.strokeText(b.bar.text, w / 2, by + bh / 2 + 1); g.fillText(b.bar.text, w / 2, by + bh / 2 + 1); g.textAlign = 'left'; } }
     if (b.chips) this.drawChips(g, 30, 248, w - 60, b.chips);
-    g.textAlign = 'right'; g.font = `900 24px ${FONT}`; g.fillStyle = fps >= 70 ? '#39ff14' : fps >= 60 ? '#ffe600' : '#ff4d4d'; g.fillText(`${fps} fps`, w - 30, 296); g.textAlign = 'left';
+    if (!this.flatMode || window.__devMode) { g.textAlign = 'right'; g.font = `900 24px ${FONT}`; g.fillStyle = fps >= 70 ? '#39ff14' : fps >= 60 ? '#ffe600' : '#ff4d4d'; g.fillText(`${fps} fps`, w - 30, 296); } g.textAlign = 'left';
   }
   // IMPOSTER: who you are, the task bar, your jobs (ticked off), the kill cooldown, any sabotage
   drawImpBox(g, w, h, st) {

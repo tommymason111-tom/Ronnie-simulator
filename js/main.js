@@ -757,7 +757,7 @@ function hudExtras() {
   if (m === 'bbq' && d.bbq) return { chips: [T(), { t: `🍖 ${d.bbq.ate} OFF THE GRILL`, c: '#ffb37a' }] };
   if (m === 'date' && d.date) { const c = Math.min(3, d.date.catches || 0); return { chips: [T(), { t: '💔'.repeat(c) + '🤍'.repeat(3 - c), c: '#fff' }, d.date.look ? { t: '👀 LOOKING!', c: '#ff5252', pulse: true } : { t: '😋 EAT NOW!', c: '#39ff14' }] }; }
   if (/^chonkoff/.test(m)) return { chips: [T(), { t: `🍔 ${G.eaten} EATEN`, c: '#ffd400' }] };
-  if (m === 'roam') return { chips: [{ t: '🚶 NO TIMER · NO ATTACKS', c: '#9fd8ff' }, { t: `🍔 ${G.eaten}`, c: '#ffd400' }] };
+  if (m === 'roam') return { chips: [{ t: `🍔 ${G.eaten} EATEN`, c: '#ffd400' }] };      // (free roam: nothing to count down; the mode's name over the box says the rest)
   return null;
 }
 function hostNewGame(id) { if (window.__rc && net.connected && net.host && net.players.size) { setPaused(false); window.__rc.begin(id); return; } startForAll(id); }
@@ -1002,7 +1002,7 @@ body.flat.mpon #chat-log { display: flex; }
   //   left column:  the Eat Meter (drawn in 3D), then the room chip, then the chat lines
   //   right column: PAUSE, CHAT, VOICE, then who's talking
   //   middle:       the NEXT ATTACK pill and the hints go below whichever columns they'd otherwise run into
-  const corners4 = [[-0.05, -0.03125], [0.05, -0.03125], [-0.05, 0.03125], [0.05, 0.03125]].map(([x, y]) => new THREE.Vector3(x, y, 0));
+  const corners4 = [[-0.05, -0.0375], [0.05, -0.0375], [-0.05, 0.0375], [0.05, 0.0375]]      /* (the box: 0.1 x 0.075, its 512x384 picture) */.map(([x, y]) => new THREE.Vector3(x, y, 0));
   const R = (el) => { if (!el) return null; const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden') return null; const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2 ? r : null; };
   const meterRect = () => { if (!player.wrist || !player.wrist.visible) return null; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; player.wrist.updateMatrixWorld();
     for (const c of corners4) { v.copy(c).applyMatrix4(player.wrist.matrixWorld).project(camera); const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
@@ -2028,7 +2028,7 @@ class SquadPuppet {
 // until they're clear or fade out quickly, then the speech bubbles, nearest first, which rise over whatever's in the way
 // or wait out of sight until there's room. (The snack word, the +N and the combo used to land on each other, words ran
 // into the eat meter, and the attack card came up over everyone's speech.)
-const _nv = new THREE.Vector3(), _np = new THREE.Vector3(), _ncp = new THREE.Vector3();
+const _nv = new THREE.Vector3(), _np = new THREE.Vector3(), _ncp = new THREE.Vector3(), _nr = new THREE.Vector3();
 function noteBox(o, w, h) {      // a sprite / small plane facing the camera: its box on the screen (null: off the screen)
   o.getWorldPosition(_np); _nv.copy(_np).project(camera); if (_nv.z > 1) return null;
   const W = innerWidth, H = innerHeight, d = Math.max(0.05, _ncp.distanceTo(_np)), ppm = H / (2 * Math.tan(camera.fov * Math.PI / 360) * d), cx = (_nv.x + 1) / 2 * W, cy = (1 - _nv.y) / 2 * H;
@@ -2055,7 +2055,11 @@ function arbitrateNotes() {
     placed.push(r); }
   // the speech bubbles, nearest first: up over what's in the way; still in the way, they wait out of sight this frame
   const bub = cast.filter(c => c.bubble && c.bubble.visible).sort((a, b) => _ncp.distanceToSquared(a.bubble.position) - _ncp.distanceToSquared(b.bubble.position));
-  for (const c of bub) { const s = c.bubble; s.userData.lift = 0; s.userData.place && s.userData.place(_ncp); let r = noteBox(s, s.scale.x * 0.9, s.scale.y * 0.85); if (!r) continue;
+  const right = _nr.setFromMatrixColumn(camera.matrixWorld, 0).setY(0).normalize(), W = innerWidth;
+  for (const c of bub) { const s = c.bubble; s.userData.lift = 0; (s.userData.side || (s.userData.side = new THREE.Vector3())).set(0, 0, 0); s.userData.place && s.userData.place(_ncp); let r = noteBox(s, s.scale.x * 0.9, s.scale.y * 0.85); if (!r) continue;
+    // (all of it on the screen: one at the edge slides in sideways, so its words aren't cut off)
+    { const m = 8, wd = r.x1 - r.x0; let dx = 0; if (wd > W - 2 * m) dx = W / 2 - (r.x0 + r.x1) / 2; else if (r.x0 < m) dx = m - r.x0; else if (r.x1 > W - m) dx = (W - m) - r.x1;
+      if (dx) { s.userData.side.copy(right).multiplyScalar(dx / r.ppm); s.userData.place && s.userData.place(_ncp); r = noteBox(s, s.scale.x * 0.9, s.scale.y * 0.85); if (!r) continue; } }
     for (let k = 0; k < 4; k++) { let up = 0; for (const q of placed) if (noteHit(r, q)) up = Math.max(up, r.y1 - q.y0 + 6); if (!up) break; s.userData.lift += Math.min(0.8, up / r.ppm); s.userData.place && s.userData.place(_ncp); r = noteBox(s, s.scale.x * 0.9, s.scale.y * 0.85); if (!r) break; }
     const clear = r && r.y0 >= 0 && !placed.some(q => noteHit(r, q));
     s.material.opacity = clear ? 1 : 0; if (clear) placed.push(r); }

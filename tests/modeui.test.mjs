@@ -11,7 +11,7 @@ const MODES = [
   ['restaurant', 'date', { eat: true, thr: true, chips: /EAT NOW|LOOKING/ }],
   ['bedroom', 'chonkoff', { eat: true, thr: true, chips: /EATEN/ }],
   ['pub', 'runpub', { eat: false, thr: false }],
-  ['pub', 'roam', { eat: true, thr: true, chips: /NO TIMER/ }],
+  ['pub', 'roam', { eat: true, thr: true, chips: /EATEN/ }],
   ['garden', 'boss', { eat: true, thr: true, big: 'throw' }],
 ];
 
