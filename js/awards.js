@@ -35,6 +35,13 @@ const AWARDS = [
   (s) => ['🥷', 'SMOOTH OPERATOR', `Snuck ${s.dnSneak} mouthfuls past Chloe. She suspects nothing. She suspects everything.`, s.dnSneak >= 10 ? s.dnSneak / 10 : 0],
   (s) => ['💔', 'IN THE DOGHOUSE', `Busted by Chloe ${s.dnBusted} times. Chester gets the bed tonight.`, s.dnBusted >= 2 ? 1 + s.dnBusted * 0.2 : 0],
   (s) => ['🚽', 'TOILET BREAK BANDIT', `Raided ${s.dnRaid} plates while Chloe was in the loo.`, s.dnRaid >= 3 ? s.dnRaid / 3 : 0],
+  // SEARCH AND DESTROY (snd.js)
+  (s) => ['💀', 'SHARPSHOOTER', `${s.sdKills} kills. The squad are putting in a complaint.`, s.sdKills >= 3 ? s.sdKills / 3 : 0],
+  (s) => ['🎯', 'HEADHUNTER', `${s.sdHs} headshot${s.sdHs > 1 ? 's' : ''}. Right between the eyebrows.`, s.sdHs >= 2 ? s.sdHs / 1.5 : 0],
+  (s) => ['🍛', 'CURRY CHEF', `Planted the Vindaloo ${s.sdPlants} time${s.sdPlants > 1 ? 's' : ''}. Smells incredible.`, s.sdPlants >= 1 ? 1.3 + s.sdPlants * 0.3 : 0],
+  (s) => ['🔧', 'BOMB SQUAD', `Defused ${s.sdDefuses} Vindaloo${s.sdDefuses > 1 ? 's' : ''}. Saved the curry. Sort of.`, s.sdDefuses >= 1 ? 1.4 + s.sdDefuses * 0.3 : 0],
+  (s) => ['🔫', 'TRIGGER HAPPY', `${s.sdShots} shots fired. Some of them even hit someone.`, s.sdShots >= 150 ? s.sdShots / 150 : 0],
+  (s) => ['🍔', 'SNACK RAIDER', `Grabbed ${s.sdPicks} pick-ups. Ate most of them.`, s.sdPicks >= 5 ? s.sdPicks / 5 : 0],
   (s) => ['😶', 'BIG TALKER', `${s.chats} messages in the chat. Put the phone down and eat.`, s.chats >= 5 ? s.chats / 5 : 0],
 ];
 const MEDAL = ['🥉', 'PARTICIPATION MEDAL', 'You turned up. That counts for something.', 0];

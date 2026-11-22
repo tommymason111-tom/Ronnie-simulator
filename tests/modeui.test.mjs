@@ -13,6 +13,7 @@ const MODES = [
   ['pub', 'runpub', { eat: false, thr: false }],
   ['pub', 'roam', { eat: true, thr: true, chips: /EATEN/ }],
   ['garden', 'boss', { eat: true, thr: true, big: 'throw' }],
+  ['shop', 'snd', { eat: false, thr: false, box: /❤/ }],      // (SEARCH AND DESTROY: guns only; its box is your health, armour, ammo and perks)
 ];
 
 export default async function () {

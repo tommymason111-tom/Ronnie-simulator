@@ -83,6 +83,7 @@ Pick a mode on the start screen, or change it any time from **GAME MODE** in the
 | **Eat-Off 2P** | Player 1 plays, passes the headset or phone, then Player 2 presses Eat-Off 2P. Winner on the receipt. |
 | **Boss Fight** (the pub's car park, Lewis's garden) | A giant Noah, Lewis, Chloe or Tommy (a different one each fight) drops out of the sky. Throw food at them (headshots x2, the glowing weak spot x3 when they're out of puff), eat to power up and get hearts back. Three phases of telegraphed moves: slams (get out of the red), waves (get in close), giant food lobbed at you, charges, and the lads called in to help. Solo or co-op: the host runs the boss (`js/boss.js`). |
 | **Prop Hunt** (multiplayer, 2-12) | The pub, Lidl or Lewis's. Each round a few seekers count to 40 blindfolded while the hiders turn into the map's own things (a keg, a bin, a gnome, a trolley) and lock in. Seekers check anything that looks off: a hider is FOUND, the real thing costs 10 health. Hiders score for every second hidden and for taunts (quack, kazoo, airhorn...). Teams swap every round; podium and awards at the end. All in `js/prophunt.js`. |
+| **Search & Destroy** (solo with bots, or 2-12) | The pub, Lidl or Lewis's. THE GREASY SPOONS v THE SALAD DODGERS, no respawns in a round. The attackers carry THE VINDALOO (a curry pot strapped to six sausages) to bomb site A or B and hold PLANT; the defenders stop them or hold DEFUSE once it's down (40 seconds, the beeping speeding up). Every round starts with the GUN PICK: Ketchup Blaster, Baked Bean Shotgun, Sausage Sniper (with a scope), Squirty Cheese SMG, MONSTOR AR, Gravy Gatling, each with its own damage, fire rate, magazine, reload and range. 100 health, headshots, armour, RELOAD, an ammo HUD, hit markers, the red arc showing where a hit came from, a red edge on low health. Pick-ups round the map: ammo boxes, burgers and kebabs (eating heals), stab vests, and perks with timers (fast reload, speed, extra damage, quick plant/defuse, double magazine). Win a round by wiping them out, the bomb going off or being defused, or the clock running out before a plant; sides swap at half time, first to 4 (3 short, 6 long). On your own the squad fill both teams as bots (and shout their lines when they get you); in a room the host runs the round and the bots. Phone: FIRE (hold, drag to aim, or tap what to shoot), RELOAD, PLANT/DEFUSE, SCOPE. Computer: click or F, R, E, Q / right-click, 1-6 on the pick. Quest: the gun's in your right hand, trigger fires, A (or flick it down) reloads, B plants and defuses. Ends with the receipt and awards. |
 
 ## Controls (in VR)
 
@@ -144,6 +145,9 @@ js/tommy.js       Tommy: his model, eyes, spotlight, broccoli attacks
 js/squad.js       the squad: looks (built from shapes), lines and interventions
 js/modes.js       game modes, intervention meter, roast bubbles, receipts
 js/prophunt.js    Prop Hunt (multiplayer): props and decoys, the host's referee, HUD, VR wrist and panels
+js/snd.js         Search & Destroy: teams, rounds, the bomb, hits and kills, pick-ups, the bots (the host is the referee)
+js/sndui.js       Search & Destroy: the HUD, buttons and keys, the gun pick (phone/computer screen, VR panel), guns in hands, effects
+js/sndkit.js      Search & Destroy: the guns, pick-ups and maps, and their models (the bomb, the site markers, the gun pictures)
 js/dialogue.js    Tommy's line banks (from §3 of the design doc)
 js/room.js        the bedroom, furniture, joke signs, lighting
 js/foods.js       food meshes + the small physics engine

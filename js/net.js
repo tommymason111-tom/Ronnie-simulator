@@ -65,6 +65,14 @@ const SCHEMA = {
   phFound: { 'v!': 'id', 'by!': 'id', p: 'v3', k: 'str', hp: 'num' }, phMiss: { 'by!': 'id', hp: 'num', d: 'num' }, phHit: { 'v!': 'id', 'by!': 'id', hp: 'num', p: 'v3' }, phHp: { 'id!': 'id', hp: 'num' }, phShot: { 'a!': 'v3', 'b!': 'v3', h: 'num' }, phOut: { 'id!': 'id', secs: 'num' }, phBack: { 'id!': 'id', hp: 'num' },
   phPts: { 'id!': 'id', d: 'num', why: 'str' }, phAuto: { 'id!': 'id', i: 'num' }, phEnd: { tot: 'obj', rp: 'obj', alive: 'arr', stats: 'obj', why: 'str', win: 'str' }, phOver: { tot: 'obj', aw: 'arr', stats: 'obj' },
   phState: { round: 'obj', ph: 'str', left: 'num', kinds: 'obj', locks: 'obj', found: 'arr', hp: 'obj', tot: 'obj' },
+  // SEARCH AND DESTROY (snd.js): the host's word on the round, hits, kills, the bomb, the pick-ups and the bots; a player's
+  // gun, shots (seen by all), hits, pick-ups, plant and defuse (checked by the host)
+  sdHello: {}, sdGun: { 'g!': 'str' }, sdShot: { 'a!': 'v3', 'b!': 'v3', g: 'num', n: 'num', id: 'id' }, sdHit: { 'v!': 'id', 'd!': 'num', hs: 'num', p: 'v3' }, sdTake: { 'i!': 'num' },
+  sdPlant: { s: 'str', p: 'v2' }, sdDefuse: {}, sdAct: { k: 'str', on: 'num' }, sdWait: {},
+  sdRound: { 'list!': 'arr', r: 'num', win: 'num', half: 'num', sc: 'obj', att: 'str', car: 'id', pk: 'arr', sp: 'obj', gn: 'obj', bt: 'num', rt: 'num', sw: 'num' }, sdGo: { rt: 'num' }, sdClock: { ph: 'str', left: 'num', bl: 'num' },
+  sdDmg: { 'v!': 'id', by: 'id', hp: 'num', ar: 'num', d: 'num', hs: 'num', p: 'v3' }, sdKill: { 'v!': 'id', by: 'id', g: 'num', hs: 'num', w: 'str' }, sdGot: { 'i!': 'num', by: 'id', k: 'str', hp: 'num', ar: 'num' }, sdPk: { 'i!': 'num', on: 'num' },
+  sdBomb: { 'st!': 'str', id: 'id', p: 'v2', s: 'str', left: 'num', by: 'id' }, sdEnd: { win: 'str', why: 'str', sc: 'obj', r: 'num', mvp: 'id', last: 'num' }, sdOver: { win: 'str', sc: 'obj', st: 'obj', aw: 'arr' },
+  sdState: { round: 'obj', ph: 'str', left: 'num', f: 'obj', bomb: 'obj', sc: 'obj', pkOn: 'arr', over: 'obj' }, sdBots: { 'b!': 'arr' }, sdHp: { 'id!': 'id', hp: 'num', ar: 'num' },
 };
 function okMessage(m) {
   if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.t !== 'string' || !m.t || m.t.length > 24) return false;

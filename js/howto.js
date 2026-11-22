@@ -343,6 +343,64 @@ function bossPic(g, W, H, page) {
   }
 }
 
+// ---------------------------------------------------------------- SEARCH AND DESTROY (snd.js)
+function sdSite(g, x, y, r, L) {      // a bomb site painted on the floor, from above at an angle
+  g.save(); g.translate(x, y); g.scale(1, 0.42); for (let i = 0; i < 24; i++) { g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, r, i / 24 * Math.PI * 2, (i + 1) / 24 * Math.PI * 2); g.closePath(); g.fillStyle = i % 2 ? '#111' : '#ffd400'; g.fill(); }
+  g.beginPath(); g.arc(0, 0, r * 0.86, 0, 7); g.fillStyle = 'rgba(200,20,20,0.75)'; g.fill(); g.restore();
+  g.fillStyle = '#fff'; g.font = `900 ${Math.round(r * 0.5)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(L, x, y + 2);
+}
+function sdBomb(g, x, y, k = 1) {      // THE VINDALOO: a curry pot with sausages strapped round it and a clock
+  g.save(); g.translate(x, y); g.scale(k, k);
+  for (let i = 0; i < 5; i++) { g.fillStyle = '#8a3a22'; rr(g, -44 + i * 20, -40, 13, 56, 6); g.fill(); }
+  g.fillStyle = '#b0b4ba'; rr(g, -40, -30, 80, 48, 10); g.fill(); g.fillStyle = '#c1440e'; g.beginPath(); g.ellipse(0, -30, 40, 8, 0, 0, 7); g.fill();
+  g.fillStyle = '#6a6e74'; g.fillRect(-48, -14, 96, 6); g.fillStyle = '#141414'; rr(g, -22, -6, 44, 18, 4); g.fill(); g.fillStyle = '#ff2020'; g.font = `900 13px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('0:40', 0, 3);
+  g.strokeStyle = '#2a6df4'; g.lineWidth = 3; g.beginPath(); g.moveTo(-10, -30); g.quadraticCurveTo(-20, -55, 5, -60); g.stroke(); g.strokeStyle = '#ff3b3b'; g.beginPath(); g.moveTo(10, -30); g.quadraticCurveTo(25, -52, 8, -60); g.stroke();
+  g.restore();
+}
+function sdGun(g, id, x, y, w) {      // a gun, side on, in its own colours (a simple version of the pick screen's)
+  const cols = { ketchup: ['#d32f2f', '#2b2c30', '#f4f4f0'], beans: ['#ff7a1a', '#18191b', '#8a5a2e'], sausage: ['#9a5a3a', '#2e4a2e', '#ffd21a'], cheese: ['#ffc107', '#1a1a1c', '#ff9800'], monstor: ['#141416', '#7cff3a', '#26282c'], gravy: ['#5a5e66', '#f4f2ea', '#6d3b1f'] }[id];
+  const k = w / 200; g.save(); g.translate(x - w / 2, y - 30 * k); g.scale(k, k);
+  g.fillStyle = cols[1]; rr(g, 10, 22, 120, 12, 5); g.fill(); g.fillStyle = cols[0]; rr(g, 60, 16, 90, 30, 8); g.fill(); g.fillStyle = cols[2]; rr(g, 70, 44, 22, 34, 6); g.fill();
+  g.fillStyle = cols[1]; g.save(); g.translate(150, 40); g.rotate(0.3); rr(g, -8, 0, 18, 34, 5); g.fill(); g.restore(); g.fillStyle = cols[0]; rr(g, 150, 18, 44, 24, 6); g.fill(); g.restore();
+}
+function searchDestroy(g, W, H, page, device) {
+  const fy = H * 0.74, pc = device === 'pc', vr = device === 'vr';
+  if (page === 'intro') {
+    floorScene(g, W, H, '#5a2a14', '#3a1a0c');
+    sdSite(g, W * 0.3, fy + 10, 70, 'A'); sdSite(g, W * 0.72, fy + 10, 70, 'B'); sdBomb(g, W * 0.3, fy - 4, 0.75);
+    label(g, '🍳 GREASY SPOONS', W * 0.22, 34, { size: 16, border: '#ff5a3d' }); label(g, 'v', W / 2, 34, { size: 16, border: '#fff' }); label(g, '🥗 SALAD DODGERS', W * 0.78, 34, { size: 16, border: '#3da5ff' });
+    label(g, '💣 PLANT IT', W * 0.3, H * 0.4, { size: 15, border: '#ff9f1c' }); label(g, '🔧 OR DEFUSE IT', W * 0.72, H * 0.4, { size: 15, border: '#39ff14' });
+    emoji(g, '🧍', W * 0.12, fy - 20, 52); emoji(g, '🧍', W * 0.9, fy - 20, 52); return;
+  }
+  if (page === 'guns') {
+    bg(g, W, H, '#2a1458', '#0c0818'); const ids = ['ketchup', 'beans', 'sausage', 'cheese', 'monstor', 'gravy'], ic = ['🍅', '🫘', '🌭', '🧀', '🥫', '🍗'];
+    ids.forEach((id, i) => { const cx = W * (0.18 + (i % 3) * 0.32), cy = 92 + Math.floor(i / 3) * 128; g.fillStyle = i === 4 ? 'rgba(57,255,20,0.22)' : 'rgba(255,255,255,0.08)'; rr(g, cx - 92, cy - 50, 184, 112, 14); g.fill(); g.lineWidth = 3; g.strokeStyle = i === 4 ? '#39ff14' : 'rgba(255,255,255,0.3)'; g.stroke();
+      sdGun(g, id, cx, cy - 6, 150); emoji(g, ic[i], cx - 70, cy - 30, 24); for (let j = 0; j < 3; j++) { g.fillStyle = 'rgba(255,255,255,0.15)'; rr(g, cx - 70, cy + 36 + j * 8, 140, 5, 2); g.fill(); g.fillStyle = ['#ff5a3d', '#ffd400', '#4fc3ff'][j]; rr(g, cx - 70, cy + 36 + j * 8, 140 * (0.3 + ((i * 37 + j * 23) % 70) / 100), 5, 2); g.fill(); } });
+    label(g, '🔫 PICK YOUR GUN · EVERY ROUND', W / 2, 24, { size: 16 }); return;
+  }
+  if (page === 'shoot') {
+    floorScene(g, W, H, '#24318f', '#121a52'); emoji(g, '🧍', W * 0.7, fy - 26, 64); g.strokeStyle = '#fff'; g.lineWidth = 3; for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { g.beginPath(); g.moveTo(W * 0.7 + dx * 8, fy - 40 + dy * 8); g.lineTo(W * 0.7 + dx * 18, fy - 40 + dy * 18); g.stroke(); }
+    g.strokeStyle = '#ffd84a'; g.lineWidth = 4; g.beginPath(); g.moveTo(W * 0.2, H * 0.66); g.lineTo(W * 0.68, fy - 38); g.stroke(); sdGun(g, 'cheese', W * 0.2, H * 0.72, 190);
+    label(g, '🎯 HEADSHOT ×2', W * 0.7, H * 0.2, { size: 15, border: '#ffd400' }); label(g, vr ? '🔫 TRIGGER' : pc ? '🖱️ CLICK / F' : '🔥 FIRE', W * 0.2, H * 0.2, { size: 16, border: '#ff5a3d' });
+    label(g, vr ? '🔄 A · FLICK DOWN' : pc ? '🔄 R' : '🔄 RELOAD', W * 0.2, H * 0.36, { size: 15, border: '#2a6df4' }); label(g, '❤ 100', W * 0.86, H * 0.36, { size: 15, border: '#39ff14' }); return;
+  }
+  if (page === 'bomb') {
+    floorScene(g, W, H, '#3a2a14', '#24180a'); sdSite(g, W / 2, fy + 12, 110, 'B'); sdBomb(g, W / 2, fy - 8, 1.1);
+    g.strokeStyle = '#39ff14'; g.lineWidth = 8; g.beginPath(); g.arc(W * 0.82, H * 0.32, 34, -Math.PI / 2, Math.PI * 0.9); g.stroke(); emoji(g, '🔧', W * 0.82, H * 0.32, 30);
+    label(g, '💣 HOLD PLANT · 3s', W * 0.2, H * 0.22, { size: 15, border: '#ff9f1c' }); label(g, '🔧 HOLD DEFUSE · 6s', W * 0.82, H * 0.56, { size: 15, border: '#39ff14' }); label(g, '⏱ 40s · BEEP BEEP BEEP', W * 0.2, H * 0.38, { size: 14, border: '#ff3b3b' }); return;
+  }
+  if (page === 'picks') {
+    floorScene(g, W, H, '#1e4ea8', '#122a66'); const items = [['📦', '#ffd400', 'AMMO'], ['🍔', '#39ff14', '+35 ❤'], ['🦺', '#4fc3ff', '+50 🛡'], ['⚡', '#ff4fd8', 'SPEED'], ['🌶️', '#ff4fd8', '×1.5']];
+    items.forEach(([e, c, t], i) => { const x = W * (0.12 + i * 0.19); g.strokeStyle = c; g.lineWidth = 5; g.beginPath(); g.ellipse(x, fy + 22, 36, 10, 0, 0, 7); g.stroke(); emoji(g, e, x, fy - 14 + Math.sin(i) * 6, 50); label(g, t, x, fy - 62, { size: 13, border: c }); });
+    label(g, '⏱️ PERK TIMERS ON THE HUD', W / 2, 30, { size: 16 }); return;
+  }
+  // rounds: the score, the sides swapping at half time
+  bg(g, W, H, '#14202e', '#0a0f18'); g.fillStyle = '#ff5a3d'; rr(g, W / 2 - 160, 60, 110, 70, 14); g.fill(); g.fillStyle = '#3da5ff'; rr(g, W / 2 + 50, 60, 110, 70, 14); g.fill();
+  g.fillStyle = '#fff'; g.font = `900 44px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('3', W / 2 - 105, 97); g.fillText('2', W / 2 + 105, 97); g.font = `900 26px ${FONT}`; g.fillText('–', W / 2, 97);
+  emoji(g, '🍳', W / 2 - 105, 40, 30); emoji(g, '🥗', W / 2 + 105, 40, 30); arrow(g, W * 0.3, H * 0.68, W * 0.7, H * 0.68, '#ffd400'); arrow(g, W * 0.7, H * 0.82, W * 0.3, H * 0.82, '#ffd400');
+  label(g, '🔁 HALF TIME: SIDES SWAP', W / 2, H * 0.56, { size: 15 }); label(g, '🏆 FIRST TO 4', W / 2, H * 0.94, { size: 15, border: '#39ff14' });
+}
+
 // draw page picture `kind` into the canvas (redrawn when portraits load)
 function drawHowPic(cv, pic, ctx = {}) {
   try { drawPic(cv, pic, ctx); } catch (e) { console.warn('howto pic', e); const g = cv.getContext('2d'); g.fillStyle = '#1c2c8c'; g.fillRect(0, 0, cv.width, cv.height); g.font = '110px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🍔', cv.width / 2, cv.height / 2); }
@@ -361,6 +419,7 @@ function drawPic(cv, pic, ctx) {
   else if (kind === 'date') { if (arg === 'films') dateFilms(g, W, H); else if (arg === 'busted') dateBusted(g, W, H); else dateTable(g, W, H); }
   else if (kind === 'clock') clock(g, W, H, arg === '2');
   else if (kind === 'ph') propHunt(g, W, H, arg);
+  else if (kind === 'sd') searchDestroy(g, W, H, arg, ctx.device);
   else if (kind === 'boss') bossPic(g, W, H, arg);
   else { bg(g, W, H); const gl = g.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, H * 0.6); gl.addColorStop(0, 'rgba(255,212,0,0.35)'); gl.addColorStop(1, 'rgba(255,212,0,0)'); g.fillStyle = gl; g.fillRect(0, 0, W, H); emoji(g, arg || kind, W / 2, H / 2, 120); }
   cv.dataset.v = (+cv.dataset.v || 0) + 1;      // (tells the headset panel it changed)

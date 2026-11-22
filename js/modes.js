@@ -45,10 +45,12 @@ export const MODES = {
   boss:         { name: 'BOSS FIGHT', desc: 'A giant mate. Eat to power up, throw food to bring them down. Solo or co-op.', time: 0, places: ['pub', 'garden'] },      // (BOSS FIGHT: boss.js)
   // PROP HUNT (multiplayer: the pub, Lidl, Lewis's): see prophunt.js
   prophunt:     { name: 'PROP HUNT', desc: 'Multiplayer hide and seek. Hiders turn into things, seekers find them.', time: 0, mp: true, hidden: true },
+  // SEARCH AND DESTROY (the pub, Lidl, Lewis's; solo with bots or a room): see snd.js
+  snd:          { name: 'SEARCH & DESTROY', desc: 'Two teams, one bomb. Pick a gun each round, plant or defuse the Vindaloo.', time: 0, places: ['pub', 'shop', 'garden'] },
 };
 // which modes each place offers (also used by the start screen)
 export function modesFor(place) {
-  const only = { shop: ['sweep', 'roam'], garden: ['bbq', 'boss', 'roam'], restaurant: ['date', 'roam'], grid: ['roam'] }[place];      // (boss: BOSS FIGHT)     // these places have one game each (and free roam)
+  const only = { shop: ['sweep', 'snd', 'roam'], garden: ['bbq', 'boss', 'snd', 'roam'], restaurant: ['date', 'roam'], grid: ['roam'] }[place];      // (boss: BOSS FIGHT)     // these places have one game each (and free roam)
   if (only) return only;
   return Object.keys(MODES).filter(id => {
     const m = MODES[id];
@@ -195,6 +197,7 @@ export class Director {
     if (this.imposter) { this.imposter.dispose(); this.imposter = null; }
     if (this.boss) { this.boss.dispose(); this.boss = null; }      // (BOSS FIGHT: boss.js)
     if (this.prophunt) { this.prophunt.dispose(); this.prophunt = null; }      // (PROP HUNT)
+    if (this.snd) { this.snd.dispose(); this.snd = null; }      // (SEARCH AND DESTROY)
     if (this.bbqm) { this.bbqm.dispose(); this.bbqm = null; }      // (IAN'S BARBECUE: bbqmode.js)
     if (this.date) { this.date.dispose(); this.date = null; }      // (DATE NIGHT: datenight.js)
     this.hideTommy(false);
@@ -239,7 +242,7 @@ export class Director {
       g.cast.push(c);
     });
     if (this.runpub) { this.runpub.cleanup(); this.runpub = null; }
-    const SHORT = { prophunt: 'HIDE AS ANYTHING. FIND THEM ALL', imposter: 'THERE IS AN IMPOSTER AMONG US', imposter2: 'THERE ARE TWO IMPOSTERS AMONG US', runpub: 'SERVE THE PUNTERS', sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'DON\'T LET IAN FEED YOU', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
+    const SHORT = { snd: 'PLANT IT. DEFUSE IT. DON\'T GET SAUSAGED', prophunt: 'HIDE AS ANYTHING. FIND THEM ALL', imposter: 'THERE IS AN IMPOSTER AMONG US', imposter2: 'THERE ARE TWO IMPOSTERS AMONG US', runpub: 'SERVE THE PUNTERS', sweep: 'GRAB THE GREEN GLOWS! DODGE OLIVER & AIDAN W', bbq: 'DON\'T LET IAN FEED YOU', classic: 'EAT EVERYTHING', everyone: 'EVERYONE IS HERE', intervention: 'NOBODY CAN STOP YOU', veggie: 'SWAT THE VEG', catch: 'CATCH IT IN YOUR MOUTH', chonkoff: '60 SECONDS', roam: 'HAVE A LOOK ROUND', chonkoff2: 'PLAYER ' + (this.player2 && this.player2.stage === 1 ? 2 : 1), date: 'DON\'T GET CAUGHT' };
     if (id !== 'boss') g.showBanner(m.name, SHORT[id] || 'EAT EVERYTHING');      // (the boss fight has its own entrance)
     if (id === 'chonkoff2') { this.player2 = this.player2 && this.player2.stage === 1 ? { stage: 2, p1: this.player2.p1 } : { stage: 1 }; }
     else this.player2 = null;
@@ -252,6 +255,9 @@ export class Director {
     // PROP HUNT (multiplayer, the pub / Lidl / Lewis's): no food, no squad, no Tommy: see prophunt.js
     if (id === 'prophunt') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null); this.removeTrolley();
       this.prophunt = g.makePropHunt ? g.makePropHunt() : null; sfx('gamestart', null, 1); return; }
+    // SEARCH AND DESTROY (the pub / Lidl / Lewis's): no food, no squad, no Tommy, guns: see snd.js
+    if (id === 'snd') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null); this.removeTrolley();
+      this.snd = g.makeSnd ? g.makeSnd() : null; sfx('gamestart', null, 1); return; }
     if (id === 'bbq') this.bbqm = new BbqMode(this);      // (IAN'S BARBECUE: bbqmode.js, on every game in a room)
     if (this.remote) { tommy.attacks = false; tommy.directed = false; if (g.fx) g.fx.setCountdown(null); if (id === 'sweep') this.startSweep(true); else this.removeTrolley(); return; }      // (a guest in the sweep: their own trolley and score; the host runs the food and the squad)
     if (id === 'date') this.startDate();
@@ -329,6 +335,8 @@ export class Director {
       lines.length = 1; lines.push(...this.runpub.summary());
     } else if (this.mode === 'boss' && this.boss) {      // (BOSS FIGHT: boss.js)
       lines.length = 0; lines.push(...this.boss.summary());
+    } else if (this.mode === 'snd' && this.snd) {      // (SEARCH AND DESTROY: snd.js)
+      lines.length = 0; lines.push(...this.snd.summary());
     } else if (this.mode === 'catch') {
       lines.push(['CATCHES', `${st.caught} / ${st.thrown}`]);
       lines.push(['Harry: "Terrible decision."', '']);
@@ -379,6 +387,7 @@ export class Director {
     if (this.imposter) { this.imposter.update(dt); return; }
     if (this.boss) { this.boss.update(dt, ctx); this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } return; }      // (BOSS FIGHT: boss.js)
     if (this.prophunt) { this.prophunt.update(dt); return; }      // (PROP HUNT)
+    if (this.snd) { this.snd.update(dt); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } return; }      // (SEARCH AND DESTROY)
     if (this.bbqm) this.bbqm.update(dt, ctx);      // (IAN'S BARBECUE: bbqmode.js)
     if (this.remote) { if (this.mode === 'sweep' && this.sweep) { this.trolleyFollow(dt); this.othersTrolleys(dt); } this.updateBubbles(dt, ctx); if (this.receipt.visible) { this.receiptT -= dt; if (this.receiptT <= 0) this.receipt.visible = false; } if (g.fx && !this.bbqm) g.fx.setCountdown(this.hostHud && this.hostHud.includes('NEXT ATTACK') ? this.hostHud.split('·').pop().trim() : null); return; }
     if (this.pending) {                       // an announced attack that hasn't landed yet
@@ -1116,6 +1125,7 @@ export class Director {
 
   hud() {
     if (this.imposter || this.prophunt) return null;
+    if (this.snd) return this.snd.hudLine();      // (SEARCH AND DESTROY)
     if (this.boss) return this.boss.hud();      // (BOSS FIGHT)
     if (this.remote) return this.hostHud || null;
     if (!this.running || this.mode === 'classic') return null;

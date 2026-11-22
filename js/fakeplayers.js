@@ -8,11 +8,14 @@
 //   - IMPOSTER: a crewmate walks to its jobs and does them; an imposter stalks someone and kills when it can; in a
 //     meeting it votes (someone, or skip)
 //   - BOSS FIGHT: it chips away at the boss with thrown food
+//   - SEARCH AND DESTROY: it picks a gun, walks to a site (the bomb carrier plants there; defenders guard, and defuse a
+//     planted bomb), picks up a dropped bomb, and shoots at enemies it can see
 //   - everything else: it wanders, stops, "eats" (its hand to its mouth)
 // startFakePlayers(code, n) -> { bots, set(n), stop() }. Nothing here is loaded unless developer mode asks for it.
 import { RELAY } from './net.js';
 import { SQUAD } from './squad.js';
 import { TASKS, IMP } from './imposter.js';
+import { MAPS as SD_MAPS, GUNS as SD_GUNS } from './sndkit.js';
 
 const NAMES = ['LEWIS', 'CHLOE', 'ETHAN', 'HARRY', 'AIDAN', 'NOAH', 'OLIVER', 'DYLAN', 'CONNOR', 'ALFIE', 'BEN', 'IAN'];
 const rnd = (a, b) => a + Math.random() * (b - a), pick = (l) => l[Math.floor(Math.random() * l.length)];
@@ -62,10 +65,21 @@ class FakePlayer {
         this.send({ t: 'imV', v: Math.random() < 0.3 || !live.length ? 'skip' : pick(live) }); }); return; }
     if ((t === 'imRes' || t === 'imRound') && this.im) { this.im.phase = 'play'; this.im.killCD = Math.max(this.im.killCD, IMP.KILL_CD); return; }
     if (t === 'imWin' && this.im) { this.im.phase = 'over'; return; }
+    // SEARCH AND DESTROY
+    if (t === 'sdRound' && Array.isArray(m.list)) { const me = String(this.id), e = m.list.find(x => Array.isArray(x) && String(x[0]) === me); this.ph = null; this.im = null; this.boss = null;
+      if (!e) { this.sd = null; return; }
+      const team = e[3]; this.sd = { team, att: team === m.att, alive: true, phase: 'buy', car: String(m.car) === me, teams: Object.fromEntries(m.list.filter(Array.isArray).map(x => [String(x[0]), x[3]])), dead: new Set(), bots: {}, bomb: null, site: Math.random() < 0.5 ? 'A' : 'B', shotT: rnd(0.6, 1.4), actT: 0, gun: pick(SD_GUNS) };
+      const sp = m.sp && m.sp[this.id]; if (Array.isArray(sp) && Number.isFinite(sp[0])) { this.pos = { x: sp[0], z: sp[1] }; this.yaw = sp[2] || 0; }
+      this.path = []; this.waitT = 0; this.later(rnd(300, 1200), () => this.sd && this.send({ t: 'sdGun', g: this.sd.gun.id })); return; }
+    if (t === 'sdGo' && this.sd) { this.sd.phase = 'live'; return; }
+    if (t === 'sdKill' && this.sd) { this.sd.dead.add(String(m.v)); if (String(m.v) === String(this.id)) { this.sd.alive = false; this.sd.actT = 0; this.path = []; } return; }
+    if (t === 'sdBomb' && this.sd) { this.sd.bomb = m; this.sd.car = m.st === 'carried' && String(m.id) === String(this.id); if (m.st === 'planted' && m.s) this.sd.site = m.s; return; }
+    if (t === 'sdBots' && this.sd && Array.isArray(m.b)) { for (const e of m.b) if (Array.isArray(e)) this.sd.bots[String(e[0])] = { x: e[1], z: e[2] }; return; }
+    if ((t === 'sdEnd' || t === 'sdOver') && this.sd) { this.sd.phase = 'end'; return; }
     // BOSS FIGHT
     if (t === 'bossS') { if (this.ph || this.im) { this.ph = null; this.im = null; } this.boss = { hp: m.hp, st: m.st, x: m.x, z: m.z, at: performance.now() }; return; }
   }
-  reset() { this.ph = null; this.im = null; this.boss = null; this.alive = true; this.run = 0; this.path = []; this.waitT = rnd(0.5, 2); this.pos = null; }
+  reset() { this.sd = null; this.ph = null; this.im = null; this.boss = null; this.alive = true; this.run = 0; this.path = []; this.waitT = rnd(0.5, 2); this.pos = null; }
 
   // ---------------------------------------------------------------- every frame
   update(dt) {
@@ -76,7 +90,8 @@ class FakePlayer {
     if (!this.pos || !Number.isFinite(this.pos.x)) { const near = host || { x: 0, z: 0 }; const k = this.freeNear(nav, near.x, near.z, 4); if (k < 0) return; const c = nav.center(k); this.pos = { x: c.x, z: c.y }; }
     const ph = this.ph, im = this.im;
     // what it's doing
-    if (ph && ph.found) { this.wander(nav, dt, host, 10); }      // (a found hider: a ghost, mooching about)
+    if (this.sd) this.sdPlay(nav, dt);
+    else if (ph && ph.found) { this.wander(nav, dt, host, 10); }      // (a found hider: a ghost, mooching about)
     else if (ph && ph.role === 'hider') {
       if (!ph.locked && ph.kind && (ph.phase === 'hide' || this.run > 0)) { if (!this.path.length && (this.run || 0) <= 0) { this.lockHere(); } else this.walk(nav, dt, 2.2); if (!this.path.length && this.run > 0) this.goto(nav, this.pos.x + rnd(-6, 6), this.pos.z + rnd(-6, 6)); this.run -= dt; }
       if ((ph.tauntT -= dt) <= 0 && ph.phase === 'seek') { ph.tauntT = rnd(14, 30); this.send({ t: 'phTaunt', i: Math.floor(Math.random() * 8) }); }
@@ -90,6 +105,31 @@ class FakePlayer {
     else { this.wander(nav, dt, host, 9); if (this.boss && this.boss.hp > 0 && Math.random() < dt / 4) this.send({ t: 'bossHit', d: Math.round(rnd(12, 30)), w: Math.random() < 0.15 ? 1 : 0, p: [r2(this.boss.x || 0), 2.5, r2(this.boss.z || 0)] }); }
     if (im && im.killCD > 0) im.killCD -= dt;
     this.pose(dt, RS);
+  }
+  // SEARCH AND DESTROY: plant, defuse, pick the bomb up, guard a site, shoot whoever it can see
+  sdPlay(nav, dt) {
+    const sd = this.sd, M = SD_MAPS[(window.RS && window.RS.room && window.RS.room.placeId) || 'pub'] || SD_MAPS.pub; if (!sd.alive || sd.phase !== 'live') return;
+    if (sd.actT > 0) { sd.actT -= dt; if (sd.actT <= 0) { this.send(sd.acting === 'plant' ? { t: 'sdPlant', s: sd.site, p: [r2(this.pos.x), r2(this.pos.z)] } : { t: 'sdDefuse' }); sd.acting = null; } return; }
+    if ((sd.shotT -= dt) <= 0) { sd.shotT = rnd(0.45, 1.1) * (sd.gun.rate > 0.5 ? 2 : 1); const tg = this.sdTarget(); if (tg) { const a = [r2(this.pos.x), 1.4, r2(this.pos.z)], b = [r2(tg.x), 1.2, r2(tg.z)];
+      this.yaw = Math.atan2(-(tg.x - this.pos.x), -(tg.z - this.pos.z)); this.send({ t: 'sdShot', a, b, g: SD_GUNS.indexOf(sd.gun), n: 1 }); if (Math.random() < 0.55) this.send({ t: 'sdHit', v: tg.id, d: Math.round(sd.gun.dmg * Math.min(2, sd.gun.pellets) * 0.8), hs: 0, p: b }); return; } }
+    const b = sd.bomb, d2 = (p) => Math.hypot(p[0] - this.pos.x, p[1] - this.pos.z); let goal = null;
+    if (sd.att) { if (sd.car) { const S = M[sd.site]; goal = S; if (d2(S) < S[2] * 0.6) { sd.actT = 3.6; sd.acting = 'plant'; this.path = []; this.send({ t: 'sdAct', k: 'plant', on: 1 }); return; } }
+      else if (b && b.st === 'dropped' && Array.isArray(b.p)) { goal = b.p; if (d2(b.p) < 1.2) this.send({ t: 'sdTake', i: -1 }); }
+      else if (b && b.st === 'planted' && Array.isArray(b.p)) goal = [b.p[0] + 2, b.p[1] + 1];
+      else { const S = M[sd.site]; goal = [S[0] + (this.i % 3 - 1) * 2, S[1] + 1.5]; } }
+    else if (b && b.st === 'planted' && Array.isArray(b.p)) { goal = b.p; if (d2(b.p) < 1.0) { sd.actT = 6.9; sd.acting = 'defuse'; this.path = []; this.send({ t: 'sdAct', k: 'defuse', on: 1 }); return; } }
+    else { const S = M[this.i % 2 ? 'A' : 'B']; goal = [S[0] + (this.i % 3 - 1) * 1.6, S[1] - 1.2]; }
+    if (!goal) return; if (d2(goal) < 0.8) { this.path = []; return; }
+    if (!this.path.length || !this.sdGoal || Math.hypot(this.sdGoal[0] - goal[0], this.sdGoal[1] - goal[1]) > 1) { this.sdGoal = [goal[0], goal[1]]; this.goto(nav, goal[0], goal[1]); }
+    this.walk(nav, dt, 2.2);
+  }
+  sdTarget() {
+    const sd = this.sd, me = this.pos, snd = window.RS && window.RS.director && window.RS.director.snd, out = [];
+    for (const [id, p] of this.poses) if (sd.teams[String(id)] && sd.teams[String(id)] !== sd.team && !sd.dead.has(String(id))) out.push({ id: String(id), x: p.x, z: p.z });
+    for (const id in sd.bots) if (sd.teams[id] && sd.teams[id] !== sd.team && !sd.dead.has(id)) out.push({ id, x: sd.bots[id].x, z: sd.bots[id].z });
+    let best = null, bd = 20; for (const o of out) { const d = Math.hypot(o.x - me.x, o.z - me.z); if (d >= bd) continue;
+      if (snd && snd.canSee && window.RS.THREE) { const T = window.RS.THREE; if (!snd.canSee(new T.Vector3(me.x, 1.5, me.z), new T.Vector3(o.x, 1.4, o.z))) continue; } best = o; bd = d; }
+    return best;
   }
   freeNear(nav, x, z, r) { for (let k = 0; k < 40; k++) { const q = nav.idx(x + rnd(-r, r), z + rnd(-r, r)); if (q >= 0 && nav.free[q]) return q; } return nav.nearestFree(x, z); }
   goto(nav, x, z) { const p = nav.path(this.pos.x, this.pos.z, x, z); this.path = p ? p.map(v => ({ x: v.x, z: v.y })) : []; }
