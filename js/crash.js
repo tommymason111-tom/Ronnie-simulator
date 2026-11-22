@@ -55,10 +55,14 @@
   var RUN = 'rs_run';
   try {
     var prev = JSON.parse(localStorage.getItem(RUN) || 'null');
-    if (prev && !prev.bg && Date.now() - prev.last < 30 * 60 * 1000) setTimeout(function () { send('killed', 'session ended without closing (killed by the device?)', '', { v: prev.v, p: prev.p, md: prev.md, vr: prev.vr, mp: prev.mp, mem: prev.mem, t: Math.round((prev.last - prev.t0) / 1000) }); }, 3000);
+    if (prev && !prev.bg && Date.now() - prev.last < 30 * 60 * 1000) { try { localStorage.setItem('rs_lastkill', JSON.stringify({ at: prev.last, st: prev.st || '', p: prev.p, md: prev.md, mp: prev.mp, fk: prev.fk || 0, mem: prev.mem, v: prev.v })); } catch (e) {} }
+    if (prev && !prev.bg && Date.now() - prev.last < 30 * 60 * 1000) setTimeout(function () { send('killed', 'session ended without closing (killed by the device?)' + (prev.st ? ' during: ' + prev.st : '') + (prev.fk ? ' (' + prev.fk + ' fake players)' : ''), '', { v: prev.v, p: prev.p, md: prev.md, vr: prev.vr, mp: prev.mp, mem: prev.mem, t: Math.round((prev.last - prev.t0) / 1000) }); }, 3000);
   } catch (e) {}
   var t0 = Date.now(), lastTick = Date.now(), readyAt = 0;
-  function beat(bg) { try { var w = where(); localStorage.setItem(RUN, JSON.stringify({ v: window.GAME_BUILD, t0: t0, last: Date.now(), p: w.p, md: w.md, vr: w.vr, mp: w.mp, mem: mem(), bg: !!bg })); } catch (e) {} }
+  function beat(bg) { try { var w = where(), f = window.__fakes && window.__fakes.bots ? window.__fakes.bots.length : 0; localStorage.setItem(RUN, JSON.stringify({ v: window.GAME_BUILD, t0: t0, last: Date.now(), p: w.p, md: w.md, vr: w.vr, mp: w.mp, mem: mem(), bg: !!bg, st: String(window.__crashStep || '').slice(0, 40), fk: f })); } catch (e) {} }
+  // (what the game was doing: window.__crashStep, set as it goes (the menu screen, each loading step, playing). A killed
+  // session's report says it, and so does the test room's bar on the next load (rs_lastkill), for whoever's testing)
+  window.__crashBeat = function () { if (document.visibilityState === 'visible') beat(false); };
   beat(false);
   setInterval(function () {
     var now = Date.now(), gap = now - lastTick; lastTick = now;

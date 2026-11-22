@@ -727,6 +727,7 @@ function respawnPlayer() {
 }
 // a new game, for this player: off the end screen / pause menu, the mode started fresh, back at the start
 function newGame(id, why) {
+  window.__crashStep = 'new game: ' + id;
   // (only the games this place has: Run the Pub needs the pub's bar and seats, the sweep needs Lidl. A game from anywhere
   // else (another player's restart message, a stray call) starts this place's own first game instead of crashing)
   { const ok = PLACE_GAMES[room.placeId]; if (ok && !ok.includes(id)) { console.warn('not a game for ' + room.placeId + ': ' + id); id = ok[0]; } }
@@ -1219,7 +1220,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && pla
 
 // the loading screen goes once the first frame of the level has been drawn
 let loadShown = true;
-function hideLoading() { if (!loadShown) return; loadShown = false; const ls = document.getElementById('loadscreen'); if (ls && ls.classList.contains('on')) { window.__ls && window.__ls('go'); setTimeout(() => { ls.classList.add('fade'); setTimeout(() => ls.classList.remove('on', 'fade'), 320); }, 220); } }
+function hideLoading() { window.__crashStep = 'playing ' + (director.fullMode || director.mode || ''); if (!loadShown) return; loadShown = false; const ls = document.getElementById('loadscreen'); if (ls && ls.classList.contains('on')) { window.__ls && window.__ls('go'); setTimeout(() => { ls.classList.add('fade'); setTimeout(() => ls.classList.remove('on', 'fade'), 320); }, 220); } }
 const menuCam = new THREE.PerspectiveCamera(70, 1, 0.05, 40), menuShot = { t: 0, yaw: 0, dir: 1 };
 // ---------------- the pause menu in the headset ----------------
 // The phone's pause menu, drawn on a panel that floats in front of you: point a controller (or your hand) at a
