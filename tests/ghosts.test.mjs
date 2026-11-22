@@ -72,6 +72,14 @@ export default async function () {
     C.ok(seen.mats > 0 && seen.ghostMats === seen.mats, `${B.pname}'s ghost isn't see-through (${seen.ghostMats} of ${seen.mats} materials)`);
     C.ok(seen.near != null && seen.near < 1.2, `${B.pname}'s ghost isn't where they are (${seen.near && seen.near.toFixed(2)}m off)`);
     C.ok(seen.body && seen.mainHidden, `${B.pname}'s body isn't on the floor any more (body ${seen.body})`);
+    // every body, on everyone's game (your own death too): that player's own character, laid out flat on the floor and
+    // drawn (it was a blue blob, or nothing at all, on the dead player's own screen), with its outline drawn over the blood
+    for (const p of pages) { const bs = await ev(p, () => { const m = RS.director.imposter; return m.bodies.filter(b => !b.cleared).map(b => { const av = b.pup || m.avatar(b.id), r = av && av.c && av.c.rag, pl = m.players.get(b.id);
+        let shown = !!(r && r.group && r.group.visible && !av.impHidden); for (let o = r && r.group; o && shown; o = o.parent) if (!o.visible) shown = false;
+        const ch = r && r.pos('chest', new RS.THREE.Vector3()), pool = b.pool, out = b.outline;
+        return { mine: b.id === m.me, char: av && av.p && av.p.char, want: pl && pl.char, shown, flat: ch ? +(ch.y - (RS.room.floorAt ? RS.room.floorAt(ch.x, ch.z) : 0)).toFixed(2) : null, near: ch ? +Math.hypot(ch.x - b.at.x, ch.z - b.at.z).toFixed(2) : null, blob: b.grp.children.some(o => o.geometry && o.geometry.type === 'CapsuleGeometry'), order: pool && out ? out.renderOrder > pool.renderOrder : false }; }); });
+      C.ok(bs.length === 2, `${p.pname}: ${bs.length} bodies, not 2`);
+      for (const x of bs) C.ok(x.shown && !x.blob && x.char === x.want && x.flat != null && x.flat < 0.45 && x.near < 1.2 && x.order, `${p.pname}: a body${x.mine ? ' (their own)' : ''} isn't their character laid out on the floor: ${JSON.stringify(x)}`); }
     // the living see no ghost at all
     for (const i of living) { const lv = await ev(pages[i], (ids) => { const m = RS.director.imposter; return { copies: m.ghostPups ? m.ghostPups.size : 0, ghost: !!RS.player.ghost,
         shown: ids.filter(id => { const pl = RS.net.players.get(id), av = pl && pl.avatar; return av && !av.impHidden && !av.impBody; }) }; }, [idA, idB]);

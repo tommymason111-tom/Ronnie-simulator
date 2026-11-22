@@ -360,17 +360,23 @@ export class Imposter {
   }
   // the bodies: the player's own character, flat out on the floor, cartoon style (X eyes, stars going round, a splat)
   makeBody(b) {
-    const g = this.g, av = this.avatar(b.id), fy = g.room.floorAt ? g.room.floorAt(b.at.x, b.at.z) : 0;
+    const g = this.g, live = this.avatar(b.id), fy = g.room.floorAt ? g.room.floorAt(b.at.x, b.at.z) : 0;
     b.grp = new THREE.Group(); b.grp.position.set(b.at.x, fy, b.at.z); this.grp.add(b.grp);
     // lined up with the body (it lies on its back along its own facing, head behind where it stood)
-    const yaw = av && av.c && av.c.rag ? av.c.rag.yaw : Math.random() * 6.28, kH = av && av.c && av.c.rag ? av.c.rag.height / 1.68 : 1; b.grp.rotation.y = yaw;
+    const yaw = live && live.c && live.c.rag ? live.c.rag.yaw : Math.random() * 6.28;
+    // the body is their own character. Your own death, and anyone with no model of their own to lay out (Ronnie has no
+    // first-person body), get a model of the character made for the body: it was a blue blob
+    let av = live;
+    if (!live || !live.layOut || b.id === this.me) { try { b.pup = this.net.makeAvatar && this.net.makeAvatar({ id: 'body_' + b.id, name: '', char: b.char || 'ronnie' }); } catch (e) { b.pup = null; }
+      if (b.pup) { b.pup.impBody = true; b.pup.layK = 0; b.pup.tag.visible = false; b.pup.c.rag.placeAt(b.at.x, b.at.z, yaw); av = b.pup; } }
+    const kH = av && av.c && av.c.rag ? av.c.rag.height / 1.68 : 1; b.grp.rotation.y = yaw;
     // the pool of blood: dark, glossy, an irregular spread that seeps out from under the body over a few seconds
     { const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d'); const blob = (cx, cy, r, col) => { x.fillStyle = col; x.beginPath(); for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI * 2, rr = r * (0.82 + 0.18 * Math.sin(a * 3 + cx) + 0.1 * Math.sin(a * 7 + cy)); x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } x.fill(); };
       blob(128, 120, 92, '#5a0008'); blob(150, 150, 60, '#5a0008'); blob(96, 90, 54, '#5a0008'); blob(124, 118, 70, '#7a000c'); blob(140, 140, 40, '#8e0a14');
       x.fillStyle = 'rgba(255,255,255,0.25)'; x.beginPath(); x.ellipse(110, 96, 22, 8, -0.5, 0, 7); x.fill();
       const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
       b.pool = new THREE.Mesh(new THREE.PlaneGeometry(1.5 * kH, 1.5 * kH), new THREE.MeshPhongMaterial({ map: t, transparent: true, shininess: 120, specular: 0x552222, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-      b.pool.rotation.x = -Math.PI / 2; b.pool.position.set(0, 0.012, -0.3 * kH); b.pool.scale.setScalar(0.05); b.grp.add(b.pool); b.poolT = 0; }
+      b.pool.renderOrder = 3; b.pool.rotation.x = -Math.PI / 2; b.pool.position.set(0, 0.012, -0.3 * kH); b.pool.scale.setScalar(0.05); b.grp.add(b.pool); b.poolT = 0; }
     // the white tape outline round where they lie, like a crime scene
     { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 320; const x = cv.getContext('2d'); x.lineCap = x.lineJoin = 'round';
       const fig = (w, col) => { x.strokeStyle = col; x.fillStyle = col; x.lineWidth = w; x.beginPath(); x.arc(128, 46, 24 + w / 2 - 6, 0, 7); x.fill();
@@ -380,7 +386,7 @@ export class Imposter {
       fig(10, '#ffffff'); x.globalCompositeOperation = 'destination-out'; fig(0, '#000'); x.globalCompositeOperation = 'source-over';
       const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
       const o = new THREE.Mesh(new THREE.PlaneGeometry(1.25 * kH, 1.56 * kH), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }));
-      o.rotation.x = -Math.PI / 2; o.position.set(0, 0.014, 0.08 * kH); b.grp.add(o); }      // (centred on the whole body: head at -0.7, feet at +0.9 from the hips)
+      o.renderOrder = 4; o.rotation.x = -Math.PI / 2; o.position.set(0, 0.014, 0.08 * kH); b.grp.add(o); b.outline = o; }      // (centred on the whole body: head at -0.7, feet at +0.9 from the hips)
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128; const x = cv.getContext('2d'); txt(x, '✖  ✖', 128, 64, 70, '#fff'); const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
     b.eyes = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false })); b.eyes.scale.set(0.34, 0.17, 1); b.eyes.renderOrder = 21; b.grp.add(b.eyes);
     b.stars = []; for (let i = 0; i < 4; i++) { const s = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xffd400 : 0xffffff })); b.grp.add(s); b.stars.push(s); }
@@ -477,7 +483,7 @@ export class Imposter {
     const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true })); sign.scale.set(0.95, 0.24, 1); if (kit) { const d = Math.hypot(k.position.x, k.position.z), pull = d > 1e-3 ? Math.min(0.45, d) / d : 0; sign.position.set(k.position.x * (1 - pull), Math.max(2.05, kit[1] + 0.95), k.position.z * (1 - pull)); } else sign.position.set(0.55, 2.05, 0); g.add(sign);
     void stand; void add; return g;
   }
-  dropBody(b) { if (b.grp) this.grp.remove(b.grp); }
+  dropBody(b) { if (b.grp) this.grp.remove(b.grp); if (b.pup) { try { b.pup.dispose(); } catch (e) {} b.pup = null; } }
   avatar(id) { if (id === this.me) return this.g.selfBody(); const p = this.net.players.get(id); return p && p.avatar; }
   // every player's character in the right state: alive (normal), a body (flat on the floor), a ghost (gone, unless
   // you're a ghost too), down a trapdoor (gone)
@@ -489,6 +495,7 @@ export class Imposter {
       av.impBody = !!body; av.impHidden = !body && (!p.alive || p.vent) && !(p.id === this.me);
       av.impRed = this.amImp() && p.realImp && p.imp;
       if (p.id === this.me) av.impHidden = !p.alive;
+      if (body && body.pup) { av.impHidden = true; av.impBody = false; }
       if (body && !av.impLaid) { av.impLaid = true; av.layK = 0; }      // (it lays itself out: see SquadPuppet.layOut)
       if (!body && av.impLaid) { av.impLaid = false; if (av.down > 0) av.down = 0.01; }
     }
@@ -873,7 +880,7 @@ body.imposter.flat #imp-tasks { display: block; } #imp-tasks.imp { border-color:
     this.bigBtn.material.emissive.setHex(this.phase === 'play' && Math.sin(performance.now() / 300) > 0 ? 0x990000 : 0x330000);
     this.animFx(dt);
     // bodies: stars round the head; the pan coming down on a fresh one
-    for (const b of this.bodies) { if (b.cleared || !b.grp) continue; const av = this.avatar(b.id), hp = av && av.c && av.c.headPos ? av.c.headPos(new THREE.Vector3()) : null;
+    for (const b of this.bodies) { if (b.cleared || !b.grp) continue; if (b.pup) b.pup.update(dt, null); const av = b.pup || this.avatar(b.id), hp = av && av.c && av.c.headPos ? av.c.headPos(new THREE.Vector3()) : null;
       const at = hp ? b.grp.worldToLocal(hp.clone()) : new THREE.Vector3(0, 0.25, 0); b.eyes.position.copy(at).add({ x: 0, y: 0.18, z: 0 });
       // line the outline and the pool up with where the body actually came to rest (hips to head)
       if (av && av.c && av.c.rag && (b.alignT = (b.alignT || 0) + dt) < 1.6) { const r = av.c.rag, pv = r.pos('pelvis', new THREE.Vector3()), hd = r.pos('head', new THREE.Vector3()), dx = hd.x - pv.x, dz = hd.z - pv.z;
