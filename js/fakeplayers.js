@@ -27,7 +27,7 @@ class FakePlayer {
     const pid = this.pid = pid0 || Array.from({ length: 10 }, () => 'abcdefghjkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 31)]).join('');      // (the same id again after a page reload: the room knows it's the same player back)
     this.ws = new WebSocket(`${relay}/room/${code}?name=${encodeURIComponent(this.name)}&pid=${pid}`);
     this.ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (er) { return; } try { this.on(m); } catch (er) { console.warn('fake player', er); } };
-    this.ws.onopen = () => { this.send({ t: 'hi', name: this.name, char: this.char, v: window.GAME_BUILD }); setTimeout(() => this.send({ t: 'ready', r: 1 }), rnd(200, 500));      // (straight away: they're there to be tested with, not waited for) };
+    this.ws.onopen = () => { this.send({ t: 'hi', name: this.name, char: this.char, v: window.GAME_BUILD }); setTimeout(() => this.send({ t: 'ready', r: 1 }), rnd(200, 500));      /* (straight away: they're there to be tested with, not waited for) */ };
   }
   send(m) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(m)); }
   later(ms, f) { setTimeout(() => { if (this.ws && this.ws.readyState === 1) f(); }, ms); }
