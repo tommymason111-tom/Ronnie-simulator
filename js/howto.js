@@ -15,7 +15,13 @@ function label(g, txt, x, y, { size = 15, col = '#fff', bg = 'rgba(10,14,40,0.88
   g.fillStyle = bg; rr(g, x0, y - h / 2, w, h, 8); g.fill(); g.lineWidth = 2.5; g.strokeStyle = border; g.stroke();
   g.fillStyle = col; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, x0 + w / 2, y + 1);
 }
-function emoji(g, e, x, y, s) { g.font = `${s}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(e, x, y); }
+const EMO = {};
+function emoji(g, e, x, y, s) {
+  if (s <= 64) { g.fillStyle = '#000'; g.font = `${s}px sans-serif`;      /* (solid: a see-through colour left from before faded the emoji) */ g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(e, x, y); return; }
+  // (an iPhone leaves an emoji much bigger than this out of a canvas altogether: drawn at 64 and scaled up instead)
+  let c = EMO[e]; if (!c) { c = EMO[e] = document.createElement('canvas'); c.width = c.height = 96; const q = c.getContext('2d'); q.font = '64px sans-serif'; q.textAlign = 'center'; q.textBaseline = 'middle'; q.fillText(e, 48, 50); }
+  const k = s / 64, w = 96 * k; g.save(); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(c, x - w / 2, y - w / 2 - 2 * k, w, w); g.restore();
+}
 function arrow(g, x0, y0, x1, y1, col = '#ffd400', dash = [8, 6]) {
   g.save(); g.strokeStyle = col; g.lineWidth = 4; g.setLineDash(dash); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.setLineDash([]);
   const a = Math.atan2(y1 - y0, x1 - x0); g.fillStyle = col; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x1 - Math.cos(a - 0.45) * 14, y1 - Math.sin(a - 0.45) * 14); g.lineTo(x1 - Math.cos(a + 0.45) * 14, y1 - Math.sin(a + 0.45) * 14); g.fill(); g.restore();
@@ -153,6 +159,141 @@ function clock(g, W, H, two) {
   if (two) { emoji(g, '📱', W - 120, H / 2, 40); arrow(g, W - 160, H / 2 + 40, W - 80, H / 2 + 40); label(g, 'PASS IT ON', W - 120, H / 2 + 70, { size: 15 }); }
 }
 
+// ---------------------------------------------------------------- PROP HUNT and BOSS FIGHT
+function floorScene(g, W, H, c1, c2) {      // a room seen from the side: wall, skirting, floorboards
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, c1); gr.addColorStop(0.62, c2); gr.addColorStop(0.62, '#6b4a2e'); gr.addColorStop(1, '#3e2a18');
+  g.save(); rr(g, 0, 0, W, H, 22); g.clip(); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, H * 0.62 - 6, W, 6);
+  g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 2; for (let i = -6; i < 14; i++) { g.beginPath(); g.moveTo(W / 2 + i * 34, H * 0.62); g.lineTo(W / 2 + i * 90, H); g.stroke(); }
+  g.restore();
+}
+function shadow(g, x, y, w) { g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(x, y, w, w * 0.22, 0, 0, 7); g.fill(); }
+function bubble(g, txt, x, y, col = '#fff') {
+  g.font = `900 16px ${FONT}`; const w = g.measureText(txt).width + 22, h = 32;
+  g.fillStyle = col; rr(g, x - w / 2, y - h / 2, w, h, 14); g.fill(); g.beginPath(); g.moveTo(x - 8, y + h / 2 - 1); g.lineTo(x, y + h / 2 + 12); g.lineTo(x + 8, y + h / 2 - 1); g.fill();
+  g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, x, y + 1);
+}
+function hpBar(g, x, y, w, k, col = '#39ff14', txt) {
+  g.fillStyle = 'rgba(0,0,0,0.65)'; rr(g, x - w / 2 - 3, y - 9, w + 6, 18, 9); g.fill();
+  g.fillStyle = col; rr(g, x - w / 2, y - 6, Math.max(6, w * k), 12, 6); g.fill();
+  if (txt) { g.fillStyle = '#fff'; g.font = `900 12px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, x, y + 1); }
+}
+function toyGun(g, x, y, s = 1) {      // the seekers' toy blaster, side on
+  g.save(); g.translate(x, y); g.scale(s, s);
+  g.fillStyle = '#2b2f3a'; rr(g, -70, -18, 120, 30, 10); g.fill();                   // body
+  g.fillStyle = '#ff7a00'; rr(g, 40, -12, 38, 18, 6); g.fill();                      // orange muzzle
+  g.fillStyle = '#3a404f'; rr(g, -64, -30, 70, 14, 6); g.fill();                     // top rail
+  g.fillStyle = '#2b2f3a'; g.beginPath(); g.moveTo(-50, 10); g.lineTo(-20, 10); g.lineTo(-30, 52); g.lineTo(-62, 52); g.closePath(); g.fill();      // grip
+  g.strokeStyle = '#2b2f3a'; g.lineWidth = 5; g.beginPath(); g.arc(-12, 18, 12, 0, Math.PI); g.stroke();    // trigger guard
+  g.fillStyle = '#9fd8ff'; rr(g, -40, -27, 22, 8, 3); g.fill();                      // sight
+  g.restore();
+}
+function crosshair(g, x, y, r = 26, col = '#ff3b3b') {
+  g.strokeStyle = col; g.lineWidth = 3; g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke();
+  for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { g.beginPath(); g.moveTo(x + a * (r - 10), y + b * (r - 10)); g.lineTo(x + a * (r + 10), y + b * (r + 10)); g.stroke(); }
+}
+function eyes(g, x, y) { for (const dx of [-9, 9]) { g.fillStyle = '#fff'; g.beginPath(); g.ellipse(x + dx, y, 7, 9, 0, 0, 7); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(x + dx + 2, y + 1, 3.5, 0, 7); g.fill(); } }
+
+function propHunt(g, W, H, page) {
+  const fy = H * 0.74;
+  if (page === 'intro') {
+    floorScene(g, W, H, '#3b4f8f', '#2a3a72');
+    const props = [['🛢️', 90], ['🗑️', 200], ['🪴', 330], ['📦', 450], ['🛢️', 560]];
+    for (const [e, x] of props) { shadow(g, x, fy + 26, 30); emoji(g, e, x, fy, 58); }
+    eyes(g, 330, fy - 8); label(g, '👀 A HIDER!', 330, fy - 62, { size: 15, border: '#39ff14' });
+    label(g, '🔫 SEEKERS', W * 0.2, 34, { size: 17, border: '#ff3b3b' }); label(g, '🎭 HIDERS', W * 0.5, 34, { size: 17, border: '#39ff14' }); label(g, '🔁 4 ROUNDS', W * 0.8, 34, { size: 17 });
+    label(g, 'ONE OF THESE IS A MATE', W / 2, H * 0.36, { size: 16, border: '#fff' });
+    return;
+  }
+  if (page === 'hide') {
+    floorScene(g, W, H, '#3b6f5a', '#28503f');
+    shadow(g, 140, fy + 30, 30); emoji(g, '🧍', 140, fy - 6, 64);
+    arrow(g, 190, fy - 10, 380, fy - 10, '#39ff14', [10, 6]);
+    label(g, '👆 TAP IT TO BECOME IT', 285, fy - 52, { size: 15, border: '#39ff14' });
+    shadow(g, 440, fy + 30, 32); emoji(g, '🛢️', 440, fy - 2, 62); eyes(g, 440, fy - 8);
+    shadow(g, 545, fy + 30, 26); emoji(g, '🛢️', 545, fy, 54);
+    g.fillStyle = 'rgba(10,14,40,0.88)'; rr(g, W / 2 - 70, 18, 140, 54, 14); g.fill(); g.strokeStyle = '#ffd400'; g.lineWidth = 3; g.stroke();
+    g.fillStyle = '#ffd400'; g.font = `900 30px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('0:40', W / 2, 46);
+    label(g, '🙈 SEEKERS HAVE THEIR EYES SHUT', W / 2, 96, { size: 14, border: '#fff' });
+    label(g, '🎭 PROPS', W - 70, 46, { size: 15, border: '#c792ff' });
+    return;
+  }
+  if (page === 'lock') {
+    floorScene(g, W, H, '#5a3b7a', '#3f2858');
+    shadow(g, W / 2, fy + 30, 36); emoji(g, '🗑️', W / 2, fy - 2, 64); eyes(g, W / 2, fy - 12);
+    emoji(g, '🔒', W / 2 + 46, fy - 40, 34); label(g, 'LOCKED IN', W / 2, fy - 86, { size: 15, border: '#ffd400' });
+    bubble(g, 'QUACK! 🦆', 130, 70, '#fff3a6'); bubble(g, '📯 AIRHORN', W - 130, 70, '#a6e3ff'); bubble(g, '🎺 KAZOO', 150, 150, '#ffc2e0');
+    label(g, '+ POINTS FOR EVERY TAUNT', W - 150, 150, { size: 14, border: '#39ff14' });
+    return;
+  }
+  if (page === 'seek') {
+    floorScene(g, W, H, '#7a3b3b', '#562828');
+    shadow(g, 400, fy + 28, 30); emoji(g, '🛢️', 400, fy - 2, 58); eyes(g, 400, fy - 8);
+    crosshair(g, 400, fy - 6, 30); emoji(g, '💥', 372, fy - 36, 30);
+    hpBar(g, 400, fy - 74, 90, 0.75, '#ffd400', '75'); label(g, '-25!', 470, fy - 74, { size: 14, border: '#ff3b3b' });
+    shadow(g, 545, fy + 28, 26); emoji(g, '🛢️', 545, fy, 52);
+    toyGun(g, 150, H * 0.5, 1.1);
+    g.strokeStyle = 'rgba(255,240,120,0.9)'; g.lineWidth = 4; g.setLineDash([12, 10]); g.beginPath(); g.moveTo(240, H * 0.5 - 10); g.lineTo(370, fy - 10); g.stroke(); g.setLineDash([]);
+    label(g, '4 HITS AND THEY\'RE FOUND', W / 2, 30, { size: 15, border: '#ff3b3b' });
+    label(g, '💨 HIT: THEY GET A BURST OF SPEED', W / 2, 64, { size: 13, border: '#9fd8ff' });
+    return;
+  }
+  if (page === 'found') {
+    floorScene(g, W, H, '#2f3f6a', '#1f2b4c');
+    emoji(g, '👻', 180, H * 0.42, 64); label(g, 'FOUND: A GHOST', 180, H * 0.42 - 58, { size: 14, border: '#fff' });
+    arrow(g, 220, H * 0.46, 320, H * 0.56, '#c9d3ff', [6, 6]); emoji(g, '👀', 345, H * 0.58, 30);
+    g.fillStyle = 'rgba(10,14,40,0.9)'; rr(g, W - 230, 30, 200, 150, 16); g.fill(); g.strokeStyle = '#ffd400'; g.lineWidth = 3; g.stroke();
+    g.fillStyle = '#ffd400'; g.font = `900 16px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🏆 POINTS', W - 130, 54);
+    g.font = `800 14px ${FONT}`; g.fillStyle = '#fff'; g.textAlign = 'left';
+    [['🔫 A FIND', '+'], ['⏱ HIDDEN', '+'], ['🛡 SURVIVED', '+']].forEach(([t], i) => { g.fillText(t, W - 214, 86 + i * 30); g.fillStyle = '#39ff14'; g.fillText('+++', W - 84, 86 + i * 30); g.fillStyle = '#fff'; });
+    shadow(g, 470, fy + 28, 26); emoji(g, '📦', 470, fy, 52);
+    return;
+  }
+}
+function bossPic(g, W, H, page) {
+  const fy = H * 0.8;
+  const sky = (c1, c2) => { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, c1); gr.addColorStop(0.7, c2); gr.addColorStop(0.7, '#3d4048'); gr.addColorStop(1, '#25272d'); g.save(); rr(g, 0, 0, W, H, 22); g.clip(); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 3; g.setLineDash([22, 16]); g.beginPath(); g.moveTo(0, H * 0.86); g.lineTo(W, H * 0.86); g.stroke(); g.setLineDash([]); g.restore(); };
+  const bar = (k) => { g.fillStyle = 'rgba(0,0,0,0.7)'; rr(g, 60, 16, W - 120, 26, 13); g.fill(); g.fillStyle = '#ff3b3b'; rr(g, 64, 20, (W - 128) * k, 18, 9); g.fill(); g.fillStyle = '#fff'; g.font = `900 13px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('👹 BOSS HEALTH', W / 2, 30); };
+  if (page === 'intro') {
+    sky('#ff8a3d', '#7a2a5a'); bar(1);
+    shadow(g, W / 2, fy + 10, 90); emoji(g, '👹', W / 2, H * 0.5, 150);
+    for (const x of [90, W - 90]) { shadow(g, x, fy + 12, 22); emoji(g, '🧍', x, fy - 18, 50); }
+    label(g, 'A GIANT ONE OF THE LADS', W / 2, H * 0.86, { size: 15, border: '#ffd400' });
+    for (const [x, y] of [[150, 90], [W - 150, 110], [120, 170]]) emoji(g, '💨', x, y, 28);
+    return;
+  }
+  if (page === 'food') {
+    sky('#3d8bff', '#28407a'); bar(0.62);
+    shadow(g, 470, fy + 8, 70); emoji(g, '👹', 470, H * 0.52, 120);
+    shadow(g, 110, fy + 12, 22); emoji(g, '🧍', 110, fy - 18, 54);
+    g.strokeStyle = 'rgba(255,240,120,0.9)'; g.lineWidth = 4; g.setLineDash([10, 8]); g.beginPath(); g.moveTo(140, fy - 50); g.quadraticCurveTo(280, 40, 420, H * 0.45); g.stroke(); g.setLineDash([]);
+    emoji(g, '🍔', 280, 110, 40); emoji(g, '💥', 425, H * 0.42, 40);
+    label(g, '-DAMAGE!', 520, H * 0.3, { size: 15, border: '#ff3b3b' }); label(g, '🎯 THROW FOOD AT THEM', 190, H * 0.62, { size: 14, border: '#39ff14' });
+    return;
+  }
+  if (page === 'floor') {
+    sky('#5a5f6a', '#3a3e48');
+    const ring = (x, y, r, col) => { g.fillStyle = col; g.beginPath(); g.ellipse(x, y, r, r * 0.32, 0, 0, 7); g.fill(); };
+    ring(150, fy, 95, 'rgba(255,40,40,0.55)'); label(g, '🔴 SLAM: GET OUT', 150, fy - 52, { size: 13, border: '#ff3b3b' });
+    ring(W / 2 + 40, fy, 90, 'rgba(255,40,40,0.55)'); ring(W / 2 + 40, fy, 34, 'rgba(57,255,20,0.75)'); label(g, '🟢 GET IN CLOSE', W / 2 + 40, fy - 52, { size: 13, border: '#39ff14' });
+    g.fillStyle = 'rgba(255,40,40,0.45)'; g.beginPath(); g.moveTo(W - 120, H * 0.62); g.lineTo(W - 60, H * 0.62); g.lineTo(W - 30, H); g.lineTo(W - 150, H); g.closePath(); g.fill();
+    label(g, '🔴 CHARGE: SIDE-STEP', W - 95, H * 0.55, { size: 13, border: '#ff3b3b' });
+    emoji(g, '👹', W / 2, H * 0.3, 70); emoji(g, '⚠️', 70, 40, 34); emoji(g, '⚠️', W - 70, 40, 34);
+    return;
+  }
+  if (page === 'hearts') {
+    sky('#7a3bd6', '#3d2470');
+    for (let i = 0; i < 5; i++) emoji(g, i < 3 ? '❤️' : '🖤', W / 2 - 120 + i * 60, 70, 44);
+    label(g, 'FIVE HEARTS', W / 2, 120, { size: 15, border: '#ff4fa3' });
+    shadow(g, 170, fy + 12, 24); emoji(g, '🧍', 170, fy - 18, 54); emoji(g, '🍕', 215, fy - 40, 34); label(g, '😋 FINISH FOOD: +❤️', 190, fy - 90, { size: 13, border: '#39ff14' });
+    g.fillStyle = 'rgba(10,14,40,0.9)'; rr(g, W - 250, H * 0.5, 210, 110, 14); g.fill(); g.strokeStyle = '#ffd400'; g.lineWidth = 3; g.stroke();
+    g.fillStyle = '#ffd400'; g.font = `900 16px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('3 PHASES', W - 145, H * 0.5 + 24);
+    for (let i = 0; i < 3; i++) { g.fillStyle = ['#39ff14', '#ffd400', '#ff3b3b'][i]; rr(g, W - 230 + i * 64, H * 0.5 + 50, 56, 40, 10); g.fill(); g.fillStyle = '#111'; g.font = `900 18px ${FONT}`; g.fillText(String(i + 1), W - 202 + i * 64, H * 0.5 + 71); }
+    return;
+  }
+}
+
 // draw page picture `kind` into the canvas (redrawn when portraits load)
 function drawHowPic(cv, pic, ctx = {}) {
   try { drawPic(cv, pic, ctx); } catch (e) { console.warn('howto pic', e); const g = cv.getContext('2d'); g.fillStyle = '#1c2c8c'; g.fillRect(0, 0, cv.width, cv.height); g.font = '110px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🍔', cv.width / 2, cv.height / 2); }
@@ -170,7 +311,9 @@ function drawPic(cv, pic, ctx) {
   else if (kind === 'bbq') bbq(g, W, H);
   else if (kind === 'date') dateTable(g, W, H);
   else if (kind === 'clock') clock(g, W, H, arg === '2');
-  else { bg(g, W, H); emoji(g, arg || kind, W / 2, H / 2, 110); }
+  else if (kind === 'ph') propHunt(g, W, H, arg);
+  else if (kind === 'boss') bossPic(g, W, H, arg);
+  else { bg(g, W, H); const gl = g.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, H * 0.6); gl.addColorStop(0, 'rgba(255,212,0,0.35)'); gl.addColorStop(1, 'rgba(255,212,0,0)'); g.fillStyle = gl; g.fillRect(0, 0, W, H); emoji(g, arg || kind, W / 2, H / 2, 120); }
   cv.dataset.v = (+cv.dataset.v || 0) + 1;      // (tells the headset panel it changed)
 }
 
