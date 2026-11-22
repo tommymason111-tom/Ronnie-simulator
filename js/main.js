@@ -1570,7 +1570,8 @@ function frame(simDt) {
   const cineC = simDt == null && director.boss && director.boss.cineCam(), cineHid = [];
   if (cineC) { const cp = cineC.position, groups = [selfBody && selfBody.c && selfBody.c.rag.group, ...[...net.players.values()].map(q => q.avatar && q.avatar.c && q.avatar.c.rag.group), ...cast.filter(c => c !== director.boss.c && c.rag).map(c => c.rag.group)];
     for (const gr of groups) { if (!gr || !gr.visible) continue; const near = gr === (selfBody && selfBody.c && selfBody.c.rag.group) || (() => { const w = gr.getWorldPosition(new THREE.Vector3()); return Math.hypot(w.x - cp.x, w.z - cp.z) < 1.5; })(); if (near) { gr.visible = false; cineHid.push(gr); } } }
-  if (simDt == null) renderer.render(scene, cineC || (director.prophunt && director.prophunt.viewCam()) || (director.imposter && director.imposter.replay && director.imposter.replay.cam) || emoteCam() || camera);      // (Imposter's replay, the BOSS FIGHT entrance and a PROP HUNT hider's view of their prop have their own cameras)
+  const dateC = simDt == null && director.date ? director.date.cineCam() : null;      // (DATE NIGHT's film shots, on a phone or a computer: datenight.js)
+  if (simDt == null) renderer.render(scene, cineC || dateC || (director.prophunt && director.prophunt.viewCam()) || (director.imposter && director.imposter.replay && director.imposter.replay.cam) || emoteCam() || camera);      // (Imposter's replay, the BOSS FIGHT entrance and a PROP HUNT hider's view of their prop have their own cameras)
   for (const gr of cineHid) gr.visible = true;
   learnShader();      // (a shader built during play: remember its kind, so next time it's built up front)
 }
