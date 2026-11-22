@@ -8,7 +8,7 @@ const MODES = [
   ['pub', 'everyone', { eat: true, thr: true, chips: /EATEN/ }],      // (the attack countdown is the red bar at the top on a phone)
   ['shop', 'sweep', { eat: false, thr: false, box: /TROLLEY/ }],
   ['garden', 'bbq', { eat: true, thr: true, chips: /IAN/ }],
-  ['restaurant', 'date', { eat: true, thr: true, chips: /EAT NOW|LOOKING/ }],
+  ['restaurant', 'date', { eat: true, thr: false, chips: /EAT NOW|LOOKING/ }],      // (sat at the table: no throwing, no joystick)
   ['bedroom', 'chonkoff', { eat: true, thr: true, chips: /EATEN/ }],
   ['pub', 'runpub', { eat: false, thr: false }],
   ['pub', 'roam', { eat: true, thr: true, chips: /EATEN/ }],

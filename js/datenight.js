@@ -9,7 +9,13 @@
 //   THE LADS           whoever's out tonight comes over: Harry's dating disasters (react right when she looks), Oliver's
 //                      shame cam (stay out of shot), Aidan and Connor's pints (find the Guinness), Dylan's Wonderwall
 //                      (grab what pops up), Ethan's free kick (a bread roll into your mouth)
-//   BUSTED             any time she catches you: her reaction, and a penalty. Three and the date's over
+//                      and Lewis's arm wrestle (push, and sneak bites with the other hand)
+//   THE BIRTHDAY SONG  the lights go down for table six's cake: eat on the beat, sing when she sings, freeze for candles
+//   BUSTED             any time she catches you: her reaction, your excuse (pick a good one), and a penalty. Three and
+//                      the date's over
+// No walking: you're sat at the table all night (the joystick and SPRINT go, keys and thumbsticks move nothing); the
+// loo raid puts you at each spot with a quick fade, and back. No skipping: every line stays up long enough to read.
+// The games themselves (rounds, art, scores) are in dngames.js.
 // Between the films it's the normal game: sit at the table, she glances away now and then, don't eat while she's
 // watching. Phones and computers get film shots (their own camera, letterbox bars, captions, big buttons at the bottom);
 // a headset keeps your own eyes and gets a small panel in the middle (trigger / grip / A for the buttons).
@@ -21,41 +27,67 @@ import { sfx } from './audio.js';
 import { track } from './awards.js';
 import { STAGES } from './config.js';
 import { FONT } from './textures.js';
+import { cramGame, signalGame, conveyorGame, napkinGame, raidGame, reactGame, viewfinderGame, shellGame, whackGame, kickGame, wrestleGame, birthdayGame, excuseGame, choiceGame, emo, rr2, txt } from './dngames.js';      // (the games themselves)
 
 const T = DATE_TABLE, RON = { x: T.x, z: T.z + 0.78 }, CHL = { x: T.x, z: T.z - 0.75 }, SEAT = { x: T.x, z: T.z + 1.05 };
+const SIT_DROP = -0.36;      // (how far your eyes drop when you sit down at the table: level with Chloe's)
 const SIDE = { x: T.x + 0.95, z: T.z + 0.1, yaw: -Math.PI / 2 };      // (where someone stands when they come over to the table)
 const R = (a) => a[Math.floor(Math.random() * a.length)];
+// how long a line stays up: comfortably readable on a phone (no skipping), never rushed
+const readTime = (s) => Math.min(8, Math.max(2.8, 1.4 + String(s).length * 0.062));
 const rr = (a, b) => a + Math.random() * (b - a);
 const ease = (t) => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
 const lerp = (a, b, k) => a + (b - a) * k;
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
+const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _x = new THREE.Vector3(1, 0, 0);
 const CHLOE_COL = '#B57BFF';
 
 // ---------------------------------------------------------------- the lines
 const LOOKS = {
   phone: { icon: '📱', title: 'SHE\'S ON HER PHONE', sub: 'Chester\'s been to the groomer\'s',
     lead: ['Oh my God, babe. Mum\'s sent me Chester\'s new haircut. Hang on.', 'Ooh, Chester\'s photos! Two seconds, babe.', 'Hold on, babe. Chester\'s on the vet\'s Instagram.'],
-    pose: 'phone', look: 0, fake: 'She laughs at a photo of Chester... and keeps scrolling', srcs: ['bread', 'plate'] },
+    pose: 'phone', look: 0, fake: 'She laughs at a photo of Chester... and keeps scrolling', pool: ['bread', 'pasta', 'chips', 'wine', 'butter', 'next'],
+    again: ['Oh wait, he\'s had his teeth done! Look at his little teeth!', 'Mum\'s sent another one. Chester in a jumper. Hang on.'], mutter: ['Aww, his little face.', 'Who\'s a good boy? CHESTER is.', 'Look at his little paws, babe. Don\'t look.'] },
   waiter: { icon: '😍', title: 'THE HOT WAITER', sub: 'She\'s pretending she isn\'t looking',
     lead: ['Babe, don\'t look now, but is that waiter... is he a model?', 'Who IS that? No, I\'m not looking. You\'re looking.', 'That waiter\'s got arms like Lewis. Don\'t tell Lewis.'],
-    pose: 'chin', look: 1.15, fake: 'He flicks his hair. She\'s gone again', srcs: ['bread', 'next'] },
+    pose: 'chin', look: 1.15, fake: 'He flicks his hair. She\'s gone again', pool: ['bread', 'next', 'wine', 'chips', 'pasta', 'butter'],
+    again: ['Oh my God, he\'s doing the pepper grinder thing again.', 'He\'s taking an order at the next table. Look at his FOREARMS.'], mutter: ['Is he single? For Harry. Asking for Harry.', 'He\'s got a tattoo of a fork. Who gets a fork?'] },
   board: { icon: '📋', title: 'THE SPECIALS BOARD', sub: 'She\'s reading every single one out loud',
     lead: ['Ooh, specials. Let me read them to you, babe. Slowly. Like you need to hear them.', 'Hold on, I want to see the specials. Not for you. You\'re having the soup.'],
-    pose: 'menu', look: -1.2, fake: '"Wait, is quinoa a grain?" ...she reads on', srcs: ['plate', 'bread'] },
+    pose: 'menu', look: -1.2, fake: '"Wait, is quinoa a grain?" ...she reads on', pool: ['pasta', 'bread', 'butter', 'wine', 'chips', 'next'],
+    again: ['Oh, they\'ve rubbed one off and written another. "Deconstructed salad". Babe!', 'Wait, there\'s a back to the board. Hold on.'], mutter: ['"Pan-seared kale." Lovely. For you.', '"Foam of leek." Babe. FOAM.', 'Twenty-two pounds for a radish. Iconic.'] },
   propose: { icon: '💍', title: 'A PROPOSAL', sub: 'Someone\'s down on one knee at table six',
     lead: ['Oh my God. Babe. BABE. He\'s proposing. Look! No, don\'t look, film it!', 'Is that a ring?! At La Grande Portion?! Babe, that could be us. One day. If you lose a stone.'],
-    pose: 'phoneup', look: -1.25, fake: 'She said yes! ...Chloe\'s crying. Keep going', srcs: ['next', 'plate'] },
+    pose: 'phoneup', look: -1.25, fake: 'She said yes! ...Chloe\'s crying. Keep going', pool: ['next', 'pasta', 'wine', 'bread', 'chips', 'butter'],
+    again: ['Now they\'re doing a first dance. In a RESTAURANT. I\'m crying.', 'Her mum\'s come out of the kitchen! She was in on it!'], mutter: ['She\'s saying yes! She\'s... still saying it.', 'Ronnie, would YOU ever? Don\'t answer with your mouth full.'] },
   lobster: { icon: '🦞', title: 'THE LOBSTER TANK', sub: 'Gary the lobster is making a break for it',
     lead: ['Babe. The lobster. The lobster\'s climbing OUT. Gary, NO.', 'Is that lobster waving at me? It\'s waving at me. Hi Gary!'],
-    pose: 'chin', look: 1.3, fake: 'Gary slips back in. She\'s still watching', srcs: ['next', 'bread'] },
+    pose: 'chin', look: 1.3, fake: 'Gary slips back in. She\'s still watching', pool: ['next', 'bread', 'chips', 'wine', 'pasta', 'butter'],
+    again: ['He\'s out again! Gary! GARY! He\'s heading for the kitchen!', 'Now Shelldon\'s going for it too. It\'s a jailbreak.'], mutter: ['Go on, Gary. Be free.', 'He\'s faster than you, babe. A LOBSTER is faster than you.'] },
+  foodpic: { icon: '📸', title: 'THE FOOD PHOTO', sub: 'Her salad needs forty-five photos. And the right light', look: 0.2,
+    lead: ['Hold on, babe. The light\'s perfect. Nobody touch the salad. NOBODY.', 'This is going on my story. Move your arm. Move your... move YOU, babe.'],
+    pose: 'photo', fake: 'Wait, that one\'s blurry. She takes forty more.', pool: ['bread', 'chips', 'butter', 'pasta', 'wine', 'next'],
+    again: ['Now one from ABOVE. Babe, hold my chair. Don\'t eat while you hold it.', 'Boomerang! Do the boomerang! Don\'t be in it.'], mutter: ['Hmm. Filter. Which filter. "Clarendon"? Too orange.', 'Ten likes already. Mum\'s liked it twice.', 'Can you breathe quieter? It\'s a video.'] },
+  ex: { icon: '😱', title: 'HER EX WALKS IN', sub: 'Darren. With a new girlfriend. She\'s hiding behind the menu',
+    lead: ['Oh my God. It\'s Darren. DON\'T LOOK. Babe, is he looking? Don\'t look!', 'Babe. My ex just walked in. With HER. I\'m hiding. Act normal. Like, NORMAL normal.'],
+    pose: 'menu', look: -1.25, fake: 'Darren waves. She ducks behind the menu again.', pool: ['next', 'bread', 'wine', 'pasta', 'chips', 'butter'],
+    again: ['Now he\'s ordering the SAME thing we had on our first date. The audacity.', 'She\'s wearing my JUMPER. That\'s my jumper, Ronnie!'], mutter: ['Is he still looking? Don\'t look!', 'He\'s put on weight. Not as much as... never mind, babe.', 'Is that a man bun? Darren. DARREN.'] },
+  mum: { icon: '☎️', title: 'HER MUM\'S ON THE PHONE', sub: 'It\'s about Chester\'s birthday party. It\'ll be a while',
+    lead: ['It\'s Mum. I HAVE to get this. Hi Mum! ...no, he\'s being good. Mostly.', 'Mum\'s ringing. It\'s about Chester\'s party. Two minutes, babe.'],
+    pose: 'call', look: -0.9, fake: '"Hang on Mum, let me check on him"... she doesn\'t. Keep going.', pool: ['bread', 'pasta', 'chips', 'next', 'wine', 'butter'],
+    again: ['No, Mum. NO. Chester does NOT need a bouncy castle. ...How big?', 'Mum, put Dad on. DAD. Stop putting Chester on the phone.'], mutter: ['Yes, Mum. Yes. No. He\'s on a diet. Yes. A REAL one.', 'A cake shaped like Chester? For Chester? Mum...', 'Mum says hi, babe. She says put the bread down.'] },
 };
-const SRC = {
-  bread: { icon: '🥖', label: 'BREAD BASKET', chonk: 4, cheek: 0.13, noise: 0 },
-  plate: { icon: '🍝', label: 'HER PASTA', chonk: 7, cheek: 0.22, noise: 0.12 },
-  next: { icon: '🍰', label: 'NEXT TABLE', chonk: 9, cheek: 0.26, noise: 0.08 },
-};
+// AIDAN W's knee: the setup, the punchline, whether it wants a laugh or an aww
+const KNEE = [
+  ['It started in 2019. Five-a-side. I went for a header.', 'The ball was on the floor, Chloe. On the FLOOR.', 'lol', '⚽'],
+  ['The physio said rest it for six weeks.', 'That was four years ago. I\'m still resting it. Professionally.', 'sad', '🛋️'],
+  ['I got a knee brace. Lovely brace.', 'Ollie sat on it. Now it\'s a flat brace.', 'lol', '🦵'],
+  ['I can tell when it\'s going to rain.', 'It\'s always going to rain, Chloe. It\'s Essex.', 'lol', '🌧️'],
+  ['Spurs signed a new physio. I thought: maybe he\'ll look at it.', 'He\'s been sacked. Spurs, Chloe.', 'sad', '🏟️'],
+  ['I tried yoga for the knee.', 'The instructor asked me to leave. For the knee\'s sake.', 'sad', '🧘'],
+  ['Last week it clicked so loud a dog came over.', 'It wanted to play. I couldn\'t. The knee.', 'sad', '🐕'],
+];
 const BACK = ['...What? What are you smiling at?', 'Sorry babe, where was I? Oh yeah. Your diet.', 'You\'ve been so good tonight, babe. So good.', 'Why have you got a crumb on your... never mind.', 'Anyway. I was thinking we could do a 10K together.'];
 // Harry's dating disasters: 'lol' wants a laugh, 'sad' wants an aww
 const TALES = [
@@ -87,6 +119,14 @@ const BUSTED = {
   wine: ['That\'s MY wine, Ronnie. You hate wine.', 'Ronnie! That\'s my glass! You just downed my rosé!'],
   gag: ['Did you just eat broccoli? And GAG? In a restaurant?', 'Everyone\'s staring, babe. You\'ve gagged on a vegetable.'],
   roll: ['Did Ethan just throw a bread roll at my head?', 'Ronnie. Why did a bread roll just hit me in the face?'],
+  spotlight: ['The WHOLE restaurant just watched you eat a chicken leg, Ronnie.', 'Dylan pointed at you and you were EATING. Everyone saw. Dylan saw.'],
+  wrestle: ['You\'re eating DURING an arm wrestle? With the other hand?!', 'I\'m refereeing, Ronnie. I can see your mouth. It\'s FULL.'],
+  sing: ['You didn\'t sing ONE word, Ronnie. Not one. What\'s in your mouth?', 'Everyone sang. Except you. Because you were CHEWING.'],
+  chilli: ['You just ate IAN\'S CHILLI, Ronnie. Your face is purple. And full.', 'Water! Get him WATER! ...why is there burger in his mouth?'],
+  flicker: ['The lights came on and you were holding THREE bread rolls.', 'I SAW you. In the flicker. Mid-bite. Like a nature documentary.'],
+  fire: ['The firemen found you in the kitchen, Ronnie. Eating. During a FIRE.', 'You were meant to be getting your coat! You\'re WEARING your coat!'],
+  garnish: ['You ate the GARNISH. Twice. Chef saw. CHEF SAW, Ronnie.', 'Even the chef looked disappointed, babe.'],
+  candle: ['The candles lit up the whole room, babe. And your face. And the cake in it.', 'In the candlelight. Romantic. You were eating a stranger\'s cake.'],
 };
 const SORRY = ['Mmmf? Nothing in here, babe.', 'It\'s a cough sweet. A big one.', 'The waiter dropped it. In my mouth.', 'I was just smelling it, babe.', 'It\'s gravy. On my chin. From before.', 'I was holding it for a mate.'];
 // the penalties for getting caught
@@ -108,7 +148,19 @@ const CSS = `
 #dn .dn-slate { position: absolute; left: max(12px, env(safe-area-inset-left)); right: 96px; bottom: 6px; font-size: clamp(10px, 2.9vw, 13px); letter-spacing: 2px; color: #e879f9; white-space: nowrap; overflow: hidden; }
 #dn .dn-cap { position: absolute; left: max(14px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); top: 8px; bottom: 6px; font: italic 700 clamp(13px, 3.7vw, 17px)/1.25 Arial, sans-serif; display: flex; flex-direction: column; justify-content: flex-start; gap: 2px; }
 #dn .dn-cap b { font: 900 clamp(11px, 3vw, 13px) "Arial Black", Arial, sans-serif; letter-spacing: 1px; font-style: normal; }
-#dn .dn-cap .tap { position: absolute; right: 0; bottom: 0; font: 900 10px Arial, sans-serif; color: rgba(255,255,255,0.45); letter-spacing: 1px; font-style: normal; }
+#dn .dn-fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+#dn .dn-fade.on { animation: dnFade .8s ease-in-out; } @keyframes dnFade { 0% { opacity: 0; } 40%, 55% { opacity: 1; } 100% { opacity: 0; } }
+#dn .dn-dim { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, rgba(40,20,0,0.25), rgba(0,0,0,0.78)); opacity: 0; transition: opacity .8s; pointer-events: none; }
+#dn .dn-dim.on { opacity: 1; }
+#dn .dn-res { position: absolute; left: 0; right: 0; top: 48%; display: flex; flex-direction: column; align-items: center; gap: 2px; opacity: 0; transform: scale(.6); transition: opacity .25s, transform .35s cubic-bezier(.2,1.5,.4,1); }
+#dn .dn-res.on { opacity: 1; transform: none; }
+#dn .dn-res b { font-size: clamp(34px, 10vw, 58px); color: #ffd400; -webkit-text-stroke: 2px #111; text-shadow: 0 4px 0 #111; letter-spacing: 4px; }
+#dn .dn-res span { font-size: clamp(16px, 5vw, 26px); color: #fff; text-shadow: 0 3px 0 #111; -webkit-text-stroke: 1px #111; }
+#dn .dn-ready { position: absolute; left: 12px; right: 12px; top: calc(var(--bt) + 12px); display: none; flex-direction: column; align-items: center; gap: 6px; padding: 14px 12px; border-radius: 18px; background: rgba(20,6,12,0.9); border: 3px solid #e879f9; text-align: center; }
+#dn .dn-ready.on { display: flex; animation: dnReady .35s cubic-bezier(.2,1.4,.4,1); } @keyframes dnReady { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+#dn .dn-ready b { font-size: clamp(24px, 7vw, 36px); color: #ffd400; -webkit-text-stroke: 1px #111; text-shadow: 0 3px 0 #111; }
+#dn .dn-ready span { font: 700 clamp(15px, 4.4vw, 20px)/1.25 Arial, sans-serif; color: #fff; }
+body.dn-seated #stick, body.dn-seated #btn-sprint { display: none !important; }
 #dn .dn-title { position: absolute; left: 0; right: 0; top: calc(var(--bt) + 6vh); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 16px; opacity: 0; transform: scale(.7); transition: opacity .3s, transform .35s cubic-bezier(.2,1.4,.4,1); text-align: center; }
 #dn .dn-title.on { opacity: 1; transform: none; }
 #dn .dn-title i { font-style: normal; font-size: clamp(40px, 12vw, 64px); line-height: 1; }
@@ -138,55 +190,27 @@ body.dn-cine #touch, body.dn-cine #chat-log, body.dn-cine #warm-bar, body.dn-cin
   #dn .dn-cap { top: 5px; font-size: 13px; }
   #dn .dn-title { top: calc(var(--bt) + 10px); }
   #dn .dn-title i { font-size: 36px; } #dn .dn-title b { font-size: 26px; }
-  #dn .dn-stamp { top: 24%; font-size: 46px; }
+  #dn .dn-stamp { top: 22%; font-size: 46px; }
+  #dn .dn-res { top: 50%; } #dn .dn-res b { font-size: 36px; } #dn .dn-res span { font-size: 16px; }
 }
 `;
-// an emoji on a canvas at any size (an iPhone draws nothing for one much over 64px: drawn once at 64, then scaled)
-const EMO = new Map();
-function emo(g, e, x, y, s) {
-  let c = EMO.get(e); if (!c) { c = document.createElement('canvas'); c.width = c.height = 96; const q = c.getContext('2d'); q.font = '64px sans-serif'; q.textAlign = 'center'; q.textBaseline = 'middle'; q.fillText(e, 48, 52); EMO.set(e, c); }
-  const w = 96 * s / 64; g.drawImage(c, x - w / 2, y - w / 2, w, w);
-}
-function rr2(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
-function txt(g, s, x, y, size, color, { align = 'center', maxW = 0, stroke = 0, weight = 900 } = {}) {
-  let sz = size; g.textAlign = align; g.textBaseline = 'middle';
-  do { g.font = `${weight} ${sz}px ${FONT}`; sz -= 1; } while (maxW && g.measureText(s).width > maxW && sz > 8);
-  if (stroke) { g.lineJoin = 'round'; g.lineWidth = stroke; g.strokeStyle = '#111'; g.strokeText(s, x, y); }
-  g.fillStyle = color; g.fillText(s, x, y);
-}
-// a meter: label, fill 0..1, colour
-function meter(g, x, y, w, h, k, col, label, icon) {
-  g.fillStyle = 'rgba(0,0,0,0.55)'; rr2(g, x, y, w, h, h / 2); g.fill();
-  if (k > 0.002) { g.fillStyle = col; rr2(g, x + 2, y + 2, Math.max(h - 4, (w - 4) * Math.min(1, k)), h - 4, (h - 4) / 2); g.fill(); }
-  g.lineWidth = 2; g.strokeStyle = 'rgba(255,255,255,0.7)'; rr2(g, x, y, w, h, h / 2); g.stroke();
-  if (icon) emo(g, icon, x + h * 0.55, y + h / 2, h * 0.95);
-  if (label) txt(g, label, x + w / 2 + (icon ? h * 0.3 : 0), y + h / 2 + 1, h * 0.55, '#fff', { stroke: 3, maxW: w - h * 1.4 });
-}
-// the panel behind a game's stage: dark glass
-function panel(g, w, h, col = 'rgba(20,6,12,0.82)') { g.clearRect(0, 0, w, h); g.fillStyle = col; rr2(g, 0, 0, w, h, Math.min(16, h / 5)); g.fill(); g.lineWidth = 3; g.strokeStyle = 'rgba(232,121,249,0.8)'; rr2(g, 1.5, 1.5, w - 3, h - 3, Math.min(15, h / 5)); g.stroke(); }
-// Chloe's eyes: how close she is to looking at you (0 = miles away, 1 = right at you)
-function eyeMeter(g, x, y, w, h, k, label) {
-  const col = k > 0.75 ? '#ff3a3a' : k > 0.45 ? '#ffb020' : '#39ff14';
-  meter(g, x, y, w, h, k, col, label, k > 0.75 ? '👀' : '🙈');
-}
-
 class DateUI {
   constructor(player) {
     this.P = player;
     if (!document.getElementById('dn-css')) { const st = document.createElement('style'); st.id = 'dn-css'; st.textContent = CSS; document.head.appendChild(st); }
     let el = document.getElementById('dn'); if (el) el.remove();
     el = this.el = document.createElement('div'); el.id = 'dn';
-    el.innerHTML = '<div class="dn-flash"></div><div class="dn-bar t"><div class="dn-slate"></div></div><div class="dn-title"><i></i><b></b><span></span></div><div class="dn-stamp"></div><div class="dn-game"><canvas class="dn-stage"></canvas><div class="dn-btns"></div></div><div class="dn-bar b"><div class="dn-cap"></div></div>';
+    el.innerHTML = '<div class="dn-dim"></div><div class="dn-flash"></div><div class="dn-res"><b></b><span></span></div><div class="dn-fade"></div><div class="dn-ready"></div><div class="dn-bar t"><div class="dn-slate"></div></div><div class="dn-title"><i></i><b></b><span></span></div><div class="dn-stamp"></div><div class="dn-game"><canvas class="dn-stage"></canvas><div class="dn-btns"></div></div><div class="dn-bar b"><div class="dn-cap"></div></div>';
     document.body.appendChild(el);
     const q = (s) => el.querySelector(s);
-    this.q = { flash: q('.dn-flash'), slate: q('.dn-slate'), title: q('.dn-title'), stamp: q('.dn-stamp'), game: q('.dn-game'), stage: q('.dn-stage'), btns: q('.dn-btns'), cap: q('.dn-cap') };
-    this.onPress = null; this.onRelease = null; this.onSkip = null; this.btnKey = ''; this.btnEls = [];
-    // a tap anywhere that isn't a button: skip the line that's being said
+    this.q = { ready: q('.dn-ready'), fade: q('.dn-fade'), dim: q('.dn-dim'), res: q('.dn-res'), flash: q('.dn-flash'), slate: q('.dn-slate'), title: q('.dn-title'), stamp: q('.dn-stamp'), game: q('.dn-game'), stage: q('.dn-stage'), btns: q('.dn-btns'), cap: q('.dn-cap') };
+    this.onPress = null; this.onRelease = null; this.btnKey = ''; this.btnEls = [];
+    // (taps on the film itself do nothing: no skipping, it plays at its own pace. They don't reach the game behind it either)
     const stop = (e) => { e.stopPropagation(); };
-    el.addEventListener('pointerdown', (e) => { stop(e); if (!e.target.closest('.dn-btn') && this.onSkip) this.onSkip(); });
+    el.addEventListener('pointerdown', stop);
     for (const k of ['touchstart', 'mousedown', 'wheel', 'click']) el.addEventListener(k, stop);
     this.keyDown = (e) => { if (!this.keys) return; const i = { Digit1: 0, Numpad1: 0, Space: 0, Digit2: 1, Numpad2: 1, Digit3: 2, Numpad3: 2, Enter: -1 }[e.code]; if (i === undefined) return;
-      e.preventDefault(); e.stopImmediatePropagation(); if (e.repeat) return; if (i < 0 || !this.btnEls.length) { this.onSkip && this.onSkip(); return; } if (i < this.btnEls.length) { this.flashBtn(i, true); this.onPress && this.onPress(i); } };
+      e.preventDefault(); e.stopImmediatePropagation(); if (e.repeat || i < 0) return; if (i < this.btnEls.length) { this.flashBtn(i, true); this.onPress && this.onPress(i); } };
     this.keyUp = (e) => { if (!this.keys) return; const i = { Digit1: 0, Numpad1: 0, Space: 0, Digit2: 1, Numpad2: 1, Digit3: 2, Numpad3: 2 }[e.code]; if (i === undefined) return; e.preventDefault(); e.stopImmediatePropagation(); this.flashBtn(i, false); this.onRelease && this.onRelease(i); };
     addEventListener('keydown', this.keyDown, true); addEventListener('keyup', this.keyUp, true);
     // the headset: one panel in the middle of your view (the film's own camera would make you sick)
@@ -202,12 +226,11 @@ class DateUI {
   show(on, block) { this.el.classList.toggle('on', on); this.el.classList.toggle('block', !!block); this.keys = on && !!block; }
   bars(on) { this.el.classList.toggle('bars', on); }
   slate(s) { if (this.q.slate.textContent !== s) this.q.slate.textContent = s; }
-  caption(name, color, text, canSkip) {
-    const k = name + '|' + text + '|' + canSkip; if (this.capK === k) return; this.capK = k; const c = this.q.cap; c.innerHTML = '';
+  caption(name, color, text) {
+    const k = name + '|' + text; if (this.capK === k) return; this.capK = k; const c = this.q.cap; c.innerHTML = '';
     if (!text) return;
     if (name) { const b = document.createElement('b'); b.textContent = name.toUpperCase(); b.style.color = color || '#ffd400'; c.appendChild(b); }
     const s = document.createElement('div'); s.textContent = text; c.appendChild(s);
-    if (canSkip && this.touchy) { const t = document.createElement('span'); t.className = 'tap'; t.textContent = 'TAP ▸'; c.appendChild(t); }
   }
   title(icon, big, small) {
     const t = this.q.title; if (!big) { t.classList.remove('on'); return; }
@@ -215,6 +238,17 @@ class DateUI {
     t.classList.remove('on'); void t.offsetWidth; t.classList.add('on');
   }
   stamp(s, col) { const st = this.q.stamp; if (!s) { st.classList.remove('on'); return; } st.textContent = s; st.style.color = col || '#ffd400'; st.classList.remove('on'); void st.offsetWidth; st.classList.add('on'); }
+  // GET READY: the game's instructions, big, before it starts
+  ready(lines) {
+    const r = this.q.ready; if (!lines) { r.classList.remove('on'); this.readyL = null; return; }
+    r.innerHTML = '<b>GET READY!</b>'; for (const l of lines) { const d = document.createElement('span'); d.textContent = l; r.appendChild(d); }
+    r.classList.remove('on'); void r.offsetWidth; r.classList.add('on'); this.readyL = lines;
+  }
+  // a quick fade to black and back (the game putting you somewhere else: no walking in Date Night)
+  fade() { const f = this.q.fade; f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); }
+  dim(on) { this.q.dim.classList.toggle('on', !!on); this.dimOn = !!on; }
+  // a won film's stars and score, big in the middle
+  result(st, sub) { const r = this.q.res; if (!st) { r.classList.remove('on'); this.resS = null; return; } r.children[0].textContent = st; r.children[1].textContent = sub || ''; r.classList.remove('on'); void r.offsetWidth; r.classList.add('on'); this.resS = st + '  ' + (sub || ''); }
   flash(k) { this.q.flash.style.opacity = Math.max(0, Math.min(1, k)).toFixed(2); }
   // the game's buttons (made again only when what they say changes)
   buttons(list) {
@@ -266,9 +300,10 @@ class DateUI {
       for (const w of words) { const t = ln ? ln + ' ' + w : w; if (g.measureText(t).width > W - 100 && ln) { lines.push(ln); ln = w; } else ln = t; } if (ln) lines.push(ln);
       if (st.who) txt(g, st.who.toUpperCase(), W / 2, 150, 32, st.whoCol || '#ffd400', { stroke: 5 });
       lines.slice(0, 6).forEach((l, i) => txt(g, l, W / 2, 220 + i * 52, 36, '#fff', { weight: 700, maxW: W - 80 }));
-      txt(g, 'TRIGGER: SKIP', W / 2, 598, 22, 'rgba(255,255,255,0.5)');
     }
     if (st.stamp) txt(g, st.stamp, W / 2, 300, 96, st.stampCol || '#ffd400', { stroke: 12 });
+    if (this.resS) txt(g, this.resS, W / 2, 420, 54, '#ffd400', { stroke: 8, maxW: W - 60 });
+    if (st.ready) { g.fillStyle = 'rgba(20,6,12,0.94)'; rr2(g, 40, 90, W - 80, 230, 26); g.fill(); txt(g, 'GET READY!', W / 2, 140, 56, '#ffd400', { stroke: 8 }); st.ready.forEach((l, i) => txt(g, l, W / 2, 210 + i * 56, 36, '#fff', { weight: 700, maxW: W - 120 })); }
     this.vtex.needsUpdate = true;
   }
   // the headset's buttons: trigger, grip, A/X on either controller
@@ -293,10 +328,12 @@ export class DateNight {
     this.catches = 0; this.look = true; this.state = 'play';
     this.sneaks = 0; this.haul = 0; this.films = 0; this.raided = 0; this.wins = 0; this.log = [];
     this.t = 4; this.warned = false; this.grace = 1.5; this.cool = 0; this.probation = 0; this.awayT = 0; this.shorter = 0;
-    this.nextT = 8; this.used = new Set(); this.lastKind = null; this.penUsed = [];
+    this.nextT = 0.2; this.used = new Set(); this.lastKind = null; this.penUsed = [];
     this.cam = null; this.camObj = new THREE.PerspectiveCamera(50, 1, 0.05, 200); this.hidNear = [];
-    this.scene = null; this.game = null; this.cap = null; this.stampS = null;
+    this.scene = null; this.game = null; this.cap = null; this.stampS = null; this.liveT = 0; this.topT = 6;
   }
+  // how hard the films are by now (the night gets harder as it goes on)
+  get lvl() { return Math.max(0, Math.min(1, (this.films - 1) / 7)); }
   get vr() { const P = this.g.player; return !!(P.renderer && P.renderer.xr.isPresenting); }
   get flat() { return !this.vr; }
   get chloe() { return this.c && !this.c.disposed ? this.c : null; }
@@ -305,7 +342,9 @@ export class DateNight {
     const g = this.g, d = this.d;
     this.c = g.cast.find(c => c.id === 'chloe') || null;
     this.ui = new DateUI(g.player);
-    this.ui.onPress = (i) => this.press(i); this.ui.onRelease = (i) => this.release(i); this.ui.onSkip = () => this.skip();
+    this.ui.onPress = (i) => this.press(i); this.ui.onRelease = (i) => this.release(i);
+    // NO WALKING on a date: you're sat at the table (the joystick and SPRINT go; the films put you anywhere else)
+    document.body.classList.add('dn-seated'); this.seatPlayer();
     const c = this.chloe;
     if (c) {
       c.active = false; c.seated = true; c.state = 'idle'; c.rag.placeAt(CHL.x, CHL.z, 0); c.faceYaw = 0;
@@ -331,7 +370,7 @@ export class DateNight {
   // which films tonight, in what order: one of each kind before any kind comes round again, never the same kind twice
   // running, the toilet once (it's the long one)
   makeDeck() {
-    const kinds = shuffle(['look', 'waiter', 'visit', 'look', 'visit', 'waiter', 'look', 'visit']); kinds.splice(2 + Math.floor(Math.random() * 3), 0, 'toilet');
+    const kinds = shuffle(['look', 'waiter', 'visit', 'look', 'visit', 'waiter', 'event', 'look', 'visit', 'event']); kinds.splice(2 + Math.floor(Math.random() * 3), 0, 'toilet');
     if (kinds[0] !== 'look') { const i = kinds.indexOf('look'); [kinds[0], kinds[i]] = [kinds[i], kinds[0]]; }
     for (let i = 1; i < kinds.length; i++) if (kinds[i] === kinds[i - 1]) { const j = kinds.findIndex((k, n) => n > i && k !== kinds[i] && k !== kinds[n - 1]); if (j > 0) [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
     return kinds;
@@ -361,9 +400,12 @@ export class DateNight {
     this.propList = [];
     if (this.ron) { this.ron.dispose(); this.ron = null; }
     if (this.ui) { this.ui.dispose(); this.ui = null; }
+    document.body.classList.remove('dn-seated');
   }
   // the game's over (time, or three strikes): any film stops where it is, the camera's back in your head
   stop() {
+    this.travelGo = null; if (this.away) { this.away = null; this.seatPlayer(); }
+    { const P = this.g.player; if (P.rig.position.y === SIT_DROP) { P.rig.position.y = 0; P.rig.updateMatrixWorld(true); } }
     if (this.visitor) this.sendHome(this.visitor, true);
     if (this.chloe && this.chloe.dnHidden) this.chloeBack(true);
     this.scene = null; this.game = null; this.state = 'over'; this.cam = null; this.cineOn(false);
@@ -383,6 +425,7 @@ export class DateNight {
   // ------------------------------------------------------------ every frame (from the director)
   update(dt, ctx) {
     const g = this.g, P = g.player;
+    this.pinPlayer();
     if (this.ron) { this.ron.update(dt, ctx); this.ron.rag.fat = Math.min(1, (g.G.stage || 0) / (STAGES.length - 1) * 1.3); }
     for (const o of this.propList) o.visible = false;
     const c = this.chloe; if (c) this.placeProps(c);
@@ -394,8 +437,11 @@ export class DateNight {
       if (P.flatMode && !this.vr && P.flatMove) P.flatMove = { x: 0, z: 0 };
       if (this.titleT > 0 && (this.titleT -= dt) <= 0) this.ui.title(null);
       if (this.stampT > 0 && (this.stampT -= dt) <= 0) { this.ui.stamp(null); this.stampS = null; }
-      if (this.game && !this.game.result) { this.game.update(dt); }
-      if (this.vr) for (const [k, i] of this.ui.pollVR()) { if (k === 'down') { if (this.game && !this.game.result) this.press(i); else if (i === 0) this.skip(); } else this.release(i); }
+      if (this.readyT > 0) { this.readyT -= dt; if (this.readyT <= 0) { this.ui.ready(null); if (this.game) sfx('ding', null, 0.5); } }
+      else if (this.game && !this.game.result) { this.game.update(dt); }
+      if (this.vr) for (const [k, i] of this.ui.pollVR()) { if (k === 'down') { if (this.game && !this.game.result) this.press(i); } else this.release(i); }
+      if (this.liveT > 0) this.liveT -= dt;
+      if (this.travelGo && (this.travelGo.t -= dt) <= 0) { const tg = this.travelGo; this.travelGo = null; tg.go(); }
       this.stepScene(dt);
       this.drawUI(dt);
       return;
@@ -409,16 +455,14 @@ export class DateNight {
     const c = this.chloe, g = this.g, P = g.player;
     this.t -= dt; this.grace -= dt; this.cool -= dt; this.probation -= dt;
     if (c.dnPose !== 'salad' || this.probation <= 0) c.dnPose = null;
-    const head = P.head, away = Math.hypot(head.x - SEAT.x, head.z - SEAT.z);
+    // the waiter keeps the table topped up (there's always something to be tempted by)
+    if ((this.topT -= dt) <= 0) { this.topT = rr(9, 14); this.topUp(); }
     if (this.look) {
       c.lookOverride = null;
-      // flailing about while she's watching gives you away (VR), and so does wandering off
+      // flailing about while she's watching gives you away (VR)
       if (this.grace <= 0 && P.hands.some(h => h.tracked && h.speed > 1.6)) this.busted('table');
-      this.awayT = away > 2.2 && this.grace <= 0 ? this.awayT + dt : 0;
-      if (this.awayT > 0.6 && !this.wanderWarned) { this.wanderWarned = true; c.say(R(['Ronnie? Where are you going?', 'Babe? The toilets are the OTHER way.', 'Ronnie. Sit. Down.']), 5); }
-      if (this.awayT > 3) { this.awayT = 0; this.busted('wander'); }
       if (this.t <= 0 && this.probation <= 0) {
-        this.look = false; this.warned = false; this.t = rr(2.6, 4.6); this.wanderWarned = false;
+        this.look = false; this.warned = false; this.t = rr(2.6, 4.6);
         c.lookOverride = Math.random() < 0.5 ? 1.25 : -1.25;
         c.say(R(['Ooh, is that the waiter?', 'Just checking my phone, babe.', '...anyway.', 'Is that a pigeon? Inside?', 'That painting looks like a sausage roll.', 'Is that Harry? Why is Harry here?']), 2);
       }
@@ -426,8 +470,11 @@ export class DateNight {
       if (!this.warned && this.t < 0.6) { this.warned = true; this.tell(c); }
       if (this.t <= 0) { this.look = true; this.t = rr(3, 5.5); this.grace = 0.5; c.lookOverride = null; }
     }
+    // the end of the night: the bill (the clock waits for it)
+    if (this.opened && !this.billed && this.d.timeLeft > 0 && this.d.timeLeft < 16 && !P.knock) { this.billed = true; this.d.timeLeft = Math.max(this.d.timeLeft, 14); this.run('bill', 'bill', this.billFilm()); return; }
     // the next film
-    if ((this.nextT -= dt) <= 0 && !P.knock && !(g.fx && g.fx.inCutscene) && this.cool <= 0) this.nextFilm();
+    if (this.d.timeLeft > 0 && this.d.timeLeft < 34 && this.opened) this.nextT = Math.max(this.nextT, 1);
+    else if ((this.nextT -= dt) <= 0 && !P.knock && !(g.fx && g.fx.inCutscene) && this.cool <= 0) this.nextFilm();
     this.g.G.wristDirty = true;
   }
   // she's about to turn round: a "!" over her head and a warning sound
@@ -443,17 +490,20 @@ export class DateNight {
   // ------------------------------------------------------------ the films
   nextFilm() {
     const g = this.g;
+    if (!this.opened) { this.opened = true; this.run('open', 'arrive', this.openFilm()); return; }
     let kind = this.deck.shift(); if (!kind) { this.deck = this.makeDeck(); kind = this.deck.shift(); }
     const present = (id) => { const c = g.cast.find(o => o.id === id); return c && !c.down && c.rag && c.rag.mesh && this.inGroup(c) ? c : null; };
     let film = null, variant = null;
     if (kind === 'visit') {
-      const opts = [['harry', () => this.harryFilm(present('harry'))], ['oliver', () => this.oliverFilm(present('oliver'))], ['pints', () => this.pintsFilm(present('aidan') || present('connor'), present('aidan') && present('connor'))], ['dylan', () => this.dylanFilm(present('dylan'))], ['ethan', () => this.ethanFilm(present('ethan'))]]
+      const opts = [['harry', () => this.harryFilm(present('harry'))], ['oliver', () => this.oliverFilm(present('oliver'))], ['pints', () => this.pintsFilm(present('aidan') || present('connor'), present('aidan') && present('connor'))], ['dylan', () => this.dylanFilm(present('dylan'))], ['ethan', () => this.ethanFilm(present('ethan'))], ['lewis', () => this.lewisFilm(present('lewis'))]]
+        .concat([['aidanw', () => this.kneeFilm(present('aidanw'))], ['noah', () => this.noahFilm(present('noah'))], ['alfie', () => this.alfieFilm(present('alfie'))], ['ian', () => this.ianFilm(present('ian'))]])
         .filter(([id]) => id === 'pints' ? present('aidan') || present('connor') : present(id));
       const fresh = opts.filter(([id]) => !this.used.has('visit:' + id)), pick = R(fresh.length ? fresh : opts);
       if (pick) { variant = pick[0]; film = pick[1](); } else kind = 'look';
     }
-    if (kind === 'waiter') { const opts = ['order', 'trolley', 'napkin'], fresh = opts.filter(o => !this.used.has('waiter:' + o)); variant = R(fresh.length ? fresh : opts); film = this.waiterFilm(variant); }
+    if (kind === 'waiter') { const opts = ['order', 'trolley', 'napkin', 'wine', 'chef'], fresh = opts.filter(o => !this.used.has('waiter:' + o)); variant = R(fresh.length ? fresh : opts); film = this.waiterFilm(variant); }
     if (kind === 'toilet') { variant = R(['loo', 'lipstick', 'queue']); film = this.toiletFilm(variant); }
+    if (kind === 'event') { const opts = ['birthday', 'fire', 'power', 'noproposal'], fresh = opts.filter(o => !this.used.has('event:' + o)); variant = R(fresh.length ? fresh : opts); film = this.eventFilm(variant); }
     if (kind === 'look' || !film) { kind = 'look'; const opts = Object.keys(LOOKS), fresh = opts.filter(o => !this.used.has('look:' + o)); variant = R(fresh.length ? fresh : opts); film = this.lookFilm(variant); }
     this.used.add(kind + ':' + variant);
     this.run(kind, variant, film);
@@ -465,11 +515,14 @@ export class DateNight {
     const g = this.g, P = (id) => g.cast.find(o => o.id === id && o.rag) || null;
     let film = null;
     if (kind === 'look') film = this.lookFilm(variant = LOOKS[variant] ? variant : 'phone');
-    else if (kind === 'waiter') film = this.waiterFilm(variant = ['order', 'trolley', 'napkin'].includes(variant) ? variant : 'order');
+    else if (kind === 'waiter') film = this.waiterFilm(variant = ['order', 'trolley', 'napkin', 'wine', 'chef'].includes(variant) ? variant : 'order');
     else if (kind === 'toilet') film = this.toiletFilm(variant = variant || 'loo');
     else if (kind === 'visit') {
       variant = variant || 'harry';
-      film = variant === 'harry' ? this.harryFilm(P('harry')) : variant === 'oliver' ? this.oliverFilm(P('oliver')) : variant === 'pints' ? this.pintsFilm(P('aidan') || P('connor'), P('aidan') && P('connor')) : variant === 'dylan' ? this.dylanFilm(P('dylan')) : this.ethanFilm(P('ethan'));
+      film = variant === 'harry' ? this.harryFilm(P('harry')) : variant === 'oliver' ? this.oliverFilm(P('oliver')) : variant === 'pints' ? this.pintsFilm(P('aidan') || P('connor'), P('aidan') && P('connor')) : variant === 'dylan' ? this.dylanFilm(P('dylan')) : variant === 'lewis' ? this.lewisFilm(P('lewis')) : variant === 'aidanw' ? this.kneeFilm(P('aidanw')) : variant === 'noah' ? this.noahFilm(P('noah')) : variant === 'alfie' ? this.alfieFilm(P('alfie')) : variant === 'ian' ? this.ianFilm(P('ian')) : this.ethanFilm(P('ethan'));
+    } else if (kind === 'event') { variant = variant || 'birthday'; film = this.eventFilm(variant);
+    } else if (kind === 'open') { this.opened = true; film = this.openFilm();
+    } else if (kind === 'bill') { this.billed = true; film = this.billFilm();
     } else if (kind === 'busted') film = this.caughtFilm(variant || 'table', true);
     if (!film) return false;
     this.cool = 0; this.run(kind, variant, film); return true;
@@ -493,13 +546,12 @@ export class DateNight {
       if (typeof v === 'function') { if (!v()) { s.until = v; return; } }
     }
   }
-  skip() { const s = this.scene; if (s && !this.game && s.wait > 0.15 && this.inBeat) s.wait = 0.05; }
   endScene(quiet) {
     const s = this.scene; this.scene = null; this.game = null; this.state = this.d.running ? 'play' : 'over';
     if (this.visitor) this.sendHome(this.visitor, true);
     if (this.chloe && this.chloe.dnHidden) this.chloeBack(true);
-    const c = this.chloe; if (c) { c.dnPose = c.dnPose === 'salad' ? 'salad' : null; c.lookOverride = null; }
-    if (this.ron) this.ron.dnPose = null;
+    const c = this.chloe; if (c) { c.dnPose = c.dnPose === 'salad' ? 'salad' : null; c.lookOverride = null; if (!c.seated || Math.hypot(c.rag.root.x - CHL.x, c.rag.root.z - CHL.z) > 0.2) this.chloeSit(); }
+    const r = this.ron; if (r) { r.dnPose = null; r.lookOverride = null; if (!r.seated || Math.hypot(r.rag.root.x - RON.x, r.rag.root.z - RON.z) > 0.2) { r.state = 'idle'; r.path = null; r.glide = null; r.rag.placeAt(RON.x, RON.z, Math.PI); r.seated = true; r.faceYaw = Math.PI; } }
     this.look = true; this.t = rr(3, 5); this.grace = 1.2; this.warned = false; this.awayT = 0;
     this.nextT = rr(13, 19); this.cap = null;
     // back to your own eyes, looking at her (a quick glide on a screen)
@@ -508,7 +560,8 @@ export class DateNight {
     else this.cam = null;
     P.faceToward && P.faceToward(CHL.x, CHL.z, 0.01);
     if (P.flatMode) P.flatPitch = -0.22;
-    this.ui.buttons(null); this.ui.caption('', '', ''); this.ui.title(null); this.ui.stamp(null); this.ui.flash(0); this.ui.vr(false);
+    this.travelGo = null; if (this.away) this.travel(null, true);
+    this.ui.buttons(null); this.ui.caption('', '', ''); this.ui.title(null); this.ui.stamp(null); this.ui.result(null); this.ui.dim(false); this.spotlight(false); this.ui.flash(0); this.ui.vr(false);
     if (!this.cam) this.cineOn(false); else this.ui.show(true, false);
     return s;
   }
@@ -587,6 +640,33 @@ export class DateNight {
     if (p === 'point') { r.aim('uArmR', -0.05, -0.1, 1); r.aim('lArmR', 0, 0.05, 1); r.aim('uArmL', 0.2, -1, 0.35); r.aim('lArmL', -1, 0.15, 0.3); return; }
     if (p === 'cry') { const s = Math.sin(t * 9) * 0.05; r.aim('uArmL', 0.2, -0.5, 0.6); r.aim('lArmL', -0.4, 0.85 + s, 0.3); r.aim('uArmR', -0.2, -0.5, 0.6); r.aim('lArmR', 0.4, 0.85 - s, 0.3); return; }
     if (p === 'wave') { const s = Math.sin(t * 10); r.aim('uArmR', -0.6, 0.7, 0.2); r.aim('lArmR', -0.2 + s * 0.4, 1, 0.1); return; }
+    this.actPose(c, t);
+  }
+  // the shared acting poses (anyone who comes over, the diners in a scene, and Chloe's / Ronnie's extra ones)
+  wrapPose(c) { if (!c || c.dnWrapped) return; c.dnWrapped = true; const base = c.personalityPose.bind(c); c.dnBase = c.personalityPose; c.personalityPose = (t) => { base(t); if (c.dnPose) this.actPose(c, t); }; }
+  actPose(c, t) {
+    const r = c.rag, p = c.dnPose, s = Math.sin(t * 6), lean = (a) => { _q.setFromAxisAngle(_x, a); if (r.pose.chest) r.pose.chest.premultiply(_q); };
+    switch (p) {
+      case 'talk': r.aim('uArmR', -0.3, -0.7, 0.6); r.aim('lArmR', -0.3 + s * 0.4, 0.4, 1); r.aim('uArmL', 0.25, -0.9, 0.3); r.aim('lArmL', 0.2, 0.1 + Math.sin(t * 4) * 0.25, 1); c.headExtra = { yaw: Math.sin(t * 1.7) * 0.15, pitch: 0 }; return;
+      case 'point': r.aim('uArmR', -0.05, -0.1, 1); r.aim('lArmR', 0, 0.05, 1); return;
+      case 'wave': r.aim('uArmR', -0.6, 0.7, 0.2); r.aim('lArmR', -0.2 + Math.sin(t * 10) * 0.4, 1, 0.1); return;
+      case 'flex': r.aim('uArmL', 1, 0.15, 0); r.aim('lArmL', 0.1, 1, 0.1); r.aim('uArmR', -1, 0.15, 0); r.aim('lArmR', -0.1, 1, 0.1); return;
+      case 'cheer': r.aim('uArmL', 0.5, 0.8, 0.2); r.aim('lArmL', 0.1, 1, 0.1 * s); r.aim('uArmR', -0.5, 0.8, 0.2); r.aim('lArmR', -0.1, 1, -0.1 * s); return;
+      case 'facepalm': r.aim('uArmR', -0.25, -0.35, 0.9); r.aim('lArmR', 0.2, 0.95, 0.25); c.headExtra = { yaw: 0, pitch: 0.35 }; return;
+      case 'phone': r.aim('uArmR', -0.2, -0.85, 0.45); r.aim('lArmR', -0.15, 0.35, 1); r.aim('uArmL', 0.25, -0.9, 0.4); r.aim('lArmL', -0.3, 0.3, 1); c.headExtra = { yaw: 0, pitch: 0.4 }; return;
+      case 'photo': r.aim('uArmL', 0.2, -0.15, 1); r.aim('lArmL', -0.25, 0.45, 1); r.aim('uArmR', -0.2, -0.15, 1); r.aim('lArmR', 0.25, 0.45, 1); c.headExtra = { yaw: Math.sin(t * 1.3) * 0.2, pitch: 0.2 }; return;
+      case 'call': r.aim('uArmR', -0.55, -0.4, 0.35); r.aim('lArmR', 0.35, 1, -0.15); r.aim('uArmL', 0.2, -1, 0.35); r.aim('lArmL', -1, 0.15, 0.3); c.headExtra = { yaw: -0.3 + Math.sin(t * 0.9) * 0.2, pitch: 0.05 }; return;
+      case 'sing': r.aim('uArmL', 1, 0.35 + s * 0.2, 0.2); r.aim('lArmL', 1, 0.5, 0.1); r.aim('uArmR', -1, 0.35 - s * 0.2, 0.2); r.aim('lArmR', -1, 0.5, 0.1); return;
+      case 'knee': r.aim('uArmR', -0.1, -1, 0.35); r.aim('lArmR', 0, -1, 0.45); r.aim('uArmL', 0.1, -1, 0.35); r.aim('lArmL', 0, -1, 0.45); lean(0.35); return;
+      case 'show': r.aim('uArmL', 1, 0.05, 0.25); r.aim('lArmL', 1, 0.15, 0.1); r.aim('uArmR', -0.3, -0.6, 0.6); r.aim('lArmR', 0.4, 0.2, 0.8); return;
+      case 'shrug': r.aim('uArmL', 0.8, -0.45, 0.3); r.aim('lArmL', 0.3, 0.6, 0.7); r.aim('uArmR', -0.8, -0.45, 0.3); r.aim('lArmR', -0.3, 0.6, 0.7); return;
+      case 'bow': lean(0.45 + Math.sin(t * 2) * 0.05); r.aim('uArmR', -0.1, -0.6, 0.7); r.aim('lArmR', 0.6, 0, 0.6); return;
+      case 'pour': r.aim('uArmR', -0.15, -0.3, 1); r.aim('lArmR', -0.05, -0.45, 1); r.aim('uArmL', 0.2, -0.9, 0.3); r.aim('lArmL', -0.4, -0.1, 1); lean(0.15); return;
+      case 'clap': { const k = Math.sin(t * 12); r.aim('uArmL', 0.15, -0.5, 0.8); r.aim('lArmL', -0.4 - k * 0.15, 0.2, 1); r.aim('uArmR', -0.15, -0.5, 0.8); r.aim('lArmR', 0.4 + k * 0.15, 0.2, 1); return; }
+      case 'laugh': r.aim('uArmL', 0.2, -1, 0.3); r.aim('lArmL', -0.6, 0.3, 0.7); lean(-0.15 + Math.abs(Math.sin(t * 14)) * 0.05); c.headExtra = { yaw: 0, pitch: -0.3 }; return;
+      case 'innocent': r.aim('uArmL', 0.15, -0.8, 0.5); r.aim('lArmL', -0.6, -0.05, 0.8); r.aim('uArmR', -0.15, -0.8, 0.5); r.aim('lArmR', 0.6, -0.05, 0.8); return;
+      case 'cross': r.aim('uArmL', 0.2, -1, 0.35); r.aim('lArmL', -1, 0.15, 0.3); r.aim('uArmR', -0.2, -1, 0.35); r.aim('lArmR', 1, 0.2, 0.3); return;
+    }
   }
   ronPose(r, t) {
     const R2 = r.rag, p = r.dnPose; if (!p) return;
@@ -601,12 +681,13 @@ export class DateNight {
     if (p === 'cheer') { const s = Math.sin(t * 8); R2.aim('uArmL', 0.5, 0.8, 0.2); R2.aim('lArmL', 0.1, 1, 0.1 * s); R2.aim('uArmR', -0.5, 0.8, 0.2); R2.aim('lArmR', -0.1, 1, -0.1 * s); return; }
     if (p === 'laugh') { const s = Math.sin(t * 16) * 0.08; R2.aim('uArmL', 0.2, -1, 0.3); R2.aim('lArmL', -0.6, 0.3, 0.7); r.headExtra = { yaw: 0, pitch: -0.25 + s }; return; }
     if (p === 'gape') { r.headExtra = { yaw: 0, pitch: -0.3 }; return; }
+    this.actPose(r, t);
   }
   placeProps(c) {
     if (c.dnHidden) return;
-    if (c.dnPose === 'phone' || c.dnPose === 'phoneup') {
+    if (c.dnPose === 'phone' || c.dnPose === 'phoneup' || c.dnPose === 'photo' || c.dnPose === 'call') {
       const ph = this.phone; c.rag.grip('lArmR', ph.position); ph.visible = true;
-      const head = c.headPos(_v); ph.lookAt(head); if (c.dnPose === 'phoneup') ph.rotateY(Math.PI);
+      const head = c.headPos(_v); ph.lookAt(head); if (c.dnPose === 'phoneup' || c.dnPose === 'photo') ph.rotateY(Math.PI); if (c.dnPose === 'call') ph.rotateX(-1.2);
     } else if (c.dnPose === 'menu') {
       const m = this.menu, a = c.rag.grip('lArmL', _v), b = c.rag.grip('lArmR', _v2); m.position.copy(a).add(b).multiplyScalar(0.5); m.position.y += 0.08; m.visible = true;
       m.lookAt(c.headPos(_v)); m.rotateY(Math.PI);
@@ -618,10 +699,18 @@ export class DateNight {
     const name = who ? (who === this.ron ? 'Ronnie' : who.name) : '', col = who ? (who === this.ron ? '#ffd400' : who.color) : '#fff';
     if (who && !who.disposed && !who.dnHidden) { try { who.say(text, pri); } catch (e) {} if (this.flat && who.bubble) this.bubbleOff = who; }
     this.cap = { name, col, text };
-    return Math.min(5.5, Math.max(1.7, 1.0 + text.length * 0.05));
+    return readTime(text);
   }
-  narrate(text) { this.cap = { name: '', col: '#fff', text }; return Math.min(5, Math.max(1.6, 0.8 + text.length * 0.045)); }
-  titleCard(icon, big, small, dur = 2.2) { this.ui.title(icon, big, small); this.titleT = dur; this.titleS = big; this.ui.slate(`🎬 FILM ${this.films} · ${big}`); }
+  narrate(text) { this.cap = { name: '', col: '#fff', text }; return readTime(text); }
+  // a line said while a game's being played (Chloe, the visitor, the room): on the caption, never more than one every
+  // couple of seconds (unless it matters: gap 0)
+  live(who, text, gap = 2.2) {
+    if (gap && this.liveT > 0) return; this.liveT = gap || 1.2;
+    const name = who ? (who === this.ron ? 'Ronnie' : who.name) : '', col = who ? (who === this.ron ? '#ffd400' : who.color) : '#fff';
+    if (who && !who.disposed && !who.dnHidden) { try { who.say(text, 5); } catch (e) {} }
+    this.cap = { name, col, text };
+  }
+  titleCard(icon, big, small, dur = 3.0) { this.ui.title(icon, big, small); this.titleT = dur; this.titleS = big; this.ui.slate(`🎬 FILM ${this.films} · ${big}`); }
   stamp(s, col, dur = 1.6) { this.ui.stamp(s, col); this.stampS = s; this.stampCol = col; this.stampT = dur; }
   // a mouthful: on the Eat Meter, counted, and seen
   reward(n, at) {
@@ -631,11 +720,16 @@ export class DateNight {
     const p = at || (this.third ? this.ronHead().add({ x: 0, y: -0.12, z: -0.12 }) : g.player.mouth.clone().addScaledVector(g.player.fwd, 0.15));
     try { g.crumbs.burst(p, [0xd9933f, 0x5a2e14, 0xffc21a, 0xfff3d0], 14, 1.2, null); } catch (e) {}
     g.words.show('+' + Math.round(n), p.clone().add({ x: 0, y: 0.18, z: 0 }), '#ffd400', 0.09, 0.7);
-    sfx('chomp', p, 0.9);
   }
+  crumbsAt(p) { try { this.g.crumbs.burst(p, [0xd9933f, 0x5a2e14, 0xffc21a, 0xfff3d0], 18, 1.4, null); } catch (e) {} }
+  // a diner at a table near a spot says something (the raid)
+  diner(at, line) { const grp = (this.d.dinerGroups || []).find(gp => gp.some(c => c.seat && Math.hypot(c.seat.x - at[0], c.seat.z - at[1]) < 1.3)); const c = grp && R(grp); if (c) this.live(c, line, 0); }
+  // Dylan points at Ronnie: the whole room looks (a spotlight on the screen)
+  spotlight(on) { this.spot = !!on; if (this.ui) this.ui.dim(on || (this.scene && this.scene.id === 'event')); if (on && this.g.player.shake) this.g.player.shake(0.3); }
   // the game in the middle of a film: wait for it to finish, then its result
   *play(game) {
     this.game = game; this.inBeat = false; game.S = this; this.cap = null;
+    this.readyT = game.ready != null ? game.ready : 2.6; this.ui.ready(this.readyT > 0.05 ? game.howto : null);
     yield () => !!game.result || !this.d.running;
     this.inBeat = true; const r = game.result || { win: false, soft: true };
     this.game = null; return r;
@@ -644,15 +738,16 @@ export class DateNight {
     const ui = this.ui, gm = this.game;
     if (this.bubbleOff && this.flat && this.third && this.bubbleOff.bubble) this.bubbleOff.bubble.visible = false;      // (on a screen the caption says it: no bubble over it in the shot)
     for (const c of this.g.cast) if (c.bubble && this.flat && this.third && c.speakT > 0) c.bubble.visible = false;
+    for (const c of this.g.cast) if (c.dnHid && c.bubble) c.bubble.visible = false;
     if (this.flat) for (const c of [...this.g.cast, this.ron]) if (c && c.bubble) c.bubble.visible = false;      // (and none at all over the film: the caption says it)
     const cap = this.cap;
-    ui.caption(cap ? cap.name : '', cap ? cap.col : '', cap ? cap.text : '', !gm);
-    ui.buttons(gm ? gm.buttons : null); if (gm) ui.stage(gm);
+    ui.caption(cap ? cap.name : '', cap ? cap.col : '', cap ? cap.text : '');
+    ui.buttons(gm ? (this.readyT > 0 ? gm.buttons.map(b => ({ ...b, off: true, hot: false })) : gm.buttons) : null); if (gm) ui.stage(gm);
     ui.flash(gm && gm.danger != null ? Math.max(0, (gm.danger - 0.55) / 0.45) * (0.6 + 0.4 * Math.sin(performance.now() / 80)) : 0);
-    ui.vr(this.vr, { title: this.titleS, game: gm, cap: cap ? (cap.name ? cap.name + ': ' : '') + cap.text : (gm ? gm.status : ''), who: cap && cap.name, whoCol: cap && cap.col, stamp: this.stampS, stampCol: this.stampCol }, dt);
+    ui.vr(this.vr, { title: this.titleS, ready: this.readyT > 0 && gm ? gm.howto : null, game: gm, cap: cap ? (cap.name ? cap.name + ': ' : '') + cap.text : (gm ? gm.status : ''), who: cap && cap.name, whoCol: cap && cap.col, stamp: this.stampS, stampCol: this.stampCol }, dt);
   }
-  press(i) { const gm = this.game; if (!gm || gm.result) { if (!gm) this.skip(); return; } if (gm.buttons && gm.buttons[i] && !gm.buttons[i].off) gm.press(i); }
-  release(i) { const gm = this.game; if (gm && !gm.result && gm.release) gm.release(i); }
+  press(i) { const gm = this.game; if (!gm || gm.result || this.readyT > 0) return; if (gm.buttons && gm.buttons[i] && !gm.buttons[i].off) gm.press(i); }
+  release(i) { const gm = this.game; if (gm && !gm.result && gm.release && !(this.readyT > 0)) gm.release(i); }
 
   // ------------------------------------------------------------ helpers for the films
   inGroup(c) { return (this.d.dinerGroups || []).some(g => g.includes(c)); }
@@ -660,19 +755,19 @@ export class DateNight {
   *fetch(c, line) {
     const grps = this.d.dinerGroups || [], grp = grps.find(g => g.includes(c));
     if (grp) { grp.splice(grp.indexOf(c), 1); c.dnGroup = grp; }
-    this.visitor = c;
+    this.visitor = c; this.wrapPose(c); c.dnPose = null;
     c.seated = false; c.lookOverride = null; c.state = 'idle';
     this.shot('char', { c, d: 1.5, side: 0.5 });
     c.goTo(SIDE.x, SIDE.z, 1.15);
     if (line) yield this.line(c, line); else yield 1.3;
-    c.state = 'idle'; c.path = null; c.glide = null; c.rag.placeAt(SIDE.x, SIDE.z, SIDE.yaw); c.faceYaw = SIDE.yaw; c.seated = false;
+    c.state = 'idle'; c.path = null; c.glide = null; c.rag.placeAt(SIDE.x, SIDE.z, SIDE.yaw); c.faceYaw = SIDE.yaw; c.seated = false; c.dnPose = 'talk';
     const ch = this.chloe; if (ch) ch.lookOverride = 1.0;
   }
   sendHome(c, now) {
     if (!c || c.disposed) { this.visitor = null; return; }
     const seat = c.seat;
     if (c.dnGroup && !c.dnGroup.includes(c)) c.dnGroup.push(c);
-    c.dnGroup = null; c.lookOverride = null; c.dnPose = null;
+    c.dnGroup = null; c.lookOverride = null; c.dnPose = null; if (c.dnBase) { c.personalityPose = c.dnBase; c.dnBase = null; c.dnWrapped = false; }
     if (seat) { if (now) { c.state = 'idle'; c.path = null; c.glide = null; c.rag.placeAt(seat.x, seat.z, seat.yaw); c.seated = true; c.faceYaw = seat.yaw; } else c.goTo(seat.x, seat.z, 1.1); }
     if (this.visitor === c) this.visitor = null;
   }
@@ -683,10 +778,36 @@ export class DateNight {
     c.state = 'idle'; c.path = null; c.glide = null; c.rag.placeAt(now ? CHL.x : 7.6, now ? CHL.z : 3.9, now ? 0 : -2.2); c.seated = !!now; c.faceYaw = 0;
     if (!now) c.goTo(CHL.x + 0.6, CHL.z - 0.4, 1.3); }
   chloeSit() { const c = this.chloe; if (!c) return; c.state = 'idle'; c.path = null; c.glide = null; c.rag.placeAt(CHL.x, CHL.z, 0); c.seated = true; c.faceYaw = 0; c.lookOverride = null; }
-  placePlayer() {
-    const P = this.g.player; if (this.vr) return;
-    const head = P.head; if (Math.hypot(head.x - SEAT.x, head.z - SEAT.z) < 0.4) return;
-    P.rig.position.x += SEAT.x - head.x; P.rig.position.z += SEAT.z - head.z; P.rig.updateMatrixWorld(true); P.resetHandHistory && P.resetHandHistory();
+  // ---- where you are: sat at the table, always (no walking on a date). The films move you when they need to
+  seatPlayer() { this.putAt(SEAT.x, SEAT.z, CHL.x, CHL.z); }
+  putAt(x, z, lx, lz) {
+    const P = this.g.player; P.rig.updateMatrixWorld(true); const head = P.camera.getWorldPosition(new THREE.Vector3());      // (where your eyes really are: P.head is last frame's)
+    P.rig.position.x += x - head.x; P.rig.position.z += z - head.z; P.rig.updateMatrixWorld(true); P.resetHandHistory && P.resetHandHistory();
+    if (P.flatMove) P.flatMove = { x: 0, z: 0 };
+    if (lx != null) { P.faceToward && P.faceToward(lx, lz, 0.01); if (P.flatMode) P.flatPitch = -0.22; }
+    this.pin = { x: P.rig.position.x, z: P.rig.position.z, ry: P.rig.rotation.y };
+  }
+  // the joystick, the keys and the thumbstick move nothing: the rig is held where the date put it (turning's fine)
+  pinPlayer() {
+    const P = this.g.player; if (!this.pin || this.state === 'over') return;
+    if (P.flatMove && (P.flatMove.x || P.flatMove.z)) P.flatMove = { x: 0, z: 0 };
+    if (Math.abs(P.rig.rotation.y - this.pin.ry) > 1e-6) { this.pin = { x: P.rig.position.x, z: P.rig.position.z, ry: P.rig.rotation.y }; return; }      // (a snap turn moves the rig round your head: that's yours)
+    if (P.rig.position.x !== this.pin.x || P.rig.position.z !== this.pin.z) { P.rig.position.x = this.pin.x; P.rig.position.z = this.pin.z; P.rig.updateMatrixWorld(true); }
+    const sitY = P.flatMode && !this.vr && !this.away ? SIT_DROP : 0;      // (sat down: your eyes level with hers. Stood at a raid spot: full height)
+    if (Math.abs(P.rig.position.y - sitY) > 1e-4 && !P.knock && !P.jigY && !P.siuY) { P.rig.position.y = sitY; P.rig.updateMatrixWorld(true); }
+  }
+  // the loo raid: a quick fade and you're there (spot), or back in your seat (null)
+  travel(spot, now) {
+    const go = () => { if (spot) { this.away = spot; this.putAt(spot.at[0], spot.at[1], spot.food[0], spot.food[1]); this.shot('at', { pos: V(...spot.pos), look: V(...spot.look) }); } else { this.away = null; this.seatPlayer(); if (this.scene) this.shot('crane'); } };
+    this.travelGo = null;
+    if (now || this.vr) { go(); return; }
+    this.ui.fade(); sfx('whoosh', null, 0.6); this.away = spot || this.away;
+    this.travelGo = { go, t: 0.33 };      // (on the game's clock: the cut happens when the screen's black)
+  }
+  // the waiter tops the table up now and then (something to be tempted by between the films)
+  topUp() {
+    const items = this.g.items; let n = 0; for (const it of items.items) if (!it.dead && !it.def.veg && Math.hypot(it.pos.x - T.x, it.pos.z - T.z) < 0.55) n++;
+    if (n >= 3) return; try { items.spawn(R(['pizza', 'doughnut', 'cupcake', 'burger', 'fries', 'cookie']), V(T.x + rr(-0.25, 0.25), 0.92, T.z + rr(0.1, 0.3))); } catch (e) {}
   }
   // a bit of real food near a spot: eaten (it comes back somewhere else later)
   eatNear(x, z, r = 1.4) {
@@ -700,235 +821,484 @@ export class DateNight {
   // ============================================================ SHE LOOKS AWAY
   *lookFilm(v) {
     const L = LOOKS[v], c = this.chloe, r = this.ron;
-    this.placePlayer();
-    this.titleCard(L.icon, L.title, L.sub);
+    this.titleCard(L.icon, L.title, L.sub); yield 1.6;
     this.shot(R(['overR', 'chloe'])); yield this.chloeSay(R(L.lead));
     if (c) { c.dnPose = L.pose; c.lookOverride = L.look || null; }
-    this.shot(v === 'phone' || v === 'board' ? 'chloe' : 'overR'); yield 1.1;
+    this.shot(v === 'phone' || v === 'board' ? 'chloe' : 'overR'); yield 1.8;
     if (r) r.lookOverride = 0;
-    this.shot('ronnie'); if (r) r.dnPose = 'gape'; yield this.narrate(R(['Ronnie sees his chance.', 'The bread basket is unguarded.', 'Somewhere, a violin plays.', 'He has never moved this fast in his life.']));
+    this.shot('ronnie'); if (r) r.dnPose = 'gape'; yield this.narrate(R(['Ronnie sees his chance.', 'The bread basket is unguarded.', 'Somewhere, a violin plays.', 'He has never moved this fast in his life.', 'His stomach makes a noise like a ferry.']));
     this.shot('side');
-    const pen = this.shorter > 0 ? 0.75 : 1; if (this.shorter > 0) this.shorter--;
-    const res = yield* this.play(cramGame({ srcs: L.srcs.map(k => SRC[k]), dur: [3.2 * pen, 5.8 * pen], window: rr(0.65, 1.0) * (pen < 1 ? 0.85 : 1), fakes: Math.random() < 0.6 ? 1 : 0, fakeText: L.fake, away: L.look || 0, pose: L.pose }));
+    const pen = this.shorter > 0 ? 0.8 : 1; if (this.shorter > 0) this.shorter--;
+    const res = yield* this.play(cramGame({ pool: L.pool, rounds: this.lvl > 0.45 ? 3 : 2, lvl: Math.min(1, this.lvl + (1 - pen)), away: L.look || 0, pose: L.pose, fakeText: L.fake, again: L.again, mutter: L.mutter }));
     if (r) r.dnPose = null;
     if (!res.win) { yield* this.caughtFilm(res.reason); return; }
     yield* this.winFilm(res, res.smooth ? 'SMOOTH!' : 'GOT AWAY WITH IT');
     if (c) { c.dnPose = null; c.lookOverride = null; }
     this.shot('overR'); yield this.chloeSay(R(BACK));
   }
+  // the end of a film you won: Ronnie, smug; the stars; the score
   *winFilm(res, word) {
-    this.wins++; const r = this.ron;
+    this.wins++; const r = this.ron, st = Math.max(1, Math.min(3, res.stars || 1)), bonus = st * 4;
     this.shot('ronnie'); if (r) r.dnPose = 'innocent';
-    this.stamp(word, '#39ff14'); sfx('dn_smooth', null, 0.9);
-    if (res.haul) this.g.words.show(`+${Math.round(res.haul)} SNUCK IN`, this.ronHead().add({ x: 0, y: 0.35, z: 0 }), '#39ff14', 0.1, 1.4);
-    yield 1.4;
+    this.reward(bonus); this.stamp(word, '#39ff14', 2.4); sfx('dn_smooth', null, 0.9);
+    this.ui.result('★'.repeat(st) + '☆'.repeat(3 - st), `+${Math.round((res.score || 0) + bonus)} SNUCK IN`);
+    yield 2.4;
+    this.ui.result(null);
     if (r) r.dnPose = null;
   }
 
   // ============================================================ THE WAITER (Ben's covering a shift)
   waiterChar() { const g = this.g; for (const id of ['ben', 'lewis', 'connor', 'noah', 'alfie']) { const c = g.cast.find(o => o.id === id && o.rag && o.rag.mesh && !o.down && this.inGroup(o)); if (c) return c; } return null; }
+  eventFilm(v) { return v === 'fire' ? this.fireFilm() : v === 'power' ? this.powerFilm() : v === 'noproposal' ? this.noProposeFilm() : this.birthdayFilm(); }
   *waiterFilm(v) {
+    if (v === 'wine') { yield* this.wineFilm(); return; }
+    if (v === 'chef') { yield* this.chefFilm(); return; }
     const w = this.waiterChar(), c = this.chloe;
-    this.placePlayer();
     if (v === 'order') {
-      this.titleCard('🧑‍🍳', 'THE WAITER', 'Ben\'s covering a shift. Order in secret code');
+      this.titleCard('🧑‍🍳', 'THE SECRET ORDER', 'Ben\'s covering a shift. Order in code, three courses'); yield 1.6;
       if (w) yield* this.fetch(w, w.id === 'ben' ? 'Evening both. I\'m your waiter tonight. Ronnie. I KNOW.' : 'Evening! I\'m covering for Ben. Don\'t ask. Right: orders.');
       this.shot('overR'); yield this.chloeSay('Two salads, please. No dressing. He\'s on a diet. Aren\'t you, babe?');
+      this.shot('ronnie'); yield this.line(this.ron, 'Yes, babe. Salad. I LOVE salad. *taps nose at the waiter*');
       if (c) c.dnPose = 'menu';
-      this.shot('char', { c: w, d: 1.1, side: -0.3 }); if (w) yield this.line(w, 'Two salads. Lovely. *taps nose* Anything... EXTRA, sir?'); else yield 1;
+      this.shot('char', { c: w, d: 1.1, side: -0.3 }); if (w) yield this.line(w, 'Two salads. Lovely. *writes something on his pad and taps it* Anything... EXTRA, sir?'); else yield 1.5;
       this.shot('wide');
-      const res = yield* this.play(signalGame({}));
+      const res = yield* this.play(signalGame({ lvl: this.lvl }));
       if (c) c.dnPose = null;
       if (!res.win && !res.soft) { yield* this.caughtFilm('gesture'); return; }
       if (res.soft) { this.shot('char', { c: w, d: 1.2, side: 0.3 }); if (w) yield this.line(w, 'Two salads it is. I tried, Ron. I tried.'); return; }
       this.shot('table'); this.stamp('ORDER IN!', '#39ff14');
-      for (const [type, dx] of [['burger', -0.15], ['fries', 0.15]]) { try { this.g.items.spawn(type, V(T.x + dx, 0.92, T.z + 0.22)); } catch (e) {} }
-      sfx('plate_down', null, 0.8); this.wins++;
-      if (w) yield this.line(w, 'Two "salads". One is a burger. The other one is also not a salad.'); else yield 1.4;
+      (res.dishes || []).forEach((type, i) => { try { this.g.items.spawn(type, V(T.x - 0.2 + i * 0.2, 0.92, T.z + 0.22)); } catch (e) {} });
+      sfx('plate_down', null, 0.8);
+      if (w) yield this.line(w, `${res.dishes.length === 3 ? 'Three' : res.dishes.length === 2 ? 'Two' : 'One'} "salad${res.dishes.length > 1 ? 's' : ''}". None of them are salads.`); else yield 1.8;
       this.shot('overR'); yield this.chloeSay('Is that... a burger? Under the lettuce?');
-      this.shot('ronnie'); yield this.line(this.ron, 'It\'s a salad, babe. A HOT salad.');
+      this.shot('ronnie'); yield this.line(this.ron, 'It\'s a salad, babe. A HOT salad. Very continental.');
+      yield* this.winFilm(res, 'ORDER IN!');
       if (w) this.sendHome(w);
       return;
     }
     if (v === 'trolley') {
-      this.titleCard('🍰', 'THE DESSERT TROLLEY', 'It\'s coming past. She\'s asking about allergens');
-      if (w) yield* this.fetch(w, 'Desserts! Who\'s for the trolley?');
-      this.shot('overR'); yield this.chloeSay('Ooh. Is the sorbet dairy free? And gluten free? And what\'s it made of? Exactly?');
+      this.titleCard('🍰', 'THE DESSERT TROLLEY', 'Three waves of puddings. Not her sorbet'); yield 1.6;
+      if (w) yield* this.fetch(w, 'Desserts! Who\'s for the trolley? Ronnie, don\'t answer that.');
+      this.shot('overR'); yield this.chloeSay('Ooh. Is the sorbet dairy free? And gluten free? What\'s it made of? Exactly? In grams?');
       if (c) c.lookOverride = 1.0;
-      this.shot('char', { c: w, d: 1.2, side: -0.3 }); if (w) yield this.line(w, 'It\'s... lemon? Let me check. Ronnie, DON\'T.'); else yield 1;
+      this.shot('char', { c: w, d: 1.2, side: -0.3 }); if (w) yield this.line(w, 'It\'s... lemon? Let me check the folder. Ronnie, DON\'T.'); else yield 1.5;
       this.shot('trio');
-      const res = yield* this.play(conveyorGame({}));
+      const res = yield* this.play(conveyorGame({ lvl: this.lvl }));
       if (!res.win) { yield* this.caughtFilm(res.reason); return; }
+      if (res.stash) { this.shot('table'); yield this.narrate(`Later, under the napkin: ${res.stash} dessert${res.stash > 1 ? 's' : ''}. Gone in one go. Nobody saw. Probably.`); }
       yield* this.winFilm(res, res.stash ? 'STASHED!' : 'SWEET!');
-      if (res.stash) { this.shot('table'); yield this.narrate(`Later, under the napkin: ${res.stash} dessert${res.stash > 1 ? 's' : ''}. Gone in one go.`); }
       if (w) this.sendHome(w);
       return;
     }
     // napkin
-    this.titleCard('🧻', 'THE NAPKIN TRICK', 'Slide the extras under your napkin while she does the wine');
+    this.titleCard('🧻', 'THE NAPKIN TRICK', 'Hide the extras under your napkin. Then eat them under it'); yield 1.6;
     if (w) yield* this.fetch(w, 'Here\'s your bread, and here\'s... *wink* ...the bread.');
     this.shot('table'); yield this.narrate('Under the bread: a burger, a hot dog and a doughnut. Ben\'s a legend.');
     if (c) { c.dnPose = 'menu'; c.lookOverride = 0.6; }
-    this.shot('overR'); yield this.chloeSay('Can we see the wine list? I want something that goes with salad.');
+    this.shot('overR'); yield this.chloeSay('Can we see the wine list? I want something that goes with salad. And disappointment.');
     this.shot('trio');
-    const res = yield* this.play(napkinGame({}));
+    const res = yield* this.play(napkinGame({ lvl: this.lvl }));
     if (c) c.dnPose = null;
     if (!res.win) { yield* this.caughtFilm('napkin'); return; }
-    yield* this.winFilm(res, res.n >= 3 ? 'ALL HIDDEN!' : `${res.n} HIDDEN`);
+    yield* this.winFilm(res, res.n >= 3 ? 'ALL GONE!' : `${res.n} EATEN`);
     if (w) this.sendHome(w);
   }
 
   // ============================================================ SHE NEEDS THE LOO
   *toiletFilm(v) {
-    const c = this.chloe;
-    this.placePlayer();
-    this.titleCard('🚽', 'CHLOE NEEDS THE LOO', v === 'queue' ? 'And there\'s a queue. Raid the restaurant!' : 'Raid the restaurant. Be back in your seat before she is');
+    this.titleCard('🚽', 'CHLOE NEEDS THE LOO', v === 'queue' ? 'And there\'s a queue. Raid the whole restaurant' : 'Raid the restaurant. Be back in your seat before she is'); yield 1.6;
     this.shot('overR'); yield this.chloeSay(R(['I\'m just popping to the loo, babe. Don\'t. Move.', 'Toilet. Back in two minutes. I\'ve counted the bread rolls.', 'I need the loo. If ANYTHING is missing when I get back...']));
-    this.shot('wide'); this.chloeAway(); yield 1.6;
+    this.shot('ronnie'); yield this.line(this.ron, R(['Course, babe. I\'ll just sit here. Being good.', 'Take your time, babe. No rush. Honestly. Any time.']));
+    this.shot('wide'); this.chloeAway(); yield 2.0;
     this.shot('ronnie'); if (this.ron) { this.ron.dnPose = 'gape'; this.ron.lookOverride = -0.5; } yield this.narrate('The door swings shut. Ronnie is alone. With everything.');
     this.chloeHide(); if (this.ron) this.ron.lookOverride = 0;
     this.shot('crane');
-    const res = yield* this.play(raidGame({ total: v === 'queue' ? rr(17, 21) : rr(13, 16), early: v === 'lipstick' }));
+    const res = yield* this.play(raidGame({ total: v === 'queue' ? rr(20, 24) : rr(16, 19), early: v === 'lipstick', lvl: this.lvl }));
     if (this.ron) this.ron.dnPose = null;
+    if (this.away) this.travel(null, true);
     this.chloeBack(false); this.shot('wide');
-    if (!res.win) { yield 1.0; this.chloeSit(); yield* this.caughtFilm('seat'); return; }
-    yield 1.2; this.chloeSit();
+    if (!res.win) { yield 1.4; this.chloeSit(); yield* this.caughtFilm('seat'); return; }
+    yield 1.6; this.chloeSit();
     this.raided += res.n || 0; track('dnRaid', res.n || 0);
+    this.shot('overR'); yield this.chloeSay(R(['That\'s weird. Everyone in here looks hungrier than when I left.', 'Why is the birthday cake in the other room half gone?', 'Why is the chef crying?']));
     yield* this.winFilm(res, res.n ? `RAIDED ${res.n}!` : 'NOTHING? REALLY?');
-    this.shot('overR'); yield this.chloeSay(R(['That\'s weird. Everyone in here looks hungrier than when I left.', 'Why is the birthday cake in the other room half gone?', 'Why is there a queue at the bar for food?']));
   }
 
   // ============================================================ THE LADS COME OVER
   *harryFilm(h) {
     if (!h) return;
-    this.placePlayer();
-    this.titleCard('💘', 'HARRY NEEDS ADVICE', 'Laugh or aww when she checks on you. Cram the rest');
+    this.titleCard('💘', 'HARRY NEEDS ADVICE', 'Four dating disasters. React right when she checks on you'); yield 1.6;
     yield* this.fetch(h, 'Chloe! Can I ask you something? As a woman? Why won\'t anyone reply to me?');
     this.shot('overR'); yield this.chloeSay('Oh Harry. Sit... no, stand there. Tell me everything.');
+    this.shot('char', { c: h, d: 1.2, side: 0.3 }); yield this.line(h, 'Right. Get comfy. I\'ve got four. Ronnie\'s heard them. Ronnie, act like you haven\'t.');
     this.shot('trio');
-    const res = yield* this.play(reactGame({ h }));
+    const res = yield* this.play(reactGame({ h, lvl: this.lvl }));
     if (!res.win) { yield* this.caughtFilm('react'); this.sendHome(h); return; }
     this.shot('char', { c: h, d: 1.2, side: 0.3 }); yield this.line(h, 'Thanks Chloe. Thanks Ron. You\'re a great listener, mate. And eater.');
+    this.shot('overR'); yield this.chloeSay('He\'ll find someone, babe. Someone with very low standards. Like me.');
     yield* this.winFilm(res, 'GREAT LISTENER');
     this.sendHome(h);
   }
   *oliverFilm(o) {
     if (!o) return;
-    this.placePlayer();
-    this.titleCard('📹', 'OLIVER\'S SHAME CAM', 'He\'s filming. Only eat when you\'re out of shot');
+    this.titleCard('📹', 'OLIVER\'S SHAME CAM', 'Three bits of video. Only eat when you\'re out of shot'); yield 1.6;
     yield* this.fetch(o, 'Hey guys, welcome back to the channel! It\'s DATE NIGHT with Ronnie and Chloe!');
     const c = this.chloe; if (c) { c.dnPose = 'wave'; c.lookOverride = 0.9; }
-    this.shot('overR'); yield this.chloeSay('Oh my God, Oliver, are we live? Hi everyone! Hi Mum!');
+    this.shot('overR'); yield this.chloeSay('Oh my God, Oliver, are we live? Hi everyone! Hi Mum! Hi Chester!');
+    this.shot('char', { c: o, d: 1.2, side: 0.3 }); yield this.line(o, 'We\'re LIVE. Two thousand watching. Ronnie, do NOT eat on camera. It\'s a wholesome channel.');
     this.shot('trio');
-    const res = yield* this.play(viewfinderGame({}));
+    const res = yield* this.play(viewfinderGame({ lvl: this.lvl }));
     if (c) c.dnPose = null;
     if (!res.win) { this.shot('char', { c: o, d: 1.2, side: 0.3 }); yield this.line(o, 'Got it! In 4K! Ronnie eating ON A DATE. That\'s going on my story.'); yield* this.caughtFilm('filmed'); this.sendHome(o); return; }
-    this.shot('char', { c: o, d: 1.2, side: 0.3 }); yield this.line(o, res.bombs ? `That\'s a wrap. ${res.bombs} photobomb${res.bombs > 1 ? 's' : ''}. The algorithm LOVES you, Ronnie.` : 'That\'s a wrap. Weird. I never got him eating once.');
+    this.shot('char', { c: o, d: 1.2, side: 0.3 }); yield this.line(o, res.bombs ? `That\'s a wrap. ${res.bombs} photobomb${res.bombs > 1 ? 's' : ''}. ${Math.round(res.followers / 1000)}K followers. The algorithm LOVES you, Ronnie.` : 'That\'s a wrap. Weird. I never got him eating once.');
     yield* this.winFilm(res, 'NOT IN SHOT');
     this.sendHome(o);
   }
   *pintsFilm(a, both) {
     if (!a) return;
-    this.placePlayer();
     const other = both ? this.g.cast.find(o => o.id === (a.id === 'aidan' ? 'connor' : 'aidan')) : null;
-    this.titleCard('🍺', 'JUST THE ONE', 'Keep your eye on the Guinness');
+    this.titleCard('🍺', 'JUST THE ONE', 'Three rounds. Keep your eye on the Guinness'); yield 1.6;
     yield* this.fetch(a, both ? 'Quiet one for the lovebirds! Our Connor\'s round.' : 'Quiet one for the lovebirds. Just the one.');
     if (other && other.rag) { other.seated = false; other.state = 'idle'; other.rag.placeAt(SIDE.x + 0.15, SIDE.z + 0.6, SIDE.yaw - 0.4); other.faceYaw = SIDE.yaw - 0.4; this.extraVisitor = other; const g0 = (this.d.dinerGroups || []).find(gp => gp.includes(other)); if (g0) { g0.splice(g0.indexOf(other), 1); other.dnGroup = g0; } }
     this.shot('overR'); yield this.chloeSay('He\'s not drinking tonight. Are you, babe? It\'s water for him.');
     this.shot('char', { c: a, d: 1.1, side: -0.3 }); yield this.line(a, 'Course. Water. *slides three glasses about* One of these is water. One\'s a Guinness. One\'s Chloe\'s wine.');
+    if (other) { this.shot('char', { c: other, d: 1.1, side: 0.3 }); yield this.line(other, 'Three rounds, Ron. Pick the black stuff. Let it settle. You won\'t.'); }
     this.shot('table');
-    const res = yield* this.play(shellGame({}));
+    const res = yield* this.play(shellGame({ lvl: this.lvl }));
     if (other) { this.sendHome(other, true); this.extraVisitor = null; }
     if (!res.win && !res.soft) { this.shot('char', { c: a, d: 1.2, side: 0.3 }); yield this.line(a, 'Wrong one, Ron. That\'s her rosé. Night night.'); yield* this.caughtFilm('wine'); this.sendHome(a); return; }
-    if (res.soft) { this.shot('ronnie'); yield this.line(this.ron, res.water ? 'It\'s... water. Actual water. Why would you DO that?' : 'Which one was it? I wasn\'t watching. I was watching the bread.'); this.shot('char', { c: a, d: 1.2, side: 0.3 }); yield this.line(a, 'Ah well. More for me.'); this.sendHome(a); return; }
-    this.reward(20); this.shot('char', { c: a, d: 1.2, side: 0.3 }); yield this.line(a, R(['He didn\'t even let it SETTLE! Our grandad would weep!', 'That\'s a lovely pint. That WAS a lovely pint.']));
-    yield* this.winFilm({ haul: 20 }, 'SPLIT THE G!');
+    if (res.soft) { this.shot('ronnie'); yield this.line(this.ron, 'It\'s... water. Three times. Actual water. Why would you DO that?'); this.shot('char', { c: a, d: 1.2, side: 0.3 }); yield this.line(a, 'Ah well. More for me.'); this.sendHome(a); return; }
+    this.shot('char', { c: a, d: 1.2, side: 0.3 }); yield this.line(a, res.pints >= 3 ? 'Three for three. Ron. Ron. You\'ve split every G in this restaurant.' : R(['He didn\'t even let it SETTLE! Our grandad would weep!', 'That\'s a lovely pint. That WAS a lovely pint.']));
+    yield* this.winFilm(res, res.pints >= 3 ? 'THREE PINTS!' : 'SPLIT THE G!');
     this.sendHome(a);
   }
   *dylanFilm(dy) {
     if (!dy) return;
-    this.placePlayer();
-    this.titleCard('🎸', 'DYLAN\'S WONDERWALL', 'Everyone\'s watching him. Grab what pops up. Not the broccoli');
+    this.titleCard('🎸', 'DYLAN\'S WONDERWALL', 'The whole song. Grab what pops up. Freeze when he points at you'); yield 1.6;
     this.visitor = dy; const grp = (this.d.dinerGroups || []).find(gp => gp.includes(dy)); if (grp) { grp.splice(grp.indexOf(dy), 1); dy.dnGroup = grp; }
     dy.seated = false; dy.state = 'idle'; dy.rag.placeAt(SIDE.x + 0.5, SIDE.z - 0.9, SIDE.yaw + 0.5); dy.faceYaw = SIDE.yaw + 0.5;
     this.shot('char', { c: dy, d: 1.6, side: 0.4 }); sfx('boing', null, 1); yield this.line(dy, 'RONNIEEEEEE! This one\'s for the lovebirds! TODAY IS GONNA BE THE DAY...');
     const c = this.chloe; if (c) { c.dnPose = 'cry'; c.lookOverride = 0.9; }
     dy.dancing = true;
-    this.shot('overR'); yield this.chloeSay('Dylan, NO. Everyone\'s looking. Oh my God. Everyone\'s singing.');
+    this.shot('overR'); yield this.chloeSay('Dylan, NO. Everyone\'s looking. Oh my God. Everyone\'s SINGING.');
     this.shot('wide');
-    const res = yield* this.play(whackGame({}));
-    dy.dancing = false; if (c) c.dnPose = null;
-    if (!res.win) { yield* this.caughtFilm('gag'); this.sendHome(dy); return; }
-    this.shot('char', { c: dy, d: 1.3, side: 0.3 }); yield this.line(dy, '...and after aaaaall... you\'re my wonderwaaaall. Cheers Ron. You owe me a pint.');
+    const res = yield* this.play(whackGame({ lvl: this.lvl, lines: { 1: 'CHORUS! Everybody! AND ALL THE ROADS WE HAVE TO WALK ARE WINDING...', 2: 'THIS ONE\'S FOR RONNIE! Everybody look at RONNIE!', 3: '...because maaaaybe... YOU\'RE GONNA BE THE ONE THAT EATS MEEEE!' } }));
+    this.spotlight(false); dy.dancing = false; if (c) c.dnPose = null;
+    if (!res.win) { yield* this.caughtFilm(res.reason); this.sendHome(dy); return; }
+    this.shot('char', { c: dy, d: 1.3, side: 0.3 }); yield this.line(dy, '...and after aaaaall... you\'re my wonderwaaaall. Cheers Ron. You owe me a pint. And a knee.');
     yield* this.winFilm(res, 'ENCORE!');
     this.sendHome(dy);
   }
   *ethanFilm(e) {
     if (!e) return;
-    this.placePlayer();
-    this.titleCard('⚽', 'ETHAN\'S FREE KICK', 'A bread roll, curled into your mouth. Time it right');
+    this.titleCard('⚽', 'ETHAN\'S FREE KICK', 'Three kicks: a bread roll into your mouth. Noah\'s the wall'); yield 1.6;
     const c = this.chloe;
     this.shot('char', { c: e, d: 1.4, side: 0.4 }); yield this.line(e, 'Ronnie! Set piece! Open wide! Like Roberto Carlos, but bread!');
     if (c) { c.dnPose = 'phone'; c.lookOverride = 0; }
     this.shot('overR'); yield this.chloeSay('Hang on babe, I\'m checking the bill. Nine starters?! NINE?');
     this.shot('side');
-    const res = yield* this.play(kickGame({}));
+    const res = yield* this.play(kickGame({ lvl: this.lvl }));
     if (c) c.dnPose = null;
     if (!res.win) { yield* this.caughtFilm('roll'); return; }
     this.shot('char', { c: e, d: 1.2, side: 0.3 }); yield this.line(e, res.n >= 3 ? 'HAT-TRICK! Hala Madrid! And bread!' : 'Top bins, Ronnie! Well. Top Ronnie.');
     yield* this.winFilm(res, res.n >= 3 ? 'HAT-TRICK!' : 'TOP BINS!');
   }
+  *lewisFilm(l) {
+    if (!l) return;
+    this.titleCard('💪', 'LEWIS\'S ARM WRESTLE', 'Push his arm over. Sneak bites with the other hand'); yield 1.6;
+    yield* this.fetch(l, 'Bro. BRO. Arm wrestle. Loser pays the bill. Chloe, you\'re the ref.');
+    const c = this.chloe;
+    this.shot('overR'); yield this.chloeSay('Fine. But I\'m watching your hands, Ronnie. BOTH of them.');
+    this.shot('ronnie'); yield this.line(this.ron, 'Course, babe. Both hands. *one hand drifts towards the bread*');
+    this.shot('trio');
+    const res = yield* this.play(wrestleGame({ lvl: this.lvl }));
+    if (c) { c.dnPose = null; c.lookOverride = null; }
+    if (!res.win) { yield* this.caughtFilm('wrestle'); this.sendHome(l); return; }
+    this.shot('char', { c: l, d: 1.2, side: 0.3 }); yield this.line(l, res.wrestle === 'won' ? 'He... he beat me. Bro. Don\'t tell the gym.' : res.wrestle === 'lost' ? 'And THAT is what protein does. You\'re paying, bro.' : 'A draw. I\'ll take it. Rematch at leg day.');
+    yield* this.winFilm(res, res.wrestle === 'won' ? 'ARM OF STEEL!' : 'SNUCK IT!');
+    this.sendHome(l);
+  }
 
-  // ============================================================ BUSTED: her reaction, and the penalty
+  // ============================================================ THE BIRTHDAY SONG (the lights go down)
+  *birthdayFilm() {
+    this.titleCard('🎂', 'HAPPY BIRTHDAY', 'Lights down. Eat on the beat, sing when she sings, freeze for the candles'); yield 1.6;
+    this.shot('wide'); yield this.narrate('The lights go down. The waiters bring out a cake for table six. Everyone starts singing.');
+    this.ui.dim(true);
+    this.shot('overR'); yield this.chloeSay('Ooh! A birthday! Sing, babe! SING with me!');
+    this.shot('side');
+    const res = yield* this.play(birthdayGame({ lvl: this.lvl }));
+    this.ui.dim(false); sfx('cheer', null, 0.7);
+    if (!res.win) { yield* this.caughtFilm(res.reason); return; }
+    this.shot('overR'); yield this.chloeSay('Wasn\'t that lovely? Why do you smell like icing?');
+    yield* this.winFilm(res, 'HIP HIP HOORAY!');
+  }
+
+
+  // ============================================================ THE NIGHT BEGINS: arriving, being seated, ordering
+  *openFilm() {
+    const c = this.chloe, r = this.ron, w = this.waiterChar(), g = this.g;
+    this.titleCard('🌹', 'DATE NIGHT', 'La Grande Portion. Table for two. Ronnie\'s on a diet'); yield 2.0;
+    // in at the door: the maître d' at his podium, the two of them in the foyer
+    if (w) { const grp = (this.d.dinerGroups || []).find(gp => gp.includes(w)); if (grp) { grp.splice(grp.indexOf(w), 1); w.dnGroup = grp; } this.visitor = w; w.seated = false; w.state = 'idle'; w.rag.placeAt(9.5, 7.2, Math.PI); w.faceYaw = Math.PI; this.wrapPose(w); w.dnPose = 'bow'; }
+    if (c) { c.seated = false; c.state = 'idle'; c.rag.placeAt(9.15, 5.75, 0); c.faceYaw = 0; c.dnPose = 'wave'; }
+    if (r) { r.seated = false; r.state = 'idle'; r.rag.placeAt(9.85, 5.8, 0); r.faceYaw = 0; r.dnPose = 'shrug'; }
+    this.shot('foyer'); yield 1.4;
+    if (w) { w.dnPose = 'talk'; yield this.line(w, w.id === 'ben' ? 'Good evening. Table for two? ...Ronnie. I\'ll get the reinforced chair.' : 'Evening! Table for two. I\'ve put you near the kitchen, Ronnie. Saves time.'); }
+    if (c) c.dnPose = 'point'; this.shot('push', { c }); yield this.chloeSay('He\'s on a DIET. Nothing near the dessert trolley, please. Or the bread. Or the kitchen.');
+    if (r) r.dnPose = 'innocent'; this.shot('low', { c: r }); yield this.line(r, 'I\'m a changed man, babe. I had a carrot on the way here.');
+    // through the restaurant to the table (the whole room clocks him)
+    if (c) { c.dnPose = null; c.goTo(CHL.x + 0.5, CHL.z - 0.2, 1.0); } if (r) { r.dnPose = null; r.goTo(RON.x + 0.6, RON.z + 0.3, 1.0); }
+    for (const gp of this.d.dinerGroups || []) for (const d of gp) { if (Math.random() < 0.5) { d.lookOverride = R([-0.6, 0.6]); d.lookT = 3; } }
+    this.shot('dolly'); yield this.narrate(R(['The whole restaurant goes quiet. A waiter moves the bread basket. Just in case.', 'Table six stops eating. Table four hides their chips. The pianist would play, but he quit.']));
+    if (c) { c.state = 'idle'; c.path = null; c.rag.placeAt(CHL.x, CHL.z, 0); c.seated = true; c.faceYaw = 0; c.dnPose = 'menu'; }
+    if (r) { r.state = 'idle'; r.path = null; r.rag.placeAt(RON.x, RON.z, Math.PI); r.seated = true; r.faceYaw = Math.PI; }
+    if (w) { w.state = 'idle'; w.rag.placeAt(SIDE.x, SIDE.z, SIDE.yaw); w.faceYaw = SIDE.yaw; w.dnPose = 'talk'; }
+    this.shot('orbit'); yield 1.6;
+    if (w) yield this.line(w, 'Can I start you off with anything?');
+    this.shot('chloe'); yield this.chloeSay('I\'ll have the green salad. He\'ll have the green salad. Won\'t you, babe?');
+    // what Ronnie orders
+    this.shot('ronnie');
+    const ch = yield* this.play(choiceGame({ title: 'WHAT ARE YOU ORDERING?', card: 'TONIGHT\'S MENU', time: 8, options: [
+      { icon: '🥗', label: 'THE SALAD', sub: 'she\'ll be pleased', id: 'salad' }, { icon: '😉', label: '"THE SALAD"', sub: 'wink at the waiter', id: 'wink' }, { icon: '🍽️', label: 'TASTING MENU', sub: 'twelve courses', id: 'taste' }] }));
+    const pick = (ch.pick || {}).id || 'salad';
+    if (pick === 'salad') { yield this.line(r, 'The salad. Please. *a single tear*'); if (c) c.dnPose = 'cheer'; this.shot('chloe'); yield this.chloeSay('Babe! I\'m so PROUD of you! See, that wasn\'t hard!'); this.probation = 0; this.reward(5); }
+    else if (pick === 'wink') { yield this.line(r, 'The salad. *wink* The SALAD. *winks so hard his face moves*'); if (w) { this.shot('char', { c: w, d: 1.1, side: 0.3 }); w.dnPose = 'point'; yield this.line(w, 'One "salad". Got it. *taps nose*'); }
+      try { g.items.spawn('burger', V(T.x + 0.12, 0.92, T.z + 0.25)); } catch (e) {} this.shot('overR'); yield this.chloeSay('Why are you two winking at each other?'); this.probation = 6; }
+    else { yield this.line(r, 'I\'ll have the tasting menu. Twelve courses. Four times.'); if (c) c.dnPose = 'point'; this.shot('dutch'); yield this.chloeSay('RONNIE. We have been here for ONE MINUTE.'); this.shorter = 1;
+      for (const [type, dx] of [['pizza', -0.22], ['cupcake', 0.0], ['doughnut', 0.22]]) { try { g.items.spawn(type, V(T.x + dx, 0.92, T.z + 0.25)); } catch (e) {} } }
+    if (c) c.dnPose = null; if (w) this.sendHome(w);
+    this.shot('wide'); yield this.narrate('The night begins. She\'s watching. She\'s always watching.');
+  }
+
+  // ============================================================ THE NIGHT ENDS: the bill
+  *billFilm() {
+    const c = this.chloe, r = this.ron, w = this.waiterChar();
+    this.titleCard('🧾', 'THE BILL', 'It\'s arrived. It\'s long. It\'s still arriving'); yield 2.0;
+    if (w) yield* this.fetch(w, 'Your bill. I\'ll get the other half. It\'s on a trolley.');
+    if (w) w.dnPose = 'pour';
+    this.shot('table'); yield this.narrate('The bill unrolls off the table, across the floor and under table six.');
+    if (c) c.dnPose = 'menu'; this.shot('push', { c }); yield this.chloeSay(`Nine starters. NINE. ${this.raided ? 'A "birthday cake, partially missing". ' : ''}Four "side salads". Ronnie, what is a side salad with a bun?`);
+    if (r) r.dnPose = 'shrug'; this.shot('ronnie'); yield this.line(r, 'It\'s a... continental salad, babe. The bun is a crouton.');
+    const ch = yield* this.play(choiceGame({ title: 'HOW ARE YOU PAYING?', card: 'THE BILL', time: 8, mood: 'angry', options: [
+      { icon: '💳', label: 'PAY THE LOT', sub: 'be a gent', id: 'pay' }, { icon: '🤝', label: 'SPLIT IT', sub: 'fifty-fifty', id: 'split' }, { icon: '🍞', label: 'IN BREAD ROLLS', sub: 'you saved some', id: 'bread' }] }));
+    const pick = (ch.pick || {}).id || 'pay';
+    if (pick === 'pay') { yield this.line(r, 'I\'ve got this, babe. *card declined* ...I\'ve got this. *card declined*'); if (c) c.dnPose = 'facepalm'; yield this.chloeSay('I\'ll get it. Again. Third date running.'); }
+    else if (pick === 'split') { if (c) c.dnPose = 'point'; this.shot('dutch'); yield this.chloeSay('SPLIT it? I had a SALAD. You had the restaurant!'); }
+    else { if (r) r.dnPose = 'cheer'; yield this.line(r, '*empties his pockets: eleven bread rolls and a butter* Keep the change.'); if (w) yield this.line(w, 'That\'s... actually more than enough, sir.'); this.reward(10); }
+    if (c) c.dnPose = 'cross'; this.shot('orbit'); yield this.chloeSay(this.catches === 0 ? 'You were SO good tonight, babe. Next week? Same place?' : this.catches === 1 ? 'You did ALRIGHT tonight. Alright. Don\'t push it.' : 'We\'re getting the bus home. Separately.');
+    if (w) this.sendHome(w);
+    if (c) c.dnPose = null; if (r) r.dnPose = null;
+    this.shot('wide'); this.stamp('THE END', '#e879f9', 3); yield 2.0;
+    this.cam = null; this.d.end();
+  }
+
+  // ============================================================ MORE OF THE LADS
+  *noahFilm(n) {
+    if (!n) return;
+    this.titleCard('🏉', 'NOAH\'S SCRUM', 'Push back. Sneak bites while Chloe\'s watching the scrum'); yield 1.6;
+    yield* this.fetch(n, 'Right, Ronnie! Rugby demonstration for Chloe! Bind on me! SCRUM!');
+    n.dnPose = 'bow';
+    this.shot('overR'); yield this.chloeSay('Noah, we\'re in a RESTAURANT. ...Fine. I\'ll watch. I\'m watching HANDS, Ronnie.');
+    this.shot('low', { c: n }); n.dnPose = 'flex'; yield this.line(n, 'Crouch! Bind! SET! *knocks over a vase*');
+    this.shot('trio');
+    const res = yield* this.play(wrestleGame({ lvl: this.lvl, pushIcon: '🏉', pushLabel: 'SCRUM!', foeIcon: '🏉', midIcon: '🤜', winText: 'YOU WIN THE SCRUM!', loseText: 'NOAH WINS. TRY!', foeWins: 'TRY! ...Ron, that wasn\'t a scrum. That was a hug. A long one.', foeLoses: 'I bounced off you, mate. I BOUNCED. Like a bouncy castle full of gravy.', strain: ['Hold it, Ron! HOLD IT!', 'Engage! ENGAGE!', 'Your front row is all belly, mate!'] }));
+    n.dnPose = null;
+    if (!res.win) { yield* this.caughtFilm('wrestle'); this.sendHome(n); return; }
+    this.shot('char', { c: n, d: 1.2, side: 0.3 }); n.dnPose = 'cheer'; yield this.line(n, res.wrestle === 'won' ? 'He\'s a PROP, Chloe! A natural! Glory glory!' : 'Good effort, Ron. Half-time oranges are on me.');
+    yield* this.winFilm(res, res.wrestle === 'won' ? 'FRONT ROW!' : 'SNUCK IT!');
+    this.sendHome(n);
+  }
+  *kneeFilm(a) {
+    if (!a) return;
+    this.titleCard('🦵', 'AIDAN W\'S KNEE', 'He\'s brought it over. He\'s going to talk about it. React right'); yield 1.6;
+    yield* this.fetch(a, 'Alright Ron. Chloe. Don\'t get up. I can\'t either. It\'s the knee.');
+    a.dnPose = 'knee';
+    this.shot('overR'); yield this.chloeSay('Oh no, Aidan. Sit... oh. You can\'t. What happened?');
+    this.shot('low', { c: a }); yield this.line(a, 'Where do I start. It started in 2019.');
+    this.shot('trio');
+    const res = yield* this.play(reactGame({ h: a, lvl: this.lvl, tales: KNEE, listen: 'LISTENING TO THE KNEE', icon: '🦵', ink: '#132257', thanksLol: ['Exactly, Ron. You laugh, but it hurts.', 'See, Ronnie gets the knee.'], thanksSad: ['Thanks Ron. The knee thanks you too.', 'You understand. You\'ve got knees. Under there.'] }));
+    a.dnPose = null;
+    if (!res.win) { yield* this.caughtFilm('react'); this.sendHome(a); return; }
+    this.shot('char', { c: a, d: 1.2, side: 0.3 }); yield this.line(a, 'Anyway. Spurs lost again. Same as the knee. Cheers for listening.');
+    yield* this.winFilm(res, 'GOOD LISTENER');
+    this.sendHome(a);
+  }
+  *alfieFilm(a) {
+    if (!a) return;
+    const c = this.chloe;
+    this.titleCard('🦁', 'ALFIE\'S NEW TATTOO', 'He\'s showing Chloe. In detail. Cram while she squints at it'); yield 1.6;
+    yield* this.fetch(a, 'Chloe! Ron! Look at this. Fresh ink. Took nine hours. Well. Forty minutes and a pint.');
+    a.dnPose = 'show';
+    this.shot('push', { c: a }); yield this.line(a, 'It\'s the Champions League trophy. Shading\'s not done. Neither\'s the trophy, to be fair.');
+    if (c) { c.lookOverride = 1.0; c.dnPose = 'chin'; } this.shot('overR'); yield this.chloeSay('Is that... is that a lion? Or a dog? It looks like Chester, Alfie.');
+    this.shot('side');
+    const res = yield* this.play(cramGame({ pool: ['bread', 'chips', 'next', 'wine', 'butter', 'pasta'], rounds: 2, lvl: this.lvl, away: 1.0, pose: 'chin', fakeText: 'She leans in closer. Alfie flexes. She\'s gone again.', again: ['Wait, there\'s more? On your BACK?', 'Show me the other arm. Is that Cole Palmer? Shivering?'], mutter: ['It\'s quite good, actually. For a dog.', 'Did it hurt? It looks like it hurt.', 'Why is the trophy wearing a Chelsea scarf?'] }));
+    a.dnPose = null; if (c) c.dnPose = null;
+    if (!res.win) { yield* this.caughtFilm(res.reason); this.sendHome(a); return; }
+    this.shot('char', { c: a, d: 1.2, side: 0.3 }); a.dnPose = 'cheer'; yield this.line(a, 'Blues brothers, Ron! Come on Chelsea! Right, I\'m going to show table six.');
+    yield* this.winFilm(res, 'INKED IN!');
+    this.sendHome(a);
+  }
+  *ianFilm(i) {
+    if (!i) return;
+    const c = this.chloe;
+    this.titleCard('🫑', 'IAN\'S HEALTHY SWAP', 'Lewis\'s dad is "helping". Grab the food. Not his chilli'); yield 1.6;
+    yield* this.fetch(i, 'Alright Ronnie boy! Lewy says you\'re on a diet. LEWY says. I\'ve brought PEPPERS.');
+    i.dnPose = 'talk';
+    this.shot('overR'); yield this.chloeSay('Ian! Thank GOD. Someone who gets it. Tell me about the peppers.');
+    this.shot('low', { c: i }); yield this.line(i, 'Grilled. Three days marinating. And the chilli, Ronnie. Proper hot. Don\'t touch the chilli.');
+    if (c) c.lookOverride = 1.0;
+    this.shot('trio');
+    const res = yield* this.play(conveyorGame({ lvl: this.lvl, trap: '🌶️', trapReason: 'chilli', veg: '🫑', food: [['🍔', 13], ['🌭', 12], ['🍗', 12], ['🍕', 11], ['🥩', 14]], busyText: 'IAN\'S LECTURING HER', goText: 'GRAB THE GOOD STUFF. NOT THE CHILLI', mutterWho: i, mutter: ['Canvey Lake, Chloe. Disgrace. I pulled a sofa out once.', 'Lewy eats a pepper a day. Look at him. Well. Don\'t.', 'In my day we had a pint and a fry-up and we were FINE.', 'The council wants to "rewild" the lake. It\'s already wild!'] }));
+    i.dnPose = null;
+    if (!res.win) { yield* this.caughtFilm(res.reason); this.sendHome(i); return; }
+    this.shot('char', { c: i, d: 1.2, side: 0.3 }); i.dnPose = 'point'; yield this.line(i, 'See? He ate everything except the peppers. Typical. You\'re not invited Sunday. You are. You\'re not.');
+    yield* this.winFilm(res, 'NOT ONE PEPPER');
+    this.sendHome(i);
+  }
+
+  // ============================================================ RESTAURANT EVENTS
+  *fireFilm() {
+    const c = this.chloe, r = this.ron;
+    this.titleCard('🚨', 'FIRE ALARM!', 'Everyone out! Ronnie\'s "going back for his coat"'); yield 1.6;
+    sfx('alarm', null, 0.8); this.shot('room'); yield this.narrate('The chef\'s flambé has set off the fire alarm. Everybody out!');
+    const out = [];
+    for (const gp of this.d.dinerGroups || []) for (const d of gp) { if (d.disposed) continue; this.wrapPose(d); d.seated = false; d.state = 'idle'; d.dnPose = R(['facepalm', 'cheer', 'phone']); out.push(d); }
+    if (c) { c.seated = false; c.dnPose = 'point'; } this.shot('push', { c }); yield this.chloeSay('Ronnie! OUT! Now! Leave the bread!');
+    if (r) r.dnPose = 'innocent'; this.shot('ronnie'); yield this.line(r, 'Right behind you, babe! Just getting... my coat. My coat is in the kitchen.');
+    this.chloeAway(); this.shot('wide'); yield 1.4;
+    this.chloeHide(); for (const d of out) { d.dnHid = true; if (d.rag.group) d.rag.group.visible = false; if (d.bubble) d.bubble.visible = false; }
+    this.shot('crane'); yield this.narrate('The restaurant is empty. Alarms ringing. Every plate abandoned. Ronnie has never been happier.');
+    const res = yield* this.play(raidGame({ total: rr(13, 15), lvl: this.lvl, noGuards: true, msgs: { flush: '📢 "RONNIE?!" She\'s calling you from outside!', dryer: '🚒 The fire brigade are coming in!', f: '📢 SHE\'S CALLING!', d: '🚒 FIREMEN!', h: '🚨 AT THE DOOR!', away: '🚨 EVERYONE\'S OUTSIDE' } }));
+    for (const d of out) { d.dnHid = false; if (d.rag.group) d.rag.group.visible = true; d.dnPose = null; if (d.seat) { d.state = 'idle'; d.path = null; d.rag.placeAt(d.seat.x, d.seat.z, d.seat.yaw); d.seated = true; } }
+    if (this.away) this.travel(null, true);
+    this.chloeBack(false); this.shot('wide');
+    if (!res.win) { yield 1.2; this.chloeSit(); yield* this.caughtFilm('fire'); return; }
+    yield 1.4; this.chloeSit();
+    this.raided += res.n || 0; track('dnRaid', res.n || 0);
+    this.shot('overR'); yield this.chloeSay('False alarm. Why are you out of breath? You were sat there the whole time.');
+    yield* this.winFilm(res, res.n ? `EVACUATED ${res.n}!` : 'SAFETY FIRST');
+  }
+  *powerFilm() {
+    const c = this.chloe;
+    this.titleCard('💡', 'POWER CUT', 'Pitch black. Grab what you can. Freeze when the lights flicker'); yield 1.6;
+    this.shot('wide'); yield this.narrate('BANG. The lights go out. Somebody screams. It\'s Harry.');
+    this.ui.dim(true);
+    this.shot('overR'); if (c) c.dnPose = 'phoneup'; yield this.chloeSay('Babe? Babe, where are you? I\'m putting my phone torch on. Don\'t move.');
+    this.shot('side');
+    const res = yield* this.play(whackGame({ lvl: this.lvl, dark: true, icon: '💡', who: c, parts: [['IN THE DARK', 4.0, false, 0.7], ['FLICKER!', 1.5, true], ['IN THE DARK', 3.5, false, 0.5], ['HER PHONE TORCH!', 1.6, true], ['STILL DARK...', 3.0, false, 0.45]],
+      lines: { 1: 'The lights flicker... Is that you, babe?', 2: 'Dark again. Ugh. Where IS everyone?', 3: '*torch* RONNIE? Is that you? What\'s that noise?', 4: 'Why does it sound like someone\'s eating in here?' }, freezeText: 'THE LIGHTS! FREEZE!', freezeReason: 'flicker', freezeSfx: 'warn', goText: 'GRAB IN THE DARK. NOT THE SALAD', bad: '🥗', badLabel: 'SALAD!', food: ['🍕', '🍔', '🍰', '🍟', '🧀', '🍩'] }));
+    this.ui.dim(false); if (c) c.dnPose = null;
+    if (!res.win) { yield* this.caughtFilm(res.reason); return; }
+    this.shot('overR'); yield this.chloeSay('The lights are back! ...why is every table\'s bread basket empty?');
+    yield* this.winFilm(res, 'LIGHTS OUT!');
+  }
+  *noProposeFilm() {
+    const c = this.chloe;
+    this.titleCard('💔', 'THE PROPOSAL GOES WRONG', 'She said no. The whole room is staring at table six. Cram'); yield 1.6;
+    this.shot('room'); yield this.narrate('A man at table six gets down on one knee. The room holds its breath.');
+    if (c) { c.dnPose = 'phoneup'; c.lookOverride = -1.25; } this.shot('push', { c }); yield this.chloeSay('Babe! BABE! He\'s doing it! I\'m filming!');
+    this.shot('wide'); sfx('crowd_ooh', null, 0.8); yield this.narrate('"...No." The room gasps. He drops the ring in the tiramisu.');
+    if (c) c.dnPose = 'cry'; this.shot('chloe'); yield this.chloeSay('Oh my GOD. She said NO. I can\'t look. I can\'t NOT look.');
+    this.shot('side');
+    const res = yield* this.play(cramGame({ pool: ['next', 'pasta', 'bread', 'wine', 'chips', 'butter'], rounds: 3, lvl: this.lvl, away: -1.25, pose: 'cry', fakeText: 'She almost looks back... the man starts crying. She\'s glued to it.', again: ['Now he\'s eating the tiramisu WITH the ring in it!', 'Her MUM is here. She\'s on his side. Oh my God.'], mutter: ['That poor man.', 'Why would you do it in a RESTAURANT?', 'You\'d never do that to me, would you babe? Don\'t answer.'] }));
+    if (c) { c.dnPose = null; c.lookOverride = null; }
+    if (!res.win) { yield* this.caughtFilm(res.reason); return; }
+    this.shot('overR'); yield this.chloeSay('That was AWFUL. I need a dessert. Where\'s all the dessert gone?');
+    yield* this.winFilm(res, 'NOBODY NOTICED');
+  }
+  // the waiter: a wine tasting (three stages of it) and the chef's tasting flight
+  *wineFilm() {
+    const w = this.waiterChar(), c = this.chloe;
+    this.titleCard('🍷', 'THE WINE TASTING', 'Swirl, sniff, sip. Three stages. Cram through all of them'); yield 1.6;
+    if (w) { yield* this.fetch(w, 'The wine, madam. Would madam like to taste?'); w.dnPose = 'pour'; }
+    this.shot('push', { c }); if (c) c.dnPose = 'chin'; yield this.chloeSay('Ooh, yes. I\'ve watched a VIDEO about this. Nobody talk.');
+    this.shot('side');
+    const res = yield* this.play(cramGame({ pool: ['bread', 'butter', 'chips', 'next', 'pasta', 'wine'], rounds: 3, lvl: this.lvl, away: 0.9, pose: 'chin', fakeText: 'She swirls it the wrong way. Starts again.', again: ['Now the SNIFF. *closes her eyes* Notes of... blackberry? Leather? Is that LEATHER?', 'And the sip. Hold on. Hold ON. Let it sit on the palate.'], mutter: ['*swirl* *swirl* *swirl*', 'It\'s got legs, babe. The wine. Look at its legs.', 'Hints of oak. And... is that Lynx Africa?'] }));
+    if (c) c.dnPose = null; if (w) w.dnPose = null;
+    if (!res.win) { yield* this.caughtFilm(res.reason); if (w) this.sendHome(w); return; }
+    this.shot('char', { c: w, d: 1.2, side: 0.3 }); if (w) yield this.line(w, 'Madam approves? Lovely. And sir? ...sir has crumbs on his eyebrows.');
+    yield* this.winFilm(res, 'VINTAGE!');
+    if (w) this.sendHome(w);
+  }
+  *chefFilm() {
+    const w = this.waiterChar(), c = this.chloe;
+    this.titleCard('👨‍🍳', 'THE CHEF COMES OUT', 'A tasting flight for Chloe. Spoons for everyone. Freeze when he asks you'); yield 1.6;
+    sfx('plate_down', null, 0.6); if (w) yield* this.fetch(w, w.id === 'ben' ? 'Good evening. Chef Ben. Yes, it\'s me. Yes, the hair\'s real. Tonight: a tasting flight.' : 'Chef\'s off. I\'m Chef now. Tasting flight! Don\'t ask.');
+    if (w) w.dnPose = 'talk';
+    this.shot('push', { c: w }); if (w) yield this.line(w, 'First, the amuse-bouche. It amuses the mouth. Ronnie, your mouth is not invited.');
+    if (c) c.lookOverride = 1.0; this.shot('trio');
+    const res = yield* this.play(whackGame({ lvl: this.lvl, icon: '👨‍🍳', parts: [['THE AMUSE-BOUCHE', 4.0], ['THE FOAM', 4.0, false, 0.6], ['"AND SIR?"', 1.8, true], ['THE FINALE', 3.5, false, 0.45]], food: ['🥄', '🍤', '🧆', '🍡', '🥟', '🦪'], bad: '🌿', badLabel: 'GARNISH!', badReason: 'garnish', gold: '🥩',
+      lines: { 1: 'Next: a foam of leek. Inhale it, Chloe. Don\'t eat it. INHALE.', 2: 'And sir? What did SIR think of the foam?', 3: 'And the finale: a single pea. Twelve pounds.' }, freezeText: 'THE CHEF\'S LOOKING AT YOU!', goText: 'GRAB THE SPOONS. NOT THE GARNISH' }));
+    if (w) w.dnPose = null; if (c) c.lookOverride = null;
+    if (!res.win) { yield* this.caughtFilm(res.reason); if (w) this.sendHome(w); return; }
+    this.shot('char', { c: w, d: 1.2, side: 0.3 }); if (w) { w.dnPose = 'bow'; yield this.line(w, 'Thank you. Thank you. I\'ll be in the kitchen, crying, because there\'s nothing left.'); }
+    yield* this.winFilm(res, 'COMPLIMENTS TO THE CHEF');
+    if (w) this.sendHome(w);
+  }
+
+  // ============================================================ BUSTED: her reaction, your excuse, the penalty
   *caughtFilm(reason, fromPlay) {
     const c = this.chloe, r = this.ron, g = this.g, P = g.player;
     this.catches++; track('dnBusted'); this.look = true;
     if (this.game) this.game = null;
-    this.placePlayer();
+    if (this.away) this.travel(null, true);
+    this.ui.dim(false); this.spotlight(false);
     sfx('record_scratch', null, 0.9); P.shake && P.shake(0.6);
     if (c && c.dnHidden) this.chloeBack(true);
     if (c) { c.dnPose = 'point'; c.lookOverride = null; }
     this.titleS = 'BUSTED!'; this.ui.slate(`🎬 BUSTED · ${this.catches} / 3`);
-    this.shot('dutch'); this.stamp('BUSTED!', '#ff3a3a', 1.4);
+    this.shot('dutch'); this.stamp('BUSTED!', '#ff3a3a', 2);
     g.words.show('BUSTED!', this.chloeHead().add({ x: 0, y: 0.4, z: 0 }), CHLOE_COL, 0.2, 1.4);
+    yield 1.2;
     yield this.chloeSay(R(BUSTED[reason] || BUSTED.table));
+    if (this.catches === 2) { this.shot('chloe'); yield this.chloeSay(R(['That\'s TWICE, Ronnie. Twice. Chester\'s never done anything twice.', 'Two. TWO. One more and I\'m getting the bus.'])); }
+    // his excuse: the right one softens it, a bad one makes it worse
     this.shot('ronnie'); if (r) r.dnPose = 'shrug';
-    yield this.line(r, R(SORRY));
+    const ex = yield* this.play(excuseGame({ reason }));
+    const pick = ex.pick || { line: 'Mmmf? Mmmmf. *swallows* ...nothing, babe.' };
+    yield this.line(r, pick.line);
     if (r) r.dnPose = null;
+    this.shot('chloe');
+    if (ex.fit === 'best') { if (c) c.dnPose = 'cross'; yield this.chloeSay(R(['...that\'s actually quite a good one. I hate that it\'s a good one.', 'Fine. FINE. I almost believe you. Almost.'])); }
+    else if (ex.fit === 'ok') yield this.chloeSay(R(['Ronnie. Babe. No.', 'Do you hear yourself?']));
+    else { if (c) c.dnPose = 'point'; yield this.chloeSay(R(['That is the WORST excuse I have ever heard. And I\'ve met Harry.', 'Are you serious? ARE YOU SERIOUS?'])); }
     if (this.catches >= 3) {
       if (c) c.dnPose = 'cross';
-      this.shot('wide'); sfx('sadviolin', null, 0.9); this.stamp('💔 3 / 3', '#ff3a3a', 3);
+      this.shot('wide'); sfx('sadviolin', null, 0.9); this.stamp('💔 3 / 3', '#ff3a3a', 3.5);
       yield this.chloeSay('That\'s it. I\'ve ordered you a salad. And I\'m telling Chester.');
+      yield 1.2;
       this.cam = null; this.d.end(); return;
     }
-    // the penalty: a different one each time
+    // the penalty: a different one each time, lighter for a good excuse, both barrels for a terrible one
     const fresh = PENALTIES.filter(p => !this.penUsed.includes(p.id)); const pen = R(fresh.length ? fresh : PENALTIES); this.penUsed.push(pen.id);
-    this.titleCard(pen.icon, pen.title, pen.sub, 2.6);
+    const soft = ex.fit === 'best', hard = ex.fit === 'bad';
+    this.titleCard(pen.icon, pen.title, soft ? 'Let off lightly: ' + pen.sub.toLowerCase() : hard ? 'DOUBLE: ' + pen.sub.toLowerCase() : pen.sub, 3.2);
     if (c) c.dnPose = pen.id === 'mum' ? 'phoneup' : 'cross';
     this.shot(pen.id === 'salad' || pen.id === 'plate' ? 'table' : 'chloe');
-    if (pen.id === 'salad') { for (const [type, dx] of [['broccoli', -0.12], ['carrot', 0.1], ['cucumber', 0.0]]) { try { g.items.spawn(type, V(T.x + dx, 0.92, T.z + 0.25)); } catch (e) {} } this.probation = 10; }
-    if (pen.id === 'plate') { for (const it of g.items.items.slice()) { if (!it.dead && !it.heldBy && Math.hypot(it.pos.x - T.x, it.pos.z - T.z) < 0.55 && !it.def.veg) { try { g.items.remove(it); g.items.queueRespawn(it.type); } catch (e) {} } } g.addChonk(-15); this.d.stats.chonk = Math.max(0, this.d.stats.chonk - 15); }
-    if (pen.id === 'mum') P.effect('noEat', 8);
-    if (pen.id === 'lecture') this.lecture = true;
-    if (pen.id === 'bread') this.shorter = 2;
+    if (pen.id === 'salad') { const veg = hard ? ['broccoli', 'carrot', 'cucumber', 'broccoli', 'sprout'] : soft ? ['carrot'] : ['broccoli', 'carrot', 'cucumber']; veg.forEach((type, i) => { try { g.items.spawn(type, V(T.x - 0.2 + i * 0.1, 0.92, T.z + 0.25)); } catch (e) {} }); this.probation = soft ? 5 : hard ? 14 : 10; }
+    if (pen.id === 'plate') { for (const it of g.items.items.slice()) { if (!it.dead && !it.heldBy && Math.hypot(it.pos.x - T.x, it.pos.z - T.z) < 0.55 && !it.def.veg) { try { g.items.remove(it); g.items.queueRespawn(it.type); } catch (e) {} } } const k = soft ? 8 : hard ? 30 : 15; g.addChonk(-k); this.d.stats.chonk = Math.max(0, this.d.stats.chonk - k); g.words.show(`-${k}`, this.ronHead().add({ x: 0, y: 0.3, z: 0 }), '#ff6b6b', 0.12, 1.4); }
+    if (pen.id === 'mum') P.effect('noEat', soft ? 4 : hard ? 14 : 8);
+    if (pen.id === 'bread') this.shorter = soft ? 1 : hard ? 3 : 2;
     yield this.chloeSay(pen.line);
-    if (pen.id === 'lecture') { this.inBeat = false; this.shot('chloe'); yield this.chloeSay('And another thing. Chester eats better than you. CHESTER. He eats a salmon pâté.'); this.inBeat = true; }
-    if (pen.id === 'mum') { this.shot('ronnie'); yield this.line(r, 'Hi Mum. Yes. No. It was ONE bread roll. Fine. Three.'); }
+    if (pen.id === 'lecture') { this.inBeat = false; yield this.chloeSay('And another thing. Chester eats better than you. CHESTER. He eats a salmon pâté.'); if (!soft) yield this.chloeSay('Your mum says you had a Greggs on the way here. TWO Greggs. In one trip.'); if (hard) yield this.chloeSay('I\'ve made a spreadsheet, Ronnie. Of your snacks. It\'s got TABS.'); this.inBeat = true; }
+    if (pen.id === 'mum') { this.shot('ronnie'); yield this.line(r, R(['Hi Mum. Yes. No. It was ONE bread roll. Fine. Three.', 'Mum. MUM. I\'m thirty. ...yes, I\'ll put her on.'])); }
+    if (pen.id === 'salad') { this.shot('ronnie'); if (r) r.dnPose = 'gape'; yield this.narrate(hard ? 'Five vegetables. She\'s counting. She will KNOW.' : 'A salad. On your plate. Staring at you.'); if (r) r.dnPose = null; }
     if (c) c.dnPose = pen.id === 'salad' ? 'salad' : null;
-    this.cool = 2; this.probation = Math.max(this.probation, 5);
+    this.cool = 2; this.probation = Math.max(this.probation, soft ? 3 : 5);
     if (fromPlay) this.nextT = Math.max(this.nextT, 9);
   }
 }
 
 // ---------------------------------------------------------------- the shots: [camera position, where it looks, roll]
 const SHOTS = {
-  wide: (S, t) => [V(2.35 + Math.sin(t * 0.25) * 0.1, 1.75, 2.7), V(0, 0.95, T.z - 0.1)],
+  wide: (S, t) => [V(2.9 + Math.sin(t * 0.25) * 0.1, 1.3, 3.1), V(0, 1.0, T.z - 0.1)],
   side: (S, t) => { const k = ease(t / 6); return [V(1.95 - 0.22 * k, 1.2, T.z + 0.05), V(0, 1.02, T.z)]; },
-  overR: (S, t) => { const k = ease(t / 4), h = S.chloeHead(); return [V(0.62 - 0.05 * k, 1.68, RON.z + 1.05 - 0.15 * k), h.add({ x: 0, y: -0.1, z: 0 })]; },
-  trio: (S, t) => [V(-1.75 + Math.min(0.2, t * 0.03), 1.5, T.z + 1.55), V(0.4, 1.05, T.z - 0.15)],
+  overR: (S, t) => { const k = ease(t / 4), h = S.chloeHead(); return [V(0.6 - 0.05 * k, 1.32, RON.z + 1.15 - 0.15 * k), h.add({ x: 0, y: -0.06, z: 0 })]; },
+  trio: (S, t) => [V(-2.0 + Math.min(0.2, t * 0.03), 1.28, T.z + 1.8), V(0.4, 1.08, T.z - 0.15)],
   chloe: (S, t) => { const h = S.chloeHead(); return [V(h.x + 0.24 + Math.sin(t * 0.3) * 0.03, h.y + 0.03, h.z + 0.9 - Math.min(0.15, t * 0.03)), h]; },
   ronnie: (S, t) => { const h = S.ronHead(); return [V(h.x - 0.22, h.y + 0.04, h.z - 0.9 + Math.min(0.15, t * 0.03)), h]; },
-  table: (S, t) => [V(0.05, 2.15 - Math.min(0.2, t * 0.04), T.z + 0.6), V(0, 0.78, T.z + 0.05)],
+  table: (S, t) => [V(0.05, 1.75 - Math.min(0.12, t * 0.03), T.z + 1.15), V(0, 0.82, T.z + 0.05)],
   dutch: (S, t) => { const h = S.chloeHead(), k = ease(t / 0.5); return [V(h.x - 0.15, h.y + 0.05, h.z + 1.2 - 0.45 * k), h, 0.22]; },
   char: (S, t, o) => {
     const c = o.c; if (!c || c.disposed || !c.rag) return SHOTS.wide(S, t);
@@ -937,401 +1307,14 @@ const SHOTS = {
     return [h.clone().addScaledVector(to, d).addScaledVector(side, (o.side || 0.3)).add({ x: 0, y: 0.05, z: 0 }), h.clone().add({ x: 0, y: -0.05, z: 0 })];
   },
   at: (S, t, o) => [o.pos.clone().add({ x: Math.sin(t * 0.4) * 0.06, y: 0, z: 0 }), o.look],
-  crane: (S, t) => [V(-1.6 + Math.min(1.2, t * 0.1), 3.0, 4.6), V(0.5, 0.6, -1.5)],
+  crane: (S, t) => [V(-2.4 + Math.min(1.2, t * 0.1), 1.9, 5.6), V(0.5, 0.8, -1.5)],
+  // camera moves: round the table, a slow push in on someone, a track along the table, low on someone, the room
+  orbit: (S, t) => { const a = 0.9 + t * 0.22, r = 2.4; return [V(T.x + Math.sin(a) * r, 1.28, T.z + Math.cos(a) * r), V(T.x, 1.02, T.z)]; },
+  push: (S, t, o) => { const c = o.c || S.chloe, h = c && !c.disposed && c.rag ? c.headPos(new THREE.Vector3()) : S.chloeHead(), to = V(T.x - h.x, 0, T.z + 1.6 - h.z); if (to.lengthSq() < 0.01) to.set(0, 0, 1); to.normalize(); const d = lerp(1.7, 0.85, ease(t / 4.5)); return [h.clone().addScaledVector(to, d).add({ x: 0, y: 0.04, z: 0 }), h]; },
+  dolly: (S, t) => { const k = ease(t / 5); return [V(lerp(4.2, -2.2, k), 1.3, T.z + 2.5), V(lerp(5.5, 0, ease(t / 3)), 1.02, T.z)]; },
+  low: (S, t, o) => { const c = o.c; if (!c || c.disposed || !c.rag) return SHOTS.wide(S, t); const h = c.headPos(new THREE.Vector3()), to = V(T.x - h.x, 0, T.z + 1.2 - h.z); if (to.lengthSq() < 0.01) to.set(0, 0, 1); to.normalize(); const side = V(to.z, 0, -to.x); return [h.clone().addScaledVector(to, 1.25).addScaledVector(side, 0.35).setY(0.75), h.clone().add({ x: 0, y: -0.1, z: 0 })]; },
+  foyer: (S, t) => [V(11.3 - Math.min(0.25, t * 0.05), 1.45, 5.55), V(9.4, 1.25, 6.4)],      // (inside the foyer, side on: the couple at the podium, the maître d' behind it)
+  room: (S, t) => [V(-6.0 + t * 0.15, 1.95, 7.4), V(2, 0.8, -2)],
 };
 export const DN_SHOTS = Object.keys(SHOTS);
-const FAR = { side: 1.45, wide: 1.15, overR: 1.15, trio: 1.2, char: 1.15 };
-
-// ---------------------------------------------------------------- the games
-// each: { id, buttons: [{icon, label, sub, col, off, hot}], update(dt), press(i), release?(i), draw(g, w, h),
-// danger (0..1: how close she is to seeing you), status (a line for the headset), result: null | { win, reason, ... } }
-
-// CRAM: she's looking away. Tap the food in; it fills your cheeks (they empty as you swallow). Watch her: when she starts
-// turning back (a "!", a sound, the screen edge goes red), stop, or tap ACT NATURAL for a bonus. Food going in while
-// she's looking, or cheeks like a hamster's when she turns round: busted. Sometimes she half-turns and doesn't.
-function cramGame(o) {
-  const G = {
-    id: 'cram', t: 0, phase: 'away', awayT: rr(o.dur[0], o.dur[1]), turnT: 0, lookT: 0, cheeks: 0, haul: 0, n: 0, last: -9, natural: false, smooth: false, result: null, danger: 0.1, status: 'SHE\'S BUSY: CRAM IT IN!', fakeAt: o.fakes ? rr(1.4, 2.2) : -1, fakeT: 0, msg: '', msgT: 0,
-    buttons: [...o.srcs.map(s => ({ icon: s.icon, label: s.label, sub: '+' + s.chonk, col: '#ffd400' })), { icon: '😇', label: 'ACT NATURAL', sub: 'when she turns', col: '#9fe8ff' }],
-    update(dt) {
-      const S = this.S, c = S.chloe; this.t += dt; this.cheeks = Math.max(0, this.cheeks - dt * 0.2); if (this.msgT > 0) this.msgT -= dt;
-      const away = o.away || 0, setLook = (k) => { if (c) c.lookOverride = away ? away * k : (k > 0.5 ? null : 0); if (c && o.pose && k > 0.5) c.dnPose = o.pose; else if (c && k < 0.3) c.dnPose = null; };
-      if (this.phase === 'away') {
-        this.awayT -= dt; this.danger = 0.12;
-        if (this.fakeAt > 0 && this.t > this.fakeAt && !this.faked) { this.faked = true; this.phase = 'fake'; this.fakeT = 0.75; S.tell(c); this.status = '!! SHE\'S TURNING !!'; }
-        if (this.awayT <= 0) { this.phase = 'turn'; this.turnT = o.window; this.turnMax = o.window; if (c) S.tell(c); this.status = '!! SHE\'S TURNING !!'; }
-        setLook(1);
-      } else if (this.phase === 'fake') {
-        this.fakeT -= dt; const k = this.fakeT > 0.35 ? 1 - (0.75 - this.fakeT) / 0.4 * 0.5 : 0.5 + (0.35 - this.fakeT) / 0.35 * 0.5; setLook(Math.max(0.5, k)); this.danger = 0.75;
-        if (this.fakeT <= 0) { this.phase = 'away'; this.msg = o.fakeText || 'FALSE ALARM!'; this.msgT = 2; this.status = 'FALSE ALARM: KEEP GOING!'; if (c && o.pose) c.dnPose = o.pose; }
-      } else if (this.phase === 'turn') {
-        this.turnT -= dt; const k = this.turnT / this.turnMax; setLook(0.2 + 0.8 * k); if (c) c.dnPose = null; this.danger = 0.65 + 0.35 * (1 - k);
-        if (this.turnT <= 0) { this.phase = 'look'; this.lookT = 0; setLook(0); this.status = 'SHE\'S LOOKING. DON\'T MOVE.';
-          if (this.cheeks > 0.72) { this.result = { win: false, reason: 'hamster', haul: this.haul }; return; }
-          if (this.t - this.last < 0.22) { this.result = { win: false, reason: 'mid', haul: this.haul }; return; } }
-      } else if (this.phase === 'look') {
-        this.lookT += dt; this.danger = 1; setLook(0);
-        if (this.lookT > 0.9) this.result = { win: true, haul: this.haul, n: this.n, smooth: this.smooth };
-      }
-      const nat = this.buttons[this.buttons.length - 1]; nat.hot = this.phase === 'turn' && !this.natural; nat.off = this.natural;
-      for (const b of this.buttons.slice(0, -1)) b.off = this.natural;
-    },
-    press(i) {
-      const S = this.S, r = S.ron;
-      if (i === this.buttons.length - 1) { this.natural = true; if (r) r.dnPose = 'innocent';
-        if (this.phase === 'turn') { this.smooth = true; S.reward(5); S.g.words.show('SMOOTH +5', S.ronHead().add({ x: 0, y: 0.3, z: 0 }), '#9fe8ff', 0.09, 1); }
-        else if (this.phase === 'away' || this.phase === 'fake') { this.awayT = Math.min(this.awayT, 0.6); this.phase = 'away'; }
-        return; }
-      if (this.natural) return;
-      if (this.phase === 'look') { this.result = { win: false, reason: 'red', haul: this.haul }; return; }
-      const s = o.srcs[i]; this.haul += s.chonk; this.n++; this.cheeks = Math.min(1, this.cheeks + s.cheek); this.last = this.t; S.reward(s.chonk);
-      if (r) { r.dnPose = 'cram'; r.lookOverride = i === 1 && s === SRC.next ? -0.6 : 0; }
-      if (s.noise && this.phase === 'away' && Math.random() < s.noise) { this.awayT = Math.min(this.awayT, 0.01); this.msg = 'CLATTER! "...what was that?"'; this.msgT = 1.5; }
-    },
-    draw(g, w, h) {
-      panel(g, w, h);
-      const pad = Math.max(6, h * 0.06), mh = Math.max(16, Math.min(28, h * 0.2));
-      const lookK = this.phase === 'look' ? 1 : this.phase === 'turn' ? 0.6 + 0.4 * (1 - this.turnT / this.turnMax) : this.phase === 'fake' ? 0.7 : 0.12;
-      eyeMeter(g, pad, pad, w - pad * 2, mh, lookK, this.phase === 'look' ? 'SHE\'S LOOKING!' : this.phase === 'turn' ? 'SHE\'S TURNING!' : 'CHLOE');
-      meter(g, pad, pad * 2 + mh, (w - pad * 3) * 0.6, mh, this.cheeks, this.cheeks > 0.72 ? '#ff3a3a' : '#ffb3d9', this.cheeks > 0.72 ? 'CHEEKS FULL!' : 'CHEEKS', '🐹');
-      txt(g, `+${Math.round(this.haul)}`, pad * 2 + (w - pad * 3) * 0.6 + (w - pad * 3) * 0.2, pad * 2 + mh * 1.5, mh * 0.9, '#ffd400', { stroke: 4 });
-      const line = this.msgT > 0 ? this.msg : this.status, y = pad * 3 + mh * 2 + (h - (pad * 3 + mh * 2)) / 2;
-      if (h - (pad * 3 + mh * 2) > 14) txt(g, line, w / 2, y, Math.min(18, (h - (pad * 3 + mh * 2)) * 0.6), this.phase === 'turn' || this.phase === 'look' ? '#ff6b6b' : '#fff', { maxW: w - pad * 2, stroke: 3 });
-    },
-  };
-  return G;
-}
-
-// SECRET ORDER: Ben's code is on his pad (three gestures). Do them in order while she's got her head in the menu; not
-// while she looks up (she glances: watch for her starting to). A wrong one confuses Ben; two and he gives the game away.
-const GESTURES = [{ icon: '😉', label: 'WINK', means: 'BURGER' }, { icon: '🤫', label: 'SHH', means: 'CHIPS' }, { icon: '👉', label: 'POINT', means: 'EXTRA' }];
-function signalGame() {
-  const code = shuffle([0, 1, 2]).concat([Math.floor(Math.random() * 3)]).slice(0, 3);
-  return {
-    id: 'signals', t: 0, code, idx: 0, wrong: 0, st: 'menu', stT: rr(1.4, 2.4), result: null, danger: 0.15, status: 'DO BEN\'S CODE WHILE SHE READS', time: 13,
-    buttons: GESTURES.map(gs => ({ icon: gs.icon, label: gs.label, sub: gs.means, col: '#ffd400' })),
-    update(dt) {
-      const S = this.S, c = S.chloe; this.t += dt; this.time -= dt; this.stT -= dt;
-      if (this.st === 'menu') { this.danger = 0.15; if (c) { c.dnPose = 'menu'; c.lookOverride = null; } if (this.stT <= 0) { this.st = 'tell'; this.stT = 0.55; S.tell(c); this.status = '!! SHE\'S LOOKING UP !!'; } }
-      else if (this.st === 'tell') { this.danger = 0.7; if (c) c.dnPose = 'menu'; if (this.stT <= 0) { this.st = 'up'; this.stT = rr(1.0, 1.5); this.status = 'SHE\'S LOOKING. STAY STILL.'; } }
-      else if (this.st === 'up') { this.danger = 1; if (c) { c.dnPose = null; c.lookOverride = null; } if (this.stT <= 0) { this.st = 'menu'; this.stT = rr(1.3, 2.3); this.status = 'SHE\'S READING: GO!'; } }
-      if (this.time <= 0 && !this.result) this.result = { win: false, soft: true };
-      for (const b of this.buttons) b.hot = this.st === 'menu';
-    },
-    press(i) {
-      const S = this.S, w = S.visitor, r = S.ron;
-      if (this.st === 'up') { this.result = { win: false, reason: 'gesture' }; return; }
-      if (r) r.dnPose = 'wink'; setTimeout(() => { if (r && r.dnPose === 'wink') r.dnPose = null; }, 500);
-      if (i === this.code[this.idx]) { this.idx++; sfx('ding', null, 0.7); if (this.idx >= 3) { this.result = { win: true }; } return; }
-      this.wrong++; this.idx = 0; sfx('error', null, 0.7);
-      if (w) w.say(R(['Sorry? A wink? Sir, I\'m working.', 'Is that... chips? Or a nosebleed?', 'Start again, Ron. Slowly.']), 5);
-      if (this.wrong >= 2) this.result = { win: false, reason: 'gesture' };
-    },
-    draw(g, w, h) {
-      panel(g, w, h, 'rgba(250,244,226,0.95)');
-      const pad = Math.max(6, h * 0.06), mh = Math.max(16, Math.min(26, h * 0.2));
-      eyeMeter(g, pad, pad, w * 0.5 - pad, mh, this.st === 'up' ? 1 : this.st === 'tell' ? 0.7 : 0.12, this.st === 'up' ? 'LOOKING!' : 'IN THE MENU');
-      txt(g, `⏱ ${Math.max(0, Math.ceil(this.time))}s`, w * 0.75, pad + mh / 2, mh * 0.75, '#5a0f18');
-      txt(g, 'BEN\'S PAD: DO THESE IN ORDER', w / 2, pad * 2 + mh * 1.3, Math.min(14, h * 0.11), '#5a0f18', { maxW: w - 20 });
-      const n = 3, bw = Math.min(h * 0.42, (w - pad * 2) / n - 10), y = h - pad - bw / 2 - 2;
-      for (let k = 0; k < n; k++) { const x = w / 2 + (k - 1) * (bw + 14);
-        g.fillStyle = k < this.idx ? '#39ff14' : k === this.idx ? '#ffd400' : '#e9dfc4'; rr2(g, x - bw / 2, y - bw / 2, bw, bw, 10); g.fill(); g.lineWidth = 3; g.strokeStyle = '#5a0f18'; rr2(g, x - bw / 2, y - bw / 2, bw, bw, 10); g.stroke();
-        emo(g, GESTURES[this.code[k]].icon, x, y, bw * 0.62); if (k < this.idx) txt(g, '✓', x + bw * 0.32, y - bw * 0.3, bw * 0.3, '#0a5a0a'); }
-    },
-  };
-}
-
-// THE DESSERT TROLLEY: desserts slide past; GRAB one in the green zone (it takes a moment to chew: she mustn't glance
-// then) or STASH it under the napkin (no chewing, eaten later, worth less). Not her sorbet. Not the fruit salad.
-const DESSERTS = [['🍰', 12], ['🍮', 10], ['🧁', 9], ['🍩', 10], ['🍨', 11], ['🥧', 13], ['🍫', 9]];
-function conveyorGame() {
-  return {
-    id: 'trolley', t: 0, time: 11, lane: [], spawnT: 0.3, chewT: 0, st: 'busy', stT: rr(2.0, 3.0), stash: 0, stashV: 0, haul: 0, result: null, danger: 0.15, status: 'GRAB IN THE GREEN. NOT HER SORBET',
-    buttons: [{ icon: '🫳', label: 'GRAB & EAT', sub: 'full points', col: '#ffd400' }, { icon: '🧻', label: 'STASH IT', sub: 'safer', col: '#9fe8ff' }],
-    update(dt) {
-      const S = this.S, c = S.chloe; this.t += dt; this.time -= dt; this.stT -= dt; if (this.chewT > 0) this.chewT -= dt;
-      if ((this.spawnT -= dt) <= 0) { this.spawnT = rr(0.55, 0.9); const r = Math.random(); this.lane.push({ x: -0.08, e: r < 0.14 ? '🍧' : r < 0.24 ? '🥗' : null, d: R(DESSERTS) }); }
-      for (const it of this.lane) it.x += dt * 0.34;
-      this.lane = this.lane.filter(it => it.x < 1.1 && !it.gone);
-      if (this.st === 'busy') { this.danger = 0.15; if (c) c.lookOverride = 1.0; if (this.stT <= 0) { this.st = 'tell'; this.stT = 0.6; S.tell(c); } }
-      else if (this.st === 'tell') { this.danger = 0.7; if (c) c.lookOverride = 0.5; if (this.stT <= 0) { this.st = 'glance'; this.stT = 0.9; } }
-      else { this.danger = 1; if (c) c.lookOverride = null; if (this.chewT > 0) { this.result = { win: false, reason: 'chewing' }; return; } if (this.stT <= 0) { this.st = 'busy'; this.stT = rr(1.6, 2.8); } }
-      this.status = this.st === 'glance' ? 'SHE\'S GLANCING OVER!' : this.st === 'tell' ? '!! SHE\'S TURNING !!' : this.chewT > 0 ? 'CHEWING...' : 'GRAB IN THE GREEN. NOT HER SORBET';
-      const z = this.inZone(); for (const b of this.buttons) b.hot = !!z && !z.e && this.st === 'busy';
-      if (this.time <= 0) { const v = Math.round(this.stashV * 0.7); if (v) S.reward(v); this.result = { win: true, haul: this.haul + v, stash: this.stash }; }
-    },
-    inZone() { return this.lane.find(it => it.x > 0.4 && it.x < 0.6 && !it.gone) || null; },
-    press(i) {
-      const S = this.S, z = this.inZone(), r = S.ron;
-      if (this.st === 'glance') { this.result = { win: false, reason: 'chewing' }; return; }
-      if (!z) { S.g.words.show('MISSED', S.ronHead().add({ x: 0.2, y: 0.25, z: 0 }), '#fff', 0.07, 0.5); return; }
-      z.gone = true;
-      if (z.e === '🍧') { this.result = { win: false, reason: 'sorbet' }; return; }
-      if (z.e === '🥗') { S.g.addChonk(-6); S.g.words.show('FRUIT SALAD. BLEURGH', S.ronHead().add({ x: 0, y: 0.3, z: 0 }), '#7cff6a', 0.08, 1); sfx('error', null, 0.7); return; }
-      if (i === 0) { this.chewT = 0.65; this.haul += z.d[1]; S.reward(z.d[1]); if (r) { r.dnPose = 'cram'; setTimeout(() => { if (r.dnPose === 'cram') r.dnPose = null; }, 600); } }
-      else { this.stash++; this.stashV += z.d[1]; sfx('ding', null, 0.6); }
-    },
-    draw(g, w, h) {
-      panel(g, w, h);
-      const pad = Math.max(6, h * 0.06), mh = Math.max(16, Math.min(24, h * 0.18));
-      eyeMeter(g, pad, pad, w * 0.55, mh, this.st === 'glance' ? 1 : this.st === 'tell' ? 0.7 : 0.12, this.st === 'glance' ? 'GLANCING!' : 'ASKING BEN');
-      txt(g, `🧻 ${this.stash}  ⏱ ${Math.max(0, Math.ceil(this.time))}`, w * 0.8, pad + mh / 2, mh * 0.7, '#fff', { maxW: w * 0.38 });
-      const ly = pad * 2 + mh, lh = h - ly - pad; if (lh < 12) return;
-      g.fillStyle = '#3a0a10'; rr2(g, pad, ly, w - pad * 2, lh, 8); g.fill();
-      g.fillStyle = 'rgba(57,255,20,0.28)'; g.fillRect(pad + (w - pad * 2) * 0.4, ly, (w - pad * 2) * 0.2, lh); g.lineWidth = 3; g.strokeStyle = '#39ff14'; g.strokeRect(pad + (w - pad * 2) * 0.4, ly + 1.5, (w - pad * 2) * 0.2, lh - 3);
-      for (const it of this.lane) { const x = pad + (w - pad * 2) * it.x; if (x < pad - 10) continue; emo(g, it.e || it.d[0], x, ly + lh / 2, Math.min(lh * 0.8, 48)); }
-    },
-  };
-}
-
-// THE NAPKIN TRICK: hold to slide the extras under your napkin, a bit at a time. Let go when she looks over.
-function napkinGame() {
-  const FOODS = [['🍔', 15], ['🌭', 14], ['🍩', 10]];
-  return {
-    id: 'napkin', t: 0, time: 12, k: 0, done: 0, holding: false, st: 'busy', stT: rr(1.6, 2.6), result: null, danger: 0.15, haul: 0, status: 'HOLD TO SLIDE. LET GO WHEN SHE LOOKS',
-    buttons: [{ icon: '🧻', label: 'HOLD TO SLIDE', sub: 'let go when she looks', col: '#ffd400' }],
-    update(dt) {
-      const S = this.S, c = S.chloe; this.t += dt; this.time -= dt; this.stT -= dt;
-      if (this.st === 'busy') { this.danger = 0.15; if (c) { c.dnPose = 'menu'; c.lookOverride = 0.6; } if (this.stT <= 0) { this.st = 'tell'; this.stT = 0.55; S.tell(c); } }
-      else if (this.st === 'tell') { this.danger = 0.7; if (c) c.lookOverride = 0.3; if (this.stT <= 0) { this.st = 'look'; this.stT = rr(0.9, 1.4); } }
-      else { this.danger = 1; if (c) { c.dnPose = null; c.lookOverride = null; } if (this.holding) { this.result = { win: false, reason: 'napkin' }; return; } if (this.stT <= 0) { this.st = 'busy'; this.stT = rr(1.4, 2.6); } }
-      if (this.holding && this.done < 3) { this.k += dt / 1.3; if (this.k >= 1) { this.k = 0; const f = FOODS[this.done]; this.done++; this.haul += f[1]; S.reward(f[1]); } }
-      this.buttons[0].hot = this.st === 'busy'; this.status = this.st === 'look' ? 'SHE\'S LOOKING! LET GO!' : this.st === 'tell' ? '!! SHE\'S TURNING !!' : 'HOLD TO SLIDE';
-      if (this.done >= 3 || this.time <= 0) this.result = { win: true, n: this.done, haul: this.haul };
-    },
-    press() { this.holding = true; const r = this.S.ron; if (r) r.dnPose = 'reach'; },
-    release() { this.holding = false; const r = this.S.ron; if (r) r.dnPose = 'innocent'; },
-    draw(g, w, h) {
-      panel(g, w, h);
-      const pad = Math.max(6, h * 0.06), mh = Math.max(16, Math.min(24, h * 0.18));
-      eyeMeter(g, pad, pad, w * 0.6, mh, this.st === 'look' ? 1 : this.st === 'tell' ? 0.7 : 0.12, this.st === 'look' ? 'LOOKING!' : 'WINE LIST');
-      txt(g, `⏱ ${Math.max(0, Math.ceil(this.time))}`, w * 0.85, pad + mh / 2, mh * 0.75, '#fff');
-      const y = pad * 2 + mh + (h - pad * 3 - mh) / 2, s = Math.min(h - pad * 3 - mh, w / 5);
-      FOODS.forEach((f, i) => { const x = w * (0.25 + i * 0.25);
-        if (i < this.done) { g.fillStyle = '#f5f0e8'; rr2(g, x - s * 0.5, y - s * 0.3, s, s * 0.6, 8); g.fill(); txt(g, '✓', x, y, s * 0.35, '#0a7a0a'); }
-        else { const k = i === this.done ? this.k : 0; emo(g, f[0], x, y, s * 0.7); if (k > 0) { g.fillStyle = 'rgba(245,240,232,0.92)'; g.fillRect(x - s * 0.5, y - s * 0.45, s * k, s * 0.9); } } });
-    },
-  };
-}
-
-// THE LOO RAID: pick a target (each one's further away), GRAB what's there, and BACK TO YOUR SEAT before she's back. You
-// don't know exactly when: listen for the flush, then the hand dryer. Sometimes she's back early for her lipstick.
-const SPOTS = [
-  { id: 'next', icon: '🍽️', label: 'NEXT TABLE', run: 0.9, n: 3, chonk: 9, pos: V(-0.4, 1.55, 0.2), look: V(-1.5, 0.8, -1.0), food: [-1.5, -1.0] },
-  { id: 'trolley', icon: '🍰', label: 'THE TROLLEY', run: 1.2, n: 4, chonk: 11, pos: V(2.6, 1.5, -0.5), look: V(4.0, 0.9, -1.8), food: [4.0, -1.8] },
-  { id: 'pass', icon: '🔥', label: 'THE PASS', run: 2.0, n: 5, chonk: 13, pos: V(1.2, 1.6, -4.0), look: V(0, 1.0, -6.2), food: [0, -6.2] },
-  { id: 'bar', icon: '🍸', label: 'THE BAR', run: 2.0, n: 4, chonk: 12, pos: V(8.6, 1.7, -0.8), look: V(11.0, 1.15, -2.6), food: [11.1, -2.5] },
-  { id: 'cake', icon: '🎂', label: 'BIRTHDAY CAKE', run: 2.6, n: 6, chonk: 15, pos: V(-7.5, 1.6, -0.8), look: V(-9.1, 0.95, -1.9), food: [-9.1, -1.7] },
-];
-function raidGame(o) {
-  const spots = [SPOTS[0], ...shuffle(SPOTS.slice(1)).slice(0, 2)].map(s => ({ ...s, left: s.n }));
-  return {
-    id: 'raid', t: 0, total: o.total, where: null, st: 'seat', runT: 0, n: 0, haul: 0, flushed: false, dried: false, early: o.early && Math.random() < 0.9, earlyAt: rr(4.5, 6.5), result: null, danger: 0.1, status: 'PICK A TARGET',
-    buttons: [],
-    update(dt) {
-      const S = this.S; this.t += dt; const left = this.total - this.t;
-      if (this.early && !this.earlyDone && this.t > this.earlyAt) { this.earlyDone = true; this.total = Math.min(this.total, this.t + 3.2); S.cap = { name: '', col: '#fff', text: '"Babe? I forgot my lipstick!" She\'s coming back!' }; sfx('warn', null, 1); }
-      if (!this.flushed && left < 5) { this.flushed = true; sfx('flush', null, 1); S.cap = { name: '', col: '#fff', text: '🔊 *FLUSH*' }; }
-      if (!this.dried && left < 2.4) { this.dried = true; sfx('dn_dryer', null, 1); S.cap = { name: '', col: '#fff', text: '🔊 The hand dryer. She\'s nearly out!' }; }
-      this.danger = left < 2.4 ? 1 : left < 5 ? 0.7 : 0.15;
-      if (this.st === 'going' || this.st === 'back') { this.runT -= dt; if (this.runT <= 0) { if (this.st === 'going') { this.st = 'at'; S.shot('at', { pos: this.where.pos, look: this.where.look }); } else { this.st = 'seat'; this.where = null; S.shot('crane'); } } }
-      if (left <= 0) { this.result = this.st === 'seat' ? { win: true, n: this.n, haul: this.haul } : { win: false, reason: 'seat' }; return; }
-      // the buttons for where you are
-      if (this.st === 'seat') { this.buttons = spots.map(s => ({ icon: s.icon, label: s.label, sub: s.left ? `${s.run.toFixed(1)}s away` : 'EMPTY', col: '#ffd400', off: !s.left })); this.status = this.flushed ? 'STAY SAT. LOOK INNOCENT' : 'PICK A TARGET'; }
-      else if (this.st === 'at') { this.buttons = [{ icon: '🫳', label: 'GRAB', sub: `${this.where.left} left`, col: '#ffd400', off: !this.where.left }, { icon: '🏃', label: 'BACK TO SEAT', sub: `${this.where.run.toFixed(1)}s`, col: '#9fe8ff', hot: this.flushed }]; this.status = 'GRAB IT. THEN GET BACK!'; }
-      else { this.buttons = [{ icon: '🏃', label: this.st === 'going' ? 'RUNNING...' : 'RUNNING BACK...', sub: '', col: '#aaa', off: true }]; this.status = 'RUNNING...'; }
-    },
-    press(i) {
-      const S = this.S;
-      if (this.st === 'seat') { const s = spots[i]; if (!s || !s.left) return; this.where = s; this.st = 'going'; this.runT = s.run; S.shot('crane'); sfx('sprint', null, 0.7); return; }
-      if (this.st === 'at') {
-        if (i === 0 && this.where.left > 0) { this.where.left--; this.n++; this.haul += this.where.chonk; const p = S.eatNear(this.where.food[0], this.where.food[1], 1.6); S.reward(this.where.chonk, p || this.where.look.clone().add({ x: 0, y: 0.2, z: 0 }));
-          if (this.where.id === 'next' && Math.random() < 0.6) { const grp = (S.d.dinerGroups || []).find(gp => gp.some(c => c.seat && Math.hypot(c.seat.x - this.where.food[0], c.seat.z - this.where.food[1]) < 1.2)); const c = grp && R(grp); if (c) c.say(R(['Oi! That\'s my risotto!', 'Ronnie! That was my starter!', 'He\'s eaten my garnish. Who eats a GARNISH?']), 5); }
-          if (this.where.id === 'pass' && Math.random() < 0.5) S.cap = { name: '', col: '#fff', text: 'Chef: "SERVICE! ...where\'s table four\'s steak?"' };
-          return; }
-        if (i === 1) { this.st = 'back'; this.runT = this.where.run; S.shot('crane'); sfx('sprint', null, 0.7); }
-      }
-    },
-    draw(g, w, h) {
-      panel(g, w, h);
-      const pad = Math.max(6, h * 0.06), mh = Math.max(16, Math.min(24, h * 0.18)), left = this.total - this.t;
-      const lab = this.flushed ? (this.dried ? '🔊 HAND DRYER!' : '🔊 FLUSH!') : '🚽 IN THE LOO';
-      meter(g, pad, pad, w - pad * 2, mh, this.flushed ? Math.min(1, 1 - left / 5) : 0.08, this.dried ? '#ff3a3a' : this.flushed ? '#ffb020' : '#39ff14', lab, '💄');
-      txt(g, `RAIDED ${this.n}  ·  +${Math.round(this.haul)}`, w / 2, pad * 2 + mh * 1.5, mh * 0.8, '#ffd400', { stroke: 3, maxW: w - pad * 2 });
-      const y = pad * 3 + mh * 2, rest = h - y - pad; if (rest < 14) return;
-      txt(g, this.st === 'seat' ? '🪑 YOU\'RE IN YOUR SEAT' : this.st === 'at' ? `📍 AT ${this.where.label}` : '🏃 RUNNING...', w / 2, y + rest / 2, Math.min(18, rest * 0.6), this.st === 'seat' ? '#39ff14' : '#ff9e9e', { maxW: w - pad * 2 });
-    },
-  };
-}
-
-// HARRY'S DATING DISASTERS: cram while she listens to him; when she turns to you for your reaction, react right
-// (LAUGH at the funny ones, AWW at the sad ones) and not with your mouth full.
-function reactGame(o) {
-  const tales = shuffle(TALES.slice()).slice(0, 3);
-  return {
-    id: 'react', t: 0, i: -1, st: 'tell', stT: 0, sus: 0, last: -9, haul: 0, result: null, danger: 0.2, status: 'CRAM WHILE SHE LISTENS', want: null,
-    buttons: [{ icon: '🍗', label: 'CRAM', sub: 'while she listens', col: '#ffd400' }, { icon: '😂', label: 'LAUGH', sub: 'funny ones', col: '#9fe8ff' }, { icon: '🥺', label: 'AWW', sub: 'sad ones', col: '#ffb3d9' }],
-    next() { this.i++; if (this.i >= tales.length) { this.result = { win: true, haul: this.haul }; return; } const [line, tone] = tales[this.i]; this.want = tone; this.st = 'tell'; this.stT = Math.min(4.2, 1.6 + line.length * 0.035); this.S.line(o.h, line); },
-    update(dt) {
-      const S = this.S, c = S.chloe; this.t += dt; this.stT -= dt;
-      if (this.i < 0) { this.next(); return; }
-      if (this.st === 'tell') { this.danger = 0.2; if (c) c.lookOverride = 1.0; if (this.stT <= 0) { this.st = 'turn'; this.stT = 0.45; S.tell(c); } }
-      else if (this.st === 'turn') { this.danger = 0.75; if (c) c.lookOverride = 0.45; if (this.stT <= 0) { this.st = 'react'; this.stT = 1.5; if (this.t - this.last < 0.3) { this.result = { win: false, reason: 'react' }; return; } S.chloeSay(this.want === 'lol' ? 'Isn\'t that funny, babe?' : 'Aww. Isn\'t that sad, babe?', 4); } }
-      else if (this.st === 'react') { this.danger = 1; if (c) c.lookOverride = null; if (this.stT <= 0) { this.miss('...Ronnie? Are you even listening?'); } }
-      this.status = this.st === 'react' ? (this.want === 'lol' ? 'SHE WANTS A REACTION!' : 'SHE WANTS A REACTION!') : this.st === 'turn' ? '!! SHE\'S TURNING TO YOU !!' : 'CRAM WHILE SHE LISTENS';
-      this.buttons[0].hot = this.st === 'tell'; this.buttons[1].hot = this.buttons[2].hot = this.st === 'react';
-    },
-    miss(line) { this.sus++; sfx('error', null, 0.7); this.S.chloeSay(line, 5); if (this.sus >= 2) { this.result = { win: false, reason: 'react' }; return; } this.next(); },
-    press(i) {
-      const S = this.S, r = S.ron;
-      if (i === 0) { if (this.st === 'react') { this.result = { win: false, reason: 'react' }; return; } this.last = this.t; this.haul += 6; S.reward(6); if (r) { r.dnPose = 'cram'; setTimeout(() => { if (r.dnPose === 'cram') r.dnPose = null; }, 450); } return; }
-      if (this.st !== 'react') { if (r) r.dnPose = i === 1 ? 'laugh' : 'innocent'; return; }
-      const ok = (i === 1 && this.want === 'lol') || (i === 2 && this.want === 'sad');
-      if (r) { r.dnPose = i === 1 ? 'laugh' : 'innocent'; setTimeout(() => { if (r.dnPose !== 'cram') r.dnPose = null; }, 900); }
-      if (ok) { sfx('ding', null, 0.7); this.next(); } else this.miss(this.want === 'sad' ? 'Why are you LAUGHING? That\'s so sad.' : 'Aww? It was a JOKE, babe.');
-    },
-    draw(g, w, h) {
-      panel(g, w, h);
-      const pad = Math.max(6, h * 0.06), mh = Math.max(16, Math.min(24, h * 0.18));
-      eyeMeter(g, pad, pad, w * 0.62, mh, this.st === 'react' ? 1 : this.st === 'turn' ? 0.75 : 0.15, this.st === 'react' ? 'REACT!' : 'LISTENING TO HARRY');
-      txt(g, `${'💔'.repeat(this.sus)}${'🤍'.repeat(Math.max(0, 2 - this.sus))}`, w * 0.84, pad + mh / 2, mh * 0.8, '#fff');
-      const y = pad * 2 + mh + (h - pad * 3 - mh) / 2, rest = h - pad * 3 - mh; if (rest < 14) return;
-      const s = this.st === 'react' ? (this.want === 'lol' ? '😂 THAT ONE WAS FUNNY' : '🥺 THAT ONE WAS SAD') : `STORY ${Math.max(1, this.i + 1)} OF ${tales.length}`;
-      txt(g, s, w / 2, y, Math.min(20, rest * 0.55), this.st === 'react' ? '#ffd400' : '#fff', { maxW: w - pad * 2, stroke: 3 });
-    },
-  };
-}
-
-// OLIVER'S SHAME CAM: the shot swings about; EAT when you're out of it. PHOTOBOMB while you're in it: the followers
-// love it (and Chloe's too busy waving to notice).
-function viewfinderGame() {
-  return {
-    id: 'viewfinder', t: 0, time: 9, x: 0.15, v: 0.42, turnT: rr(0.8, 1.6), bombs: 0, haul: 0, result: null, danger: 0.2, status: 'EAT WHEN YOU\'RE OUT OF SHOT', lastBomb: -9,
-    buttons: [{ icon: '🍔', label: 'EAT', sub: 'out of shot', col: '#ffd400' }, { icon: '📸', label: 'PHOTOBOMB', sub: 'in shot', col: '#9fe8ff' }],
-    inShot() { return Math.abs(this.x - 0.5) < 0.17; },
-    update(dt) {
-      this.t += dt; this.time -= dt; this.turnT -= dt;
-      this.x += this.v * dt; if (this.x < 0.05 || this.x > 0.95) { this.v = -this.v; this.x = Math.max(0.05, Math.min(0.95, this.x)); }
-      if (this.turnT <= 0) { this.turnT = rr(0.7, 1.6); if (Math.random() < 0.45) this.v = -this.v; this.v = Math.sign(this.v) * rr(0.32, 0.62); }
-      const near = Math.abs(this.x - 0.5); this.danger = near < 0.17 ? 1 : near < 0.27 ? 0.7 : 0.2;
-      this.status = this.inShot() ? '📹 YOU\'RE IN SHOT!' : 'EAT WHEN YOU\'RE OUT OF SHOT';
-      this.buttons[0].hot = !this.inShot(); this.buttons[1].hot = this.inShot();
-      if (this.time <= 0) this.result = { win: true, haul: this.haul, bombs: this.bombs };
-    },
-    press(i) {
-      const S = this.S, r = S.ron;
-      if (i === 0) { if (this.inShot()) { this.result = { win: false, reason: 'filmed' }; return; } this.haul += 7; S.reward(7); if (r) { r.dnPose = 'cram'; setTimeout(() => { if (r.dnPose === 'cram') r.dnPose = null; }, 450); } return; }
-      if (this.inShot() && this.t - this.lastBomb > 0.8) { this.lastBomb = this.t; this.bombs++; S.reward(4); if (r) { r.dnPose = 'cheer'; setTimeout(() => { if (r.dnPose === 'cheer') r.dnPose = null; }, 700); } S.g.words.show('+10K FOLLOWERS', S.ronHead().add({ x: 0, y: 0.35, z: 0 }), '#9fe8ff', 0.08, 1); sfx('ding', null, 0.7); }
-    },
-    draw(g, w, h) {
-      panel(g, w, h, 'rgba(8,10,16,0.88)');
-      const pad = Math.max(6, h * 0.06), ly = pad, lh = h - pad * 2, lw = w - pad * 2;
-      g.fillStyle = '#1d2230'; rr2(g, pad, ly, lw, lh, 8); g.fill();
-      emo(g, '🍔', pad + lw * 0.5, ly + lh * 0.55, Math.min(lh * 0.55, 46));
-      txt(g, 'RONNIE', pad + lw * 0.5, ly + lh * 0.12, Math.min(12, lh * 0.12), '#ffd400');
-      const fx = pad + lw * (this.x - 0.17), fw = lw * 0.34;
-      g.lineWidth = 3; g.strokeStyle = this.inShot() ? '#ff3a3a' : '#fff'; rr2(g, fx, ly + 3, fw, lh - 6, 6); g.stroke();
-      g.fillStyle = this.inShot() ? 'rgba(255,58,58,0.18)' : 'rgba(255,255,255,0.08)'; rr2(g, fx, ly + 3, fw, lh - 6, 6); g.fill();
-      g.fillStyle = '#ff2a2a'; g.beginPath(); g.arc(fx + 12, ly + 14, 5, 0, 7); g.fill(); txt(g, 'REC', fx + 34, ly + 14, 11, '#fff');
-      txt(g, `⏱ ${Math.max(0, Math.ceil(this.time))}  📸 ${this.bombs}`, pad + lw - 6, ly + lh - 12, 13, '#fff', { align: 'right' });
-    },
-  };
-}
-
-// AIDAN AND CONNOR'S PINTS: three glasses, one's the Guinness. They shuffle them about. Pick the Guinness.
-function shellGame() {
-  const swaps = []; const n = 5 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) { const a = Math.floor(Math.random() * 3); let b = (a + 1 + Math.floor(Math.random() * 2)) % 3; swaps.push([a, b]); }
-  return {
-    id: 'shell', t: 0, phase: 'show', pos: [0, 1, 2], kinds: ['G', 'W', 'V'], swaps, si: 0, swT: 0, result: null, danger: 0.3, status: 'WATCH THE GUINNESS', pickT: 4,
-    buttons: [{ icon: '⬅️', label: 'LEFT', col: '#ffd400', off: true }, { icon: '⬆️', label: 'MIDDLE', col: '#ffd400', off: true }, { icon: '➡️', label: 'RIGHT', col: '#ffd400', off: true }],
-    update(dt) {
-      this.t += dt;
-      if (this.phase === 'show') { if (this.t > 1.6) { this.phase = 'shuffle'; this.status = 'KEEP YOUR EYE ON IT...'; } }
-      else if (this.phase === 'shuffle') {
-        const dur = Math.max(0.28, 0.6 - this.si * 0.045); this.swT += dt / dur;
-        if (this.swT >= 1) { const [a, b] = this.swaps[this.si]; const ia = this.pos.indexOf(a), ib = this.pos.indexOf(b); this.pos[ia] = b; this.pos[ib] = a; this.si++; this.swT = 0; sfx('glass', null, 0.5); if (this.si >= this.swaps.length) { this.phase = 'pick'; this.status = 'WHICH ONE\'S THE GUINNESS?'; } }
-      } else if (this.phase === 'pick') { this.pickT -= dt; if (this.pickT <= 0) this.result = { win: false, soft: true }; }
-      for (const b of this.buttons) { b.off = this.phase !== 'pick'; b.hot = this.phase === 'pick'; }
-    },
-    press(i) { if (this.phase !== 'pick') return; const k = this.kinds[this.pos[i]]; this.result = k === 'G' ? { win: true } : k === 'W' ? { win: false, soft: true, water: true } : { win: false, reason: 'wine' }; },
-    // where glass j is drawn (0..2), part-way through a swap
-    slot(j) { let p = this.pos.indexOf(j); if (this.phase === 'shuffle' && this.si < this.swaps.length) { const [a, b] = this.swaps[this.si], k = ease(this.swT); if (p === this.pos.indexOf(a)) return [lerp(p, this.pos.indexOf(b), k), Math.sin(k * Math.PI)]; if (p === this.pos.indexOf(b)) return [lerp(p, this.pos.indexOf(a), k), -Math.sin(k * Math.PI)]; } return [p, 0]; },
-    draw(g, w, h) {
-      panel(g, w, h, 'rgba(40,24,12,0.9)');
-      const pad = Math.max(6, h * 0.06), gs = Math.min(h * 0.62, w / 4.2);
-      txt(g, this.status + (this.phase === 'pick' ? `  ⏱ ${Math.max(0, Math.ceil(this.pickT))}` : ''), w / 2, pad + 9, Math.min(15, h * 0.12), '#ffd400', { maxW: w - 20 });
-      for (let j = 0; j < 3; j++) {
-        const [s, lift] = this.slot(j), x = w / 2 + (s - 1) * (w / 3.4), y = h * 0.6 - lift * h * 0.08;
-        const show = this.phase === 'show' || this.result, kind = this.kinds[j];
-        g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.moveTo(x - gs * 0.32, y - gs * 0.45); g.lineTo(x + gs * 0.32, y - gs * 0.45); g.lineTo(x + gs * 0.24, y + gs * 0.42); g.lineTo(x - gs * 0.24, y + gs * 0.42); g.closePath(); g.fill();
-        g.fillStyle = show ? (kind === 'G' ? '#1a0d05' : kind === 'V' ? '#f4a0b0' : '#bfe3f0') : '#7a6a5a';
-        g.beginPath(); g.moveTo(x - gs * 0.3, y - gs * 0.32); g.lineTo(x + gs * 0.3, y - gs * 0.32); g.lineTo(x + gs * 0.23, y + gs * 0.4); g.lineTo(x - gs * 0.23, y + gs * 0.4); g.closePath(); g.fill();
-        if (show && kind === 'G') { g.fillStyle = '#f4ead0'; g.fillRect(x - gs * 0.3, y - gs * 0.4, gs * 0.6, gs * 0.1); }
-        if (!show) { txt(g, '?', x, y, gs * 0.4, '#fff', { stroke: 4 }); }
-        g.lineWidth = 2; g.strokeStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.moveTo(x - gs * 0.32, y - gs * 0.45); g.lineTo(x - gs * 0.24, y + gs * 0.42); g.lineTo(x + gs * 0.24, y + gs * 0.42); g.lineTo(x + gs * 0.32, y - gs * 0.45); g.stroke();
-      }
-    },
-  };
-}
-
-// DYLAN'S WONDERWALL: the whole restaurant's watching him. Food pops up at the three nearest tables: grab it (the
-// button under it). Broccoli pops up too: grab two of those and you gag. Loudly.
-function whackGame() {
-  return {
-    id: 'whack', t: 0, time: 8, slots: [null, null, null], spawnT: 0.3, veg: 0, haul: 0, result: null, danger: 0.2, status: 'GRAB THE FOOD. NOT THE BROCCOLI',
-    buttons: [0, 1, 2].map(() => ({ icon: '·', label: 'EMPTY', col: '#777', off: true })),
-    update(dt) {
-      this.t += dt; this.time -= dt;
-      for (let i = 0; i < 3; i++) { const s = this.slots[i]; if (s && (s.t -= dt) <= 0) this.slots[i] = null; }
-      if ((this.spawnT -= dt) <= 0) { this.spawnT = rr(0.35, 0.65); const free = [0, 1, 2].filter(i => !this.slots[i]); if (free.length) { const i = R(free), bad = Math.random() < 0.28; this.slots[i] = { e: bad ? '🥦' : R(['🍕', '🍔', '🌭', '🍗', '🍟', '🥐']), bad, t: rr(0.75, 1.1), c: bad ? 0 : R([7, 8, 9, 10]) }; } }
-      this.buttons = this.slots.map((s, i) => s ? { icon: s.e, label: s.bad ? 'BROCCOLI!' : 'GRAB!', sub: ['LEFT', 'MIDDLE', 'RIGHT'][i], col: s.bad ? '#7cff6a' : '#ffd400', hot: !s.bad } : { icon: '·', label: 'EMPTY', sub: ['LEFT', 'MIDDLE', 'RIGHT'][i], col: '#777', off: true });
-      if (this.time <= 0) this.result = { win: true, haul: this.haul };
-    },
-    press(i) {
-      const s = this.slots[i], S = this.S; if (!s) return; this.slots[i] = null;
-      if (s.bad) { this.veg++; S.g.addChonk(-5); sfx('error', null, 0.8); S.g.words.show('BLEURGH!', S.ronHead().add({ x: 0, y: 0.3, z: 0 }), '#7cff6a', 0.1, 0.9); if (this.veg >= 2) this.result = { win: false, reason: 'gag' }; return; }
-      this.haul += s.c; S.reward(s.c); const r = S.ron; if (r) { r.dnPose = 'cram'; setTimeout(() => { if (r.dnPose === 'cram') r.dnPose = null; }, 400); }
-    },
-    draw(g, w, h) {
-      panel(g, w, h);
-      const pad = Math.max(6, h * 0.06), mh = Math.max(16, Math.min(24, h * 0.2)), k = Math.max(0, this.time / 8);
-      meter(g, pad, pad, w - pad * 2, mh, k, '#e879f9', '♪ WONDERWALL ♪', '🎸');
-      const rest = h - pad * 3 - mh; if (rest < 14) return;
-      txt(g, `🥦 ${this.veg} / 2   +${Math.round(this.haul)}`, w / 2, pad * 2 + mh + rest / 2, Math.min(20, rest * 0.6), this.veg ? '#7cff6a' : '#ffd400', { stroke: 3, maxW: w - pad * 2 });
-    },
-  };
-}
-
-// ETHAN'S FREE KICK: a needle swings; KICK when it's in the green. The green gets smaller each time. Miss twice and the
-// second one hits Chloe.
-function kickGame() {
-  return {
-    id: 'kick', t: 0, a: 0, v: 1.6, kicks: 0, n: 0, miss: 0, zone: 0.22, cool: 0, result: null, danger: 0.2, status: 'KICK IN THE GREEN', haul: 0, flash: '', flashT: 0,
-    buttons: [{ icon: '⚽', label: 'KICK!', sub: 'in the green', col: '#ffd400' }],
-    update(dt) {
-      this.t += dt; this.cool -= dt; this.flashT -= dt;
-      this.a += this.v * dt; if (this.a > 1) { this.a = 1; this.v = -this.v; } if (this.a < -1) { this.a = -1; this.v = -this.v; }
-      this.buttons[0].hot = Math.abs(this.a) < this.zone; this.buttons[0].off = this.cool > 0;
-      this.danger = this.miss ? 0.6 : 0.2;
-      if (this.kicks >= 3 && this.cool <= 0) this.result = this.n ? { win: true, n: this.n, haul: this.haul } : { win: false, reason: 'roll' };
-    },
-    press() {
-      if (this.cool > 0 || this.kicks >= 3) return; const S = this.S; this.kicks++; this.cool = 0.9;
-      if (Math.abs(this.a) < this.zone) { this.n++; const c = Math.abs(this.a) < this.zone * 0.4 ? 14 : 10; this.haul += c; S.reward(c); this.flash = c > 10 ? 'TOP BINS!' : 'IN!'; sfx('ding', null, 0.8); const r = S.ron; if (r) { r.dnPose = 'chew'; setTimeout(() => { if (r.dnPose === 'chew') r.dnPose = null; }, 800); } }
-      else { this.miss++; this.flash = this.miss >= 2 ? 'IT HIT CHLOE!' : 'WIDE!'; sfx('error', null, 0.7); if (this.miss >= 2) { this.result = { win: false, reason: 'roll' }; return; } }
-      this.flashT = 0.8; this.zone *= 0.8; this.v = Math.sign(this.v) * (1.6 + this.kicks * 0.5);
-    },
-    draw(g, w, h) {
-      panel(g, w, h);
-      const cx = w / 2, cy = h * 0.92, R0 = Math.min(h * 0.78, w * 0.42);
-      g.lineWidth = Math.max(10, R0 * 0.16); g.lineCap = 'butt';
-      g.strokeStyle = '#ff5a5a'; g.beginPath(); g.arc(cx, cy, R0, Math.PI * 1.08, Math.PI * 1.92); g.stroke();
-      g.strokeStyle = '#39ff14'; const z = this.zone * Math.PI * 0.42; g.beginPath(); g.arc(cx, cy, R0, Math.PI * 1.5 - z, Math.PI * 1.5 + z); g.stroke();
-      const an = Math.PI * 1.5 + this.a * Math.PI * 0.42; g.lineWidth = 4; g.strokeStyle = '#fff'; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(an) * R0 * 1.08, cy + Math.sin(an) * R0 * 1.08); g.stroke();
-      emo(g, '🥖', cx + Math.cos(an) * R0 * 1.08, cy + Math.sin(an) * R0 * 1.08, Math.min(30, h * 0.24));
-      txt(g, `⚽ ${this.kicks}/3   ✓ ${this.n}`, 10, 16, Math.min(14, h * 0.12), '#fff', { align: 'left' });
-      if (this.flashT > 0) txt(g, this.flash, cx, h * 0.45, Math.min(26, h * 0.22), this.flash === 'IN!' || this.flash === 'TOP BINS!' ? '#39ff14' : '#ff6b6b', { stroke: 4 });
-    },
-  };
-}
-export const DN_GAMES = { cram: cramGame, signals: signalGame, trolley: conveyorGame, napkin: napkinGame, raid: raidGame, react: reactGame, viewfinder: viewfinderGame, shell: shellGame, whack: whackGame, kick: kickGame };
+const FAR = { side: 1.45, wide: 1.15, overR: 1.15, trio: 1.2, char: 1.15, orbit: 1.15, dolly: 1.1, low: 1.1 };
