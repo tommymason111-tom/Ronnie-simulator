@@ -487,7 +487,7 @@ export class PropHunt {
   doSwap() {
     const me = this.mine(); if (!me || me.role !== 'hider' || me.found || !this.playing()) return;
     if (this.reelOn) return; if (me.locked) { this.toast('UNLOCK FIRST TO SWAP'); return; }
-    if ((this.swapsLeft ?? 0) <= 0) { this.toast('NO SWAPS LEFT'); sfx('point_lose', null, 0.5); return; }
+    if ((this.swapsLeft ?? 0) <= 0) { this.toast('NO SWAPS LEFT'); sfx('error', null, 0.5); return; }
     this.swapsLeft--; this.spinReel(false);
   }
   spinReel(first) {
