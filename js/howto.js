@@ -209,13 +209,13 @@ function propHunt(g, W, H, page) {
     floorScene(g, W, H, '#3b6f5a', '#28503f');
     shadow(g, 140, fy + 30, 30); emoji(g, '🧍', 140, fy - 6, 64);
     arrow(g, 190, fy - 10, 380, fy - 10, '#39ff14', [10, 6]);
-    label(g, '👆 TAP IT TO BECOME IT', 285, fy - 52, { size: 15, border: '#39ff14' });
+    label(g, '🎰 DEALT A RANDOM PROP', 285, fy - 52, { size: 15, border: '#39ff14' });
     shadow(g, 440, fy + 30, 32); emoji(g, '🛢️', 440, fy - 2, 62); eyes(g, 440, fy - 8);
     shadow(g, 545, fy + 30, 26); emoji(g, '🛢️', 545, fy, 54);
     g.fillStyle = 'rgba(10,14,40,0.88)'; rr(g, W / 2 - 70, 18, 140, 54, 14); g.fill(); g.strokeStyle = '#ffd400'; g.lineWidth = 3; g.stroke();
     g.fillStyle = '#ffd400'; g.font = `900 30px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('0:40', W / 2, 46);
     label(g, '🙈 SEEKERS HAVE THEIR EYES SHUT', W / 2, 96, { size: 14, border: '#fff' });
-    label(g, '🎭 PROPS', W - 70, 46, { size: 15, border: '#c792ff' });
+    label(g, '🎰 SWAP ×2', W - 78, 46, { size: 15, border: '#c792ff' });
     return;
   }
   if (page === 'lock') {

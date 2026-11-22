@@ -2,7 +2,7 @@
 // Lidl, Lewis's). The host changes the game to Prop Hunt and everyone follows; the host presses START. Then:
 //   - the teams are dealt the same on every game (one seeker for up to four players, the rest hide), the seeker is
 //     blindfolded and held while the hiders hide
-//   - hiders become props (one by looking at a real one and pressing BECOME, the others from the list): every other
+//   - hiders are dealt props by a fruit machine reel (no picking) and one SWAPs (2 a round, its badge counts down): every other
 //     game draws the prop where they are, and the hider's character is gone from every other game
 //   - a wrong guess (checking one of the real things) costs the seeker 10 health, on the host's game and the seeker's
 //   - a taunt is heard by everyone and scores points; a lock is seen by everyone
@@ -83,16 +83,23 @@ async function onePlace(place, WHO) {
           if (k < 0 || !RS.room.nav.free[k] || m.walled(ray, o.distanceTo(c))) continue; const h = m.pick(ray, { maxD: 5 }); if (h && h.kind === 'd' && h.i === i) return { i, k: d.k, x: c.x, y: c.y, z: c.z, ox: o.x, oz: o.z }; } } return null; });
     // stand there and look at it (a flat player's yaw and pitch)
     const lookAt = (p, d) => ev(p, (d) => { const m = RS.director.prophunt, P = RS.player; m.teleport(d.ox, d.oz); const dx = d.x - d.ox, dz = d.z - d.oz; P.flatYaw = Math.atan2(-dx, -dz) - P.rig.rotation.y; P.flatPitch = -Math.atan2(P.head.y - d.y, Math.hypot(dx, dz)); }, d);
-    // hiders: the first looks at a real prop and becomes it; the rest pick from the list
+    // hiders: nobody picks. A fruit machine reel deals each one a prop once the round starts (after the 'you're hiding' card),
+    // then SWAP spins again for something else: two a round, the count on its badge
     const kinds = {};
     for (const [n, i] of hiders.entries()) { const p = pages[i];
-      let r; if (n === 0) { const d = await findDecoy(p); C.ok(d, `${p.pname}: no prop to look at`); if (!d) continue; await lookAt(p, d); r = { k: d.k, look: true }; }
-      else r = await ev(p, () => { const m = RS.director.prophunt, k = m.kinds[m.kinds.length - 1]; m.become(k); return { k, look: false }; });
-      if (r.look) { await p.waitForFunction((k) => { const m = RS.director.prophunt; return m.aimed && m.aimed.k === k && !document.querySelector('#ph-ui .become').hidden; }, r.k, { timeout: 20000, polling: 300 }).catch(() => {});
-        const got = await ev(p, () => { const m = RS.director.prophunt; return { aimed: m.aimed && m.aimed.k, card: document.getElementById('ph-card').classList.contains('on'), hl: m.hl.visible, btn: !document.querySelector('#ph-ui .become').hidden }; });
-        C.ok(got.aimed === r.k && got.card && got.hl && got.btn, `${p.pname} looking at a ${r.k}: not highlighted / no card / no BECOME (${JSON.stringify(got)})`);
-        await ev(p, () => document.querySelector('#ph-ui .become').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))); }
-      kinds[info[i].id] = r.k; }
+      if (n === 0) { const reel = await p.waitForFunction(() => document.querySelector('#ph-reel.on'), null, { timeout: 15000, polling: 100 }).then(() => true, () => false);
+        C.ok(reel, `${p.pname}: the reel didn't spin to deal a prop`); }
+      const k0 = await p.waitForFunction(() => { const m = RS.director.prophunt, me = m.mine(); return me && me.kind && !m.reelOn ? me.kind : null; }, null, { timeout: 20000, polling: 200 }).then(h => h.jsonValue(), () => null);
+      C.ok(!!k0, `${p.pname}: wasn't dealt a prop`);
+      if (n === 0) {
+        const ui = await ev(p, () => ({ become: !document.querySelector('#ph-ui .become').hidden, swap: !document.querySelector('#ph-ui .swap').hidden, n: document.querySelector('#ph-ui .swap .sw-n').textContent }));
+        C.ok(!ui.become && ui.swap && ui.n === '2', `${p.pname}: the hider's buttons aren't SWAP (2 left) only: ${JSON.stringify(ui)}`);
+        await ev(p, () => document.querySelector('#ph-ui .swap').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+        const k1 = await p.waitForFunction((k0) => { const m = RS.director.prophunt, me = m.mine(); return me && me.kind && me.kind !== k0 && !m.reelOn ? me.kind : null; }, k0, { timeout: 15000, polling: 200 }).then(h => h.jsonValue(), () => null);
+        await sleep(600); const n1 = await ev(p, () => document.querySelector('#ph-ui .swap .sw-n').textContent);
+        C.ok(k1 && n1 === '1', `${p.pname}: SWAP didn't spin for something new and leave 1 swap (${k0} -> ${k1}, badge ${n1})`);
+        kinds[info[i].id] = k1 || k0; }
+      else kinds[info[i].id] = k0; }
     // everyone draws each hider as their prop, and nobody draws the hider as a person
     const seesProps = (kinds) => { const m = RS.director.prophunt, out = {}; for (const id in kinds) { const pr = m.props.get(id), np = RS.net.players.get(id), av = np && np.avatar;
         out[id] = { kind: pr && pr.kind, at: pr ? +Math.hypot(pr.pos.x - (id === m.me ? RS.player.head.x : np.pose.h[0]), pr.pos.z - (id === m.me ? RS.player.head.z : np.pose.h[2])).toFixed(2) : null, hidden: id === m.me ? true : !!(av && av.impHidden && !(av.c.rag.group && av.c.rag.group.visible)) }; } return out; };

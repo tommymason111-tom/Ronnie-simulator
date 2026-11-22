@@ -266,7 +266,7 @@ export class PropHunt {
   tap(x, y) {
     if (this.panel.open || !this.playing()) return; const me = this.mine(); if (!me || me.found) return;
     if (me.role === 'seeker' && this.phase === 'seek') this.doCheck(this.aimRay(x, y));
-    else if (me.role === 'hider') { const r = this.aimRay(x, y); if (!r) return; const hit = this.pick(r, { near: this.g.player.head, nearR: PH.PICK_R }); if (hit) this.become(hit.k); }
+    /* (a hider: nothing. They're dealt a prop, and SWAP it) */
   }
 
   // ------------------------------------------------------------------ the host: dealing, the clock, the checks, points
@@ -415,6 +415,8 @@ export class PropHunt {
     this.layDecoys(m.lay); this.phase = 'hide'; this.endsAt = now() + (Number(m.ht) || PH.HIDE_T); this.lastTaunt = now(); this.tauntCD = 0; this.swapAt = 0; this.spect = null; this.countBeep = -1;
     this.g.player.ghost = false;
     if (!late) { this.respawn(); this.showRole(); }
+    this.swapsLeft = 2; this.reelOn = false; clearTimeout(this.dealT);
+    { const me = this.mine(); if (me && me.role === 'hider' && !me.kind) this.dealT = setTimeout(() => this.spinReel(true), late ? 300 : 3300); }
     this.syncPuppets(); this.feed(`🔔 ROUND ${this.round} OF ${this.of}`);
   }
   // the seekers are let loose
@@ -479,6 +481,32 @@ export class PropHunt {
   }
   ranked() { const ids = new Set([...Object.keys(this.tot), ...this.players.keys()]); return [...ids].map(id => ({ id, name: this.nameOf(id), char: (this.players.get(id) || this.net.players.get(id) || {}).char || (id === this.me ? this.net.char : 'ronnie'), pts: this.tot[id] || 0 })).sort((a, b) => b.pts - a.pts); }
 
+  // ------------------------------------------------------------------ hiders: dealt a prop by a FRUIT MACHINE reel
+  // When the round starts (once the "you're hiding" card goes) every hider's reel spins through the map's things and
+  // lands on theirs (about 1.5s, then a moment to see it). SWAP spins it again for something else: two a round.
+  doSwap() {
+    const me = this.mine(); if (!me || me.role !== 'hider' || me.found || !this.playing()) return;
+    if (this.reelOn) return; if (me.locked) { this.toast('UNLOCK FIRST TO SWAP'); return; }
+    if ((this.swapsLeft ?? 0) <= 0) { this.toast('NO SWAPS LEFT'); sfx('point_lose', null, 0.5); return; }
+    this.swapsLeft--; this.spinReel(false);
+  }
+  spinReel(first) {
+    const me = this.mine(); if (!me || me.role !== 'hider' || me.found || !this.playing() || this.reelOn) return;
+    const pool = this.kinds.filter(k => k !== me.kind); if (!pool.length) return;
+    const pick = pool[Math.floor(Math.random() * pool.length)], done = () => { this.reelOn = false; this.swapAt = 0; this.become(pick); };
+    // (a headset: straight there, with the banner saying what you are)
+    if (this.g.renderer.xr.isPresenting || !this.g.player.flatMode) { done(); return; }
+    this.reelOn = true; const el = this.reelEl || (this.reelEl = (() => { const d = document.createElement('div'); d.id = 'ph-reel'; document.body.appendChild(d); return d; })());
+    const strip = []; for (let i = 0; i < 16; i++) strip.push(this.kinds[Math.floor(Math.random() * this.kinds.length)]); strip.push(pick, this.kinds[Math.floor(Math.random() * this.kinds.length)]);
+    const H = 78, land = strip.length - 2;      // (each row is H px; the window shows three, the middle one is yours)
+    el.innerHTML = `<div class="rl-box"><div class="rl-top">${first ? '🎰 WHAT ARE YOU?' : '🎰 SWAP!'}</div><div class="rl-win"><div class="rl-strip">${strip.map(k => `<div class="rl-row"><b>${this.K[k].icon}</b><span>${esc(this.K[k].name.replace(/^(A|AN|THE) /, ''))}</span></div>`).join('')}</div><i class="rl-line"></i></div><div class="rl-got"></div></div>`;
+    const st = el.querySelector('.rl-strip'); st.style.transform = 'translateY(0px)'; el.classList.remove('done'); el.classList.add('on'); void st.offsetWidth;
+    st.style.transition = 'transform 1.35s cubic-bezier(.12,.75,.22,1)'; st.style.transform = `translateY(${-(land - 1) * H}px)`;
+    sfx('reels', null, 0.55);
+    clearTimeout(this.reelT1); clearTimeout(this.reelT2);
+    this.reelT1 = setTimeout(() => { if (!this.reelEl) return; sfx('reel_stop', null, 0.7); el.classList.add('done'); el.querySelector('.rl-got').innerHTML = `YOU'RE ${esc(this.K[pick].name)}!`; done();
+      this.reelT2 = setTimeout(() => el.classList.remove('on', 'done'), 900); }, 1400);
+  }
   // ------------------------------------------------------------------ hiders: become a prop, lock, taunt
   become(k) {
     const me = this.mine(); if (!me || me.role !== 'hider' || me.found || !this.playing() || !this.K[k]) return;
@@ -716,6 +744,17 @@ body.prophunt.flat #ph-ui { display: flex; } #ph-ui .row { display: flex; gap: 1
 #ph-ui button { pointer-events: auto; position: relative; width: 78px; height: 78px; border-radius: 50%; border: 4px solid #fff; color: #fff; font: 900 12px "Arial Black", Arial; text-shadow: 0 2px 3px #000; box-shadow: 0 4px 0 rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; padding: 0; cursor: pointer; transition: transform .12s; }
 #ph-ui button:active { transform: scale(0.92); } #ph-ui button b { font-size: 28px; display: block; } #ph-ui button[hidden] { display: none; } #ph-ui button.off { filter: grayscale(1) brightness(0.55); }
 #ph-ui button i { position: absolute; top: -6px; right: -4px; font: 900 10px Arial; font-style: normal; background: #111; border: 2px solid #fff; border-radius: 8px; padding: 1px 5px; }
+#ph-ui .swap { background: #7b2ff7; position: relative; overflow: visible; } #ph-ui .swap .sw-n { position: absolute; top: -6px; right: -6px; min-width: 22px; height: 22px; padding: 0 5px; box-sizing: border-box; border-radius: 11px; background: #ff3b3b; color: #fff; font: 900 13px/18px Arial, sans-serif; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.5); } #ph-ui .swap .sw-n.zero { background: #555; } #ph-ui .swap .sw-n.pop { animation: swpop .35s cubic-bezier(.2,1.6,.4,1); } @keyframes swpop { from { transform: scale(0.3); } }
+#ph-reel { position: fixed; inset: 0; z-index: 44; display: none; align-items: center; justify-content: center; pointer-events: none; background: radial-gradient(circle, rgba(10,6,30,0.55), rgba(10,6,30,0.15) 70%); }
+#ph-reel.on { display: flex; animation: rlin .2s ease-out; } @keyframes rlin { from { opacity: 0; } }
+#ph-reel .rl-box { width: min(300px, 80vw); border-radius: 22px; padding: 12px 14px 14px; background: linear-gradient(180deg, #ffcf33, #ff8a00); border: 4px solid #111; box-shadow: 0 10px 0 #7a3a00, 0 18px 40px rgba(0,0,0,0.6); text-align: center; }
+#ph-reel .rl-top { font: 900 20px "Arial Black", Arial, sans-serif; color: #111; margin-bottom: 8px; letter-spacing: 1px; }
+#ph-reel .rl-win { position: relative; height: 234px; overflow: hidden; border-radius: 14px; background: #fffef4; border: 4px solid #111; box-shadow: inset 0 14px 18px rgba(0,0,0,0.35), inset 0 -14px 18px rgba(0,0,0,0.35); }
+#ph-reel .rl-strip { will-change: transform; } #ph-reel .rl-row { height: 78px; display: flex; align-items: center; justify-content: center; gap: 10px; font: 900 19px "Arial Black", Arial, sans-serif; color: #2a1458; } #ph-reel .rl-row b { font-size: 42px; font-weight: normal; }
+#ph-reel .rl-line { position: absolute; left: 0; right: 0; top: 78px; height: 78px; border-top: 3px solid #e91e63; border-bottom: 3px solid #e91e63; background: rgba(233,30,99,0.08); pointer-events: none; }
+#ph-reel .rl-got { min-height: 26px; margin-top: 10px; font: 900 18px "Arial Black", Arial, sans-serif; color: #111; }
+#ph-reel.done .rl-line { background: rgba(57,255,20,0.25); border-color: #1d8a0a; animation: rlwin .45s ease-out 2; } #ph-reel.done .rl-got { animation: rlgot .4s cubic-bezier(.2,1.6,.4,1); } @keyframes rlwin { 50% { background: rgba(57,255,20,0.55); } } @keyframes rlgot { from { transform: scale(0.4); opacity: 0; } }
+@media (max-height: 520px) { #ph-reel .rl-box { transform: scale(0.78); } }
 #ph-ui .props { background: #7b2ff7; } #ph-ui .lock { background: #2a6df4; } #ph-ui .lock.on { background: #ff9f1c; animation: phlock 1.2s infinite; } #ph-ui .taunt { background: #e91e63; overflow: hidden; } #ph-ui .become { background: #00b16a; width: 92px; height: 92px; animation: phpulse 0.9s infinite alternate; }
 #ph-ui .check { background: #ff5722; width: 104px; height: 104px; } #ph-ui .watch { background: #37474f; } #ph-ui .start { background: #2e7d32; width: 120px; height: 120px; font-size: 15px; animation: phpulse 0.9s infinite alternate; }
 #ph-ui .taunt .cdv { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(rgba(0,0,0,0.62) var(--k, 0%), transparent 0); pointer-events: none; } #ph-ui .taunt .num { position: absolute; font: 900 26px "Arial Black"; }
@@ -763,21 +802,21 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
 @media (max-width: 520px) { #ph-ui button { width: 66px; height: 66px; font-size: 10px; } #ph-ui button b { font-size: 23px; } #ph-ui .become { width: 78px; height: 78px; } #ph-ui .check { width: 92px; height: 92px; } #ph-ui .start { width: 104px; height: 104px; } #ph-quiet { width: 66px; } #ph-card { max-width: calc(100vw - 24px); bottom: max(150px, calc(env(safe-area-inset-bottom) + 140px)); } #ph-top { top: max(88px, calc(env(safe-area-inset-top) + 84px)); max-width: calc(100vw - 20px); } #ph-feed { top: max(176px, calc(env(safe-area-inset-top) + 170px)); } }`;
     document.head.appendChild(st); this.style = st;
     const ui = document.createElement('div'); ui.id = 'ph-ui';
-    ui.innerHTML = `<div class="row"><button class="watch" hidden><b>👀</b>WATCH<i>V</i></button><button class="props" hidden><b>🎭</b>PROPS<i>Q</i></button></div>
+    ui.innerHTML = `<div class="row"><button class="watch" hidden><b>👀</b>WATCH<i>V</i></button><button class="swap" hidden><b>🎰</b>SWAP<i>Q</i><span class="sw-n">2</span></button></div>
 <div class="row"><button class="lock" hidden><b>🔓</b>LOCK<i>L</i></button><div style="display:flex;flex-direction:column;gap:4px;align-items:center"><div id="ph-quiet" hidden><u></u></div><button class="taunt" hidden><span class="cdv"></span><b>📯</b>TAUNT<span class="num"></span><i>T</i></button></div></div>
 <div class="row"><button class="become" hidden><b>✨</b>BECOME<i>E</i></button><button class="check" hidden><b>🔫</b>SHOOT<i>F</i></button><button class="start" hidden><b>▶</b>START<i>E</i></button></div>`;
     document.body.appendChild(ui); this.ui = ui; document.body.classList.add('prophunt');
-    const Q = (c) => ui.querySelector('.' + c); this.B = { watch: Q('watch'), props: Q('props'), lock: Q('lock'), taunt: Q('taunt'), become: Q('become'), check: Q('check'), start: Q('start') }; this.quietEl = ui.querySelector('#ph-quiet');
+    const Q = (c) => ui.querySelector('.' + c); this.B = { watch: Q('watch'), swap: Q('swap'), lock: Q('lock'), taunt: Q('taunt'), become: Q('become'), check: Q('check'), start: Q('start') }; this.quietEl = ui.querySelector('#ph-quiet');
     const tap = (el, f) => el.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); f(); });
-    tap(this.B.watch, () => this.doWatch()); tap(this.B.props, () => this.openPicker()); tap(this.B.lock, () => this.toggleLock()); tap(this.B.taunt, () => this.doTaunt());
-    tap(this.B.become, () => { if (this.aimed) this.become(this.aimed.k); }); tap(this.B.check, () => this.doCheck()); tap(this.B.start, () => this.doStart());
+    tap(this.B.watch, () => this.doWatch()); tap(this.B.swap, () => this.doSwap()); tap(this.B.lock, () => this.toggleLock()); tap(this.B.taunt, () => this.doTaunt());
+     tap(this.B.check, () => this.doCheck()); tap(this.B.start, () => this.doStart());
     const el = (id, tag = 'div') => { const d = document.createElement(tag); d.id = id; document.body.appendChild(d); return d; };
     this.topEl = el('ph-top'); this.crossEl = el('ph-cross'); this.cardEl = el('ph-card'); this.splashEl = el('ph-splash'); this.blindEl = el('ph-blind'); this.countEl = el('ph-count');
     this.feedEl = el('ph-feed'); this.popEl = el('ph-pop'); this.foundEl = el('ph-found'); this.flashEl = el('ph-flash'); this.ghostEl = el('ph-ghost'); this.lockEl = el('ph-lockfx');
     // keys on a computer: E become / start, Q props, L lock, T taunt, F check, V watch
     this.onKey = (e) => { if (e.repeat || /input|textarea/i.test(e.target.tagName) || this.panel.open) return; const k = e.key.toLowerCase(), me = this.mine();
-      if (k === 'e') { if (this.phase === 'waiting' || this.phase === 'over') this.doStart(); else if (this.aimed) this.become(this.aimed.k); else if (me && me.role === 'seeker') this.doCheck(); }
-      else if (k === 'q') this.openPicker(); else if (k === 'l') this.toggleLock(); else if (k === 't') this.doTaunt(); else if (k === 'f') this.doCheck(); else if (k === 'v') this.doWatch(); else return; e.stopPropagation(); e.preventDefault(); };
+      if (k === 'e') { if (this.phase === 'waiting' || this.phase === 'over') this.doStart(); else if (me && me.role === 'seeker') this.doCheck(); }
+      else if (k === 'q') this.doSwap(); else if (k === 'l') this.toggleLock(); else if (k === 't') this.doTaunt(); else if (k === 'f') this.doCheck(); else if (k === 'v') this.doWatch(); else return; e.stopPropagation(); e.preventDefault(); };
     window.addEventListener('keydown', this.onKey, true);
   }
   buildWorldBits() {
@@ -799,7 +838,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
   showRole() {
     const me = this.mine(); if (!me) return; const hiders = this.hiders(), seekers = this.seekers(), imgs = (l) => l.map(p => `<img src="./assets/portraits/${esc(p.char || 'ronnie')}.webp" title="${esc(p.name)}">`).join('');
     if (me.role === 'seeker') { this.splash('#ff9f1c', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>SEEKING 🔫</h1><p>${hiders.length} hider${hiders.length === 1 ? '' : 's'} turning into stuff. Count to ${PH.HIDE_T}, no peeking.</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_seekrole', null, 0.8); }
-    else if (me.role === 'hider') { this.splash('#39ff14', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>HIDING 🙈</h1><p>Find a thing. BECOME it. LOCK in. Taunt for points. The seekers have guns. Get shot? RUN: you get a burst of speed, and you heal if they lose you.</p><p class="sm">${seekers.map(p => esc(p.name)).join(' & ')} ${seekers.length > 1 ? 'are' : 'is'} counting to ${PH.HIDE_T}...</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_hiderole', null, 0.8); }
+    else if (me.role === 'hider') { this.splash('#39ff14', `<p>ROUND ${this.round} OF ${this.of} · YOU'RE</p><h1>HIDING 🙈</h1><p>You're about to be dealt something to turn into (2 SWAPS if you don't fancy it). LOCK in. Taunt for points. The seekers have guns. Get shot? RUN: you get a burst of speed, and you heal if they lose you.</p><p class="sm">${seekers.map(p => esc(p.name)).join(' & ')} ${seekers.length > 1 ? 'are' : 'is'} counting to ${PH.HIDE_T}...</p><div class="imgs">${imgs(seekers)}</div>`, 3600); sfx('ph_hiderole', null, 0.8); }
     else this.splash('#9fb3d9', '<h1>SIT THIS ONE OUT</h1><p>You\'ll be in next round. Watch the fun.</p>', 3000);
     if (this.g.renderer.xr.isPresenting) this.g.showBanner(`ROUND ${this.round} · YOU'RE`, me.role === 'seeker' ? 'SEEKING' : me.role === 'hider' ? 'HIDING' : 'WATCHING');
   }
@@ -888,7 +927,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     for (const [id, pr] of this.props) this.animProp(pr, dt, id);
     // a hider looking at a prop: it glows and its card comes up; a seeker's crosshair warms up over something checkable
     if ((this.aimT = (this.aimT || 0) - dt) <= 0) { this.aimT = 0.08; this.aimed = null; this.hot = null;
-      if (hider && this.playing() && !this.panel.open) { const r = this.aimRay(); if (r) this.aimed = this.pick(r, { near: P.head, nearR: PH.PICK_R }); if (this.aimed && me.kind === this.aimed.k) this.aimed = null; }
+      /* (hiders are dealt their prop now: nothing to aim at) */
       if (seeker && this.phase === 'seek' && !this.panel.open && !out) { const r = this.aimRay(); if (r) { const h = this.pick(r, { maxD: PH.SHOOT_R + 1 }); this.hot = h || null; } } }
     this.highlight(this.aimed);
     this.animFx(dt);
@@ -939,13 +978,13 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
   drawHud(me, hider, seeker, ghost) {
     const B = this.B, t = now(), play = this.playing(), lobby = this.phase === 'waiting' || this.phase === 'over';
     B.start.hidden = !(lobby && this.host && this.phase === 'waiting'); B.start.classList.toggle('off', this.roster().length < PH.MIN);
-    B.props.hidden = !(hider && play); B.lock.hidden = !(hider && play); B.taunt.hidden = !(hider && play); this.quietEl.hidden = !(hider && this.phase === 'seek');
-    B.become.hidden = !(hider && play && this.aimed); B.check.hidden = !(seeker && this.phase === 'seek'); B.watch.hidden = !(ghost && this.phase === 'seek');
+    B.swap.hidden = !(hider && play); if (hider && play) { const n = this.swapsLeft ?? 0; B.swap.classList.toggle('off', n <= 0 || !!this.reelOn); const sn = B.swap.querySelector('.sw-n'); if (sn.textContent !== String(n)) { sn.textContent = n; sn.classList.remove('pop'); void sn.offsetWidth; sn.classList.add('pop'); } sn.classList.toggle('zero', n <= 0); } B.lock.hidden = !(hider && play); B.taunt.hidden = !(hider && play); this.quietEl.hidden = !(hider && this.phase === 'seek');
+    B.become.hidden = true;      // (no picking what you are any more: you're dealt one, and can SWAP it twice) B.check.hidden = !(seeker && this.phase === 'seek'); B.watch.hidden = !(ghost && this.phase === 'seek');
     if (hider && play) { B.lock.classList.toggle('on', !!me.locked); B.lock.classList.toggle('off', !me.kind); B.lock.querySelector('b').textContent = me.locked ? '🔒' : '🔓'; B.lock.childNodes[1].textContent = me.locked ? 'LOCKED' : 'LOCK';
       const cd = Math.max(0, (this.tauntCD || 0) - t); B.taunt.style.setProperty('--k', Math.round(cd / PH.TAUNT_CD * 100) + '%'); B.taunt.querySelector('.num').textContent = cd > 0 ? Math.ceil(cd) : ''; B.taunt.classList.toggle('off', !me.kind);
       const q = Math.min(1, (t - (this.lastTaunt || t)) / PH.QUIET_T); this.quietEl.firstChild.style.width = (q * 100) + '%'; }
     if (seeker) B.check.classList.toggle('off', me.out > t);
-    this.crossEl.classList.toggle('on', (seeker && this.phase === 'seek') || (hider && play && !this.panel.open)); this.crossEl.classList.toggle('hot', !!(this.hot || this.aimed));
+    this.crossEl.classList.toggle('on', seeker && this.phase === 'seek'); this.crossEl.classList.toggle('hot', !!(this.hot || this.aimed));
     if ((this.hudT = (this.hudT || 0) - 1) > 0) return; this.hudT = 6;
     let h = '';
     if (this.phase === 'waiting') { const n = this.roster().length; h = `<div class="clock"><small>PROP HUNT</small><b style="font-size:15px;min-width:0">${n < PH.MIN ? `WAITING FOR PLAYERS (${n}/${PH.MIN})` : this.host ? `${n} PLAYERS · PRESS START` : `${n} PLAYERS · HOST STARTS`}</b></div>`; }
@@ -969,7 +1008,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     if (!me || !this.playing()) return;
     if (me.role === 'seeker') { if (trig || a) this.doCheck(); return; }
     if (me.found || me.role === 'spec') { if (a) this.doWatch(); return; }
-    if (a) { if (this.aimed) this.become(this.aimed.k); else this.openPicker(); } if (b) this.toggleLock(); if (x) this.doTaunt(); if (y) this.openPicker();
+    if (a || y) this.doSwap(); if (b) this.toggleLock(); if (x) this.doTaunt();
   }
   // VR: your wrist shows the round (main.js passes the wrist's picture here)
   drawWrist(g, w, h) {
@@ -1005,6 +1044,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
   // what the tests and the wrist ask: the state of play
   hudState() { const me = this.mine(); return { phase: this.phase, role: me ? (me.found ? 'found' : me.role) : null, kind: me && me.kind, locked: !!(me && me.locked), hp: me && me.hp, left: this.left().length, round: this.round, of: this.of, time: Math.max(0, this.endsAt - now()) }; }
   dispose() {
+    clearTimeout(this.dealT); clearTimeout(this.reelT1); clearTimeout(this.reelT2); if (this.reelEl) { this.reelEl.remove(); this.reelEl = null; }
     const g = this.g; this.blind(false); this.panel.close(true); this.panel.wrap.remove(); g.scene.remove(this.panel.mesh, this.panel.dot); g.scene.remove(this.grp);
     for (const id of [...this.props.keys()]) this.dropProp(id);
     if (this.vGun) this.vGun.parent && this.vGun.parent.remove(this.vGun); if (this.vrGun && this.vrGun.parent) this.vrGun.parent.remove(this.vrGun); if (g.player.flatGrip && this.gunHidGrip) g.player.flatGrip.visible = true;
