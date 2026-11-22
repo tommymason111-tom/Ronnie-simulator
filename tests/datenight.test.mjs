@@ -177,7 +177,9 @@ export default async function () {
         const r = await p.evaluate(async () => { const D = RS.director, N = D.date; if (!N) return { noDate: D.mode };
           D.timeLeft = 999; N.trigger('look', 'phone'); const out = { vr: N.vr, cam: !!N.cineCam(), bars: document.getElementById('dn').classList.contains('bars') };
           let t = 0; while (!N.game && t < 60000) { await new Promise(r => setTimeout(r, 200)); t += 200; }
-          out.game = N.game && N.game.id; out.panel = N.ui.vmesh.visible; const n0 = N.game ? N.game.n : 0;
+          out.game = N.game && N.game.id; out.panel = N.ui.vmesh.visible;
+          t = 0; while (N.readyT > 0 && t < 20000) { await new Promise(r => setTimeout(r, 200)); t += 200; }      // (past GET READY)
+          const n0 = N.game ? N.game.n : 0;
           xrd.controllers.right.updateButtonValue('trigger', 1); await new Promise(r => setTimeout(r, 300)); xrd.controllers.right.updateButtonValue('trigger', 0); await new Promise(r => setTimeout(r, 300));
           out.crammed = N.game ? N.game.n - n0 : -1; return out; });
         C.ok(r.vr && !r.cam && !r.bars, `Quest: a film camera or bars in the headset: ${JSON.stringify(r)}`);

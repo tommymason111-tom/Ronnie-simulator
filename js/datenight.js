@@ -1187,7 +1187,7 @@ export class DateNight {
     this.shot('overR'); if (c) c.dnPose = 'phoneup'; yield this.chloeSay('Babe? Babe, where are you? I\'m putting my phone torch on. Don\'t move.');
     this.shot('side');
     const res = yield* this.play(whackGame({ lvl: this.lvl, dark: true, icon: '💡', who: c, parts: [['IN THE DARK', 4.0, false, 0.7], ['FLICKER!', 1.5, true], ['IN THE DARK', 3.5, false, 0.5], ['HER PHONE TORCH!', 1.6, true], ['STILL DARK...', 3.0, false, 0.45]],
-      lines: { 1: 'The lights flicker... Is that you, babe?', 2: 'Dark again. Ugh. Where IS everyone?', 3: '*torch* RONNIE? Is that you? What\'s that noise?', 4: 'Why does it sound like someone\'s eating in here?' }, freezeText: 'THE LIGHTS! FREEZE!', freezeReason: 'flicker', freezeSfx: 'warn', goText: 'GRAB IN THE DARK. NOT THE SALAD', bad: '🥗', badLabel: 'SALAD!', food: ['🍕', '🍔', '🍰', '🍟', '🧀', '🍩'] }));
+      lines: { 1: 'The lights flicker... Is that you, babe?', 2: 'Dark again. Ugh. Where IS everyone?', 3: '*torch* RONNIE? Is that you? What\'s that noise?', 4: 'Why does it sound like someone\'s eating in here?' }, freezeText: 'THE LIGHTS! FREEZE!', goHow: '👆 Grab the food in the dark', freezeHow: '😳 FREEZE when the lights flicker on', freezeReason: 'flicker', freezeSfx: 'warn', goText: 'GRAB IN THE DARK. NOT THE SALAD', bad: '🥗', badLabel: 'SALAD!', food: ['🍕', '🍔', '🍰', '🍟', '🧀', '🍩'] }));
     this.ui.dim(false); if (c) c.dnPose = null;
     if (!res.win) { yield* this.caughtFilm(res.reason); return; }
     this.shot('overR'); yield this.chloeSay('The lights are back! ...why is every table\'s bread basket empty?');
@@ -1229,7 +1229,7 @@ export class DateNight {
     this.shot('push', { c: w }); if (w) yield this.line(w, 'First, the amuse-bouche. It amuses the mouth. Ronnie, your mouth is not invited.');
     if (c) c.lookOverride = 1.0; this.shot('trio');
     const res = yield* this.play(whackGame({ lvl: this.lvl, icon: '👨‍🍳', parts: [['THE AMUSE-BOUCHE', 4.0], ['THE FOAM', 4.0, false, 0.6], ['"AND SIR?"', 1.8, true], ['THE FINALE', 3.5, false, 0.45]], food: ['🥄', '🍤', '🧆', '🍡', '🥟', '🦪'], bad: '🌿', badLabel: 'GARNISH!', badReason: 'garnish', gold: '🥩',
-      lines: { 1: 'Next: a foam of leek. Inhale it, Chloe. Don\'t eat it. INHALE.', 2: 'And sir? What did SIR think of the foam?', 3: 'And the finale: a single pea. Twelve pounds.' }, freezeText: 'THE CHEF\'S LOOKING AT YOU!', goText: 'GRAB THE SPOONS. NOT THE GARNISH' }));
+      lines: { 1: 'Next: a foam of leek. Inhale it, Chloe. Don\'t eat it. INHALE.', 2: 'And sir? What did SIR think of the foam?', 3: 'And the finale: a single pea. Twelve pounds.' }, freezeText: 'THE CHEF\'S LOOKING AT YOU!', goHow: '🥄 Grab the spoons. Not the garnish', freezeHow: '😳 FREEZE when the chef asks you', goText: 'GRAB THE SPOONS. NOT THE GARNISH' }));
     if (w) w.dnPose = null; if (c) c.lookOverride = null;
     if (!res.win) { yield* this.caughtFilm(res.reason); if (w) this.sendHome(w); return; }
     this.shot('char', { c: w, d: 1.2, side: 0.3 }); if (w) { w.dnPose = 'bow'; yield this.line(w, 'Thank you. Thank you. I\'ll be in the kitchen, crying, because there\'s nothing left.'); }
@@ -1313,7 +1313,7 @@ const SHOTS = {
   push: (S, t, o) => { const c = o.c || S.chloe, h = c && !c.disposed && c.rag ? c.headPos(new THREE.Vector3()) : S.chloeHead(), to = V(T.x - h.x, 0, T.z + 1.6 - h.z); if (to.lengthSq() < 0.01) to.set(0, 0, 1); to.normalize(); const d = lerp(1.7, 0.85, ease(t / 4.5)); return [h.clone().addScaledVector(to, d).add({ x: 0, y: 0.04, z: 0 }), h]; },
   dolly: (S, t) => { const k = ease(t / 5); return [V(lerp(4.2, -2.2, k), 1.3, T.z + 2.5), V(lerp(5.5, 0, ease(t / 3)), 1.02, T.z)]; },
   low: (S, t, o) => { const c = o.c; if (!c || c.disposed || !c.rag) return SHOTS.wide(S, t); const h = c.headPos(new THREE.Vector3()), to = V(T.x - h.x, 0, T.z + 1.2 - h.z); if (to.lengthSq() < 0.01) to.set(0, 0, 1); to.normalize(); const side = V(to.z, 0, -to.x); return [h.clone().addScaledVector(to, 1.25).addScaledVector(side, 0.35).setY(0.75), h.clone().add({ x: 0, y: -0.1, z: 0 })]; },
-  foyer: (S, t) => [V(11.3 - Math.min(0.25, t * 0.05), 1.45, 5.55), V(9.4, 1.25, 6.4)],      // (inside the foyer, side on: the couple at the podium, the maître d' behind it)
+  foyer: (S, t) => [V(7.1 + Math.min(0.25, t * 0.05), 1.45, 5.45), V(9.5, 1.25, 6.45)],      // (inside the foyer, side on: the couple at the podium, the maître d' behind it)
   room: (S, t) => [V(-6.0 + t * 0.15, 1.95, 7.4), V(2, 0.8, -2)],
 };
 export const DN_SHOTS = Object.keys(SHOTS);
