@@ -1072,7 +1072,9 @@ const pauseEl = document.getElementById('pause');
 // ---------------- the end of a game: you're held looking at the receipt (your final score), everything else goes,
 // and the only way on is MAIN MENU (or, in multiplayer, back to the room's lobby with the same people)
 function gameOver(lines) {
-  if (G.over) return; G.over = true; player.menuLock = true; player.noTurn = true; player.flatMove = { x: 0, z: 0 };
+  if (G.over) return;
+  if (paused && !renderer.xr.isPresenting) setPaused(false);      // (a menu left open as the game ends (multiplayer carries on while you're in it): it closes, so the receipt and its buttons aren't under it)
+  G.over = true; player.menuLock = true; player.noTurn = true; player.flatMove = { x: 0, z: 0 };
   document.body.classList.add('gameover'); touch.show(false); if (player.wrist) player.wrist.visible = false;
   const leaveTxt = net.connected ? '↩ RETURN TO LOBBY' : '🏠 MAIN MENU';
   document.getElementById('over-leave').textContent = leaveTxt; document.getElementById('end-leave').textContent = leaveTxt;
@@ -1195,8 +1197,8 @@ document.getElementById('pause-char').addEventListener('click', showPauseChars);
 document.getElementById('pause-chars-back').addEventListener('click', () => pauseEl.classList.remove('show-chars'));
 document.getElementById('pause-modes-back').addEventListener('click', () => pauseEl.classList.remove('show-modes'));
 document.getElementById('pause-ctrls-back').addEventListener('click', () => { pauseEl.classList.remove('show-ctrls'); backToSettings(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && player.flatMode) setPaused(!paused); });
-document.addEventListener('visibilitychange', () => { if (document.hidden && player.flatMode && !paused) setPaused(true); });   // switching apps pauses
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && player.flatMode && !(G.over && !paused)) setPaused(!paused); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && player.flatMode && !paused && !G.over) setPaused(true); });      /* (not over a finished game's receipt) */   // switching apps pauses
 
 // the loading screen goes once the first frame of the level has been drawn
 let loadShown = true;
