@@ -735,7 +735,8 @@ export class Director {
     }
     L.end();
     // the countdown, big at the top of the screen (and what's in the trolley so far)
-    if (g.fx) { const tl = Math.max(0, Math.ceil(this.timeLeft)); g.fx.setCountdown(`⏱ ${Math.floor(tl / 60)}:${String(tl % 60).padStart(2, '0')}  ·  🛒 ${sw.items} ITEMS  ·  🔥 ${kc(sw.total)}${tl <= 10 ? '  ·  HURRY!' : ''}`); }
+    if (g.fx && g.player && g.player.flatMode) g.fx.setCountdown(null);      // (a phone or computer: the corner's trolley box says all this)
+    else if (g.fx) { const tl = Math.max(0, Math.ceil(this.timeLeft)); g.fx.setCountdown(`⏱ ${Math.floor(tl / 60)}:${String(tl % 60).padStart(2, '0')}  ·  🛒 ${sw.items} ITEMS  ·  🔥 ${kc(sw.total)}${tl <= 10 ? '  ·  HURRY!' : ''}`); }
     // Aidan W hobbles after you too (the knee: he's slow, but he never stops, and he moans the whole way)
     const aw = this.cast.find(c => c.id === 'aidanw'); sw.awCool -= dt;
     if (aw && !aw.down) {

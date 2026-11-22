@@ -751,7 +751,7 @@ function hudExtras() {
     return { box: { col: '#ff3b3b', label: `👹 ${String(b.def.name).toUpperCase()}`, big: Math.ceil(b.pct * 100) + '%', sub: 'BOSS HEALTH', bar: { k: b.pct, col: '#ff3b3b' },
       chips: [{ t: b.out > 0 ? `😵 OUT ${Math.ceil(b.out)}s` : ('❤'.repeat(Math.max(0, b.hearts)) || '💀'), c: '#ff6b6b' }, { t: `⚡ POWER x${b.power.toFixed(1)}`, c: '#ffd400' }] } }; }
   if (m === 'sweep' && d.sweep) return { box: { col: '#ffd400', label: '🛒 IN YOUR TROLLEY', big: kcal(d.sweep.total), unit: 'kcal', sub: `${d.sweep.items} ITEM${d.sweep.items === 1 ? '' : 'S'}`, bar: { k: t / (MODES.sweep.time || 90), col: low ? '#ff5252' : '#39ff14', text: clock + ' LEFT' } } };
-  if (m === 'everyone') { const ac = d.attackClock(); return { chips: [{ t: '⚠ ' + ac, c: /PROGRESS|ANY SECOND/.test(ac) ? '#ff5252' : '#ffd400', pulse: /PROGRESS/.test(ac) }] }; }
+  if (m === 'everyone') { if (!player.flatMode) { const ac = d.attackClock(); return { chips: [{ t: '⚠ ' + ac, c: /PROGRESS|ANY SECOND/.test(ac) ? '#ff5252' : '#ffd400', pulse: /PROGRESS/.test(ac) }] }; } return { chips: [{ t: `🍔 ${G.eaten} EATEN`, c: '#ffd400' }, { t: `👋 ${G.swats} SWATS`, c: '#9fd8ff' }] }; }      // (a phone or computer has the red NEXT ATTACK bar at the top; a headset's wrist shows it here)
   if (m === 'bbq' && d.bbq) return { chips: [T(), { t: `🍖 ${d.bbq.ate} OFF THE GRILL`, c: '#ffb37a' }] };
   if (m === 'date' && d.date) { const c = Math.min(3, d.date.catches || 0); return { chips: [T(), { t: '💔'.repeat(c) + '🤍'.repeat(3 - c), c: '#fff' }, d.date.look ? { t: '👀 LOOKING!', c: '#ff5252', pulse: true } : { t: '😋 EAT NOW!', c: '#39ff14' }] }; }
   if (/^chonkoff/.test(m)) return { chips: [T(), { t: `🍔 ${G.eaten} EATEN`, c: '#ffd400' }] };
@@ -968,7 +968,12 @@ body.flat.mpon #chat-btn { display: block; }
 #chat-box { position: fixed; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 45; display: none; gap: 6px; background: rgba(10,12,30,0.92); padding: 8px; border-radius: 16px; border: 3px solid #ffd400; width: min(520px, 92vw); box-sizing: border-box; }
 #chat-box.on { display: flex; } #chat-box input { flex: 1; min-width: 0; font: 700 16px Arial; padding: 9px 10px; border-radius: 10px; border: 0; }
 #chat-box button { font: 900 13px Arial; border: 0; border-radius: 10px; padding: 0 12px; background: #39ff14; color: #111; } #chat-box button.x { background: #444; color: #fff; }
-#chat-btn { position: fixed; } #chat-badge { position: absolute; top: -8px; right: -8px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 10px; background: #ff3b3b; color: #fff; font: 900 12px/16px Arial, sans-serif; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.5); animation: cbpop .3s cubic-bezier(.2,1.6,.4,1); } #chat-badge[hidden] { display: none; } @keyframes cbpop { from { transform: scale(0); } }
+#chat-btn { position: fixed; }
+body.compact-ui #menu-btn, body.compact-ui #chat-btn, body.compact-ui #vc-bar button { width: 46px; height: 46px; padding: 0; border-radius: 50%; font: 22px/46px Arial, sans-serif; text-align: center; background: rgba(10,14,40,0.72); border: 2px solid rgba(255,255,255,0.35); box-shadow: 0 3px 10px rgba(0,0,0,0.35); color: #fff; }
+body.compact-ui #vc-bar { gap: 6px; } body.compact-ui #vc-bar #vc-btn { position: relative; } body.compact-ui #vc-bar #vc-btn:not(.on)::after { content: ''; position: absolute; left: 9px; right: 9px; top: 50%; height: 3px; background: #ff5252; transform: rotate(-45deg); border-radius: 2px; }
+body.compact-ui #vc-bar #vc-btn.on { background: rgba(20,120,40,0.9); border-color: #39ff14; }
+body.compact-ui #menu-btn:active, body.compact-ui #chat-btn:active, body.compact-ui #vc-bar button:active { transform: scale(0.92); }
+#chat-badge { position: absolute; top: -8px; right: -8px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 10px; background: #ff3b3b; color: #fff; font: 900 12px/16px Arial, sans-serif; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.5); animation: cbpop .3s cubic-bezier(.2,1.6,.4,1); } #chat-badge[hidden] { display: none; } @keyframes cbpop { from { transform: scale(0); } }
 #chat-log { position: fixed; z-index: 19; pointer-events: none; display: none; flex-direction: column; gap: 3px; max-width: 46vw; }
 body.flat.mpon #chat-log { display: flex; }
 #chat-log div { font: 700 12px Arial, sans-serif; color: #fff; background: rgba(0,0,0,0.55); padding: 3px 8px; border-radius: 8px; text-shadow: 0 1px 2px #000; transition: opacity .6s; }
@@ -1000,24 +1005,45 @@ body.flat.mpon #chat-log { display: flex; }
     for (const c of corners4) { v.copy(c).applyMatrix4(player.wrist.matrixWorld).project(camera); const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
     return isFinite(x0) ? { left: x0, right: x1, top: y0, bottom: y1 } : null; };
   const over = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  const inset = (k) => { const d = document.createElement('div'); d.style.cssText = `position:fixed;visibility:hidden;padding-${k}:env(safe-area-inset-${k})`; document.body.appendChild(d); const v = parseFloat(getComputedStyle(d)['padding' + k[0].toUpperCase() + k.slice(1)]) || 0; d.remove(); return v; };
+  let insets = null; const ins = () => insets || (insets = { t: inset('top'), r: inset('right'), l: inset('left') }); addEventListener('resize', () => { insets = null; });
+  const safeT = () => ins().t, safeR = () => ins().r, safeL = () => ins().l;
+  // the corner's buttons: icons only on a phone (in a row), words as well on a bigger screen
+  const labels = () => { const c = document.body.classList.contains('compact-ui'), mb = document.getElementById('menu-btn'); if (mb) { mb.textContent = c ? '⏸' : '⏸ PAUSE'; mb.setAttribute('aria-label', 'Pause'); }
+    const cb = document.getElementById('chat-btn'); if (cb && cb.firstChild && cb.firstChild.nodeType === 3) cb.firstChild.nodeValue = c ? '💬' : '💬 CHAT'; if (cb) cb.setAttribute('aria-label', 'Chat');
+    window.__vcDraw && window.__vcDraw(); };
   const layout = () => {
-    const m = meterRect(), narrow = innerWidth < 760, gap = 6, $ = (id) => document.getElementById(id);
+    const m = meterRect(), narrow = innerWidth < 760 || innerHeight < 500, gap = 6, $ = (id) => document.getElementById(id);      // (a phone either way up)
     const put = (el, x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.right = 'auto'; el.style.transform = 'none'; };
     const unput = (el) => { el.style.left = ''; el.style.top = ''; el.style.right = ''; el.style.transform = ''; };
     const placed = [];      // (everything already laid out: nothing after it may sit on it)
     if (m) placed.push(m);
     // the right column first: PAUSE, then CHAT and VOICE in a room, Run the Pub's orders, the eat-off's score
     let ry = null, rightLeft = innerWidth;
-    for (const id of ['menu-btn', 'chat-btn', 'vc-bar', 'rp-orders', 'snackscore']) { const el = $(id), r = R(el); if (!r) continue;
+    // (a phone: PAUSE, CHAT and VOICE as one row of round icons in the corner, not a tall stack of wide buttons)
+    const compact = narrow; if (document.body.classList.contains('compact-ui') !== compact) { document.body.classList.toggle('compact-ui', compact); labels(); }
+    const side = compact && innerWidth >= 760;      // (a phone on its side: little height, so the room chip joins the row along the top)
+    const ROW = side ? ['menu-btn', 'chat-btn', 'vc-bar', 'mp-chip'] : ['menu-btn', 'chat-btn', 'vc-bar'];
+    if (compact) { let xr = innerWidth - Math.max(10, safeR()), top = null;
+      let rowH = 0; for (const id of ROW) { const el = $(id), r = R(el); if (!r) continue; if (top === null) { top = r.top; rowH = r.height; } put(el, xr - r.width, top + Math.max(0, (rowH - r.height) / 2)); const r2 = R(el); xr = r2.left - gap; rightLeft = Math.min(rightLeft, r2.left); placed.push(r2); ry = Math.max(ry || 0, r2.bottom + gap); } }
+    else for (const id of ['menu-btn', 'chat-btn', 'vc-bar']) { const el = $(id); if (el && el.dataset.rowed) { unput(el); } }
+    for (const id of compact ? ['rp-orders', 'snackscore'] : ['menu-btn', 'chat-btn', 'vc-bar', 'rp-orders', 'snackscore']) { const el = $(id), r = R(el); if (!r) continue;
       if (ry !== null) el.style.top = ry + 'px'; const r2 = R(el); ry = r2.bottom + gap; rightLeft = Math.min(rightLeft, r2.left); placed.push(r2); }
+    for (const id of ['menu-btn', 'chat-btn', 'vc-bar']) { const el = $(id); if (el) el.dataset.rowed = compact ? '1' : ''; }
     const rightBottom = ry === null ? 0 : ry;
+    // the Boss Fight's health bar: along the top, under the corner's buttons on a phone (they're a row now: it gets the width)
+    const bh = $('boss-hud'); let bhr = null;
+    if (bh) { if (bh.dataset.top0 === undefined) bh.dataset.top0 = bh.style.top || ''; bh.style.top = bh.dataset.top0; bhr = R(bh);
+      if (bhr) { const hit = placed.find(p => over(bhr, p)); if (hit) { bh.style.top = (Math.max(...placed.filter(p => over(bhr, p)).map(p => p.bottom)) + gap) + 'px'; bhr = R(bh); } placed.push(bhr); } }      // (under the corner's buttons only if it would sit on them: on its side a phone has the width for both)
     // then the left column, under the Eat Meter: a game's own panel (Imposter's jobs, Prop Hunt's feed, Run the Pub's
     // events), the room chip, the chat lines. Anything that would land on something already there steps down below it
-    let y = m ? m.bottom + gap : 10; const x = m ? Math.max(6, m.left) : 10;
+    let y = m ? m.bottom + gap : Math.max(10, safeT()); const x = m ? Math.max(6, m.left) : Math.max(10, safeL());
+    if (bhr && bhr.left < x + 200) y = Math.max(y, bhr.bottom + gap);      // (nothing on the left goes up under the boss's bar)
     const drop = (el) => { let r = R(el); for (let k = 0; k < 8 && r; k++) { const hit = placed.find(p => over(r, p)); if (!hit) break; el.style.top = (hit.bottom + gap) + 'px'; r = R(el); } return r; };
-    for (const id of ['imp-tasks', 'ph-feed', 'rp-events']) { const el = $(id); if (!el) continue; if (!narrow) { unput(el); continue; } if (!R(el)) continue; put(el, x, y); const r = drop(el); if (r) { y = r.bottom + gap; placed.push(r); } }
+    for (const id of ['imp-tasks', 'ph-feed', 'rp-events']) { const el = $(id); if (!el) continue; if (!narrow || side) { unput(el); continue; } /* (on its side, a phone's left edge is the joystick's: these keep their own place) */ if (!R(el)) continue; put(el, x, y); const r = drop(el); if (r) { y = r.bottom + gap; placed.push(r); } }
     const chip = $('mp-chip');
-    if (chip) { if (narrow && chip.classList.contains('on')) { put(chip, x, y); const cr = drop(chip); if (cr) { y = cr.bottom + gap; placed.push(cr); const pop = $('roster-pop'); if (pop && R(pop)) put(pop, Math.max(6, Math.min(cr.left, innerWidth - R(pop).width - 6)), cr.bottom + 4); } }
+    if (chip && side) { const cr = R(chip), pop = $('roster-pop'); if (cr && pop && R(pop)) put(pop, Math.max(6, Math.min(cr.left, innerWidth - R(pop).width - 6)), cr.bottom + 4); }
+    else if (chip) { if (narrow && chip.classList.contains('on')) { put(chip, x, y); const cr = drop(chip); if (cr) { y = cr.bottom + gap; placed.push(cr); const pop = $('roster-pop'); if (pop && R(pop)) put(pop, Math.max(6, Math.min(cr.left, innerWidth - R(pop).width - 6)), cr.bottom + 4); } }
       else { unput(chip); const pop = $('roster-pop'); if (pop) unput(pop); } }
     if (net.connected) { log.style.left = x + 'px'; log.style.top = y + 'px'; let lr = log.children.length ? drop(log) : null;
       // (never down into the touch controls: on a landscape phone there's little room, so the oldest lines go first)
@@ -1025,7 +1051,7 @@ body.flat.mpon #chat-log { display: flex; }
       while (lr && log.children.length > 1 && lr.bottom > ctl - gap) { log.firstChild.remove(); lr = R(log); }
       if (lr && log.children.length) { y = lr.bottom + gap; placed.push(lr); } }
     // the middle: the attack pill, hints, Prop Hunt's and Imposter's banners: below anything they'd run into
-    let mid = 0; { const bh = R($('boss-hud')); if (bh && bh.top < innerHeight * 0.3) mid = bh.bottom + gap; }      // (BOSS FIGHT: its health bar is along the top, so these go under it)
+    let mid = 0; if (bhr && bhr.top < innerHeight * 0.3) mid = bhr.bottom + gap;      // (BOSS FIGHT: its health bar is along the top, so these go under it)
     const lane = (el) => { if (!el) return; if (el.dataset.top0 === undefined) el.dataset.top0 = el.style.top; el.style.top = el.dataset.top0; let r = R(el); if (!r) return;
       if (r.top < mid) { el.style.top = mid + 'px'; r = R(el); }
       r = drop(el) || r; mid = r.bottom + gap; placed.push(r); };
@@ -1487,6 +1513,9 @@ function frame(simDt) {
   // (the top-left box's mode bits, the clock and the like: redrawn when they change)
   if ((G.hxT = (G.hxT || 0) - dt) <= 0) { G.hxT = 0.25; const k = JSON.stringify(hudExtras()); if (k !== G.hxK) { G.hxK = k; G.wristDirty = true; } }
   if (warm && (warm.sayT -= dt) <= 0) { warm.sayT = 1; warmUI.draw(); }
+  // (the Boss Fight has its own big health bar: the top-left box would only say the same again, so it's not shown)
+  if (player.wrist && player.flatMode && !G.over) { const hide = !!(director.boss || director.prophunt);
+    if (hide) { if (player.wrist.visible) { player.wrist.visible = false; G.meterHid = true; } } else if (G.meterHid) { player.wrist.visible = true; G.meterHid = false; } }
   if (G.wristDirty && G.wristT <= 0) {
     G.wristDirty = false; G.wristT = 0.1;
     const max = G.stage === STAGES.length - 1;
@@ -1573,7 +1602,7 @@ const net = (window.ronnieMP && window.ronnieMP.net) || new Net();
 net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie';
 { const $ = (id) => document.getElementById(id);
   const chip = () => { const n = net.players.size + 1, re = net.status === 'reconnecting';
-    $('mp-chip').textContent = re ? `📶 RECONNECTING TO ROOM ${net.code}…` : `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`;
+    $('mp-chip').textContent = re ? `📶 RECONNECTING…` : innerWidth < 760 || innerHeight < 500 ? `👥 ${n} · ${net.code}${net.host ? ' 👑' : ''}` : `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`;
     $('mp-chip').classList.toggle('on', net.connected || re); $('mp-chip').classList.toggle('re', re); };
   // the host tells anyone who joins late which place and game to load
   net.on.join = (m) => { chip(); if (m.quiet) { net.send({ t: 'hi', to: m.id, name: net.name, char: net.char }); return; } if (net.host) net.send({ t: 'setup', to: m.id, warm: warm ? 1 : 0, place: room.placeId, mode: (warm && warm.mode) || director.fullMode || director.mode || SEL.mode }); window.__rc && window.__rc.joined(m.id); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
@@ -1642,9 +1671,9 @@ body.mpon #vc-list.any { display: flex; }
   const bar = document.createElement('div'); bar.id = 'vc-bar'; bar.innerHTML = '<button id="vc-btn" type="button">🎙️ VOICE: OFF</button><button id="vc-mute" type="button" aria-label="Mute my microphone">🔇</button>'; document.body.appendChild(bar);
   const list = document.createElement('div'); list.id = 'vc-list'; document.body.appendChild(list);
   const err = document.createElement('div'); err.id = 'vc-err'; document.body.appendChild(err);
-  const btn = bar.querySelector('#vc-btn'), mute = bar.querySelector('#vc-mute');
-  const draw = () => { btn.classList.toggle('on', voice.on); bar.classList.toggle('on', voice.on); btn.textContent = voice.starting ? '🎙️ …' : voice.on ? '🎙️ VOICE: ON' : '🎙️ VOICE: OFF';
-    mute.classList.toggle('on', voice.muted); mute.textContent = voice.muted ? '🔇 MUTED' : '🎤';
+  const btn = bar.querySelector('#vc-btn'), mute = bar.querySelector('#vc-mute'); window.__vcDraw = () => draw();
+  const draw = () => { const c = document.body.classList.contains('compact-ui'); btn.classList.toggle('on', voice.on); bar.classList.toggle('on', voice.on); btn.textContent = c ? (voice.starting ? '…' : '🎙️') : voice.starting ? '🎙️ …' : voice.on ? '🎙️ VOICE: ON' : '🎙️ VOICE: OFF'; btn.setAttribute('aria-label', voice.on ? 'Voice chat on' : 'Voice chat off');
+    mute.classList.toggle('on', voice.muted); mute.textContent = voice.muted ? (c ? '🔇' : '🔇 MUTED') : '🎤';
     const rows = []; if (voice.on) rows.push({ id: 'me', name: (net.name || 'You') + ' (you)', char: net.char, m: voice.muted });
     for (const [id, o] of voice.remoteOn) { const p = net.players.get(id); rows.push({ id, name: p ? p.name || 'Player' : 'Player', char: p && p.char, m: o.muted }); }
     list.innerHTML = rows.map(r => `<div data-v="${String(r.id).replace(/"/g, '')}" class="${r.m ? 'mute' : ''}"><img src="./assets/portraits/${r.char === 'ronnie' || !r.char ? 'ronnie' : r.char}.webp" alt="">${r.m ? '🔇 ' : '🎙️ '}<span></span></div>`).join('');

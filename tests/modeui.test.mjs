@@ -5,7 +5,7 @@
 import { launch, newPage, startGame, sleep, checker } from './lib/game.mjs';
 
 const MODES = [
-  ['pub', 'everyone', { eat: true, thr: true, chips: /ATTACK/ }],
+  ['pub', 'everyone', { eat: true, thr: true, chips: /EATEN/ }],      // (the attack countdown is the red bar at the top on a phone)
   ['shop', 'sweep', { eat: false, thr: false, box: /TROLLEY/ }],
   ['garden', 'bbq', { eat: true, thr: true, chips: /GRILL/ }],
   ['restaurant', 'date', { eat: true, thr: true, chips: /EAT NOW|LOOKING/ }],
@@ -43,13 +43,15 @@ export default async function () {
     // the pause menu: fades in, out, and the game takes a tap straight after
     const p = await newPage(b, { width: 390, height: 844, mobile: true });
     await startGame(p, { place: 'pub', mode: 'everyone' });
-    await p.evaluate(() => document.getElementById('menu-btn').click()); await sleep(700);
+    await p.evaluate(() => document.getElementById('menu-btn').click());
+    /* (a slow test machine can take a few frames for the fade: wait for it rather than a fixed time) */
+    await p.waitForFunction(() => +getComputedStyle(document.getElementById('pause')).opacity > 0.95, null, { timeout: 8000, polling: 100 }).catch(() => {});
     const open = await p.evaluate(() => { const c = getComputedStyle(document.getElementById('pause')); return { d: c.display, o: +c.opacity }; });
     C.ok(open.d === 'flex' && open.o > 0.95, `the pause menu didn't open: ${JSON.stringify(open)}`);
     await p.evaluate(() => document.getElementById('pause-resume').click());
     const during = await p.evaluate(() => getComputedStyle(document.getElementById('pause')).pointerEvents);
     C.ok(during === 'none', `the closing pause menu can still be tapped (${during})`);
-    await sleep(900);
+    await p.waitForFunction(() => getComputedStyle(document.getElementById('pause')).display === 'none', null, { timeout: 8000, polling: 100 }).catch(() => {});
     const shut = await p.evaluate(() => { const c = getComputedStyle(document.getElementById('pause')), e = document.getElementById('btn-eat'), r = e.getBoundingClientRect(); return { d: c.display, hit: document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === e }; });
     C.ok(shut.d === 'none' && shut.hit, `after closing, the pause menu is ${shut.d} and EAT ${shut.hit ? 'can' : "can't"} be tapped`);
     C.ok(!p.errors.length, 'pause: page errors: ' + [...new Set(p.errors)].slice(0, 3).join(' | '));
