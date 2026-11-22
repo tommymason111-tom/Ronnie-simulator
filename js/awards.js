@@ -32,6 +32,9 @@ const AWARDS = [
   (s) => ['🪪', 'ID PLEASE', `Spotted ${s.carded} kids after booze. Tyler's fuming.`, s.carded >= 2 ? s.carded / 1.5 : 0],
   (s) => ['🚨', 'SERVED A KID', 'Gave a child a pint. Their mum wants the manager.', s.kidbooze >= 1 ? 1.4 + s.kidbooze * 0.3 : 0],
   (s) => ['🥊', 'THE BOUNCER', `Broke up ${s.fights} fights. Nobody touches the Oysterfleet.`, s.fights >= 2 ? s.fights / 1.6 : 0],
+  (s) => ['🥷', 'SMOOTH OPERATOR', `Snuck ${s.dnSneak} mouthfuls past Chloe. She suspects nothing. She suspects everything.`, s.dnSneak >= 10 ? s.dnSneak / 10 : 0],
+  (s) => ['💔', 'IN THE DOGHOUSE', `Busted by Chloe ${s.dnBusted} times. Chester gets the bed tonight.`, s.dnBusted >= 2 ? 1 + s.dnBusted * 0.2 : 0],
+  (s) => ['🚽', 'TOILET BREAK BANDIT', `Raided ${s.dnRaid} plates while Chloe was in the loo.`, s.dnRaid >= 3 ? s.dnRaid / 3 : 0],
   (s) => ['😶', 'BIG TALKER', `${s.chats} messages in the chat. Put the phone down and eat.`, s.chats >= 5 ? s.chats / 5 : 0],
 ];
 const MEDAL = ['🥉', 'PARTICIPATION MEDAL', 'You turned up. That counts for something.', 0];

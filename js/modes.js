@@ -10,7 +10,7 @@
 // (press a button with your hand, or tap it on a phone).
 import * as THREE from 'three';
 import { SquadMember, SQUAD } from './squad.js';
-import { DATE_TABLE, DINER_TABLES } from './levels/restaurant.js';
+import { DINER_TABLES } from './levels/restaurant.js';
 import { canvasTex, fitText, roundRect, FONT } from './textures.js';
 import { sfx, playTune, shout } from './audio.js';
 import { Item } from './foods.js';
@@ -23,6 +23,7 @@ import { resetAwards, pickAwards, track } from './awards.js';
 import { roomNum } from './roomopts.js';
 import { submitScore, postRanked } from './leaderboard.js';
 import { devicePid } from './net.js';
+import { DateNight } from './datenight.js';      // (DATE NIGHT: the films and their games)
 const _glowP = new THREE.Vector3();
 
 export const MODES = {
@@ -195,6 +196,7 @@ export class Director {
     if (this.boss) { this.boss.dispose(); this.boss = null; }      // (BOSS FIGHT: boss.js)
     if (this.prophunt) { this.prophunt.dispose(); this.prophunt = null; }      // (PROP HUNT)
     if (this.bbqm) { this.bbqm.dispose(); this.bbqm = null; }      // (IAN'S BARBECUE: bbqmode.js)
+    if (this.date) { this.date.dispose(); this.date = null; }      // (DATE NIGHT: datenight.js)
     this.hideTommy(false);
     this.mode = id; globalThis.RS_MODE = id; this.running = true; this.used.clear(); this.pending = null; this.lastHit = null;
     this.timeLeft = m.time > 0 && id !== 'imposter' && id !== 'chonkoffr' ? Math.round(m.time * roomNum('len')) : m.time;      // (a room's GAME LENGTH: short, normal, long)
@@ -310,10 +312,8 @@ export class Director {
       lines.push(['VEG SWATTED', st.swats]);
       lines.push(['VEG EATEN (VEG-O-METER)', st.veg]);
       lines.push([st.veg === 0 ? 'CLEAN SHEET! NOT ONE VEG.' : st.veg < 3 ? 'Barely touched a vegetable.' : 'Tommy: "We had him."', '']);
-    } else if (this.mode === 'date') {
-      lines.push(['TIMES BUSTED BY CHLOE', `${this.date.catches} / 3`]);
-      lines.push([this.date.catches >= 3 ? 'Chloe ordered you a salad.' : 'Relationship status: still together, somehow.', '']);
-      lines.push(['The bill is a scroll. It is still unrolling.', '']);
+    } else if (this.mode === 'date' && this.date) {      // (DATE NIGHT: datenight.js)
+      this.date.stop(); lines.push(...this.date.summary());
     } else if (this.mode === 'sweep') {
       const sw = this.sweep, best = +(safeGet('rs_best_sweep_kcal') || 0), total = Math.round(sw.total);
       lines.length = 1;
@@ -906,18 +906,9 @@ export class Director {
   // IAN'S BARBECUE (Lewis's house): the whole game lives in bbqmode.js
 
   // ------------------------------------------------------------------ DATE NIGHT
-  // Chloe sits opposite. When she looks at you, sit still and smile; when she
-  // looks away (phone, waiter, a weird moment) grab food from other tables and
-  // the dessert trolley. Eat (or flail about) while she's looking: BUSTED.
-  startDate() {
-    const chloe = this.cast.find(c => c.id === 'chloe');
-    this.date = { chloe, look: true, t: 4, warned: false, catches: 0, danced: false, grace: 1.5, cool: 0 };
-    if (!chloe) return;
-    chloe.active = false; chloe.seated = true;
-    chloe.rag.placeAt(DATE_TABLE.x, DATE_TABLE.z - 0.75, 0);
-    setTimeout(() => chloe.say('Isn\'t this nice, babe? Just us. And no snacking. Promise?', 5), 1500);
-    this.seatDiners();
-  }
+  // A run of little films with Chloe (her phone, the waiter, the loo, the lads coming over), each with its own game,
+  // and the normal game between them: the whole thing lives in datenight.js
+  startDate() { this.date = new DateNight(this); this.date.start(); }
   // Everyone else is out for dinner as well: random groups of 2-4 at random tables,
   // sat down, chatting to each other (mostly about Ronnie being on a date).
   seatDiners() {
@@ -972,48 +963,8 @@ export class Director {
       o.lookOverride = Math.max(-0.8, Math.min(0.8, rel)); o.lookT = 4;
     }
   }
-  updateDate(dt, ctx) {
-    this.updateDiners(dt);
-    const d = this.date, c = d.chloe, g = this.g;
-    if (!c || c.down) return;
-    d.t -= dt; d.grace -= dt; d.cool -= dt;
-    if (d.dancing) {
-      c.dancing = true;
-      if (d.t <= 0) { d.dancing = false; c.dancing = false; c.seated = true; c.rag.placeAt(DATE_TABLE.x, DATE_TABLE.z - 0.75, 0); d.look = true; d.t = 4; d.grace = 1; c.lookOverride = null; }
-      return;
-    }
-    if (d.look) {
-      c.lookOverride = null;
-      if (!d.danced && this.timeLeft < 100) {     // the weird moment: a victory dance, for no reason
-        d.danced = true; d.dancing = true; d.look = false; d.t = 6; c.seated = false;
-        c.rag.placeAt(DATE_TABLE.x + 1.1, DATE_TABLE.z - 0.75, -Math.PI / 2);
-        c.say('Victory dance! For no reason! Don\'t look at me, babe!', 5);
-        g.showBanner('CHLOE IS DANCING', '6 SECONDS: EAT EVERYTHING');
-        return;
-      }
-      // flailing about while she's watching gives you away (VR)
-      if (d.grace <= 0 && g.player.hands.some(h => h.tracked && h.speed > 1.6)) this.busted();
-      if (d.t <= 0) {
-        d.look = false; d.warned = false; d.t = 2.8 + Math.random() * 2.7;
-        c.lookOverride = Math.random() < 0.5 ? 1.25 : -1.25;
-        c.say(['Ooh, is that the waiter?', 'Just checking my phone, babe.', '...anyway.', 'Is that a pigeon? Inside?', 'That painting looks like a sausage roll.'][Math.floor(Math.random() * 5)], 2);
-      }
-    } else {
-      if (!d.warned && d.t < 0.6) { d.warned = true; sfx('warn', c.headPos(_v), 1); g.words.show('!', c.headPos(_v).add({ x: 0, y: 0.35, z: 0 }), '#B57BFF', 0.25, 0.6); }
-      if (d.t <= 0) { d.look = true; d.t = 2.5 + Math.random() * 3; d.grace = 0.5; c.lookOverride = null; }
-    }
-    this.g.G.wristDirty = true;
-  }
-  dateEat() { const d = this.date; if (d && d.look && !d.dancing && d.grace <= 0) this.busted(); }
-  busted() {
-    const d = this.date, g = this.g;
-    if (d.cool > 0) return;
-    d.cool = 2.5; d.catches++;
-    sfx('record_scratch', null, 0.8);
-    g.words.show('BUSTED!', g.player.head.clone().addScaledVector(g.player.fwd, 0.8), '#B57BFF', 0.2, 1.4);
-    d.chloe.say(['RONNIE.', 'Ronnie. Put. It. Down.', 'I SAW that, babe.'][Math.min(2, d.catches - 1)], 5);
-    if (d.catches >= 3) { d.chloe.say('That\'s it. I\'ve ordered you a salad.', 6); setTimeout(() => this.end(), 1800); }
-  }
+  updateDate(dt, ctx) { this.updateDiners(dt); if (this.date) this.date.update(dt, ctx); }
+  dateEat() { if (this.date) this.date.onEat(); }
 
   // ------------------------------------------------------------------ roast bubbles (unused for now)
   spawnBubble(pos, word, who) {
@@ -1177,7 +1128,7 @@ export class Director {
     else if (this.mode === 'sweep' && this.sweep) extra = `Trolley ${this.sweep.items} · ${kc(this.sweep.total)}`;
     else if (this.mode === 'bbq' && this.bbqm) extra = this.bbqm.hudLine();
     else if (this.mode === 'runpub' && this.runpub) extra = this.runpub.hud();
-    else if (this.mode === 'date') extra = `Busted ${this.date.catches}/3 · ${this.date.look ? 'SHE\'S LOOKING!' : 'EAT NOW!'}`;
+    else if (this.mode === 'date' && this.date) extra = `Busted ${this.date.catches}/3 · ${this.date.look ? 'SHE\'S LOOKING!' : 'EAT NOW!'}`;
     else if (this.mode === 'everyone') return `THE WHOLE SQUAD · ${this.attackClock()}`;
     else extra = `Eat ${Math.round(this.stats.chonk)}`;
     return `${name} ${mm}:${ss} · ${extra}`;

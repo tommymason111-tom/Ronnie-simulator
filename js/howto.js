@@ -178,6 +178,27 @@ function dateTable(g, W, H) {
   label(g, '👀 SHE\'S LOOKING THAT WAY: EAT!', W - 140, H - 30, { size: 15, border: '#7cff6a' });
   emoji(g, '😋', W / 2, H / 2 + 92, 40);
 }
+// DATE NIGHT's films: a strip of them, and a film's big buttons
+function dateFilms(g, W, H) {
+  bg(g, W, H, '#3a0a24', '#14040c');
+  const fw = Math.min(110, (W - 50) / 4), fh = fw * 0.75, y0 = 26;
+  g.fillStyle = '#111'; rr(g, 14, y0 - 10, W - 28, fh + 20, 6); g.fill();
+  for (let i = 0; i < 4; i++) { const x = W / 2 + (i - 2) * (fw + 8) + 4; g.fillStyle = ['#5a2a6a', '#6a3a1a', '#1a3a5a', '#6a1a3a'][i]; rr(g, x, y0, fw, fh, 5); g.fill(); emoji(g, ['📱', '🧑‍🍳', '🚽', '💘'][i], x + fw / 2, y0 + fh / 2, fh * 0.55); }
+  g.fillStyle = '#ddd'; for (let x = 20; x < W - 20; x += 16) { g.fillRect(x, y0 - 7, 8, 4); g.fillRect(x, y0 + fh + 3, 8, 4); }
+  const bw = (W - 60) / 3, by = H - 96;
+  [['🥖', 'BREAD', '#ffd400'], ['🍝', 'HER PASTA', '#ffd400'], ['😇', 'ACT NATURAL', '#9fe8ff']].forEach(([e, t, c], i) => { const x = 20 + i * (bw + 10);
+    g.fillStyle = c; rr(g, x, by, bw, 74, 14); g.fill(); g.lineWidth = 3; g.strokeStyle = '#111'; g.stroke(); emoji(g, e, x + bw / 2, by + 26, 28);
+    g.fillStyle = '#111'; g.font = `900 ${Math.min(14, bw / 8)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t, x + bw / 2, by + 56); });
+  label(g, 'EACH FILM HAS ITS OWN GAME', W / 2, by - 22, { size: 15, border: '#e879f9' });
+}
+// BUSTED: her face when she catches you, and what it costs
+function dateBusted(g, W, H) {
+  bg(g, W, H, '#5a0f18', '#1a0508');
+  emoji(g, '😠', W * 0.3, H * 0.4, 70); label(g, 'CHLOE', W * 0.3, H * 0.4 + 52, { size: 14, border: '#B57BFF' });
+  emoji(g, '👉', W * 0.48, H * 0.4, 40); emoji(g, '😳', W * 0.7, H * 0.4, 64); emoji(g, '🍝', W * 0.76, H * 0.48, 26);
+  g.save(); g.translate(W / 2, H * 0.16); g.rotate(-0.08); g.fillStyle = '#ff3a3a'; g.font = `900 40px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = '#111'; g.strokeText('BUSTED!', 0, 0); g.fillText('BUSTED!', 0, 0); g.restore();
+  [['🥗', 'SALAD'], ['🍽️', 'NO PLATE'], ['☎️', 'YOUR MUM']].forEach(([e, t], i) => { const x = W / 2 + (i - 1) * (W / 3.4); emoji(g, e, x, H - 58, 30); label(g, t, x, H - 26, { size: 13, border: '#ff6b6b' }); });
+}
 function clock(g, W, H, two) {
   bg(g, W, H, '#6a1b9a', '#2a0a4a');
   g.fillStyle = '#fff'; g.beginPath(); g.arc(W / 2, H / 2, 70, 0, 7); g.fill(); g.strokeStyle = '#ffd400'; g.lineWidth = 8; g.stroke();
@@ -337,7 +358,7 @@ function drawPic(cv, pic, ctx) {
   else if (kind === 'meter') meter(g, W, H);
   else if (kind === 'lidl') lidl(g, W, H);
   else if (kind === 'bbq') bbq(g, W, H, arg, ctx.device);
-  else if (kind === 'date') dateTable(g, W, H);
+  else if (kind === 'date') { if (arg === 'films') dateFilms(g, W, H); else if (arg === 'busted') dateBusted(g, W, H); else dateTable(g, W, H); }
   else if (kind === 'clock') clock(g, W, H, arg === '2');
   else if (kind === 'ph') propHunt(g, W, H, arg);
   else if (kind === 'boss') bossPic(g, W, H, arg);

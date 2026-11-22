@@ -796,7 +796,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       imposter: ['Tip: do your jobs to win, or find the imposter first', 'Tip: dead? You\'re a ghost. Float through walls and spy on everyone.', 'Tip: 🔔 the bell calls a meeting', 'Tip: lights out? Find the fuse box', 'The imposter is always the quiet one. Or the loud one.'],
       runpub: ['Tip: pour the right drink, earn the tip', 'Tip: kids want soft drinks. Do NOT give them a Guinness.', 'Tip: a spilt pint needs mopping before someone slips', 'Ben is watching the till.'],
       chonkoff: ['Tip: 60 seconds. Eat everything.', 'Tip: chain bites for a combo', 'Your personal best is watching you.'], chonkoff2: ['Tip: pass the phone. No peeking.', 'Most eaten wins. Chew faster.'], chonkoffr: ['Ranked: beat everyone in the room to climb the leaderboard', 'Tip: combos. Combos win ranked games.', 'Your rating goes up for every mate you out-eat'],
-      sweep: ['Tip: fill the trolley, dodge security', 'Tip: big items are worth more'], date: ['Tip: only eat when she looks away', 'Three strikes and the date\'s over'],
+      sweep: ['Tip: fill the trolley, dodge security', 'Tip: big items are worth more'], date: ['Tip: only eat when she looks away', 'Three strikes and the date\'s over', 'Tip: ACT NATURAL just as she turns round', 'Tip: listen for the flush'],
       bbq: ['Tip: pinch it off the grill while Ian\'s busy', 'Tip: when he gets you, tap like your life depends on it', 'Tip: STAGE 3 and you can slap him over'], roam: ['Tip: no attacks, no timer. Have a proper look round.'], roam0: ['Tip: the place to yourself. Have a proper look round.'],
     };
     window.__lsShow = (place, mode) => showLoading(document.getElementById('loadscreen'), place, mode);      // (tests)
@@ -863,9 +863,10 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
           { pic: 'bbq:feed', title: 'FIGHT HIM OFF', lines: ['If he catches you, he shoves it in your face', vr ? '🎮 Pull the triggers as fast as you can to push him off' : pc ? '🖱️ Click (or hammer any key) as fast as you can to push him off' : '👆 Tap the screen as fast as you can to push him off', 'Lose and you\'re FORCE-FED: BLEURGH, and your EAT METER drops'] },
           { pic: 'bbq:big', title: 'GET BIG, FIGHT BACK', lines: ['The bigger you are, the easier he is to push off', 'STAGE 3: ' + (vr ? 'slap' : (pc ? 'click' : 'tap')) + ' him and over he goes. STAGE 5: just walk into him', 'Knock him over 3 times and he gives up for good', C.pause] } ],
         date: [
-          { pic: 'date', title: 'DATE NIGHT', lines: ['Dinner with Chloe at La Grande Portion', 'Eat as much as you can... but ONLY when Chloe isn\'t looking', 'Three catches and it\'s salad. Game over'] },
+          { pic: 'date', title: 'DATE NIGHT', lines: ['Dinner with Chloe at La Grande Portion. You\'re on a diet', 'Eat as much as you can... but ONLY when Chloe isn\'t looking', 'Three catches and it\'s salad. Game over'] },
           controls,
-          { pic: 'date', title: 'WATCH CHLOE', lines: ['Keep an eye on her: when she looks away, EAT', 'When she turns back, put it down and look innocent', 'If Chloe gets up to dance, you get 6 seconds to eat EVERYTHING', C.pause] } ],
+          { pic: 'date:films', title: 'THE FILMS', lines: ['Every so often a little film plays: her phone, the waiter, the loo, the lads coming over', 'Each film has its own game: ' + (vr ? 'trigger, grip and A are its buttons' : pc ? 'click its buttons, or press 1, 2, 3' : 'tap the big buttons at the bottom'), 'Win it and you eat. Lose it and you\'re BUSTED'] },
+          { pic: 'date:busted', title: 'WATCH CHLOE', lines: ['When she starts to turn back: a "!", a beep and a red edge. Stop eating!', 'ACT NATURAL just as she turns for a bonus. Cheeks too full and she\'ll notice', 'Get caught and she makes you pay: a salad, your plate, a call to your mum...', C.pause] } ],
         chonkoff: [
           { pic: 'clock', title: 'EAT-OFF', lines: ['60 seconds on the clock', 'Eat everything you can find', 'Beat your best score'] }, controls ],
         chonkoff2: [
