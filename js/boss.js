@@ -452,7 +452,7 @@ export class BossFight {
     const T = spread ? this.pickTarget() : (this.target || this.pickTarget()), r = this.c.rag;
     const hand = this.drawn(r.tip('lArmR', _v)), ph = this.ph - 1;
     const tx = T.x + (spread ? (Math.random() - 0.5) * 3.2 : 0), tz = T.z + (spread ? (Math.random() - 0.5) * 3.2 : 0);
-    this.emit({ k: 'drop', x0: hand.x, y0: Math.max(1.5, hand.y), z0: hand.z, x: tx, z: tz, f: [1.35, 1.2, 1.05][ph], r: [1.5, 1.6, 1.7][ph], it: this.def.proj });
+    this.emit({ k: 'drop', x0: hand.x, y0: Math.max(1.5, hand.y), z0: hand.z, x: tx, z: tz, fl: [1.35, 1.2, 1.05][ph], r: [1.5, 1.6, 1.7][ph], it: this.def.proj });
   }
   summon() {
     const g = this.g, taken = g.mp && g.mp.takenChars ? g.mp.takenChars() : new Set();
@@ -571,7 +571,7 @@ export class BossFight {
   }
   projectile(ev) {
     const g = this.g, num = (v, d = 0) => (typeof v === 'number' && isFinite(v) ? v : d);
-    const from = new THREE.Vector3(num(ev.x0), clamp(num(ev.y0, 3), 0, 20), num(ev.z0)), to = new THREE.Vector3(num(ev.x), 0, num(ev.z)), f = clamp(num(ev.f, 1.3), 0.4, 3), r = clamp(num(ev.r, 1.5), 0.3, 3);
+    const from = new THREE.Vector3(num(ev.x0), clamp(num(ev.y0, 3), 0, 20), num(ev.z0)), to = new THREE.Vector3(num(ev.x), 0, num(ev.z)), f = clamp(num(ev.fl, 1.3), 0.4, 3), r = clamp(num(ev.r, 1.5), 0.3, 3);
     if (from.distanceTo(to) > 60) return;
     to.y = this.floorY(to.x, to.z);
     const type = FOODS[ev.it] ? ev.it : 'orange', obj = new Item(type).obj; obj.scale.setScalar(5.5); obj.traverse(o => { o.frustumCulled = false; }); g.scene.add(obj); obj.position.copy(from);

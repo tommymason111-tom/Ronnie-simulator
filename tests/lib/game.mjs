@@ -18,6 +18,7 @@ export async function launch({ args = [] } = {}) {
 export async function newPage(browser, { width = 900, height = 560, mobile = false, xr = false, warm = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, isMobile: mobile, hasTouch: mobile });
   const page = await ctx.newPage(); page.errors = []; page.crashes = [];
+  await ctx.routeWebSocket(/workers\.dev/, ws => ws.close());      // (nor its room server: a test's game always uses the local one)
   // (a room's games normally open with a WARM-UP until the host presses START: the tests of the modes themselves skip
   // it, so they start straight into the mode as before; warmup.test.mjs tests the warm-up, with { warm: true })
   if (!warm) await page.addInitScript(() => { try { sessionStorage.setItem('rs_nowarm', '1'); } catch (e) {} });

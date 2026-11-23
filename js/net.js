@@ -53,10 +53,10 @@ const SCHEMA = {
   welcome: { players: 'arr' }, join: { 'id!': 'id' }, leave: { 'id!': 'id' }, host: { 'id!': 'id' },
   // BOSS FIGHT (boss.js): the host's word on the boss, its moves, a joiner's hit on it, a joiner's hearts
   bossS: { 'b!': 'str', 'hp!': 'num', 'mx!': 'num', ph: 'num', st: 'str', a: 'str', at: 'num', x: 'num', z: 'num', y: 'num', s: 'num', dy: 'num', mi: 'arr', tm: 'num', o: 'num' },
-  bossA: { 'k!': 'str', x: 'num', y: 'num', z: 'num', x0: 'num', y0: 'num', z0: 'num', x1: 'num', z1: 'num', r: 'num', r0: 'num', d: 'num', w: 'num', f: 'num', ph: 'num', s: 'str', a: 'str', it: 'str', ids: 'arr' },
+  bossA: { 'k!': 'str', x: 'num', y: 'num', z: 'num', x0: 'num', y0: 'num', z0: 'num', x1: 'num', z1: 'num', r: 'num', r0: 'num', d: 'num', w: 'num', fl: 'num', ph: 'num', s: 'str', a: 'str', it: 'str', ids: 'arr' },
   bossHit: { 'd!': 'num', p: 'v3', w: 'num' }, bossP: { hp: 'num', kd: 'num', mk: 'str' },
   // IAN'S BARBECUE (bbqmode.js): the host's word on Ian, "he's caught you", and how the shoving match went
-  bbqS: { ph: 'str', n: 'num', ko: 'num', h: 'num', nd: 'num', gu: 'num', tg: 'str', tn: 'str', f: 'str', at: 'num' }, bbqF: { f: 'str' }, bbqR: { w: 'num', st: 'num' },
+  bbqS: { ph: 'str', n: 'num', ko: 'num', h: 'num', nd: 'num', gu: 'num', tg: 'str', tn: 'str', fd: 'str', at: 'num' }, bbqF: { fd: 'str' }, bbqR: { w: 'num', st: 'num' },
   wx: { w: 'str', a: 'num', tm: 'num', c: 'str', ds: 'num' },
   rcheck: { 'k!': 'str', 'mode!': 'str' }, rready: { 'k!': 'str', r: 'num' }, rstat: { 'k!': 'str', ready: 'arr' }, rdone: { 'k!': 'str' }, warm: { 'mode!': 'str' },      // (the READY CHECK before a room's new game: readycheck.js)      // (the host's weather and time of day: weather.js)
   // PROP HUNT (prophunt.js)
@@ -108,11 +108,17 @@ export class Net {
       if (this.connected) { this.ws.send(JSON.stringify({ t: 'ping', c: Math.round(now) }));
         if (this.id && this.status === 'on' && now - (this.lastMsg || 0) > 7000) this.lost(true); } }, 2000);
     this.open();
-    return new Promise((res, rej) => { this.on.welcome = res; this.on.welcomeFail = rej; setTimeout(() => this.status === 'connecting' && rej(new Error('timeout')), 8000); });
+    // (given up on: the line is closed too. Left open, a slow line got in later anyway, and everyone in the room had a
+    // player in their list who'd been told it failed: never there, never ready, holding up START)
+    return new Promise((res, rej) => { this.on.welcome = res; this.on.welcomeFail = rej; setTimeout(() => { if (this.status !== 'connecting') return; this.leave(); rej(new Error('timeout')); }, 8000); });
   }
   open() {
     const pid = devicePid(); const ws = this.ws = new WebSocket(`${this.relay}/room/${this.code}?name=${encodeURIComponent(this.name)}${pid ? '&pid=' + pid : ''}`);
-    ws.onmessage = (ev) => { if (this.ws !== ws) return; this.lastMsg = performance.now(); let m; try { m = JSON.parse(ev.data); } catch (e) { return; } this.handle(m); };
+    // (who sent it is what the room put at the very front: {"f":"<their id>",... A message that carried its own "f" (the
+    // Boss Fight's drops, Ian's food) came out as from someone who isn't here: a nameless extra player in everyone's game,
+    // holding up every READY card, and the host's own word ignored as not the host's)
+    ws.onmessage = (ev) => { if (this.ws !== ws) return; this.lastMsg = performance.now(); let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m && typeof m === 'object' && typeof ev.data === 'string' && ev.data.startsWith('{"f":"')) m.f = ev.data.slice(6, ev.data.indexOf('"', 6)); this.handle(m); };
     ws.onclose = () => { if (this.ws !== ws) return;
       if (this.status === 'connecting') { if (this.on.welcomeFail) this.on.welcomeFail(new Error('The room is full (12 players) or couldn\'t be reached')); this.wanted = false; this.off(); return; }
       if (this.wanted && this.id) { this.lost(); return; }      // dropped out mid-game (Wi-Fi to 4G, a tunnel, the phone slept): get back in
