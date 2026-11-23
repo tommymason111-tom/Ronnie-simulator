@@ -1,4 +1,4 @@
-// A BUSY LOBBY, through the real room server (run locally). LOBBY12_ONLY=full,leave,back,spoof,slow picks parts.
+// A BUSY LOBBY, through the real room server (run locally). LOBBY12_ONLY=full,leave,back,spoof,ingame,slow picks parts.
 //  full:  twelve in a room (four real games on upright phones, one a 12-letter name, and eight light players from
 //         lib/bots.mjs): everyone's card on every phone, nothing off the side or covered (a long name pushed the third
 //         column off the screen), a guest's READY button says it's ready, START waits for everyone, the 13th is turned
@@ -11,6 +11,9 @@
 //  spoof: a message that carries its own "f" (who it's from: the room puts that at the front) is still from whoever sent
 //         it: no nameless extra player (the Boss Fight's drops and Ian's food made one in everyone's game), and a guest
 //         can't pass off a kick as the host's
+//  ingame: the room's door once its game is going: locked still means locked, and someone who comes in late gets the
+//         room's options (only the lobby did either: anyone could walk into a locked room's game, and a late arrival played
+//         by the normal rules)
 //  slow:  a line so slow the join gives up: it doesn't get in later anyway (everyone had a player who was never there,
 //         never ready, holding up START)
 import fs from 'fs';
@@ -19,7 +22,7 @@ import { startRoomHost } from './lib/roomhost.mjs';
 import { startBot } from './lib/bots.mjs';
 import WebSocket from 'ws';
 import { ev, openMenu, hostRoom, joinRoom, readyUp, pickGame, tapIn, freeRun } from './lib/room.mjs';
-const ONLY = (process.env.LOBBY12_ONLY || 'full,leave,back,spoof,slow').split(',');
+const ONLY = (process.env.LOBBY12_ONLY || 'full,leave,back,spoof,ingame,slow').split(',');
 const BTN = fs.readFileSync(new URL('./lib/btncheck.js', import.meta.url), 'utf8'), TXT = fs.readFileSync(new URL('./lib/textcheck.js', import.meta.url), 'utf8');
 const PHONE = { width: 390, height: 844, mobile: true };
 const lob = (p) => ev(p, () => ({ role: ronnieMP.role, host: !!(ronnieMP.net && ronnieMP.net.host), go: document.querySelector('#room-go').style.display !== 'none', ready: document.querySelector('#room-ready').style.display !== 'none', opts: !document.querySelector('#room-opts-btn').hidden, kick: document.querySelectorAll('#room-players [data-kick]').length, hostTag: [...document.querySelectorAll('#room-players .rp')].filter(e => [...e.querySelectorAll('.tag')].some(t => t.textContent === 'HOST')).map(e => e.querySelector('b').textContent) }));
@@ -94,7 +97,7 @@ export default async function () {
       const P2 = await fresh(); P2.pname = 'P2'; await joinRoom(P2, code, 'PTWO', 'harry');
       await sleep(1500);
       // as at the end of a game: the host's page goes back to the lobby (RETURN TO LOBBY reloads it)
-      await ev(H, (c) => { sessionStorage.setItem('rs_was_host', '1'); location.href = location.pathname + '?lobby=' + c; }, code);
+      await ev(H, ([c, r]) => { sessionStorage.setItem('rs_was_host', '1'); location.href = location.pathname + '?lobby=' + c + '&relay=' + encodeURIComponent(r); }, [code, host.url]);
       await H.waitForFunction(() => window.ronnieMP && ronnieMP.net && ronnieMP.net.status === 'on' && document.querySelector('.screen.on[data-s="room"]'), null, { timeout: 60000, polling: 300 });
       await sleep(5000);
       const all = [['HOSTY', await lob(H)], ['PONE', await lob(P1)], ['PTWO', await lob(P2)]];
@@ -114,6 +117,22 @@ export default async function () {
       C.ok(hp.length === 2 && g.players.length === 2, `a message with its own "f" made a player who isn't there: host sees ${JSON.stringify(hp)}, guest ${JSON.stringify(g.players)}`);
       C.ok(g.in, 'a guest kicked someone by putting the host\'s id on the message');
       ws.close(); await done();
+    }
+    if (ONLY.includes('ingame')) {
+      const H = await fresh(); H.pname = 'HOST'; const code = await hostRoom(H, 'HOSTY', 'lewis');
+      await ev(H, () => { document.querySelector('#room-opts [data-ok="attacks"][data-ov="off"]').click(); document.querySelector('#room-opts [data-ok="len"][data-ov="long"]').click(); document.querySelector('#room-opts [data-lock]').click(); }); await sleep(500);
+      await pickGame(H, 'pub', 'roam'); await tapIn(H); await freeRun(H); await sleep(2000);
+      const tryJoin = async (p, name) => { await ev(p, () => document.querySelector('.playbtn').click()); await sleep(300); await ev(p, () => document.querySelector('#pick-multi').click()); await sleep(300);
+        await ev(p, (n) => { document.querySelector('#mp-myname').value = n; document.querySelector('#char-next').click(); }, name); await sleep(300);
+        await ev(p, (c) => { document.querySelector('#mp-code2').value = c; document.querySelector('#mp-join2').click(); }, code); await sleep(5000); };
+      const X = await fresh(); X.pname = 'LOCKEDOUT'; await tryJoin(X, 'NOSY');
+      const x = await ev(X, () => ({ out: !ronnieMP.net, msg: document.querySelector('#mp-status2').textContent, loading: document.body.classList.contains('ready') || document.getElementById('loadscreen').classList.contains('on') }));
+      C.ok(x.out && /locked/i.test(x.msg) && !x.loading, `someone got into a locked room's game: ${JSON.stringify(x)}`);
+      await ev(H, () => { ronnieMP.locked = false; });      // (there's no lock button in the game: as if it had been left open)
+      const Y = await fresh(); Y.pname = 'LATE'; await tryJoin(Y, 'LATECOMER');
+      const y = await ev(Y, () => ({ ...window.__roomOpts }));
+      C.ok(y.attacks === 'off' && y.len === 'long', `a late arrival didn't get the room's options: ${JSON.stringify(y)}`);
+      await done();
     }
     if (ONLY.includes('slow')) {
       const H = await fresh(); H.pname = 'HOST'; const code = await hostRoom(H, 'HOSTY', 'lewis');

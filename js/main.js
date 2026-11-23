@@ -1663,7 +1663,12 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
     $('mp-chip').textContent = re ? `📶 RECONNECTING…` : innerWidth < 760 || innerHeight < 500 ? `👥 ${n} · ${net.code}${net.host ? ' 👑' : ''}` : `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`;
     $('mp-chip').classList.toggle('on', net.connected || re); $('mp-chip').classList.toggle('re', re); };
   // the host tells anyone who joins late which place and game to load
-  net.on.join = (m) => { chip(); if (m.quiet) { net.send({ t: 'hi', to: m.id, name: net.name, char: net.char }); return; } if (net.host && !G.over) net.send({ t: 'setup', to: m.id, warm: warm ? 1 : 0, place: room.placeId, mode: (warm && warm.mode) || director.fullMode || director.mode || SEL.mode }); window.__rc && window.__rc.joined(m.id); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
+  // (and the room's options, and whether it's locked or full: only the lobby did that, so anyone could walk into a locked
+  // room's game, and a late arrival played by the normal rules, not the room's)
+  const roomDoor = (m) => { const R = window.ronnieMP || {}; if (!net.host || !R.role || !window.__roomOpts) return true;
+    if ((R.locked && !m.back) || net.players.size + 1 > Math.min(net.max || 12, roomNum('max'))) { net.send({ t: 'kick', to: m.id, why: R.locked && !m.back ? 'locked' : 'full' }); return false; }
+    net.send({ t: 'ropts', to: m.id, o: { ...window.__roomOpts }, lock: R.locked ? 1 : 0 }); return true; };
+  net.on.join = (m) => { chip(); if (m.quiet) { net.send({ t: 'hi', to: m.id, name: net.name, char: net.char }); return; } if (!roomDoor(m)) return; if (net.host && !G.over) net.send({ t: 'setup', to: m.id, warm: warm ? 1 : 0, place: room.placeId, mode: (warm && warm.mode) || director.fullMode || director.mode || SEL.mode }); window.__rc && window.__rc.joined(m.id); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
   // someone waiting in the room asking what's on (they missed the start, or came back to the lobby): the host tells them
   // (not once the game's over: they'd load into a finished game on their own. They keep asking, and come in to the next one)
   net.on.whatgame = (m, p) => { if (net.host && p && p.id && !G.over) net.send({ t: 'setup', to: p.id, place: room.placeId, mode: (warm && warm.mode) || director.fullMode || director.mode || SEL.mode, warm: warm ? 1 : 0 }); };
