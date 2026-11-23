@@ -5,12 +5,12 @@ import { hapticFor } from './haptics.js';
 
 let ctx = null;
 let master = null;
-// ---- the sound mix: master, music, voices (the squad), effects, the background, and voice chat; 0..1 each, kept on
-// this device
-const BUS = {}, MIX_KEYS = ['master', 'music', 'voices', 'fx', 'ambience', 'chat'];
-let MIX = { master: 1, music: 0.8, voices: 1, fx: 1, ambience: 0.8, chat: 1 };
+// ---- the sound mix: master, music, voices (the squad), the narrator, effects, the background, and voice chat; 0..1
+// each, kept on this device
+const BUS = {}, MIX_KEYS = ['master', 'music', 'voices', 'narrator', 'fx', 'ambience', 'chat'];
+let MIX = { master: 1, music: 0.8, voices: 1, narrator: 0.8, fx: 1, ambience: 0.8, chat: 1 };
 try { const m = JSON.parse(localStorage.getItem('rs_mix') || 'null'); if (m) for (const k of MIX_KEYS) if (typeof m[k] === 'number' && m[k] >= 0 && m[k] <= 1) MIX[k] = m[k]; } catch (e) {}
-function applyMix() { if (!ctx || !master) return; const t = ctx.currentTime; master.gain.setTargetAtTime(0.8 * MIX.master, t, 0.03); for (const k in BUS) BUS[k].gain.setTargetAtTime(k === 'voices' && npcMute ? 0 : MIX[k], t, 0.03); }
+function applyMix() { if (!ctx || !master) return; const t = ctx.currentTime; master.gain.setTargetAtTime(0.8 * MIX.master, t, 0.03); for (const k in BUS) BUS[k].gain.setTargetAtTime((k === 'voices' || k === 'narrator') && npcMute ? 0 : MIX[k], t, 0.03); }
 // voice chat: while anyone's talking on it, the squad (NPCs) go quiet, so you can hear each other (voicechat.js)
 let npcMute = false;
 export function setNpcMute(on) { npcMute = !!on; applyMix(); if (npcMute) try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }
@@ -42,7 +42,7 @@ export function initAudio() {
   master = ctx.createGain(); master.gain.value = 0.8;
   master.connect(comp); comp.connect(ctx.destination);
   // the sound mix (Settings): every kind of sound has its own volume on the way to the master
-  for (const k of ['music', 'voices', 'fx', 'ambience', 'chat']) { const b = BUS[k] = ctx.createGain(); b.connect(master); }
+  for (const k of ['music', 'voices', 'narrator', 'fx', 'ambience', 'chat']) { const b = BUS[k] = ctx.createGain(); b.connect(master); }
   applyMix();
   musicGain = ctx.createGain(); musicGain.gain.value = 0.0; musicGain.connect(BUS.music);
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
@@ -107,8 +107,8 @@ function out(pos, vol = 1, voice = false) {
     else { p.distanceModel = 'inverse'; p.refDistance = 1; p.rolloffFactor = 0.6; }
     if (p.positionX) { p.positionX.value = pos.x; p.positionY.value = pos.y; p.positionZ.value = pos.z; }
     else p.setPosition(pos.x, pos.y, pos.z);
-    g.connect(p); p.connect(voice ? BUS.voices || master : BUS.fx || master); g._p = p;
-  } else g.connect(voice ? BUS.voices || master : BUS.fx || master);
+    g.connect(p); p.connect(voice ? BUS[voice === true ? 'voices' : voice] || master : BUS.fx || master); g._p = p;
+  } else g.connect(voice ? BUS[voice === true ? 'voices' : voice] || master : BUS.fx || master);
   return g;
 }
 // when a sound's last note has finished, unplug its output (Safari never lets go of nodes still plugged into the
@@ -1005,13 +1005,17 @@ const VPLAY = new Map();
 export const audioCtx = () => ctx;
 export function decodeClip(ab) { return ctx ? new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)) : Promise.resolve(null); }
 // starts it now; returns how long it lasts (seconds)
-export function playBuffer(buf, pos = null, vol = 1, key = null) {
+// (bus: 'voices', or 'narrator' for the game's own voice, which has its own slider)
+export function playBuffer(buf, pos = null, vol = 1, key = null, bus = 'voices') {
   if (!ctx || !buf) return 0; if (hush && pos) return buf.duration; if (key) stopVoice(key);
-  const src = ctx.createBufferSource(); src.buffer = buf; const g = out(pos, 1.6 * vol, true); src.connect(g); src.start();
-  if (key) VPLAY.set(key, src);
+  const src = ctx.createBufferSource(); src.buffer = buf; const g = out(pos, 1.6 * vol, bus); src.connect(g); src.start();
+  if (key) { VPLAY.set(key, src); src._g = g; src._v = 1.6 * vol; }
   src.onended = () => { try { src.disconnect(); g.disconnect(); if (g._p) g._p.disconnect(); } catch (e) {} if (key && VPLAY.get(key) === src) VPLAY.delete(key); };
   return buf.duration;
 }
+// a line playing turned right down for a few seconds (the narrator, while someone in the game says something)
+export function duckVoice(key, secs) { const s = VPLAY.get(key); if (!s || !s._g || !ctx) return; const t = ctx.currentTime, g = s._g.gain; g.cancelScheduledValues(t); g.setTargetAtTime(s._v * 0.2, t, 0.06); g.setTargetAtTime(s._v, t + Math.max(0.2, secs), 0.25); }
+export const voicePlaying = (key) => VPLAY.has(key);
 export function stopVoice(key) { const s = VPLAY.get(key); if (s) { try { s.stop(); } catch (e) {} VPLAY.delete(key); } }
 
 // ---- BOSS FIGHT music (boss.js): an original driving loop (drums, a pulsing bass, a minor-key riff), faster each phase

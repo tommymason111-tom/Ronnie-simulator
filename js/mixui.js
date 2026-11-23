@@ -7,11 +7,12 @@ const ROWS = [
   ['master', '🔊', 'EVERYTHING'],
   ['music', '🎵', 'MUSIC'],
   ['voices', '🗣️', 'THE SQUAD TALKING'],
+  ['narrator', '📣', 'THE NARRATOR (0 = OFF)'],
   ['fx', '💥', 'SOUND EFFECTS'],
   ['ambience', '🌧️', 'BACKGROUND (THE PUB, OUTSIDE)'],
   ['chat', '🎙️', 'VOICE CHAT (OTHER PLAYERS)'],
 ];
-const TEST = { master: 'ding', music: 'strum', voices: null, fx: 'chomp', ambience: 'rustle', chat: 'notify' };
+const TEST = { master: 'ding', music: 'strum', voices: null, narrator: null, fx: 'chomp', ambience: 'rustle', chat: 'notify' };
 
 export function buildMix(el) {
   const m = getMix();

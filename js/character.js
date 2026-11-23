@@ -9,6 +9,7 @@ import { canvasTex, fitText, roundRect, blobTex } from './textures.js';
 import { Dialogue, BANKS } from './dialogue.js';
 import { sfx, babble } from './audio.js';
 import { voiceLine, cancelLine } from './voices.js';
+import { sayWithDirections, lineParts } from './narrator.js';      // (a *stage direction* in a line: the narrator says it)
 const MAX_TALKERS = 2;      // (how many people can be talking at once, around any one player)
 export const TALK_RANGE = 12;      // (metres: further than this from every player, nobody chats. Voices fade out by audio.js HEAR_RANGE)
 import { TUNING } from './config.js';
@@ -155,6 +156,10 @@ export class Character {
     if (!text) return false;
     this.speakPri = pri; this.quietT = 0;
     // a real voice (voices.js): the bubble comes up the moment the sound starts. Otherwise, the bubble and the babble now
+    // (a line with a *stage direction*: they say their words, the narrator says what they did, one after the other)
+    if (lineParts(text).has) { this.voicePending = true;
+      sayWithDirections(text, (spoken, after) => { if (this.disposed) return; if (!voiceLine(this.id, spoken, this.headPos(_v), { key: 'npc_' + this.id, onStart: (dur) => { this.showLine(text, pri, dur); if (after) after(dur); } })) { this.showLine(text, pri, 0); babble(this.headPos(_v), Math.min(14, 4 + Math.floor(spoken.length / 8)), this.cfg.voicePitch || 1); if (after) after(0); } });
+      return true; }
     if (voiceLine(this.id, text, this.headPos(_v), { key: 'npc_' + this.id, onStart: (dur) => this.showLine(text, pri, dur) })) { this.voicePending = true; return true; }
     this.showLine(text, pri, 0);
     babble(this.headPos(_v), Math.min(14, 4 + Math.floor(text.length / 8)), this.cfg.voicePitch || 1);
@@ -191,7 +196,12 @@ export class Character {
     g.beginPath(); g.moveTo(w / 2 - 50, h - 112); g.lineTo(w / 2 - 30, h - 20); g.lineTo(w / 2 + 30, h - 112); g.stroke();
     g.fillStyle = '#ffffff'; g.fillRect(w / 2 - 44, h - 125, 70, 14);
     g.font = '900 34px Arial'; g.fillStyle = this.color; g.textAlign = 'left'; g.fillText(this.name.toUpperCase(), 60, 66);
-    fitText(g, text, 56, 84, w - 120, h - 230, 64, { color: '#111' });
+    const lp = lineParts(text);
+    if (!lp.has) fitText(g, text, 56, 84, w - 120, h - 230, 64, { color: '#111' });
+    else { fitText(g, lp.say || '…', 56, 84, w - 120, (h - 230) * 0.6, 60, { color: '#111' });      // (what they say, then what the narrator says they did, in italics)
+      let f = 40, lines; const wrapI = (t) => { const out = []; let cur = ''; for (const wd of t.split(' ')) { const n = cur ? cur + ' ' + wd : wd; if (g.measureText(n).width > w - 120 && cur) { out.push(cur); cur = wd; } else cur = n; } if (cur) out.push(cur); return out; };
+      do { g.font = `italic 700 ${f}px Arial`; lines = wrapI(lp.dir); f -= 2; } while (lines.length * (f + 6) > (h - 230) * 0.4 && f > 16);
+      g.fillStyle = '#555'; g.textAlign = 'center'; g.textBaseline = 'middle'; lines.forEach((l, i) => g.fillText(l, w / 2 - 4, 84 + (h - 230) * 0.6 + (i + 0.5) * (f + 6))); }
     this.bubbleTex.needsUpdate = true;
   }
 

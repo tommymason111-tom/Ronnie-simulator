@@ -25,6 +25,7 @@ import { submitScore, postRanked } from './leaderboard.js';
 import { devicePid } from './net.js';
 import { DateNight } from './datenight.js';      // (DATE NIGHT: the films and their games)
 import { ronnie } from './ronnie.js';      // (Ronnie's own lines)
+import { narrator } from './narrator.js';      // (the narrator reads the attack cards out)
 const _glowP = new THREE.Vector3();
 
 export const MODES = {
@@ -514,6 +515,7 @@ export class Director {
   showAnnounce(who, key, vsName = null) {
     const g = this.g, fx = g.fx;
     const A = Object.values(ATTACKS).flat().find(a => a.key === key); if (!A) return;
+    narrator.say(A.title.replace(/!+$/, '') + '!');
     if (fx) fx.showCard({ key, vs: vsName, name: who.name || who.id, title: A.title, sub: A.sub, icon: A.icon, style: A.style, color: A.style === 'portugal' ? '#da291c' : (SQUAD[who.id] && SQUAD[who.id].color) || '#1f4fbf' });
     else g.showBanner(A.title, A.sub);
     if (this.remote) { sfx('attack_in', null, 0.7); setTimeout(() => fx && fx.hideCard(), (ANNOUNCE_T + 0.3) * 1000); }

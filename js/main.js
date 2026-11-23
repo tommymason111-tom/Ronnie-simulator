@@ -12,8 +12,9 @@ import { Tommy } from './tommy.js';
 import { STAGE_LINES } from './dialogue.js';
 import { AttackFX } from './attackfx.js';
 import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience, setMuted, setHush } from './audio.js';
-import { voiceLine, warmLine, VOICED } from './voices.js';
+import { voiceLine } from './voices.js';
 import { startRonnie } from './ronnie.js';      // (Ronnie's own lines, in his voice)
+import { startNarrator, narrator } from './narrator.js';      // (the narrator: the game's own voice)
 import { DomPanel } from './vrdom.js';
 import { FONT } from './textures.js';
 import { createPhysics } from './physics.js';
@@ -507,6 +508,7 @@ function showBanner(top, big) {
     g.fillStyle = 'rgba(0,10,2,0.85)'; g.fillRect(40, 30, w - 80, 300); g.strokeStyle = '#39ff14'; g.lineWidth = 6; g.strokeRect(40, 30, w - 80, 300);
     g.font = '900 64px "Courier New", monospace'; g.fillStyle = '#39ff14'; g.fillText('>_ DEVELOPER MODE', w / 2, 120); g.font = '900 40px "Courier New", monospace'; g.fillStyle = '#b8ffb0'; g.fillText('SYSTEM ONLINE · TAP  >_ DEV', w / 2, 230); g.shadowBlur = 0;
     bannerTex.needsUpdate = true; bannerT = 3.2; banner.visible = true; return; }
+  if (!/^STAGE \d/.test(top)) narrator.banner(top, big);      // (the narrator reads it out, if it has a clip: narrator.js. Not a stage: Ronnie and Tommy have that covered)
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
   // (each line is shrunk to fit; a long one that would get too small goes over two lines instead of running off the edge)
   const fit = (text, max, min, room) => { let f = max; g.font = `900 ${f}px ${FONT}`; while (g.measureText(text).width > room && f > min) { f -= 2; g.font = `900 ${f}px ${FONT}`; } return g.measureText(text).width <= room ? f : 0; };
@@ -1776,8 +1778,7 @@ director.startRemote = (id) => { if (!net.host && director.mode && (PAUSE_MODES[
 powerups = new PowerUps({ scene, room, items, player, sfx, words, net, mp, eatWhole: (it) => hooverEat(it),
   enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter', 'prophunt', 'snd'].includes(director.mode) && roomNum('powerups') > 0 });
 mp.selfBody = () => selfBody;      // (your emotes play on your own body too)
-mp.onChat = (text, p) => { chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text, !p); if (!p) voiceLine(net.char, text, player.head, { key: 'chat_me' }); };      // (you hear your own message in your character's voice too)
-mp.voiceWarm = (text) => VOICED.has(net.char) ? warmLine(net.char, text) : null;      // (voices.js)
+mp.onChat = (text, p) => { chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text, !p); };      // (typed chat is read, never spoken: the owner's call)
 mp.onChatBlocked = (why) => words.show(why || 'NOT NOW', player.head.clone().addScaledVector(player.fwd, 0.8), '#ff5252', 0.07, 1.4);
 // music from the speakers (the DJ booth, the hi-fi, the tannoy): only the host picks, everyone hears it
 // (switched off for now, with the TVs: MEDIA_ON brings both back. The speakers and tellies stay as scenery.)
@@ -2045,9 +2046,10 @@ class SquadPuppet {
   // what the tag shows (redrawn only when this changes)
   tagState() { const p = this.p; return [p.name, p.char, p.host ? 1 : 0, this.tagRed ? 1 : 0, this.speaking > 0.05 ? 1 : 0, p.pose && p.pose.st || 0, this.tagNet || 3].join('|'); }
   // a chat message: a black speech bubble over their head (black, so you can tell it from the squad's white ones)
-  chat(text) {      // (a real voice: the bubble comes up as their voice starts; voices.js)
-    if (this.p.self || !voiceLine(this.p.char, text, this.c.headPos(new THREE.Vector3()), { key: 'chat_' + (this.p.id || this.p.name), onStart: (dur) => this.drawChat(text, dur) })) this.drawChat(text, 0);
+  chat(text) {
+    if (!this.p.self) this.drawChat(text, 0);      // (typed chat isn't spoken)
   }
+  sayLine(text) { if (!voiceLine(this.p.char, text, this.c.headPos(new THREE.Vector3()), { key: 'chat_' + (this.p.id || this.p.name), onStart: (dur) => this.drawChat(text, dur) })) this.drawChat(text, 0); }      // (one of their character's own lines, with its clip: ronnie.js)
   drawChat(text, dur = 0) {
     if (!this.chatS) { const c = document.createElement('canvas'); c.width = 512; c.height = 200; this.chatC = c; this.chatT = new THREE.CanvasTexture(c); this.chatT.colorSpace = THREE.SRGBColorSpace;
       this.chatS = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.chatT, depthTest: false, transparent: true })); this.chatS.renderOrder = 13; scene.add(this.chatS); }
@@ -2142,7 +2144,7 @@ function noteRects() {
   return out.filter(r => r.x1 > 0 && r.x0 < W && r.y1 > 0 && r.y0 < H);
 }
 window.RS = { notes: () => noteRects(), bite: (it) => { G.lastBite = -99; bite(it, null); }, showBanner: (a, b) => showBanner(a, b), attackFx, words, warm: () => warm && warm.mode, warmStart: () => warmStart(), hudExtras: () => hudExtras(), emoteCamAt: () => { const c = emoteCam(); return c ? c.position.toArray() : null; }, selfBody: () => selfBody, onFrame: [], vrPanels: () => ({ pause: vrPause.panel, dev: vrDev.menu.panel }), resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
-window.RS.ronnie = startRonnie(window.RS);      // (the player, Ronnie, says his own lines: ronnie.js)
+window.RS.ronnie = startRonnie(window.RS); window.RS.narrator = startNarrator(window.RS);      // (the player, Ronnie, says his own lines: ronnie.js)
 // developer mode (Settings cog -> DEVELOPER MODE): the test bench comes up once you press PLAY. (Only for this visit:
 // starting the page again goes back to normal)
 { let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; } catch (e) {}      /* (kept: an update reloading this page mid-game used to drop you into a normal free roam; the title screen clears it) */ window.__devPending = dev;

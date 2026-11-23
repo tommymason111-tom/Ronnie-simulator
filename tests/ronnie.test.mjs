@@ -21,7 +21,7 @@ export default async function () {
   // ---- the clips
   const { lineHash, cleanLine } = gameHashers(), man = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/voices/manifest.json'), 'utf8'));
   const have = new Set((man.ronnie && man.ronnie.lines) || []), lines = ronnieLines(); let missing = [];
-  for (const l of lines) { const c = cleanLine(l); if (!c || !spoken(c)) continue; const h = lineHash(c); if (!have.has(h) || !fs.existsSync(path.join(ROOT, 'assets/voices/ronnie', h + '.mp3'))) missing.push(l); }
+  for (const l of lines) { const c = cleanLine(spoken(l)); if (!c || !/[A-Za-z]/.test(c)) continue; const h = lineHash(c);      /* (a line's clip is its spoken part: the narrator says the *directions*) */ if (!have.has(h) || !fs.existsSync(path.join(ROOT, 'assets/voices/ronnie', h + '.mp3'))) missing.push(l); }
   C.ok(lines.length >= 150, `only ${lines.length} Ronnie lines`);
   C.ok(!missing.length, `${missing.length} Ronnie lines have no clip: ${missing.slice(0, 5).join(' | ')}`);
   for (const h of have) { const f = path.join(ROOT, 'assets/voices/ronnie', h + '.mp3'); if (!fs.existsSync(f) || fs.statSync(f).size < 2000) C.ok(false, 'clip missing or empty: ' + h); }
@@ -79,7 +79,7 @@ export default async function () {
       C.ok(!r.text.length, `caption text on other text: ${JSON.stringify(r.text).slice(0, 300)}`);
       C.ok(!btns.length, `buttons: ${JSON.stringify(btns).slice(0, 300)}`);
       // a room: another player playing as Ronnie, heard from their body
-      const mp = await p.evaluate(async () => { const V = await import('./js/voices.js'); const got = []; const av = { chat: (t) => got.push(t) };
+      const mp = await p.evaluate(async () => { const V = await import('./js/voices.js'); const got = []; const av = { sayLine: (t) => got.push(t) };
         const line = 'Go on then, Aidan. Just the one.', h = V.lineHash(V.cleanLine(line));
         RS.net.on.rsay({ t: 'rsay', i: h }, { id: 'a', char: 'ronnie', avatar: av });
         RS.net.on.rsay({ t: 'rsay', i: 'zzzz' }, { id: 'b', char: 'ronnie', avatar: av });

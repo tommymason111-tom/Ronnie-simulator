@@ -223,11 +223,11 @@ function modeLines(d0, mode, dt) {
 
 // ---------------------------------------------------------------- someone else playing as Ronnie said one
 function heard(m, p) {
-  if (!m || !p || p.char !== 'ronnie' || !p.avatar || typeof p.avatar.chat !== 'function' || p.avatar.impHidden) return;
+  if (!m || !p || p.char !== 'ronnie' || !p.avatar || typeof p.avatar.sayLine !== 'function' || p.avatar.impHidden) return;
   const d0 = D(); if (d0 && QUIET_MODES.has(d0.mode)) return;
   const text = BY_HASH.get(String(m.i)); if (!text) return;      // (only his real lines: nothing made up comes through)
   const now = performance.now(); if (now - (p.rsayAt || 0) < 1500) return; p.rsayAt = now;
-  p.avatar.chat(text);
+  p.avatar.sayLine(text);
 }
 
 export function startRonnie(rs) {

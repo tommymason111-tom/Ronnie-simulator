@@ -7,7 +7,10 @@
 import * as THREE from 'three';
 import { track } from './awards.js';
 import { ronnie } from './ronnie.js';
+import { narrator } from './narrator.js';
 
+// what the narrator says for one (tools/narrator_lines.mjs makes the same text)
+export const narratorPower = (P) => P.name.charAt(0) + P.name.slice(1).toLowerCase() + '! ' + P.line.charAt(0) + P.line.slice(1).toLowerCase();
 export const POWERUPS = {
   hoover: { name: 'HOOVER MODE', icon: '🌀', col: 0x00e5ff, css: '#00e5ff', dur: 7, line: 'SUCK IT ALL UP!' },
   double: { name: 'DOUBLE CHONK', icon: '×2', col: 0xffd400, css: '#ffd400', dur: 15, line: 'EVERYTHING COUNTS DOUBLE!' },
@@ -80,6 +83,7 @@ export class PowerUps {
     if (o.k === 'rain') this.rain(); else this.active[o.k] = (this.active[o.k] || 0) + P.dur;
     if (o.k === 'hoover') this.sfx('hoover', null, 0.8);
     ronnie.ev('power.' + o.k);      // (ronnie.js)
+    narrator.say(narratorPower(P));      // (narrator.js: after Ronnie, if he says something)
   }
   // developer mode: switch one on straight away
   give(k) { const P = POWERUPS[k]; if (!P) return; this.take({ k, obj: null, id: null, dev: true }); }
