@@ -22,7 +22,7 @@
 // Everyone sends their own shots (seen and heard by all) and their hits, buys and grabs (checked by the host). The
 // screens, the HUD and the scoreboard are in sndui.js, the effects in sndfx.js, the models in sndkit.js.
 import * as THREE from 'three';
-import { sfx } from './audio.js';
+import { sfx, setMuffle } from './audio.js';
 import { Panel } from './impgames.js';
 import { track } from './awards.js';
 import { roomNum } from './roomopts.js';
@@ -502,6 +502,8 @@ export class SearchDestroy {
     // bots on everyone's game: a puppet each (made once, kept round to round)
     for (const [id, f] of this.F) if (f.bot && !this.puppets.has(id)) this.makePuppet(f);
     for (const [id, pu] of this.puppets) if (!this.F.has(id)) { pu.dispose && pu.dispose(); this.puppets.delete(id); }
+    // (last round's dead get up)
+    for (const [id] of this.F) { const av = this.avatar(id); if (av && av.down > 1e5) av.down = 0.001; }
     // me: back to my spawn with what I'm carrying (full), my perks gone
     const me = this.mine(); this.my.perks = {}; this.my.ads = false; this.my.adsK = 0; this.cancelReload(); this.my.firing = false; this.my.picked = false; this.my.act = null; this.my.burst = 0; this.my.cyc = null; this.my.crouch = false; this.g.player.ghost = false; this.spect = null;
     if (me) { const sp = m.sp && Array.isArray(m.sp[this.me]) ? m.sp[this.me] : null; if (sp && finite(...sp)) this.respawnAt(sp[0], sp[1], sp[2]); this.setLoadout(me.load.P, me.load.S, true); me.gun = this.my.gun; if (!late) this.openPicker(); this.net.send({ t: 'sdGun', g: this.my.gun });
@@ -524,6 +526,7 @@ export class SearchDestroy {
     if (by === this.me || v === this.me) { this.dmgLog.push({ by, v, d, z, g: G.id, t: this.clock }); if (this.dmgLog.length > 60) this.dmgLog.shift(); }
     if (at) { const p = at.clone().add({ x: 0, y: hs ? 0 : z === 2 ? -1.1 : -0.5, z: 0 }); this.burst(p, hs ? [0xff2020, 0xffd400, 0xffffff] : [G.splat || 0xc62828, G.tr || 0xff5252], hs ? 14 : 8, 1.4); this.splatFloor(at, G, false);
       if (v !== this.me) this.g.words && this.g.words.show((hs ? '🎯 ' : '') + Math.round(d), at.clone().add({ x: 0, y: 0.35, z: 0 }), hs ? '#ffd400' : z === 2 ? '#c3cad6' : '#fff', 0.14, 0.8); }
+    this.hitReact(v, Array.isArray(m.p) && m.p.length === 3 && finite(...m.p) ? new THREE.Vector3(...m.p) : this.headOf(by, new THREE.Vector3()), z);
     if (v === this.me) this.hurt(d, m.p, hs, by);
     if (by === this.me && v !== this.me) { this.hitMarker(false, hs); sfx(hs ? 'sd_headshot' : 'sd_hitmark', null, 0.8); track('sdDmg', d); }
   }
@@ -534,6 +537,7 @@ export class SearchDestroy {
     const g = GUNS[Number(m.g)], why = m.w === 'boom' ? '💥🍛' : m.w === 'left' ? '🚪' : g ? g.icon : '💀';
     this.feedKill(K && by !== v ? K : null, V, why, hs, as.map(a => this.F.get(a)));
     const at = this.headOf(v, new THREE.Vector3()); if (at) { this.burst(at.clone().add({ x: 0, y: -0.6, z: 0 }), [0xff3b3b, 0xffd400, 0x8d5a32, 0xffffff], 22, 2.2); this.splatFloor(at, g, true); sfx('sd_down', at, 1); }
+    this.fall(v, this.headOf(by, new THREE.Vector3()), Number(m.z) || (hs ? 1 : 0));
     if (K && K.bot && KILL_LINES[K.char] && Math.random() < 0.55) { const h = this.headOf(by, new THREE.Vector3()); if (h) this.g.words && this.g.words.show(KILL_LINES[K.char], h.add({ x: 0, y: 0.6, z: 0 }), TEAMS[K.team].col, 0.16, 1.6); }
     if (v === this.me) this.died(K, g, hs, m.w, Number(m.ds) || 0);
     if (by === this.me && v !== this.me) { this.hitMarker(true, hs); sfx('sd_kill', null, 0.9); track('sdKills'); if (hs) track('sdHs'); this.pop(`💀 ${hs ? 'HEADSHOT! ' : ''}${V.name.replace(/^🤖 /, '')}`, '#ff5252'); this.multiKill(K.rk); }
@@ -805,6 +809,8 @@ export class SearchDestroy {
     if (me && !me.alive && this.inRound() && xr && this.spect) { const q = this.posOf(this.spect, new THREE.Vector3()); if (q && this.hd(q, P.head) > 3) this.respawnAt(q.x - 1.5, q.z); }
     if (this.deathCam && this.clock - this.deathCam.t0 >= 2.8) { this.deathCam = null; if (!this.spect) this.doWatch(true); }      // (the look at who got you's over: watching your team)
     if (me && !me.alive && this.inRound() && !this.spect && !this.deathCam && (this.watchT = (this.watchT || 0) - dt) <= 0) { this.watchT = 1; this.doWatch(true); }
+    // near death the world goes muffled, your ears ringing
+    { const mk = alive && me.hp < 30 ? 0.25 + 0.6 * (30 - me.hp) / 30 : 0; if (Math.abs(mk - (this.muffK || 0)) > 0.04) { this.muffK = mk; setMuffle(mk); } }
     // the low health warning: a heartbeat
     if (alive && me.hp < 50 && (this.lowSnd = (this.lowSnd || 0) - dt) <= 0) { this.lowSnd = 1.1; sfx('sd_heartbeat', null, 0.6); }
   }
@@ -812,13 +818,47 @@ export class SearchDestroy {
   dropsTick(t) { for (const [, D] of this.drops) { D.mesh.rotation.y = (D.t0 || 0) + t * 0.6; D.mesh.position.y = D.y + 0.08 + Math.sin(t * 3 + D.d) * 0.02; } }
   // everyone's body drawn right: the dead laid out, nobody hidden; enemies' name tags hidden (no seeing them through walls)
   bodies() {
-    const round = this.inRound(), mt = this.myTeam();
+    const round = this.inRound(), mt = this.myTeam(), me = this.mine(), my = this.g.player.head, h = new THREE.Vector3();
     // (someone who came in mid-round sits it out, out of sight, till the next one: that's them too, on their own game)
     if (this.online) for (const [id, p] of this.net.players) if (!this.F.has(String(id)) && p.avatar) p.avatar.impHidden = round;
     if (round && !this.mine()) { this.g.player.ghost = true; const sb = this.g.selfBody && this.g.selfBody(); if (sb) sb.impHidden = true; }
+    const look = (this.lookT = (this.lookT || 0) - 1) <= 0; if (look) this.lookT = 8;
     for (const [id, f] of this.F) { const av = this.avatar(id); if (!av) continue;
       if (id === this.me) { av.impHidden = !!(round && !f.alive); continue; }
-      av.impHidden = false; av.impBody = !!(round && !f.alive); av.impRed = false; if (av.tag) av.tag.visible = !(round && f.alive && mt && f.team !== mt) && !av.impBody && !this.pickOpen; }
+      // the dead: on the floor where they fell (a ragdoll, flung the way the shot went), or laid out if they can't ragdoll
+      av.impHidden = false; av.impBody = !!(round && !f.alive && !(av.down > 0));
+      // name tags: team-mates always (their tag is theirs); enemies red, and only while you can see them
+      const enemy = round && mt && f.team !== mt;
+      if (look && enemy && f.alive && this.headOf(id, h)) f.seen = this.canSee(my, h);
+      av.impRed = !!enemy; if (av.tag) av.tag.visible = (!enemy || (f.alive && f.seen)) && !(round && !f.alive) && !this.pickOpen; }
+    this.teamMarks();
+  }
+  // your side, marked: a team-coloured band round both arms of everyone, and over each team-mate's head a little
+  // chevron in your colour (seen through walls, faint, so you know where they are; enemies get nothing through walls)
+  teamMarks() {
+    if (!this.bandM) { this.bandM = new THREE.InstancedMesh(new THREE.TorusGeometry(0.075, 0.022, 6, 14), new THREE.MeshBasicMaterial({ color: 0xffffff }), 48); this.bandM.count = 0; this.bandM.frustumCulled = false; this.bandM.name = 'sd armbands'; this.bandM.setColorAt(0, new THREE.Color(1, 1, 1)); this.grp.add(this.bandM);
+      const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 6; g.beginPath(); g.moveTo(8, 18); g.lineTo(32, 44); g.lineTo(56, 18); g.lineTo(46, 12); g.lineTo(32, 28); g.lineTo(18, 12); g.closePath(); g.stroke(); g.fill();
+      const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; this.allyTex = tx; this.allies = []; }
+    const mt = this.myTeam(), round = this.inRound(), q = new THREE.Quaternion(), qx = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2), m4 = new THREE.Matrix4(), col = new THREE.Color(), h = new THREE.Vector3(); let n = 0, a = 0;
+    for (const [id, f] of this.F) { if (id === this.me || !round) continue; const av = this.avatar(id), r = av && av.c && av.c.rag; if (!r || !f.alive) continue;
+      for (const part of ['uArmL', 'uArmR']) { const P = r.parts[part]; if (!P || n >= 48) continue; const bq = P.body.quaternion; q.set(bq.x, bq.y, bq.z, bq.w).multiply(qx); m4.compose(r.pos(part, h), q, _w.setScalar(1)); this.bandM.setMatrixAt(n, m4); this.bandM.setColorAt(n, col.setHex(TEAMS[f.team].hex)); n++; }
+      if (mt && f.team === mt && this.headOf(id, h)) { let sp = this.allies[a]; if (!sp) { sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.allyTex, transparent: true, depthTest: false, depthWrite: false, opacity: 0.7 })); sp.renderOrder = 11; this.grp.add(sp); this.allies[a] = sp; }
+        const d = Math.max(1, this.hd(h, this.g.player.head)), s2 = 0.12 + d * 0.012; sp.visible = !this.pickOpen && !this.my.scoped; sp.material.color.setHex(TEAMS[mt].hex); sp.scale.set(s2, s2, 1); sp.position.set(h.x, h.y + 0.62 + d * 0.01, h.z); a++; } }
+    this.bandM.count = n; this.bandM.instanceMatrix.needsUpdate = true; if (this.bandM.instanceColor) this.bandM.instanceColor.needsUpdate = true;
+    for (let i = a; i < this.allies.length; i++) this.allies[i].visible = false;
+  }
+  // someone hit (everyone's game): their body reacts to where (a head snaps back, a body shot staggers, a leg buckles)
+  hitReact(v, from, z) {
+    const av = this.avatar(v), at = this.headOf(v, new THREE.Vector3()); if (!av || !av.c || !av.c.flinch || !at || v === this.me) return;
+    const dir = from ? at.clone().sub(from) : new THREE.Vector3(0, 0, 1); dir.y = 0; if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1); dir.normalize();
+    try { av.c.flinch(dir, z === 1 ? 1.8 : z === 2 ? 0.55 : 1.1); } catch (e) {}
+  }
+  // down for good this round: a ragdoll falling the way the shot pushed them (it stays down till the next round)
+  fall(v, from, z) {
+    const av = this.avatar(v); if (!av || !av.c || !av.c.knockOut || !av.c.rag || !av.c.rag.parts || v === this.me) return false;
+    try { const r = av.c.rag, at = this.headOf(v, new THREE.Vector3()) || new THREE.Vector3(), dir = from ? at.clone().sub(from) : new THREE.Vector3(0, 0, 1); dir.y = 0; if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1); dir.normalize();
+      av.emote && av.emote.stop && av.emote.stop(); av.c.knockOut('hit'); av.down = 1e6; av.gunHold = null;
+      const part = r.parts[z === 1 ? 'head' : z === 2 ? 'uLegR' : 'chest'] || r.parts.chest, imp = dir.multiplyScalar(z === 1 ? 6 : 5); imp.y = 1.2; const p = part.body.position; r.hit(part, new THREE.Vector3(p.x, p.y, p.z), imp); return true; } catch (e) { return false; }
   }
   // the bomb: on the carrier's back, going down in front of them as they plant, on the floor where it was dropped,
   // planted and blinking with the seconds on its clock, the pliers at it while it's defused, gone
@@ -890,7 +930,7 @@ export class SearchDestroy {
   dispose() {
     const g = this.g; this.disposed = true; try { this.closePicker(); } catch (e) {} this.panel.close(true); if (this.panel.wrap) this.panel.wrap.remove(); if (this.panel.mesh) g.scene.remove(this.panel.mesh); if (this.panel.dot) g.scene.remove(this.panel.dot);
     g.scene.remove(this.grp); for (const [, pu] of this.puppets) { try { pu.dispose && pu.dispose(); } catch (e) {} } this.puppets.clear();
-    this.disposeGuns(); this.disposeFx(); if (this.wristHid && g.player.wrist && !document.body.classList.contains('gameover')) g.player.wrist.visible = true;
+    this.disposeGuns(); this.disposeFx(); setMuffle(0); if (this.wristHid && g.player.wrist && !document.body.classList.contains('gameover')) g.player.wrist.visible = true;
     for (const [id] of this.F) { const av = id === this.me ? (g.selfBody && g.selfBody()) : (this.net.players.get(id) || {}).avatar; if (av) { av.impHidden = false; av.impBody = false; if (av.tag && id !== this.me) av.tag.visible = true; } }
     this.disposeUI();
     for (const k in this.handlers) this.net.on[k] = this.prevOn[k]; this.net.on.leave = this.leaveWas;

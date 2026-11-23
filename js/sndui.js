@@ -58,7 +58,7 @@ body.snd.flat #sd-top { display: flex; } #sd-top .bar { display: flex; align-ite
 @keyframes sdhm { 0% { opacity: 1; transform: scale(1.4); } 100% { opacity: 0; transform: scale(1); } }
 #sd-dir { position: fixed; left: 50%; top: 50%; width: 0; height: 0; z-index: 41; pointer-events: none; } #sd-dir .arc { position: absolute; left: -70px; top: -70px; width: 140px; height: 140px; transition: opacity 1.1s; }
 #sd-dir .arc::before { content: ''; position: absolute; left: 40px; top: -8px; width: 60px; height: 24px; border-radius: 50% 50% 0 0 / 100% 100% 0 0; border-top: 7px solid rgba(255,30,30,0.9); filter: drop-shadow(0 0 4px #f00); }
-#sd-vig { position: fixed; inset: 0; pointer-events: none; z-index: 40; opacity: 0; transition: opacity .3s; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(170,0,0,0.6) 100%); } #sd-vig.on { opacity: 1; animation: sdbeat 1.1s infinite; }
+#sd-vig { position: fixed; inset: 0; pointer-events: none; z-index: 40; opacity: 0; transition: opacity .3s; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(170,0,0,0.6) 100%); } #sd-vig.on { opacity: 1; animation: sdbeat 1.1s infinite; } #sd-vig.crit { background: radial-gradient(ellipse at center, rgba(0,0,0,0) 28%, rgba(120,0,0,0.55) 70%, rgba(60,0,0,0.92) 100%); animation-duration: .7s; }
 @keyframes sdbeat { 0%, 100% { opacity: 0.55; } 15% { opacity: 1; } 30% { opacity: 0.7; } 45% { opacity: 0.95; } }
 #sd-flash { position: fixed; inset: 0; pointer-events: none; z-index: 42; opacity: 0; background: radial-gradient(ellipse, rgba(255,0,0,0) 35%, rgba(255,0,0,0.5)); } #sd-flash.on { animation: sdflash .45s ease-out; } @keyframes sdflash { from { opacity: 1; } to { opacity: 0; } }
 #sd-dead { position: fixed; inset: 0; pointer-events: none; z-index: 39; opacity: 0; transition: opacity .6s; background: linear-gradient(rgba(40,40,60,0.15), rgba(10,10,20,0.35)); filter: grayscale(1); } #sd-dead.on { opacity: 1; }
@@ -357,7 +357,7 @@ export const UI = {
     document.body.classList.toggle('sd-scoped', alive && !!this.my.scoped);
     // aimed in with no scope: the crosshair goes (the sights are the aim); a small dot for guns with iron sights
     this.adotEl.classList.toggle('on', alive && !this.my.scoped && this.my.adsK > 0.9 && !this.pickOpen && !['monstor', 'baguette'].includes(G.id));
-    this.vigEl.classList.toggle('on', alive && me.hp < 50); this.deadEl.classList.toggle('on', !!(me && !me.alive && this.inRound()));
+    this.vigEl.classList.toggle('on', alive && me.hp < 50); this.vigEl.classList.toggle('crit', alive && me.hp < 25); this.deadEl.classList.toggle('on', !!(me && !me.alive && this.inRound()));
     // plant / defuse progress
     if (this.my.act) { const k = Math.min(1, (t - this.my.act.t0) / this.my.act.T); this.progEl.classList.add('on'); this.progEl.querySelector('.ring').style.setProperty('--k', Math.round(k * 100) + '%'); this.progEl.querySelector('b').textContent = this.my.act.k === 'plant' ? '💣' : '🔧'; this.progEl.querySelector('span').textContent = this.my.act.k === 'plant' ? 'PLANTING THE VINDALOO...' : 'DEFUSING...'; }
     else this.progEl.classList.remove('on');
@@ -421,7 +421,8 @@ export const UI = {
   // shot: a red flash, an arc pointing at whoever did it, a jolt
   hurt(d, p, hs, by) {
     this.flashEl.className = ''; void this.flashEl.offsetWidth; this.flashEl.className = 'on'; sfx('sd_hurt', null, 0.9);
-    const P = this.g.player; for (const h of P.hands || []) h.pulse && h.pulse(0.7, 90); if (P.flatMode) P.flatPitch = Math.max(-1.35, Math.min(1.35, P.flatPitch + (Math.random() - 0.3) * 0.03));
+    const P = this.g.player; for (const h of P.hands || []) h.pulse && h.pulse(0.7, 90); const pk = Math.min(1, 0.25 + d / 60) * (hs ? 1.6 : 1);      // (the flinch: your view's punched, harder for a bigger hit, hardest in the head)
+    if (P.flatMode) { P.flatPitch = Math.max(-1.35, Math.min(1.35, P.flatPitch + (0.02 + Math.random() * 0.035) * pk)); P.flatYaw += (Math.random() - 0.5) * 0.05 * pk; } this.vmKickV = (this.vmKickV || 0) + pk * 0.8;
     let from = Array.isArray(p) && p.length === 3 ? new THREE.Vector3(p[0], p[1], p[2]) : this.headOf(by, new THREE.Vector3());
     if (from) { const h = P.head, a = Math.atan2(-(from.x - h.x), -(from.z - h.z)), el = document.createElement('div'); el.className = 'arc'; this.dirEl.appendChild(el); this.dmgDirs.push({ el, a, t: this.clock }); while (this.dmgDirs.length > 4) this.dmgDirs.shift().el.remove(); }
     if (this.g.renderer.xr.isPresenting && this.mine()) this.g.showBanner(`❤ ${Math.ceil(this.mine().hp)}`, hs ? 'HEADSHOT!' : 'YOU\'RE HIT!');

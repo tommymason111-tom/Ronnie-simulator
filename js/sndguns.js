@@ -406,18 +406,31 @@ export const GUNSYS = {
     const fl = gun.getObjectByName('flash'), fk = (this.clock - (this.flashT ?? -9)) / 0.05; if (fl) { fl.visible = fk >= 0 && fk < 1; if (fl.visible) { fl.position.copy(M.muzzle); fl.rotation.set(0, 0, Math.random() * 6); fl.scale.setScalar(G.pellets > 1 || G.dmg > 45 ? 0.16 : 0.1); } }
   },
   // everyone else's: in their right hand, pointing where they look (the magazine dropping when they reload)
+  // everyone else's: held properly for the kind of gun, both hands on it (the character's arms reach for its grip and
+  // its front: main.js SquadPuppet.gunHold). A rifle (SMG, rifle, sniper, launcher, crossbow, flamer, shotgun) up at the
+  // shoulder, the other hand on the foregrip (the shotgun's on the pump, moving with it); a pistol in both hands out in
+  // front (the revolver in one, a flourish); the gatling low at the hip, braced. Reloading, the other hand's on the magazine
   othersGuns(dt) {
-    const live = new Set();
-    if (this.inRound()) for (const [id, f] of this.F) { if (id === this.me || !f.alive) continue; const av = this.avatar(id); if (!av || !av.handPos) continue;
+    const live = new Set(), h = new THREE.Vector3();
+    if (this.inRound()) for (const [id, f] of this.F) { if (id === this.me || !f.alive) continue; const av = this.avatar(id); if (!av || !av.handPos || av.down > 0) continue;
       let q = null; if (f.bot) { const bp = this.host && this.bots && this.bots.get(id) ? this.bots.get(id) : this.botPose.get(id); if (bp) { _e.set(bp.pitch || 0, bp.yaw, 0, 'YXZ'); q = _q.setFromEuler(_e); } }
       else { const np = this.net.players.get(id); if (np && np.pose && Array.isArray(np.pose.q)) q = _q.set(...np.pose.q); }
-      if (!q) continue; const hp = av.handPos(); if (!hp || !isFinite(hp.x)) continue;
-      let gm = this.rGuns.get(id); if (gm && gm.userData.gun !== f.gun) { this.grp.remove(gm); gm = null; } if (!gm) { gm = newGun(GUN[f.gun] ? f.gun : FREE_GUN); gm.scale.setScalar(1.1); this.grp.add(gm); this.rGuns.set(id, gm); }
-      live.add(id); av.gunArm = true; gm.visible = !(av.emote && av.emote.active) && !f.acting; gm.quaternion.copy(q); gm.position.copy(hp); const k = this.kick[id] || 0; gm.rotateX(k * 0.3);
-      const G = GUN[gm.userData.gun], rl = f.rlT != null && this.clock - f.rlT < G.reload ? { k: G.rtype === 'shell' ? 'mag' : G.rtype, t0: f.rlT, T: G.rtype === 'shell' ? 1.6 : G.reload } : null;
-      this.poseParts(gm, G, { rl, cyc: null, lastShot: f.shotT, mag: 1, spinK: k > 0 ? dt * 30 : 0 }); }
-    for (const [id, gm] of this.rGuns) if (!live.has(id)) { this.grp.remove(gm); this.rGuns.delete(id); const av = this.avatar(id); if (av) av.gunArm = false; }
+      if (!q || !this.headOf(id, h)) continue;
+      let gm = this.rGuns.get(id); if (gm && gm.userData.gun !== f.gun) { this.grp.remove(gm); gm = null; } if (!gm) { gm = newGun(GUN[f.gun] ? f.gun : FREE_GUN); this.grp.add(gm); this.rGuns.set(id, gm); }
+      live.add(id); av.gunArm = true; const G = GUN[gm.userData.gun], hold = G.id === 'gravy' ? 'hip' : G.id === 'mustard' ? 'one' : G.slot === 'S' ? 'pistol' : 'rifle';
+      gm.visible = !(av.emote && av.emote.active) && !f.acting;
+      // where it's held, in the way they're looking (right, up, forward)
+      _e.setFromQuaternion(q, 'YXZ'); const yaw = _e.y, pitch = hold === 'hip' ? _e.x * 0.35 : _e.x; _e.set(pitch, yaw, 0, 'YXZ'); gm.quaternion.setFromEuler(_e);
+      const off = hold === 'hip' ? [0.2, -0.66, -0.3] : hold === 'pistol' ? [0.04, -0.3, -0.4] : hold === 'one' ? [0.2, -0.26, -0.48] : [0.14, -0.27, -0.26];
+      gm.position.copy(h).add(_v.set(off[0], off[1], off[2]).applyQuaternion(gm.quaternion)); const k = this.kick[id] || 0; gm.rotateX(k * 0.25); gm.translateZ(k * 0.04);
+      const rl = f.rlT != null && this.clock - f.rlT < G.reload ? { k: G.rtype === 'shell' ? 'mag' : G.rtype, t0: f.rlT, T: G.rtype === 'shell' ? 1.6 : G.reload } : null;
+      const pp = this.poseParts(gm, G, { rl, cyc: null, lastShot: f.shotT, mag: 1, spinK: k > 0 ? dt * 30 : 0 }), M = gm.userData.model; gm.updateMatrixWorld(true);
+      // the hands: the right on the grip; the left on the front (or the magazine, the pump), none for the revolver
+      const gh = av.gunHold || (av.gunHold = { R: new THREE.Vector3(), L: new THREE.Vector3() }); gh.R.copy(gm.localToWorld(_v.set(0, -0.03, 0.02)));
+      if (hold === 'one' && !pp.hand) gh.L = null; else { if (!gh.L) gh.L = new THREE.Vector3(); const fh = pp.hand || [M.fore.x, M.fore.y, M.fore.z]; gh.L.copy(gm.localToWorld(_v.set(fh[0], fh[1], fh[2]))); }
+      if (!gm.visible) av.gunHold = null; }
+    for (const [id, gm] of this.rGuns) if (!live.has(id)) { this.grp.remove(gm); this.rGuns.delete(id); const av = this.avatar(id); if (av) { av.gunArm = false; av.gunHold = null; } }
   },
-  disposeGuns() { if (this.vm && this.vm.parent) this.vm.parent.remove(this.vm); this.vm = null; if (this.vrGun && this.vrGun.parent) this.vrGun.parent.remove(this.vrGun); for (const [id, gm] of this.rGuns) { if (gm.parent) gm.parent.remove(gm); const av = this.avatar(id); if (av) av.gunArm = false; } this.rGuns.clear(); },
+  disposeGuns() { if (this.vm && this.vm.parent) this.vm.parent.remove(this.vm); this.vm = null; if (this.vrGun && this.vrGun.parent) this.vrGun.parent.remove(this.vrGun); for (const [id, gm] of this.rGuns) { if (gm.parent) gm.parent.remove(gm); const av = this.avatar(id); if (av) { av.gunArm = false; av.gunHold = null; } } this.rGuns.clear(); },
 };
 export { slab, raySeg, GUNS };

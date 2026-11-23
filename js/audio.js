@@ -31,6 +31,9 @@ function hookWake() { if (wakeHooked) return; wakeHooked = true;
   const wake = () => { try { if (ctx && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume(); } catch (e) {} };
   document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
   for (const ev of ['pointerdown', 'touchend', 'keydown']) window.addEventListener(ev, wake, { capture: true, passive: true }); }
+// everything muffled (0 none .. 1 as if underwater): near death in Search & Destroy, your ears ringing
+let muffleF = null;
+export function setMuffle(k) { if (!muffleF || !ctx) return; k = Math.max(0, Math.min(1, +k || 0)); muffleF.frequency.setTargetAtTime(20000 * Math.pow(500 / 20000, k), ctx.currentTime, 0.08); }
 export function initAudio() {
   hookWake();
   if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
@@ -40,7 +43,8 @@ export function initAudio() {
   const comp = ctx.createDynamicsCompressor();
   comp.threshold.value = -12; comp.ratio.value = 6;
   master = ctx.createGain(); master.gain.value = 0.8;
-  master.connect(comp); comp.connect(ctx.destination);
+  muffleF = ctx.createBiquadFilter(); muffleF.type = 'lowpass'; muffleF.frequency.value = 20000; muffleF.Q.value = 0.5;
+  master.connect(muffleF); muffleF.connect(comp); comp.connect(ctx.destination);
   // the sound mix (Settings): every kind of sound has its own volume on the way to the master
   for (const k of ['music', 'voices', 'fx', 'ambience', 'chat']) { const b = BUS[k] = ctx.createGain(); b.connect(master); }
   applyMix();

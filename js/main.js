@@ -1955,6 +1955,7 @@ class SquadPuppet {
     const head = this.pos, chest = r.pos('chest', new THREE.Vector3());
     if (this.swingT > 0) this.swingT -= dt;
     for (const [side, h] of [['R', this.rh], ['L', this.lh]]) {
+      if (this.gunHold && this.gunHold[side]) { this.ikDt = dt; this.reachArm(side, this.gunHold[side], 1); continue; }      // (SEARCH AND DESTROY: both hands on the gun, wherever its grip and front are)
       if (pose.flat && side === 'L') continue;                 // (phone players only have the one hand)
       // a VR hand: smoothed, with a little dead zone (a still hand is a still arm: tracking jitter and the uneven updates
       // made the arms flap about), and nothing taken from a hand that isn't really there (an untracked controller sends
