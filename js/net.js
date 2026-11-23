@@ -60,7 +60,7 @@ const SCHEMA = {
   wx: { w: 'str', a: 'num', tm: 'num', c: 'str', ds: 'num' },
   rcheck: { 'k!': 'str', 'mode!': 'str' }, rready: { 'k!': 'str', r: 'num' }, rstat: { 'k!': 'str', ready: 'arr' }, rdone: { 'k!': 'str' }, warm: { 'mode!': 'str' },      // (the READY CHECK before a room's new game: readycheck.js)      // (the host's weather and time of day: weather.js)
   // PROP HUNT (prophunt.js)
-  phChk: { v: 'str', p: 'v3' }, phProp: { 'k!': 'str', id: 'id' }, phLock: { p: 'v2', y: 'num' }, phTaunt: { i: 'num' }, phLobby: { n: 'num' },
+  phChk: { v: 'str', p: 'v3' }, phProp: { 'k!': 'str', id: 'id' }, phLock: { p: 'v2', y: 'num' }, phBots: { 'b!': 'arr' }, phTaunt: { i: 'num' }, phLobby: { n: 'num' },
   phRound: { 'list!': 'arr', 'seek!': 'arr', hide: 'arr', lay: 'arr', r: 'num', of: 'num', ht: 'num', st: 'num', tot: 'obj' }, phGo: { st: 'num' }, phClock: { ph: 'str', left: 'num' },
   phFound: { 'v!': 'id', 'by!': 'id', p: 'v3', k: 'str', hp: 'num' }, phMiss: { 'by!': 'id', hp: 'num', d: 'num' }, phHit: { 'v!': 'id', 'by!': 'id', hp: 'num', p: 'v3' }, phHp: { 'id!': 'id', hp: 'num' }, phShot: { 'a!': 'v3', 'b!': 'v3', h: 'num' }, phOut: { 'id!': 'id', secs: 'num' }, phBack: { 'id!': 'id', hp: 'num' },
   phPts: { 'id!': 'id', d: 'num', why: 'str' }, phAuto: { 'id!': 'id', i: 'num' }, phEnd: { tot: 'obj', rp: 'obj', alive: 'arr', stats: 'obj', why: 'str', win: 'str' }, phOver: { tot: 'obj', aw: 'arr', stats: 'obj' },
