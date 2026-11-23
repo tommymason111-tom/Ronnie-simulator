@@ -24,6 +24,7 @@ import { roomNum } from './roomopts.js';
 import { submitScore, postRanked } from './leaderboard.js';
 import { devicePid } from './net.js';
 import { DateNight } from './datenight.js';      // (DATE NIGHT: the films and their games)
+import { ronnie } from './ronnie.js';      // (Ronnie's own lines)
 const _glowP = new THREE.Vector3();
 
 export const MODES = {
@@ -458,6 +459,7 @@ export class Director {
     if (!this.running) return;
     if (this.boss) this.boss.onAte(item, chonk);      // (BOSS FIGHT: eating powers you up)
     if (this.mode === 'date') this.dateEat();
+    ronnie.ate(item);      // (Ronnie says something about it now and then: ronnie.js)
     if (this.bbqm) this.bbqm.onAte(item);
     this.stats.chonk += Math.max(0, chonk);
     if (this.mode === 'intervention') { this.meter = Math.min(1, this.meter + Math.max(0, chonk) / 30); this.nextAttackT -= Math.max(0, chonk) / 6; }   // the more you eat, the sooner they intervene

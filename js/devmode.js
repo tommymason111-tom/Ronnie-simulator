@@ -3,6 +3,9 @@
 //   ATTACKS   set off any character's attack on you, there and then
 //   IMPOSTER  play any Imposter job (and the two sabotage fixes) straight away, without a game
 //   SOUNDS    every sound effect by name, with a play button and a search box, to audition them all
+//   MODELS    any character (Ronnie, Tommy, the squad, the punters) at any of the 10 sizes, on a turntable in front of
+//             you: one, all ten sizes in a row, or everyone at one size; idle, walking, running or an emote; a camera
+//             to look at them. They're the very bodies other players see (a player's body at that stage: main.js)
 //   MULTIPLAYER  a test room: you host a real room with as many fake players (fakeplayers.js) as you pick, 1 to 11,
 //             who join, ready up and play along in every mode, so any mode can be tried with a crowd on your own
 // Nothing here changes the game itself: the random attacks are switched off while it's open, that's all.
@@ -13,6 +16,8 @@ import { Panel, makeGame } from './impgames.js';
 import { SQUAD } from './squad.js';
 import { POWERUPS } from './powerups.js';
 import { SOUND_NAMES, SOUND_GROUPS, sfx, initAudio } from './audio.js';
+import { STAGES } from './config.js';
+import { makePunter } from './runpub.js';
 
 const KIND_ICON = { hold: '🍺', crank: '⚙️', swipe: '💳', wires: '🔌', collect: '🧺', plunge: '🪠', order: '📖', scrub: '🧽', code: '🔢', dial: '⏲️', switches: '💡', reels: '🍒', catch: '🧻', temp: '🍟', sort: '🍽️', whack: '🍺', simon: '🕒', place: '🍴', light: '🕯️', stacker: '🍹', sweep: '🧹', pipes: '🚧', coupler: '🛢️', raise: '⛱️', wine: '🍷', fold: '🧻', bulbs: '💡', grill: '🍔', water: '🌸', net: '🥫' };
 const NAME = (id) => id === 'tommy' ? 'TOMMY' : ((SQUAD[id] && SQUAD[id].name) || id).toUpperCase();
@@ -54,6 +59,8 @@ export function startDev(RS) {
   #dev-panel .dv-snd { grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
   #dev-panel .dv-snd .dv-act { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #dev-panel .dv-snd .dv-act.on { background: #39ff14; color: #001a00; }
+  #dev-panel .dv-mnav { display: flex; align-items: center; gap: 8px; margin: 6px 0; } #dev-panel .dv-mnav b { flex: 1; text-align: center; font-size: 20px; color: #39ff14; text-shadow: 0 0 10px #39ff14; } #dev-panel .dv-mnav .dv-act { width: 54px; justify-content: center; font-size: 22px; }
+  #dev-panel .dv-mz .dv-chip { min-width: 34px; text-align: center; padding: 8px 6px; } #dev-panel .dv-mrow { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); gap: 6px; margin: 6px 0; } #dev-panel .dv-mrow .dv-act { justify-content: center; }
   #dev-tag { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 72; font: 900 12px 'Courier New', monospace; letter-spacing: 1px; color: #39ff14; background: rgba(0,10,2,0.9); border: 1px solid #39ff14; padding: 3px 10px; border-radius: 6px; pointer-events: none; text-shadow: 0 0 6px #39ff14; box-shadow: 0 0 12px rgba(57,255,20,0.5); }`;
   document.head.appendChild(st);
   const btn = document.createElement('button'); btn.id = 'dev-btn'; btn.textContent = '>_ DEV'; document.body.appendChild(btn);
@@ -102,6 +109,69 @@ export function startDev(RS) {
   const jobs = new Panel({ scene: RS.scene, player: P, renderer: RS.renderer });
   const job = (kind, o, name) => { open(false); jobs.show(makeGame(kind, o), { onDone: () => toast('✅ ' + name.toUpperCase() + ': DONE') }); };
 
+  // ---- MODELS: anyone, at any of the 10 sizes, on a turntable in front of you. Each one is the same body another
+  // player sees when someone playing as that character has grown to that stage (net.makeAvatar: main.js's SquadPuppet,
+  // given that stage and that size), so what you see here is exactly what players get
+  const PUNTERS = [['old', 'OLD BOY'], ['lad', 'LAD'], ['dad', 'DAD'], ['mum', 'MUM'], ['kid', 'KID'], ['hool', 'FOOTY FAN']];
+  const mChars = ['ronnie', 'tommy', ...Object.keys(SQUAD).filter(id => id !== 'ronnie' && !/^p\d+$/.test(id) && !SQUAD[id].playerOnly), ...PUNTERS.map(([k]) => 'punter:' + k)];
+  const mName = (ch) => ch.startsWith('punter:') ? 'PUNTER: ' + PUNTERS.find(x => 'punter:' + x[0] === ch)[1] : NAME(ch);
+  const M = { ch: 'ronnie', size: 1, view: null, anim: 'idle', figs: [], cam: null, back: null, punters: new Map(), center: null, span: 1, emoteI: 0 };
+  const ringGeo = new THREE.RingGeometry(0.42, 0.5, 40); ringGeo.rotateX(-Math.PI / 2);
+  const tickGeo = new THREE.BoxGeometry(0.06, 0.012, 0.16);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.85, depthWrite: false });
+  const punterId = (kind) => { let id = M.punters.get(kind); if (!id || !SQUAD[id]) { id = makePunter(kind); M.punters.set(kind, id); } return id; };      // (one look per kind while they're out: the same person at every size)
+  const mDrop = () => { for (const f of M.figs) { try { f.av.dispose(); } catch (e) {} RS.scene.remove(f.ring); } M.figs = []; };
+  const mClear = () => { mDrop(); M.view = null; camBack(); for (const id of M.punters.values()) delete SQUAD[id]; M.punters.clear(); };
+  // one body: character ch at size n (1-10) standing at x,z
+  const mFig = (ch, n, x, z, yaw) => {
+    const st = n - 1, char = ch.startsWith('punter:') ? punterId(ch.slice(7)) : ch;
+    const av = RS.net.makeAvatar({ id: 'model_' + ch + '_' + n, name: mName(ch).replace('PUNTER: ', '') + ' · SIZE ' + n, char }); if (!av) return null;
+    av.fatNow = Math.min(1, st / (STAGES.length - 1)); av.sNow = STAGES[st].scale;      // (straight to that size: a player's body eases into it)
+    const fy = RS.floorAt ? RS.floorAt(x, z) || 0 : 0, ring = new THREE.Group(); ring.add(new THREE.Mesh(ringGeo, ringMat)); const tk = new THREE.Mesh(tickGeo, ringMat); tk.position.set(0, 0.006, -0.5); ring.add(tk);
+    ring.position.set(x, fy + 0.008, z); ring.scale.setScalar(STAGES[st].scale * (1 + 0.55 * av.fatNow) * 0.95); RS.scene.add(ring);
+    const f = { av, ch, char, n, st, x, z, fy, yaw, ring, a: 0 }; M.figs.push(f); return f; };
+  const mPose = (f, dt) => {
+    const s = STAGES[f.st].scale, r = 0.85 * s; let x = f.x, z = f.z, yaw;
+    if (M.anim === 'walk' || M.anim === 'run') { const v = M.anim === 'run' ? 3.1 : 1.25; f.a += dt * v / r; x = f.x + Math.cos(f.a) * r; z = f.z + Math.sin(f.a) * r; yaw = Math.atan2(-Math.sin(f.a), Math.cos(f.a)); }      // (round the turntable at walking or running pace)
+    else { f.yaw += dt * 0.5; yaw = f.yaw; }      // (standing on the turntable as it turns)
+    f.ring.rotation.y = yaw;
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw - Math.PI, 0, 'YXZ')), fw = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)), side = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+    const l = new THREE.Vector3(x, 0, z).addScaledVector(side, 0.25 * s).addScaledVector(fw, 0.1), rh = new THREE.Vector3(x, 0, z).addScaledVector(side, -0.25 * s).addScaledVector(fw, 0.15);
+    return { t: 'p', c: f.char, h: [x, f.fy + 1.62 * s, z], q: [q.x, q.y, q.z, q.w], l: [l.x, f.fy + 1.0 * s, l.z], rh: [rh.x, f.fy + 1.05 * s, rh.z], s, st: f.st, flat: 1 }; };
+  // what's on show: 'one' (the character at the size), 'sizes' (them at 1 to 10), 'all' (everyone at the size)
+  const mShow = (view) => {
+    mDrop(); if (pup) { try { pup.dispose(); } catch (e) {} pup = null; pupChar = null; queue = []; }
+    M.view = view; if (!view) return;
+    const fw = new THREE.Vector3(P.fwd.x, 0, P.fwd.z).normalize(), right = new THREE.Vector3(-fw.z, 0, fw.x), face = Math.atan2(-fw.x, -fw.z);      // (facing you)
+    const list = view === 'one' ? [[M.ch, M.size]] : view === 'sizes' ? STAGES.map((_, i) => [M.ch, i + 1]) : mChars.map(c => [c, M.size]);
+    const w = list.map(([, n]) => 1.05 * STAGES[n - 1].scale * (1 + 0.55 * (n - 1) / (STAGES.length - 1)) + 0.3);
+    // in rows of up to 13m (everyone at the biggest size is wider than most rooms): each row behind the last, staggered
+    const rows = []; let cur = [], cw = 0; list.forEach((x, i) => { if (cur.length && cw + w[i] > 13) { rows.push(cur); cur = []; cw = 0; } cur.push(i); cw += w[i]; }); if (cur.length) rows.push(cur);
+    const gap = Math.max(...w) * 1.15, dist = view === 'one' ? 2.6 : 3.4;
+    let span = 0; rows.forEach((r, k) => { const rw = r.reduce((a, i) => a + w[i], 0); span = Math.max(span, rw); let at = -rw / 2 + (k % 2 ? Math.min(w[r[0]] / 2, 0.6) : 0);
+      for (const i of r) { const c = at + w[i] / 2; at += w[i]; const p = P.head.clone().addScaledVector(fw, dist + k * gap).addScaledVector(right, c); mFig(list[i][0], list[i][1], p.x, p.z, face); } });
+    const mid = P.head.clone().addScaledVector(fw, dist + (rows.length - 1) * gap / 2); mid.y = 0;
+    M.center = mid; M.span = span; M.depth = (rows.length - 1) * gap; M.fw = fw; if (M.cam) camOn(); };
+  const mAnimate = (a) => { if (a !== 'emote') { M.anim = a; return; } const ids = EMOTES.map(e => e.id), id = ids[M.emoteI++ % ids.length]; M.anim = 'idle'; for (const f of M.figs) f.av.doEmote(id); toast('▶ ' + (emoteInfo(id) || { name: id }).name); };
+  // the camera: on a phone or a computer its own camera, out in front of them and slowly drifting round (main.js draws
+  // with window.__devCam); in a headset you're turned to face them. BACK puts it all back
+  const camOn = () => { if (!M.center) return; const vrNow = RS.renderer.xr && RS.renderer.xr.isPresenting;
+    if (vrNow) { if (!M.back) M.back = { yaw: P.rig.rotation.y }; P.faceToward(M.center.x, M.center.z, 0.4); M.cam = 'vr'; return; }
+    if (!M.cam || M.cam === 'vr') M.cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.05, 200); M.camT = 0; window.__devCam = () => M.cam && M.cam !== 'vr' ? M.cam : null; camStep(0); };
+  const camBack = () => { if (M.cam === 'vr' && M.back) P.rig.rotation.y = M.back.yaw; M.back = null; M.cam = null; window.__devCam = null; };
+  // (out in front and above them, far enough back to get them all in, never out of the level: in close, it widens)
+  const camStep = (dt) => { const c = M.cam; if (!c || c === 'vr' || !M.center) return; M.camT += dt; c.aspect = innerWidth / innerHeight;
+    const big = M.figs.reduce((m, f) => Math.max(m, STAGES[f.st].scale), 1), fy = M.figs.length ? M.figs[0].fy : 0, V = THREE.MathUtils;
+    const fitW = (M.span / 2 + 0.6) / Math.tan(Math.atan(Math.tan(V.degToRad(30)) * c.aspect)), want = Math.max(3.2 * big, fitW + M.depth / 2);
+    const a = Math.sin(M.camT * 0.25) * 0.3, dir = M.fw.clone().multiplyScalar(-1).applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
+    const b = RS.room && RS.room.bounds; let d = want;
+    if (b) for (let k = 0; k < 40; k++) { const x = M.center.x + dir.x * d, z = M.center.z + dir.z * d; if (x > b.x0 + 0.5 && x < b.x1 - 0.5 && z > b.z0 + 0.5 && z < b.z1 - 0.5) break; d *= 0.92; }
+    const top = b && b.y1 ? b.y1 - 0.3 : 99; c.position.set(M.center.x + dir.x * d, Math.min(top, fy + 1.2 * big + d * 0.3), M.center.z + dir.z * d); c.lookAt(M.center.x, fy + 0.85 * big, M.center.z);
+    const need = 2 * Math.atan((M.span / 2 + 0.6) / Math.max(1, d - M.depth / 2)), vfov = 2 * Math.atan(Math.tan(need / 2) / c.aspect);
+    c.fov = V.clamp(V.radToDeg(vfov), 50, 100); c.updateProjectionMatrix(); };
+  window.__devModels = { M, show: mShow, clear: mClear, animate: mAnimate, cam: (on) => on ? camOn() : camBack(), chars: mChars };
+  window.addEventListener('pagehide', mClear);
+
   // ---- a little message
   const toastEl = document.createElement('div'); Object.assign(toastEl.style, { position: 'fixed', top: '64px', left: '50%', transform: 'translateX(-50%)', zIndex: 73, background: '#111', color: '#39ff14', font: '900 14px system-ui, sans-serif', padding: '8px 14px', borderRadius: '10px', display: 'none' }); document.body.appendChild(toastEl);
   let toastT = null; function toast(t) { toastEl.textContent = t; toastEl.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => { toastEl.style.display = 'none'; }, 2200); }
@@ -136,6 +206,16 @@ export function startDev(RS) {
       body += `<div class="dv-fk"><button class="dv-act dv-fkb" data-fk="-1">−</button><div><b>${nFake}</b><small>FAKE PLAYER${nFake === 1 ? '' : 'S'} · ${nFake + 1} IN THE ROOM WITH YOU</small></div><button class="dv-act dv-fkb" data-fk="1">+</button></div>`;
       body += `<div class="dv-row dv-fkq">${[1, 2, 3, 5, 7, 11].map(k => `<button class="dv-chip ${k === nFake ? 'on' : ''}" data-fkn="${k}">${k}</button>`).join('')}</div>`;
       body += `<div class="dv-grid"><button class="dv-act dv-wide" data-mproom="1">▶ OPEN A TEST ROOM</button></div><div class="dv-note">You can add or remove fake players in the lobby too (the green bar). It needs the internet: it's a real room on the room server.</div>`;
+    } else if (tab === 'models') {
+      const i = mChars.indexOf(M.ch), on = (v) => M.view === v ? ' dv-wide' : '';
+      body += `<div class="dv-note">Anyone at any of the 10 sizes, on a turntable in front of you: the same body other players see at that size.</div>`;
+      body += `<div class="dv-mnav"><button class="dv-act" data-mstep="-1" aria-label="Previous character">◀</button><b>${mName(M.ch)}</b><button class="dv-act" data-mstep="1" aria-label="Next character">▶</button></div><div class="dv-note">${i + 1} of ${mChars.length}</div>`;
+      body += `<h5>SIZE ${M.size} / 10 · ${STAGES[M.size - 1].name.toUpperCase()}</h5><div class="dv-fk"><button class="dv-act dv-fkb" data-msz="-1" aria-label="Smaller">−</button><div><b>${M.size}</b><small>SIZE</small></div><button class="dv-act dv-fkb" data-msz="1" aria-label="Bigger">+</button></div>`;
+      body += `<div class="dv-row dv-fkq dv-mz">${STAGES.map((_, k) => `<button class="dv-chip ${k + 1 === M.size ? 'on' : ''}" data-msn="${k + 1}">${k + 1}</button>`).join('')}</div>`;
+      body += `<h5>SHOW</h5><div class="dv-mrow"><button class="dv-act${on('one')}" data-mview="one">👤 JUST THEM</button><button class="dv-act${on('sizes')}" data-mview="sizes">📏 ALL SIZES</button><button class="dv-act${on('all')}" data-mview="all">👥 ALL CHARACTERS</button></div>`;
+      body += `<h5>MOVE</h5><div class="dv-mrow">${[['idle', '🧍 IDLE'], ['walk', '🚶 WALK'], ['run', '🏃 RUN'], ['emote', '🕺 EMOTE']].map(([k, l]) => `<button class="dv-act${M.anim === k && M.view ? ' dv-wide' : ''}" data-manim="${k}">${l}</button>`).join('')}</div>`;
+      body += `<div class="dv-mrow"><button class="dv-act${M.cam ? ' dv-wide' : ''}" data-mcam="1">${M.cam ? '↩ BACK TO YOUR EYES' : '🎥 LOOK AT THEM'}</button><button class="dv-act" data-mclear="1">✖ CLEAR</button></div>`;
+      body += `<div class="dv-note">${mChars.length} characters: Ronnie, Tommy, the squad and six kinds of punter.</div>`;
     } else if (tab === 'sounds') {
       body += `<div class="dv-note">Every sound effect (${SOUND_NAMES.length}). Tap one to hear it.</div><input class="dv-search" type="search" placeholder="SEARCH SOUNDS..." autocomplete="off">`;
       for (const [g, list] of soundGroups()) body += `<div class="dv-sgrp"><h5>${g}</h5><div class="dv-grid dv-snd">${list.map(s => `<button class="dv-act" data-snd="${s}"><i>▶</i>${s}</button>`).join('')}</div></div>`;
@@ -145,7 +225,7 @@ export function startDev(RS) {
       body += `</div><h5>SABOTAGE FIXES</h5><div class="dv-grid"><button class="dv-act" data-fix="lights"><i>💡</i>Fix the lights<small>FUSE BOX</small></button><button class="dv-act" data-fix="valve"><i>🛢️</i>Release a keg valve<small>KEG PRESSURE</small></button></div>`;
       body += `<h5>SECURITY</h5><div class="dv-grid"><button class="dv-act" data-cams="1"><i>📹</i>Security cameras<small>STAFF ROOM</small></button></div>`;
     }
-    panel.innerHTML = `<div class="dv-tabs">${T('emotes', '🎭 EMOTES')}${T('attacks', '💥 ATTACKS')}${T('imposter', '🔪 IMPOSTER JOBS')}${T('power', '⚡ POWER-UPS')}${T('sounds', '🔊 SOUNDS')}${T('mp', '👥 MULTIPLAYER')}</div><div class="dv-body">${body}</div>`;
+    panel.innerHTML = `<div class="dv-tabs">${T('emotes', '🎭 EMOTES')}${T('attacks', '💥 ATTACKS')}${T('imposter', '🔪 IMPOSTER JOBS')}${T('power', '⚡ POWER-UPS')}${T('sounds', '🔊 SOUNDS')}${T('models', '👤 MODELS')}${T('mp', '👥 MULTIPLAYER')}</div><div class="dv-body">${body}</div>`;
     if (tab === 'sounds') { panel.querySelector('.dv-search').value = sq; filterSounds(); }
   };
   panel.addEventListener('input', (e) => { if (e.target.matches('.dv-search')) { sq = e.target.value; filterSounds(); } });
@@ -153,6 +233,12 @@ export function startDev(RS) {
     if (d.tab) { tab = d.tab; render(); return; }
     if (d.snd) { try { initAudio(); sfx(d.snd); } catch (err) { console.warn('dev sound', err); } b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 250); return; }
     if (d.ch) { sel = d.ch; render(); return; }
+    if (d.mstep || d.msz || d.msn) { if (d.mstep) M.ch = mChars[(mChars.indexOf(M.ch) + +d.mstep + mChars.length) % mChars.length]; if (d.msz) M.size = Math.max(1, Math.min(10, M.size + +d.msz)); if (d.msn) M.size = +d.msn;
+      if (!M.view) mShow('one'); else if (!(M.view === 'all' && d.mstep) && !(M.view === 'sizes' && !d.mstep)) mShow(M.view); render(); return; }      // (a line-up stays as it is when what changed isn't in it)
+    if (d.mview) { mShow(d.mview); render(); return; }
+    if (d.manim) { if (!M.view) mShow('one'); mAnimate(d.manim); render(); return; }
+    if (d.mcam) { if (M.cam) camBack(); else { if (!M.view) mShow('one'); camOn(); } render(); return; }
+    if (d.mclear) { mClear(); render(); return; }
     if (d.fk || d.fkn) { nFake = Math.max(1, Math.min(11, d.fkn ? +d.fkn : nFake + +d.fk)); try { localStorage.setItem('rs_dev_nfake', nFake); } catch (er) {} render(); return; }
     if (d.mproom) {      // (the request goes in this tab's storage as well as the address, and the address can't be an old cached copy: either way the menu opens the room)
       try { sessionStorage.setItem('rs_devmp_ok', '1'); sessionStorage.setItem('rs_devmp_req', JSON.stringify({ n: nFake, t: Date.now() })); } catch (er) {}
@@ -169,6 +255,7 @@ export function startDev(RS) {
 
   // ---- every frame
   RS.onFrame.push((dt) => { quiet(); jobs.update(dt);
+    for (const f of M.figs) f.av.update(dt, mPose(f, dt)); camStep(dt);
     if (pup) { pup.update(dt, pose());
       if (queue.length && !(pup.emote && pup.emote.active) && (nextQ -= dt) <= 0) { const id = queue.shift(); pup.doEmote(id); const e = emoteInfo(id); toast('▶ ' + (e ? e.name : id) + (queue.length ? `  (${queue.length} more)` : '')); nextQ = 0.8; } } });
 }

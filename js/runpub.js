@@ -72,7 +72,7 @@ const DULL = [0x5a4a3a, 0x6a2a2a, 0x3a4a3a, 0x4a4a5a, 0x7a6a4a, 0x2a3a5a, 0x8a7a
 const JEANS = [0x2a4a7a, 0x1a2a4a, 0x3a5a8a, 0x2a2a2a, 0x4a6a9a];
 const SHIRTS = [[0xc8102e, 0xffffff], [0x1d2b5a, 0xffffff], [0x7a1f3d, 0x7ec8e3], [0xf4f4f4, 0x1d2b5a], [0x1e6a32, 0xffffff], [0xffd400, 0x1d2b5a], [0x6cabdd, 0xffffff], [0x111111, 0xffd400]];
 const chance = (p) => Math.random() < p;
-function makePunter(kind, extra = {}) {
+export function makePunter(kind, extra = {}) {      // (also developer mode's MODELS page)
   const id = 'p' + (++pid), rnd = Math.random, skin = R(SKINS), hen = !!extra.hen;
   delete extra.hen;
   let def;

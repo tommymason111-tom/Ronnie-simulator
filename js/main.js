@@ -13,6 +13,7 @@ import { STAGE_LINES } from './dialogue.js';
 import { AttackFX } from './attackfx.js';
 import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience, setMuted, setHush } from './audio.js';
 import { voiceLine, warmLine, VOICED } from './voices.js';
+import { startRonnie } from './ronnie.js';      // (Ronnie's own lines, in his voice)
 import { DomPanel } from './vrdom.js';
 import { FONT } from './textures.js';
 import { createPhysics } from './physics.js';
@@ -1592,7 +1593,7 @@ function frame(simDt) {
   if (cineC) { const cp = cineC.position, groups = [selfBody && selfBody.c && selfBody.c.rag.group, ...[...net.players.values()].map(q => q.avatar && q.avatar.c && q.avatar.c.rag.group), ...cast.filter(c => c !== director.boss.c && c.rag).map(c => c.rag.group)];
     for (const gr of groups) { if (!gr || !gr.visible) continue; const near = gr === (selfBody && selfBody.c && selfBody.c.rag.group) || (() => { const w = gr.getWorldPosition(new THREE.Vector3()); return Math.hypot(w.x - cp.x, w.z - cp.z) < 1.5; })(); if (near) { gr.visible = false; cineHid.push(gr); } } }
   const dateC = simDt == null && director.date ? director.date.cineCam() : null;      // (DATE NIGHT's film shots, on a phone or a computer: datenight.js)
-  if (simDt == null) renderer.render(scene, cineC || dateC || (director.prophunt && director.prophunt.viewCam()) || (director.snd && director.snd.viewCam()) || (director.imposter && director.imposter.replay && director.imposter.replay.cam) || emoteCam() || camera);      // (Imposter's replay, the BOSS FIGHT entrance and a PROP HUNT hider's view of their prop have their own cameras)
+  if (simDt == null) renderer.render(scene, cineC || dateC || (director.prophunt && director.prophunt.viewCam()) || (director.snd && director.snd.viewCam()) || (director.imposter && director.imposter.replay && director.imposter.replay.cam) || (window.__devCam && window.__devCam()) || emoteCam() || camera);      /* (__devCam: developer mode MODELS camera) */      // (Imposter's replay, the BOSS FIGHT entrance and a PROP HUNT hider's view of their prop have their own cameras)
   for (const gr of cineHid) gr.visible = true;
   learnShader();      // (a shader built during play: remember its kind, so next time it's built up front)
 }
@@ -2141,6 +2142,7 @@ function noteRects() {
   return out.filter(r => r.x1 > 0 && r.x0 < W && r.y1 > 0 && r.y0 < H);
 }
 window.RS = { notes: () => noteRects(), bite: (it) => { G.lastBite = -99; bite(it, null); }, showBanner: (a, b) => showBanner(a, b), attackFx, words, warm: () => warm && warm.mode, warmStart: () => warmStart(), hudExtras: () => hudExtras(), emoteCamAt: () => { const c = emoteCam(); return c ? c.position.toArray() : null; }, selfBody: () => selfBody, onFrame: [], vrPanels: () => ({ pause: vrPause.panel, dev: vrDev.menu.panel }), resetSelfBody: () => { if (selfBody) { selfBody.dispose(); selfBody = null; } }, emoteCamSpot, newGame: (m) => newGame(m), time: () => time, room, roomSpawns: () => room.spawns, floorAt: room.floorAt, powerups, net, mp, music, tvs, THREE, G, player, items, tommy, cast, director, addChonk, scene, renderer, physics, startFlat, shot: () => { renderer.render(scene, emoteCam() || camera); return renderer.domElement.toDataURL('image/jpeg', 0.8); }, sim: (secs, step = 1 / 30) => { for (let t = 0; t < secs; t += step) frame(step); } };   // (sim: run the game without drawing, for tests)
+window.RS.ronnie = startRonnie(window.RS);      // (the player, Ronnie, says his own lines: ronnie.js)
 // developer mode (Settings cog -> DEVELOPER MODE): the test bench comes up once you press PLAY. (Only for this visit:
 // starting the page again goes back to normal)
 { let dev = false; try { dev = sessionStorage.getItem('rs_dev') === '1' && localStorage.getItem('rs_dev_locked') !== '1'; } catch (e) {}      /* (kept: an update reloading this page mid-game used to drop you into a normal free roam; the title screen clears it) */ window.__devPending = dev;

@@ -13,7 +13,7 @@ import { audioCtx, decodeClip, playBuffer } from './audio.js';
 import { RELAY } from './net.js';
 
 // which characters have a real voice (the voice itself lives on ElevenLabs; the server maps the name to it)
-export const VOICED = new Set(['tommy']);
+export const VOICED = new Set(['tommy', 'ronnie']);
 const TTS = RELAY.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:') + '/tts';
 const MAX_LIVE = 160;          // (typed chat longer than this is cut short when spoken)
 
@@ -45,7 +45,7 @@ function warmDecoder() { if (warmed) return; const ctx = audioCtx(); if (!ctx ||
   const first = RAW.values().next().value; if (!first) return setTimeout(warmDecoder, 500); warmed = true; decodeClip(first.slice(0)).catch(() => {}); }
 ready.then(() => setTimeout(warmDecoder, 300));
 function remember(k, buf) { DEC.set(k, buf); while (DEC.size > DEC_MAX) DEC.delete(DEC.keys().next().value); return buf; }
-let liveOK = true;             // (turned off for the session if the server can't do voices)
+const liveOff = new Set();     // (a voice the server can't do (not set up there yet): not asked again this session)
 // a line's sound, decoded and ready to play (null if there's none)
 function getBuffer(who, clean, live) {
   return ready.then(() => {
@@ -55,10 +55,10 @@ function getBuffer(who, clean, live) {
     if (has(who, h)) { const raw = RAW.get(k);
       return (raw ? Promise.resolve(raw) : fetch(clipURL(who, h)).then(r => r.ok ? r.arrayBuffer() : null).then(ab => { if (ab) RAW.set(k, ab); return ab; }))
         .then(ab => ab ? decodeClip(ab.slice(0)) : null).then(b => b && remember(k, b)); }
-    if (!live || !liveOK) return null;
+    if (!live || liveOff.has(who)) return null;
     const lk = who + '/live/' + h; if (DEC.has(lk)) return DEC.get(lk);
     return fetch(`${TTS}?v=${encodeURIComponent(who)}&t=${encodeURIComponent(clean.slice(0, MAX_LIVE))}`)
-      .then(r => { if (!r.ok) { if (r.status !== 429) liveOK = false; return null; } return r.arrayBuffer(); })
+      .then(r => { if (!r.ok) { if (r.status !== 429) liveOff.add(who); return null; } return r.arrayBuffer(); })
       .then(ab => ab ? decodeClip(ab) : null).then(b => b && remember(lk, b)).catch(() => null);
   }).catch(() => null);
 }

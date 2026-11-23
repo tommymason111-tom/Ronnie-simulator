@@ -6,6 +6,7 @@
 // In multiplayer the host puts them down (everyone sees the same ones) and whoever gets there first gets it.
 import * as THREE from 'three';
 import { track } from './awards.js';
+import { ronnie } from './ronnie.js';
 
 export const POWERUPS = {
   hoover: { name: 'HOOVER MODE', icon: '🌀', col: 0x00e5ff, css: '#00e5ff', dur: 7, line: 'SUCK IT ALL UP!' },
@@ -78,6 +79,7 @@ export class PowerUps {
     this.player.hands && this.player.hands.forEach(h => h.pulse && h.pulse(0.8, 160));
     if (o.k === 'rain') this.rain(); else this.active[o.k] = (this.active[o.k] || 0) + P.dur;
     if (o.k === 'hoover') this.sfx('hoover', null, 0.8);
+    ronnie.ev('power.' + o.k);      // (ronnie.js)
   }
   // developer mode: switch one on straight away
   give(k) { const P = POWERUPS[k]; if (!P) return; this.take({ k, obj: null, id: null, dev: true }); }
