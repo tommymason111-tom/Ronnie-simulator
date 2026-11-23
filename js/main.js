@@ -1205,7 +1205,7 @@ const PAUSE_MODES = {
   imposter2: ['🔪', 'IMPOSTER · 2 IMPOSTERS', 'Multiplayer: two imposters among you (5+ players)'],
   boss: ['👹', 'BOSS FIGHT', 'A giant mate: eat to power up, throw food to bring them down'],      // (BOSS FIGHT)
   prophunt: ['🎭', 'PROP HUNT', 'Multiplayer: hide as a keg, a bin, a gnome... seekers find them'],      // (PROP HUNT)
-  snd: ['💣', 'SEARCH & DESTROY', 'Two teams, one bomb: pick a gun, plant or defuse the Vindaloo'],      // (SEARCH AND DESTROY)
+  snd: ['💣', 'SEARCH & DESTROY', 'Two teams, one bomb: buy a gun, plant or defuse the Vindaloo'],      // (SEARCH AND DESTROY)
 };
 const PLACE_GAMES = { pub: ['everyone', 'runpub1', 'runpub', 'runpub3', 'imposter', 'imposter2', 'boss', 'prophunt', 'snd', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], shop: ['sweep', 'prophunt', 'snd', 'roam', 'roam0'], garden: ['bbq', 'boss', 'prophunt', 'snd', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'] };
 const modeTitle = () => { const m = director.fullMode; return (PAUSE_MODES[m] && PAUSE_MODES[m][1]) || (m === 'classic' ? 'CLASSIC' : m === 'intervention' ? 'THE SQUAD' : (m || '').toUpperCase()); };

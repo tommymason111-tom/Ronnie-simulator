@@ -8,7 +8,7 @@ import { sfx } from './audio.js';
 import { casingGeo, splatTexture, flashGeo, flashTexture, GUN } from './sndkit.js';
 
 const N_BITS = 220, N_MARKS = 120, N_CASES = 48, N_TR = 28, N_FL = 8;
-const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _v = new THREE.Vector3(), _s = new THREE.Vector3(), _z = new THREE.Vector3(0, 0, 1), _c = new THREE.Color();
+const _eu = new THREE.Euler(), _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _v = new THREE.Vector3(), _s = new THREE.Vector3(), _z = new THREE.Vector3(0, 0, 1), _c = new THREE.Color();
 const CASE_COL = Object.assign(Object.create(null), { beans: 0xff7a1a, gravy: 0x9a6a3a, cheese: 0xffb300, mustard: 0xffc400 });
 let boomGeo = null;
 
@@ -86,7 +86,7 @@ export const FX = {
     // the bits: thrown out, falling, shrinking away
     if (this.bitM) { let n = 0; this.bits = this.bits.filter(b => { b.t += dt; return b.t < b.life; });
       for (const b of this.bits) { b.v.y -= 7 * dt; b.p.addScaledVector(b.v, dt); const fl = this.floor(b.p.x, b.p.z); if (b.p.y < fl + 0.02) { b.p.y = fl + 0.02; b.v.multiplyScalar(0.3); }
-        b.r += dt * 8; _q.setFromEuler(new THREE.Euler(b.r, b.r * 0.7, 0)); _m.compose(b.p, _q, _s.setScalar(Math.max(0.01, 1 - b.t / b.life))); this.bitM.setMatrixAt(n, _m); this.bitM.setColorAt(n, _c.setHex(b.c)); n++; }
+        b.r += dt * 8; _q.setFromEuler(_eu.set(b.r, b.r * 0.7, 0)); _m.compose(b.p, _q, _s.setScalar(Math.max(0.01, 1 - b.t / b.life))); this.bitM.setMatrixAt(n, _m); this.bitM.setColorAt(n, _c.setHex(b.c)); n++; }
       this.bitM.count = n; this.bitM.instanceMatrix.needsUpdate = true; if (this.bitM.instanceColor) this.bitM.instanceColor.needsUpdate = true; }
     // the empties: out, down, a bounce and a tinkle, then lying there a while
     if (this.caseM) { let n = 0; this.cases = this.cases.filter(c => { c.t += dt; return c.t < c.life; });

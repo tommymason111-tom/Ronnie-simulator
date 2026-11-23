@@ -358,7 +358,7 @@ function sdBomb(g, x, y, k = 1) {      // THE VINDALOO: a curry pot with sausage
   g.restore();
 }
 function sdGun(g, id, x, y, w) {      // a gun, side on, in its own colours (a simple version of the pick screen's)
-  const cols = { ketchup: ['#d32f2f', '#2b2c30', '#f4f4f0'], beans: ['#ff7a1a', '#18191b', '#8a5a2e'], sausage: ['#9a5a3a', '#2e4a2e', '#ffd21a'], cheese: ['#ffc107', '#1a1a1c', '#ff9800'], monstor: ['#141416', '#7cff3a', '#26282c'], gravy: ['#5a5e66', '#f4f2ea', '#6d3b1f'] }[id];
+  const cols = { ketchup: ['#d32f2f', '#2b2c30', '#f4f4f0'], beans: ['#ff7a1a', '#18191b', '#8a5a2e'], sausage: ['#9a5a3a', '#2e4a2e', '#ffd21a'], cheese: ['#ffc107', '#1a1a1c', '#ff9800'], monstor: ['#141416', '#7cff3a', '#26282c'], gravy: ['#5a5e66', '#f4f2ea', '#6d3b1f'], brown: ['#5a2a14', '#24252a', '#e8d9a8'], mustard: ['#ffc400', '#8a5a2e', '#d32f2f'], baguette: ['#d9a35b', '#141416', '#c9ced4'] }[id] || ['#888', '#333', '#ccc'];
   const k = w / 200; g.save(); g.translate(x - w / 2, y - 30 * k); g.scale(k, k);
   g.fillStyle = cols[1]; rr(g, 10, 22, 120, 12, 5); g.fill(); g.fillStyle = cols[0]; rr(g, 60, 16, 90, 30, 8); g.fill(); g.fillStyle = cols[2]; rr(g, 70, 44, 22, 34, 6); g.fill();
   g.fillStyle = cols[1]; g.save(); g.translate(150, 40); g.rotate(0.3); rr(g, -8, 0, 18, 34, 5); g.fill(); g.restore(); g.fillStyle = cols[0]; rr(g, 150, 18, 44, 24, 6); g.fill(); g.restore();
@@ -372,17 +372,25 @@ function searchDestroy(g, W, H, page, device) {
     label(g, '💣 PLANT IT', W * 0.3, H * 0.4, { size: 15, border: '#ff9f1c' }); label(g, '🔧 OR DEFUSE IT', W * 0.72, H * 0.4, { size: 15, border: '#39ff14' });
     emoji(g, '🧍', W * 0.12, fy - 20, 52); emoji(g, '🧍', W * 0.9, fy - 20, 52); return;
   }
-  if (page === 'guns') {
-    bg(g, W, H, '#2a1458', '#0c0818'); const ids = ['ketchup', 'beans', 'sausage', 'cheese', 'monstor', 'gravy'], ic = ['🍅', '🫘', '🌭', '🧀', '🥫', '🍗'];
-    ids.forEach((id, i) => { const cx = W * (0.18 + (i % 3) * 0.32), cy = 92 + Math.floor(i / 3) * 128; g.fillStyle = i === 4 ? 'rgba(57,255,20,0.22)' : 'rgba(255,255,255,0.08)'; rr(g, cx - 92, cy - 50, 184, 112, 14); g.fill(); g.lineWidth = 3; g.strokeStyle = i === 4 ? '#39ff14' : 'rgba(255,255,255,0.3)'; g.stroke();
-      sdGun(g, id, cx, cy - 6, 150); emoji(g, ic[i], cx - 70, cy - 30, 24); for (let j = 0; j < 3; j++) { g.fillStyle = 'rgba(255,255,255,0.15)'; rr(g, cx - 70, cy + 36 + j * 8, 140, 5, 2); g.fill(); g.fillStyle = ['#ff5a3d', '#ffd400', '#4fc3ff'][j]; rr(g, cx - 70, cy + 36 + j * 8, 140 * (0.3 + ((i * 37 + j * 23) % 70) / 100), 5, 2); g.fill(); } });
-    label(g, '🔫 PICK YOUR GUN · EVERY ROUND', W / 2, 24, { size: 16 }); return;
+  if (page === 'guns') {      // THE SHOP: your dinner money, a primary and a sidearm
+    bg(g, W, H, '#2a1458', '#0c0818'); const P = [['cheese', '🧀', '£1,200'], ['beans', '🫘', '£1,100'], ['monstor', '🥫', '£2,500'], ['baguette', '🥖', '£2,300'], ['sausage', '🌭', '£4,000'], ['gravy', '🍗', '£4,500']];
+    P.forEach(([id, ic, pr], i) => { const cx = W * (0.18 + (i % 3) * 0.32), cy = 104 + Math.floor(i / 3) * 96, own = i === 2, no = i >= 4; g.globalAlpha = no ? 0.5 : 1;
+      g.fillStyle = own ? 'rgba(57,255,20,0.22)' : 'rgba(255,255,255,0.08)'; rr(g, cx - 92, cy - 42, 184, 86, 14); g.fill(); g.lineWidth = 3; g.strokeStyle = own ? '#39ff14' : 'rgba(255,255,255,0.3)'; g.stroke();
+      sdGun(g, id, cx, cy - 8, 130); emoji(g, ic, cx - 70, cy - 24, 22); g.fillStyle = no ? '#ff6b6b' : '#39ff14'; g.font = `900 16px ${FONT}`; g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillText(own ? 'YOURS' : pr, cx + 82, cy + 28); g.globalAlpha = 1; });
+    ['🍅', '🟫', '🌭'].forEach((e, i) => { const x = W * (0.3 + i * 0.2); g.fillStyle = 'rgba(255,255,255,0.08)'; rr(g, x - 52, 262, 104, 52, 12); g.fill(); emoji(g, e, x - 22, 288, 26); g.fillStyle = '#39ff14'; g.font = `900 14px ${FONT}`; g.textAlign = 'left'; g.fillText(['FREE', '£400', '£700'][i], x - 4, 289); });
+    label(g, '🛒 THE SHOP · 💷 £2,000', W / 2, 26, { size: 17, border: '#39ff14' }); return;
+  }
+  if (page === 'arsenal') {      // the nine guns
+    bg(g, W, H, '#14202e', '#0a0f18'); const A = [['ketchup', '🍅', 'PISTOL'], ['brown', '🟫', 'BURST'], ['mustard', '🌭', 'REVOLVER'], ['cheese', '🧀', 'SMG'], ['beans', '🫘', 'SHOTGUN'], ['monstor', '🥫', 'RIFLE'], ['baguette', '🥖', 'MARKSMAN'], ['sausage', '🌭', 'SNIPER'], ['gravy', '🍗', 'GATLING']];
+    A.forEach(([id, ic, kd], i) => { const cx = W * (0.18 + (i % 3) * 0.32), cy = 84 + Math.floor(i / 3) * 90; g.fillStyle = 'rgba(255,255,255,0.07)'; rr(g, cx - 96, cy - 38, 192, 80, 12); g.fill();
+      sdGun(g, id, cx + 10, cy - 6, 120); emoji(g, ic, cx - 74, cy - 18, 22); g.fillStyle = '#ffd400'; g.font = `900 13px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(kd, cx, cy + 30); });
+    label(g, '🔫 NINE GUNS · 🎯 HEADS HURT MOST · 🧱 BIG ONES GO THROUGH WALLS', W / 2, 22, { size: 13 }); return;
   }
   if (page === 'shoot') {
     floorScene(g, W, H, '#24318f', '#121a52'); emoji(g, '🧍', W * 0.7, fy - 26, 64); g.strokeStyle = '#fff'; g.lineWidth = 3; for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { g.beginPath(); g.moveTo(W * 0.7 + dx * 8, fy - 40 + dy * 8); g.lineTo(W * 0.7 + dx * 18, fy - 40 + dy * 18); g.stroke(); }
     g.strokeStyle = '#ffd84a'; g.lineWidth = 4; g.beginPath(); g.moveTo(W * 0.2, H * 0.66); g.lineTo(W * 0.68, fy - 38); g.stroke(); sdGun(g, 'cheese', W * 0.2, H * 0.72, 190);
     label(g, '🎯 HEADSHOT ×2', W * 0.7, H * 0.2, { size: 15, border: '#ffd400' }); label(g, vr ? '🔫 TRIGGER' : pc ? '🖱️ CLICK / F' : '🔥 FIRE', W * 0.2, H * 0.2, { size: 16, border: '#ff5a3d' });
-    label(g, vr ? '🔄 A · FLICK DOWN' : pc ? '🔄 R' : '🔄 RELOAD', W * 0.2, H * 0.36, { size: 15, border: '#2a6df4' }); label(g, '❤ 100', W * 0.86, H * 0.36, { size: 15, border: '#39ff14' }); return;
+    label(g, vr ? '🔄 A · FLICK DOWN' : pc ? '🔄 R' : '🔄 RELOAD', W * 0.2, H * 0.36, { size: 15, border: '#2a6df4' }); label(g, vr ? '🎯 GUN UP TO YOUR EYE' : pc ? '🎯 RIGHT-CLICK TO AIM' : '🎯 AIM', W * 0.2, H * 0.52, { size: 14, border: '#ffd400' }); label(g, vr ? '🔁 X SWAPS' : pc ? '🔁 Q SWAPS' : '🔁 SWAP', W * 0.86, H * 0.52, { size: 14, border: '#6d4c41' }); label(g, '❤ 100', W * 0.86, H * 0.36, { size: 15, border: '#39ff14' }); return;
   }
   if (page === 'bomb') {
     floorScene(g, W, H, '#3a2a14', '#24180a'); sdSite(g, W / 2, fy + 12, 110, 'B'); sdBomb(g, W / 2, fy - 8, 1.1);
