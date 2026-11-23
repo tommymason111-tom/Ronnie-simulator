@@ -58,6 +58,9 @@ export const FX = {
     if (!this.bits) return; for (let i = 0; i < n; i++) { if (this.bits.length >= N_BITS) this.bits.shift(); const a = Math.random() * Math.PI * 2, u = Math.random();
       this.bits.push({ p: at.clone(), v: new THREE.Vector3(Math.cos(a) * speed * (0.4 + u), 1 + Math.random() * 2, Math.sin(a) * speed * (0.4 + u)), t: 0, life: 0.6 + Math.random() * 0.4, c: cols[i % cols.length], r: Math.random() * 6 }); }
   },
+  // the flamer's spray: blobs of hot sauce thrown forward, falling
+  spray(at, dir, G) { if (!this.bits) return; for (let i = 0; i < 6; i++) { if (this.bits.length >= N_BITS) this.bits.shift(); const v = dir.clone().multiplyScalar(6 + Math.random() * 5).add({ x: (Math.random() - 0.5) * 1.6, y: (Math.random() - 0.2) * 1.4, z: (Math.random() - 0.5) * 1.6 });
+    this.bits.push({ p: at.clone(), v, t: 0, life: 0.45 + Math.random() * 0.3, c: [0xff3b1a, 0xff8a1a, 0xffd400, 0xb71c1c][i % 4], r: Math.random() * 6 }); } },
   // an empty out of your gun's ejection port (the revolver: the cylinder tipped out)
   ejectCasing(G, i = 0) {
     if (!this.cases) return; const g = this.vGun && this.vGun.visible ? this.vGun : this.vrGun && this.vrGun.visible && this.vrGun.parent ? this.vrGun : null; if (!g) return;

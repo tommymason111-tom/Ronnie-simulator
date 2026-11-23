@@ -34,7 +34,7 @@ import { startRoomHost } from './lib/roomhost.mjs';
 const TXT = fs.readFileSync(new URL('./lib/textcheck.js', import.meta.url), 'utf8'), BTN = fs.readFileSync(new URL('./lib/btncheck.js', import.meta.url), 'utf8');
 const ONLY = (process.env.SND_ONLY || 'maps,fill,guns,solo,end,phone2,pc,quest,mp,fakes').split(','), PLACES = (process.env.PLACES || 'pub,shop,garden').split(',');
 const on = (k) => ONLY.includes(k);
-const GUN_IDS = ['ketchup', 'brown', 'mustard', 'cheese', 'beans', 'monstor', 'baguette', 'sausage', 'gravy'];
+const GUN_IDS = ['ketchup', 'brown', 'mustard', 'cheese', 'beans', 'monstor', 'baguette', 'sausage', 'gravy', 'scotch', 'flamer', 'xbow'];
 
 // (in the page) little helpers on window.T: step the clock, aim, stand somewhere, press a button
 const HELP = () => {
@@ -48,12 +48,12 @@ const HELP = () => {
     // a free spot n metres away that I can see (no wall between): the way I'm looking if it's clear, otherwise round about
     clear: (n) => { const s = RS.director.snd, P = RS.player, nav = RS.room.nav, Th = RS.THREE, yaw0 = Math.atan2(-P.fwd.x, -P.fwd.z);
       for (let k = 0; k < 24; k++) { const a = yaw0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.26, x = P.head.x - Math.sin(a) * n, z = P.head.z - Math.cos(a) * n, q = nav.nearestFree(x, z); if (q < 0) continue; const c = nav.center(q);
-        if (Math.hypot(c.x - P.head.x, c.y - P.head.z) < n * 0.7) continue; if (s.canSee(new Th.Vector3(P.head.x, P.head.y, P.head.z), new Th.Vector3(c.x, s.floor(c.x, c.y) + 1.1, c.y))) return [c.x, c.y]; } return T.ahead(n); },
+        if (Math.hypot(c.x - P.head.x, c.y - P.head.z) < n * 0.7) continue; const A = new Th.Vector3(P.head.x, P.head.y, P.head.z), Bv = new Th.Vector3(c.x, s.floor(c.x, c.y) + 1.1, c.y); if (s.canSee(A, Bv) && s.glassOn(A, Bv.clone().sub(A).normalize(), A.distanceTo(Bv)) < 0) return [c.x, c.y]; } return T.ahead(n); },
     ahead: (n) => { const P = RS.player, nav = RS.room.nav, f = P.fwd; const x = P.head.x + f.x / Math.hypot(f.x, f.z) * n, z = P.head.z + f.z / Math.hypot(f.x, f.z) * n; const k = nav.nearestFree(x, z), c = nav.center(k); return [c.x, c.y]; },
     enemies: () => { const s = RS.director.snd, me = s.mine(); return [...s.F.values()].filter(f => f.team !== me.team && f.alive); },
     mates: () => { const s = RS.director.snd, me = s.mine(); return [...s.F.values()].filter(f => f.team === me.team && f.alive && f.id !== s.me); },
     // an enemy bot stood still n metres in front of me, my aim on it (at y below its head)
-    target: (n = 6, dy = 0.5) => { const s = RS.director.snd, e = T.enemies().find(f => f.bot); if (!e) return null; const b = s.bots.get(e.id), at = T.clear(n); b.x = at[0]; b.z = at[1]; e.hp = 100; e.ar = 0; RS.sim(1 / 30); const h = s.headOf(e.id, new RS.THREE.Vector3()); T.aim(h.x, h.y - dy, h.z); return e; },
+    target: (n = 6, dy = 0.5) => { const s = RS.director.snd, e = T.enemies().find(f => f.bot); if (!e) return null; for (const m of T.mates()) { const mb = s.bots && s.bots.get(m.id); if (mb && Math.abs(mb.x) < 100) mb.x += 200; }      /* (team-mates out of the line of fire: a shot stops at them) */ const b = s.bots.get(e.id), at = T.clear(n); b.x = at[0]; b.z = at[1]; e.hp = 100; e.ar = 0; RS.sim(1 / 30); const h = s.headOf(e.id, new RS.THREE.Vector3()); T.aim(h.x, h.y - dy, h.z); return e; },
     clearPops: () => { for (const id of ['sd-splash', 'sd-pop', 'sd-multi', 'sd-count']) { const e = document.getElementById(id); if (e) e.className = ''; } for (const e of document.querySelectorAll('.banner, #banner')) e.style.display = 'none'; },
     rich: () => { const s = RS.director.snd; s.cash[s.me] = 9000; if (s.H) s.H.cash[s.me] = 9000; },
   };
@@ -189,11 +189,11 @@ async function guns(b, C) {
         // aimed (zoomed in, tighter), then fired at the bot
         const fov0 = RS.player.camera.fov, hip = s.spreadNow(); s.toggleAds(true); T.step(0.45); out.ads = +s.my.adsK.toFixed(2); out.zoom = +(RS.player.camera.fov / fov0).toFixed(2); out.tighter = s.spreadNow() < hip;
         const h = s.headOf(e.id, new RS.THREE.Vector3()); T.aim(h.x, h.y - 0.5, h.z);
-        const mag0 = s.my.mag, hp0 = e.hp; if (G.spin) { s.my.firing = true; T.step(0.6); s.my.firing = false; } else { s.my.nextShot = 0; s.fire(); T.step(0.45); }
+        const mag0 = s.my.mag, hp0 = e.hp; if (G.spin || G.flame) { s.my.firing = true; s.fire(); T.step(0.6); s.my.firing = false; } else { s.my.nextShot = 0; s.fire(); T.step(G.proj ? 1.2 : 0.45); }
         out.fired = mag0 - s.my.mag; out.hit = hp0 - e.hp; out.marks = s.markM.count; s.toggleAds(false); T.step(0.3);
         // reloaded (its own way)
-        s.my.mag = 1; s.my.cyc = null; s.doReload(); out.rlType = s.my.rl && s.my.rl.k; out.len = +s.my.reloadLen.toFixed(2);
-        if (G.rtype === 'shell') { T.step(0.35 + G.reload * 0.8); out.shell1 = s.my.mag; T.step(G.reload); out.shell2 = s.my.mag; }
+        s.my.mag = G.mag > 1 ? 1 : 0; s.my.cyc = null; s.doReload(); out.rlType = s.my.rl && s.my.rl.k; out.len = +s.my.reloadLen.toFixed(2);
+        if (G.rtype === 'shell') { T.step(0.35 + G.reload * 0.8); out.shell1 = s.my.mag; T.step(G.reload); out.shell2 = s.my.mag; if (G.mag === 1) { out.shell1 = 2; out.shell2 = 3; } }
         else { T.step(s.my.reloadLen * 0.48); const P = s.vGun && s.vGun.userData.parts; out.magOut = !!P && !!P.mag && (!P.mag.visible || P.mag.position.length() > 0.05 || P.mag.position.distanceTo(P.mag.userData.rest || new RS.THREE.Vector3()) > 0.05); }
         T.step(s.my.reloadLen + 0.2); out.full = s.my.mag === G.mag; out.reserve = s.my.reserve;
         // swapped with the other slot and back
@@ -233,14 +233,24 @@ async function guns(b, C) {
       const zone = (dy) => { const d = new Th.Vector3(h.x, h.y - dy, h.z).sub(o).normalize(); const t = s.trace(o, d, 60, G('monstor')); return t.hit ? t.hit.z : -1; }; out.zones = [zone(0.05), zone(0.6), zone(1.3)];
       // a thin wall (a board) and a thick one between me and the bot
       const mid = o.clone().lerp(new Th.Vector3(h.x, o.y, h.z), 0.5), dir = new Th.Vector3(h.x, h.y - 0.5, h.z).sub(o).normalize(), thin = new Th.Box3().setFromCenterAndSize(mid, new Th.Vector3(0.2, 3, 0.2)), thick = new Th.Box3().setFromCenterAndSize(mid, new Th.Vector3(1.2, 3, 1.2));
-      const thru = (box, id) => { s.walls.push(box); const t = s.trace(o, dir, 60, G(id)); s.walls.pop(); return t.hit ? (t.hit.wb ? 'wb' : 'clear') : 'blocked'; };
-      out.thin = ['cheese', 'ketchup', 'sausage'].map(id => thru(thin, id)); out.thick = ['ketchup', 'sausage'].map(id => thru(thick, id)); out.holes = (() => { s.walls.push(thin); const t = s.trace(o, dir, 60, G('sausage')); s.walls.pop(); return t.holes.length; })();
+      const thru = (box, id) => { s.extraWalls = [box]; s.grid = null; const t = s.trace(o, dir, 60, G(id)); return t.hit ? 'clear' : 'blocked'; };
+      out.thin = ['cheese', 'ketchup', 'sausage'].map(id => thru(thin, id)); out.thick = ['ketchup', 'sausage'].map(id => thru(thick, id));
+      s.extraWalls = [thin]; s.grid = null; out.holes = s.trace(o, dir, 60, G('sausage')).holes.length; s.extraWalls = []; s.grid = null; out.clear = !!s.trace(o, dir, 60, G('sausage')).hit;
       // the host's damage from a wallbang hit, and a leg hit
       const hp0 = e.hp; s.hostHit(s.me, { v: e.id, d: 20, z: 2, wb: 1, g: 'monstor' }); out.legHit = hp0 - e.hp; return out; });
     C.ok(dm.fall[0] === 1 && dm.fall[1] < 1 && dm.fall[2] <= dm.fall[1] && dm.fall[3] === 1 && dm.fall[4] < 0.5, `guns: damage falloff: ${JSON.stringify(dm.fall)}`);
     C.ok(dm.zones.join() === '1,0,2', `guns: head, body, legs (aiming at each): ${JSON.stringify(dm.zones)}`);
-    C.ok(dm.thin.join() === 'blocked,wb,wb' && dm.thick.join() === 'blocked,blocked' && dm.holes >= 2, `guns: walls (a board: the SMG stopped, the pistol and sniper through; a thick wall stops both): ${JSON.stringify(dm)}`);
-    C.ok(dm.legHit === 20, `guns: the host didn't take a wallbang leg hit: ${JSON.stringify(dm)}`);
+    C.ok(dm.thin.join() === 'blocked,blocked,blocked' && dm.thick.join() === 'blocked,blocked' && dm.holes === 1 && dm.clear, `guns: walls (nothing goes through a board or a wall, one mark on it; with it gone the shot gets there): ${JSON.stringify(dm)}`);
+    C.ok(dm.legHit === 20, `guns: the host didn't take a leg hit: ${JSON.stringify(dm)}`);
+    // a window: the first shot breaks it (and is stopped), then shots go through the gap
+    const win = await ev(p, () => { const s = T.s(), Th = RS.THREE, w = s.windows.find(w => { const sz = w.box.getSize(new Th.Vector3()); return sz.y > 0.8 && w.c.y > 0.8 && w.c.y < 2.2; }); if (!w) return { none: s.windows.length };
+      const sz = w.box.getSize(new Th.Vector3()), nrm = sz.x < sz.z ? new Th.Vector3(1, 0, 0) : new Th.Vector3(0, 0, 1); let side = null;
+      for (const sg of [1, -1]) { const x = w.c.x + nrm.x * sg * 2.5, z = w.c.z + nrm.z * sg * 2.5, nav = RS.room.nav, k = nav.idx(x, z); if (k >= 0 && nav.free[k]) { side = [x, z]; break; } } if (!side) return { noSide: true, n: s.windows.length };
+      T.stand(side[0], side[1]); s.loadGun('monstor'); s.my.drawEnd = 0; T.aim(w.c.x, w.c.y, w.c.z); const o = RS.player.head.clone(), d = new Th.Vector3().copy(w.c).sub(o).normalize();
+      const t0 = s.trace(o, d, 30, s.curG()); s.my.nextShot = 0; s.fire(); T.step(0.2); const t1 = s.trace(o, d, 30, s.curG());
+      const out = { n: s.windows.length, first: t0.glass, broken: w.broken, hidden: !w.mesh.visible, after: t1.glass, bits: s.bits.length };
+      s.mendGlass(); out.mended = !w.broken && w.mesh.visible; return out; });
+    C.ok(win.n > 0 && win.first >= 0 && win.broken && win.hidden && win.after !== win.first && win.bits > 0 && win.mended, `guns: a window didn't stop the first shot and shatter (then let shots through), or come back next round: ${JSON.stringify(win)}`);
     C.ok(!p.errors.length, 'guns: page errors: ' + [...new Set(p.errors)].slice(0, 3).join(' | '));
     console.log(`  guns: modes ${JSON.stringify(fm)}; damage ${JSON.stringify(dm)}`);
   } catch (e) { C.ok(false, `guns: ${e.message.slice(0, 400)}`); }
@@ -597,6 +607,13 @@ async function mp(C) {
     const hpH = await ev(H, (id) => T.s().F.get(id).hp, target.id); await sleep(1500); const hpG = await ev(G, (id) => T.s().F.get(id).hp, target.id);
     C.ok(hit && hitH && hpH === hpG, `mp: the guest's shots on the bot: host sees ${hpH}, guest sees ${hpG}`);
     C.ok((await ev(H, () => T.s()._shots)) >= 1, 'mp: the host never saw the guest\'s shots');
+    // ---- coming back mid-match: the host's state (everyone, their health, their kills) reaches the guest whole (sdState: its
+    // fighters field mustn't be called "f", the relay's own sender field)
+    const st0 = await ev(H, (id) => { const s = T.s(); return { n: s.F.size, hp: Math.ceil(s.F.get(id).hp) }; }, target.id);
+    await ev(G, (id) => { const s = T.s(); s.F.get(id).hp = 1; s._gotState = 0; const ap = s.apply.bind(s); s.apply = (k, m) => { if (k === 'sdState') s._gotState = Object.keys(m.fs || {}).length; return ap(k, m); }; RS.net.send({ t: 'sdHello' }); }, target.id);
+    const gs = await G.waitForFunction((n) => T.s()._gotState === n, st0.n, { timeout: 30000 }).then(() => true, () => false);
+    const hpBack = await ev(G, (id) => Math.ceil(T.s().F.get(id).hp), target.id);
+    C.ok(gs && hpBack === st0.hp, `mp: a guest coming back mid-match didn't get everyone from the host's state (${gs}, the bot's health ${hpBack} not ${st0.hp})`);
     // ---- the host's referee hurts the guest: the guest's own health and its red flash
     await ev(H, ([gid, bid]) => { T.s().hostDamage(gid, bid, 25, false, new RS.THREE.Vector3(0, 1.5, 0)); }, [ids.guest, target.id]);
     const gh = await G.waitForFunction(() => T.s().mine().hp === 75, null, { timeout: 30000 }).then(() => true, () => false); C.ok(gh, 'mp: the guest\'s health didn\'t drop to 75');

@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { sfx } from './audio.js';
 import { track } from './awards.js';
 import { SQUAD } from './squad.js';
-import { GUN, GUNS, FREE_GUN, falloff, newGun, gunModel, handGeos, beanShellGeo, pliersGeo, bombGeo, flashGeo, flashTexture } from './sndkit.js';
+import { GUN, GUNS, FREE_GUN, falloff, newGun, gunModel, handGeos, beanShellGeo, pliersGeo, bombGeo, flashGeo, flashTexture, projGeo } from './sndkit.js';
 import { vcLambert, vcPhong } from './geo.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -98,10 +98,11 @@ export const GUNSYS = {
   shootOnce(sx, sy) {
     const G = this.curG(), t = this.clock; if (t < this.my.nextShot) return false;
     if (G.spin && this.my.spin < G.spin) return false;      // (the gatling winds up first)
-    if (this.my.mag <= 0) { if (!this.clickT || t - this.clickT > 0.35) { this.clickT = t; sfx('sd_empty', null, 0.9); this.pop('*CLICK* RELOAD!', '#ff5252'); } if (this.my.reserve > 0) this.doReload(true); return false; }
+    if (this.my.mag <= 0) { if (!this.clickT || t - this.clickT > 0.35) { this.clickT = t; sfx(`sd_dry_${G.id}`, null, 0.9); this.pop('*CLICK* RELOAD!', '#ff5252'); } if (this.my.reserve > 0) this.doReload(true); return false; }
     const ray = this.aimRay(sx, sy); if (!ray) return false;
     this.my.mag--; this.my.nextShot = t + G.rate; if (G.cycle) this.my.cyc = { t0: t, T: G.cycle, k: G.rtype === 'bolt' ? 'bolt' : 'pump', ej: false };
     const spread = this.spreadNow(G), assist = this.g.renderer.xr.isPresenting || ('ontouchstart' in window) || navigator.maxTouchPoints > 0, P = this.g.player;
+    if (G.proj || G.flame) return this.special(G, ray, spread, t);
     const hits = new Map(), ends = [], from = this.muzzle(ray), u = new THREE.Vector3(), w = new THREE.Vector3(), glass = new Set(); let mates = 0;
     u.crossVectors(ray.direction, Math.abs(ray.direction.y) < 0.95 ? _up : new THREE.Vector3(1, 0, 0)).normalize(); w.crossVectors(ray.direction, u);
     for (let n = 0; n < G.pellets; n++) {
@@ -126,6 +127,61 @@ export const GUNSYS = {
     if (this.my.mag <= 0 && this.my.reserve > 0) this.my.autoRl = t + 0.22;
     return true;
   },
+  // the odd ones out: the launcher and the crossbow fire something that flies (projTick does the rest), the flamer
+  // sprays sauce a few metres in a cone
+  special(G, ray, spread, t) {
+    const from = this.muzzle(ray), jit = (d0, sp) => { const d = d0.clone(); if (sp > 0) { const u = new THREE.Vector3().crossVectors(d, Math.abs(d.y) < 0.95 ? _up : new THREE.Vector3(1, 0, 0)).normalize(), w = new THREE.Vector3().crossVectors(d, u), a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * sp; d.addScaledVector(u, Math.cos(a) * r).addScaledVector(w, Math.sin(a) * r).normalize(); } return d; };
+    if (G.proj) { const v = jit(ray.direction, spread).multiplyScalar(G.proj.speed); if (G.proj.grav > 5) v.y += 2.2;      // (a lob: aimed a little up)
+      this.addProj(G, from, v, this.me); this.net.send({ t: 'sdProj', a: [r2(from.x), r2(from.y), r2(from.z)], v: [r2(v.x), r2(v.y), r2(v.z)], g: G.i });
+      this.flash(from, G, ray.direction); this.vmFlash(); sfx(G.sfx, null, 0.9); }
+    else { const hits = new Map(), glass = new Set(); let mates = 0;
+      for (let n = 0; n < 3; n++) { const d = jit(ray.direction, spread), tr = this.trace(ray.origin, d, G.range, G); if (tr.glass >= 0) glass.add(tr.glass);
+        if (tr.hit && tr.hit.mate) mates++; else if (tr.hit) { const e = hits.get(tr.hit.id) || { d: 0, z: tr.hit.z, p: tr.hit.point }; e.d += G.dmg / 3 * falloff(G, tr.hit.t) * (tr.hit.z === 1 ? G.hs : 1) * (this.perk('dmg') ? 1.5 : 1); hits.set(tr.hit.id, e); } }
+      this.spray(from, ray.direction, G); if (t > (this.flameSndT || 0)) { this.flameSndT = t + 0.2; sfx(G.sfx, null, 0.7); this.net.send({ t: 'sdShot', a: [r2(from.x), r2(from.y), r2(from.z)], b: [r2(from.x + ray.direction.x * G.range), r2(from.y + ray.direction.y * G.range), r2(from.z + ray.direction.z * G.range)], g: G.i, n: 1 }); }
+      for (const [id, e] of hits) this.ask('sdHit', { v: id, d: Math.max(1, Math.round(e.d)), hs: e.z === 1 ? 1 : 0, z: e.z, g: G.id, p: [r2(e.p.x), r2(e.p.y), r2(e.p.z)] });
+      for (const i of glass) this.ask('sdGlass', { i }); if (mates && t > (this.mateT || 0)) { this.mateT = t + 1.2; this.pop('🚫 THAT\'S YOUR TEAM-MATE!', '#4fc3ff'); } }
+    this.kick[this.me] = 1; this.recoil(G); this.my.lastShot = t; track('sdShots');
+    if (this.my.mag <= 0 && this.my.reserve > 0) this.my.autoRl = t + 0.22;
+    return true;
+  },
+  // something flying: an egg on an arc, a chip almost flat. owner: whose it is (only the thrower's own game does the damage)
+  addProj(G, at, v, owner) {
+    const kind = G.proj.bolt ? 'bolt' : 'egg', m = new THREE.Mesh(projGeo(kind), vcLambert); m.position.copy(at); m.frustumCulled = false; this.grp.add(m);
+    (this.projs || (this.projs = [])).push({ G, p: at.clone(), v: v.clone(), owner, m, t: 0, kind });
+  },
+  projTick(dt) {
+    if (!this.projs || !this.projs.length) { this.stuckTick(dt); return; }
+    const keep = [];
+    for (const pr of this.projs) { pr.t += dt; const G = pr.G, old = pr.p.clone(); pr.v.y -= G.proj.grav * dt; pr.p.addScaledVector(pr.v, dt);
+      const seg = pr.p.clone().sub(old), L = seg.length(); let done = pr.t > 6;
+      if (L > 1e-4 && !done) { const d = seg.divideScalar(L), mine = pr.owner === this.me, tr = mine ? this.trace(old, d, L, G) : { hit: null, holes: this.hitsAlong(old, d, L, true).slice(0, 1).map(h => [old.clone().addScaledVector(d, h[0]), h[2], h[3]]), glass: -1 };
+        let at = null, n = null; if (tr.hit) at = tr.hit.point; else if (tr.glass >= 0) { at = old.clone().addScaledVector(d, Math.max(0, L * 0.5)); } else if (tr.holes.length) { at = tr.holes[0][0]; n = tr.holes[0][1]; }
+        if (!mine && tr.holes.length && tr.holes[0][2] >= 0) at = tr.holes[0][0];
+        const fl = this.floor(pr.p.x, pr.p.z); if (!at && pr.p.y < fl + 0.03) { at = new THREE.Vector3(pr.p.x, fl + 0.03, pr.p.z); n = new THREE.Vector3(0, 1, 0); }
+        if (at) { done = true; if (mine && tr.glass >= 0) this.ask('sdGlass', { i: tr.glass }); this.projHit(pr, at, n, mine ? tr.hit : null); } }
+      if (done) { this.grp.remove(pr.m); continue; }
+      pr.m.position.copy(pr.p); if (pr.kind === 'bolt') pr.m.lookAt(_v.copy(pr.p).sub(pr.v)); else pr.m.rotation.set(pr.t * 9, pr.t * 5, 0); keep.push(pr); }
+    this.projs = keep; this.stuckTick(dt);
+  },
+  // where it ends up: an egg goes off (everyone near it, if nothing solid's between, is hurt: the nearer, the more); a
+  // chip sticks where it lands, or in whoever it hit
+  projHit(pr, at, n, hit) {
+    const G = pr.G, mine = pr.owner === this.me;
+    if (pr.kind === 'bolt') { if (mine && hit && !hit.mate) this.ask('sdHit', { v: hit.id, d: Math.round(G.dmg * (hit.z === 1 ? G.hs : hit.z === 2 ? G.limb : 1) * (this.perk('dmg') ? 1.5 : 1)), hs: hit.z === 1 ? 1 : 0, z: hit.z, g: G.id, p: [r2(at.x), r2(at.y), r2(at.z)] });
+      if (mine && hit && hit.mate && this.clock > (this.mateT || 0)) { this.mateT = this.clock + 1.2; this.pop('🚫 THAT\'S YOUR TEAM-MATE!', '#4fc3ff'); }
+      sfx('sd_thunk', at, 0.7); if (!hit) { const m = new THREE.Mesh(projGeo('bolt'), vcLambert); m.position.copy(at); m.lookAt(_v.copy(at).sub(pr.v)); this.grp.add(m); (this.stuck || (this.stuck = [])).push({ m, t: 0 }); if (this.stuck.length > 12) this.grp.remove(this.stuck.shift().m); } return; }
+    // the egg: a bang of breadcrumbs and sausage meat, a scorch on the floor
+    this.burst(at, [0xff8a1a, 0xffd400, 0x9a5a2a, 0xc8823a, 0xffffff], 34, 4); this.mark(new THREE.Vector3(at.x, this.floor(at.x, at.z) + 0.006, at.z), new THREE.Vector3(0, 1, 0), 0x5a3a1a, G.proj.splash * 0.6);
+    sfx('sd_eggboom', at, 1.1); const P = this.g.player, dd = Math.hypot(P.head.x - at.x, P.head.z - at.z); if (dd < 10 && P.flatMode) this.shake = Math.max(this.shake || 0, 0.5 * (1 - dd / 10));
+    if (!mine) return; const me = this.mine(), h = new THREE.Vector3(), up = at.clone().add({ x: 0, y: 0.25, z: 0 });
+    for (const [id, f] of this.F) { if (!f.alive || (me && f.team === me.team)) continue; if (!this.headOf(id, h)) continue; h.y -= 0.6; const d = h.distanceTo(at); if (d > G.proj.splash) continue;
+      if (!this.canSee(up, h)) continue;      // (round a corner, behind a wall: nothing)
+      const direct = hit && hit.id === id ? G.dmg : 0, dmg = direct + G.proj.sdmg * Math.pow(1 - d / G.proj.splash, 0.7) * (this.perk('dmg') ? 1.5 : 1);
+      this.ask('sdHit', { v: id, d: Math.round(dmg), hs: 0, z: 0, g: G.id, p: [r2(h.x), r2(h.y), r2(h.z)] }); }
+  },
+  stuckTick(dt) { if (!this.stuck) return; this.stuck = this.stuck.filter(s2 => { s2.t += dt; if (s2.t > 6) { this.grp.remove(s2.m); return false; } return true; }); },
+  // someone else's egg or chip (or a bot's): just to see (their own game does the damage)
+  remoteProj(id, m) { const G = GUNS[Number(m.g)], f = this.F.get(id); if (!G || !G.proj || !f || !f.alive) return; const a = new THREE.Vector3(...m.a), v = new THREE.Vector3(...m.v); if (v.length() > 200) return; this.addProj(G, a, v, id); this.flash(a, G, v.clone().normalize()); sfx(G.sfx, a, 0.8); f.shotT = this.clock; this.kick[id] = 1; },
   // how wide the shots go right now: the gun's own, aimed or not, how much it's bloomed, and moving
   spreadNow(G = this.curG()) {
     const P = this.g.player, k = smooth(this.my.adsK), moving = P.flatMove ? Math.hypot(P.flatMove.x, P.flatMove.z) > 0.2 : false;
@@ -196,7 +252,7 @@ export const GUNSYS = {
     if (G.rtype === 'shell') { const n = Math.min(cap - this.my.mag, this.my.reserve); this.my.rl = { k: 'shell', t0: this.clock, pre: 0.35 * mul, per: G.reload * mul, n, done: 0 }; this.my.rl.T = this.my.rl.pre + n * this.my.rl.per + 0.3 * mul; }
     else this.my.rl = { k: G.rtype, t0: this.clock, T: G.reload * mul, ev: 0 };
     this.my.reloadEnd = this.clock + this.my.rl.T; this.my.reloadLen = this.my.rl.T; this.net.send({ t: 'sdAct', k: 'reload', on: 1 }); this.updateSpeed();
-    if (G.rtype !== 'shell') sfx('sd_magout', null, 0.8); track('sdReloads');
+    sfx(`sd_rl_${G.id}`, null, 0.85); track('sdReloads');
   },
   cancelReload() { if (!this.my.rl && !this.my.reloadEnd) return; this.my.rl = null; this.my.reloadEnd = 0; this.updateSpeed(); },
   reloadTick() {
@@ -206,7 +262,7 @@ export const GUNSYS = {
       if (t >= rl.t0 + rl.pre + rl.n * rl.per && !rl.pumped) { rl.pumped = true; sfx('sd_pump', null, 0.8); }
       if (t >= rl.t0 + rl.T) { this.my.rl = null; this.my.reloadEnd = 0; this.updateSpeed(); } return; }
     // (the others: the sounds as the magazine comes out, goes in, and the gun's racked; the rounds go in at the end)
-    if (rl.ev < 1 && f >= (rl.k === 'cyl' ? 0.2 : 0.62)) { rl.ev = 1; sfx('sd_magin', null, 0.8); if (rl.k === 'cyl') for (let i = 0; i < 6; i++) this.ejectCasing(G, i); }
+    if (rl.ev < 1 && f >= (rl.k === 'cyl' ? 0.2 : 0.62)) { rl.ev = 1; sfx('sd_magin', null, 0.8); if (rl.k === 'cyl' && G.id === 'mustard') for (let i = 0; i < 6; i++) this.ejectCasing(G, i); }
     if (rl.ev < 2 && f >= (rl.k === 'cyl' ? 0.7 : 0.84) && rl.k !== 'box') { rl.ev = 2; sfx(rl.k === 'bolt' ? 'sd_bolt' : 'sd_rack', null, 0.8); }
     if (t >= this.my.reloadEnd) { const n = Math.min(cap - this.my.mag, this.my.reserve); this.my.mag += n; this.my.reserve -= n; this.my.rl = null; this.my.reloadEnd = 0; this.updateSpeed(); }
   },

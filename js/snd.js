@@ -28,14 +28,14 @@ import { track } from './awards.js';
 import { roomNum } from './roomopts.js';
 import { SQUAD } from './squad.js';
 import { vcLambert } from './geo.js';
-import { GUNS, GUN, PRIMARIES, FREE_GUN, PICKS, PICK_KINDS, MAPS, pickModel, plinthGeo, bombGeo, bombLightGeo, bombFace, pliersGeo, siteTexture, signTexture, siteProps, boardTexture, newGun, falloff, maxHit, money } from './sndkit.js';
+import { HP, GUNS, GUN, PRIMARIES, FREE_GUN, PICKS, PICK_KINDS, MAPS, pickModel, plinthGeo, bombGeo, bombLightGeo, bombFace, pliersGeo, siteTexture, signTexture, siteProps, boardTexture, newGun, falloff, maxHit, money } from './sndkit.js';
 import { UI } from './sndui.js';
 import { GUNSYS } from './sndguns.js';
 import { FX } from './sndfx.js';
 import { WORLD } from './sndworld.js';
 
 export const SD = {
-  HP: 100, AR_MAX: 100, AR_ABS: 0.6, BUY_T: 14, ROUND_T: 115, BOMB_T: 40, PLANT_T: 3.2, DEFUSE_T: 6.5, END_T: 7, OVER_T: 3,
+  HP, AR_MAX: 100, AR_ABS: 0.6, BUY_T: 14, ROUND_T: 115, BOMB_T: 40, PLANT_T: 3.2, DEFUSE_T: 6.5, END_T: 7, OVER_T: 3,
   PICK_R: 1.25, BOMB_R: 1.5, BOOM_R: 8, GRAB_R: 1.4, TEAM_MAX: 6, MAX: 12, SPOT_R: 32, BOT_SPEED: 2.35, ASSIST_D: 30,
   CASH0: 2000, CASH_MAX: 9000, WIN_CASH: 2500, LOSE_CASH: 1400, LOSE_STEP: 500, OBJ_CASH: 300, DROPS: 14,
 };
@@ -80,6 +80,7 @@ export class SearchDestroy {
     on('sdHello', (m, p) => { if (this.host && p) this.hostHello(p.id); });
     on('sdGun', (m, p) => { if (p) this.setGun(String(p.id), m.g); });
     on('sdShot', (m, p) => { if (!p) return; this.remoteShot(this.botOr(m, p), m); });
+    on('sdProj', (m, p) => { if (!p || !v3ok(m.a) || !v3ok(m.v)) return; this.remoteProj(this.botOr(m, p), m); });
     on('sdHit', (m, p) => { if (this.host && p) this.hostHit(String(p.id), m); });
     on('sdTake', (m, p) => { if (this.host && p) this.hostTake(String(p.id), m.i); });
     on('sdPlant', (m, p) => { if (this.host && p) this.hostPlant(String(p.id), m); });
@@ -279,7 +280,7 @@ export class SearchDestroy {
     const f = {}; for (const [k, v] of this.F) { const s = this.stat(k); f[k] = [v.alive ? 1 : 0, Math.round(v.hp), Math.round(v.ar), v.gun || FREE_GUN, s.k, s.d, s.as, s.pl, s.df, s.mvp]; }
     const ld = {}, cash = {}; for (const [k] of this.F) { ld[k] = this.loadMsg(k); cash[k] = Math.round(this.H.cash[k] ?? SD.CASH0); }
     const drops = [...this.H.drops.values()].map(d => [d.d, d.g, d.x, d.z]);
-    this.net.send({ t: 'sdState', to: id, round: this.roundMsg || null, ph: this.phase, left: Math.max(0, (this.H.ends || 0) - this.clock), f, bomb: this.bombMsg || null, sc: this.H.sc, pkOn: this.pk.map(p => p.on ? 1 : 0), over: this.overMsg || null, ld, cash, drops, hist: this.H.hist.slice(-12), gl: (this.windows || []).filter(w => w.broken).map(w => w.i) });
+    this.net.send({ t: 'sdState', to: id, round: this.roundMsg || null, ph: this.phase, left: Math.max(0, (this.H.ends || 0) - this.clock), fs: f, bomb: this.bombMsg || null, sc: this.H.sc, pkOn: this.pk.map(p => p.on ? 1 : 0), over: this.overMsg || null, ld, cash, drops, hist: this.H.hist.slice(-12), gl: (this.windows || []).filter(w => w.broken).map(w => w.i) });
   }
   // a buy in the shop: only while the round's being set up, only what you can afford. A gun you bought this round and
   // swap for another is refunded; one you'd kept from last round is left on the floor for a team-mate
@@ -445,7 +446,7 @@ export class SearchDestroy {
     if (k === 'sdHp') { const f = this.F.get(String(m.id)); if (f) { if (finite(m.hp)) f.hp = clamp(m.hp, 0, SD.HP); if (finite(m.ar)) f.ar = clamp(m.ar, 0, SD.AR_MAX); } return; }
     if (k === 'sdBots') { if (!Array.isArray(m.b)) return; for (const e of m.b.slice(0, 12)) { if (!Array.isArray(e) || e.length < 6) continue; const [id, x, z, yaw, pitch, fl] = e; if (!finite(x, z, yaw, pitch) || Math.abs(x) > 1e3 || Math.abs(z) > 1e3) continue; const f = this.F.get(String(id)); if (!f || !f.bot) continue;
         const bp = this.botPose.get(f.id) || { x, z, yaw, pitch, dx: x, dz: z }; bp.tx = x; bp.tz = z; bp.tyaw = yaw; bp.pitch = pitch; bp.fl = fl | 0; if (Math.hypot(bp.x - x, bp.z - z) > 3) { bp.x = x; bp.z = z; } this.botPose.set(f.id, bp); } return; }
-    if (k === 'sdState') { if (m.round) this.startRound(m.round, true); const f = m.f && typeof m.f === 'object' ? m.f : {};
+    if (k === 'sdState') { if (m.round) this.startRound(m.round, true); const f = m.fs && typeof m.fs === 'object' ? m.fs : {};
       for (const id in f) { const F = this.F.get(id), e = f[id]; if (!F || !Array.isArray(e)) continue; F.alive = !!e[0]; if (finite(e[1])) F.hp = e[1]; if (finite(e[2])) F.ar = e[2]; if (gunOk(e[3])) F.gun = e[3];
         ['k', 'd', 'a', 'pl', 'df', 'mvp'].forEach((s, j) => { if (finite(e[4 + j])) F[s] = clamp(e[4 + j], 0, 999); }); }
       if (m.sc && typeof m.sc === 'object') this.sc = { R: Number(m.sc.R) || 0, B: Number(m.sc.B) || 0 };
@@ -496,7 +497,7 @@ export class SearchDestroy {
     if (m.ld && typeof m.ld === 'object') this.loadsIn(m.ld); this.cashIn(m.cash);
     if (Array.isArray(m.hist)) this.hist = m.hist.filter(h => Array.isArray(h) && (h[0] === 'R' || h[0] === 'B')).slice(-12).map(h => [h[0], String(h[1] || '').slice(0, 10)]);
     this.layPicks(m.pk); this.bomb = { st: m.car ? 'carried' : 'none', id: m.car != null ? String(m.car) : null }; this.bombMsg = { ...this.bomb }; this.bombAt = 0; this.boomFx = 0;
-    for (const [, D] of this.drops) this.grp.remove(D.mesh); this.drops.clear(); this.clearMarks(); this.dmgLog = []; this.deathCam = null; this.boughtNow = {}; this.mendGlass();
+    for (const [, D] of this.drops) this.grp.remove(D.mesh); this.drops.clear(); this.clearMarks(); for (const pr of this.projs || []) this.grp.remove(pr.m); this.projs = []; for (const s2 of this.stuck || []) this.grp.remove(s2.m); this.stuck = []; this.dmgLog = []; this.deathCam = null; this.boughtNow = {}; this.mendGlass();
     this.phase = 'buy'; this.endsAt = this.clock + (Number(m.bt) || SD.BUY_T); this.countN = null;
     // bots on everyone's game: a puppet each (made once, kept round to round)
     for (const [id, f] of this.F) if (f.bot && !this.puppets.has(id)) this.makePuppet(f);
@@ -709,8 +710,10 @@ export class SearchDestroy {
     const aim = q.clone().add({ x: 0, y: z === 1 ? 0 : z === 2 ? -1.1 : -0.35, z: 0 }); if (!dmg) aim.add({ x: (Math.random() - 0.5) * 1.6, y: (Math.random() - 0.3) * 1.2, z: (Math.random() - 0.5) * 1.6 });
     { const dd = aim.clone().sub(from), L = dd.length(), gi = this.glassOn(from, dd.divideScalar(L), L); if (gi >= 0) { dmg = 0; this.send('sdGlass', { i: gi }); } }      // (a window in the way: the glass takes it, and breaks)
     const end = dmg ? aim : from.clone().add(aim.sub(from).normalize().multiplyScalar(this.wallT(new THREE.Ray(from, aim.clone().normalize()), G.range)));
-    this.net.send({ t: 'sdShot', id: b.id, a: [r2(from.x), r2(from.y), r2(from.z)], b: [r2(end.x), r2(end.y), r2(end.z)], g: G.i, n: Math.min(5, G.pellets) });
-    this.remoteShot(b.id, { a: [from.x, from.y, from.z], b: [end.x, end.y, end.z], g: G.i, n: Math.min(5, G.pellets) });
+    if (G.proj) { const v = end.clone().sub(from), L = Math.max(0.1, v.length()), tt = L / G.proj.speed; v.divideScalar(tt); v.y += 0.5 * G.proj.grav * tt;      // (aimed so it arrives where it was going)
+      this.net.send({ t: 'sdProj', id: b.id, a: [r2(from.x), r2(from.y), r2(from.z)], v: [r2(v.x), r2(v.y), r2(v.z)], g: G.i }); this.remoteProj(b.id, { a: [from.x, from.y, from.z], v: [v.x, v.y, v.z], g: G.i }); }
+    else { this.net.send({ t: 'sdShot', id: b.id, a: [r2(from.x), r2(from.y), r2(from.z)], b: [r2(end.x), r2(end.y), r2(end.z)], g: G.i, n: Math.min(5, G.pellets) });
+      this.remoteShot(b.id, { a: [from.x, from.y, from.z], b: [end.x, end.y, end.z], g: G.i, n: Math.min(5, G.pellets) }); }
     if (dmg > 0) { const T2 = this.bots.get(b.target); if (T2) T2.lastHurt = b.id; this.hostDamage(b.target, b.id, Math.round(dmg), z, from, G, false); }
   }
   // where a bot's going when it isn't fighting
@@ -790,7 +793,7 @@ export class SearchDestroy {
     // bots, other people's guns, the guns on the floor, the effects
     this.puppetsUpdate(dt); this.bodies(); this.gunsDraw(dt, me, xr); this.dropsTick(t);
     for (const p of this.pk) if (p.pop) { p.pop += dt * 3; if (p.pop >= 1) p.pop = 0; }
-    this.drawPicks(t); this.animFx(dt); if ((this.stepT = (this.stepT || 0) - dt) <= 0) { this.stepT = 0.1; this.stepsTick(); }
+    this.drawPicks(t); this.animFx(dt); this.projTick(dt); if ((this.stepT = (this.stepT || 0) - dt) <= 0) { this.stepT = 0.1; this.stepsTick(); }
     if (xr) this.vrInput(P, me); else { this.drawHud(me); }
     this.countdown();
     this.laser.visible = xr && alive && this.phase === 'live';
@@ -800,7 +803,7 @@ export class SearchDestroy {
     if (this.deathCam && this.clock - this.deathCam.t0 >= 2.8) { this.deathCam = null; if (!this.spect) this.doWatch(true); }      // (the look at who got you's over: watching your team)
     if (me && !me.alive && this.inRound() && !this.spect && !this.deathCam && (this.watchT = (this.watchT || 0) - dt) <= 0) { this.watchT = 1; this.doWatch(true); }
     // the low health warning: a heartbeat
-    if (alive && me.hp < 35 && (this.lowSnd = (this.lowSnd || 0) - dt) <= 0) { this.lowSnd = 1.1; sfx('sd_heartbeat', null, 0.6); }
+    if (alive && me.hp < 50 && (this.lowSnd = (this.lowSnd || 0) - dt) <= 0) { this.lowSnd = 1.1; sfx('sd_heartbeat', null, 0.6); }
   }
   // the guns on the floor: lying there turning slowly, a glint so you spot them
   dropsTick(t) { for (const [, D] of this.drops) { D.mesh.rotation.y = (D.t0 || 0) + t * 0.6; D.mesh.position.y = D.y + 0.08 + Math.sin(t * 3 + D.d) * 0.02; } }

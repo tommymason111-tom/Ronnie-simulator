@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { sfx } from './audio.js';
 import { track } from './awards.js';
 import { rr, txt } from './impgames.js';
-import { GUNS, GUN, PRIMARIES, SIDEARMS, FREE_GUN, gunBars, drawGunArt, PERKS, money } from './sndkit.js';
+import { HP, GUNS, GUN, PRIMARIES, SIDEARMS, FREE_GUN, gunBars, drawGunArt, PERKS, money } from './sndkit.js';
 
 const TEAMS = { R: { short: 'GREASY SPOONS', col: '#ff5a3d', ico: '🍳' }, B: { short: 'SALAD DODGERS', col: '#3da5ff', ico: '🥗' } };
 const VERB = Object.assign(Object.create(null), { ketchup: 'SAUCED', brown: 'BROWN-SAUCED', mustard: 'MUSTARDED', beans: 'BEANED', sausage: 'SAUSAGED', cheese: 'CHEESED', monstor: 'CANNED', baguette: 'BAGUETTED', gravy: 'GRAVIED' });
@@ -300,7 +300,7 @@ export const UI = {
     const gap = Math.round(4 + this.spreadNow(G) * 260 / (this.zoomNow || 1) + (this.kick[this.me] || 0) * 6);
     this.crossEl.classList.toggle('on', alive && !this.my.scoped && !this.pickOpen && !(this.my.adsK > 0.9 && G.scope)); if (gap !== this.gapWas) { this.gapWas = gap; const T = this.crossEl.querySelectorAll('.t'); T[0].style.top = (-gap - 9) + 'px'; T[1].style.top = gap + 'px'; T[2].style.left = (-gap - 9) + 'px'; T[3].style.left = gap + 'px'; }
     this.scopeEl.classList.toggle('on', alive && !!this.my.scoped);
-    this.vigEl.classList.toggle('on', alive && me.hp < 35); this.deadEl.classList.toggle('on', !!(me && !me.alive && this.inRound()));
+    this.vigEl.classList.toggle('on', alive && me.hp < 50); this.deadEl.classList.toggle('on', !!(me && !me.alive && this.inRound()));
     // plant / defuse progress
     if (this.my.act) { const k = Math.min(1, (t - this.my.act.t0) / this.my.act.T); this.progEl.classList.add('on'); this.progEl.querySelector('.ring').style.setProperty('--k', Math.round(k * 100) + '%'); this.progEl.querySelector('b').textContent = this.my.act.k === 'plant' ? '💣' : '🔧'; this.progEl.querySelector('span').textContent = this.my.act.k === 'plant' ? 'PLANTING THE VINDALOO...' : 'DEFUSING...'; }
     else this.progEl.classList.remove('on');
@@ -335,7 +335,7 @@ export const UI = {
     chips.push({ t: `💷 ${money(this.cash[this.me] ?? 0)}`, c: '#39ff14' });
     for (const k in this.my.perks) { const e = this.my.perks[k]; if (!(e > t)) continue; const [ico, nm2] = PERKS[k] || ['✨', k]; chips.push({ t: e > 1e8 ? `${ico} ${nm2}` : `${ico} ${Math.ceil(e - t)}s`, c: '#ff4fd8', pulse: e < 1e8 && e - t < 4 }); }
     if (this.bomb.id === this.me && this.bomb.st === 'carried') chips.push({ t: '💣 BOMB', c: '#ff9f1c', pulse: true });
-    return { box: { col: hp < 35 ? '#ff3b3b' : col, label: `${TEAMS[me.team].ico} ${me.team === this.att ? 'ATTACK' : 'DEFENCE'} · R${this.round}`, big: String(hp), unit: '❤', sub: me.ar > 0 ? `🦺 ${Math.round(me.ar)}` : 'NO ARMOUR', bar: { k: hp / 100, col: hp < 35 ? '#ff3b3b' : hp < 65 ? '#ffd400' : '#39ff14' }, chips } };
+    return { box: { col: hp < 50 ? '#ff3b3b' : col, label: `${TEAMS[me.team].ico} ${me.team === this.att ? 'ATTACK' : 'DEFENCE'} · R${this.round}`, big: String(hp), unit: '❤', sub: me.ar > 0 ? `🦺 ${Math.round(me.ar)}` : 'NO ARMOUR', bar: { k: hp / HP, col: hp < 50 ? '#ff3b3b' : hp < 95 ? '#ffd400' : '#39ff14' }, chips } };
   },
   hudLine() { if (!this.inRound()) return 'SEARCH & DESTROY'; const planted = this.bomb.st === 'planted'; return `R${this.round} ${this.sc.R}-${this.sc.B} · ${planted ? '💣 ' : ''}${fmt(planted ? this.bombAt - this.clock : this.endsAt - this.clock)}`; },
   // ---- little messages

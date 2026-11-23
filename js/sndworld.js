@@ -31,7 +31,11 @@ export const WORLD = {
       this.windows.push({ i: this.windows.length, mesh: o, box, broken: false, c: box.getCenter(new THREE.Vector3()) }); });
     // the solid boxes: everything the level collides with, except the panes themselves (a window's own box is the window)
     const winCovers = (b) => this.windows.some(w => { const i = b.clone().intersect(w.box); if (i.isEmpty()) return false; const s = i.getSize(_s), bs = b.getSize(new THREE.Vector3()); return s.x * s.y * s.z > 0.6 * Math.max(1e-6, bs.x * bs.y * bs.z); });
-    this.walls = (room.colliders || []).map(b => new THREE.Box3(b.min.clone(), b.max.clone())).filter(b => !b.isEmpty() && !winCovers(b));
+    // (a wall built solid across a window's opening has the window cut out of it, so a broken one is a real gap)
+    const cut = (b) => { let out = [b]; for (const w of this.windows) { const next = []; for (const B of out) { const W = w.box.clone(); const s3 = W.getSize(new THREE.Vector3()), ax = s3.x < s3.z ? 'x' : 'z'; W.min[ax] = Math.min(W.min[ax], B.min[ax]) - 0.01; W.max[ax] = Math.max(W.max[ax], B.max[ax]) + 0.01;
+        if (!B.intersectsBox(W) || B.clone().intersect(W).isEmpty()) { next.push(B); continue; } const I = B.clone().intersect(W), sI = I.getSize(new THREE.Vector3()); if (sI.x * sI.y * sI.z < 1e-4) { next.push(B); continue; }
+        let rest = B.clone(); for (const c of ['x', 'y', 'z']) { if (rest.min[c] < I.min[c]) { const p2 = rest.clone(); p2.max[c] = I.min[c]; next.push(p2); rest.min[c] = I.min[c]; } if (rest.max[c] > I.max[c]) { const p2 = rest.clone(); p2.min[c] = I.max[c]; next.push(p2); rest.max[c] = I.max[c]; } } } out = next; } return out; };
+    this.walls = (room.colliders || []).map(b => new THREE.Box3(b.min.clone(), b.max.clone())).filter(b => !b.isEmpty() && !winCovers(b)).flatMap(cut).concat(this.extraWalls || []);
     this.grid = new Map(); const add = (list, kind) => list.forEach((b, i) => { const B = kind ? b.box : b; for (let x = Math.floor((B.min.x - PAD) / CELL); x <= Math.floor((B.max.x + PAD) / CELL); x++) for (let z = Math.floor((B.min.z - PAD) / CELL); z <= Math.floor((B.max.z + PAD) / CELL); z++) { const k = x * 4096 + z; let c = this.grid.get(k); if (!c) this.grid.set(k, c = { w: [], g: [] }); (kind ? c.g : c.w).push(i); } });
     add(this.walls, 0); add(this.windows, 1); this.qMark = new Uint32Array(this.walls.length); this.gMark = new Uint32Array(this.windows.length); this.qN = 0;
   },
