@@ -728,9 +728,9 @@ function mpAfterStart() { if (director.remote) mp.becomeClient(); }
 // back to the start of the map (in multiplayer, spread out a little so nobody spawns inside anyone else)
 function respawnPlayer() {
   const s = room.start, ids = [net.id, ...net.players.keys()].filter(Boolean).sort(), i = net.connected ? Math.max(0, ids.indexOf(net.id)) : 0;
-  const a = s.yaw + Math.PI / 2, off = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.75;
+  const a = s.yaw + Math.PI / 2, off = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.75, spot = room.nav && room.nav.spread ? room.nav.spread(s.x, s.z, s.yaw, Math.max(12, i + 1), 0.75, room.indoors ? ((x, z) => room.indoors(x, z) === room.indoors(s.x, s.z)) : null)[i] : null;      // (walkable spots round the start: nav.js)
   player.flatDrop && player.flatDrop(); for (const h of player.hands) if (h.held) { h.held.heldBy = null; h.held = null; }
-  player.rig.position.set(s.x + Math.sin(a) * off, 0, s.z + Math.cos(a) * off); player.rig.rotation.y = s.yaw;
+  if (spot) player.rig.position.set(spot.x, 0, spot.y); else player.rig.position.set(s.x + Math.sin(a) * off, 0, s.z + Math.cos(a) * off); player.rig.rotation.y = s.yaw;
   if (player.flatMode) { player.flatYaw = 0; player.flatPitch = -0.22; }
   player.resetHandHistory && player.resetHandHistory();
 }
@@ -1676,15 +1676,21 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
     $('mp-chip').textContent = re ? `📶 RECONNECTING…` : innerWidth < 760 || innerHeight < 500 ? `👥 ${n} · ${net.code}${net.host ? ' 👑' : ''}` : `👥 ROOM ${net.code} · ${n} PLAYER${n > 1 ? 'S' : ''}${net.host ? ' · HOST' : ''}`;
     $('mp-chip').classList.toggle('on', net.connected || re); $('mp-chip').classList.toggle('re', re); };
   // the host tells anyone who joins late which place and game to load
-  net.on.join = (m) => { chip(); if (m.quiet) { net.send({ t: 'hi', to: m.id, name: net.name, char: net.char }); return; } if (net.host) net.send({ t: 'setup', to: m.id, warm: warm ? 1 : 0, place: room.placeId, mode: (warm && warm.mode) || director.fullMode || director.mode || SEL.mode }); window.__rc && window.__rc.joined(m.id); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
+  // (and the room's options, and whether it's locked or full: only the lobby did that, so anyone could walk into a locked
+  // room's game, and a late arrival played by the normal rules, not the room's)
+  const roomDoor = (m) => { const R = window.ronnieMP || {}; if (!net.host || !R.role || !window.__roomOpts) return true;
+    if ((R.locked && !m.back) || net.players.size + 1 > Math.min(net.max || 12, roomNum('max'))) { net.send({ t: 'kick', to: m.id, why: R.locked && !m.back ? 'locked' : 'full' }); return false; }
+    net.send({ t: 'ropts', to: m.id, o: { ...window.__roomOpts }, lock: R.locked ? 1 : 0 }); return true; };
+  net.on.join = (m) => { chip(); if (m.quiet) { net.send({ t: 'hi', to: m.id, name: net.name, char: net.char }); return; } if (!roomDoor(m)) return; if (net.host && !G.over) net.send({ t: 'setup', to: m.id, warm: warm ? 1 : 0, place: room.placeId, mode: (warm && warm.mode) || director.fullMode || director.mode || SEL.mode }); window.__rc && window.__rc.joined(m.id); words.show((m.name || 'A mate') + ' JOINED!', player.head.clone().addScaledVector(player.fwd, 1.2), '#ffd400', 0.12, 1.6); };
   // someone waiting in the room asking what's on (they missed the start, or came back to the lobby): the host tells them
-  net.on.whatgame = (m, p) => { if (net.host && p && p.id) net.send({ t: 'setup', to: p.id, place: room.placeId, mode: (warm && warm.mode) || director.fullMode || director.mode || SEL.mode, warm: warm ? 1 : 0 }); };
+  // (not once the game's over: they'd load into a finished game on their own. They keep asking, and come in to the next one)
+  net.on.whatgame = (m, p) => { if (net.host && p && p.id && !G.over) net.send({ t: 'setup', to: p.id, place: room.placeId, mode: (warm && warm.mode) || director.fullMode || director.mode || SEL.mode, warm: warm ? 1 : 0 }); };
   net.on.leave = () => { chip(); window.__rc && window.__rc.left(); }; net.on.status = () => chip();
   window.__rc = createReadyCheck({ net, start: (id) => startForAll(id), modeName: (id) => (PAUSE_MODES[id] ? PAUSE_MODES[id][1] : String(id).toUpperCase()), inVR: () => renderer.xr.isPresenting, portrait: (ch) => './assets/portraits/' + String(ch || 'ronnie').replace(/[^a-z0-9_]/gi, '') + '.webp' });
   // a new host (the old one left, or handed it over): everyone's told who; if it's you, your game takes over running
   // everything (the squad, the food, the game) from exactly where it was
   net.on.host = (m, was) => { chip();
-    if (m.id === net.id && m.why === 'given' && m.from) { G.gotHostFrom = m.from; G.gotHostAt = performance.now(); }      // (handed it while they're away: theirs again when they're back)
+    if (m.id === net.id && (m.why === 'given' || (m.why === 'left' && G.over)) && m.from) { G.gotHostFrom = m.from; G.gotHostAt = performance.now(); }      // (handed it while they're away, or they went back to the lobby first at the end: theirs again when they're back)
     if (m.id === net.id) G.handedOffAt = 0;
     if (m.id === net.id && !was) { mp.becomeHost(); window.__rc && window.__rc.becameHost(); director.imposter && director.imposter.becomeHost && director.imposter.becomeHost(); director.prophunt && director.prophunt.becomeHost(); director.snd && director.snd.becomeHost(); showBanner('👑 YOU\'RE THE HOST NOW', m.why === 'given' ? 'HANDED BACK TO YOU' : 'THE HOST LEFT: YOU\'RE RUNNING THE GAME'); }
     else if (m.id !== net.id) showBanner('👑 ' + String(m.name || 'SOMEONE').toUpperCase() + ' IS THE HOST', m.why === 'given' ? 'HOSTING WAS HANDED OVER' : 'THE HOST LEFT');
@@ -1726,7 +1732,7 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
   net.on.setup = () => {};
   // everyone on the same version: whoever's behind updates (straight back into the same room)
   const vNum = (v) => String(v || '0').split('.').map(Number).reduce((a, n) => a * 1000 + (n || 0), 0);
-  net.on.ver = (m) => { if (vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; showBanner('YOUR MATE HAS A NEWER VERSION', 'UPDATING...');
+  net.on.ver = (m) => { if (vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; showBanner('YOUR MATE HAS A NEWER VERSION', 'UPDATING...'); try { sessionStorage.setItem('rs_was_host', net.host ? '1' : ''); } catch (e) {}
     setTimeout(() => { location.href = location.pathname + '?lobby=' + encodeURIComponent(net.code || '') + '&u=' + Date.now(); }, 1600); } };
   const sayVer = () => net.send({ t: 'ver', v: window.GAME_BUILD }); if (net.connected) sayVer(); const j0 = net.on.join; net.on.join = (m) => { j0 && j0(m); sayVer(); };
 // ---------------- VOICE CHAT (multiplayer, off until you turn it on): the 🎙️ button under CHAT, who's talking down the
@@ -1737,7 +1743,7 @@ const voice = new VoiceChat(net); window.__voice = voice;
   const j1 = net.on.join; net.on.join = (m) => { j1 && j1(m); if (voice.on && m && m.id != null) net.send({ t: 'vc', to: m.id, on: 1, m: voice.muted ? 1 : 0 }); };
   const st = document.createElement('style'); st.textContent = `
 #vc-bar { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 78px); right: max(10px, env(safe-area-inset-right)); z-index: 20; display: none; gap: 6px; }
-body.flat.mpon #vc-bar { display: flex; } body:not(.mpon) #pause-voice { display: none; } body.gameover #vc-bar, body.gameover #vc-list { display: none !important; }
+body.flat.mpon #vc-bar { display: flex; } body:not(.mpon) #pause-voice { display: none; } body.gameover #vc-list { display: none !important; }      /* (PAUSE, CHAT and VOICE stay in the corner at the end too: the owner wants them always there) */
 #vc-bar button { font: 900 12px Arial, sans-serif; padding: 8px 12px; border-radius: 12px; border: 2px solid transparent; background: rgba(0,0,0,0.6); color: #fff; cursor: pointer; }
 #vc-bar #vc-btn.on { background: rgba(20,120,40,0.85); border-color: #39ff14; } #vc-bar #vc-btn.talk { box-shadow: 0 0 0 3px #39ff14, 0 0 14px #39ff14; }
 #vc-bar #vc-mute { display: none; } #vc-bar.on #vc-mute { display: block; } #vc-bar #vc-mute.on { background: rgba(160,20,20,0.85); border-color: #ff3b3b; }
@@ -1806,7 +1812,7 @@ const tvs = new TVs({ scene, room, net, player, hint: (t) => touch.hint(t), ui: 
 } });
 document.getElementById('tv-close').addEventListener('click', () => { initAudio(); setPaused(false); });
 mp.start();
-if (window.ronnieMP && window.ronnieMP.role === 'join') director.remote = true;
+if (window.ronnieMP && window.ronnieMP.role && !net.host) director.remote = true;      // (the room's word on who hosts, not how you came in: a guest who was handed hosting in the lobby runs the game)
 // someone playing as a squad member: their own body, moved by where their head and hands are
 net.makeAvatar = (p) => { if (!p.char || (p.char !== 'tommy' && !SQUAD_MP[p.char])) return null; return new SquadPuppet(p); };   // (Ronnie too: his full-body model)
 // which way a pose faces (its yaw), and a phone player's hand as it sits relative to them: [right-ish, up, forward-ish]

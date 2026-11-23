@@ -25,11 +25,16 @@ body.paused #rc-card { display: none !important; }`;
   const el = document.createElement('div'); el.id = 'rc-card'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Ready up'); document.body.appendChild(el);
   const fromHost = (p) => !!p && (p.host || (net.hostId != null && String(p.id) === String(net.hostId)));
   const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');      // (escaped, not dropped: SEARCH & DESTROY kept its &)
-  const people = () => [{ id: net.id, name: net.name || 'You', char: net.char, me: true, host: !!net.host }, ...[...net.players.values()].map(p => ({ id: p.id, name: p.name, char: p.char, host: !!p.host }))];
+  // (only who's in the game: someone back in the lobby (or still loading) has no card to tap, and START waited for them for
+  // ever. They come into the new game from the lobby once it's started)
+  const inGame = (p) => p.host || (p.at && performance.now() - p.at < 4000);
+  const people = () => [{ id: net.id, name: net.name || 'You', char: net.char, me: true, host: !!net.host }, ...[...net.players.values()].filter(inGame).map(p => ({ id: p.id, name: p.name, char: p.char, host: !!p.host }))];
+  let shown = '';
+  setInterval(() => { if (cur && people().map(p => p.id).join() !== shown) draw(); }, 1000);
   const draw = () => {
     if (!cur) { el.classList.remove('on'); return; }
     const host = !!net.host, ps = people(), rd = new Set(cur.list || []), isR = (p) => p.host || rd.has(p.id);
-    const waiting = ps.filter(p => !isR(p)), mine = rd.has(net.id);
+    const waiting = ps.filter(p => !isR(p)), mine = rd.has(net.id); shown = ps.map(p => p.id).join();
     el.innerHTML = `<div class="rc-k">${host ? 'YOU\'RE STARTING' : 'THE HOST IS STARTING'}</div><h3>${esc(modeName(cur.mode))}</h3>
       <p class="rc-sum${waiting.length ? '' : ' all'}">${waiting.length ? `Waiting for ${waiting.length} to ready up` : 'Everyone\'s ready!'}</p>
       <div class="rc-list">${ps.sort((a, b) => (isR(a) ? 1 : 0) - (isR(b) ? 1 : 0)).map(p => `<div class="rc-p ${isR(p) ? 'ok' : 'no'}"><img src="${portrait(p.char)}" alt="">${esc(p.name)}${p.me ? ' (YOU)' : ''}<span class="st">${p.host ? '👑 HOST' : isR(p) ? '✓ READY' : '⏳ NOT READY'}</span></div>`).join('')}</div>
@@ -58,6 +63,10 @@ body.paused #rc-card { display: none !important; }`;
   net.on.rready = (m, p) => { if (!net.host || !cur || !p || m.k !== cur.k) return; if (m.r) cur.ready.add(p.id); else cur.ready.delete(p.id); stat(); };
   net.on.rstat = (m, p) => { if (!fromHost(p) || !cur || m.k !== cur.k || !Array.isArray(m.ready)) return; cur.list = m.ready.filter(x => typeof x === 'string' || typeof x === 'number'); draw(); };
   net.on.rdone = (m, p) => { if (!fromHost(p) || !cur || m.k !== cur.k) return; cur = null; draw(); };
+  // a game that's only just loaded asks if there's a check on: someone who joined while the card was up was still in the
+  // menus when it was sent, never got it, and the host's START waited for them for ever
+  net.on.rask = (m, p) => { if (cur && net.host && p && p.id != null) { net.send({ t: 'rcheck', to: p.id, k: cur.k, mode: cur.mode }); setTimeout(stat, 300); } };
+  if (net.connected && !net.host) net.send({ t: 'rask' });
   return {
     begin, get active() { return !!cur; },
     // someone joined or left mid-check: the host keeps everyone's card right (and gives the newcomer one)
