@@ -584,6 +584,7 @@ export class ItemManager {
       const o = it.obj; if (it.dead || !o.parent) continue;
       let vis = true; for (let q = o; q; q = q.parent) if (!q.visible) { vis = false; break; } if (!vis) continue;
       for (const c of o.children) {
+        if (!c.visible) continue;      // (a shape hidden for a moment: a fresh Guinness while its stand-in settles, barstations.js)
         let m = null;
         if (c.isLOD) { c.autoUpdate = false; const lv = c.levels; c.getWorldPosition(_bp); const d = _bp.distanceTo(cam) / zoom; let pick = lv[0].object;
           for (const l of lv) { if (d >= l.distance) pick = l.object; } for (const l of lv) l.object.visible = false; m = pick; }

@@ -211,3 +211,16 @@ export function pintInHand({ skin = 0xf3cdb4, sleeve = 0x7ec8e3, cuff = 0x7a1f3d
   const nm = new THREE.Mesh(merge(near), vcLambert), fm = new THREE.Mesh(merge(far), vcLambert); nm.name = 'nearHand'; fm.name = 'farHand';
   g.add(fm, nm); return g;
 }
+
+// ---- the surge: a fresh pint at the tap is a cloud of tan bubbles that settles from the bottom up into black stout
+// under its head (Run the Pub's tap). k: 0 just poured .. 1 settled
+const SURGE = new THREE.Color(0x8a6446), SURGE2 = new THREE.Color(0xa88462);
+export function setPintSurge(g, k) {
+  const stout = g.getObjectByName('stout'); if (!stout) return; const col = stout.geometry.attributes.color, pos = stout.geometry.attributes.position;
+  const rest = stout.userData.restCol || (stout.userData.restCol = new Float32Array(col.array)), c = new THREE.Color(), r = new THREE.Color();
+  const line = FLOOR + (HEAD0 - FLOOR) * Math.min(1, Math.max(0, k)) * 1.05;      // (the settled stout rises up the glass)
+  for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); r.setRGB(rest[i * 3], rest[i * 3 + 1], rest[i * 3 + 2]);
+    const a = Math.min(1, Math.max(0, (y - line) / 0.012)), n = 0.5 + 0.5 * Math.sin(i * 12.9898 + k * 9);      // (above the line: the surge, mottled)
+    c.copy(r).lerp(SURGE, a * (0.75 + 0.25 * n)); if (a > 0.5 && n > 0.8) c.lerp(SURGE2, 0.4); col.setXYZ(i, c.r, c.g, c.b); }
+  col.needsUpdate = true;
+}

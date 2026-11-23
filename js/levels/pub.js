@@ -1530,6 +1530,7 @@ export function buildPub(scene) {
     for (const x of [-6.0, -3.0, 0.0, 3.0]) roundT(x, 38.6, 0, x === 0 ? true : false);
     barrel(-5.4, 30.9); barrel(2.6, 26.9); barrel(2.8, 37.0); barrel(-5.6, 35.6);
     for (const [x, z] of [[1.6, 26.9], [-4.6, 37.0]]) { R(x - 0.45, z - 0.3, x + 0.45, z + 0.3, 0.5, 0.25, 0x5a3a20, { block: true }); for (const dx of [-0.25, 0.0, 0.25]) leafyBall(k, x + dx, 0.68, z, 0.24, { n: 26, r: 0.07 }); for (let i = 0; i < 14; i++) k.parts.push(part(new THREE.SphereGeometry(0.035, 6, 4), [0xc8202a, 0xffd400, 0xf4f4f4, 0xe0508a][i % 4], [x - 0.38 + (i % 7) * 0.12, 0.82 + (i % 3) * 0.05, z - 0.18 + Math.floor(i / 7) * 0.3])); }   // planters, full of flowers
+    patioMark.end = { p: k.parts.length, c: k.colliders.length, b: k.blockers.length, s: k.spawns.length, inst: new Map([...(k.inst || new Map())].map(([key, v]) => [key, v.list.length])) };
     // ---- the outdoor bar: an octagon on a low platform, posts, a panelled counter with taps, a shingle roof
     { const gx = -1.2, gz = 31.4, RR = 3.2, top = 2.65, ang = (i) => i / 8 * Math.PI * 2 + Math.PI / 8;
       const plat = new THREE.CylinderGeometry(RR + 0.25, RR + 0.3, 0.15, 8); plat.rotateY(Math.PI / 8); k.parts.push(part(plat, 0x4a3a30, [gx, 0.075, gz]));
@@ -1580,7 +1581,6 @@ export function buildPub(scene) {
     // the houses round the garden: a terrace across the end (their back gardens run up to the pub's fence), another down the left
     terrace(k, scene, { ox: -18.4, oz: GZ1 + 8.5, ry: 0, n: 6, w: 4.9, D: 7.6, garden: 8.3, brick: brickO, seed: 2 });
     terrace(k, scene, { ox: -19.0, oz: 16.4, ry: -Math.PI / 2, n: 6, w: 4.6, D: 7.4, garden: 8.8, brick: brickO, seed: 5 });
-    patioMark.end = { p: k.parts.length, c: k.colliders.length, b: k.blockers.length, s: k.spawns.length, inst: new Map([...(k.inst || new Map())].map(([key, v]) => [key, v.list.length])) };
     for (const [x, z, r] of [[-11.5, 30, 2.4], [-12, 40, 2.8], [6, GZ1 + 2.0, 1.8], [12, GZ1 + 4, 2.6], [-6, GZ1 + 2.5, 1.6]]) { k.cyl(0.18, 0.25, 3.4, x, 1.7, z, 0x5a4030, 8); for (let i = 0; i < 3; i++) k.cyl(0.06, 0.1, 1.4, x + Math.cos(i * 2.1) * 0.5, 3.3, z + Math.sin(i * 2.1) * 0.5, 0x5a4030, 6); leafyBall(k, x, 3.9, z, r); leafyBall(k, x + r * 0.45, 3.5, z - r * 0.3, r * 0.65); leafyBall(k, x - r * 0.4, 3.7, z + r * 0.35, r * 0.6); }
     // ---- sunshine
     k.light(-2, 9, 28, 0xfff4e0, 3.2, 26); k.light(6, 8, 21, 0xfff4e0, 2.4, 16); k.light(9, 7, 34, 0xfff4e0, 2.2, 16);

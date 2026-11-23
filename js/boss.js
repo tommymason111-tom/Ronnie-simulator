@@ -96,7 +96,7 @@ export const BOSS_ORDER = ['noah', 'lewis', 'chloe', 'tommy'];
 export const ARENAS = {
   garden: { name: 'LEWIS\'S GARDEN', box: [-5.5, 1.3, -11.2, -1.6], play: [-6.1, 1.8, -11.8, -0.8], home: [-3.2, -6.8], start: [-1.6, -1.6, 0] },      // Lewis's lawn
   carpark: { name: 'THE CAR PARK', box: [7.9, 11.3, -22.9, -13.4], play: [3.9, 16.2, -23.4, -12.4], home: [9.6, -20.4], start: [9.6, -13.9, 0] },        // the pub's car park out the front
-  beergarden: { name: 'THE BEER GARDEN', box: [-5.4, 9.0, 24.4, 41.4], play: [-6.4, 9.6, 23.6, 42.2], home: [6.4, 38.8], start: [-4.2, 38.6, 0], avoid: [1.9, 31.4, 4.2], patio: true },      // the pub's beer garden, round the outdoor bar
+  beergarden: { name: 'THE BEER GARDEN', box: [-5.4, 7.6, 24.4, 41.4], play: [-6.4, 9.6, 23.6, 42.2], home: [6.4, 38.8], start: [-4.2, 38.6, 0], avoid: [1.9, 31.4, 4.2], patio: true },      // the pub's beer garden, round the outdoor bar
 };
 // where each place can have it: the Oysterfleet's car park or its beer garden (one at random each fight), Lewis's lawn
 export const PLACE_ARENAS = { pub: ['carpark', 'beergarden'], garden: ['garden'] };
