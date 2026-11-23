@@ -938,7 +938,7 @@ const director = new Director({
   // PROP HUNT (multiplayer): the whole game lives in prophunt.js
   makePropHunt: () => new PropHunt({ scene, room, player, net, mp, words, renderer, camera, items, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), leave: () => leaveGame() }),
   // SEARCH AND DESTROY (solo with bots, or a room): the whole game lives in snd.js; its bots are drawn like other players
-  makeSnd: () => new SearchDestroy({ scene, room, player, net, mp, words, renderer, camera, items, crumbs, director, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), makePuppet: (p) => net.makeAvatar ? net.makeAvatar(p) : null }),
+  makeSnd: () => new SearchDestroy({ scene, room, player, net, mp, words, renderer, camera, items, crumbs, director, banner, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), makePuppet: (p) => net.makeAvatar ? net.makeAvatar(p) : null }),
   hint: (t) => touch.hint(t),
   stageName: () => stageNameOf(G.stage), stageNo: () => G.stage,
   // points that pop bubbles / press board buttons: palms, fingertips and held food

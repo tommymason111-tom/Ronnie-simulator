@@ -357,7 +357,7 @@ export const GUNSYS = {
     // its side) and the aimed one (the sight on your eye line)
     const hx = V.hx ?? (por ? 0.07 : 0.12), hy = V.hy ?? (por ? -0.15 : -0.13), hz = (V.hz ?? (por ? -0.2 : -0.2)) - Math.max(0, M.rear) * sc, hry = V.ry ?? 0.1;
     // (aimed, the gun's tipped up a touch round its sight, so the stock drops away under your chin)
-    const arx = V.arx ?? (G.scope ? 0.1 : G.slot === 'S' ? 0.05 : 0.2), so = _w.copy(M.sight).multiplyScalar(sc).applyEuler(_e.set(arx, 0, 0)), ax = -so.x, ay = -so.y, az = -(G.scope ? 0.3 : V.az ?? 0.34) - so.z;
+    const arx = V.arx ?? (G.scope ? 0.1 : 0), so = _w.copy(M.sight).multiplyScalar(sc).applyEuler(_e.set(arx, 0, 0)), ax = -so.x, ay = -so.y, az = -(G.scope ? 0.3 : V.az ?? 0.1) - so.z;
     // sway: the gun lags behind as you look round, then catches up; it breathes; it bobs as you walk
     const yaw = P.flatYaw, pitch = P.flatPitch, dy = this.vmYaw == null ? 0 : yaw - this.vmYaw, dp = this.vmPitch == null ? 0 : pitch - this.vmPitch; this.vmYaw = yaw; this.vmPitch = pitch;
     const sw = U.sway, sv = U.swayV, lag = 1 - k * 0.8; sv.x += (-clamp(dy, -0.2, 0.2) * 0.6 * lag - sw.x * 90 * dt) ; sv.y += (-clamp(dp, -0.2, 0.2) * 0.6 * lag - sw.y * 90 * dt); sv.multiplyScalar(Math.max(0, 1 - dt * 14)); sw.addScaledVector(sv, Math.min(1, dt * 30));

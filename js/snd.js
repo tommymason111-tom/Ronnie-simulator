@@ -35,7 +35,7 @@ import { FX } from './sndfx.js';
 import { WORLD } from './sndworld.js';
 
 export const SD = {
-  HP, AR_MAX: 100, AR_ABS: 0.6, BUY_T: 14, ROUND_T: 115, BOMB_T: 40, PLANT_T: 3.2, DEFUSE_T: 6.5, END_T: 7, OVER_T: 3,
+  HP, AR_MAX: 100, AR_ABS: 0.6, BUY_T: 22, ROUND_T: 115, BOMB_T: 40, PLANT_T: 3.2, DEFUSE_T: 6.5, END_T: 7, OVER_T: 3,
   PICK_R: 1.25, BOMB_R: 1.5, BOOM_R: 8, GRAB_R: 1.4, TEAM_MAX: 6, MAX: 12, SPOT_R: 32, BOT_SPEED: 2.35, ASSIST_D: 30,
   CASH0: 2000, CASH_MAX: 9000, WIN_CASH: 2500, LOSE_CASH: 1400, LOSE_STEP: 500, OBJ_CASH: 300, DROPS: 14,
 };
@@ -91,7 +91,7 @@ export class SearchDestroy {
     on('sdAct', (m, p) => { if (p) this.remoteAct(this.botOr(m, p), m); });
     on('end', (m, p) => { if (this.host || !m || !Array.isArray(m.lines) || (p && p.id !== this.net.hostId)) return; m.lines = this.summary(); const f = this.prevOn.end; f && f(m, p); });      // (a guest's receipt: their own game's lines)
     this.leaveWas = this.net.on.leave; this.net.on.leave = (m) => { this.leaveWas && this.leaveWas(m); if (this.host && m) this.hostLeft(String(m.id)); };
-    if (this.host) this.startT = this.online ? 2.5 : 1.0; else { this.net.send({ t: 'sdHello' }); this.helloT = 3; }
+    if (this.host) this.startT = this.online ? 2.0 : 0.3; else { this.net.send({ t: 'sdHello' }); this.helloT = 3; }
     this.respawnAt(this.M.att[0], this.M.att[1]);
   }
   // (a message the host sends for one of its bots names the bot; anyone else's is their own)
@@ -793,8 +793,11 @@ export class SearchDestroy {
     // bots, other people's guns, the guns on the floor, the effects
     this.puppetsUpdate(dt); this.bodies(); this.gunsDraw(dt, me, xr); this.dropsTick(t);
     for (const p of this.pk) if (p.pop) { p.pop += dt * 3; if (p.pop >= 1) p.pop = 0; }
-    this.drawPicks(t); this.animFx(dt); this.projTick(dt); if ((this.stepT = (this.stepT || 0) - dt) <= 0) { this.stepT = 0.1; this.stepsTick(); }
+    this.drawPicks(t); this.animFx(dt); this.projTick(dt); this.previewTick(dt); if ((this.stepT = (this.stepT || 0) - dt) <= 0) { this.stepT = 0.1; this.stepsTick(); }
     if (xr) this.vrInput(P, me); else { this.drawHud(me); }
+    // (the box at the top left goes while the shop's open, while you're scoped in and at the end; back after)
+    if (g.banner && (this.my.scoped || this.pickOpen)) g.banner.visible = false;      // (and the big banner in front of you)
+    if (P.wrist && P.flatMode && !xr) { const hide = this.pickOpen || this.my.scoped || this.phase === 'over'; if (hide && P.wrist.visible) { P.wrist.visible = false; this.wristHid = true; } else if (!hide && this.wristHid) { P.wrist.visible = true; this.wristHid = false; } }
     this.countdown();
     this.laser.visible = xr && alive && this.phase === 'live';
     if (this.laser.visible) { const src = this.vrGun && this.vrGun.parent ? this.vrGun : ((P.hands || []).find(h => h.source && h.handedness === 'right' && h.ctrl) || {}).ctrl; if (src) { src.updateMatrixWorld(true); src.getWorldPosition(this.laser.position); src.getWorldQuaternion(this.laser.quaternion); } else this.laser.visible = false; }
@@ -815,7 +818,7 @@ export class SearchDestroy {
     if (round && !this.mine()) { this.g.player.ghost = true; const sb = this.g.selfBody && this.g.selfBody(); if (sb) sb.impHidden = true; }
     for (const [id, f] of this.F) { const av = this.avatar(id); if (!av) continue;
       if (id === this.me) { av.impHidden = !!(round && !f.alive); continue; }
-      av.impHidden = false; av.impBody = !!(round && !f.alive); av.impRed = false; if (av.tag) av.tag.visible = !(round && f.alive && mt && f.team !== mt) && !av.impBody; }
+      av.impHidden = false; av.impBody = !!(round && !f.alive); av.impRed = false; if (av.tag) av.tag.visible = !(round && f.alive && mt && f.team !== mt) && !av.impBody && !this.pickOpen; }
   }
   // the bomb: on the carrier's back, going down in front of them as they plant, on the floor where it was dropped,
   // planted and blinking with the seconds on its clock, the pliers at it while it's defused, gone
@@ -887,7 +890,7 @@ export class SearchDestroy {
   dispose() {
     const g = this.g; this.disposed = true; try { this.closePicker(); } catch (e) {} this.panel.close(true); if (this.panel.wrap) this.panel.wrap.remove(); if (this.panel.mesh) g.scene.remove(this.panel.mesh); if (this.panel.dot) g.scene.remove(this.panel.dot);
     g.scene.remove(this.grp); for (const [, pu] of this.puppets) { try { pu.dispose && pu.dispose(); } catch (e) {} } this.puppets.clear();
-    this.disposeGuns(); this.disposeFx();
+    this.disposeGuns(); this.disposeFx(); if (this.wristHid && g.player.wrist && !document.body.classList.contains('gameover')) g.player.wrist.visible = true;
     for (const [id] of this.F) { const av = id === this.me ? (g.selfBody && g.selfBody()) : (this.net.players.get(id) || {}).avatar; if (av) { av.impHidden = false; av.impBody = false; if (av.tag && id !== this.me) av.tag.visible = true; } }
     this.disposeUI();
     for (const k in this.handlers) this.net.on[k] = this.prevOn[k]; this.net.on.leave = this.leaveWas;
