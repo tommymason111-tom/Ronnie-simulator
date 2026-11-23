@@ -101,6 +101,17 @@ body.snd.flat #sd-top { display: flex; } #sd-top .bar { display: flex; align-ite
 #sd-board table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; margin-top: 4px; } #sd-board th { font-size: 9px; color: #c3cad6; font-weight: 900; padding: 2px 0; text-align: center; } #sd-board th:first-child { text-align: left; padding-left: 4px; }
 #sd-board td { padding: 2px 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid rgba(255,255,255,0.08); } #sd-board td.n { text-align: left; padding-left: 4px; } #sd-board td.n img { width: 18px; height: 18px; border-radius: 50%; vertical-align: middle; margin-right: 4px; object-fit: cover; background: #222; }
 #sd-board tr.R td.n { color: #ffb0a0; } #sd-board tr.B td.n { color: #a8d8ff; } #sd-board tr.me td { background: rgba(255,212,0,0.16); } #sd-board tr.dead td { opacity: 0.5; } #sd-board .bt { font-size: 8px; background: #555; border-radius: 4px; padding: 0 3px; margin-left: 3px; vertical-align: middle; color: #fff; }
+body.sd-over #sd-top, body.sd-over #sd-ui, body.sd-over #sd-feed, body.sd-over #sd-cross, body.sd-over #sd-prog, body.sd-over #sd-pop, body.sd-over #sd-multi, body.sd-over #sd-count, body.sd-over #sd-splash, body.sd-over #sd-dir, body.sd-over #sd-vig, body.sd-over #sd-dead, body.sd-over #sd-scope, body.sd-over #sd-pick, body.sd-over #sd-board, body.snd.gameover #over { display: none !important; }
+#sd-end { position: fixed; left: 50%; top: max(64px, calc(env(safe-area-inset-top) + 58px)); transform: translateX(-50%); z-index: 46; display: none; flex-direction: column; gap: 6px; width: min(640px, calc(100vw - 16px)); max-height: calc(100% - max(64px, calc(env(safe-area-inset-top) + 58px)) - max(10px, env(safe-area-inset-bottom))); box-sizing: border-box; padding: 8px 10px 10px; border-radius: 18px; background: rgba(8,10,22,0.95); border: 3px solid #ffd400; color: #fff; font-family: "Arial Black", Arial, sans-serif; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+body.sd-over.flat #sd-end { display: flex; animation: sdein .3s ease-out; } @keyframes sdein { from { opacity: 0; transform: translateX(-50%) scale(1.04); } } body.sd-over.sd-again #sd-end { display: none; }
+#sd-end .hd { text-align: center; } #sd-end .hd small { display: block; font-size: 10px; color: #c3cad6; letter-spacing: 1px; } #sd-end .hd h2 { margin: 0; font-size: clamp(20px, 6.4vw, 30px); line-height: 1.1; } #sd-end .hd .sc { font-size: 22px; }
+#sd-end .bd { overflow-y: auto; min-height: 0; flex: 0 1 auto; overscroll-behavior: contain; } #sd-end .bd .tt { font-size: 15px; padding: 4px 8px; margin-top: 6px; border-radius: 8px; text-align: left; display: flex; justify-content: space-between; } #sd-end .bd .tt.R { background: rgba(255,90,61,0.3); } #sd-end .bd .tt.B { background: rgba(61,165,255,0.3); }
+#sd-end table { width: 100%; border-collapse: collapse; font-size: 15px; table-layout: fixed; } #sd-end .x { display: none; } #sd-end.more .x { display: table-cell; } #sd-end td.k { color: #ffd400; } #sd-end table.R { border-left: 4px solid #ff5a3d; } #sd-end table.B { border-left: 4px solid #3da5ff; } #sd-end th { font-size: 9px; color: #c3cad6; padding: 1px 0; text-align: center; } #sd-end th:first-child { text-align: left; padding-left: 4px; }
+#sd-end td { padding: 3px 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid rgba(255,255,255,0.08); } #sd-end td.n { text-align: left; padding-left: 4px; } #sd-end td.n img { width: 16px; height: 16px; border-radius: 50%; vertical-align: middle; margin-right: 4px; object-fit: cover; background: #222; }
+#sd-end tr.R td.n { color: #ffb0a0; } #sd-end tr.B td.n { color: #a8d8ff; } #sd-end tr.me td { background: rgba(255,212,0,0.16); } #sd-end .bt { font-size: 8px; background: #555; border-radius: 4px; padding: 0 3px; margin-left: 3px; vertical-align: middle; }
+#sd-end .you { font-size: 11px; text-align: center; color: #ffd400; } #sd-end .aw { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; font-size: 10px; } #sd-end .aw span { background: rgba(255,255,255,0.1); border-radius: 8px; padding: 2px 6px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+#sd-end .bts { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; } #sd-end .bts button { font: 900 clamp(13px, 3.8vw, 18px) "Arial Black", Arial, sans-serif; padding: 10px 16px; border-radius: 16px; border: 4px solid #111; background: #39ff14; color: #111; box-shadow: 0 5px 0 rgba(0,0,0,0.4); cursor: pointer; max-width: 100%; }
+#sd-end .bts button.leave { background: #ffd400; } #sd-end .bts button.more { background: #455a64; color: #fff; border-color: #fff; font-size: 12px; padding: 8px 10px; } #sd-end .wait { font-size: 11px; color: #c3cad6; text-align: center; }
 #sd-board .tt { font-size: 11px; padding: 3px 4px; margin-top: 4px; border-radius: 8px; text-align: left; } #sd-board .tt.R { background: rgba(255,90,61,0.3); } #sd-board .tt.B { background: rgba(61,165,255,0.3); }
 `;
 
@@ -129,7 +140,7 @@ export const UI = {
     const el = (id) => { const d = document.createElement('div'); d.id = id; document.body.appendChild(d); return d; };
     this.topEl = el('sd-top'); this.crossEl = el('sd-cross'); this.crossEl.innerHTML = '<i class="t u"></i><i class="t d"></i><i class="t l"></i><i class="t r"></i><i class="dot"></i><i id="sd-hm"></i>'; this.hmEl = this.crossEl.querySelector('#sd-hm');
     this.dirEl = el('sd-dir'); this.vigEl = el('sd-vig'); this.flashEl = el('sd-flash'); this.deadEl = el('sd-dead'); this.progEl = el('sd-prog'); this.progEl.innerHTML = '<div class="ring"><b>💣</b></div><span>PLANTING</span>';
-    this.popEl = el('sd-pop'); this.multiEl = el('sd-multi'); this.countEl = el('sd-count'); this.feedEl = el('sd-feed'); this.splashEl = el('sd-splash'); this.scopeEl = el('sd-scope'); this.pickEl = el('sd-pick'); this.boardEl = el('sd-board');
+    this.popEl = el('sd-pop'); this.multiEl = el('sd-multi'); this.countEl = el('sd-count'); this.feedEl = el('sd-feed'); this.splashEl = el('sd-splash'); this.scopeEl = el('sd-scope'); this.pickEl = el('sd-pick'); this.boardEl = el('sd-board'); this.endEl = el('sd-end');
     ['pointerdown', 'touchstart', 'mousedown', 'wheel'].forEach(k => this.pickEl.addEventListener(k, (e) => e.stopPropagation()));
     // the score bar: held, the scoreboard
     this.topEl.addEventListener('pointerdown', (e) => { if (!e.target.closest || !e.target.closest('.bar')) return; e.stopPropagation(); e.preventDefault(); try { this.topEl.setPointerCapture(e.pointerId); } catch (er) {} this.showBoard(true); });
@@ -159,8 +170,8 @@ export const UI = {
     this.g.player.sprint = false;
   },
   disposeUI() {
-    for (const e of [this.ui, this.style, this.topEl, this.crossEl, this.dirEl, this.vigEl, this.flashEl, this.deadEl, this.progEl, this.popEl, this.multiEl, this.countEl, this.feedEl, this.splashEl, this.scopeEl, this.pickEl, this.boardEl]) e && e.remove();
-    document.body.classList.remove('snd', 'sd-touch', 'sd-alive'); window.removeEventListener('keydown', this.onKey, true); window.removeEventListener('keyup', this.onKey, true);
+    for (const e of [this.ui, this.style, this.topEl, this.crossEl, this.dirEl, this.vigEl, this.flashEl, this.deadEl, this.progEl, this.popEl, this.multiEl, this.countEl, this.feedEl, this.splashEl, this.scopeEl, this.pickEl, this.boardEl, this.endEl]) e && e.remove();
+    document.body.classList.remove('snd', 'sd-touch', 'sd-alive', 'sd-over', 'sd-again'); clearInterval(this.againT); window.removeEventListener('keydown', this.onKey, true); window.removeEventListener('keyup', this.onKey, true);
     const cv = this.g.renderer.domElement; cv.removeEventListener('pointerdown', this.onMouse); window.removeEventListener('pointerup', this.onMouseUp); cv.removeEventListener('contextmenu', this.onCtx); cv.removeEventListener('wheel', this.onWheel);
     clearInterval(this.pickTimer); clearTimeout(this.amT); clearTimeout(this.boardT);
   },
@@ -222,10 +233,35 @@ export const UI = {
   renderBoard() {
     const el = this.boardEl, mt = this.myTeam(), rows = this.boardRows();
     const row = (f) => { const c = this.cash[f.id], carry = this.bomb.st === 'carried' && this.bomb.id === f.id && (f.team === mt || this.phase === 'over');
-      return `<tr class="${f.team}${f.id === this.me ? ' me' : ''}${f.alive || !this.inRound() ? '' : ' dead'}"><td class="n"><img src="${pic(f.char)}" alt="">${carry ? '💣' : ''}${!f.alive && this.inRound() ? '💀' : ''}${nm(f)}${f.bot ? '<span class="bt">BOT</span>' : ''}</td><td>${f.k || 0}</td><td>${f.d || 0}</td><td>${f.a || 0}</td><td>${(f.pl || 0) + (f.df || 0)}</td><td>${f.mvp || 0}</td><td>${f.team === mt && c != null ? money(c) : '—'}</td></tr>`; };
-    const head = '<tr><th style="width:42%">PLAYER</th><th>K</th><th>D</th><th>A</th><th>💣</th><th>⭐</th><th style="width:17%">£</th></tr>';
+      return `<tr class="${f.team}${f.id === this.me ? ' me' : ''}${f.alive || !this.inRound() ? '' : ' dead'}"><td class="n"><img src="${pic(f.char)}" alt="">${carry ? '💣' : ''}${!f.alive && this.inRound() ? '💀' : ''}${nm(f)}${f.bot ? '<span class="bt">BOT</span>' : ''}</td><td>${f.k || 0}</td><td>${f.d || 0}</td><td>${f.mvp || 0}</td><td>${f.team === mt && c != null ? money(c) : '—'}</td></tr>`; };
+    const head = '<tr><th style="width:50%">PLAYER</th><th>K</th><th>D</th><th>⭐</th><th style="width:19%">£</th></tr>';
     const team = (t) => `<div class="tt ${t}">${TEAMS[t].ico} ${TEAMS[t].short} · ${t === this.att ? 'ATTACK' : 'DEFENCE'}</div><table>${head}${rows[t].map(row).join('')}</table>`;
     el.innerHTML = `<div class="hd"><span class="R">${TEAMS.R.ico} ${this.sc.R}</span><div><small>ROUND ${this.round} · FIRST TO ${this.win}</small>SCOREBOARD</div><span class="B">${this.sc.B} ${TEAMS.B.ico}</span></div><div class="hist">${this.histHtml()}</div>${team(mt === 'B' ? 'B' : 'R')}${team(mt === 'B' ? 'R' : 'B')}`;
+  },
+  // THE MATCH IS OVER: the live HUD and its prompts go; up comes the final scoreboard (both teams, every round), your
+  // own game, the awards, and the way on: PLAY AGAIN (the host in a room: everyone's ready check) and back to the room's
+  // lobby or the main menu (the same buttons as every other mode's receipt: main.js's #over-again and #over-leave)
+  showEnd() {
+    const el = this.endEl; if (!el) return; this.showBoard(false); this.closePicker(); document.body.classList.add('sd-over');
+    const m = this.overMsg || {}, win = m.win === 'B' ? 'B' : 'R', mt = this.myTeam(), rows = this.boardRows(), room = !!this.net.connected, boss = !room || !!this.net.host;
+    const st0 = m.st && Array.isArray(m.st[this.me]) ? m.st[this.me] : [], st = (i) => Number.isFinite(st0[i]) ? st0[i] : 0;
+    // (simple and big: the winners, then each team in its colours, best first: name, kills, deaths, MVP stars. MORE adds assists and the bomb)
+    const row = (f) => `<tr class="${f.team}${f.id === this.me ? ' me' : ''}"><td class="n">${f.id === this.me ? '▶ ' : ''}${nm(f)}${f.bot ? '<span class="bt">BOT</span>' : ''}</td><td class="k">${f.k || 0}</td><td>${f.d || 0}</td><td class="x">${f.a || 0}</td><td class="x">${(f.pl || 0) + (f.df || 0)}</td><td>${f.mvp ? '⭐' + f.mvp : ''}</td></tr>`;
+    const head = '<tr><th style="width:52%">PLAYER</th><th>KILLS</th><th>DEATHS</th><th class="x">ASSISTS</th><th class="x">💣</th><th>MVP</th></tr>';
+    const team = (t) => `<div class="tt ${t}"><b>${TEAMS[t].ico} ${TEAMS[t].short}</b><b>${this.sc[t]}</b></div><table class="${t}">${head}${rows[t].map(row).join('')}</table>`;
+    const aw = (Array.isArray(m.aw) ? m.aw : []).slice(0, 3).filter(Array.isArray).map(a => `<span>${esc(a[0])} ${esc(a[1])}: ${esc(String(this.nameOf(String(a[2]))).replace(/^🤖 /, ''))}</span>`).join('');
+    const lo = win === 'R' ? 'B' : 'R';
+    el.innerHTML = `<div class="hd"><h2 style="color:${TEAMS[win].col}">${TEAMS[win].ico} ${TEAMS[win].short} WIN <span style="white-space:nowrap">${this.sc[win]}–${this.sc[lo]}</span></h2><small>${mt ? (mt === win ? '🏆 YOUR TEAM WON' : 'YOUR TEAM LOST · GO AND GET A KEBAB') : 'FULL TIME'}</small></div>`
+      + `<div class="bd">${team(win)}${team(lo)}${mt ? `<div class="you">YOU: ${st(0)} KILLS · ${st(1)} DEATHS · ${st(7)} ASSISTS · ${st(3)} DAMAGE</div>` : ''}${aw ? `<div class="aw">${aw}</div>` : ''}</div>`
+      + `<div class="bts"><button class="more" type="button">MORE ▾</button>${boss ? `<button class="again" type="button">${room ? '▶ PLAY AGAIN (EVERYONE)' : '▶ PLAY AGAIN'}</button>` : ''}<button class="leave" type="button">${room ? '↩ RETURN TO LOBBY' : '🏠 MAIN MENU'}</button></div>${boss ? '' : '<div class="wait">The host can start the next game</div>'}`;
+    el.querySelector('.more').addEventListener('click', (e) => { e.stopPropagation(); const on = el.classList.toggle('more'); e.currentTarget.textContent = on ? 'LESS ▴' : 'MORE ▾'; });
+    const go = (id) => { sfx('tap', null, 0.5); const b = document.getElementById(id); if (b) b.click(); };
+    // (PLAY AGAIN in a room opens everyone's READY card: the board steps out of its way, and comes back if it's called off)
+    const a = el.querySelector('.again'); if (a) a.addEventListener('click', (e) => { e.stopPropagation(); document.body.classList.add('sd-again'); go('over-again');
+      clearInterval(this.againT); this.againT = setInterval(() => { const rc = document.getElementById('rc-card'), up = rc && getComputedStyle(rc).display !== 'none' && rc.offsetHeight > 0; if (this.disposed || this.phase !== 'over') { clearInterval(this.againT); return; } if (!up && Date.now() - t0 > 1200) { document.body.classList.remove('sd-again'); clearInterval(this.againT); } }, 400); const t0 = Date.now(); });
+    el.querySelector('.leave').addEventListener('click', (e) => { e.stopPropagation(); go('over-leave'); });
+    ['pointerdown', 'touchstart', 'mousedown'].forEach(k => el.addEventListener(k, (e) => e.stopPropagation()));
+    this.g.player.menuLock = true;
   },
   // the headset: held left stick, the same board on the panel
   boardHeld(on) {
