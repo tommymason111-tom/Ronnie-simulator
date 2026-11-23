@@ -1,4 +1,4 @@
-// A BUSY LOBBY, through the real room server (run locally). LOBBY12_ONLY=full,leave,back,spoof,ingame,slow picks parts.
+// A BUSY LOBBY, through the real room server (run locally). LOBBY12_ONLY=full,leave,back,spoof,ingame,ver,slow picks parts.
 //  full:  twelve in a room (four real games on upright phones, one a 12-letter name, and eight light players from
 //         lib/bots.mjs): everyone's card on every phone, nothing off the side or covered (a long name pushed the third
 //         column off the screen), a guest's READY button says it's ready, START waits for everyone, the 13th is turned
@@ -14,6 +14,7 @@
 //  ingame: the room's door once its game is going: locked still means locked, and someone who comes in late gets the
 //         room's options (only the lobby did either: anyone could walk into a locked room's game, and a late arrival played
 //         by the normal rules)
+//  ver:   the host on an older version than a guest updates (the page reloads into the room): still the host after
 //  slow:  a line so slow the join gives up: it doesn't get in later anyway (everyone had a player who was never there,
 //         never ready, holding up START)
 import fs from 'fs';
@@ -22,7 +23,7 @@ import { startRoomHost } from './lib/roomhost.mjs';
 import { startBot } from './lib/bots.mjs';
 import WebSocket from 'ws';
 import { ev, openMenu, hostRoom, joinRoom, readyUp, pickGame, tapIn, freeRun } from './lib/room.mjs';
-const ONLY = (process.env.LOBBY12_ONLY || 'full,leave,back,spoof,ingame,slow').split(',');
+const ONLY = (process.env.LOBBY12_ONLY || 'full,leave,back,spoof,ingame,ver,slow').split(',');
 const BTN = fs.readFileSync(new URL('./lib/btncheck.js', import.meta.url), 'utf8'), TXT = fs.readFileSync(new URL('./lib/textcheck.js', import.meta.url), 'utf8');
 const PHONE = { width: 390, height: 844, mobile: true };
 const lob = (p) => ev(p, () => ({ role: ronnieMP.role, host: !!(ronnieMP.net && ronnieMP.net.host), go: document.querySelector('#room-go').style.display !== 'none', ready: document.querySelector('#room-ready').style.display !== 'none', opts: !document.querySelector('#room-opts-btn').hidden, kick: document.querySelectorAll('#room-players [data-kick]').length, hostTag: [...document.querySelectorAll('#room-players .rp')].filter(e => [...e.querySelectorAll('.tag')].some(t => t.textContent === 'HOST')).map(e => e.querySelector('b').textContent) }));
@@ -132,6 +133,21 @@ export default async function () {
       const Y = await fresh(); Y.pname = 'LATE'; await tryJoin(Y, 'LATECOMER');
       const y = await ev(Y, () => ({ ...window.__roomOpts }));
       C.ok(y.attacks === 'off' && y.len === 'long', `a late arrival didn't get the room's options: ${JSON.stringify(y)}`);
+      await done();
+    }
+    if (ONLY.includes('ver')) {
+      const H = await fresh(); H.pname = 'HOST'; const code = await hostRoom(H, 'HOSTY', 'lewis');
+      const P1 = await newPage(b, PHONE); P1.pname = 'NEWER'; pages.push(P1);
+      await P1.addInitScript(() => { let v = ''; Object.defineProperty(window, 'GAME_BUILD', { get: () => window.__older ? v : '99.0.0', set: (x) => { v = x; }, configurable: true }); });      // (a newer version, until the host has updated)
+      await openMenu(P1, host.url); await joinRoom(P1, code, 'PONE', 'chloe');
+      await H.waitForFunction(() => window.__updating, null, { timeout: 15000, polling: 200 }).catch(() => {});
+      const upd = await ev(H, () => !!window.__updating).catch(() => true); await ev(P1, () => { window.__older = true; });      // (the reload brings the host the new version: here, the newer one stops saying so)
+      await sleep(4000);
+      await H.waitForFunction(() => window.ronnieMP && ronnieMP.net && ronnieMP.net.status === 'on' && document.querySelector('.screen.on[data-s="room"]'), null, { timeout: 60000, polling: 300 }).catch(() => {});
+      await H.waitForFunction(() => ronnieMP.net.host, null, { timeout: 20000, polling: 500 }).catch(() => {});
+      const h = await lob(H), p1 = await lob(P1);
+      C.ok(upd, 'the host on the older version wasn\'t told to update');
+      C.ok(h.host && h.go && !p1.host && !p1.go, `the host who updated isn't the host any more: ${JSON.stringify(h)} / ${JSON.stringify(p1)}`);
       await done();
     }
     if (ONLY.includes('slow')) {

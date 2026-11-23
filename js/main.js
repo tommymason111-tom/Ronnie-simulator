@@ -1719,7 +1719,7 @@ net.char = net.char || (window.ronnieMP && window.ronnieMP.char().id) || 'ronnie
   net.on.setup = () => {};
   // everyone on the same version: whoever's behind updates (straight back into the same room)
   const vNum = (v) => String(v || '0').split('.').map(Number).reduce((a, n) => a * 1000 + (n || 0), 0);
-  net.on.ver = (m) => { if (vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; showBanner('YOUR MATE HAS A NEWER VERSION', 'UPDATING...');
+  net.on.ver = (m) => { if (vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; showBanner('YOUR MATE HAS A NEWER VERSION', 'UPDATING...'); try { sessionStorage.setItem('rs_was_host', net.host ? '1' : ''); } catch (e) {}
     setTimeout(() => { location.href = location.pathname + '?lobby=' + encodeURIComponent(net.code || '') + '&u=' + Date.now(); }, 1600); } };
   const sayVer = () => net.send({ t: 'ver', v: window.GAME_BUILD }); if (net.connected) sayVer(); const j0 = net.on.join; net.on.join = (m) => { j0 && j0(m); sayVer(); };
 // ---------------- VOICE CHAT (multiplayer, off until you turn it on): the 🎙️ button under CHAT, who's talking down the

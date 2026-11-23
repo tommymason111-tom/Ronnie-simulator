@@ -613,7 +613,8 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     const vNum = (v) => String(v || '0').split('.').map(Number).reduce((a, n) => a * 1000 + (n || 0), 0);
     net.on.hi = (m, p) => { if (p) { p.char = m.char; p.name = m.name; } lobby();
       // a mate on a newer version: update now (straight back into this room), so you both see the same things
-      if (m.v && vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; mpStatus('Your mate has a newer version. Updating…'); setTimeout(() => { location.href = location.pathname + '?lobby=' + encodeURIComponent(code) + '&u=' + Date.now(); }, 1200); } };
+      if (m.v && vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; mpStatus('Your mate has a newer version. Updating…'); try { sessionStorage.setItem('rs_was_host', net.host ? '1' : ''); } catch (e) {} setTimeout(() => {      // (the host updating stays the host)
+      location.href = location.pathname + '?lobby=' + encodeURIComponent(code) + '&u=' + Date.now(); }, 1200); } };
     mp.RO.resetOpts(); mp.ready = false; mp.locked = false; mp.seenCards = new Set(); roomChat.length = 0; drawChat(); roomUnread = 0; drawBadge();
     const isBoss = () => !!net.host;
     const sendOpts = (to) => net.send(to ? { t: 'ropts', to, o: { ...mp.RO.roomOpts }, lock: mp.locked ? 1 : 0 } : { t: 'ropts', o: { ...mp.RO.roomOpts }, lock: mp.locked ? 1 : 0 });      // (the room only reads "to" near the start)
