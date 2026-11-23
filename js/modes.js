@@ -15,6 +15,9 @@ import { canvasTex, fitText, roundRect, FONT } from './textures.js';
 import { sfx, playTune, shout } from './audio.js';
 import { Item } from './foods.js';
 import { pintInHand, setPintLevel } from './pint.js';
+// Aidan's pint at your lips: its rim just under the middle of your view, the glass tipped up away to the right
+const BEER_RIM = new THREE.Vector3(-0.8, -0.32, 0.5).normalize(), BEER_Q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), BEER_RIM);
+const BEER_AT = new THREE.Vector3(-0.01, -0.085, -0.2).addScaledVector(BEER_RIM, -0.075), _bp = new THREE.Vector3(), _bq = new THREE.Quaternion(), _be = new THREE.Euler();
 import { TURKEY_LEN } from './cutscenes.js';
 import { BbqMode } from './bbqmode.js';
 import { pickVeg, pickJunk, FOODS } from './config.js';
@@ -250,7 +253,7 @@ export class Director {
     // IMPOSTER (multiplayer, the Oysterfleet): no food, no squad, no Tommy: see imposter.js
     if (id === 'imposter' || id === 'imposter2') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null);
       this.imposter = g.makeImposter ? g.makeImposter(id === 'imposter2' ? 2 : 1) : null; sfx('gamestart', null, 1); return; }
-    // BOSS FIGHT (the pub's car park, Lewis's garden): no squad, Tommy sits it out, the fight lives in boss.js (host and joiners alike)
+    // BOSS FIGHT (the pub's car park or beer garden at random, Lewis's garden): no squad, Tommy sits it out, the fight lives in boss.js (host and joiners alike)
     if (id === 'boss') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null); this.removeTrolley();
       this.boss = g.makeBoss ? g.makeBoss() : null; return; }
     // PROP HUNT (multiplayer, the pub / Lidl / Lewis's): no food, no squad, no Tommy: see prophunt.js
@@ -551,9 +554,13 @@ export class Director {
         fx.camProp(rig, 2.75, [0.26, -0.42, -0.62], (t, o) => {
           // in from down to the right (0-0.5s), up to your lips (to 0.8s), tipped right up as it drains (to 2.05s), then away
           const inn = ss(t / 0.5), up = ss((t - 0.45) / 0.35), tip = ss((t - 0.75) / 1.15), away = ss((t - 2.15) / 0.5), drink = Math.max(0, Math.min(1, (t - 0.85) / 1.15));
-          o.position.set(0.26 - 0.23 * inn - 0.03 * up + 0.22 * away, -0.42 + 0.3 * inn + 0.05 * up + 0.06 * tip - 0.3 * away, -0.62 + 0.3 * inn + 0.13 * up + 0.04 * tip - 0.12 * away);
-          o.rotation.set(2.05 * tip * (1 - away) + Math.sin(t * 14) * 0.015 * up * (1 - tip), -0.35 * (1 - inn) - 0.12 * tip, -0.25 * (1 - inn) + 0.08 * tip);
-          setPintLevel(pint, 1 - drink * 0.96, o.rotation.x);
+          // (on its way: upright in his hand; drinking: the rim at your lips, the glass tipped up and off to the right, so
+          // you see down its side as it drains, the bottom rising)
+          const k = tip * (1 - away);
+          _bp.set(0.26 - 0.23 * inn - 0.03 * up + 0.22 * away, -0.42 + 0.3 * inn + 0.05 * up - 0.3 * away, -0.62 + 0.3 * inn + 0.13 * up - 0.12 * away);
+          _bq.setFromEuler(_be.set(Math.sin(t * 14) * 0.015 * up, -0.35 * (1 - inn), -0.25 * (1 - inn)));
+          o.position.lerpVectors(_bp, BEER_AT, k); o.quaternion.slerpQuaternions(_bq, BEER_Q, k);
+          setPintLevel(pint, 1 - drink * 0.96, 2.2 * k);
           while (gulps < 3 && t > 1.05 + gulps * 0.38) { gulps++; sfx('gulp', null, 0.7 + gulps * 0.1); }
         });
         // drawn in order (no depth test in front of the camera): his fingers behind the glass, the stout, its head, the

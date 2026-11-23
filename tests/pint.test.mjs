@@ -81,7 +81,7 @@ export default async function () {
     const a = await p.evaluate(async () => { const D = RS.director, A = RS.cast.find(c => c.id === 'aidan'), P = RS.player; if (!A) return { none: true };
       D.stun(A, 'beer'); const cam = P.camera, find = (n) => { let o = null; cam.traverse(x => { if (x.name === n) o = x; }); return o; };
       const rig = find('pint in hand'), pint = rig && rig.getObjectByName('pint'), hands = rig ? ['farHand', 'nearHand'].map(n => !!rig.getObjectByName(n)) : [];
-      const lv = [], rot = []; for (let i = 0; i < 6; i++) { RS.sim(0.35); await new Promise(r => setTimeout(r, 30)); lv.push(+(pint ? pint.userData.level : 1).toFixed(2)); rot.push(+(rig ? rig.rotation.x : 0).toFixed(2)); }
+      const lv = [], rot = []; for (let i = 0; i < 6; i++) { RS.sim(0.35); await new Promise(r => setTimeout(r, 30)); lv.push(+(pint ? pint.userData.level : 1).toFixed(2)); rot.push(+(rig ? Math.acos(new RS.THREE.Vector3(0, 1, 0).applyQuaternion(rig.quaternion).y) : 0).toFixed(2)); }
       await new Promise(r => setTimeout(r, 2700)); RS.sim(0.2);
       return { rig: !!rig, hands, lv, rot, dizzy: P.fx ? +(P.fx.dizzy || 0).toFixed(2) : -1 }; });
     console.log('  attack:', JSON.stringify(a));
