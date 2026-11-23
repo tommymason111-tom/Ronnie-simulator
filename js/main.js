@@ -1205,7 +1205,7 @@ const PAUSE_MODES = {
   imposter2: ['🔪', 'IMPOSTER · 2 IMPOSTERS', 'Multiplayer: two imposters among you (5+ players)'],
   boss: ['👹', 'BOSS FIGHT', 'A giant mate: eat to power up, throw food to bring them down'],      // (BOSS FIGHT)
   prophunt: ['🎭', 'PROP HUNT', 'Multiplayer: hide as a keg, a bin, a gnome... seekers find them'],      // (PROP HUNT)
-  snd: ['💣', 'SEARCH & DESTROY', 'Two teams, one bomb: pick a gun, plant or defuse the Vindaloo'],      // (SEARCH AND DESTROY)
+  snd: ['💣', 'SEARCH & DESTROY', 'Two teams, one bomb: buy a gun, plant or defuse the Vindaloo'],      // (SEARCH AND DESTROY)
 };
 const PLACE_GAMES = { pub: ['everyone', 'runpub1', 'runpub', 'runpub3', 'imposter', 'imposter2', 'boss', 'prophunt', 'snd', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], shop: ['sweep', 'prophunt', 'snd', 'roam', 'roam0'], garden: ['bbq', 'boss', 'prophunt', 'snd', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'] };
 const modeTitle = () => { const m = director.fullMode; return (PAUSE_MODES[m] && PAUSE_MODES[m][1]) || (m === 'classic' ? 'CLASSIC' : m === 'intervention' ? 'THE SQUAD' : (m || '').toUpperCase()); };
@@ -1812,7 +1812,7 @@ function portrait(ch, onload) { if (!ch) return null; let e = PORTRAITS.get(ch);
   if (!e) { const img = new Image(); e = { img, wait: [] }; PORTRAITS.set(ch, e); img.onload = () => { const w = e.wait; e.wait = []; for (const f of w) try { f(); } catch (er) {} }; img.onerror = () => { e.wait = []; }; img.src = `./assets/portraits/${ch}.webp`; }
   if (!e.img.complete && onload && e.wait.length < 30) e.wait.push(onload); return e.img; }
 class SquadPuppet {
-  constructor(p) { this.c = p.char === 'tommy' ? (() => { const t = new Tommy(scene, room, physics); t.load(); return t; })() : new SquadMemberMP(scene, room, physics, p.char, [0, 0, 0], director); this.c.attacks = false; this.c.mpPuppet = true; this.c.active = false; this.pos = new THREE.Vector3(); this.yaw = 0; this.rh = new THREE.Vector3(); this.lh = new THREE.Vector3(); this.first = true; this.c.name = p.name || this.c.name;
+  constructor(p) { this.c = p.char === 'tommy' ? (() => { const t = new Tommy(scene, room, physics); t.load(); return t; })() : new SquadMemberMP(scene, room, physics, p.char, [0, 0, 0], director); this.c.attacks = false; this.c.mpPuppet = true; this.c.active = false; if (this.c.prop) { scene.remove(this.c.prop); this.c.prop = null; }   /* (a player's or bot's body holds what they really hold: the character's own prop (Aidan's pint) was never placed in their hand, and stood in the middle of the pub floor) */ this.pos = new THREE.Vector3(); this.yaw = 0; this.rh = new THREE.Vector3(); this.lh = new THREE.Vector3(); this.first = true; this.c.name = p.name || this.c.name;
     // a name tag over their head (so you can tell a real player from the squad): their name, and who they're playing as
     this.p = p; this.tagC = document.createElement('canvas'); this.tagC.width = 400; this.tagC.height = 120; this.tagTex = new THREE.CanvasTexture(this.tagC); this.tagTex.colorSpace = THREE.SRGBColorSpace;
     this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthTest: false, transparent: true })); this.tag.scale.set(0.56, 0.168, 1); this.tag.renderOrder = 12; this.tag.userData.remoteRonnie = !p.self; scene.add(this.tag); this.drawTag();

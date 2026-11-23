@@ -68,9 +68,13 @@ class FakePlayer {
     // SEARCH AND DESTROY
     if (t === 'sdRound' && Array.isArray(m.list)) { const me = String(this.id), e = m.list.find(x => Array.isArray(x) && String(x[0]) === me); this.ph = null; this.im = null; this.boss = null;
       if (!e) { this.sd = null; return; }
-      const team = e[3]; this.sd = { team, att: team === m.att, alive: true, phase: 'buy', car: String(m.car) === me, teams: Object.fromEntries(m.list.filter(Array.isArray).map(x => [String(x[0]), x[3]])), dead: new Set(), bots: {}, bomb: null, site: Math.random() < 0.5 ? 'A' : 'B', shotT: rnd(0.6, 1.4), actT: 0, gun: pick(SD_GUNS) };
+      const team = e[3]; this.sd = { team, att: team === m.att, alive: true, phase: 'buy', car: String(m.car) === me, teams: Object.fromEntries(m.list.filter(Array.isArray).map(x => [String(x[0]), x[3]])), dead: new Set(), bots: {}, bomb: null, site: Math.random() < 0.5 ? 'A' : 'B', shotT: rnd(0.6, 1.4), actT: 0, gun: SD_GUNS.find(g => g.id === 'ketchup') || SD_GUNS[0] };
+      // (the shop: whatever it kept from last round, or a gun it can afford with its dinner money)
+      const ld = m.ld && Array.isArray(m.ld[me]) ? m.ld[me] : null, cash = m.cash && Number.isFinite(m.cash[me]) ? m.cash[me] : 0, kept = ld && SD_GUNS.find(g => g.id === ld[0]);
+      const can = SD_GUNS.filter(g => g.slot === 'P' && g.cost <= cash), want = kept || (can.length ? pick(can) : null); if (want) this.sd.gun = want; this.sd.buy = want && !kept ? want.id : null;
       const sp = m.sp && m.sp[this.id]; if (Array.isArray(sp) && Number.isFinite(sp[0])) { this.pos = { x: sp[0], z: sp[1] }; this.yaw = sp[2] || 0; }
-      this.path = []; this.waitT = 0; this.later(rnd(300, 1200), () => this.sd && this.send({ t: 'sdGun', g: this.sd.gun.id })); return; }
+      this.path = []; this.waitT = 0; this.later(rnd(300, 1200), () => { if (!this.sd) return; if (this.sd.buy) this.send({ t: 'sdBuy', g: this.sd.buy }); this.later(rnd(150, 400), () => this.sd && this.send({ t: 'sdGun', g: this.sd.gun.id })); }); return; }
+    if (t === 'sdLoad' && this.sd && String(m.id) === String(this.id)) { const g = SD_GUNS.find(x => x.id === m.p) || SD_GUNS.find(x => x.id === m.s); if (g) this.sd.gun = g; return; }
     if (t === 'sdGo' && this.sd) { this.sd.phase = 'live'; return; }
     if (t === 'sdKill' && this.sd) { this.sd.dead.add(String(m.v)); if (String(m.v) === String(this.id)) { this.sd.alive = false; this.sd.actT = 0; this.path = []; } return; }
     if (t === 'sdBomb' && this.sd) { this.sd.bomb = m; this.sd.car = m.st === 'carried' && String(m.id) === String(this.id); if (m.st === 'planted' && m.s) this.sd.site = m.s; return; }
