@@ -40,7 +40,8 @@ export default async function () {
         let t0 = 0;
         if (drive === 'npc') { c.state = 'act'; c.actUpdate = (dt) => { t0 += dt; const k = Math.min(1, t0 / 0.6); rg.moveVel.set(0, 0, v * k); c.walkPose(dt, v * k); }; }
         const step = (dt) => { if (drive === 'net') { t0 += dt; const k = Math.min(1, t0 / 0.6); c.netZ = (c.netZ ?? -14) + v * k * dt; const q = [0, 1, 0, 0];
-            c.update(dt, { h: [0, 1.62, c.netZ], q, rh: [-0.25, 1.05, c.netZ + 0.15], l: [0.25, 1.0, c.netZ + 0.1], s: 1, st: c.st || 0, flat: 1 }); } RS.sim(dt, dt); };
+            c.update(dt, { h: [0, 1.62, c.netZ], q, rh: [-0.25, 1.05, c.netZ + 0.15], l: [0.25, 1.0, c.netZ + 0.1], s: 1, st: c.st || 0, flat: 1 }); }
+          RS.player.rig.position.set(3, 0, rg.root.z); RS.sim(dt, dt); };      // (watched from close by: far away a body takes a cheaper path)
         const body = drive === 'net' ? c.c : c, R = body.rag;
         if (drive === 'net') c.netZ = -14;
         for (let i = 0; i < 120; i++) step(1 / 60);

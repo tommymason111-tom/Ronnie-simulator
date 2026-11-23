@@ -380,7 +380,7 @@ export class Character {
     if (this.speakT > 0) { this.speakT -= dt; if (this.speakT <= 0) { this.bubble.visible = false; this.onSpeechEnd && this.onSpeechEnd(); } }
     else this.quietT += dt;
 
-    const pos = this.pos, playerHead = ctx.head;
+    const pos = this.pos, playerHead = ctx.head; Gait.eye = playerHead;
     _v.set(playerHead.x - pos.x, 0, playerHead.z - pos.z);
     const toPlayerYaw = Math.atan2(_v.x, _v.z);
     this.distToPlayer = _v.length();

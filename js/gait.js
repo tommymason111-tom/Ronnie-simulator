@@ -119,6 +119,9 @@ function makeFoot(side) {
 }
 
 export class Gait {
+  // where the player is looking from (Character.update keeps it): a long way off, a body skips the second placing of its
+  // legs each frame (a planted foot may shift by one frame's step there, never building up: not visible that far away)
+  static eye = null;
   constructor(c) {
     this.c = c; const r = this.r = c.rag; r.legIK = this;
     this.ph = 0.05; this.frame = -1; this.lastT = null; this.reset = true;
@@ -466,6 +469,7 @@ export class Gait {
   late() {
     const r = this.r;
     if (this.frame !== r.frameNo || !this.written) { this.relax(); return; }
+    const eye = Gait.eye; if (eye && (r.root.x - eye.x) ** 2 + (r.root.z - eye.z) ** 2 > 256) return;
     const P = r.pose; for (let i = 0; i < 4; i++) { const a = P[LEG[i]], b = this.wq[i]; if (a.x !== b.x || a.y !== b.y || a.z !== b.z || a.w !== b.w) { this.relax(); return; } }
     if (r.bob === this.bob1) r.bob = this.bob0;        // (the hips' own height again, before this frame's lowering, if nobody's changed it)
     if (!this.feet[0].stance || !this.feet[1].stance) this.place();       // (a swinging foot goes with the hips, which have moved on)
