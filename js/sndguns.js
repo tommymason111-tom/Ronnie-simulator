@@ -20,7 +20,6 @@ const r2 = (v) => Math.round(v * 100) / 100;
 const smooth = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
 const span = (f, a, b) => smooth((f - a) / (b - a));       // 0 before a, 1 after b, eased between
 const bump = (f, a, b) => f <= a || f >= b ? 0 : Math.sin((f - a) / (b - a) * Math.PI);      // 0 -> 1 -> 0 between a and b
-const PEN_T = [0, 0.32, 0.8], PEN_K = [0, 0.5, 0.7];      // how thick a wall each pen level gets through, and what's left of the damage
 const SLEEVE = { R: 0xff5a3d, B: 0x3da5ff };
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _w = new THREE.Vector3(), _m4 = new THREE.Matrix4(), _up = new THREE.Vector3(0, 1, 0);
 let flashMat = null, fGeo = null, pliers = null, bombG = null;
@@ -103,14 +102,16 @@ export const GUNSYS = {
     const ray = this.aimRay(sx, sy); if (!ray) return false;
     this.my.mag--; this.my.nextShot = t + G.rate; if (G.cycle) this.my.cyc = { t0: t, T: G.cycle, k: G.rtype === 'bolt' ? 'bolt' : 'pump', ej: false };
     const spread = this.spreadNow(G), assist = this.g.renderer.xr.isPresenting || ('ontouchstart' in window) || navigator.maxTouchPoints > 0, P = this.g.player;
-    const hits = new Map(), ends = [], from = this.muzzle(ray), u = new THREE.Vector3(), w = new THREE.Vector3();
+    const hits = new Map(), ends = [], from = this.muzzle(ray), u = new THREE.Vector3(), w = new THREE.Vector3(), glass = new Set(); let mates = 0;
     u.crossVectors(ray.direction, Math.abs(ray.direction.y) < 0.95 ? _up : new THREE.Vector3(1, 0, 0)).normalize(); w.crossVectors(ray.direction, u);
     for (let n = 0; n < G.pellets; n++) {
       const dir = ray.direction.clone(); if (spread > 0) { const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * spread; dir.addScaledVector(u, Math.cos(a) * r).addScaledVector(w, Math.sin(a) * r).normalize(); }
-      const tr = this.trace(ray.origin, dir, G.range, G); let h = tr.hit; if (!h && assist && G.pellets === 1 && n === 0) h = this.assistShot(ray, G.range);
+      const tr = this.trace(ray.origin, dir, G.range, G); let h = tr.hit; if (!h && tr.glass < 0 && assist && G.pellets === 1 && n === 0) h = this.assistShot(ray, G.range);
+      if (tr.glass >= 0) glass.add(tr.glass);
+      if (h && h.mate) { mates++; ends.push(h.point); continue; }
       const end = h ? h.point : tr.end; ends.push(end);
-      if (h) { const zm = h.z === 1 ? G.hs : h.z === 2 ? G.limb : 1, dmg = G.dmg * falloff(G, h.t) * zm * (h.wb ? PEN_K[G.pen] : 1) * (this.perk('dmg') ? 1.5 : 1);
-        const e = hits.get(h.id) || { d: 0, z: -1, wb: false, p: h.point }; e.d += dmg; if (e.z < 0 || h.z === 1 || (h.z === 0 && e.z === 2)) e.z = h.z; e.wb = e.wb || !!h.wb; hits.set(h.id, e); }
+      if (h) { const zm = h.z === 1 ? G.hs : h.z === 2 ? G.limb : 1, dmg = G.dmg * falloff(G, h.t) * zm * (this.perk('dmg') ? 1.5 : 1);
+        const e = hits.get(h.id) || { d: 0, z: -1, p: h.point }; e.d += dmg; if (e.z < 0 || h.z === 1 || (h.z === 0 && e.z === 2)) e.z = h.z; hits.set(h.id, e); }
       if (n < 4 || G.pellets < 2) for (const [q, nn] of tr.holes) this.impact(q, nn, G); }
     // what everyone sees: the tracer(s), the flash, the bang; your own gun kicks and spits out an empty
     for (let i = 0; i < Math.min(ends.length, 5); i++) this.tracer(from, ends[i], G, true);
@@ -119,7 +120,9 @@ export const GUNSYS = {
     this.my.bloom = Math.min(G.bloomMax || 0, this.my.bloom + (G.bloom || 0)) || this.my.bloom; this.my.shotN++; this.my.lastShot = t;
     for (const h of P.hands || []) if (h.handedness === 'right') h.pulse && h.pulse(G.pellets > 1 || G.dmg > 50 ? 1 : 0.45, 50);
     this.net.send({ t: 'sdShot', a: [r2(from.x), r2(from.y), r2(from.z)], b: [r2(ends[0].x), r2(ends[0].y), r2(ends[0].z)], g: G.i, n: Math.min(5, ends.length) });
-    for (const [id, e] of hits) this.ask('sdHit', { v: id, d: Math.round(Math.min(e.d, G.dmg * G.pellets * G.hs * 1.5)), hs: e.z === 1 ? 1 : 0, z: e.z, wb: e.wb ? 1 : 0, g: G.id, p: [r2(e.p.x), r2(e.p.y), r2(e.p.z)] });
+    for (const [id, e] of hits) this.ask('sdHit', { v: id, d: Math.round(Math.min(e.d, G.dmg * G.pellets * G.hs * 1.5)), hs: e.z === 1 ? 1 : 0, z: e.z, g: G.id, p: [r2(e.p.x), r2(e.p.y), r2(e.p.z)] });
+    for (const i of glass) this.ask('sdGlass', { i });
+    if (mates && t > (this.mateT || 0)) { this.mateT = t + 1.2; this.pop('🚫 THAT\'S YOUR TEAM-MATE!', '#4fc3ff'); this.mateHit && this.mateHit(); }
     if (this.my.mag <= 0 && this.my.reserve > 0) this.my.autoRl = t + 0.22;
     return true;
   },
@@ -130,29 +133,26 @@ export const GUNSYS = {
     return s * (this.g.renderer.xr.isPresenting ? 0.8 : 1);
   },
   // a shot down a line: the walls it meets (a thin one it can go through), and the first enemy before the wall that
-  // stops it. { hit: { id, t, point, z (0 body, 1 head, 2 legs), wb (through a wall) }, end, n (the wall's face), wall, exit }
+  // stops it. { hit: { id, t, point, z (0 body, 1 head, 2 legs), mate }, end, holes, glass (a window it hit) }
   trace(o, d, range, G) {
-    if (!this.walls) this.walled(new THREE.Ray(), 0); const W = [];
-    for (const b of this.walls) { if (b.containsPoint(o)) continue; const s = slab(o, d, b); if (s && s[0] < range) W.push(s); }
-    if (d.y < -0.02) { const tf = (o.y - this.floor(o.x, o.z)) / -d.y; if (tf > 0 && tf < range) W.push([tf, 1e9, new THREE.Vector3(0, 1, 0), 1, null]); }
-    W.sort((a, b) => a[0] - b[0]); const first = W[0];
-    let lim = first ? first[0] : range, lim2 = lim, through = false;
-    if (first && !first[3] && G && G.pen && first[1] - first[0] <= PEN_T[G.pen]) { through = true; lim2 = W[1] ? Math.max(first[1], W[1][0]) : range; }
+    const W = this.hitsAlong(o, d, range, true);
+    if (d.y < -0.02) { const tf = (o.y - this.floor(o.x, o.z)) / -d.y; if (tf > 0 && tf < range) { W.push([tf, 1e9, new THREE.Vector3(0, 1, 0), -1]); W.sort((a, b) => a[0] - b[0]); } }
+    const first = W[0], lim = first ? first[0] : range;
+    // (team-mates are in the way too: a shot stops at them and does nothing)
     const me = this.mine(); let best = null; const tmp = {}, a = new THREE.Vector3(), b = new THREE.Vector3(), h = new THREE.Vector3();
-    if (me) for (const [id, f] of this.F) { if (id === this.me || !f.alive || f.team === me.team) continue; if (!this.headOf(id, h)) continue;
+    if (me) for (const [id, f] of this.F) { if (id === this.me || !f.alive) continue; if (!this.headOf(id, h)) continue; const mate = f.team === me.team;
       const fl = this.floor(h.x, h.z); h.y = Math.max(h.y, fl + 1.2); const hipY = fl + 0.95;
-      const test = (t, z) => { if (t >= lim2 || (best && t >= best.t - (z === 1 ? 0.05 : 0))) return; best = { id, t, z, wb: t > lim }; };
+      const test = (t, z) => { if (t >= lim || (best && t >= best.t - (z === 1 ? 0.05 : 0))) return; best = { id, t, z, mate }; };
       a.set(h.x, h.y - 0.05, h.z); raySeg(o, d, a, a, tmp); if (tmp.d2 < 0.17 * 0.17) test(tmp.t, 1);
       a.set(h.x, hipY, h.z); b.set(h.x, h.y - 0.3, h.z); raySeg(o, d, a, b, tmp); if (tmp.d2 < 0.27 * 0.27) test(tmp.t, 0);
       a.set(h.x, fl + 0.12, h.z); b.set(h.x, hipY, h.z); raySeg(o, d, a, b, tmp); if (tmp.d2 < 0.2 * 0.2) test(tmp.t, 2); }
     if (best) { best.point = o.clone().addScaledVector(d, best.t); best.hs = best.z === 1; }
-    // the marks it leaves: where it goes into the first wall (or the floor), out of the far side of a thin one, and into the next
-    const hitT = best ? best.t : Infinity, holes = [], at = (tt) => o.clone().addScaledVector(d, tt);
-    if (first && first[0] < hitT) holes.push([at(first[0]), first[2]]);
-    if (through && first[1] < hitT) holes.push([at(first[1]), first[4]]);
-    if (through && W[1] && W[1][0] < hitT) holes.push([at(W[1][0]), W[1][2]]);
-    const stop = through ? (W[1] ? W[1][0] : range) : lim, endT = best ? best.t : Math.max(0.2, Math.min(range, stop));
-    return { hit: best, end: at(endT), holes };
+    // where it stopped: a mark on the wall or floor, or the window it hit (which breaks)
+    const hitT = best ? best.t : Infinity, at = (tt) => o.clone().addScaledVector(d, tt), holes = [];
+    const glass = first && first[0] < hitT && first[3] >= 0 ? first[3] : -1;
+    if (first && first[0] < hitT && glass < 0) holes.push([at(first[0]), first[2]]);
+    const endT = best ? best.t : Math.max(0.2, Math.min(range, lim));
+    return { hit: best, end: at(endT), holes, glass };
   },
   // (kept for the bots and the old tests: just the hit)
   castShot(o, d, range) { return this.trace(o, d, range, this.curG()).hit; },

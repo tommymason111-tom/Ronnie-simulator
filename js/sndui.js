@@ -343,8 +343,8 @@ export const UI = {
   pop(s, col) { const e = this.popEl; if (!e) return; e.textContent = s; e.style.color = col || '#fff'; e.className = ''; void e.offsetWidth; e.className = 'on'; },
   multiKill(n) { if (n < 2) return; const s = MULTI[Math.min(5, n)]; sfx('sd_multi', null, 0.9); track('sdMulti'); if (this.g.renderer.xr.isPresenting) { this.g.showBanner(s, ''); return; } const e = this.multiEl; if (!e) return; e.textContent = s; e.className = ''; void e.offsetWidth; e.className = 'on'; },
   feed(html, mine) { const d = document.createElement('div'); d.innerHTML = html; if (mine) d.className = 'me'; this.feedEl.prepend(d); const most = innerWidth < 760 || innerHeight < 500 ? 3 : 5; while (this.feedEl.children.length > most) this.feedEl.lastChild.remove(); setTimeout(() => d.classList.add('old'), 6500); setTimeout(() => d.remove(), 7400); },
-  feedKill(K, V, ico, hs, wb, as) { const n = (f) => `<span class="${f.team}">${esc(f.name.replace(/^🤖 /, '🤖'))}</span>`; const ass = as && as.length ? ` <small>+ ${as.map(a => esc(a.name.replace(/^🤖 /, ''))).join(', ')}</small>` : '';
-    this.feed(K ? `${n(K)}${ass} ${ico}${wb ? '🧱' : ''}${hs ? '🎯' : ''} ${n(V)}` : `${ico} ${n(V)}`, (K && K.id === this.me) || V.id === this.me || (as || []).some(a => a.id === this.me)); },
+  feedKill(K, V, ico, hs, as) { const n = (f) => `<span class="${f.team}">${esc(f.name.replace(/^🤖 /, '🤖'))}</span>`; const ass = as && as.length ? ` <small>+ ${as.map(a => esc(a.name.replace(/^🤖 /, ''))).join(', ')}</small>` : '';
+    this.feed(K ? `${n(K)}${ass} ${ico}${hs ? '🎯' : ''} ${n(V)}` : `${ico} ${n(V)}`, (K && K.id === this.me) || V.id === this.me || (as || []).some(a => a.id === this.me)); },
   splash(col, html, ms) { const sp = this.splashEl; if (!sp) return; sp.style.color = col; sp.innerHTML = `<div>${html}</div>`; sp.classList.remove('on'); void sp.offsetWidth; sp.classList.add('on'); clearTimeout(this.splashT); this.splashT = setTimeout(() => sp.classList.remove('on'), ms || 2500); },
   roundSplash(m) {
     const me = this.mine(); if (!me) return; const att = me.team === this.att, mates = [...this.F.values()].filter(f => f.team === me.team);

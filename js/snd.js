@@ -32,6 +32,7 @@ import { GUNS, GUN, PRIMARIES, FREE_GUN, PICKS, PICK_KINDS, MAPS, pickModel, pli
 import { UI } from './sndui.js';
 import { GUNSYS } from './sndguns.js';
 import { FX } from './sndfx.js';
+import { WORLD } from './sndworld.js';
 
 export const SD = {
   HP: 100, AR_MAX: 100, AR_ABS: 0.6, BUY_T: 14, ROUND_T: 115, BOMB_T: 40, PLANT_T: 3.2, DEFUSE_T: 6.5, END_T: 7, OVER_T: 3,
@@ -44,7 +45,7 @@ const KILL_LINES = Object.assign(Object.create(null), {
   lewis: 'SIUUU!', noah: 'TACKLED!', aidan: 'JUST THE ONE!', chloe: 'EAT YOUR GREENS!', harry: 'SWIPED LEFT!', oliver: 'THAT\'S GOING ON MY STORY!', dylan: 'DON\'T LOOK BACK IN ANGER!',
   connor: 'ONE FOR YOU, ONE FOR ME!', ethan: 'GALÁCTICO!', ian: 'GET SOME VEG IN YOU!', alfie: 'NUTMEGGED!', ben: 'BACK TO TURKEY!', aidanw: 'MIND THE KNEE!', tommy: 'I\'M JUST TRYING TO HELP!', ronnie: 'NOM NOM!',
 });
-const HOST_MSGS = ['sdRound', 'sdGo', 'sdClock', 'sdDmg', 'sdKill', 'sdGot', 'sdPk', 'sdBomb', 'sdEnd', 'sdOver', 'sdState', 'sdBots', 'sdHp', 'sdWait', 'sdLoad', 'sdCash', 'sdDrop'];
+const HOST_MSGS = ['sdRound', 'sdGo', 'sdClock', 'sdDmg', 'sdKill', 'sdGot', 'sdPk', 'sdBomb', 'sdEnd', 'sdOver', 'sdState', 'sdBots', 'sdHp', 'sdWait', 'sdLoad', 'sdCash', 'sdDrop', 'sdGlass'];
 const r2 = (v) => Math.round(v * 100) / 100;
 const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -67,7 +68,7 @@ export class SearchDestroy {
     this.feedLog = []; this.btnWas = {}; this.handlers = {}; this.prevOn = {}; this.dmgDirs = [];
     this.grp = new THREE.Group(); this.grp.name = 'search and destroy'; g.scene.add(this.grp);
     this.panel = new Panel({ scene: g.scene, player: g.player, renderer: g.renderer });
-    this.buildWorld(); this.initFx(); this.buildUI(); this.walled(new THREE.Ray(), 0);
+    this.buildWalls(); this.buildWorld(); this.initFx(); this.buildUI();
     this.updateSpeed();
     // nobody punches, grabs or eats anything: it's guns only. No food lying about either
     const mp = g.mp; if (mp) mp.noPunch = true; g.player.noGrab = true; g.player.flatDrop && g.player.flatDrop(); for (const h of g.player.hands || []) if (h.held) { h.held.heldBy = null; h.held = null; }
@@ -85,6 +86,7 @@ export class SearchDestroy {
     on('sdDefuse', (m, p) => { if (this.host && p) this.hostDefuse(String(p.id)); });
     on('sdBuy', (m, p) => { if (this.host && p) this.hostBuy(String(p.id), m.g); });
     on('sdGrab', (m, p) => { if (this.host && p) this.hostGrab(String(p.id), m.d); });
+    on('sdSmash', (m, p) => { if (this.host && p) this.hostSmash(String(p.id), m.i); });
     on('sdAct', (m, p) => { if (p) this.remoteAct(this.botOr(m, p), m); });
     on('end', (m, p) => { if (this.host || !m || !Array.isArray(m.lines) || (p && p.id !== this.net.hostId)) return; m.lines = this.summary(); const f = this.prevOn.end; f && f(m, p); });      // (a guest's receipt: their own game's lines)
     this.leaveWas = this.net.on.leave; this.net.on.leave = (m) => { this.leaveWas && this.leaveWas(m); if (this.host && m) this.hostLeft(String(m.id)); };
@@ -179,20 +181,6 @@ export class SearchDestroy {
     for (const im of [this.ringMesh, this.plinthMesh, this.glowMesh]) { im.count = ri; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }
   }
   clearFood() { const it = this.g.items; if (!it) return; it.minFood = 0; if (it.respawnQueue) it.respawnQueue.length = 0; for (const f of (it.items || []).slice()) if (!f.def.prop) it.remove(f); }
-  // the walls (and anything tall) a shot can't go through
-  walled(ray, t) {
-    if (!this.walls) this.walls = (this.g.room.colliders || []).filter(b => b.max.y - b.min.y > 1.4 && b.min.y < 0.7).map(b => new THREE.Box3(b.min.clone(), b.max.clone()));
-    for (const b of this.walls) { if (b.containsPoint(ray.origin)) continue; const p = ray.intersectBox(b, _hit); if (p && p.distanceTo(ray.origin) < t) return true; }
-    return false;
-  }
-  wallT(ray, max) {
-    let t = max; if (!this.walls) this.walled(ray, 0);
-    for (const b of this.walls) { if (b.containsPoint(ray.origin)) continue; const p = ray.intersectBox(b, _hit); if (p) t = Math.min(t, p.distanceTo(ray.origin)); }
-    if (ray.direction.y < -0.02) t = Math.min(t, (ray.origin.y - this.floor(ray.origin.x, ray.origin.z)) / -ray.direction.y);
-    return Math.max(0.2, t);
-  }
-  canSee(a, b) { const d = _w.copy(b).sub(a), L = d.length(); if (L < 0.01) return true; const ray = new THREE.Ray(a.clone(), d.divideScalar(L)); return !this.walled(ray, L - 0.2); }
-
   // ------------------------------------------------------------------ spawns
   // where someone starts: round their team's spot, spread out (the same answer on every game, from the round's list)
   spawnFor(id, list, att) {
@@ -211,7 +199,9 @@ export class SearchDestroy {
 
   // ------------------------------------------------------------------ the host: teams, rounds, money, the referee
   send(k, m) { m.t = k; this.net.send(m); this.apply(k, m); }
-  ask(k, m) { if (this.host) { const f = { sdHit: () => this.hostHit(this.me, m), sdTake: () => this.hostTake(this.me, m.i), sdPlant: () => this.hostPlant(this.me, m), sdDefuse: () => this.hostDefuse(this.me), sdBuy: () => this.hostBuy(this.me, m.g), sdGrab: () => this.hostGrab(this.me, m.d) }[k]; f && f(); } else { m.t = k; this.net.send(m); } }
+  ask(k, m) { if (this.host) { const f = { sdHit: () => this.hostHit(this.me, m), sdTake: () => this.hostTake(this.me, m.i), sdPlant: () => this.hostPlant(this.me, m), sdDefuse: () => this.hostDefuse(this.me), sdBuy: () => this.hostBuy(this.me, m.g), sdGrab: () => this.hostGrab(this.me, m.d), sdGlass: () => this.hostSmash(this.me, m.i) }[k]; f && f(); } else { m.t = k === 'sdGlass' ? 'sdSmash' : k; this.net.send(m); } }
+  // a window shot (someone's word): it breaks for everyone
+  hostSmash(from, i) { const w = this.windows && this.windows[i], P = this.F.get(from); if (!w || w.broken || !P || !P.alive || !this.inRound()) return; const q = this.posOf(from, new THREE.Vector3()); if (!q || this.hd(q, w.c) > 140) return; this.send('sdGlass', { i }); }
   hostStart() {
     const humans = this.roster(), H = this.H = { r: 0, sc: { R: 0, B: 0 }, att: Math.random() < 0.5 ? 'R' : 'B', team: {}, bots: [], botN: 0, stats: {}, hits: {}, picks: [], cash: {}, load: {}, bought: {}, dmgBy: {}, rs: {}, streak: { R: 0, B: 0 }, hist: [], dropN: 0, drops: new Map() };
     // the people split evenly; bots (the squad, as whoever nobody's playing) fill both sides up to the map's size
@@ -289,7 +279,7 @@ export class SearchDestroy {
     const f = {}; for (const [k, v] of this.F) { const s = this.stat(k); f[k] = [v.alive ? 1 : 0, Math.round(v.hp), Math.round(v.ar), v.gun || FREE_GUN, s.k, s.d, s.as, s.pl, s.df, s.mvp]; }
     const ld = {}, cash = {}; for (const [k] of this.F) { ld[k] = this.loadMsg(k); cash[k] = Math.round(this.H.cash[k] ?? SD.CASH0); }
     const drops = [...this.H.drops.values()].map(d => [d.d, d.g, d.x, d.z]);
-    this.net.send({ t: 'sdState', to: id, round: this.roundMsg || null, ph: this.phase, left: Math.max(0, (this.H.ends || 0) - this.clock), f, bomb: this.bombMsg || null, sc: this.H.sc, pkOn: this.pk.map(p => p.on ? 1 : 0), over: this.overMsg || null, ld, cash, drops, hist: this.H.hist.slice(-12) });
+    this.net.send({ t: 'sdState', to: id, round: this.roundMsg || null, ph: this.phase, left: Math.max(0, (this.H.ends || 0) - this.clock), f, bomb: this.bombMsg || null, sc: this.H.sc, pkOn: this.pk.map(p => p.on ? 1 : 0), over: this.overMsg || null, ld, cash, drops, hist: this.H.hist.slice(-12), gl: (this.windows || []).filter(w => w.broken).map(w => w.i) });
   }
   // a buy in the shop: only while the round's being set up, only what you can afford. A gun you bought this round and
   // swap for another is refunded; one you'd kept from last round is left on the floor for a team-mate
@@ -324,25 +314,25 @@ export class SearchDestroy {
     const a = this.headOf(from, new THREE.Vector3()), b = this.posOf(v, new THREE.Vector3()); if (!a || !b) return; if (this.hd(a, b) > G.range + 5) return;
     if (v3ok(m.p) && Math.hypot(m.p[0] - b.x, m.p[2] - b.z) > 4) return;      // (they weren't anywhere near there)
     const q = H.hits[from] || (H.hits[from] = []), t = this.clock; while (q.length && t - q[0] > 1) q.shift(); if (q.length > Math.ceil(1 / G.rate) + 3) return; q.push(t);
-    this.hostDamage(v, from, d, z, a, G, !!m.wb);
+    this.hostDamage(v, from, d, z, a, G);
   }
-  hostDamage(v, by, d, z, from, G, wb) {
+  hostDamage(v, by, d, z, from, G) {
     const V = this.F.get(v); if (!V || !V.alive) return; const raw = d; let take = d; if (typeof z === 'boolean') z = z ? 1 : 0;
     if (V.ar > 0) { const soak = Math.min(V.ar, d * SD.AR_ABS); V.ar -= soak; take -= soak; }
     const lost = Math.min(V.hp, take); V.hp = Math.max(0, V.hp - take); const st = this.stat(by); st.dmg += lost;
     const db = this.H.dmgBy[v] || (this.H.dmgBy[v] = {}); db[by] = (db[by] || 0) + lost; const rs = this.H.rs[by] || (this.H.rs[by] = { k: 0, dmg: 0, ob: 0 }); rs.dmg += lost;
     if (!G) { const S = this.F.get(by); G = GUN[S && S.gun] || GUN[FREE_GUN]; }
-    this.send('sdDmg', { v, by, hp: Math.ceil(V.hp), ar: Math.round(V.ar), d: Math.round(raw), hs: z === 1 ? 1 : 0, z, wb: wb ? 1 : 0, g: G.i, p: from ? [r2(from.x), r2(from.y), r2(from.z)] : undefined });
-    if (V.hp <= 0) this.hostKill(v, by, z === 1, '', G, wb);
+    this.send('sdDmg', { v, by, hp: Math.ceil(V.hp), ar: Math.round(V.ar), d: Math.round(raw), hs: z === 1 ? 1 : 0, z, g: G.i, p: from ? [r2(from.x), r2(from.y), r2(from.z)] : undefined });
+    if (V.hp <= 0) this.hostKill(v, by, z === 1, '', G, z);
   }
-  hostKill(v, by, hs, why, G, wb) {
+  hostKill(v, by, hs, why, G, z) {
     const H = this.H, V = this.F.get(v); if (!V || !V.alive) return; V.alive = false; V.hp = 0;
     this.stat(v).d++; const K = by ? this.F.get(by) : null, enemy = K && by !== v && K.team !== V.team;
     if (!G) G = K ? GUN[K.gun] || GUN[FREE_GUN] : null;
     const as = []; if (enemy) { this.stat(by).k++; if (hs) this.stat(by).hs++; (H.rs[by] || (H.rs[by] = { k: 0, dmg: 0, ob: 0 })).k++; H.cash[by] = Math.min(SD.CASH_MAX, (H.cash[by] ?? SD.CASH0) + (G ? G.kill : 300));
       for (const [a, dd] of Object.entries(H.dmgBy[v] || {})) if (a !== by && dd >= SD.ASSIST_D && this.F.get(a) && this.F.get(a).team === K.team) { as.push(a); this.stat(a).as++; } }
     const pa = this.posOf(v, new THREE.Vector3()), pb = by ? this.posOf(by, new THREE.Vector3()) : null, ds = pa && pb ? Math.round(this.hd(pa, pb)) : 0;
-    this.send('sdKill', { v, by: by || '', g: G ? G.i : -1, hs: hs ? 1 : 0, w: why || '', as: as.slice(0, 4), wb: wb ? 1 : 0, ds });
+    this.send('sdKill', { v, by: by || '', g: G ? G.i : -1, hs: hs ? 1 : 0, w: why || '', as: as.slice(0, 4), z: z === 1 || z === 2 ? z : 0, ds });
     if (enemy) this.send('sdCash', { c: this.cashMsg() });
     // (what they were carrying is left where they fell: their best gun, for anyone)
     const L = this.load(v), drop = L.P || (L.S !== FREE_GUN ? L.S : null); if (drop && pa && why !== 'left') this.hostDrop(drop, pa.x, pa.z); H.load[v] = { P: null, S: FREE_GUN };
@@ -451,6 +441,7 @@ export class SearchDestroy {
     if (k === 'sdLoad') return this.loadNews(m);
     if (k === 'sdCash') { this.cashIn(m.c); return; }
     if (k === 'sdDrop') return this.dropNews(m);
+    if (k === 'sdGlass') { const i = Number(m.i); if (Number.isInteger(i)) this.breakGlass(i); return; }
     if (k === 'sdHp') { const f = this.F.get(String(m.id)); if (f) { if (finite(m.hp)) f.hp = clamp(m.hp, 0, SD.HP); if (finite(m.ar)) f.ar = clamp(m.ar, 0, SD.AR_MAX); } return; }
     if (k === 'sdBots') { if (!Array.isArray(m.b)) return; for (const e of m.b.slice(0, 12)) { if (!Array.isArray(e) || e.length < 6) continue; const [id, x, z, yaw, pitch, fl] = e; if (!finite(x, z, yaw, pitch) || Math.abs(x) > 1e3 || Math.abs(z) > 1e3) continue; const f = this.F.get(String(id)); if (!f || !f.bot) continue;
         const bp = this.botPose.get(f.id) || { x, z, yaw, pitch, dx: x, dz: z }; bp.tx = x; bp.tz = z; bp.tyaw = yaw; bp.pitch = pitch; bp.fl = fl | 0; if (Math.hypot(bp.x - x, bp.z - z) > 3) { bp.x = x; bp.z = z; } this.botPose.set(f.id, bp); } return; }
@@ -460,6 +451,7 @@ export class SearchDestroy {
       if (m.sc && typeof m.sc === 'object') this.sc = { R: Number(m.sc.R) || 0, B: Number(m.sc.B) || 0 };
       if (Array.isArray(m.pkOn)) m.pkOn.forEach((v, i) => { if (this.pk[i]) this.pk[i].on = !!v; });
       if (m.ld && typeof m.ld === 'object') this.loadsIn(m.ld); this.cashIn(m.cash);
+      if (Array.isArray(m.gl)) for (const i of m.gl.slice(0, 200)) if (Number.isInteger(i)) this.breakGlass(i, true);
       if (Array.isArray(m.drops)) for (const e of m.drops.slice(0, SD.DROPS)) if (Array.isArray(e)) this.dropNews({ d: e[0], g: e[1], p: [e[2], e[3]], on: 1 });
       if (Array.isArray(m.hist)) this.hist = m.hist.filter(h => Array.isArray(h) && (h[0] === 'R' || h[0] === 'B')).slice(-12).map(h => [h[0], String(h[1] || '').slice(0, 10)]);
       const l = Number(m.left) || 0; if (m.ph === 'live') { this.phase = 'live'; this.endsAt = this.clock + l; this.closePicker(); } else if (m.ph === 'buy') this.endsAt = this.clock + l;
@@ -504,7 +496,7 @@ export class SearchDestroy {
     if (m.ld && typeof m.ld === 'object') this.loadsIn(m.ld); this.cashIn(m.cash);
     if (Array.isArray(m.hist)) this.hist = m.hist.filter(h => Array.isArray(h) && (h[0] === 'R' || h[0] === 'B')).slice(-12).map(h => [h[0], String(h[1] || '').slice(0, 10)]);
     this.layPicks(m.pk); this.bomb = { st: m.car ? 'carried' : 'none', id: m.car != null ? String(m.car) : null }; this.bombMsg = { ...this.bomb }; this.bombAt = 0; this.boomFx = 0;
-    for (const [, D] of this.drops) this.grp.remove(D.mesh); this.drops.clear(); this.clearMarks(); this.dmgLog = []; this.deathCam = null; this.boughtNow = {};
+    for (const [, D] of this.drops) this.grp.remove(D.mesh); this.drops.clear(); this.clearMarks(); this.dmgLog = []; this.deathCam = null; this.boughtNow = {}; this.mendGlass();
     this.phase = 'buy'; this.endsAt = this.clock + (Number(m.bt) || SD.BUY_T); this.countN = null;
     // bots on everyone's game: a puppet each (made once, kept round to round)
     for (const [id, f] of this.F) if (f.bot && !this.puppets.has(id)) this.makePuppet(f);
@@ -530,7 +522,7 @@ export class SearchDestroy {
     const B = this.F.get(by); if (B) B.dmg = (B.dmg || 0) + d;
     if (by === this.me || v === this.me) { this.dmgLog.push({ by, v, d, z, g: G.id, t: this.clock }); if (this.dmgLog.length > 60) this.dmgLog.shift(); }
     if (at) { const p = at.clone().add({ x: 0, y: hs ? 0 : z === 2 ? -1.1 : -0.5, z: 0 }); this.burst(p, hs ? [0xff2020, 0xffd400, 0xffffff] : [G.splat || 0xc62828, G.tr || 0xff5252], hs ? 14 : 8, 1.4); this.splatFloor(at, G, false);
-      if (v !== this.me) this.g.words && this.g.words.show((hs ? '🎯 ' : m.wb ? '🧱 ' : '') + Math.round(d), at.clone().add({ x: 0, y: 0.35, z: 0 }), hs ? '#ffd400' : z === 2 ? '#c3cad6' : '#fff', 0.14, 0.8); }
+      if (v !== this.me) this.g.words && this.g.words.show((hs ? '🎯 ' : '') + Math.round(d), at.clone().add({ x: 0, y: 0.35, z: 0 }), hs ? '#ffd400' : z === 2 ? '#c3cad6' : '#fff', 0.14, 0.8); }
     if (v === this.me) this.hurt(d, m.p, hs, by);
     if (by === this.me && v !== this.me) { this.hitMarker(false, hs); sfx(hs ? 'sd_headshot' : 'sd_hitmark', null, 0.8); track('sdDmg', d); }
   }
@@ -539,11 +531,11 @@ export class SearchDestroy {
     const enemy = K && by !== v && K.team !== V.team; if (enemy) { K.k = (K.k || 0) + 1; K.rk = (K.rk || 0) + 1; if (hs) K.hs = (K.hs || 0) + 1; }
     const as = Array.isArray(m.as) ? m.as.slice(0, 4).map(String).filter(a => this.F.has(a)) : []; for (const a of as) this.F.get(a).a = (this.F.get(a).a || 0) + 1;
     const g = GUNS[Number(m.g)], why = m.w === 'boom' ? '💥🍛' : m.w === 'left' ? '🚪' : g ? g.icon : '💀';
-    this.feedKill(K && by !== v ? K : null, V, why, hs, !!m.wb, as.map(a => this.F.get(a)));
+    this.feedKill(K && by !== v ? K : null, V, why, hs, as.map(a => this.F.get(a)));
     const at = this.headOf(v, new THREE.Vector3()); if (at) { this.burst(at.clone().add({ x: 0, y: -0.6, z: 0 }), [0xff3b3b, 0xffd400, 0x8d5a32, 0xffffff], 22, 2.2); this.splatFloor(at, g, true); sfx('sd_down', at, 1); }
     if (K && K.bot && KILL_LINES[K.char] && Math.random() < 0.55) { const h = this.headOf(by, new THREE.Vector3()); if (h) this.g.words && this.g.words.show(KILL_LINES[K.char], h.add({ x: 0, y: 0.6, z: 0 }), TEAMS[K.team].col, 0.16, 1.6); }
     if (v === this.me) this.died(K, g, hs, m.w, Number(m.ds) || 0);
-    if (by === this.me && v !== this.me) { this.hitMarker(true, hs); sfx('sd_kill', null, 0.9); track('sdKills'); if (hs) track('sdHs'); this.pop(`💀 ${hs ? 'HEADSHOT! ' : ''}${m.wb ? 'THROUGH THE WALL! ' : ''}${V.name.replace(/^🤖 /, '')}`, '#ff5252'); this.multiKill(K.rk); }
+    if (by === this.me && v !== this.me) { this.hitMarker(true, hs); sfx('sd_kill', null, 0.9); track('sdKills'); if (hs) track('sdHs'); this.pop(`💀 ${hs ? 'HEADSHOT! ' : ''}${V.name.replace(/^🤖 /, '')}`, '#ff5252'); this.multiKill(K.rk); }
     if (as.includes(this.me)) this.pop(`🤝 ASSIST · ${V.name.replace(/^🤖 /, '')}`, '#9fe8ff');
     if (this.spect === v) this.doWatch();
   }
@@ -715,6 +707,7 @@ export class SearchDestroy {
     for (let n = 0; n < G.pellets; n++) if (Math.random() < pHit) { const r = Math.random(), zz = r < 0.12 ? 1 : r < 0.32 ? 2 : 0; dmg += G.dmg * Math.max(0.25, falloff(G, dist)) * (zz === 1 ? G.hs : zz === 2 ? G.limb : 1); if (z < 0 || zz === 1) z = zz; }
     const from = new THREE.Vector3(b.x - Math.sin(b.yaw) * 0.45 + Math.cos(b.yaw) * 0.18, this.floor(b.x, b.z) + 1.35, b.z - Math.cos(b.yaw) * 0.45 - Math.sin(b.yaw) * 0.18);
     const aim = q.clone().add({ x: 0, y: z === 1 ? 0 : z === 2 ? -1.1 : -0.35, z: 0 }); if (!dmg) aim.add({ x: (Math.random() - 0.5) * 1.6, y: (Math.random() - 0.3) * 1.2, z: (Math.random() - 0.5) * 1.6 });
+    { const dd = aim.clone().sub(from), L = dd.length(), gi = this.glassOn(from, dd.divideScalar(L), L); if (gi >= 0) { dmg = 0; this.send('sdGlass', { i: gi }); } }      // (a window in the way: the glass takes it, and breaks)
     const end = dmg ? aim : from.clone().add(aim.sub(from).normalize().multiplyScalar(this.wallT(new THREE.Ray(from, aim.clone().normalize()), G.range)));
     this.net.send({ t: 'sdShot', id: b.id, a: [r2(from.x), r2(from.y), r2(from.z)], b: [r2(end.x), r2(end.y), r2(end.z)], g: G.i, n: Math.min(5, G.pellets) });
     this.remoteShot(b.id, { a: [from.x, from.y, from.z], b: [end.x, end.y, end.z], g: G.i, n: Math.min(5, G.pellets) });
@@ -899,4 +892,4 @@ export class SearchDestroy {
     if (g.player.flatGrip && this.gripHid) g.player.flatGrip.visible = true; if (this.fov0 != null && g.camera) { g.camera.fov = this.fov0; g.camera.updateProjectionMatrix(); }
   }
 }
-Object.assign(SearchDestroy.prototype, GUNSYS, FX, UI);
+Object.assign(SearchDestroy.prototype, GUNSYS, FX, UI, WORLD);
