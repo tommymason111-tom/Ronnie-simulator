@@ -360,6 +360,7 @@ export class Ragdoll {
     const sideOf = this.defs.map(d => d.name.includes('Leg') ? (d.name.endsWith('L') ? 1 : -1) : 0);
     const pelvisIdx = this.defs.findIndex(d => d.name === 'pelvis'), hipJointY = this.defs.find(d => d.name === 'uLegL').a.y;
     const nrm = geo.attributes.normal, _n = new THREE.Vector3(), _c = new THREE.Vector3();
+    const slotK = new Int32Array(this.defs.length + 2), slotW = new Float64Array(this.defs.length + 2);      // (one vertex's bones and weights)
     for (let i = 0; i < n; i++) {
       _v.fromBufferAttribute(pos, i);
       if (nrm) _n.fromBufferAttribute(nrm, i);
@@ -387,8 +388,11 @@ export class Ragdoll {
         if (ds[k] < ds[best]) best = k;
       }
       // blend smoothly with the bones joined to the nearest one
+      // (worked in two small reused buffers, not new arrays for every vertex: a model has tens of thousands of vertices
+      // and every squad member is skinned while the level loads, so the throwaway arrays were a lot of
+      // garbage while the level loads. Same weights, same order, to the last bit as the arrays gave)
       const sigma = 0.025;
-      let total = 0, slots = [[best, 1]];
+      let total = 0, ns = 1; slotK[0] = best; slotW[0] = 1;
       for (let k = 0; k < this.defs.length; k++) {
         if (k === best || !adjacent(k, best)) continue;
         let w = Math.exp(-(ds[k] - ds[best]) / sigma);
@@ -396,7 +400,7 @@ export class Ragdoll {
         // torso must not be glued to the chest along their whole length)
         const joint = parentIdx[k] === best ? this.defs[k].a : this.defs[best].a;
         w *= Math.max(0, 1 - _v.distanceTo(joint) / (0.09 * kH));
-        if (w > 0.02) slots.push([k, w]);
+        if (w > 0.02) { slotK[ns] = k; slotW[ns] = w; ns++; }
       }
       // the head is rigid: everything above the jaw follows the head bone 100%
       // (so the face moves exactly with the eyes, which are attached to that bone);
@@ -407,13 +411,15 @@ export class Ragdoll {
       const inHead = rh < 0.14 * kH && !this.defs[best].name.includes('Arm');
       if (best === headIdx || best === chestIdx || inHead) {
         const y = _v.y, lo = neckY - 0.045 * kH, hi = neckY + 0.025 * kH;
-        if ((best === headIdx || inHead) && y >= hi) slots = [[headIdx, 1]];
-        else if (y > lo && y < hi && Math.abs(_v.x) < 0.12 * kH) { const t = (y - lo) / (hi - lo); slots = [[headIdx, t], [chestIdx, 1 - t]]; }
-        else if (best === chestIdx) slots = slots.filter(sl => sl[0] !== headIdx);
+        if ((best === headIdx || inHead) && y >= hi) { ns = 1; slotK[0] = headIdx; slotW[0] = 1; }
+        else if (y > lo && y < hi && Math.abs(_v.x) < 0.12 * kH) { const t = (y - lo) / (hi - lo); ns = 2; slotK[0] = headIdx; slotW[0] = t; slotK[1] = chestIdx; slotW[1] = 1 - t; }
+        else if (best === chestIdx) { let m = 0; for (let j = 0; j < ns; j++) if (slotK[j] !== headIdx) { slotK[m] = slotK[j]; slotW[m] = slotW[j]; m++; } ns = m; }
       }
-      slots.sort((a, b) => b[1] - a[1]); slots = slots.slice(0, 4);
-      for (const s of slots) total += s[1];
-      slots.forEach((s, j) => { skinIndex[i * 4 + j] = s[0]; skinWeight[i * 4 + j] = s[1] / total; });
+      // heaviest first (a stable sort, as Array.sort is: equal weights keep their order), the top four kept
+      for (let j = 1; j < ns; j++) { const kk = slotK[j], ww = slotW[j]; let q = j - 1; while (q >= 0 && slotW[q] < ww) { slotK[q + 1] = slotK[q]; slotW[q + 1] = slotW[q]; q--; } slotK[q + 1] = kk; slotW[q + 1] = ww; }
+      if (ns > 4) ns = 4;
+      for (let j = 0; j < ns; j++) total += slotW[j];
+      for (let j = 0; j < ns; j++) { skinIndex[i * 4 + j] = slotK[j]; skinWeight[i * 4 + j] = slotW[j] / total; }
     }
     // Elbows and knees bend smoothly: across a band either side of the joint the skin blends from the upper bone to
     // the lower one by how far along the limb it is (nearest-bone weights left sharp creases and spikes there)
