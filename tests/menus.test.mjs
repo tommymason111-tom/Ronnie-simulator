@@ -30,6 +30,8 @@ export default async function () {
         await p.evaluate(() => { document.querySelector('.playbtn').click(); }); await sleep(500);
         await p.evaluate(() => document.querySelector('#pick-solo').click()); await sleep(500);
         await p.evaluate(() => { document.querySelector('.scene[data-id="pub"]').click(); document.querySelector('.screen[data-s="place"] .bigbtn').click(); }); await sleep(600);
+        { const mpOnly = await p.evaluate(() => ['snd', 'imposter', 'prophunt'].filter(id => { const f = document.querySelector('.flip[data-id="' + id + '"]'); return f && f.offsetParent; }));      /* (multiplayer-only games aren't offered on your own) */
+          C.ok(mpOnly.length === 0, `${name}: the solo pub menu offers multiplayer-only games: ${mpOnly.join(', ')}`); }
         await p.evaluate(() => { const f = document.querySelector('.flip[data-id="everyone"]'); f && f.click(); document.querySelector('.screen[data-s="mode"] .bigbtn').click(); }); await sleep(800);
         const tapped = await tapSel(p, '#go'); await sleep(400);
         const ls = await p.evaluate(() => document.getElementById('loadscreen').classList.contains('on') || document.body.classList.contains('ready'));
