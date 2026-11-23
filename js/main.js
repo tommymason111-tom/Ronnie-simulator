@@ -735,6 +735,7 @@ function respawnPlayer() {
 // a new game, for this player: off the end screen / pause menu, the mode started fresh, back at the start
 function newGame(id, why) {
   window.__crashStep = 'new game: ' + id;
+  try { if (window.__crashBeat) window.__crashBeat(); } catch (e) {}      // (written down now: if the phone closes the game while this mode starts, the next load says so)
   // (only the games this place has: Run the Pub needs the pub's bar and seats, the sweep needs Lidl. A game from anywhere
   // else (another player's restart message, a stray call) starts this place's own first game instead of crashing)
   { const ok = PLACE_GAMES[room.placeId]; if (ok && !ok.includes(id)) { console.warn('not a game for ' + room.placeId + ': ' + id); id = ok[0]; } }

@@ -23,6 +23,7 @@ export function startDev(RS) {
   // ---- the look
   const st = document.createElement('style'); st.textContent = `
   #dev-btn { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 72; font: 900 15px 'Courier New', monospace; letter-spacing: 1px; color: #39ff14; background: rgba(0,10,2,0.92); border: 2px solid #39ff14; border-radius: 10px; padding: 8px 16px; box-shadow: 0 0 16px rgba(57,255,20,0.6); cursor: pointer; text-shadow: 0 0 6px #39ff14; }
+  body.snd.sd-touch #dev-btn { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 124px); }      /* (SEARCH AND DESTROY on a phone: above its RELOAD / GUNS / FIRE row, not over GUNS) */
   body.paused #dev-btn, body.paused #dev-panel { display: none !important; }      /* (the pause menu's own BACK buttons sit where this would be) */
   #dev-btn:active { transform: translateX(-50%) translateY(2px); box-shadow: 0 1px 0 #111; }
   #dev-panel { position: fixed; left: 50%; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 52px); transform: translateX(-50%); width: min(94vw, 560px); max-height: min(62vh, 520px); z-index: 72; display: none; flex-direction: column;

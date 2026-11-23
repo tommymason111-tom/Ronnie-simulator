@@ -24,7 +24,7 @@ body.paused #rc-card { display: none !important; }`;
   document.head.appendChild(css);
   const el = document.createElement('div'); el.id = 'rc-card'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Ready up'); document.body.appendChild(el);
   const fromHost = (p) => !!p && (p.host || (net.hostId != null && String(p.id) === String(net.hostId)));
-  const esc = (t) => String(t == null ? '' : t).replace(/[<>&"]/g, '');
+  const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');      // (escaped, not dropped: SEARCH & DESTROY kept its &)
   const people = () => [{ id: net.id, name: net.name || 'You', char: net.char, me: true, host: !!net.host }, ...[...net.players.values()].map(p => ({ id: p.id, name: p.name, char: p.char, host: !!p.host }))];
   const draw = () => {
     if (!cur) { el.classList.remove('on'); return; }

@@ -47,3 +47,4 @@ Crash and regression tests for Ronnie Simulator. GitHub Actions runs them on eve
 | `chaos.test.mjs` | a seeded bot mashes everything in every place (`SEEDS`, `STEPS`, `PLACES`, `SEED0` to go harder or replay a seed) |
 
 A test returns a list of what went wrong (empty = passed). Helpers are in `lib/`: `game.mjs` (a browser running the game from this repo, crash reports caught), `durable.mjs` (a stand-in for Cloudflare's Durable Objects), `roomhost.mjs` (the real room server over real WebSockets).
+- `lastclose.test.mjs`: the title screen says what the game was doing when the phone closed it (rs_lastkill / rs_lasterr), and the READY card keeps the & in mode names.

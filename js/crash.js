@@ -34,6 +34,8 @@
     if (sent[key] || nSent >= MAX) return; sent[key] = 1; nSent++;
     var w = where(), body = { k: k, m: msg, s: st || '', v: window.GAME_BUILD || '?', d: device, b: browser, p: w.p, md: w.md, vr: w.vr, mp: w.mp, t: Math.round((Date.now() - started) / 1000), mem: mem(), f: crashed ? 0 : 1 };
     if (k !== 'start') crashed = true;
+    /* (the last real problem, kept on this device: the title screen shows it after the game closed on you) */
+    if (k !== 'start' && k !== 'hang') { try { localStorage.setItem('rs_lasterr', JSON.stringify({ at: Date.now(), k: k, m: msg, s: (st || '').split(' < ').slice(0, 3).join(' < '), p: w.p, md: w.md, v: window.GAME_BUILD })); } catch (e) {} }
     if (extra) for (var x in extra) body[x] = extra[x];
     var json = JSON.stringify(body);
     try { if (navigator.sendBeacon && navigator.sendBeacon(API, json)) return; } catch (e) {}
