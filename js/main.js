@@ -1730,7 +1730,7 @@ const voice = new VoiceChat(net); window.__voice = voice;
   const j1 = net.on.join; net.on.join = (m) => { j1 && j1(m); if (voice.on && m && m.id != null) net.send({ t: 'vc', to: m.id, on: 1, m: voice.muted ? 1 : 0 }); };
   const st = document.createElement('style'); st.textContent = `
 #vc-bar { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 78px); right: max(10px, env(safe-area-inset-right)); z-index: 20; display: none; gap: 6px; }
-body.flat.mpon #vc-bar { display: flex; } body:not(.mpon) #pause-voice { display: none; } body.gameover #vc-bar, body.gameover #vc-list { display: none !important; }
+body.flat.mpon #vc-bar { display: flex; } body:not(.mpon) #pause-voice { display: none; } body.gameover #vc-list { display: none !important; }      /* (PAUSE, CHAT and VOICE stay in the corner at the end too: the owner wants them always there) */
 #vc-bar button { font: 900 12px Arial, sans-serif; padding: 8px 12px; border-radius: 12px; border: 2px solid transparent; background: rgba(0,0,0,0.6); color: #fff; cursor: pointer; }
 #vc-bar #vc-btn.on { background: rgba(20,120,40,0.85); border-color: #39ff14; } #vc-bar #vc-btn.talk { box-shadow: 0 0 0 3px #39ff14, 0 0 14px #39ff14; }
 #vc-bar #vc-mute { display: none; } #vc-bar.on #vc-mute { display: block; } #vc-bar #vc-mute.on { background: rgba(160,20,20,0.85); border-color: #ff3b3b; }

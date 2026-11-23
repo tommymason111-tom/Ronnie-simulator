@@ -159,7 +159,7 @@ class Numbers {
 const CSS = `
 #boss-hud { position: fixed; left: 50%; top: calc(max(8px, env(safe-area-inset-top)) + 4px); transform: translateX(-50%); width: min(560px, calc(100vw - 260px)); min-width: 300px; z-index: 21; pointer-events: none; display: none; font-family: "Arial Black", Arial, sans-serif; color: #fff; text-shadow: 0 2px 0 #000; }
 body.flat #boss-hud.on { display: block; } body.gameover #boss-hud, body.boss-cine #boss-hud { display: none !important; }
-body.boss-cine #touch, body.boss-cine #menu-btn, body.boss-cine #mp-chip, body.boss-cine #chat-btn, body.boss-cine #chat-log, body.boss-cine #vc-bar, body.boss-cine #vc-list, body.boss-cine #warm-bar { visibility: hidden !important; }
+body.boss-cine #touch, body.boss-cine #mp-chip, body.boss-cine #chat-log, body.boss-cine #vc-list, body.boss-cine #warm-bar { visibility: hidden !important; }
 #boss-hud .bh-say { margin: 6px auto 0; width: fit-content; max-width: 100%; text-align: center; font: italic 700 14px Arial, sans-serif; padding: 4px 12px; border-radius: 10px; background: rgba(0,0,0,0.62); display: none; }
 #boss-hud .bh-say.on { display: block; } #boss-hud .bh-say b { font: 900 13px "Arial Black", Arial, sans-serif; color: var(--bc, #ffd400); font-style: normal; margin-right: 6px; }
 #boss-hud .bh-top { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 3px; }
