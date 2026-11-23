@@ -40,6 +40,20 @@ export default async function () {
           const hit = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
           return ['chat-log', 'mp-chip', 'boss-hud', 'imp-tasks', 'ph-feed', 'rp-events', 'rp-orders'].flatMap(i => ['btn-sprint', 'btn-emote', 'btn-eat', 'btn-throw', 'knob'].filter(j => hit(box(i), box(j))).map(j => `${i} on ${j}`)); });
         C.ok(!onBtns.length, `${W}x${H} ${mode}: panels over the touch buttons: ${onBtns.join(', ')}`);
+        // THE MAP (minimap.js): the small one in the left column, clear of the corner's buttons and the touch buttons;
+        // the big one opened from it: its title, key and CLOSE on the screen with nothing on top of each other
+        if (mode === 'snd') {
+          const mm = await ev(() => { const box = (q) => { const e = document.querySelector(q); if (!e || getComputedStyle(e).display === 'none' || getComputedStyle(e).visibility === 'hidden') return null; const r = e.getBoundingClientRect(); return r.width ? r : null; };
+            const hit = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top, m = box('#mm-mini');
+            return { on: !!m, hits: ['#menu-btn', '#chat-btn', '#vc-bar', '#mp-chip', '#btn-sprint', '#btn-emote', '#btn-crouch', '#knob', '#sd-top', '#sd-ui .fire', '#sd-ui .aim', '#chat-log'].filter(q => hit(m, box(q))) }; });
+          C.ok(mm.on && !mm.hits.length, `${W}x${H} snd: the small map isn't showing, or sits on: ${mm.hits.join(', ')}`);
+          await ev(() => document.getElementById('mm-mini').click()); await sleep(600);
+          await ev(CHECK); const mp2 = (await ev(() => window.__textCheck(document.getElementById('mm-full')))).filter(o => o.kind === 'text on text' || o.kind === 'off the side of the screen' || o.kind === 'cut off');
+          await ev(fs.readFileSync(new URL('./lib/btncheck.js', import.meta.url), 'utf8')); const bt = await ev(() => window.__btnCheck('#mm-full'));
+          const full = await ev(() => { const r = (q) => document.querySelector(q).getBoundingClientRect(), x = r('#mm-full .x'), t = r('#mm-full .ttl'), k = r('#mm-full .key'), c = r('#mm-full canvas'); return { on: document.getElementById('mm-full').classList.contains('on'), xOnTitle: x.left < t.right && x.right > t.left && x.top < t.bottom && x.bottom > t.top, keyIn: k.bottom <= innerHeight && k.top >= c.bottom - 1, canvasIn: c.top >= 0 && c.bottom <= innerHeight && c.right <= innerWidth }; });
+          if (SHOTS) await p.screenshot({ path: `${SHOTS}/hud_map_${W}.png` });
+          C.ok(full.on && !full.xOnTitle && full.keyIn && full.canvasIn && !mp2.length && !bt.length, `${W}x${H} snd: the big map: ${JSON.stringify({ full, text: mp2.slice(0, 3), btn: bt.slice(0, 3) })}`);
+          await ev(() => document.querySelector('#mm-full .x').click()); }
         if (mode === 'runpub' && H > W) { const rp = await ev(() => ['rp-orders', 'rp-events'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return { t: r.top, b: r.bottom, l: r.left, r: r.right }; }));
           C.ok(Math.abs(rp[0].t - rp[1].t) < 2 && (rp[1].r <= rp[0].l || rp[0].r <= rp[1].l), `${W}x${H} runpub: ORDERS and TO DO aren't side by side: ${JSON.stringify(rp)}`);
           C.ok(rp.every(q => q.b <= H * 0.36 + 2), `${W}x${H} runpub: ORDERS / TO DO run down into the middle of the screen: ${JSON.stringify(rp)}`);

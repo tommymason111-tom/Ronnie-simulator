@@ -409,7 +409,7 @@ export const UI = {
   // THE MAP (minimap.js): the small one under the top-left box (it turns with you; tap it, or M, for the big one)
   mapTick(me) {
     if (this.map === undefined) { const pl = this.g.room.plan, M = this.M, sn = M.spawnNames || {};
-      this.map = pl ? new MapView(pl, { marks: () => this.mapMarks(), title: `🗺️ ${M.names ? 'A: ' + M.names.A + ' · B: ' + M.names.B : 'SEARCH & DESTROY'}`, key: `▲ YOU · ● YOUR TEAM · A B BOMB SITES · ◌ SPAWNS (${sn.att || 'ATTACK'} / ${sn.def || 'DEFEND'}) · 💣 THE BOMB (when you know where)` }) : null; }
+      this.map = pl ? new MapView(pl, { marks: () => this.mapMarks(), title: '🗺️ SEARCH & DESTROY', key: `${M.names ? 'A: ' + M.names.A + ' · B: ' + M.names.B + ' · ' : ''}▲ YOU · ● YOUR TEAM · A B BOMB SITES · ◌ SPAWNS (${sn.att || 'ATTACK'} / ${sn.def || 'DEFEND'}) · 💣 THE BOMB (when you know where)` }) : null; }
     if (!this.map) return; const P = this.g.player, xr = this.g.renderer.xr.isPresenting;
     const show = !!me && P.flatMode && !xr && this.inRound() && this.phase !== 'over' && !this.pickOpen && !this.my.scoped && !document.body.classList.contains('gameover');
     this.map.update(show, P.head, this.camYaw());

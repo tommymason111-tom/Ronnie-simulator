@@ -39,6 +39,7 @@ export const SD = {
   PICK_R: 1.25, BOMB_R: 1.5, BOOM_R: 8, GRAB_R: 1.4, TEAM_MAX: 6, MAX: 12, SPOT_R: 32, BOT_SPEED: 2.35, ASSIST_D: 30,
   CASH0: 2000, CASH_MAX: 9000, WIN_CASH: 2500, LOSE_CASH: 1400, LOSE_STEP: 500, OBJ_CASH: 300, DROPS: 14,
 };
+const _tg = new THREE.Vector3();
 export const TEAMS = { R: { name: 'THE GREASY SPOONS', short: 'GREASY SPOONS', col: '#ff5a3d', hex: 0xff5a3d, ico: '🍳' }, B: { name: 'THE SALAD DODGERS', short: 'SALAD DODGERS', col: '#3da5ff', hex: 0x3da5ff, ico: '🥗' } };
 // the squad's lines when they get someone (bots), in the style of the rest of the game
 const KILL_LINES = Object.assign(Object.create(null), {
@@ -822,6 +823,13 @@ export class SearchDestroy {
   }
   // the guns on the floor: lying there turning slowly, a glint so you spot them
   dropsTick(t) { for (const [, D] of this.drops) { D.mesh.rotation.y = (D.t0 || 0) + t * 0.6; D.mesh.position.y = D.y + 0.08 + Math.sin(t * 3 + D.d) * 0.02; } }
+  // a name tag that would be drawn over the HUD: anyone right beside you, or close enough for a big tag up in the top
+  // corners (the top-left box and the map, the corner's buttons). Far off, a tag's small: it's left be
+  tagInTheWay(av, my) {
+    const t = av.tag; if (!t) return false; t.getWorldPosition(_tg); const d = Math.hypot(_tg.x - my.x, _tg.z - my.z); if (d < 1.6) return true; if (d > 6 || this.g.renderer.xr.isPresenting) return false;
+    _tg.project(this.g.camera); if (_tg.z > 1) return false; const x = (_tg.x + 1) / 2, y = (1 - _tg.y) / 2, k = 1.6 / d;      // (the tag's half-size on screen, roughly, as a share of the screen)
+    return y - k * 0.12 < 0.36 && (x - k * 0.25 < 0.42 || x + k * 0.25 > 0.7);
+  }
   // everyone's body drawn right: the dead laid out, nobody hidden; enemies' name tags hidden (no seeing them through walls)
   bodies() {
     const round = this.inRound(), mt = this.myTeam(), me = this.mine(), my = this.g.player.head, h = new THREE.Vector3();
@@ -836,7 +844,7 @@ export class SearchDestroy {
       // name tags: team-mates always (their tag is theirs); enemies red, and only while you can see them
       const enemy = round && mt && f.team !== mt;
       if (look && enemy && f.alive && this.headOf(id, h)) f.seen = this.canSee(my, h);
-      const close = this.headOf(id, h) && Math.hypot(h.x - my.x, h.z - my.z) < 1.6;      // (right beside you, a tag fills the corner of the screen: not then)
+      const close = this.tagInTheWay(av, my);      // (right beside you, or near and up in the top corners: a tag would sit on the HUD)
       av.impRed = !!enemy; if (av.tag) av.tag.visible = (!enemy || (f.alive && f.seen)) && !(round && !f.alive) && !this.pickOpen && !(this.spect === id && this.viewCamNow) && !close; }
     this.teamMarks();
   }

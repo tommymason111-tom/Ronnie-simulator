@@ -86,11 +86,12 @@ const CSS = `
 #mm-mini { position: fixed; left: 10px; top: 120px; width: 112px; height: 112px; z-index: 30; border-radius: 16px; border: 3px solid #ffd400; background: #222c28; box-shadow: 0 3px 10px rgba(0,0,0,0.5); overflow: hidden; display: none; pointer-events: auto; cursor: pointer; touch-action: none; padding: 0; }
 #mm-mini.on { display: block; } #mm-mini canvas { width: 100%; height: 100%; display: block; } #mm-mini b { position: absolute; right: 3px; bottom: 2px; font: 900 10px "Arial Black", Arial, sans-serif; color: #fff; text-shadow: 0 1px 2px #000; pointer-events: none; }
 #mm-full { position: fixed; inset: 0; z-index: 72; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 6px; background: rgba(6,8,14,0.72); padding: max(10px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom)); box-sizing: border-box; pointer-events: auto; }
-#mm-full.on { display: flex; } #mm-full .wrap { position: relative; max-width: 100%; max-height: calc(100% - 40px); display: flex; }
-#mm-full canvas { display: block; max-width: calc(100vw - 16px); max-height: calc(100vh - 70px); max-height: calc(100dvh - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); width: auto; height: auto; border-radius: 14px; border: 4px solid #ffd400; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
+#mm-full.on { display: flex; } #mm-full .wrap { position: relative; max-width: 100%; display: flex; flex: 0 1 auto; min-height: 0; }
+#mm-full canvas { display: block; max-width: calc(100vw - 16px); max-height: calc(100vh - 150px); max-height: calc(100dvh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); width: auto; height: auto; border-radius: 14px; border: 4px solid #ffd400; box-shadow: 0 10px 40px rgba(0,0,0,0.7); }
 #mm-full .x { position: absolute; top: 6px; right: 6px; font: 900 15px system-ui, sans-serif; color: #111; background: #ffd400; border: 3px solid #111; border-radius: 12px; padding: 6px 12px; box-shadow: 0 3px 0 #111; cursor: pointer; }
 #mm-full .ttl { font: 900 17px "Arial Black", Arial, sans-serif; color: #ffd400; text-shadow: 0 2px 3px #000; text-align: center; max-width: calc(100vw - 20px); }
-#mm-full .key { font: 900 11px "Arial Black", Arial, sans-serif; color: #fff; text-align: center; max-width: calc(100vw - 20px); text-shadow: 0 1px 2px #000; }
+#mm-full .key { font: 900 11px "Arial Black", Arial, sans-serif; color: #fff; text-align: center; max-width: calc(100vw - 20px); box-sizing: border-box; padding: 6px 10px; border-radius: 12px; background: #121620; border: 3px solid #ffd400; }
+#mm-full .ttl { padding: 5px 12px; border-radius: 12px; background: #121620; border: 3px solid #ffd400; box-sizing: border-box; }
 @media (min-width: 760px) and (min-height: 500px) { #mm-mini { width: 150px; height: 150px; } }
 `;
 
