@@ -305,7 +305,7 @@ async function solo(b, C) {
     C.ok(!rl.none.reloading && /CLICK|AMMO/.test(rl.none.pop), `solo: an empty gun with nothing spare: ${JSON.stringify(rl.none)}`);
     C.ok(rl.mode2 === 'burst', `solo: tapping the ammo box didn't flick to burst: ${rl.mode2}`);
     // ---- every pick-up, laid in front of me
-    const pk = await ev(p, () => { const s = T.s(), me = s.mine(), out = {}, P = RS.player;
+    const pk = await ev(p, () => { const s = T.s(), me = s.mine(), out = {}, P = RS.player; for (const q of s.pk) { q.on = false; q.back = 0; }      // (the map's own pick-ups out of the way: one by the spot I'm testing on was taken too)
       const lay = (k) => { const at = T.ahead(2.5), q = { k, x: at[0], z: at[1], y: s.floor(at[0], at[1]), on: true, back: 0 }; s.pk.push(q); return s.pk.length - 1; };
       const grab = (k) => { const i = lay(k), q = s.pk[i]; T.stand(q.x, q.z); T.step(0.3); const got = !q.on; T.stand(q.x + 0.01, q.z); return got; };
       s.loadGun('monstor'); s.my.reserve = 0; out.ammo = [grab('ammo'), s.my.reserve];

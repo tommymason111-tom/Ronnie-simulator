@@ -697,10 +697,10 @@ export class SearchDestroy {
         const dist = head.distanceTo(q); b.pitch = Math.atan2(q.y - 0.3 - head.y, Math.max(0.1, Math.hypot(q.x - b.x, q.z - b.z)));
         // a little side-step while it fights (not the sniper)
         if (G.id !== 'sausage' && dist > 3) { const sx = Math.cos(b.yaw) * b.strafe, sz = -Math.sin(b.yaw) * b.strafe, nx = b.x + sx * dt * 1.2, nz = b.z + sz * dt * 1.2, k = nav.idx(nx, nz); if (k >= 0 && nav.free[k]) { b.x = nx; b.z = nz; moving = true; } else b.strafe *= -1; if (Math.random() < dt * 0.6) b.strafe *= -1; }
-        if (b.mag <= 0) { if (!b.reloadT && b.reserve > 0) { b.reloadT = t + G.reload * (G.rtype === 'shell' ? G.mag * 0.6 : 1); this.net.send({ t: 'sdAct', k: 'reload', on: 1, id }); } }
+        if (b.mag <= 0) { if (!b.reloadT && b.reserve > 0) { b.reloadT = t + G.reload * (G.rtype === 'shell' ? G.mag * 0.6 : 1); f.rlT = t; this.net.send({ t: 'sdAct', k: 'reload', on: 1, id }); } }
         else if (t >= b.seeT && t >= b.nextShot && !b.reloadT && Math.abs(dy) < 0.25 && dist < G.range + 4) this.botFire(b, f, G, q, dist); } }
       if (!b.target) {
-        if (b.mag < G.mag * 0.35 && !b.reloadT && b.reserve > 0) b.reloadT = t + G.reload * (G.rtype === 'shell' ? (G.mag - b.mag) * 0.6 : 1);
+        if (b.mag < G.mag * 0.35 && !b.reloadT && b.reserve > 0) { b.reloadT = t + G.reload * (G.rtype === 'shell' ? (G.mag - b.mag) * 0.6 : 1); f.rlT = t; this.net.send({ t: 'sdAct', k: 'reload', on: 1, id }); }
         moving = this.botMove(b, f, G, dt, nav) || moving;
       }
       b.fl = (b.actT ? 2 : 0) | (b.reloadT ? 4 : 0) | (t - (b.shotAt || -9) < 0.15 ? 1 : 0);
