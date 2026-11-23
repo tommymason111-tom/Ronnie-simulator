@@ -739,13 +739,16 @@ export class SquadMember extends Character {
   holdBeside(arm, pos, r) {
     const hc = this.rag.handC && this.rag.handC[arm], s = this.rag.height / 1.68;
     const bx = hc ? hc.x : this.rag.parts[arm].def.b.x;
-    const q = this.rag.partQuat(arm, _q);
-    const palm = _v2.set(-Math.sign(bx || 1), 0, 0.25).applyQuaternion(q);
+    const q = this.rag.partQuat(arm, _q), ax = this.rag.handAxes && this.rag.handAxes[arm];
+    // (which way the palm really faces: the hand's own axes, measured from the model, else a guess from the bind pose)
+    const palm = ax ? _v2.copy(ax.palm).applyQuaternion(q) : _v2.set(-Math.sign(bx || 1), 0, 0.25).applyQuaternion(q);
     if (palm.normalize().y > 0.6) { pos.y += 0.075 * s; return; }      // hand turned palm-up: the glass stands on the palm
     palm.y = 0;
     if (palm.lengthSq() < 1e-4) palm.set(Math.sin(this.rag.yaw), 0, Math.cos(this.rag.yaw));
     palm.normalize();
-    pos.addScaledVector(palm, r + 0.022 * s); pos.y += 0.03 * s;
+    // the glass's side against the palm (half the hand's thickness out from its middle, then the glass's radius), the hand
+    // round its lower half
+    pos.addScaledVector(palm, r + 0.013 * s); pos.y += 0.022 * s;
   }
 
   afterUpdate(dt, ctx) {
@@ -787,10 +790,14 @@ export class SquadMember extends Character {
       } else if (this.def.look.prop === 'jug') { // held by the handle, the jug hanging on the outside
         const pel = this.rag.parts.pelvis.body.position;
         this.prop.rotation.set(0, Math.atan2(hand.x - pel.x, hand.z - pel.z) + Math.PI / 2, 0);
-      } else {                                   // pint: upright, held round its side like a cup (palm on the glass, not through it)
+      } else {                                   // pint: upright, held round its side like a glass (palm on the glass, not through it)
         this.prop.quaternion.identity();
-        this.holdBeside(arm, this.prop.position, 0.045);
+        this.holdBeside(arm, this.prop.position, 0.037);
+        // the face of the glass (its harp) turned away from the palm, and the fingers closed round it
+        { const ax = this.rag.handAxes && this.rag.handAxes[arm]; if (ax) { const p = _v.copy(ax.palm).applyQuaternion(this.rag.partQuat(arm, _q)); if (Math.hypot(p.x, p.z) > 0.3) this.prop.rotation.set(0, Math.atan2(p.x, p.z), 0); } }
       }
+      // fingers wrapped round a glass (the pint's): curled in, and straight again when it's put away
+      const hp = this.rag.handPose && this.rag.handPose[arm]; if (hp && !(this.emote && this.emote.active)) hp.curl = !['phone', 'rod', 'jug'].includes(this.def.look.prop) && this.prop.visible ? 0.42 : 0;
     }
   }
 

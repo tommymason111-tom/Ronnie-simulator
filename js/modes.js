@@ -14,6 +14,7 @@ import { DINER_TABLES } from './levels/restaurant.js';
 import { canvasTex, fitText, roundRect, FONT } from './textures.js';
 import { sfx, playTune, shout } from './audio.js';
 import { Item } from './foods.js';
+import { pintInHand, setPintLevel } from './pint.js';
 import { TURKEY_LEN } from './cutscenes.js';
 import { BbqMode } from './bbqmode.js';
 import { pickVeg, pickJunk, FOODS } from './config.js';
@@ -541,11 +542,30 @@ export class Director {
     switch (key) {
       case 'trip': P.dropAll(); P.knockDown(away, 2.5); break;          // (Tommy's final ball: flat on your back for a couple of seconds)
       case 'tackle': P.dropAll(); P.knockDown(away, 2); fx.cutscene('tackle', 1.9); break;
-      case 'beer': {          // a pint appears at your lips and gets tipped down your throat
+      case 'beer': {          // Aidan's arm comes in with a pint, brings it up to your lips, tips it, and down it goes
         P.dropAll();
-        const pint = new Item('pint').obj; pint.scale.setScalar(1.0);
-        fx.camProp(pint, 1.8, [0, -0.12, -0.3], (t, o) => { o.rotation.x = Math.min(1.9, t * 2.2); o.position.y = -0.1 + Math.min(0.06, t * 0.08); });
-        setTimeout(() => { sfx('gulp', null, 1); P.effect('dizzy', 7); tint(0x8a5a1a, 7, 0.12); fx.cutscene('beer', 6.5); g.words.show('HIC!', P.head.clone().addScaledVector(P.fwd, 0.6).add(P3(0.15, 0.1, 0)), '#ffd400', 0.09, 1.2); }, 1700);
+        const L = (SQUAD.aidan || {}).look || {}, rig = pintInHand({ skin: L.skin, sleeve: L.top2 || L.top, cuff: L.top }), pint = rig.getObjectByName('pint');
+        if (who.prop) { who.pintGiven = true; setTimeout(() => { who.pintGiven = false; }, 2900); }      // (his own pint's the one coming at you)
+        const ss = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+        let gulps = 0;
+        fx.camProp(rig, 2.75, [0.26, -0.42, -0.62], (t, o) => {
+          // in from down to the right (0-0.5s), up to your lips (to 0.8s), tipped right up as it drains (to 2.05s), then away
+          const inn = ss(t / 0.5), up = ss((t - 0.45) / 0.35), tip = ss((t - 0.75) / 1.15), away = ss((t - 2.15) / 0.5), drink = Math.max(0, Math.min(1, (t - 0.85) / 1.15));
+          o.position.set(0.26 - 0.23 * inn - 0.03 * up + 0.22 * away, -0.42 + 0.3 * inn + 0.05 * up - 0.02 * tip - 0.3 * away, -0.62 + 0.3 * inn + 0.13 * up - 0.02 * tip - 0.12 * away);
+          o.rotation.set(1.75 * tip * (1 - away) + Math.sin(t * 14) * 0.015 * up * (1 - tip), -0.35 * (1 - inn) - 0.12 * tip, -0.25 * (1 - inn) + 0.08 * tip);
+          setPintLevel(pint, 1 - drink * 0.96, o.rotation.x);
+          while (gulps < 3 && t > 1.05 + gulps * 0.38) { gulps++; sfx('gulp', null, 0.7 + gulps * 0.1); }
+        });
+        // drawn in order (no depth test in front of the camera): his fingers behind the glass, the stout, its head, the
+        // glass, then the fingers wrapped round the front
+        { const ord = { farHand: 35, stout: 36, head: 37, deco: 38, glass: 39, nearHand: 40 };
+          rig.traverse(o => { let n = o, k = null; while (n && k === null) { k = ord[n.name] ?? null; n = n.parent; } if (o.isMesh && k !== null) o.renderOrder = k; }); }
+        // the head on your top lip after: a creamy Guinness moustache along the bottom of your view
+        setTimeout(() => { const tache = new THREE.Group(), cream = new THREE.MeshLambertMaterial({ color: 0xf1e4c2 });
+          for (let i = 0; i < 9; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.012 + (i % 3) * 0.003, 10, 8), cream); b.position.set((i - 4) * 0.014, -Math.abs(i - 4) * 0.0018 + (i % 2) * 0.002, 0); b.scale.set(1.25, 0.7, 0.6); tache.add(b); }
+          fx.camProp(tache, 3.4, [0, -0.118, -0.16], (t, o) => { const k = Math.min(1, t / 0.15) * (1 - Math.max(0, (t - 2.6) / 0.8)); o.scale.setScalar(Math.max(0.001, k)); });
+          g.words.show('*GULP*', P.head.clone().addScaledVector(P.fwd, 0.6).add(P3(-0.12, 0.05, 0)), '#f1e4c2', 0.08, 1.0); }, 1950);
+        setTimeout(() => { sfx('burp', null, 0.8); P.effect('dizzy', 7); tint(0x8a5a1a, 7, 0.12); fx.cutscene('beer', 6.5); g.words.show('HIC!', P.head.clone().addScaledVector(P.fwd, 0.6).add(P3(0.15, 0.1, 0)), '#ffd400', 0.09, 1.2); }, 2500);
         break;
       }
       case 'dating': {        // Harry's phone shoved in your face, swiping through his matches

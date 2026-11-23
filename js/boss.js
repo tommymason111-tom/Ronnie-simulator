@@ -91,11 +91,24 @@ export const BOSS_ORDER = ['noah', 'lewis', 'chloe', 'tommy'];
 
 // ---------------------------------------------------------------- where it's fought
 //  box: where the boss walks (x0, x1, z0, z1)   play: where the food falls   home: where it lands   start: where you start
+//  avoid: [x, z, r] a circle the boss keeps out of (the beer garden's outdoor bar)   patio: the patio's furniture is
+//  stacked away for the fight (room.patio, levels/pub.js), so it's a clear arena with the bar in the middle for cover
 export const ARENAS = {
-  garden: { box: [-5.5, 1.3, -11.2, -1.6], play: [-6.1, 1.8, -11.8, -0.8], home: [-3.2, -6.8], start: [-1.6, -1.6, 0] },      // Lewis's lawn
-  pub: { box: [7.9, 11.3, -22.9, -13.4], play: [3.9, 16.2, -23.4, -12.4], home: [9.6, -20.4], start: [9.6, -13.9, 0] },        // the car park out the front
+  garden: { name: 'LEWIS\'S GARDEN', box: [-5.5, 1.3, -11.2, -1.6], play: [-6.1, 1.8, -11.8, -0.8], home: [-3.2, -6.8], start: [-1.6, -1.6, 0] },      // Lewis's lawn
+  carpark: { name: 'THE CAR PARK', box: [7.9, 11.3, -22.9, -13.4], play: [3.9, 16.2, -23.4, -12.4], home: [9.6, -20.4], start: [9.6, -13.9, 0] },        // the pub's car park out the front
+  beergarden: { name: 'THE BEER GARDEN', box: [-5.4, 9.0, 24.4, 41.4], play: [-6.4, 9.6, 23.6, 42.2], home: [6.4, 38.8], start: [-4.2, 38.6, 0], avoid: [1.9, 31.4, 4.2], patio: true },      // the pub's beer garden, round the outdoor bar
 };
-export const BOSS_PLACES = Object.keys(ARENAS);
+// where each place can have it: the Oysterfleet's car park or its beer garden (one at random each fight), Lewis's lawn
+export const PLACE_ARENAS = { pub: ['carpark', 'beergarden'], garden: ['garden'] };
+export const BOSS_PLACES = Object.keys(PLACE_ARENAS);
+// the host picks (everyone else gets it in the boss's state): ?arena=beergarden in the address, sessionStorage rs_arena
+// or window.__bossArena (tests, the developer mode) force one, as long as the place has it
+export function pickArena(placeId, rnd = Math.random) {
+  const list = PLACE_ARENAS[placeId] || ['garden'];
+  let want = null; try { want = window.__bossArena || new URLSearchParams(location.search).get('arena') || sessionStorage.getItem('rs_arena'); } catch (e) {}
+  if (want && list.includes(want)) return want;
+  return list[Math.min(list.length - 1, Math.floor(rnd() * list.length))];
+}
 
 // telegraph times (how long the warning's up), by phase
 const TELE = { slam: [1.7, 1.35, 1.1], wave: [1.8, 1.5, 1.25], throw: [0.95, 0.8, 0.65], charge: [1.5, 1.2, 1.0], summon: [1.0, 1.0, 0.9] };
@@ -233,8 +246,8 @@ export class BossFight {
   // g: { scene, room, physics, player, items, words, crumbs, G, cast, director, net, mp, camera, renderer, fx, hint, showBanner }
   constructor(g, pick = null) {
     this.g = g; css();
-    const arena = ARENAS[g.room.placeId] || ARENAS.garden;
-    this.A = arena;
+    // the arena: the host picks one of the place's (the joiners are told it with the boss: see onState)
+    this.setArena(this.host ? pickArena(g.room.placeId) : (PLACE_ARENAS[g.room.placeId] || ['garden'])[0]);
     this.fightN = (Date.now() % 100000);
     this.hearts = MAX_HEARTS; this.iframe = 0; this.out = 0; this.over = null; this.overT = 0;
     this.hazards = []; this.projs = []; this.minions = []; this.minionIds = []; this.mCool = new Map();
@@ -276,6 +289,14 @@ export class BossFight {
     this.startIntro();
     this.sendState(true);
   }
+  setArena(id) {
+    if (!ARENAS[id] || id === this.arena) return;
+    const room = this.g.room;
+    if (this.A && this.A.patio && room.patio) room.patio.clear(false, this.g.physics);      // (the furniture back out)
+    this.arena = id; this.A = ARENAS[id];
+    if (this.A.patio && room.patio) room.patio.clear(true, this.g.physics);
+    this.placed = false;
+  }
   makeChar() {
     const g = this.g, [hx, hz] = this.A.home;
     if (this.c) { this.c.dispose(); this.c = null; }
@@ -286,7 +307,9 @@ export class BossFight {
     c.bossBody = true; c.mpPuppet = true; c.active = false; c.state = 'idle'; c.attacks = false; c.name = this.def.name.charAt(0) + this.def.name.slice(1).toLowerCase();
     for (const p of c.rag.list) p.body.collisionResponse = false;      // (drawn four metres tall, but its physics is person-sized: nothing bumps into it)
     const B = this.A.box, P = 0.6, solid = (g.room.blockers || []).filter(k => (k.y1 ?? 2) > 0.45 && k.x1 > B[0] - P && k.x0 < B[1] + P && k.z1 > B[2] - P && k.z0 < B[3] + P && Math.max(k.x1 - k.x0, k.z1 - k.z0) < 5);
-    c.rag.constrain = (root) => { root.x = clamp(root.x, B[0], B[1]); root.z = clamp(root.z, B[2], B[3]);      // (stays on its patch, and steps round the furniture: the ping-pong table, the cars)
+    const AV = this.A.avoid;
+    c.rag.constrain = (root) => { root.x = clamp(root.x, B[0], B[1]); root.z = clamp(root.z, B[2], B[3]);
+      if (AV) { const dx = root.x - AV[0], dz = root.z - AV[1], d = Math.hypot(dx, dz); if (d < AV[2]) { const k = d > 1e-3 ? AV[2] / d : 0; root.x = d > 1e-3 ? AV[0] + dx * k : AV[0] + AV[2]; root.z = AV[1] + dz * k; } }      // (round the outdoor bar, never through it)      // (stays on its patch, and steps round the furniture: the ping-pong table, the cars)
       for (const k of solid) if (root.x > k.x0 - P && root.x < k.x1 + P && root.z > k.z0 - P && root.z < k.z1 + P) {
         const dl = root.x - (k.x0 - P), dr = (k.x1 + P) - root.x, dn = root.z - (k.z0 - P), df = (k.z1 + P) - root.z, mn = Math.min(dl, dr, dn, df);
         if (mn === dl) root.x = k.x0 - P; else if (mn === dr) root.x = k.x1 + P; else if (mn === dn) root.z = k.z0 - P; else root.z = k.z1 + P; } };
@@ -304,7 +327,7 @@ export class BossFight {
     const g = this.g, P = g.player;
     this.t += dt;
     if (this.host !== this.wasHost) { this.wasHost = this.host; if (this.host) this.becomeHost(); }
-    if (!this.placed) { this.placed = true; this.placePlayer(); }
+    if (!this.placed && (this.host || this.arenaKnown || this.t > 3)) { this.placed = true; this.placePlayer(); }      // (a joiner: once the host's said which arena)
     this.updateIntro(dt);
     if (this.c) {
       if (this.host) this.think(dt); else this.follow(dt);
@@ -806,13 +829,15 @@ export class BossFight {
   }
 
   // ---------------------------------------------------------------- multiplayer
-  stateMsg() { return { t: 'bossS', b: this.id, hp: this.hp, mx: this.mx, ph: this.ph, st: this.st, a: this.act || '', at: r2(this.stT), x: r2(this.x), z: r2(this.z), y: r2(this.yaw), s: r2(this.S), dy: r2(this.dropY || 0), mi: this.minionIds, tm: r2(this.t), o: this.over ? (this.over === 'win' ? 1 : 2) : 0 }; }
+  stateMsg() { return { t: 'bossS', ar: this.arena, b: this.id, hp: this.hp, mx: this.mx, ph: this.ph, st: this.st, a: this.act || '', at: r2(this.stT), x: r2(this.x), z: r2(this.z), y: r2(this.yaw), s: r2(this.S), dy: r2(this.dropY || 0), mi: this.minionIds, tm: r2(this.t), o: this.over ? (this.over === 'win' ? 1 : 2) : 0 }; }
   sendState(full) { if (!this.mpOn || !this.id) return; this.g.net.send(this.stateMsg()); }
   onState(m) {
     if (this.host) return;
     const num = (v, d) => (typeof v === 'number' && isFinite(v) ? v : d);
     if (typeof m.b !== 'string' || !BOSSES[m.b]) return;
     this.stateAt = performance.now();
+    if (typeof m.ar === 'string' && ARENAS[m.ar] && (PLACE_ARENAS[this.g.room.placeId] || []).includes(m.ar) && m.ar !== this.arena) { this.setArena(m.ar); this.arenaKnown = true; if (this.c) { this.c.dispose(); this.c = null; this.id = null; } }
+    else if (typeof m.ar === 'string') this.arenaKnown = true;
     if (m.b !== this.id) { this.id = m.b; this.S0 = this.def.S; this.S = num(m.s, this.S0); this.makeChar(); this.x = num(m.x, this.A.home[0]); this.z = num(m.z, this.A.home[1]); if (m.st === 'drop' || m.st === 'roar') this.startIntro(); }
     this.mx = Math.max(1, num(m.mx, this.mx)); this.hp = clamp(num(m.hp, this.hp), 0, this.mx); this.ph = clamp(Math.round(num(m.ph, 1)), 1, 3);
     this.S = clamp(num(m.s, this.S), 0.5, 5); this.dropY = clamp(num(m.dy, 0), 0, 30);
@@ -1117,6 +1142,7 @@ export class BossFight {
 
   dispose() {
     const g = this.g; this.disposed = true;
+    if (this.A && this.A.patio && g.room.patio) g.room.patio.clear(false, g.physics);      // (the beer garden's benches back out)
     for (const it of g.items.items) if (it.sizeK !== 1 && it.setSize) it.setSize(1);      // (the fight's over: food back to its usual size)
     bossMusic(false);
     for (const k in this.handlers) { if (this.handlers[k]) g.net.on[k] = this.handlers[k]; else delete g.net.on[k]; }

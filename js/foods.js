@@ -7,6 +7,7 @@ import { canLabelTex } from './textures.js';
 import { batMesh } from './pingpong.js';
 import { HI } from './foodmodels.js';
 import { roomNum } from './roomopts.js';
+import { pintGeo, pintGeoLow } from './pint.js';
 
 // ---------- geometry ----------
 function burgerGeo() {
@@ -77,15 +78,7 @@ function celeryGeo() {
 function sproutGeo() {
   return merge([part(new THREE.IcosahedronGeometry(0.028, 1), 0x7cb342), part(new THREE.IcosahedronGeometry(0.02, 1), 0x9ccc65, [0.01, 0.012, 0.01]), part(cyl(0.006, 0.008, 0.012, 6), 0xc5e1a5, [0, -0.028, 0])]);
 }
-// a pint of (parody) GUINNESS STOUT with a creamy head
-function pintGeo() {
-  return merge([
-    part(cyl(0.042, 0.034, 0.12, 18), 0x140c08, [0, -0.01, 0]),
-    part(cyl(0.043, 0.042, 0.022, 18), 0xf3e6c8, [0, 0.061, 0]),
-    part(cyl(0.035, 0.035, 0.006, 18), 0xd8d8d8, [0, -0.073, 0]),
-    part(box(0.05, 0.03, 0.002), 0xd4af37, [0, 0.0, 0.039]),
-  ]);
-}
+// a pint of (parody) GUINNESS STOUT: built in pint.js, the one pint the whole game uses (pintGeoLow far away, pintGeo near)
 // protein shake: white tub-bottle with a red lid
 function shakeGeo() {
   return merge([part(cyl(0.035, 0.035, 0.13, 16), 0xf2f2f2), part(cyl(0.037, 0.037, 0.03, 16), 0xd32f2f, [0, 0.075, 0]), part(box(0.05, 0.05, 0.002), 0x1565c0, [0, 0, 0.035])]);
@@ -427,7 +420,7 @@ function meshFor(type, v = 0) {
   if (type === 'wine' || type === 'soft') { const k = type + v; if (!geoCache[k]) geoCache[k] = type === 'wine' ? wineGeo(v) : cupGeo(v); return new THREE.Mesh(geoCache[k], vcLambert); }
   if (type === 'mug' || type === 'coffee') { if (!geoCache[type]) geoCache[type] = mugGeo(type === 'coffee'); return new THREE.Mesh(geoCache[type], vcLambert); }
   if (type === 'cup') { if (!geoCache.cup) geoCache.cup = cupGeo(-1); return new THREE.Mesh(geoCache.cup, vcLambert); }
-  if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeo, shake: shakeGeo, poop: poopGeo,
+  if (!geoCache[type]) geoCache[type] = { burger: burgerGeo, pizza: pizzaGeo, doughnut: doughnutGeo, broccoli: broccoliGeo, carrot: carrotGeo, celery: celeryGeo, sprout: sproutGeo, pint: pintGeoLow, shake: shakeGeo, poop: poopGeo,
     hotdog: hotdogGeo, fries: friesGeo, kebab: kebabGeo, chicken: chickenGeo, taco: tacoGeo, crisps: crispsGeo, choc: chocGeo, cookie: cookieGeo, icecream: icecreamGeo, sausageroll: sausageRollGeo,
     croissant: croissantGeo, baguette: baguetteGeo, muffin: muffinGeo, painchoc: painchocGeo, swirl: swirlGeo, icedbun: icedbunGeo, pretzel: pretzelGeo,
     apple: appleGeo, pear: pearGeo, orange: orangeGeo, banana: bananaGeo, tomato: tomatoGeo, cucumber: cucumberGeo, pepper: pepperGeo, cauliflower: cauliflowerGeo, dart: dartGeo, beer: beerGeo, glass: glassGeo, cider: ciderGeo, sodagun: sodagunGeo, ...lowNew }[type]();
@@ -438,6 +431,7 @@ function meshFor(type, v = 0) {
 export function itemParts(type, v = 0) {
   if (type === 'magazine') return magazineParts(v);
   if (type === 'lidlbag') return bagParts();
+  if (type === 'pint') return [[pintGeo(), vcLambert]];      // (the detailed one: Prop Hunt's pint is seen up close)
   const m = meshFor(type, v); const out = []; m.traverse(o => { if (o.isMesh) out.push([o.geometry, o.material]); }); return out;
 }
 
@@ -494,6 +488,7 @@ export const HI_NEAR = 3.2;      // (metres: closer than this you see the detail
 const sizedMesh = (type, v) => {
   let m = meshFor(type, v);
   if (HI[type]) { const lod = new THREE.LOD(); lod.addLevel(new THREE.Mesh(hiCache[type] || (hiCache[type] = solidOnly(HI[type](), type)), vcLambert), 0); lod.addLevel(m, HI_NEAR); m = lod; }
+  else if (type === 'pint') { const lod = new THREE.LOD(); lod.addLevel(new THREE.Mesh(pintGeo(), vcLambert), 0); lod.addLevel(m, HI_NEAR); m = lod; }      // (the detailed pint close up: pint.js)
   const k = bigFor(FOODS[type]); if (k !== 1) m.scale.multiplyScalar(k); return m; };
 // THE GLOW round food you can pick up: one soft warm halo per item, gently pulsing. All of them are drawn together, as
 // ONE instanced layer of camera-facing squares (it was a sprite per item: 300 food in the shop = 300 separate draws, a

@@ -34,7 +34,7 @@ const RELATED = {
   clack: { why: 'something clicking into place', in: ['barstations.js', 'emotes.js'] },
   smash: { why: 'something smashed to bits (a telly, a controller)', in: ['main.js', 'emotes.js'] },
   land: { why: 'a thing dropped on the floor', in: ['main.js', 'emotes.js'] },
-  burp: { why: 'a burp / a hiccup', in: ['emotes.js'] },
+  burp: { why: 'a burp / a hiccup (Aidan: his emotes, and after his pint goes down you)', in: ['emotes.js', 'modes.js'] },
   jackpot: { why: 'a pay-out: the fruit machine, the tip jar passing another £10', in: ['main.js', 'impgames.js:reels', 'tipjar.js'] },
   plunger: { why: 'the plunger in the toilet', in: ['impgames.js:plunge', 'runpub.js'] },
   shatter: { why: 'a glass breaking', in: ['impgames.js:stacker', 'runpub.js', 'main.js'] },
