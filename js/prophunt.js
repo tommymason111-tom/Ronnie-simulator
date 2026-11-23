@@ -25,6 +25,7 @@ import { itemParts } from './foods.js';
 import { wheelieBin } from './levels/furniture.js';
 import { pottedPlant } from './levels/outdoor.js';
 import { FONT } from './textures.js';
+import { MapView } from './minimap.js';
 
 export const PH = {
   MIN: 2, HIDE_T: 40, SEEK_BASE: 150, SEEK_PER: 15, SEEK_MAX: 240, END_T: 10, HP: 100, MISS: 10, HEAL: 20, SHOOT_R: 22, SHOOT_CD: 0.4, DMG: 25, REGEN_DELAY: 6, REGEN: 6, RUN_T: 3, RUN_MUL: 1.6,
@@ -936,11 +937,23 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
     for (const d of this.decoys) if (d.wob > 0) { d.wob += dt; const k = d.wob > 0.6 ? 0 : Math.sin(d.wob * 40) * 0.12 * (1 - d.wob / 0.6); this.decoyMatrix(d, k); if (d.wob > 0.6) d.wob = 0; }
     this.guns(dt, me, seeker, xr);
     if (this.runUntil && (t >= this.runUntil || !hider || !this.playing())) { this.runUntil = 0; P.speedMul = 1; }
+    this.mapTick(me, seeker, xr);
     if (xr) this.vrInput(P, me); else { this.drawHud(me, hider, seeker, ghost); if (P.wrist && P.flatMode) P.wrist.visible = false; }
     this.laser.visible = xr && seeker && this.phase === 'seek';
     if (this.laser.visible) { const h = (P.hands || []).find(h => h.source && h.handedness === 'right' && h.ctrl); if (h) { h.ctrl.getWorldPosition(this.laser.position); h.ctrl.getWorldQuaternion(this.laser.quaternion); this.laser.material.color.setHex(this.hot ? 0xffd400 : 0xff7043); } else this.laser.visible = false; }
     // spectating: stand by whoever you're watching (VR has no camera of its own: you're moved)
     if (ghost && this.spect && xr) { const q = this.posOf(this.spect, new THREE.Vector3()); if (q && this.hd(q, P.head) > 3) this.teleport(q.x - 1.5, q.z); }
+  }
+  // THE MAP (minimap.js): you, and (seeking) the other seekers. Never a hider: that'd give the game away
+  mapTick(me, seeker, xr) {
+    if (this.map === undefined) this.map = this.g.room.plan ? new MapView(this.g.room.plan, { marks: () => this.mapMarks(), title: '🗺️ PROP HUNT', key: '▲ YOU · ● THE OTHER SEEKERS (seeking) · no hiders on here, obviously' }) : null;
+    if (!this.map) return; const P = this.g.player, d = this.g.camera.getWorldDirection(new THREE.Vector3());
+    this.map.update(!!me && P.flatMode && !xr && this.playing() && !this.blindOn && !this.panel.open && !document.body.classList.contains('gameover'), P.head, Math.atan2(-d.x, -d.z));
+  }
+  mapMarks() {
+    const me = this.mine(), P = this.g.player, out = [], v = new THREE.Vector3(), d = this.g.camera.getWorldDirection(new THREE.Vector3());
+    if (me && me.role === 'seeker') for (const p of this.seekers()) { if (p.id === this.me) continue; const q = this.posOf(p.id, v); if (q) out.push({ k: 'mate', x: q.x, z: q.z, col: '#ff9f1c', t: String(p.name || '').slice(0, 14) }); }
+    out.push({ k: 'me', x: P.head.x, z: P.head.z, col: '#39ff14', yaw: Math.atan2(-d.x, -d.z), t: 'YOU' }); return out;
   }
   // where a hider's prop goes: on the floor under them, turned the way they look (locked: where they locked it)
   placeProp(pr, p, dt) {
@@ -1044,6 +1057,7 @@ body.prophunt.flat #ph-feed { display: flex; } #ph-feed div { background: rgba(1
   // what the tests and the wrist ask: the state of play
   hudState() { const me = this.mine(); return { phase: this.phase, role: me ? (me.found ? 'found' : me.role) : null, kind: me && me.kind, locked: !!(me && me.locked), hp: me && me.hp, left: this.left().length, round: this.round, of: this.of, time: Math.max(0, this.endsAt - now()) }; }
   dispose() {
+    if (this.map) { this.map.dispose(); this.map = null; }
     clearTimeout(this.dealT); clearTimeout(this.reelT1); clearTimeout(this.reelT2); if (this.reelEl) { this.reelEl.remove(); this.reelEl = null; }
     const g = this.g; this.blind(false); this.panel.close(true); this.panel.wrap.remove(); g.scene.remove(this.panel.mesh, this.panel.dot); g.scene.remove(this.grp);
     for (const id of [...this.props.keys()]) this.dropProp(id);

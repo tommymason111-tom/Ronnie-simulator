@@ -264,22 +264,23 @@ async function solo(b, C) {
   try {
     // ---- the shop, round 1
     const pick = await ev(p, () => { const s = T.s(), el = document.getElementById('sd-pick'); return { open: el.classList.contains('on'), cards: el.querySelectorAll('.card').length, cash: el.querySelector('.hd .cash').textContent, money: s.cash[s.me], phase: s.phase, gun: s.my.gun }; });
-    C.ok(pick.open && pick.cards === 9 && /£2,000/.test(pick.cash) && pick.gun === 'ketchup', `solo: the shop isn't open at the start of round 1 with nine guns and £2,000 (just the ketchup pistol to start): ${JSON.stringify(pick)}`);
+    C.ok(pick.open && pick.cards === 12 && /£2,000/.test(pick.cash) && pick.gun === 'ketchup', `solo: the shop isn't open at the start of round 1 with twelve guns and £2,000 (just the ketchup pistol to start): ${JSON.stringify(pick)}`);
     await sleep(600);
     { const t = await textProblems(p, '#sd-pick'), bt = await btnProblems(p, '#sd-pick');
       C.ok(!t.length, `phone: the shop's text: ${JSON.stringify(t.slice(0, 3))}`); C.ok(!bt.length, `phone: the shop's buttons: ${JSON.stringify(bt.slice(0, 3))}`); }
     if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/snd-shop-phone.png' });
-    const buy = await ev(p, () => { const s = T.s(), card = (g) => document.querySelector(`#sd-pick .card[data-g="${g}"]`), out = {};
-      card('sausage').click(); T.step(0.1); out.dear = { gun: s.my.gun, cash: s.cash[s.me], no: card('sausage').classList.contains('no'), pop: document.getElementById('sd-pop').textContent };
-      card('cheese').click(); T.step(0.1); out.cheese = { gun: s.my.gun, mag: s.my.mag, reserve: s.my.reserve, cash: s.cash[s.me], cur: card('cheese').classList.contains('cur') };
-      card('beans').click(); T.step(0.1); out.beans = { gun: s.my.gun, cash: s.cash[s.me] };
-      card('brown').click(); T.step(0.1); out.brown = { S: s.my.slots.S.g, cash: s.cash[s.me], hud: document.querySelector('#sd-pick .hd .cash').textContent };
-      document.querySelector('#sd-pick .go').click(); T.step(0.1); out.closed = !document.getElementById('sd-pick').classList.contains('on'); out.shopBtn = !document.querySelector('#sd-ui .guns').hidden;
-      T.press('#sd-ui .guns'); out.reopen = document.getElementById('sd-pick').classList.contains('on'); T.rich(); card('monstor').click(); T.step(0.1); out.monstor = { gun: s.my.gun, mag: s.my.mag, cash: s.cash[s.me] }; s.closePicker(); return out; });
+    const buy = await ev(p, () => { const s = T.s(), card = (g) => document.querySelector(`#sd-pick .card[data-g="${g}"]`), out = {}, buyG = (g) => { card(g).click(); T.step(0.05); out.det = out.det || { on: document.getElementById('sd-pick').classList.contains('det'), bars: document.querySelectorAll('#sd-pick .dv .st s').length, ty: card(g).querySelector('.ty') && card(g).querySelector('.ty').textContent }; document.querySelector('#sd-pick .dv .buy').click(); };
+      buyG('sausage'); T.step(0.1); out.dear = { gun: s.my.gun, cash: s.cash[s.me], no: card('sausage').classList.contains('no'), pop: document.getElementById('sd-pop').textContent };
+      buyG('cheese'); T.step(0.1); out.cheese = { gun: s.my.gun, mag: s.my.mag, reserve: s.my.reserve, cash: s.cash[s.me], cur: card('cheese').classList.contains('cur') };
+      buyG('beans'); T.step(0.1); out.beans = { gun: s.my.gun, cash: s.cash[s.me] };
+      buyG('brown'); T.step(0.1); out.brown = { S: s.my.slots.S.g, cash: s.cash[s.me], hud: document.querySelector('#sd-pick .hd .cash').textContent };
+      document.querySelector('#sd-pick .dv .back').click(); out.back = !document.getElementById('sd-pick').classList.contains('det'); document.querySelector('#sd-pick .go').click(); T.step(0.1); out.closed = !document.getElementById('sd-pick').classList.contains('on'); out.shopBtn = !document.querySelector('#sd-ui .guns').hidden;
+      T.press('#sd-ui .guns'); out.reopen = document.getElementById('sd-pick').classList.contains('on'); T.rich(); buyG('monstor'); T.step(0.1); out.monstor = { gun: s.my.gun, mag: s.my.mag, cash: s.cash[s.me] }; s.closePicker(); return out; });
     C.ok(buy.dear.gun === 'ketchup' && buy.dear.cash === 2000 && buy.dear.no && /NEED/.test(buy.dear.pop), `solo: the £4,000 sniper wasn't refused with £2,000: ${JSON.stringify(buy.dear)}`);
     C.ok(buy.cheese.gun === 'cheese' && buy.cheese.mag === 30 && buy.cheese.reserve === 120 && buy.cheese.cash === 800 && buy.cheese.cur, `solo: buying the cheese SMG (£1,200): ${JSON.stringify(buy.cheese)}`);
     C.ok(buy.beans.gun === 'beans' && buy.beans.cash === 900, `solo: swapping it for the shotgun didn't refund the SMG (800 + 1,200 - 1,100): ${JSON.stringify(buy.beans)}`);
     C.ok(buy.brown.S === 'brown' && buy.brown.cash === 500 && /£500/.test(buy.brown.hud), `solo: a sidearm as well: ${JSON.stringify(buy.brown)}`);
+    C.ok(buy.det && buy.det.on && buy.det.bars === 5 && /SNIPER/.test(buy.det.ty) && buy.back, `solo: tapping a card didn't open its detail view (TYPE label, five stat bars, BACK): ${JSON.stringify(buy.det)}`);
     C.ok(buy.closed && buy.shopBtn && buy.reopen, `solo: DONE didn't close the shop, or SHOP didn't open it again: ${JSON.stringify(buy)}`);
     C.ok(buy.monstor.gun === 'monstor' && buy.monstor.mag === 30 && buy.monstor.cash === 9000 + 1100 - 2500, `solo: the MONSTOR (with the shotgun refunded): ${JSON.stringify(buy.monstor)}`);
     // ---- live: shooting a bot stood in front of me
@@ -300,14 +301,37 @@ async function solo(b, C) {
     C.ok(shoot.dead && shoot.k >= 1 && shoot.feed.includes(shoot.name.replace(/^🤖 /, '🤖')), `solo: shooting the bot down didn't count as a kill in the feed: ${JSON.stringify({ dead: shoot.dead, k: shoot.k, feed: shoot.feed })}`);
     C.ok(shoot.cash === 7600 + 300, `solo: the kill wasn't worth £300: ${shoot.cash}`);
     L('shoot ' + JSON.stringify(shoot));
+    // ---- moving: CROUCH (slower, steadier, lower), SPRINT (no shooting); the site markers; scoped in (no HUD); THE MAP
+    const mv = await ev(p, () => { const s = T.s(), P = RS.player, G = s.curG(), out = {}; s.loadGun('monstor'); s.my.drawEnd = 0; T.step(0.2);
+      const sp0 = P.speedMul, spr0 = s.spreadNow(G), h0 = P.camLift || 0; T.press('#btn-crouch'); T.step(0.5);
+      out.crouch = { on: !!s.my.crouch, speed: +(P.speedMul / sp0).toFixed(2), spread: s.spreadNow(G) < spr0, lower: (P.camLift || 0) < h0 - 0.3, btn: document.getElementById('btn-crouch').classList.contains('on') };
+      T.press('#btn-crouch'); T.step(0.5); out.up = !s.my.crouch && Math.abs(P.camLift || 0) < 0.05;
+      P.sprint = true; s.my.nextShot = 0; const m0 = s.my.mag; s.fire(); T.step(0.1); out.sprintFired = m0 - s.my.mag; P.sprint = false;
+      out.marks = [...document.querySelectorAll('#sd-marks div b')].map(b => b.textContent);
+      // the map: the small one on screen, the big one with you, both sites and the spawns on it
+      const mini = document.getElementById('mm-mini'); out.map = { plan: !!(RS.room.plan && RS.room.plan.cv.width > 100), mini: !!mini && mini.classList.contains('on') && mini.getBoundingClientRect().width > 50 }; mini.click(); T.step(0.2);
+      const mk = s.mapMarks(); out.map.full = document.getElementById('mm-full').classList.contains('on'); out.map.kinds = [...new Set(mk.map(m => m.k))].sort().join(','); out.map.sites = mk.filter(m => m.k === 'site').map(m => m.t).join('');
+      out.map.foes = mk.filter(m => m.k === 'foe' || (m.id && T.enemies().some(e => e.id === m.id))).length; out.map.mates = mk.filter(m => m.k === 'mate').length;
+      return out; });
+    C.ok(mv.crouch.on && mv.crouch.speed === 0.5 && mv.crouch.spread && mv.crouch.lower && mv.crouch.btn && mv.up, `solo: CROUCH (half speed, tighter spread, the camera lower, the button lit) or standing up again: ${JSON.stringify(mv)}`);
+    C.ok(mv.sprintFired === 0, `solo: fired while sprinting: ${JSON.stringify(mv)}`);
+    C.ok(mv.marks.includes('A') && mv.marks.includes('B'), `solo: no A / B markers on screen: ${JSON.stringify(mv.marks)}`);
+    C.ok(mv.map.plan && mv.map.mini && mv.map.full && /me/.test(mv.map.kinds) && /site/.test(mv.map.kinds) && /spawn/.test(mv.map.kinds) && mv.map.sites === 'AB' && mv.map.foes === 0, `solo: THE MAP (the small one, the big one, you, the sites, the spawns, no enemies): ${JSON.stringify(mv.map)}`);
+    { const t = await textProblems(p, '#mm-full'), bt = await btnProblems(p, '#mm-full'); C.ok(!t.length && !bt.length, `phone: the big map: ${JSON.stringify([...t, ...bt].slice(0, 3))}`); }
+    if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/snd-map-phone.png' });
+    const sc = await ev(p, () => { const s = T.s(); document.querySelector('#mm-full .x').click(); const closed = !document.getElementById('mm-full').classList.contains('on'); s.loadGun('sausage'); s.my.drawEnd = 0; s.my.ads = true; T.step(0.8);
+      const vis = (q) => { const e = document.querySelector(q); return !!e && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none'; };
+      const out = { closed, scoped: !!s.my.scoped, body: document.body.classList.contains('sd-scoped'), top: vis('#sd-top'), ammo: vis('#sd-ammo'), mini: vis('#mm-mini'), marks: vis('#sd-marks'), scope: document.getElementById('sd-scope') ? document.getElementById('sd-scope').classList.contains('on') : null, fire: vis('#sd-ui .fire') };
+      s.my.ads = false; T.step(0.8); out.back = !document.body.classList.contains('sd-scoped') && vis('#sd-top'); s.loadGun('monstor'); return out; });
+    C.ok(sc.closed && sc.scoped && sc.body && !sc.top && !sc.ammo && !sc.mini && !sc.marks && sc.fire && sc.back, `solo: scoped in, the HUD didn't all go (FIRE stays), or didn't come back: ${JSON.stringify(sc)}`);
     // ---- getting hurt: health, armour, the arc, the red edge
     const hurt = await ev(p, () => { const s = T.s(), me = s.mine(), e = T.enemies()[0], P = RS.player, from = new RS.THREE.Vector3(P.head.x + 4, 1.5, P.head.z);
       s.hostDamage('me', e.id, 30, false, from); T.step(0.05); const a = { hp: me.hp, arcs: document.querySelectorAll('#sd-dir .arc').length, flash: document.getElementById('sd-flash').className };
       me.ar = 50; s.hostDamage('me', e.id, 40, false, from); T.step(0.05); const b = { hp: me.hp, ar: me.ar };
-      me.ar = 40; s.hostDamage('me', e.id, 50, false, from); T.step(0.1); const box = JSON.stringify(RS.hudExtras());
+      me.ar = 40; me.hp = 60; s.hostDamage('me', e.id, 50, false, from); T.step(0.1); const box = JSON.stringify(RS.hudExtras());
       return { ...a, b, low: document.getElementById('sd-vig').classList.contains('on'), hp2: me.hp, box }; });
-    C.ok(hurt.hp === 70 && hurt.arcs >= 1 && /on/.test(hurt.flash), `solo: a 30 hit didn't leave 70 health with the red flash and a direction arc: ${JSON.stringify(hurt)}`);
-    C.ok(hurt.b.hp === 54 && hurt.b.ar === 26, `solo: armour (50) didn't soak up 60% of a 40 hit: ${JSON.stringify(hurt.b)}`);
+    C.ok(hurt.hp === 120 && hurt.arcs >= 1 && /on/.test(hurt.flash), `solo: a 30 hit didn't leave 120 health with the red flash and a direction arc: ${JSON.stringify(hurt)}`);
+    C.ok(hurt.b.hp === 104 && hurt.b.ar === 26, `solo: armour (50) didn't soak up 60% of a 40 hit: ${JSON.stringify(hurt.b)}`);
     C.ok(hurt.low, `solo: no low health red edge at ${hurt.hp2} health`);
     C.ok(/"box"/.test(hurt.box) && hurt.box.includes(`"big":"${Math.ceil(hurt.hp2)}"`) && /🦺/.test(hurt.box) && /💷/.test(hurt.box), `solo: the top-left box doesn't show health, armour and money: ${hurt.box}`);
     // ---- reload: the button, an empty gun (click, reloads itself), nothing spare
@@ -328,7 +352,7 @@ async function solo(b, C) {
       const lay = (k) => { const at = T.ahead(2.5), q = { k, x: at[0], z: at[1], y: s.floor(at[0], at[1]), on: true, back: 0 }; s.pk.push(q); return s.pk.length - 1; };
       const grab = (k) => { const i = lay(k), q = s.pk[i]; T.stand(q.x, q.z); T.step(0.3); const got = !q.on; T.stand(q.x + 0.01, q.z); return got; };
       s.loadGun('monstor'); s.my.reserve = 0; out.ammo = [grab('ammo'), s.my.reserve];
-      me.hp = 40; out.burger = [grab('burger'), me.hp]; me.hp = 20; out.kebab = [grab('kebab'), me.hp]; me.hp = 100; out.fullFood = (() => { const i = lay('burger'), q = s.pk[i]; T.stand(q.x, q.z); T.step(0.3); const left = q.on; q.on = false; return left; })();
+      me.hp = 40; out.burger = [grab('burger'), me.hp]; me.hp = 20; out.kebab = [grab('kebab'), me.hp]; me.hp = 150; out.fullFood = (() => { const i = lay('burger'), q = s.pk[i]; T.stand(q.x, q.z); T.step(0.3); const left = q.on; q.on = false; return left; })();
       me.ar = 0; out.armour = [grab('armour'), me.ar];
       out.reload = [grab('p_reload'), (() => { s.my.mag = 3; s.my.reserve = 50; s.my.reloadEnd = 0; s.doReload(); const l = s.my.reloadLen; T.step(l + 0.1); return +l.toFixed(2); })()];
       const sp0 = P.speedMul; out.speed = [grab('p_speed'), +(P.speedMul / sp0).toFixed(2)];
@@ -337,7 +361,7 @@ async function solo(b, C) {
       T.step(31, 1 / 10); out.after = Object.keys(s.my.perks).sort().join(','); out.speedAfter = +(P.speedMul / sp0).toFixed(2);
       return out; });
     C.ok(pk.ammo[0] && pk.ammo[1] === 90, `solo: the ammo box: ${JSON.stringify(pk.ammo)}`);
-    C.ok(pk.burger[0] && pk.burger[1] === 75 && pk.kebab[0] && pk.kebab[1] === 90, `solo: food didn't heal (40+35, 20+70): ${JSON.stringify([pk.burger, pk.kebab])}`);
+    C.ok(pk.burger[0] && pk.burger[1] === 90 && pk.kebab[0] && pk.kebab[1] === 120, `solo: food didn't heal (40+50, 20+100): ${JSON.stringify([pk.burger, pk.kebab])}`);
     C.ok(pk.fullFood, 'solo: food was eaten at full health');
     C.ok(pk.armour[0] && pk.armour[1] === 50, `solo: the stab vest: ${JSON.stringify(pk.armour)}`);
     C.ok(pk.reload[0] && pk.reload[1] > 1.0 && pk.reload[1] < 1.3, `solo: FAST HANDS didn't halve the reload: ${JSON.stringify(pk.reload)}`);
@@ -370,7 +394,7 @@ async function solo(b, C) {
     C.ok(boom.earned >= 2500 && /MVP/.test(boom.splash) && /\+£/.test(boom.splash), `solo: the round win's money and MVP: ${JSON.stringify(boom)}`);
     // ---- round 2: the shop again (I went down: my guns are gone); this time I defend: a bot carries, it's dropped, a bot plants, I defuse
     const r2 = await ev(p, () => { const s = T.s(); T.step(8, 1 / 10); return { phase: s.phase, round: s.round, pick: document.getElementById('sd-pick').classList.contains('on'), alive: s.mine().alive, hp: s.mine().hp, P: s.my.slots.P && s.my.slots.P.g, gun: s.my.gun, cash: s.cash[s.me] }; });
-    C.ok(r2.round === 2 && r2.phase === 'buy' && r2.pick && r2.alive && r2.hp === 100, `solo: round 2 didn't start with everyone back and the shop open: ${JSON.stringify(r2)}`);
+    C.ok(r2.round === 2 && r2.phase === 'buy' && r2.pick && r2.alive && r2.hp === 150, `solo: round 2 didn't start with everyone back and the shop open: ${JSON.stringify(r2)}`);
     C.ok(!r2.P && r2.gun === 'ketchup', `solo: going down didn't lose me my guns: ${JSON.stringify(r2)}`);
     if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/snd-shop2-phone.png' });
     const def = await ev(p, () => { const s = T.s(), me = s.mine(); s.closePicker(); s.H.ends = s.clock; T.step(0.1); s.att = me.team === 'R' ? 'B' : 'R'; s.H.att = s.att;
@@ -527,7 +551,7 @@ async function quest(b, C) {
       RS.renderer.render = () => {}; for (let i = 0; i < 200 && s.phase !== 'buy'; i++) await frames(1);
       await frames(2); out.panel = !!(s.panel.open && s.panel.cur && s.panel.cur.sdPick); out.dom = document.getElementById('sd-pick').classList.contains('on');
       // the controller points at the bean shotgun's card (second on the top row) and pulls the trigger
-      s.panel.input('move', 250, 150); s.panel.input('down', 250, 150); await frames(3); out.gun = s.my.gun; out.closed = !s.panel.open;
+      s.panel.input('move', 190, 150); s.panel.input('down', 190, 150); await frames(3); out.gun = s.my.gun; out.closed = !s.panel.open;
       s.botsFrozen = true; s.H.ends = s.clock; await frames(3); out.phase = s.phase;
       const c = window.xrd && window.xrd.controllers && window.xrd.controllers.right, lc = window.xrd && window.xrd.controllers && window.xrd.controllers.left; out.hasCtl = !!(c && c.updateButtonValue);
       out.vrGun = !!(s.vrGun && s.vrGun.parent && s.vrGun.visible); out.gunOnCtl = !!(s.vrGun && s.vrGun.parent && s.vrGun.parent.type !== 'Scene');

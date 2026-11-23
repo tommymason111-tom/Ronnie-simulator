@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { sfx } from './audio.js';
 import { track } from './awards.js';
 import { rr, txt } from './impgames.js';
+import { MapView } from './minimap.js';
 import { HP, GUNS, GUN, PRIMARIES, SIDEARMS, FREE_GUN, gunBars, drawGunArt, PERKS, money, newGun } from './sndkit.js';
 
 const TEAMS = { R: { short: 'GREASY SPOONS', col: '#ff5a3d', ico: '🍳' }, B: { short: 'SALAD DODGERS', col: '#3da5ff', ico: '🥗' } };
@@ -195,6 +196,7 @@ export const UI = {
     this.g.player.sprint = false;
   },
   disposeUI() {
+    if (this.map) { this.map.dispose(); this.map = null; }
     for (const e of [this.ui, this.style, this.topEl, this.crossEl, this.dirEl, this.vigEl, this.flashEl, this.deadEl, this.progEl, this.popEl, this.multiEl, this.countEl, this.feedEl, this.splashEl, this.scopeEl, this.adotEl, this.marksEl, this.pickEl, this.boardEl, this.endEl, this.crouchEl]) e && e.remove();
     document.body.classList.remove('snd', 'sd-touch', 'sd-alive', 'sd-over', 'sd-again', 'sd-picking', 'sd-scoped', 'sd-team-R', 'sd-team-B'); clearInterval(this.againT); window.removeEventListener('keydown', this.onKey, true); window.removeEventListener('keyup', this.onKey, true);
     const cv = this.g.renderer.domElement; cv.removeEventListener('pointerdown', this.onMouse); window.removeEventListener('pointerup', this.onMouseUp); cv.removeEventListener('contextmenu', this.onCtx); cv.removeEventListener('wheel', this.onWheel);
@@ -366,6 +368,7 @@ export const UI = {
     this.vigEl.classList.toggle('on', alive && me.hp < 50); this.vigEl.classList.toggle('crit', alive && me.hp < 25); this.deadEl.classList.toggle('on', !!(me && !me.alive && this.inRound()));
     { const tm = me ? me.team : null; document.body.classList.toggle('sd-team-R', tm === 'R'); document.body.classList.toggle('sd-team-B', tm === 'B'); }
     this.marks(me, alive);
+    this.mapTick(me);
     // the crosshair over someone: red on an enemy, blue (and "team-mate") on your own side
     if (alive && (this.xT = (this.xT || 0) - 1) <= 0) { this.xT = 4; const ray = this.aimRay(); let c = ''; if (ray) { const tr = this.trace(ray.origin, ray.direction, 60, G); if (tr.hit) c = tr.hit.mate ? 'mate' : 'foe'; } if (c !== this.xWas) { this.xWas = c; this.crossEl.classList.toggle('mate', c === 'mate'); this.crossEl.classList.toggle('foe', c === 'foe'); } }
     // plant / defuse progress
@@ -396,11 +399,29 @@ export const UI = {
       if ((B.st === 'planted' || B.st === 'dropped') && B.p && (B.st === 'planted' || mt === this.att)) list.push({ k: 'bomb' + (B.st === 'dropped' ? ' drop' : ''), t: '💣', p: new THREE.Vector3(B.p[0], this.floor(B.p[0], B.p[1]) + 0.5, B.p[1]) });
       if (B.st === 'carried' && B.id && B.id !== this.me && mt === this.att) { const hh = this.headOf(B.id, new THREE.Vector3()); if (hh) list.push({ k: 'car', t: '💣', p: hh.add({ x: 0, y: 0.75, z: 0 }), nodist: true }); } }
     const key = list.map(m => m.k).join(); if (key !== this.marksKey) { this.marksKey = key; el.innerHTML = list.map(m => `<div class="${m.k}"><i></i><b>${m.t}</b><span></span></div>`).join(''); }
-    if (!list.length) return; const W = innerWidth, H = innerHeight, x0 = 34, x1 = W - 34, y0 = Math.min(H * 0.3, 170), y1 = H - (W < H ? 330 : 120), my = this.g.player.head, v = new THREE.Vector3(); cam.updateMatrixWorld();
+    if (!list.length) return; if (!(this.marksN > 0)) { this.marksN = 20; let bt = 0; for (const q of ['#sd-top', '.hud-top', '#mp-chip']) { const e = document.querySelector(q), r = e && e.offsetParent !== null && e.getBoundingClientRect(); if (r && r.width && r.top < innerHeight * 0.4) bt = Math.max(bt, r.bottom); } this.marksTop = bt; } this.marksN--;      // (below the score bar and the top buttons, measured now and then)
+    const W = innerWidth, H = innerHeight, x0 = 34, x1 = W - 34, y0 = Math.max(Math.min(H * 0.3, 170), (this.marksTop || 0) + 24), y1 = H - (W < H ? 330 : 120), my = this.g.player.head, v = new THREE.Vector3(); cam.updateMatrixWorld();
     list.forEach((m, i) => { const d = el.children[i]; if (!d) return; v.copy(m.p).project(cam); const behind = v.z > 1; let x = (v.x * 0.5 + 0.5) * W, y = (-v.y * 0.5 + 0.5) * H; if (behind) { x = W - x; y = y1; }
       const off = behind || x < x0 || x > x1 || y < y0 || y > y1; if (off) { const cx = W / 2, cy = (y0 + y1) / 2, dx = x - cx, dy = y - cy, k = Math.min((x1 - cx) / Math.max(1e-3, Math.abs(dx)), (y1 - cy) / Math.max(1e-3, Math.abs(dy)), 1); x = cx + dx * k; y = cy + dy * k; }
       d.style.left = Math.round(x) + 'px'; d.style.top = Math.round(y) + 'px'; d.classList.toggle('off', off); const ar = d.querySelector('i'); ar.textContent = off ? (Math.abs(x - W / 2) > Math.abs(y - (y0 + y1) / 2) ? (x < W / 2 ? '◀' : '▶') : (y < (y0 + y1) / 2 ? '▲' : '▼')) : '';
       const sp = d.querySelector('span'), txt3 = m.nodist ? '' : Math.round(Math.hypot(m.p.x - my.x, m.p.z - my.z)) + 'm'; if (sp.textContent !== txt3) sp.textContent = txt3; });
+  },
+  // THE MAP (minimap.js): the small one under the top-left box (it turns with you; tap it, or M, for the big one)
+  mapTick(me) {
+    if (this.map === undefined) { const pl = this.g.room.plan, M = this.M, sn = M.spawnNames || {};
+      this.map = pl ? new MapView(pl, { marks: () => this.mapMarks(), title: `🗺️ ${M.names ? 'A: ' + M.names.A + ' · B: ' + M.names.B : 'SEARCH & DESTROY'}`, key: `▲ YOU · ● YOUR TEAM · A B BOMB SITES · ◌ SPAWNS (${sn.att || 'ATTACK'} / ${sn.def || 'DEFEND'}) · 💣 THE BOMB (when you know where)` }) : null; }
+    if (!this.map) return; const P = this.g.player, xr = this.g.renderer.xr.isPresenting;
+    const show = !!me && P.flatMode && !xr && this.inRound() && this.phase !== 'over' && !this.pickOpen && !this.my.scoped && !document.body.classList.contains('gameover');
+    this.map.update(show, P.head, this.camYaw());
+  },
+  mapMarks() {
+    const me = this.mine(), mt = me && me.team, out = [], v = new THREE.Vector3(), P = this.g.player, B = this.bomb, M = this.M;
+    for (const [k, t] of [['att', this.att], ['def', this.att === 'R' ? 'B' : 'R']]) if (M[k]) out.push({ k: 'spawn', x: M[k][0], z: M[k][1], col: (TEAMS[t] || {}).col || '#fff', t: (M.spawnNames && M.spawnNames[k]) || '' });
+    for (const L of ['A', 'B']) { const S2 = this.sites[L]; if (S2) out.push({ k: 'site', t: L, x: S2.x, z: S2.z, r: S2.r, col: '#ffd400' }); }
+    if (B && B.p && (B.st === 'planted' || (B.st === 'dropped' && mt === this.att))) out.push({ k: 'bomb', x: B.p[0], z: B.p[1] });
+    for (const [id, f] of this.F) { if (id === this.me || !f.alive || !mt || f.team !== mt) continue; const q = this.posOf(id, v); if (!q) continue; out.push({ k: 'mate', id, x: q.x, z: q.z, col: TEAMS[f.team].col, t: String(f.name).replace(/^🤖 /, '🤖') + (B && B.st === 'carried' && B.id === id ? ' 💣' : ''), yaw: (() => { const qq = this.lookOf(id); if (!qq) return undefined; const d = new THREE.Vector3(0, 0, -1).applyQuaternion(qq); return Math.atan2(-d.x, -d.z); })() }); }
+    out.push({ k: 'me', x: P.head.x, z: P.head.z, col: mt ? TEAMS[mt].col : '#39ff14', yaw: this.camYaw(), t: 'YOU' + (B && B.st === 'carried' && B.id === this.me ? ' 💣' : '') });
+    return out;
   },
   // out and watching: over their shoulder, or through their eyes
   toggleView() { this.specFP = !this.specFP; this.camWas = null; sfx('tap', null, 0.4); this.toast(this.specFP ? '🎥 THROUGH THEIR EYES' : '🎥 OVER THEIR SHOULDER'); },

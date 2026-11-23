@@ -836,7 +836,8 @@ export class SearchDestroy {
       // name tags: team-mates always (their tag is theirs); enemies red, and only while you can see them
       const enemy = round && mt && f.team !== mt;
       if (look && enemy && f.alive && this.headOf(id, h)) f.seen = this.canSee(my, h);
-      av.impRed = !!enemy; if (av.tag) av.tag.visible = (!enemy || (f.alive && f.seen)) && !(round && !f.alive) && !this.pickOpen && !(this.spect === id && this.viewCamNow); }
+      const close = this.headOf(id, h) && Math.hypot(h.x - my.x, h.z - my.z) < 1.6;      // (right beside you, a tag fills the corner of the screen: not then)
+      av.impRed = !!enemy; if (av.tag) av.tag.visible = (!enemy || (f.alive && f.seen)) && !(round && !f.alive) && !this.pickOpen && !(this.spect === id && this.viewCamNow) && !close; }
     this.teamMarks();
   }
   // your side, marked: a team-coloured band round both arms of everyone, and over each team-mate's head a little
@@ -900,6 +901,8 @@ export class SearchDestroy {
     this.boardHeld(stick);      // (hold the right stick in: the scoreboard; the left one's sprint)
     if (this.panel.open) return;
     if (!me) return;
+    // crouching in a headset is crouching for real: duck (your head well down from standing) and you're crouched
+    if (me.alive && P.head) { const hy = P.head.y - this.floor(P.head.x, P.head.z), c = this.my.crouch ? hy < 1.3 : hy < 1.15; if (c !== !!this.my.crouch) { this.my.crouch = c; this.updateSpeed(); } }
     if (!me.alive && this.inRound()) { if (aDown || trigDown) this.doWatch(); return; }
     if (this.phase === 'buy' && (yDown || aDown)) { this.openPicker(); return; }
     if (yDown) this.cycleMode();
