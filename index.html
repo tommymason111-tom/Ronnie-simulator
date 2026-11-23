@@ -510,13 +510,13 @@
     #room-players { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; width: min(700px, 100%); margin: 0 auto 10px; }
     .rp { background: rgba(28,44,140,0.94); border: 3px solid var(--c); border-radius: 16px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; animation: popin .4s backwards cubic-bezier(.3,1.6,.5,1); }
     .rp img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid var(--c); background: #111; } .rp .em { font-size: 48px; line-height: 64px; }
-    .rp b { font: 900 18px "Arial Black", Arial, sans-serif; } .rp small { font: 700 12px Arial, sans-serif; color: #c9d3ff; } .rp .tag { font: 900 11px Arial, sans-serif; color: #111; background: #ffd400; border-radius: 8px; padding: 2px 8px; }
+    .rp b { font: 900 18px "Arial Black", Arial, sans-serif; max-width: 100%; overflow-wrap: anywhere; text-align: center; line-height: 1.1; } .rp small { font: 700 12px Arial, sans-serif; color: #c9d3ff; } .rp .tag { font: 900 11px Arial, sans-serif; color: #111; background: #ffd400; border-radius: 8px; padding: 2px 8px; }
     .rp.empty { border-style: dashed; border-color: rgba(255,255,255,0.3); opacity: 0.55; animation: none; }
     #room-count { position: relative; font: 900 16px "Arial Black", Arial, sans-serif; color: #ffd400; margin: 0 0 8px; }
-    @media (max-width: 520px) { #room-players { grid-template-columns: repeat(3, 1fr); gap: 8px; } .rp { padding: 6px 4px; } .rp img { width: 44px; height: 44px; } .rp .em { font-size: 32px; line-height: 44px; } .rp b { font-size: 14px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rp small { font-size: 11px; } }
+    @media (max-width: 520px) { #room-players { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .rp { padding: 6px 4px; min-width: 0; } .rp img { width: 44px; height: 44px; } .rp .em { font-size: 32px; line-height: 44px; } .rp b { font-size: 14px; } .rp small { font-size: 11px; } }
     #room-url { position: relative; margin: 2px auto 0; max-width: min(520px, 92vw); font: 700 12px monospace; color: #c9d3ff; user-select: all; -webkit-user-select: all; overflow-wrap: anywhere; }
     #room-link-msg { position: relative; min-height: 1.2em; margin: 2px 0 6px; font: 700 13px Arial, sans-serif; color: #39ff14; }
-    .rp { position: relative; } .rp .rdy { position: absolute; top: -8px; left: -8px; width: 30px; height: 30px; border-radius: 50%; background: #39ff14; color: #111; font: 900 18px Arial; line-height: 30px; border: 3px solid #111; animation: popin .35s cubic-bezier(.3,1.6,.5,1); }
+    .rp { position: relative; min-width: 0; }      /* (a long name wraps inside its card: it pushed the card past the screen's edge, or was cut short) */ .rp .rdy { position: absolute; top: -8px; left: -8px; width: 30px; height: 30px; border-radius: 50%; background: #39ff14; color: #111; font: 900 18px Arial; line-height: 30px; border: 3px solid #111; animation: popin .35s cubic-bezier(.3,1.6,.5,1); }
     .rp .kick { position: absolute; top: -8px; right: -8px; width: 28px; height: 28px; border-radius: 50%; border: 3px solid #111; background: #ff3b3b; color: #fff; font: 900 14px Arial; cursor: pointer; padding: 0; }
     .rp.seen { animation: none; }
     .rp.isready { box-shadow: 0 0 0 3px #39ff14, 0 0 18px rgba(57,255,20,0.6); }
@@ -686,7 +686,7 @@
     #pause-char-grid img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 2px solid #ffd400; } #pause-char-grid button.cur { background: #39ff14 !important; color: #111 !important; } #pause-char-grid button:disabled { opacity: 0.35; }
     #pause .endbox { display: none; } #pause.show-end .endbox { display: block; } #pause.show-end .box:not(.endbox) { display: none; }
     /* the end of a game: nothing but the receipt and the way out */
-    body.gameover #touch, body.gameover #menu-btn, body.gameover #chat-btn, body.gameover #chat-log, body.gameover #rp-orders, body.gameover #rp-events, body.gameover #rp-jobpop, body.gameover #rp-note, body.gameover #mp-chip, body.gameover .hud-top { display: none !important; }
+    body.gameover #touch, body.gameover #chat-log, body.gameover #rp-orders, body.gameover #rp-events, body.gameover #rp-jobpop, body.gameover #rp-note, body.gameover #mp-chip, body.gameover .hud-top { display: none !important; }
     #over { display: none; position: fixed; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom)); z-index: 60; text-align: center; }
     body.gameover.flat.paused #over { display: none; }
     /* the end of a game: the receipt just stays up (a tap on it does nothing, nothing turns or grabs), PLAY AGAIN and

@@ -259,7 +259,7 @@ export class Director {
     if (id === 'snd') { tommy.attacks = false; tommy.directed = false; tommy.active = false; this.pending = null; this.hideTommy(true); if (g.fx) g.fx.setCountdown(null); this.removeTrolley();
       this.snd = g.makeSnd ? g.makeSnd() : null; sfx('gamestart', null, 1); return; }
     if (id === 'bbq') this.bbqm = new BbqMode(this);      // (IAN'S BARBECUE: bbqmode.js, on every game in a room)
-    if (this.remote) { tommy.attacks = false; tommy.directed = false; if (g.fx) g.fx.setCountdown(null); if (id === 'sweep') this.startSweep(true); else this.removeTrolley(); return; }      // (a guest in the sweep: their own trolley and score; the host runs the food and the squad)
+    if (this.remote) { tommy.attacks = false; tommy.directed = false; if (g.fx) g.fx.setCountdown(null); if (id === 'sweep') this.startSweep(true); else this.removeTrolley(); if (id === 'runpub') g.items.minFood = 0; return; }      // (Run the Pub has no food about: kept so if hosting comes here mid-shift, or the pub filled with 150 bits of food)      // (a guest in the sweep: their own trolley and score; the host runs the food and the squad)
     if (id === 'date') this.startDate();
     if (g.room.name === 'Lidl' && (id === 'sweep' || id === 'roam')) this.setupLidlStaff(id);    // uniforms, and people on the tills
     if (id === 'sweep') this.startSweep();

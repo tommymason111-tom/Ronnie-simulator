@@ -231,7 +231,7 @@ export class BbqMode {
     const ian = this.ian, P = this.P, fx = this.fx, t = ian.mpTarget;
     this.feedYaw = Math.atan2(ian.pos.x - ctx.head.x, ian.pos.z - ctx.head.z);
     if (t && t.id) {      // someone else: the cut scene's on their game
-      if (!this.net) return; this.net.send({ t: 'bbqF', to: t.id, f: this.food }); this.feedR = t.id; this.setPhase('feedR'); ian.say(pick(LINES.feed), 4); return;
+      if (!this.net) return; this.net.send({ t: 'bbqF', to: t.id, fd: this.food }); this.feedR = t.id; this.setPhase('feedR'); ian.say(pick(LINES.feed), 4); return;
     }
     if (P.knock || P.throwAnim || (fx && fx.inCutscene) || this.feed) return;      // (busy: he waits his moment)
     this.setPhase('feed'); this.beginFeed(this.food); ian.say(pick(LINES.feed), 4);
@@ -341,11 +341,11 @@ export class BbqMode {
   broadcast(now) {
     if (!this.host || !this.mpOn || !this.net) return; this.bcastT = 0.5; void now;
     const t = this.ian && this.ian.mpTarget, net = this.net;      // (tg: who he's after; the host's own id when it's the host)
-    net.send({ t: 'bbqS', ph: this.phase, n: Math.round(this.nextT * 10) / 10, ko: this.stats.ko, h: this.hits || 0, nd: this.need || 15, gu: this.gaveUp ? 1 : 0, tg: t && t.id ? t.id : (net.id || ''), tn: String((t && t.id ? t.name : net.name) || '').slice(0, 24), f: this.food, at: roomNum('attacks') });
+    net.send({ t: 'bbqS', ph: this.phase, n: Math.round(this.nextT * 10) / 10, ko: this.stats.ko, h: this.hits || 0, nd: this.need || 15, gu: this.gaveUp ? 1 : 0, tg: t && t.id ? t.id : (net.id || ''), tn: String((t && t.id ? t.name : net.name) || '').slice(0, 24), fd: this.food, at: roomNum('attacks') });
   }
-  onState(m) { if (this.host) return; const s = {}; s.ph = typeof m.ph === 'string' ? m.ph.slice(0, 10) : 'cook'; s.n = typeof m.n === 'number' && isFinite(m.n) ? m.n : 0; s.ko = Math.max(0, Math.min(KOS_TO_WIN, +m.ko || 0)); s.gu = !!m.gu; s.tg = typeof m.tg === 'string' ? m.tg : ''; s.tn = typeof m.tn === 'string' ? m.tn.slice(0, 24) : ''; s.f = m.f === 'hotdog' ? 'hotdog' : 'burger'; s.at = typeof m.at === 'number' ? m.at : 1; this.remote = s; this.stats.ko = s.ko; this.hits = Math.max(0, Math.min(15, +m.h || 0)); this.need = Math.max(10, Math.min(15, +m.nd || 15)); this.gaveUp = s.gu; this.food = s.f; }
+  onState(m) { if (this.host) return; const s = {}; s.ph = typeof m.ph === 'string' ? m.ph.slice(0, 10) : 'cook'; s.n = typeof m.n === 'number' && isFinite(m.n) ? m.n : 0; s.ko = Math.max(0, Math.min(KOS_TO_WIN, +m.ko || 0)); s.gu = !!m.gu; s.tg = typeof m.tg === 'string' ? m.tg : ''; s.tn = typeof m.tn === 'string' ? m.tn.slice(0, 24) : ''; s.f = m.fd === 'hotdog' ? 'hotdog' : 'burger'; s.at = typeof m.at === 'number' ? m.at : 1; this.remote = s; this.stats.ko = s.ko; this.hits = Math.max(0, Math.min(15, +m.h || 0)); this.need = Math.max(10, Math.min(15, +m.nd || 15)); this.gaveUp = s.gu; this.food = s.f; }
   // (a joining player's game) the host says Ian's caught you
-  onFeedMsg(m) { if (this.host || this.feed || !this.d.running) return; this.beginFeed(m.f === 'hotdog' ? 'hotdog' : 'burger'); }
+  onFeedMsg(m) { if (this.host || this.feed || !this.d.running) return; this.beginFeed(m.fd === 'hotdog' ? 'hotdog' : 'burger'); }
   // (the host) how it went on their game
   onResult(m, p) {
     if (!this.host || this.phase !== 'feedR' || !p || p.id !== this.feedR) return; this.feedR = null;

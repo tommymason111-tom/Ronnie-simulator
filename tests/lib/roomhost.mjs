@@ -29,7 +29,7 @@ export async function startRoomHost() {
     const res = await mod.default.fetch(new Request('http://local' + req.url, { headers: { Upgrade: 'websocket' } }), env, {});
     if (res.status !== 101) { ws.close(4003, String(res.status)); return; }
     const code = (req.url.match(/room\/([A-Z0-9]+)/i) || [])[1].toUpperCase(), R = roomFor(code), sock = R.socks[R.socks.length - 1]; stats.rooms.add(code);
-    for (const m of sock.got.splice(0)) ws.send(m);                                   // (the welcome went out before the socket was wired up)
+    for (const m of sock.got.splice(0)) toClient(() => { if (ws.readyState === 1) ws.send(m); });      // (the welcome went out before the socket was wired up; over the pretend network like the rest)
     sock.send = (s) => { if (sock.closed) throw new Error('closed'); stats.out++; toClient(() => { if (ws.readyState === 1) ws.send(s); }); };
     sock.close = () => { sock.closed = true; try { ws.close(); } catch (e) {} };
     ws.on('message', (d) => { stats.in++; const m = d.toString(); toRoom(() => { if (!sock.closed) R.room.webSocketMessage(sock, m); }); });
