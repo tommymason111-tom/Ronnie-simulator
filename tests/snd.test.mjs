@@ -32,7 +32,7 @@ import { launch, newPage, startGame, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
 
 const TXT = fs.readFileSync(new URL('./lib/textcheck.js', import.meta.url), 'utf8'), BTN = fs.readFileSync(new URL('./lib/btncheck.js', import.meta.url), 'utf8');
-const ONLY = (process.env.SND_ONLY || 'maps,fill,guns,solo,phone2,pc,quest,mp,fakes').split(','), PLACES = (process.env.PLACES || 'pub,shop,garden').split(',');
+const ONLY = (process.env.SND_ONLY || 'maps,fill,guns,solo,end,phone2,pc,quest,mp,fakes').split(','), PLACES = (process.env.PLACES || 'pub,shop,garden').split(',');
 const on = (k) => ONLY.includes(k);
 const GUN_IDS = ['ketchup', 'brown', 'mustard', 'cheese', 'beans', 'monstor', 'baguette', 'sausage', 'gravy'];
 
@@ -71,6 +71,14 @@ async function soloGame(b, { place = 'garden', width = 390, height = 844, mobile
 // (a poll that does something each time round: re-standing on a spot while the network catches up, say)
 async function until(p, f, arg, { timeout = 60000, every = 600 } = {}) { const t0 = Date.now(); for (;;) { const v = await p.evaluate(f, arg).catch(() => null); if (v) return v; if (Date.now() - t0 > timeout) return null; await sleep(every); } }
 
+
+// (in the page) play the match to the end on the fake clock: every round won by whoever's attacking
+const TO_END = () => { const s = T.s(); for (let r = 0; r < 40 && s.phase !== 'over'; r++) { T.step(1, 1 / 10); if (s.phase === 'buy') { s.closePicker(); s.H.ends = s.clock; T.step(0.2); } if (s.phase === 'live') { s.hostBomb({ st: 'dropped', p: [s.M.A[0], s.M.A[1]] }); s.hostEnd(s.att, 'wiped'); } if (s.phase === 'post') { s.H.nextAt = s.clock; T.step(0.2); } } return s.phase; };
+// (in the page) what's showing at the match end: the end screen, its buttons, the live HUD (should all be gone)
+const END_SEEN = () => { const vis = (sel) => { const e = document.querySelector(sel); if (!e) return false; const r = e.getBoundingClientRect(), cs = getComputedStyle(e); return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 0 && r.height > 0; };
+  const inside = (sel) => { const e = document.querySelector(sel); if (!e) return false; const r = e.getBoundingClientRect(); return r.left >= 0 && r.top >= 0 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5; };
+  return { end: vis('#sd-end'), endIn: inside('#sd-end'), rows: document.querySelectorAll('#sd-end tr.R, #sd-end tr.B').length, again: vis('#sd-end .again'), leave: vis('#sd-end .leave'), leaveTxt: (document.querySelector('#sd-end .leave') || {}).textContent, againIn: inside('#sd-end .again'), leaveIn: inside('#sd-end .leave'),
+    hud: ['#sd-top', '#sd-ui', '#sd-feed', '#sd-cross', '#sd-pop', '#sd-splash', '#sd-board', '#sd-prog'].filter(vis), over: vis('#over'), F: T.s().F.size, gameover: document.body.classList.contains('gameover') }; };
 export default async function () {
   const C = checker('snd'), b = await launch();
   try {
@@ -78,6 +86,7 @@ export default async function () {
     if (on('fill')) await fill(b, C);
     if (on('guns')) await guns(b, C);
     if (on('solo')) await solo(b, C);
+    if (on('end')) await ending(b, C);
     if (on('phone2')) await phoneSide(b, C);
     if (on('pc')) await pc(b, C);
     if (on('quest')) await quest(b, C);
@@ -333,7 +342,7 @@ async function solo(b, C) {
       const bar = document.querySelector('#sd-top .bar'); bar.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 9, isPrimary: true })); T.step(0.1);
       const el = document.getElementById('sd-board'), rows = el.querySelectorAll('tr.R, tr.B').length, mine = el.querySelector('tr.me'); return { on: el.classList.contains('on'), rows, F: s.F.size, a: me.a, cells: mine ? [...mine.querySelectorAll('td')].map(td => td.textContent) : [], feed: document.getElementById('sd-feed').textContent, bots: el.querySelectorAll('.bt').length }; });
     C.ok(sb.on && sb.rows === sb.F && sb.bots === sb.F - 1, `solo: holding the score bar didn't show everyone on the scoreboard (bots tagged): ${JSON.stringify(sb)}`);
-    C.ok(sb.a === 1 && sb.cells[1] === '1' && sb.cells[3] === '1' && /£/.test(sb.cells[6]) && /\+ /.test(sb.feed), `solo: the scoreboard's kills / assists / money, or the assist in the feed: ${JSON.stringify(sb)}`);
+    C.ok(sb.a === 1 && sb.cells[1] === '1' && /£/.test(sb.cells[4]) && /\+ /.test(sb.feed), `solo: the scoreboard's kills / money (and the assist counted), or the assist in the feed: ${JSON.stringify(sb)}`);
     { const t = await textProblems(p, '#sd-board'); C.ok(!t.length, `phone: the scoreboard's text: ${JSON.stringify(t.slice(0, 3))}`); }
     if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/snd-board-phone.png' });
     const sbOff = await ev(p, () => { document.querySelector('#sd-top').dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 9 })); return document.getElementById('sd-board').classList.contains('on'); });
@@ -376,8 +385,8 @@ async function solo(b, C) {
     C.ok(r4.why === 'time' && r4.win !== r4.att4, `solo: running the clock out didn't win it for the defenders: ${JSON.stringify(r4)}`);
     // ---- on to the end: the match, the scoreboard, the receipt
     const end = await ev(p, async () => { const s = T.s(); for (let r = 0; r < 6 && s.phase !== 'over'; r++) { T.step(8, 1 / 10); if (s.phase === 'over') break; s.closePicker(); s.H.ends = s.clock; T.step(0.1); for (const e of T.enemies()) s.hostKill(e.id, 'me', false); T.step(0.1); }
-      const over = s.phase, board = document.getElementById('sd-board').classList.contains('on'); T.step(7, 1 / 10); return { over, board, sc: s.sc, win: s.win, receipt: document.body.classList.contains('gameover'), lines: s.summary().map(l => l.join(' ')).join(' | '), running: RS.director.running }; });
-    C.ok(end.over === 'over' && Math.max(end.sc.R, end.sc.B) === end.win && end.board, `solo: the match didn't end at ${end.win} rounds with the scoreboard up: ${JSON.stringify(end)}`);
+      const over = s.phase, board = getComputedStyle(document.getElementById('sd-end')).display !== 'none'; T.step(7, 1 / 10); return { over, board, sc: s.sc, win: s.win, receipt: document.body.classList.contains('gameover'), lines: s.summary().map(l => l.join(' ')).join(' | '), running: RS.director.running }; });
+    C.ok(end.over === 'over' && Math.max(end.sc.R, end.sc.B) === end.win && end.board, `solo: the match didn't end at ${end.win} rounds with the final scoreboard up: ${JSON.stringify(end)}`);
     C.ok(end.receipt && /SEARCH & DESTROY/.test(end.lines) && /KILLS \/ DEATHS \/ ASSISTS/.test(end.lines) && /ROUND MVPS/.test(end.lines), `solo: no receipt at the end: ${JSON.stringify(end)}`);
     L('end ' + JSON.stringify(end));
     C.ok(!p.errors.length, 'solo: page errors: ' + [...new Set(p.errors)].slice(0, 3).join(' | '));
@@ -403,6 +412,42 @@ async function solo(b, C) {
     C.ok(!t2.length, `phone (watching): text on text: ${JSON.stringify(t2.slice(0, 3))}`); C.ok(!bt2.length, `phone (watching): buttons: ${JSON.stringify(bt2.slice(0, 3))}`);
     C.ok(!q.errors.length, 'phone: page errors: ' + [...new Set(q.errors)].slice(0, 3).join(' | '));
   } catch (e) { C.ok(false, `phone: ${e.message.slice(0, 300)}`); }
+  await q.context().close();
+}
+
+// ------------------------------------------------------------------ the match end (a phone held upright): the final scoreboard and the way on
+async function ending(b, C) {
+  const p = await soloGame(b, { place: 'garden' });
+  try {
+    await ev(p, `window.TO_END = ${TO_END}; window.END_SEEN = ${END_SEEN};`);
+    const ph = await ev(p, () => TO_END()); C.ok(ph === 'over', `end: the match never ended: ${ph}`);
+    await ev(p, () => T.step(0.5)); const a = await ev(p, () => END_SEEN());
+    C.ok(a.end && a.endIn && a.rows === a.F, `end: no final scoreboard with everyone on it, inside the screen: ${JSON.stringify(a)}`);
+    C.ok(a.again && a.leave && a.againIn && a.leaveIn && /MAIN MENU/.test(a.leaveTxt), `end: PLAY AGAIN and MAIN MENU aren't both there: ${JSON.stringify(a)}`);
+    C.ok(!a.hud.length, `end: the live HUD (score bar, prompts, buttons) still showing: ${a.hud.join(', ')}`);
+    await sleep(500); { const t = await textProblems(p, '#sd-end'), bt = await btnProblems(p, '#sd-end'); C.ok(!t.length, `end: the end screen's text: ${JSON.stringify(t.slice(0, 3))}`); C.ok(!bt.length, `end: the end screen's buttons: ${JSON.stringify(bt.slice(0, 3))}`); }
+    // ...the game's own end comes along behind it (the receipt's buttons hidden: this screen has them); still all there
+    await ev(p, () => T.step(4, 1 / 10)); const b2 = await ev(p, () => ({ ...END_SEEN(), rc: !!(RS.director.receipt && RS.director.receipt.visible) }));
+    C.ok(b2.gameover && b2.end && !b2.over && !b2.rc && b2.again && b2.leave, `end: once the game's over properly the end screen went (or the receipt's on top of it): ${JSON.stringify(b2)}`);
+    { const bt = await btnProblems(p, '#sd-end'); C.ok(!bt.length, `end: the end screen's buttons (game over): ${JSON.stringify(bt.slice(0, 3))}`); }
+    if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/snd-end-phone.png' }).catch(() => {});
+    // PLAY AGAIN: a new game of it
+    const again = await ev(p, async () => { const old = T.s(); document.querySelector('#sd-end .again').click(); for (let i = 0; i < 60 && (!RS.director.snd || RS.director.snd === old); i++) { await new Promise(r => setTimeout(r, 100)); RS.sim(1 / 30); } const s = RS.director.snd; return { fresh: !!s && s !== old, phase: s && s.phase, over: document.body.classList.contains('sd-over'), gameover: document.body.classList.contains('gameover') }; });
+    C.ok(again.fresh && again.phase !== 'over' && !again.over && !again.gameover, `end: PLAY AGAIN didn't start a new game: ${JSON.stringify(again)}`);
+    // MAIN MENU: back to the title
+    await ev(p, HELP); await ev(p, () => { const s = T.s(); s.startT = 0; for (let i = 0; i < 60 && s.phase !== 'buy'; i++) RS.sim(1 / 30); }); await ev(p, `window.TO_END = ${TO_END};`); await ev(p, () => { TO_END(); T.step(0.5); });
+    await Promise.all([p.waitForNavigation({ timeout: 60000 }).catch(() => null), ev(p, () => document.querySelector('#sd-end .leave').click())]);
+    const menu = await p.waitForFunction(() => !/mode=snd/.test(location.href) && document.querySelector('.playbtn'), null, { timeout: 120000 }).then(() => true, () => false);
+    C.ok(menu, 'end: MAIN MENU didn\'t go back to the title');
+    C.ok(!p.errors.length, 'end: page errors: ' + [...new Set(p.errors)].slice(0, 3).join(' | '));
+  } catch (e) { C.ok(false, `end: ${e.message.slice(0, 300)}`); }
+  await p.context().close();
+  // a computer, and the Quest (its own end: the pause menu's PLAY AGAIN / MAIN MENU in front of you)
+  const q = await soloGame(b, { place: 'pub', width: 1280, height: 720, mobile: false });
+  try { await ev(q, `window.TO_END = ${TO_END}; window.END_SEEN = ${END_SEEN};`); await ev(q, () => { TO_END(); T.step(0.5); }); const a = await ev(q, () => END_SEEN());
+    C.ok(a.end && a.endIn && a.again && a.leave && !a.hud.length && a.rows === a.F, `end (pc): ${JSON.stringify(a)}`);
+    const t = await textProblems(q, '#sd-end'), bt = await btnProblems(q, '#sd-end'); C.ok(!t.length && !bt.length, `end (pc): text ${JSON.stringify(t.slice(0, 2))} buttons ${JSON.stringify(bt.slice(0, 2))}`);
+  } catch (e) { C.ok(false, `end (pc): ${e.message.slice(0, 300)}`); }
   await q.context().close();
 }
 
@@ -485,6 +530,9 @@ async function quest(b, C) {
         // the left hand on the front of the gun, holding grip: aimed with both hands
         s.my.drawEnd = 0; await frames(2); const L = (RS.player.hands || []).find(h => h.handedness === 'left' && h.ctrl); if (L && s.vrGun) { s.vrGun.updateMatrixWorld(true); const fore = s.vrGun.localToWorld(s.vrGun.userData.model.fore.clone()), lp = L.ctrl.parent.worldToLocal(fore); lc.position.set(lp.x, lp.y, lp.z); lc.updateButtonValue('squeeze', 1); await frames(6); out.twoHand = !!s.twoHand; lc.updateButtonValue('squeeze', 0); await frames(3); out.oneHand = !s.twoHand; } }
       out.box = JSON.stringify(RS.hudExtras()); out.laser = s.laser.visible;
+      // the match's end in the headset: the pause menu's PLAY AGAIN / MAIN MENU in front of you
+      for (let r = 0; r < 40 && s.phase !== 'over'; r++) { if (s.phase === 'buy') s.H.ends = s.clock; else if (s.phase === 'live') s.hostEnd(s.att, 'wiped'); else if (s.phase === 'post') s.H.nextAt = s.clock; await frames(2); }
+      s.overAt = s.clock - 10; for (let i = 0; i < 60 && !document.body.classList.contains('gameover'); i++) await frames(1); await frames(3); out.vrEnd = document.getElementById('pause').classList.contains('show-end') && document.getElementById('end-leave').offsetParent !== null;
       return out; });
     C.ok(r.panel && !r.dom, `quest: the shop isn't on a panel in the headset: ${JSON.stringify(r)}`);
     C.ok(r.gun === 'beans' && r.closed, `quest: pointing at the shotgun and pulling the trigger didn't buy it: ${JSON.stringify(r)}`);
@@ -492,6 +540,7 @@ async function quest(b, C) {
     if (r.hasCtl) { C.ok(r.fired >= 1, `quest: the trigger didn't fire: ${JSON.stringify(r)}`); C.ok(r.reloading, `quest: A didn't reload: ${JSON.stringify(r)}`);
       C.ok(r.swapped && r.swapped !== 'monstor' && r.back === 'monstor', `quest: X didn't swap guns: ${JSON.stringify(r)}`); C.ok(r.twoHand && r.oneHand, `quest: the left hand on the front (holding grip) didn't hold it with both hands: ${JSON.stringify(r)}`); }
     C.ok(/"box"/.test(r.box) && /❤/.test(r.box) && /🥫/.test(r.box), `quest: the wrist box hasn't got health and ammo: ${r.box}`);
+    C.ok(r.vrEnd, `quest: the match's end didn't put PLAY AGAIN / MAIN MENU in front of you: ${JSON.stringify(r)}`);
     console.log(`  quest: ${JSON.stringify({ ...r, box: undefined })}`);
     C.ok(!p.errors.length, 'quest: page errors: ' + [...new Set(p.errors)].slice(0, 3).join(' | '));
   } catch (e) { C.ok(false, `quest: ${e.message.slice(0, 300)}`); }
@@ -583,10 +632,23 @@ async function mp(C) {
     // ---- to the end: both have the result, the guest its own receipt
     await ev(H, async () => { const s = T.s(); for (let r = 0; r < 30 && s.phase !== 'over'; r++) { if (s.phase === 'buy') s.H.ends = s.clock; else if (s.phase === 'live') s.hostEnd(s.att, 'wiped'); else if (s.phase === 'post') s.H.nextAt = s.clock; RS.sim(1 / 30); await new Promise(r => setTimeout(r, 300)); } });
     for (const p of pages) await p.waitForFunction(() => T.s().phase === 'over', null, { timeout: 60000 }).catch(() => C.ok(false, `mp: ${p.pname} never got the result`));
+    // ---- the end screen on both: the final scoreboard; the host can PLAY AGAIN (everyone), the guest only go back to the lobby
+    for (const p of pages) { await ev(p, `window.END_SEEN = ${END_SEEN};`); await sleep(600); const a = await ev(p, () => END_SEEN()), host = p === H;
+      C.ok(a.end && a.endIn && a.rows === a.F && !a.hud.length, `mp: ${p.pname}'s end screen: ${JSON.stringify(a)}`);
+      C.ok(a.leave && /LOBBY/.test(a.leaveTxt) && (host ? a.again : !a.again), `mp: ${p.pname}'s end buttons (the host PLAY AGAIN, both RETURN TO LOBBY): ${JSON.stringify(a)}`);
+      const bt = await btnProblems(p, '#sd-end'); C.ok(!bt.length, `mp: ${p.pname}'s end screen buttons: ${JSON.stringify(bt.slice(0, 2))}`); }
     await ev(H, () => { T.s().overAt = T.s().clock - 10; });
     const rec = await G.waitForFunction(() => document.body.classList.contains('gameover'), null, { timeout: 60000 }).then(() => true, () => false);
     const gl = await ev(G, () => T.s().summary().map(l => l.join(' ')).join(' | '));
     C.ok(rec && /SEARCH & DESTROY/.test(gl) && /YOUR TEAM/.test(gl), `mp: the guest has no receipt of their own: ${rec} ${gl.slice(0, 200)}`);
+    // ---- the host's PLAY AGAIN: everyone's READY card (the board steps aside for it); the guest's RETURN TO LOBBY
+    await sleep(800); await ev(H, () => document.querySelector('#sd-end .again').click());
+    const rcH = await H.waitForFunction(() => { const r = document.getElementById('rc-card'); return r && r.offsetHeight > 0 && getComputedStyle(document.getElementById('sd-end')).display === 'none'; }, null, { timeout: 30000 }).then(() => true, () => false);
+    const rcG = await G.waitForFunction(() => { const r = document.getElementById('rc-card'); return r && r.offsetHeight > 0; }, null, { timeout: 30000 }).then(() => true, () => false);
+    C.ok(rcH && rcG, `mp: the host's PLAY AGAIN didn't bring up the READY card for both (host ${rcH}, guest ${rcG})`);
+    const toLobby = G.waitForRequest(r => /index\.html\?lobby=|\/\?lobby=/.test(r.url()), { timeout: 60000 }).then(() => true, () => false);
+    await ev(G, () => { const b = document.querySelector('#sd-end .leave'); if (b) b.click(); else document.getElementById('over-leave').click(); });
+    C.ok(await toLobby, 'mp: the guest\'s RETURN TO LOBBY didn\'t go back to the room\'s lobby');
     for (const p of pages) C.ok(!p.errors.length, `mp: ${p.pname}: page errors: ` + [...new Set(p.errors)].slice(0, 3).join(' | '));
     for (const p of pages) { const cr = p.crashes.filter(c => !['start', 'hang'].includes(c.k)); C.ok(!cr.length, `mp: ${p.pname}: crash reports: ` + cr.slice(0, 2).map(c => JSON.stringify(c).slice(0, 200)).join(' | ')); }
     console.log(`  mp: teams ${tH}; guest's hit left the bot on ${hpH}; ${pki.k} picked up; final ${await ev(H, () => JSON.stringify(T.s().sc))}`);
@@ -631,6 +693,11 @@ async function fakes(C) {
     C.ok(moved, `fakes: the fake players didn't go anywhere: ${JSON.stringify(r)}`);
     if (plan.car) { const pl = await p.waitForFunction(() => ['planted', 'boom', 'defused'].includes(T.s().bomb.st) || (T.s().lastEnd && T.s().lastEnd.why === 'boom'), null, { timeout: 90000 }).then(() => true, () => false); C.ok(pl, `fakes: the fake carrying the bomb never planted it: ${JSON.stringify(r)}`); }
     C.ok(shot, `fakes: the fake players never shot (at the bots in their way): ${JSON.stringify(r)}`);
+    // the end of the match in the dev room: the end screen and the host's buttons
+    await ev(p, () => { T.s().noCheck = false; }); await ev(p, `window.END_SEEN = ${END_SEEN};`);
+    await ev(p, async () => { const s = T.s(); s.botsFrozen = true; for (let r = 0; r < 40 && s.phase !== 'over'; r++) { if (s.phase === 'buy') s.H.ends = s.clock; else if (s.phase === 'live') s.hostEnd(s.att, 'wiped'); else if (s.phase === 'post') s.H.nextAt = s.clock; RS.sim(1 / 30); await new Promise(r => setTimeout(r, 150)); } });
+    await sleep(800); const fe = await ev(p, () => END_SEEN());
+    C.ok(fe.end && fe.again && fe.leave && fe.rows === fe.F && !fe.hud.length, `fakes: the end screen in the dev room: ${JSON.stringify(fe)}`);
     C.ok(!p.errors.length, 'fakes: page errors: ' + [...new Set(p.errors)].slice(0, 3).join(' | '));
     console.log(`  fakes: seats ${JSON.stringify(seats)}, guns ${JSON.stringify(guns)} (${bought} bought a primary), ${JSON.stringify({ ...r, carrier: !!plan.car })}`);
   } catch (e) { C.ok(false, `fakes: ${e.message.slice(0, 300)}`); }

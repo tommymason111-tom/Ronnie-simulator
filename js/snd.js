@@ -34,7 +34,7 @@ import { GUNSYS } from './sndguns.js';
 import { FX } from './sndfx.js';
 
 export const SD = {
-  HP: 100, AR_MAX: 100, AR_ABS: 0.6, BUY_T: 14, ROUND_T: 115, BOMB_T: 40, PLANT_T: 3.2, DEFUSE_T: 6.5, END_T: 7, OVER_T: 6,
+  HP: 100, AR_MAX: 100, AR_ABS: 0.6, BUY_T: 14, ROUND_T: 115, BOMB_T: 40, PLANT_T: 3.2, DEFUSE_T: 6.5, END_T: 7, OVER_T: 3,
   PICK_R: 1.25, BOMB_R: 1.5, BOOM_R: 8, GRAB_R: 1.4, TEAM_MAX: 6, MAX: 12, SPOT_R: 32, BOT_SPEED: 2.35, ASSIST_D: 30,
   CASH0: 2000, CASH_MAX: 9000, WIN_CASH: 2500, LOSE_CASH: 1400, LOSE_STEP: 500, OBJ_CASH: 300, DROPS: 14,
 };
@@ -591,7 +591,7 @@ export class SearchDestroy {
     const win = m.win === 'B' ? 'B' : 'R', me = this.mine(), won = me && me.team === win; sfx(won ? 'sd_win' : 'sd_lose', null, 1);
     if (won) track('sdMatch');
     this.splash(TEAMS[win].col, `<p>GAME OVER</p><h1>${TEAMS[win].ico} ${TEAMS[win].short} WIN THE MATCH</h1><div class="sc"><b style="color:${TEAMS.R.col}">${this.sc.R}</b> – <b style="color:${TEAMS.B.col}">${this.sc.B}</b></div><p class="sm">${won ? 'GET IN!' : 'UNLUCKY. GO AND GET A KEBAB.'}</p>`, 2600);
-    this.showBoard(true, SD.OVER_T * 1000);      // (then everyone's numbers)
+    this.showEnd();      // (the live HUD goes; the final scoreboard and PLAY AGAIN / back to the lobby or menu)
     if (this.g.renderer.xr.isPresenting) this.g.showBanner('GAME OVER', `${TEAMS[win].short} WIN ${this.sc.R}–${this.sc.B}`);
   }
   // the receipt's lines: the result, your own game, the awards from the host
@@ -780,6 +780,8 @@ export class SearchDestroy {
   update(dt) {
     dt = Math.min(dt, 0.1); this.clock += dt; const g = this.g, P = g.player, xr = g.renderer.xr.isPresenting, t = this.clock, me = this.mine();
     if (this.host) this.hostUpdate(dt);
+    // (the match is over: the final scoreboard is the end screen on a phone or computer, so the receipt card behind it goes)
+    if (this.phase === 'over' && !g.renderer.xr.isPresenting && g.director && g.director.receipt && g.director.receipt.visible) g.director.receipt.visible = false;
     else if (this.phase === 'wait' && (this.helloT -= dt) <= 0) { this.helloT = 3; this.net.send({ t: 'sdHello' }); }
     if ((this.foodT = (this.foodT || 0) - dt) <= 0) { this.foodT = 1; this.clearFood(); }
     this.panel.update(dt);
