@@ -75,10 +75,10 @@ export function pixelRatio(t = S.live) { const [lo, hi] = spec(t).pr, d = (typeo
 // Every character's model goes through here once it's skinned (ragdoll.js loadModel). The model as it is ('base') is
 // kept; the tier's levels are made from it (smoothed for ULTRA, lighter for MEDIUM/LOW), and each frame the mesh shows
 // the level for how far away it is (the same material: no new shader, ever).
-const RAGS = new Set();
+const RAGS = new Set(), TIMES = { sub: 0, dec: 0, detail: 0 };
 export function charGeo(rag, geo) {
   const q = rag.qlod = { base: geo, sub: null, dec: new Map(), levels: null, cur: 0, tier: null };
-  if (S.build === 'ultra') { try { q.sub = subdividePN(geo); } catch (e) { console.warn('quality: smoothing', e); } }
+  if (S.build === 'ultra') { const t0 = performance.now(); try { q.sub = subdividePN(geo); } catch (e) { console.warn('quality: smoothing', e); } TIMES.sub += performance.now() - t0; }
   setLevels(rag, S.live);
   RAGS.add(rag);
   return q.levels[0].geo;
@@ -88,7 +88,7 @@ export const shellGeo = (rag) => (rag.qlod ? (rag.qlod.levels && typeof rag.qlod
 function levelGeo(q, kind) {
   if (kind === 'base') return q.base;
   if (kind === 'sub') return q.sub || q.base;
-  let g = q.dec.get(kind); if (!g) { g = decimate(q.base, kind); q.dec.set(kind, g); } return g;
+  let g = q.dec.get(kind); if (!g) { const t0 = performance.now(); g = decimate(q.base, kind); TIMES.dec += performance.now() - t0; q.dec.set(kind, g); } return g;
 }
 function setLevels(rag, tier) {
   const q = rag.qlod; if (!q) return;
@@ -299,10 +299,14 @@ const DETAIL_FRAG = `
     float h = max(wu * mix(0.55, 1.0, over) * (0.75 + 0.25 * (over > 0.5 ? bend : 1.0)), wv * mix(1.0, 0.55, over) * (0.75 + 0.25 * (over < 0.5 ? bend : 1.0)));
     h += (vnoise(uv * uSize / 2.0, uSize / 2.0) - 0.5) * 0.25 + (vnoise(uv * uSize / 64.0, uSize / 64.0) - 0.5) * 0.4;
     return h; }
+  void main() { gl_FragColor = vec4(skinH(vUv), clothH(vUv), 0.0, 1.0); }`;
+// (second pass: the heights' slopes, from the texels either side, as the two surface-detail normals)
+const DETAIL_NORMALS = `
+  precision highp float; varying vec2 vUv; uniform float uSize; uniform sampler2D uH;
   void main() {
     float e = 1.0 / uSize;
-    vec2 sn = vec2(skinH(vUv - vec2(e, 0)) - skinH(vUv + vec2(e, 0)), skinH(vUv - vec2(0, e)) - skinH(vUv + vec2(0, e))) * 0.9;
-    vec2 cn = vec2(clothH(vUv - vec2(e, 0)) - clothH(vUv + vec2(e, 0)), clothH(vUv - vec2(0, e)) - clothH(vUv + vec2(0, e))) * 0.8;
+    vec2 l = texture2D(uH, vUv - vec2(e, 0)).rg, r = texture2D(uH, vUv + vec2(e, 0)).rg, d = texture2D(uH, vUv - vec2(0, e)).rg, u = texture2D(uH, vUv + vec2(0, e)).rg;
+    vec2 sn = vec2(l.x - r.x, d.x - u.x) * 0.9, cn = vec2(l.y - r.y, d.y - u.y) * 0.8;
     sn /= max(1.0, length(sn)); cn /= max(1.0, length(cn));
     gl_FragColor = vec4(sn * 0.5 + 0.5, cn * 0.5 + 0.5);
   }`;
@@ -311,12 +315,16 @@ function makeDetail(renderer) {
   const size = PHONE ? 2048 : Math.min(4096, renderer.capabilities.maxTextureSize || 4096);
   const rt = new THREE.WebGLRenderTarget(size, size, { depthBuffer: false, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, colorSpace: THREE.NoColorSpace });
   rt.texture.anisotropy = SPEC.ultra.aniso; rt.texture.userData.keep = true;
-  const mat = new THREE.ShaderMaterial({ uniforms: { uSize: { value: size } }, vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }', fragmentShader: DETAIL_FRAG, depthTest: false, depthWrite: false });
-  const sc = new THREE.Scene(), cam = new THREE.Camera(), quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat); quad.frustumCulled = false; sc.add(quad);
-  const was = renderer.getRenderTarget(), xr = renderer.xr.enabled, tm = renderer.toneMapping;
-  try { renderer.xr.enabled = false; renderer.setRenderTarget(rt); renderer.render(sc, cam); } catch (e) { console.warn('quality: detail', e); }
-  finally { renderer.setRenderTarget(was); renderer.xr.enabled = xr; renderer.toneMapping = tm; }
-  mat.dispose(); quad.geometry.dispose();
+  const hrt = new THREE.WebGLRenderTarget(size, size, { depthBuffer: false, type: (renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float')) ? THREE.HalfFloatType : THREE.UnsignedByteType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, colorSpace: THREE.NoColorSpace });
+  const VS = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+  const m1 = new THREE.ShaderMaterial({ uniforms: { uSize: { value: size } }, vertexShader: VS, fragmentShader: DETAIL_FRAG, depthTest: false, depthWrite: false });
+  const m2 = new THREE.ShaderMaterial({ uniforms: { uSize: { value: size }, uH: { value: hrt.texture } }, vertexShader: VS, fragmentShader: DETAIL_NORMALS, depthTest: false, depthWrite: false });
+  const sc = new THREE.Scene(), cam = new THREE.Camera(), quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), m1); quad.frustumCulled = false; sc.add(quad);
+  const was = renderer.getRenderTarget(), xr = renderer.xr.enabled, t0 = performance.now();
+  try { renderer.xr.enabled = false; renderer.setRenderTarget(hrt); renderer.render(sc, cam); quad.material = m2; renderer.setRenderTarget(rt); renderer.render(sc, cam); } catch (e) { console.warn('quality: detail', e); }
+  finally { renderer.setRenderTarget(was); renderer.xr.enabled = xr; }
+  TIMES.detail = performance.now() - t0;
+  m1.dispose(); m2.dispose(); quad.geometry.dispose(); hrt.dispose();
   DETAIL.value = rt.texture; DETAIL.rt = rt; DET_STR.value = 1;
 }
 
@@ -454,6 +462,7 @@ function toast(msg) {
 
 // for tests and the developer: what's going on
 const API = {
+  get times() { return { sub: Math.round(TIMES.sub), dec: Math.round(TIMES.dec), detail: Math.round(TIMES.detail) }; },
   get state() { return { choice: S.choice, tier: S.live, build: S.build, detected: DETECTED, dropped: S.dropped, drops: S.drops || 0, hz: HZ.value, fps: W.fps || 0, toast: S.lastToast || '' }; },
   setChoice, detectTier, dropBelow, estimateHz, frame, spec,
   setClock(f) { now = f || (() => performance.now()); W.last = 0; },

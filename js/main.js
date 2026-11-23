@@ -45,6 +45,7 @@ import { SearchDestroy } from './snd.js';      // (SEARCH AND DESTROY)
 import { createReadyCheck } from './readycheck.js';      // (READY CHECK before a room's new game)      // (PROP HUNT)
 import { TVs } from './tv.js';
 import { SquadMember as SquadMemberMP, SQUAD as SQUAD_MP } from './squad.js';
+import * as quality from './quality.js';      // (QUALITY TIERS: the device's tier, the settings' QUALITY, the frame-rate watch)
 import { setupWeather } from './weather.js';      // (weather and the time of day; importing it also readies every shader for it)
 
 // start downloading everyone's 3D model now, while the menu is still up
@@ -64,7 +65,7 @@ const SEL = await (window.ronnieMenu || Promise.resolve({ place: 'pub', mode: 'e
 // ---------------- renderer / scene ----------------
 // (a device or browser that can't do 3D at all: say so on the loading screen, instead of LOADING for ever)
 let renderer;
-try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); }
+try { renderer = new THREE.WebGLRenderer({ antialias: quality.antialias(), powerPreference: 'high-performance' }); }
 catch (e) {
   const ls = document.getElementById('loadscreen');
   if (ls) { clearInterval(ls._tips); const t = ls.querySelector('.lst'), h = document.getElementById('ls-hint');      // (the tips stop turning over: this message stays)
@@ -73,7 +74,7 @@ catch (e) {
   window.__crash && window.__crash('context', e, { where: 'no webgl' });
   throw e;
 }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+renderer.setPixelRatio(quality.pixelRatio());      // (HIGH: the screen's own, up to 1.75, as always)
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -107,6 +108,7 @@ FLOOR.at = room.floorAt || null;
 if (room.familyPhotos) setTimeout(() => import('./portraits.js').then(m => m.paintPhotos(renderer, room.familyPhotos)).catch(e => console.warn('photos', e)), 400);   // family photos from the models            // (raised floors: the ragdolls stand on them)
 if (room.shadows) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }     // sunny places get real sun shadows
 room.placeId = BUILD[SEL.place] ? SEL.place : 'bedroom';
+quality.attach({ renderer, scene, camera, room });      // (the tier's picture, shadows and detail: quality.js)
 room.camera = camera;              // (the level's light pool follows whoever's looking)
 room.start = room.start || { x: 0.05, z: 0.45, yaw: 0 };
 // Tommy turns up a few metres from where you start
@@ -1592,6 +1594,7 @@ function frame(simDt) {
   if (cineC) { const cp = cineC.position, groups = [selfBody && selfBody.c && selfBody.c.rag.group, ...[...net.players.values()].map(q => q.avatar && q.avatar.c && q.avatar.c.rag.group), ...cast.filter(c => c !== director.boss.c && c.rag).map(c => c.rag.group)];
     for (const gr of groups) { if (!gr || !gr.visible) continue; const near = gr === (selfBody && selfBody.c && selfBody.c.rag.group) || (() => { const w = gr.getWorldPosition(new THREE.Vector3()); return Math.hypot(w.x - cp.x, w.z - cp.z) < 1.5; })(); if (near) { gr.visible = false; cineHid.push(gr); } } }
   const dateC = simDt == null && director.date ? director.date.cineCam() : null;      // (DATE NIGHT's film shots, on a phone or a computer: datenight.js)
+  try { quality.frame(simDt, !!(paused || G.over || loadShown || cineC || dateC || attackFx.inCutscene || attackFx.cut || (director.imposter && director.imposter.replay)), camera); } catch (e) { console.warn('quality', e); }      // (levels of detail, and AUTO's frame-rate watch)
   if (simDt == null) renderer.render(scene, cineC || dateC || (director.prophunt && director.prophunt.viewCam()) || (director.snd && director.snd.viewCam()) || (director.imposter && director.imposter.replay && director.imposter.replay.cam) || emoteCam() || camera);      // (Imposter's replay, the BOSS FIGHT entrance and a PROP HUNT hider's view of their prop have their own cameras)
   for (const gr of cineHid) gr.visible = true;
   learnShader();      // (a shader built during play: remember its kind, so next time it's built up front)
