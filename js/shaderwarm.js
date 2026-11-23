@@ -17,7 +17,7 @@ const KEY = 'rs_shader_sigs', MAX_LEARNT = 80;
 const SIGS = [
   'Lvs',      // (s: skinned. Run the Pub's punters: their bodies are drawn in their own vertex colours, and they only turn up once the night's started)
   'L', 'Lm', 'Lv', 'Lvd', 'Ld', 'Lmd', 'Li', 'Lmi', 'Lvi', 'Lic', 'Lma', 'Lt', 'Lmt', 'Lvt', 'Ldt', 'Lmdt',
-  'B', 'Bm', 'Bv', 'Bd', 'Bmd', 'Bi', 'Bmi', 'Bic', 'Bma', 'Bf0', 'Bmf0', 'Bt', 'Bmt', 'Bdt', 'Bmdt', 'Bbt', 'Bmbt', 'Bvt', 'Bmtf0', 'Btf0',
+  'B', 'Bm', 'Bv', 'Bd', 'Bmd', 'Bi', 'Bmi', 'Bic', 'Bma', 'Bf0', 'Bmf0', 'Bt', 'Bmt', 'Bdt', 'Bmdt', 'Bbt', 'Bmbt', 'Bvt', 'Bmtf0', 'Btf0', 'Bmtic', 'Bmdtic',
   'P', 'Pm', 'Pv', 'Pd', 'Pt', 'Pmt',
   'Sm', 'Smf0', 'S',
   'K', 'Kt',

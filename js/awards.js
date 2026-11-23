@@ -42,6 +42,9 @@ const AWARDS = [
   (s) => ['🔧', 'BOMB SQUAD', `Defused ${s.sdDefuses} Vindaloo${s.sdDefuses > 1 ? 's' : ''}. Saved the curry. Sort of.`, s.sdDefuses >= 1 ? 1.4 + s.sdDefuses * 0.3 : 0],
   (s) => ['🔫', 'TRIGGER HAPPY', `${s.sdShots} shots fired. Some of them even hit someone.`, s.sdShots >= 150 ? s.sdShots / 150 : 0],
   (s) => ['🍔', 'SNACK RAIDER', `Grabbed ${s.sdPicks} pick-ups. Ate most of them.`, s.sdPicks >= 5 ? s.sdPicks / 5 : 0],
+  (s) => ['🍽️', 'SECOND HELPINGS', `${s.sdMulti} multi-kill${s.sdMulti > 1 ? 's' : ''}. Never stops at one.`, s.sdMulti >= 1 ? 1.2 + s.sdMulti * 0.3 : 0],
+  (s) => ['⭐', 'MAN OF THE MATCH', `Round MVP ${s.sdMvp} times. Tommy wants an autograph.`, s.sdMvp >= 2 ? 1 + s.sdMvp * 0.2 : 0],
+  (s) => ['🛒', 'BIG SPENDER', `Bought ${s.sdBuys} guns. Dinner money? What dinner?`, s.sdBuys >= 4 ? s.sdBuys / 4 : 0],
   (s) => ['😶', 'BIG TALKER', `${s.chats} messages in the chat. Put the phone down and eat.`, s.chats >= 5 ? s.chats / 5 : 0],
 ];
 const MEDAL = ['🥉', 'PARTICIPATION MEDAL', 'You turned up. That counts for something.', 0];
