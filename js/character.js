@@ -340,8 +340,8 @@ export class Character {
   // twisting, the chest turning against them and leaning with speed, the arms pumping opposite to the legs with the
   // elbows bending to ~90 degrees at a sprint, leaning into speed-ups and corners, the head steady. `speed` is only a
   // hint: the stride is matched to how fast the feet really move over the floor.
-  walkPose(dt, speed = 0.9) {
-    const g = this.gait || (this.gait = new Gait(this)); g.hint = speed; g.update(dt, true);
+  walkPose(dt, speed = 0.9, blend = 1) {
+    const g = this.gait || (this.gait = new Gait(this)); g.hint = speed; g.update(dt, true, blend);
   }
   flailPose(t) {
     const r = this.rag;

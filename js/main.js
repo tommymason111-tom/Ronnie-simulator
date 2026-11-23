@@ -1943,7 +1943,7 @@ class SquadPuppet {
       const ww = this.walkW = (this.walkW || 0) + ((this.walking ? 1 : 0) - (this.walkW || 0)) * (1 - Math.exp(-dt * 7));
       // (stood, walking, running or sprinting at whatever speed they really go, blended by speed inside gait.js: their feet
       // planted on the floor and stepping, so a sprint is a sprint and nothing pops from one to the other)
-      c.setIdlePose(c.t += dt); if (ww > 0.005) c.walkPose(dt, sp); }
+      c.setIdlePose(c.t += dt); if (ww > 0.005) c.walkPose(dt, sp, ww); }
     // an emote off the wheel: the whole body does it (a VR player's arms stay their own real arms)
     // (a VR player's emote is the whole body too: their real arms would only fight it and flail about)
     const em = this.emote.active ? this.emote.update(dt, false) : 0;

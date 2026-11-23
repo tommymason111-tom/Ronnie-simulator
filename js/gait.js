@@ -124,7 +124,7 @@ export class Gait {
   static eye = null;
   constructor(c) {
     this.c = c; const r = this.r = c.rag; r.legIK = this;
-    this.ph = 0.05; this.frame = -1; this.lastT = null; this.reset = true;
+    this.ph = 0.05; this.frame = -1; this.lastT = null; this.reset = true; this.hard = true;
     this.vx = 0; this.vz = 0; this.vb = 0; this.acc = 0; this.accL = 0; this.yawRate = 0; this.lastYaw = 0; this.lx = 0; this.lz = 0;
     this.run = 0; this.spr = 0; this.duty = 0.66; this.f = 0; this.moveW = 0; this.idleW = 1; this.heavy = 0; this.shift = 0; this.need = false;
     this.thud = 0; this.thudV = 0; this.meas = 0; this.mvT = 0; this.lean = 0; this.bank = 0; this.dropS = 0;
@@ -152,7 +152,10 @@ export class Gait {
   floorAt(x, z) { return FLOOR.at ? FLOOR.at(x, z) : 0; }
 
   // Run once a frame, from setIdlePose / walkPose (the first call in a frame moves things on; any more just pose again)
-  update(dt, walking = false) {
+  // walking: the walk owns the trunk and arms (blend < 1 eases them in over whatever's posed already: another player's
+  // body setting off from a fidget). Stood (setIdlePose), they're eased in by how fast they're really going
+  update(dt, walking = false, blend = 1) {
+    this.blend = clamp(blend, 0, 1);
     const r = this.r, c = this.c;
     if (r.footAxes !== this.gk) { this.geom(); this.reset = true; }
     if (dt == null) { const t = c.t || 0; dt = this.lastT == null ? 0 : clamp(t - this.lastT, 0, 0.1); this.lastT = t; } else this.lastT = c.t;
@@ -184,11 +187,15 @@ export class Gait {
       f.px = f.tx = f.ax = n.x; f.pz = f.tz = f.az = n.z; f.pyaw = f.tyaw = f.fyaw = n.yaw;
       f.py = f.ty = f.ay = this.floorAt(n.x, n.z) + 0.02 + this.leg[0].ank.y; f.stance = true; f.pitch = 0; f.w = 0;
     }
-    this.ph = 0.05; this.lx = r.root.x; this.lz = r.root.z; this.lastYaw = r.yaw; this.vx = this.vz = this.vb = 0; this.idleW = 1; this.moveW = 0;
+    this.lx = r.root.x; this.lz = r.root.z; this.lastYaw = r.yaw;
+    // (only the feet are put back under them: how fast they were going, and so how the arms and trunk move, carries on
+    // smoothly. Another player catching up after a stall jumps a metre or two, and their arms snapped down to their sides)
+    if (this.hard) { this.ph = 0.05; this.vx = this.vz = this.vb = 0; this.idleW = 1; this.moveW = 0; this.hard = false; }
   }
 
   // ---- moving on: speed, the phase, the feet ----
   advance(dt) {
+    this.dtLast = dt; this.dropPrev = this.dropFinal || 0;      // (how far the hips were lowered last frame, as it was drawn)
     const r = this.r, c = this.c, root = r.root;
     this._s = this.scales(); const [sx, sy] = this._s;
     const jump = Math.hypot(root.x - this.lx, root.z - this.lz);
@@ -215,7 +222,9 @@ export class Gait {
     const g = c.cfg && c.cfg.body && c.cfg.body.girth || 1;
     this.heavy = clamp(Math.max(r.fat || 0, c.heavy || 0, (g - 1.1) * 1.8), 0, 1);
     const h = this.heavy;
-    this.run = sstep(1.95, 2.35, vn); this.spr = sstep(3.4, 4.8, vn);
+    // (walk / jog / sprint by speed, eased: a speed that jumps about (another player's after a stall) never snaps the arms)
+    const kb = dt > 0 ? 1 - Math.exp(-dt / 0.2) : 0;
+    this.run += (sstep(1.95, 2.35, vn) - this.run) * kb; this.spr += (sstep(3.4, 4.8, vn) - this.spr) * kb;
     this.moveW += (sstep(0.05, 0.55, vb) - this.moveW) * (dt > 0 ? 1 - Math.exp(-dt / 0.12) : 0);
     // heavier: shorter, quicker steps (the same speed), and longer on the ground
     let f = ev(CADENCE, vn) / 120 * (1 + 0.2 * h);
@@ -332,12 +341,13 @@ export class Gait {
     // the chest: turns against the pelvis, leans with speed (a big lean at a sprint) and into a speed-up, banks into turns
     const thor = mix3(6, 10, 14, run, spr) * D * cyc * mw;
     _q.setFromAxisAngle(_Y, thor).multiply(_q2.setFromAxisAngle(_X, this.lean)).multiply(_qi.setFromAxisAngle(_Z, -this.bank * 0.5));
-    if (walking) P.chest.copy(_q); else P.chest.slerp(_q, mw);
+    const W = walking ? this.blend : mw;
+    if (W > 0.999) P.chest.copy(_q); else P.chest.slerp(_q, W);
     // the arms: opposite to the legs (a touch behind them), out round a belly; elbows bend more the faster, most when the
     // arm's forward (hand up by the chin at a sprint, down by the hip at the back)
     const ca = Math.cos(TAU * (ph - mix3(-0.05, -0.15, -0.19, run, spr))),      // (the arm's furthest back as its thigh's furthest forward: late in the swing, and later the faster)
-      A = mix3(20, 42, 55, run, spr) * D * mw * (1 - 0.25 * h), mean = mix3(-2, 3, -3, run, spr) * D * mw;
-    const eB = mix3(22, 82, 92, run, spr) * D, eV = mix3(12, 15, 26, run, spr) * D, ab = mix3(8, 12, 10, run, spr) * D + 28 * D * h;
+      A = mix3(20, 32, 50, run, spr) * D * mw * (1 - 0.25 * h), mean = mix3(-2, 3, -3, run, spr) * D * mw;
+    const eB = mix3(22, 82, 92, run, spr) * D, eV = mix3(12, 10, 20, run, spr) * D, ab = mix3(8, 12, 10, run, spr) * D + 28 * D * h;
     const st = Math.sin(thor), ct = Math.cos(thor), lean = this.lean * 0.6, sl = Math.sin(lean), cl = Math.cos(lean);
     for (const S of SIDES) {
       const sx = S === 'L' ? 1 : -1, ts = mean - sx * A * ca, fw = A > 1e-4 ? (ts - mean) / A : 0;
@@ -347,13 +357,15 @@ export class Gait {
       const u0 = _v.x, u1 = _v.y, u2 = _v.z;
       const ang = ts + el, cross = 0.18 * run * Math.max(0, fw) * mw;
       this.armDir(sx * (sb * 0.6 - cross), -cb * Math.cos(ang), cb * Math.sin(ang), st, ct, sl, cl);
-      if (walking) { r.aim('uArm' + S, u0, u1, u2); r.aim('lArm' + S, _v.x, _v.y, _v.z); }
-      else { _q2.copy(P['uArm' + S]); r.aim('uArm' + S, u0, u1, u2); P['uArm' + S].copy(_q2.slerp(P['uArm' + S], mw)); _q2.copy(P['lArm' + S]); r.aim('lArm' + S, _v.x, _v.y, _v.z); P['lArm' + S].copy(_q2.slerp(P['lArm' + S], mw)); }
+      if (W > 0.999) { r.aim('uArm' + S, u0, u1, u2); r.aim('lArm' + S, _v.x, _v.y, _v.z); }
+      else { _q2.copy(P['uArm' + S]); r.aim('uArm' + S, u0, u1, u2); P['uArm' + S].copy(_q2.slerp(P['uArm' + S], W)); _q2.copy(P['lArm' + S]); r.aim('lArm' + S, _v.x, _v.y, _v.z); P['lArm' + S].copy(_q2.slerp(P['lArm' + S], W)); }
     }
     // hands: relaxed walking, a loose fist running
     this.curlTo((0.2 + 0.32 * run) * mw);
     // the head stays level and looks where it's going (it's posed on its own, not carried by the chest)
-    if (walking) { const he = this.he || (this.he = { yaw: 0, pitch: 0 }); he.yaw = -thor * 0.25; he.pitch = -0.02 + 0.1 * spr * mw + 0.03 * run * mw; c.headExtra = he; }
+    if (walking) { const he = this.he || (this.he = { yaw: 0, pitch: 0 }), h0 = c.headExtra && c.headExtra !== he ? c.headExtra : null;
+      const y = -thor * 0.25, pt = -0.02 + 0.1 * spr * mw + 0.03 * run * mw;
+      he.yaw = h0 ? (h0.yaw || 0) + (y - (h0.yaw || 0)) * W : y; he.pitch = h0 ? (h0.pitch || 0) + (pt - (h0.pitch || 0)) * W : pt; c.headExtra = he; }
   }
   armDir(x, y, z, st, ct, sl, cl) {
     // carried by the chest's lean (partly) and twist
@@ -371,7 +383,7 @@ export class Gait {
   solve() {
     const r = this.r, P = r.pose;
     this.place();
-    this.bob0 = r.bob; this.solveLegs(true); this.bob1 = r.bob;
+    this.bob0 = r.bob; this.solveLegs(true); this.bob1 = r.bob; this.dropFinal = this.dropNow;
     // (what we wrote, to know next time if anyone's posed the legs over us)
     for (let i = 0; i < 4; i++) this.wq[i].copy(P[LEG[i]]);
     this.written = true;
@@ -423,16 +435,27 @@ export class Gait {
         _T.set(wx * cs - wz * sn, ft.ay - by, wx * sn + wz * cs);
         ft.lx = _T.x; ft.ly = _T.y; ft.lz = _T.z; ft.hx = _H.x; ft.hy = _H.y; ft.hz = _H.z;
         if (pass === 0) ft.stretch = false;
-        if (ft.stance || ft.w > 0.92) { const L = (leg.L1 + leg.L2) * 0.992, dh2 = (_T.x - _H.x) ** 2 + (_T.z - _H.z) ** 2;
+        // (a foot about to land counts more and more over the end of its swing, not all at once)
+        const wk = ft.stance ? 1 : sstep(0.75, 1, ft.w);
+        if (wk > 0) { const L = (leg.L1 + leg.L2) * 0.992, dh2 = (_T.x - _H.x) ** 2 + (_T.z - _H.z) ** 2;
           let need = dh2 < L * L ? _H.y - (_T.y + Math.sqrt(L * L - dh2)) : 0.3 * this.kH;
+          // (a planted foot that's somehow miles out of reach (another player catching up after a stall): lifted and put
+          // back down under them rather than hauling the hips down after it)
+          if (pass === 0 && ft.stance && need > 0.15 * this.kH) ft.stretch = true;
           const behind = ft.stance && _T.z < _H.z;
           if (behind) { need = Math.min(need, 0.085 * this.kH);       // (a trailing leg never drags the hips right down: it's about to lift)
             // (and lifts a couple of frames early rather than late: near full stretch what it needs grows fast)
             const dh = Math.sqrt(dh2) + this.vb * 0.012, nAhead = dh < L ? _H.y - (_T.y + Math.sqrt(L * L - dh * dh)) : 1;
             if (pass === 0 && nAhead > 0.075 * this.kH) ft.stretch = true; }
-          drop = Math.max(drop, need); }
+          drop = Math.max(drop, need * wk); }
       }
-      if (pass === 0 && dropOk && drop > 1e-4) { const d = Math.min(drop, 0.3 * this.kH); r.bob -= d; by -= d; continue; }
+      // (lowered no faster than ~2 m/s more than last frame: a foot left far behind (another player catching up after a stall)
+      // is lifted and put down again under them, never the whole body dropping a quarter of a metre in one frame)
+      if (pass === 0) this.dropNow = 0;
+      // (and let back up no faster than ~1.2 m/s: when a stretched leg lifts off, the hips rise smoothly, never pop up)
+      if (pass === 0 && dropOk) { const dp = this.dropPrev || 0, st = this.dtLast || 0.016;
+        const d = Math.max(0, Math.min(drop, 0.3 * this.kH, dp + 2 * st + 0.004), dp - 1.2 * st - 0.002);
+        if (d > 1e-4) { this.dropNow = d; r.bob -= d; by -= d; continue; } }
       break;
     }
     for (let i = 0; i < 2; i++) {
@@ -473,7 +496,7 @@ export class Gait {
     const P = r.pose; for (let i = 0; i < 4; i++) { const a = P[LEG[i]], b = this.wq[i]; if (a.x !== b.x || a.y !== b.y || a.z !== b.z || a.w !== b.w) { this.relax(); return; } }
     if (r.bob === this.bob1) r.bob = this.bob0;        // (the hips' own height again, before this frame's lowering, if nobody's changed it)
     if (!this.feet[0].stance || !this.feet[1].stance) this.place();       // (a swinging foot goes with the hips, which have moved on)
-    this.solveLegs(true); this.bob1 = r.bob;
+    this.solveLegs(true); this.bob1 = r.bob; this.dropFinal = this.dropNow;
     for (let i = 0; i < 4; i++) this.wq[i].copy(P[LEG[i]]);
   }
   owns(name) { const i = LEG.indexOf(name); if (i < 0 || !this.written || this.frame !== this.r.frameNo) return false; const a = this.r.pose[name], b = this.wq[i]; return a.x === b.x && a.y === b.y && a.z === b.z && a.w === b.w; }
