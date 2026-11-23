@@ -107,7 +107,8 @@ export const FX = {
     if (!this.inRound()) return; const P = this.g.player.head, h = new THREE.Vector3();
     for (const [id, f] of this.F) { if (id === this.me || !f.alive || !this.headOf(id, h)) continue; const was = this.stepAt.get(id); if (!was) { this.stepAt.set(id, { x: h.x, z: h.z, acc: 0 }); continue; }
       const d = Math.hypot(h.x - was.x, h.z - was.z); was.x = h.x; was.z = h.z; if (d > 2) continue; was.acc += d;      // (a jump across the map isn't walking)
-      if (was.acc > 1.45) { was.acc = 0; const far = Math.hypot(h.x - P.x, h.z - P.z); if (far < 22) sfx('sd_step', h.set(h.x, this.floor(h.x, h.z) + 0.05, h.z), 0.55 * (1 - far / 26)); } }
+      const run = d > 0.42;      // (running: 4m a second and more: heard further off, louder)
+      if (was.acc > (run ? 1.8 : 1.45)) { was.acc = 0; const far = Math.hypot(h.x - P.x, h.z - P.z); if (far < (run ? 30 : 22)) sfx('sd_step', h.set(h.x, this.floor(h.x, h.z) + 0.05, h.z), (run ? 0.95 : 0.55) * (1 - far / (run ? 34 : 26))); } }
   },
   disposeFx() { for (const m of this.shots || []) m.material.dispose(); this.shots = []; },
 };

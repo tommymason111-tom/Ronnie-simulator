@@ -21,7 +21,10 @@ const nm = (f) => esc(String(f.name || '').replace(/^🤖 /, ''));
 const SHOP_ORDER = [...PRIMARIES, ...SIDEARMS];
 const _v = new THREE.Vector3();
 
-const CSS = `body.snd #btn-eat, body.snd #btn-throw, body.snd #pu-hud, body.snd #btn-sprint, body.snd.sd-alive #btn-emote { display: none !important; }
+const CSS = `body.snd #btn-eat, body.snd #btn-throw, body.snd #pu-hud { display: none !important; }
+#btn-crouch { position: fixed; display: none; left: max(36px, calc(env(safe-area-inset-left) + 20px)); bottom: max(252px, calc(env(safe-area-inset-bottom) + 232px)); width: 92px; height: 44px; border-radius: 22px; border: 3px solid #fff; background: #455a64; color: #fff; font: 900 13px "Arial Black", Arial, sans-serif; text-shadow: 0 2px 2px #000; box-shadow: 0 5px 0 rgba(0,0,0,0.35); z-index: 45; touch-action: none; padding: 0; cursor: pointer; }
+body.snd.flat.sd-alive #btn-crouch { display: block; } #btn-crouch.on { background: #ffd400; color: #111; text-shadow: none; } body.gameover #btn-crouch { display: none !important; }
+@media (max-height: 520px) and (min-aspect-ratio: 1/1) { #btn-crouch { bottom: max(150px, calc(env(safe-area-inset-bottom) + 130px)); left: calc(max(36px, calc(env(safe-area-inset-left) + 20px)) + 204px); } }
 #sd-ui { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); display: none; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 45; pointer-events: none; }
 body.snd.flat #sd-ui { display: flex; } #sd-ui .row { display: flex; gap: 10px; align-items: flex-end; }
 #sd-ui button { pointer-events: auto; position: relative; width: 74px; height: 74px; border-radius: 50%; border: 4px solid #fff; color: #fff; font: 900 12px "Arial Black", Arial, sans-serif; text-shadow: 0 2px 3px #000; box-shadow: 0 4px 0 rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; padding: 0; cursor: pointer; transition: transform .1s; touch-action: none; }
@@ -136,7 +139,9 @@ export const UI = {
     ui.innerHTML = `<div id="sd-ammo" role="button" aria-label="Fire mode"><span class="ic">🍅</span><div><div class="num"><b>0</b><em>/ 0</em></div><small>GUN</small></div><span class="sl"><span class="p">🔫</span><span class="s">🍅</span></span><u></u></div>
 <div class="row"><button class="swap" hidden aria-label="Swap guns"><b>🔁</b>SWAP<i>Q</i></button><button class="aim" hidden aria-label="Aim"><b>🎯</b>AIM<i>RMB</i></button><button class="act" hidden aria-label="Plant, defuse or take"><b>💣</b><span class="al">PLANT</span><i>E</i></button></div>
 <div class="row"><button class="reload" aria-label="Reload"><b>🔄</b>RELOAD<i>R</i></button><button class="guns" hidden aria-label="Shop"><b>🛒</b>SHOP<i>B</i></button><button class="watch" hidden aria-label="Watch"><b>👀</b>WATCH<i>V</i></button><button class="fire" aria-label="Fire"><b>🔥</b>FIRE<i>F</i></button></div>`;
-    document.body.appendChild(ui); this.ui = ui; document.body.classList.add('snd'); if ('ontouchstart' in window || navigator.maxTouchPoints > 0) document.body.classList.add('sd-touch');
+    document.body.appendChild(ui); this.ui = ui;
+    const cr = document.createElement('button'); cr.id = 'btn-crouch'; cr.type = 'button'; cr.textContent = '🧎 CROUCH'; cr.setAttribute('aria-label', 'Crouch'); document.body.appendChild(cr); this.crouchEl = cr;
+    cr.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); this.toggleCrouch(); }); document.body.classList.add('snd'); if ('ontouchstart' in window || navigator.maxTouchPoints > 0) document.body.classList.add('sd-touch');
     const Q = (c) => ui.querySelector('.' + c); this.B = { aim: Q('aim'), swap: Q('swap'), act: Q('act'), reload: Q('reload'), fire: Q('fire'), watch: Q('watch'), guns: Q('guns') }; this.B.scope = this.B.aim; this.ammoEl = ui.querySelector('#sd-ammo');
     const tap = (el, f) => el.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); f(e); });
     tap(this.B.reload, () => this.doReload()); tap(this.B.aim, () => this.toggleAds()); tap(this.B.swap, () => this.swapGun()); tap(this.B.watch, () => this.doWatch()); tap(this.B.guns, () => this.openPicker());
@@ -176,15 +181,15 @@ export const UI = {
       else if (k === 'KeyT') { if (down && !e.repeat) this.inspect(); }
       else if (k === 'Tab') { if (!e.repeat) this.showBoard(down); }
       else if (k === 'KeyV') { if (down && !e.repeat) this.doWatch(); }
-      else if (k === 'KeyG' || k === 'KeyB') { if (down && !e.repeat) { if (this.pickOpen) this.closePicker(); else this.openPicker(); } }
+      else if (k === 'KeyB') { if (down && !e.repeat) { if (this.pickOpen) this.closePicker(); else this.openPicker(); } }
+      else if (k === 'KeyC' || k === 'ControlLeft' || k === 'ControlRight') { if (down && !e.repeat) this.toggleCrouch(); }
       else if (/^Digit[1-9]$/.test(k)) { if (!down || e.repeat) return; const n = +k.slice(5); if (this.pickOpen) { const G = SHOP_ORDER[n - 1]; if (G) this.pickGun(G.id); } else if (n <= 2) this.switchTo(n === 1 ? 'P' : 'S'); }
-      else if ((k === 'ShiftLeft' || k === 'ShiftRight')) { /* (no sprinting: it's a shooter) */ }
       else return; e.stopPropagation(); e.preventDefault(); };
     window.addEventListener('keydown', this.onKey, true); window.addEventListener('keyup', this.onKey, true);
     this.g.player.sprint = false;
   },
   disposeUI() {
-    for (const e of [this.ui, this.style, this.topEl, this.crossEl, this.dirEl, this.vigEl, this.flashEl, this.deadEl, this.progEl, this.popEl, this.multiEl, this.countEl, this.feedEl, this.splashEl, this.scopeEl, this.adotEl, this.pickEl, this.boardEl, this.endEl]) e && e.remove();
+    for (const e of [this.ui, this.style, this.topEl, this.crossEl, this.dirEl, this.vigEl, this.flashEl, this.deadEl, this.progEl, this.popEl, this.multiEl, this.countEl, this.feedEl, this.splashEl, this.scopeEl, this.adotEl, this.pickEl, this.boardEl, this.endEl, this.crouchEl]) e && e.remove();
     document.body.classList.remove('snd', 'sd-touch', 'sd-alive', 'sd-over', 'sd-again', 'sd-picking', 'sd-scoped'); clearInterval(this.againT); window.removeEventListener('keydown', this.onKey, true); window.removeEventListener('keyup', this.onKey, true);
     const cv = this.g.renderer.domElement; cv.removeEventListener('pointerdown', this.onMouse); window.removeEventListener('pointerup', this.onMouseUp); cv.removeEventListener('contextmenu', this.onCtx); cv.removeEventListener('wheel', this.onWheel);
     clearInterval(this.pickTimer); clearTimeout(this.amT); clearTimeout(this.boardT); if (this.pv) this.g.camera.remove(this.pv.g);
@@ -335,7 +340,7 @@ export const UI = {
     document.body.classList.toggle('sd-alive', alive);      // (EMOTE only once you're out: its corner's needed for the gun's buttons)
     B.fire.hidden = !alive; B.reload.hidden = !alive; B.watch.hidden = !(me && !me.alive && this.inRound()); B.guns.hidden = !(buy && alive && !this.pickOpen);
     const other = this.my.slots[this.my.cur === 'P' ? 'S' : 'P']; B.swap.hidden = !(alive && other); if (!B.swap.hidden) { const og = GUN[other.g], k = og.id + '|' + this.my.cur; if (k !== this.swapKey) { this.swapKey = k; B.swap.querySelector('b').textContent = og.icon; } }
-    B.aim.hidden = !alive; B.aim.classList.toggle('on', !!this.my.ads);
+    B.aim.hidden = !alive; B.aim.classList.toggle('on', !!this.my.ads); if (this.crouchEl) this.crouchEl.classList.toggle('on', !!this.my.crouch);
     B.fire.classList.toggle('off', this.phase !== 'live'); B.reload.classList.toggle('need', alive && this.my.mag === 0 && this.my.reserve > 0 && !this.my.reloadEnd);
     const w = alive ? this.actWhat() : null; B.act.hidden = !w && !this.my.act; if (!B.act.hidden) { const k = (this.my.act && this.my.act.k) || (w && w.k); B.act.classList.toggle('defuse', k === 'defuse'); B.act.classList.toggle('grab', k === 'grab'); B.act.classList.toggle('on', !!this.my.act);
       B.act.querySelector('b').textContent = k === 'defuse' ? '🔧' : k === 'grab' ? (GUN[w.g] || G).icon : '💣'; B.act.querySelector('.al').textContent = k === 'defuse' ? 'DEFUSE' : k === 'grab' ? 'TAKE' : 'PLANT'; }

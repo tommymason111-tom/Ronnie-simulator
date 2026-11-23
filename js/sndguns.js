@@ -82,12 +82,14 @@ export const GUNSYS = {
     if (want && (this.my.reloadEnd || this.my.act || this.clock < this.my.drawEnd)) return; this.my.ads = want; this.my.insp = 0; if (want && this.curG().scope) sfx('sd_scope', null, 0.7); this.updateSpeed();
   },
   toggleScope() { this.toggleAds(); },
+  toggleCrouch(on) { const me = this.mine(); if (!me || !me.alive) return; this.my.crouch = on === undefined ? !this.my.crouch : !!on; if (this.my.crouch) this.g.player.sprint = false; sfx('tap', null, 0.3); this.updateSpeed(); },
   canShoot() { const me = this.mine(); return !!(me && me.alive && this.phase === 'live' && !this.panel.open && !this.pickOpen && !this.my.act); },
 
   // ------------------------------------------------------------------ pulling the trigger
   // pressed (a tap, a click, a trigger): once for a semi, the start of a burst or a stream
   fire(sx, sy) {
     if (!this.canShoot()) return; const G = this.curG(), t = this.clock, mode = this.fireMode(); this.my.insp = 0;
+    if (this.g.player.sprint) { this.g.player.sprint = false; this.my.drawEnd = Math.max(this.my.drawEnd, t + 0.22); return; }      // (sprinting: the gun's down; a pull of the trigger stops you and brings it up)
     if (this.my.reloadEnd) { if (G.rtype === 'shell' && this.my.mag > 0) this.cancelReload(); else return; }
     if (t < this.my.drawEnd || this.my.cyc) return;
     if (mode === 'burst') { if (this.my.burst > 0 || t < this.my.burstT) return; this.my.burst = G.burst || 3; this.my.bsx = sx; this.my.bsy = sy; this.burstTick(); return; }
@@ -185,7 +187,7 @@ export const GUNSYS = {
   // how wide the shots go right now: the gun's own, aimed or not, how much it's bloomed, and moving
   spreadNow(G = this.curG()) {
     const P = this.g.player, k = smooth(this.my.adsK), moving = P.flatMove ? Math.hypot(P.flatMove.x, P.flatMove.z) > 0.2 : false;
-    let s = G.spread + (G.ads - G.spread) * k + this.my.bloom; if (moving) s += G.spread * 0.7 * (1 - k * 0.6);
+    let s = G.spread + (G.ads - G.spread) * k + this.my.bloom; if (moving) s += G.spread * 0.7 * (1 - k * 0.6); if (this.my.crouch) s *= 0.7; if (P.sprint) s *= 2.5;
     return s * (this.g.renderer.xr.isPresenting ? 0.8 : 1);
   },
   // a shot down a line: the walls it meets (a thin one it can go through), and the first enemy before the wall that
@@ -269,6 +271,8 @@ export const GUNSYS = {
   // ------------------------------------------------------------------ every frame: the trigger held, the gun settling
   gunTick(dt, alive) {
     const G = this.curG(), t = this.clock, my = this.my, P = this.g.player;
+    if (!alive && my.crouch) { my.crouch = false; this.updateSpeed(); }
+    my.crouchK = (my.crouchK || 0) + ((my.crouch ? 1 : 0) - (my.crouchK || 0)) * Math.min(1, dt * 10); if (P.flatMode && !this.g.renderer.xr.isPresenting && (my.crouchK > 0.001 || this.camLifted)) { P.camLift = -0.5 * my.crouchK; this.camLifted = my.crouchK > 0.001; }
     if (my.reloadEnd) this.reloadTick(); else my.rl = null;
     if (my.autoRl && t >= my.autoRl) { my.autoRl = 0; this.doReload(true); }
     if (my.cyc) { const f = (t - my.cyc.t0) / my.cyc.T; if (f > 0.45 && !my.cyc.ej) { my.cyc.ej = true; sfx(my.cyc.k === 'bolt' ? 'sd_bolt' : 'sd_pump', null, 0.75); this.ejectCasing(G); } if (f >= 1) my.cyc = null; }
@@ -370,9 +374,10 @@ export const GUNSYS = {
     const st = { rl: my.rl, cyc: my.cyc, lastShot: my.lastShot, mag: my.mag, spinK: G.spin ? my.spin / G.spin * dt * 60 : 0 };
     const pp = this.poseParts(g, G, st);
     const ins = my.insp ? clamp((t - my.insp) / 2.6, 0, 1) : 0; if (ins >= 1) my.insp = 0; const iy = bump(ins, 0, 1), ir = Math.sin(ins * Math.PI * 2) * bump(ins, 0, 1);
+    const run = P.sprint && mv > 0.2 ? 1 : 0; this.vmRun = (this.vmRun || 0) + (run - (this.vmRun || 0)) * Math.min(1, dt * 8);
     const put = acting ? 1 : 0; this.vmPut = (this.vmPut || 0) + (put - (this.vmPut || 0)) * Math.min(1, dt * 8);
     g.position.set(hx + (ax - hx) * k + bx + sw.x * 0.5 - iy * 0.06, hy + (ay - hy) * k + by + br + sw.y * 0.5 - draw * 0.22 - pp.tilt * 0.02 + pp.lift * 0.02 - this.vmPut * 0.35, hz + (az - hz) * k + kz + iy * 0.03);
-    g.rotation.set(kr - draw * 0.9 + pp.tilt * 0.3 + pp.lift + sw.y * 1.2 + iy * 0.15 + (V.rx ?? 0.02) * (1 - k) + arx * k, hry * (1 - k) + sw.x * 1.5 + iy * 1.1, pp.roll * 0.8 + pp.tilt * 0.25 + ir * 0.45 - sw.x * 0.6 + (V.rz ?? -0.06) * (1 - k), 'XYZ');
+    g.rotation.set(kr - draw * 0.9 + pp.tilt * 0.3 + pp.lift + sw.y * 1.2 + iy * 0.15 + (V.rx ?? 0.02) * (1 - k) + arx * k - this.vmRun * 0.55, hry * (1 - k) + sw.x * 1.5 + iy * 1.1 + this.vmRun * 0.5, pp.roll * 0.8 + pp.tilt * 0.25 + ir * 0.45 - sw.x * 0.6 + (V.rz ?? -0.06) * (1 - k), 'XYZ');
     g.scale.setScalar(sc); g.visible = !scoped && this.vmPut < 0.95;
     // the other hand: on the front of the gun, or doing the reload
     const hand = pp.hand || [M.fore.x, M.fore.y, M.fore.z]; U.lHold.position.lerp(_v.set(hand[0], hand[1], hand[2]), Math.min(1, dt * (pp.hand ? 22 : 12)));

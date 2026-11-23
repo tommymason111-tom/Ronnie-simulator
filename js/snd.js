@@ -503,7 +503,7 @@ export class SearchDestroy {
     for (const [id, f] of this.F) if (f.bot && !this.puppets.has(id)) this.makePuppet(f);
     for (const [id, pu] of this.puppets) if (!this.F.has(id)) { pu.dispose && pu.dispose(); this.puppets.delete(id); }
     // me: back to my spawn with what I'm carrying (full), my perks gone
-    const me = this.mine(); this.my.perks = {}; this.my.ads = false; this.my.adsK = 0; this.cancelReload(); this.my.firing = false; this.my.picked = false; this.my.act = null; this.my.burst = 0; this.my.cyc = null; this.g.player.ghost = false; this.spect = null;
+    const me = this.mine(); this.my.perks = {}; this.my.ads = false; this.my.adsK = 0; this.cancelReload(); this.my.firing = false; this.my.picked = false; this.my.act = null; this.my.burst = 0; this.my.cyc = null; this.my.crouch = false; this.g.player.ghost = false; this.spect = null;
     if (me) { const sp = m.sp && Array.isArray(m.sp[this.me]) ? m.sp[this.me] : null; if (sp && finite(...sp)) this.respawnAt(sp[0], sp[1], sp[2]); this.setLoadout(me.load.P, me.load.S, true); me.gun = this.my.gun; if (!late) this.openPicker(); this.net.send({ t: 'sdGun', g: this.my.gun });
       if (me.moved && !late) this.toast(`🔁 TEAMS EVENED UP: YOU'RE ON ${TEAMS[me.team].short} NOW`); }
     if (m.sp && typeof m.sp === 'object') for (const [id, f] of this.F) if (f.bot && Array.isArray(m.sp[id]) && finite(...m.sp[id])) { const s = m.sp[id], bp = this.botPose.get(id) || {}; Object.assign(bp, { x: s[0], z: s[1], tx: s[0], tz: s[1], yaw: s[2], tyaw: s[2], pitch: 0, fl: 0 }); this.botPose.set(id, bp); }
@@ -610,7 +610,7 @@ export class SearchDestroy {
   refundFor(slot) { const b = this.boughtNow && this.boughtNow[slot], L = (this.mine() || {}).load || {}; return b && L[slot] === b.g ? b.cost : 0; }
   dmgAt(id, d) { return falloff(GUN[id] || GUN[FREE_GUN], d); }
   setGun(id, g) { const f = this.F.get(id); if (!f || !gunOk(g)) return; if (f.load && f.load.P !== g && f.load.S !== g && g !== FREE_GUN) return; f.gun = g; f.picked = true; }
-  updateSpeed() { const P = this.g.player, G = this.curG(); P.speedMul = G.move * (this.perk('speed') ? 1.3 : 1) * (this.my.adsK > 0.5 ? G.adsMove : 1) * (this.my.act ? 0 : 1); }
+  updateSpeed() { const P = this.g.player, G = this.curG(); P.speedMul = G.move * (this.perk('speed') ? 1.3 : 1) * (this.my.adsK > 0.5 ? G.adsMove : 1) * (this.my.crouch ? 0.5 : 1) * (this.my.act ? 0 : 1); }
   perk(k) { return (this.my.perks[k] || 0) > this.clock; }
   // someone else's shot: the tracer and the bang from where they were, and where it landed
   remoteShot(id, m) {
@@ -848,8 +848,8 @@ export class SearchDestroy {
   vrInput(P, me) {
     const pad = (hand) => { const h = (P.hands || []).find(h => h.source && h.handedness === hand); return h; }, R = pad('right'), L = pad('left'), gp = (h) => h && h.source && h.source.gamepad;
     const press = (key, h, i) => { const g2 = gp(h), on = !!(g2 && g2.buttons[i] && g2.buttons[i].pressed), was = this.btnWas[key]; this.btnWas[key] = on; return [on && !was, on]; };
-    const [trigDown, trig] = press('trig', R, 0), [aDown] = press('a', R, 4), [bDown, bHeld] = press('b', R, 5), [yDown] = press('y', L, 5), [xDown] = press('x', L, 4), [, stick] = press('ls', L, 3);
-    this.boardHeld(stick);      // (hold the left stick in: the scoreboard)
+    const [trigDown, trig] = press('trig', R, 0), [aDown] = press('a', R, 4), [bDown, bHeld] = press('b', R, 5), [yDown] = press('y', L, 5), [xDown] = press('x', L, 4), [, stick] = press('rs', R, 3);
+    this.boardHeld(stick);      // (hold the right stick in: the scoreboard; the left one's sprint)
     if (this.panel.open) return;
     if (!me) return;
     if (!me.alive && this.inRound()) { if (aDown || trigDown) this.doWatch(); return; }
@@ -894,7 +894,7 @@ export class SearchDestroy {
     for (const [id] of this.F) { const av = id === this.me ? (g.selfBody && g.selfBody()) : (this.net.players.get(id) || {}).avatar; if (av) { av.impHidden = false; av.impBody = false; if (av.tag && id !== this.me) av.tag.visible = true; } }
     this.disposeUI();
     for (const k in this.handlers) this.net.on[k] = this.prevOn[k]; this.net.on.leave = this.leaveWas;
-    const mp = g.mp; if (mp) mp.noPunch = false; g.player.noGrab = false; g.player.ghost = false; g.player.speedMul = 1;
+    const mp = g.mp; if (mp) mp.noPunch = false; g.player.noGrab = false; g.player.ghost = false; g.player.speedMul = 1; g.player.camLift = 0;
     if (g.player.flatGrip && this.gripHid) g.player.flatGrip.visible = true; if (this.fov0 != null && g.camera) { g.camera.fov = this.fov0; g.camera.updateProjectionMatrix(); }
   }
 }
