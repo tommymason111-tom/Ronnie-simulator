@@ -68,7 +68,10 @@ const PARTS = ['pelvis', 'chest', 'uArmL', 'lArmL', 'uArmR', 'lArmR', 'uLegL', '
 export function smoothPose(c, dt, rate) {
   const r = c.rag, S = c._smooth || (c._smooth = { q: {}, bob: r.bob, shift: r.shiftZ || 0 });
   const k = 1 - Math.exp(-dt * rate);
-  for (const n of PARTS) { const p = r.pose[n]; if (!p) continue; const q = S.q[n]; if (!q) { S.q[n] = p.clone(); continue; } q.slerp(p, k); p.copy(q); }
+  for (const n of PARTS) { const p = r.pose[n]; if (!p) continue; const q = S.q[n]; if (!q) { S.q[n] = p.clone(); continue; }
+    // (legs on planted feet (gait.js) aren't eased once they've caught up: eased, a stepping foot slid over the floor)
+    if (c.gait && c.gait.owns(n) && q.angleTo(p) < 0.15) { q.copy(p); continue; }
+    q.slerp(p, k); p.copy(q); }
   S.bob += (r.bob - S.bob) * k; r.bob = S.bob;
   S.shift += ((r.shiftZ || 0) - S.shift) * k; r.shiftZ = S.shift;
 }

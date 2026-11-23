@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { nearBlockers, NEAR_SAFE } from './perf.js';
 import { Ragdoll } from './ragdoll.js';
+import { Gait, netFeet } from './gait.js';
 import { canvasTex, fitText, roundRect, blobTex } from './textures.js';
 import { Dialogue, BANKS } from './dialogue.js';
 import { sfx, babble } from './audio.js';
@@ -289,14 +290,13 @@ export class Character {
     const r = this.rag, ph = this.idPhase ?? (this.idPhase = ((this.id || 'x').charCodeAt(0) * 0.37) % 6.28);
     const breathe = Math.sin(t * 1.55 + ph) * 0.016, sway = Math.sin(t * 0.7 + ph) * 0.025;
     const w = Math.sin(t * 0.33 + ph) , shift = Math.sign(w) * Math.min(1, Math.abs(w) * 2.2);     // which leg the weight's on (-1..1), held, then swapped
-    const kL = shift > 0 ? 0.18 * shift : 0, kR = shift < 0 ? -0.18 * shift : 0;
     r.aim('uArmL', 0.1 + shift * 0.02, -1, 0.02 + sway); r.aim('lArmL', 0.05, -1, 0.16 + sway * 0.6);
     r.aim('uArmR', -0.1 + shift * 0.02, -1, 0.02 - sway); r.aim('lArmR', -0.05, -1, 0.16 - sway * 0.6);
-    r.aim('uLegL', 0.02 - shift * 0.035, -1, kL * 0.5); r.aim('lLegL', 0.0, -1, -kL * 0.6 + 0.02);
-    r.aim('uLegR', -0.02 - shift * 0.035, -1, kR * 0.5); r.aim('lLegR', 0.0, -1, -kR * 0.6 + 0.02);
-    r.pose.pelvis.setFromAxisAngle(_v.set(0, 0, 1), -shift * 0.045);                       // the hip drops on the relaxed side
     _q.setFromAxisAngle(_v.set(0, 0, 1), shift * 0.035); r.pose.chest.setFromAxisAngle(_v.set(1, 0, 0), breathe).premultiply(_q);
-    r.bob = -0.008 * Math.abs(shift);
+    // the legs and hips (gait.js): feet planted where they stand, the hip dropping on the relaxed side and the weight over
+    // the other foot; still moving (slowing to a stop, being shoved, turning round) they step, and the arms and trunk ease
+    // out of the walk
+    const g = this.gait || (this.gait = new Gait(this)); g.shift = shift; g.update(null, false);
     if (this.drunk) { const sw = Math.sin(t * 1.3 + ph) * 0.09 * this.drunk, sw2 = Math.sin(t * 0.83 + ph) * 0.07 * this.drunk;   // swaying where they stand
       r.pose.chest.premultiply(_q.setFromAxisAngle(_v.set(0, 0, 1), sw)).premultiply(_q.setFromAxisAngle(_v.set(1, 0, 0), sw2 + 0.06 * this.drunk)); r.pose.pelvis.premultiply(_q.setFromAxisAngle(_v.set(0, 0, 1), -sw * 0.5)); }
     if (this.state === 'idle' && !(this.speakT > 0) && !this.clip) this.fidget(t);      // (someone playing a move from punteranims.js has their own)
@@ -322,13 +322,9 @@ export class Character {
       case 'fold': if (e > 0.3) { mixAim('uArmL', 0.2, -1, 0.35); mixAim('lArmL', -1, 0.15, 0.3); mixAim('uArmR', -0.2, -1, 0.35); mixAim('lArmR', 1, 0.2, 0.3); } break;
     }
   }
-  // stepping round on the spot when they turn a long way (not sliding round on their heels)
-  turnSteps(dt, dyaw) {
-    const r = this.rag; this.turnPh = (this.turnPh || 0) + dt * 11 * Math.min(1, Math.abs(dyaw) * 1.5);
-    const sL = Math.max(0, Math.sin(this.turnPh)), sR = Math.max(0, -Math.sin(this.turnPh));
-    r.aim('uLegL', 0.03, -1, 0.35 * sL); r.aim('lLegL', 0, -1, -0.25 * sL); r.aim('uLegR', -0.03, -1, 0.35 * sR); r.aim('lLegR', 0, -1, -0.25 * sR);
-    r.bob = -0.012 * (sL + sR);
-  }
+  // stepping round on the spot when they turn a long way (not sliding round on their heels): the feet stay planted and
+  // step round on their own as the body turns (gait.js)
+  turnSteps(dt, dyaw) {}
   // each character can override this for their own idle (flexing, filming, holding a pint...)
   personalityPose(t) {}
   // talking with their hands: both hands go, palms out on the big words, a nod or a head tilt now and then
@@ -339,30 +335,13 @@ export class Character {
     this.rag.pose.chest.premultiply(_q.setFromAxisAngle(_v.set(0, 1, 0), g2 * 0.06));
     this.headExtra = { yaw: Math.sin(t * 1.3) * 0.12, pitch: Math.sin(t * 6.1) * 0.05 + beat * 0.05 };
   }
-  // phase advances with distance walked, so feet don't slide
-  // The walk, blending into a run with speed: stride length and knee lift grow, the swing knee folds on the way
-  // through and straightens to strike the heel, the stance knee gives a little on landing, the hips sway and
-  // twist against the shoulders, arms swing from the shoulder with the elbows bending more as they go faster,
-  // the body leans into it and bobs twice a stride, and the head steadies itself.
+  // Walking, jogging or sprinting, whatever speed they're really going (gait.js): planted feet that never slide, the
+  // swing leg on real hip and knee curves (a high knee and a kicked-up heel at a sprint), the hips bobbing, dropping and
+  // twisting, the chest turning against them and leaning with speed, the arms pumping opposite to the legs with the
+  // elbows bending to ~90 degrees at a sprint, leaning into speed-ups and corners, the head steady. `speed` is only a
+  // hint: the stride is matched to how fast the feet really move over the floor.
   walkPose(dt, speed = 0.9) {
-    const r = this.rag, legLen = r.height * 0.5, run = THREE.MathUtils.clamp((speed - 1.6) / 1.4, 0, 1);
-    const A = 0.36 + run * 0.16;
-    this.walkPhase = (this.walkPhase || 0) + dt * speed * Math.PI / (2 * legLen * Math.sin(A) * (1 + run * 0.35));
-    const ph = this.walkPhase, s = Math.sin(ph), c = Math.cos(ph);
-    const lift = 0.55 + run * 0.9;
-    const swingL = Math.max(0, -c), swingR = Math.max(0, c);                        // which leg is swinging through
-    const kneeL = swingL * lift + Math.max(0, s) * 0.08 * (1 - run), kneeR = swingR * lift + Math.max(0, -s) * 0.08 * (1 - run);
-    const hipL = Math.tan(A * s) + swingL * run * 0.35, hipR = -Math.tan(A * s) + swingR * run * 0.35;
-    r.aim('uLegL', 0.02, -1, hipL); r.aim('lLegL', 0, -1, hipL - kneeL);
-    r.aim('uLegR', -0.02, -1, hipR); r.aim('lLegR', 0, -1, hipR - kneeR);
-    const arm = 0.38 + run * 0.45, elbow = 0.22 + run * 0.95;
-    r.aim('uArmL', 0.12 + run * 0.05, -1, -arm * s); r.aim('lArmL', 0.05, -1 + elbow * 0.6, elbow - 0.3 * s);
-    r.aim('uArmR', -0.12 - run * 0.05, -1, arm * s); r.aim('lArmR', -0.05, -1 + elbow * 0.6, elbow + 0.3 * s);
-    _q.setFromAxisAngle(_v.set(1, 0, 0), 0.04 + run * 0.2);                           // lean into it
-    r.pose.chest.setFromAxisAngle(_v.set(0, 1, 0), s * (0.09 + run * 0.06)).premultiply(_q);
-    r.pose.pelvis.setFromAxisAngle(_v.set(0, 1, 0), -s * (0.07 + run * 0.04)).premultiply(_q2.setFromAxisAngle(_v.set(0, 0, 1), s * 0.04 * (1 - run)));
-    r.bob = (-Math.abs(s) * (0.028 + run * 0.03) + 0.012 + run * 0.025 * Math.abs(c)) * r.height / 1.68;
-    this.headExtra = { yaw: -s * 0.05, pitch: -0.03 - run * 0.12 };                  // head stays level and looks ahead
+    const g = this.gait || (this.gait = new Gait(this)); g.hint = speed; g.update(dt, true);
   }
   flailPose(t) {
     const r = this.rag;
@@ -581,7 +560,7 @@ export class Character {
         b.position.x += (a[0] - b.position.x) * k; b.position.y += (a[1] - b.position.y) * k; b.position.z += (a[2] - b.position.z) * k;
         _q.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w).slerp(_q2.set(a[3], a[4], a[5], a[6]).normalize(), k);
         b.quaternion.set(_q.x, _q.y, _q.z, _q.w); b.velocity.set(0, 0, 0); b.angularVelocity.set(0, 0, 0); });
-      const pv = r.parts.pelvis.body.position; r.root.x = pv.x; r.root.z = pv.z; }
+      const pv = r.parts.pelvis.body.position; r.root.x = pv.x; r.root.z = pv.z; netFeet(r); }
     r.sync();
     const pos = this.pos; this.fx.position.set(pos.x, 0, pos.z);
     this.placeProp && this.placeProp(dt, null);
