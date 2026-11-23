@@ -233,7 +233,7 @@ export class Gait {
     this.accL += (clamp(Math.atan(this.acc / 9.81) * 0.7, -0.2, 0.3) - this.accL) * (dt > 0 ? 1 - Math.exp(-dt / 0.15) : 0);
     this.bank = clamp(vb * this.yawRate / 9.81 * 0.8, -0.32, 0.32) * this.moveW;
     // the trunk's lean: a little walking, more running, a big one sprinting (plus the speed-up lean); a big belly leans back
-    const leanW = ((mix3(3, 8, 17, this.run, this.spr) * D - 3 * D * h * (1 - this.run)) + this.accL) * this.moveW;
+    const leanW = ((mix3(3, 10, 22, this.run, this.spr) * D - 3 * D * h * (1 - this.run)) + this.accL) * this.moveW;
     this.lean += (leanW - this.lean) * (dt > 0 ? 1 - Math.exp(-dt / 0.12) : 0);
     // the thud of landing (heavier: a bigger one), on a spring
     if (dt > 0) { this.thudV += (-120 * this.thud - 14 * this.thudV) * dt; this.thud += this.thudV * dt; }
