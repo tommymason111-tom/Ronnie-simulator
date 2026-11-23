@@ -53,12 +53,12 @@ function onGlass(geo, color, u, y, rz = 0, lift = 0.0007, rOver = null, front = 
 }
 
 // ---- the parts
-function glassBase() {          // the thick heavy base: pale glass round the side, the stout's ruby showing through on top
+function glassBase(seg = SEG) {          // the thick heavy base: pale glass round the side, the stout's ruby showing through on top
   return lathe([[0, -0.075], [0.0296, -0.075], [0.0318, -0.0742], [0.0322, -0.07], [0.0324, FLOOR], [0.028, FLOOR + 0.0004], [0, FLOOR + 0.0004]],
-    (y, x, z) => { const k = (y + 0.075) / 0.0095, side = Math.atan2(x, z); return mix(C.glassBaseLit, mix(C.glassBase, C.rubyDeep, k * 0.8), 0.4 + 0.5 * Math.abs(Math.sin(side * 1.5))); });
+    (y, x, z) => { const k = (y + 0.075) / 0.0095, side = Math.atan2(x, z); return mix(C.glassBaseLit, mix(C.glassBase, C.rubyDeep, k * 0.8), 0.4 + 0.5 * Math.abs(Math.sin(side * 1.5))); }, seg);
 }
-function stoutBody(top = HEAD0, seg = SEG) {         // the stout, just inside the glass: ruby at the very bottom, near-black above
-  const pts = [[0, FLOOR + 0.0004]]; for (let k = 0; k <= 8; k++) { const y = FLOOR + 0.0004 + (top - FLOOR - 0.0004) * k / 8; pts.push([pintRadius(y) - 0.0004, y]); }
+function stoutBody(top = HEAD0, seg = SEG, rows = 8) {         // the stout, just inside the glass: ruby at the very bottom, near-black above
+  const pts = [[0, FLOOR + 0.0004]]; for (let k = 0; k <= rows; k++) { const y = FLOOR + 0.0004 + (top - FLOOR - 0.0004) * k / rows; pts.push([pintRadius(y) - 0.0004, y]); }
   pts.push([0, top]);
   return lathe(pts, (y) => { const k = (y - FLOOR) / (top - FLOOR); return k < 0.12 ? mix(C.ruby, C.rubyDeep, k / 0.12) : k < 0.3 ? mix(C.rubyDeep, C.stout, (k - 0.12) / 0.18) : mix(C.stout, C.stoutTop, (k - 0.3) / 0.7); }, seg);
 }
@@ -95,14 +95,16 @@ function harp(parts, y = PINT.logoY, s = 1, front = 0) {
   g(bx(S0[0] - P0[0] + 0.0026, 0.0022), C.gold, (P0[0] + S0[0]) / 2, P0[1] + 0.0002);                         // the foot
 }
 // GUINNESS in plain 3x5 block capitals, cream, round the glass: each lit pixel run is a tiny strip on the surface
-const FONT = { G: ['111', '100', '101', '101', '111'], U: ['101', '101', '101', '101', '111'], I: ['111', '010', '010', '010', '111'], N: ['101', '111', '111', '111', '101'], E: ['111', '100', '110', '100', '111'], S: ['111', '100', '111', '001', '111'] };
+const FONT = { G: ['111', '100', '101', '101', '111'], U: ['101', '101', '101', '101', '111'], I: ['111', '010', '010', '010', '111'], N: ['1001', '1101', '1011', '1001', '1001'], E: ['111', '100', '110', '100', '111'], S: ['111', '100', '111', '001', '111'] };
 function word(parts, text = 'GUINNESS', y = PINT.gY, px = 0.0017, front = 0) {
-  const cols = text.length * 4 - 1, x0 = -cols * px / 2;
-  [...text].forEach((ch, i) => { const f = FONT[ch]; if (!f) return;
+  const ws = [...text].map(ch => (FONT[ch] ? FONT[ch][0].length : 3)), cols = ws.reduce((a, w) => a + w + 1, -1), x0 = -cols * px / 2;
+  let at = 0;
+  [...text].forEach((ch, i) => { const f = FONT[ch], W = ws[i]; if (f) {
     for (let row = 0; row < 5; row++) { const bits = f[row]; let c = 0;
-      while (c < 3) { if (bits[c] !== '1') { c++; continue; } let e = c; while (e + 1 < 3 && bits[e + 1] === '1') e++;
-        const w = (e - c + 1) * px, u = x0 + (i * 4 + c) * px + w / 2 - px / 2, yy = y + (2 - row) * px;
-        parts.push(onGlass(new THREE.PlaneGeometry(w, px), C.word, u, yy, 0, 0.0007, null, front)); c = e + 1; } } });
+      while (c < W) { if (bits[c] !== '1') { c++; continue; } let e = c; while (e + 1 < W && bits[e + 1] === '1') e++;
+        const w = (e - c + 1) * px, u = x0 + (at + c) * px + w / 2 - px / 2, yy = y + (2 - row) * px;
+        parts.push(onGlass(new THREE.PlaneGeometry(w, px), C.word, u, yy, 0, 0.0007, null, front)); c = e + 1; } } }
+    at += W + 1; });
 }
 // condensation: beads on the cold glass, and one drip running down to the base
 const BEADS = [[2.2, -0.04], [2.6, 0.0], [2.9, -0.055], [3.3, 0.02], [3.7, -0.02], [4.1, 0.035], [-1.2, -0.035], [-1.6, 0.015], [-2.0, -0.058], [-2.4, 0.03], [1.25, 0.03], [1.5, -0.048], [-0.95, 0.04], [0.95, -0.06], [3.0, 0.042], [-2.8, -0.01]];
@@ -127,8 +129,8 @@ export function pintGeo() {
 }
 export function pintGeoLow() {
   if (_low) return _low;
-  const p = [glassBase(), stoutBody(HEAD0, 12), headBand(12), headDome(12), rimBand(12), shine(-0.066, 0.066, 0.75, 0.12, C.shine)];
-  harp(p);
+  const p = [glassBase(10), stoutBody(HEAD0, 10, 4), headBand(10), headDome(10), rimBand(10), shine(-0.066, 0.066, 0.75, 0.12, C.shine)];
+  p.push(onGlass(new THREE.PlaneGeometry(0.019, 0.024), C.gold, 0, PINT.logoY));      // (the harp, far away: a gold mark)
   _low = merge(p); _low.userData.shared = true; _low.userData.pint = 'low'; return _low;
 }
 // (every pint geometry is tagged userData.pint, so tests can find every pint in a scene)

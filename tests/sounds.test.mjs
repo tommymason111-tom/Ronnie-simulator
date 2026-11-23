@@ -201,6 +201,7 @@ export default async function () {
     // ---- the developer mode sound board, on a phone: every sound listed, the search finds them, a tap plays one
     const q = await newPage(b, { width: 390, height: 844, mobile: true });
     await startGame(q, { place: 'grid', mode: 'roam', dev: true });
+    await q.waitForFunction(() => document.getElementById('dev-panel'), null, { timeout: 60000 }).catch(() => {});      // (developer mode loads a moment after PLAY: on a busy machine, later than the test looked)
     const board = await q.evaluate(async () => {
       const panel = document.getElementById('dev-panel'); if (!panel) return { none: true };
       if (!panel.classList.contains('on')) document.getElementById('dev-btn').click();

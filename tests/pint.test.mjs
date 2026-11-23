@@ -69,14 +69,14 @@ export default async function () {
         for (let i = 0; i < 100 && !(pup.c && pup.c.rag && pup.c.rag.mesh); i++) { await new Promise(r => setTimeout(r, 100)); step(0.1); }
         step(1); pup.doEmote(em); const r = { far: 0, tiltIdle: 0, tiltDrink: 0, minLvl: 1, n: 0 };
         for (let t = 0; t < secs; t += 1 / 30) { step(1 / 30); const E = pup.emote; if (!E || !E.glasses) continue;
-          for (const [S, gl] of E.glasses) { const p2 = gl.p; if (!p2.visible) continue; r.n++; const hand = pup.c.rag.grip('lArm' + S, new T.Vector3()); r.far = Math.max(r.far, hand.distanceTo(p2.position));
+          for (const [S, gl] of E.glasses) { const p2 = gl.p; if (!p2.visible) continue; r.n++; if (!gl.wr) continue; r.far = Math.max(r.far, gl.wr.distanceTo(p2.position));      // (from the wrist of the hand round it)
             const tilt = Math.acos(Math.min(1, new T.Vector3(0, 1, 0).applyQuaternion(p2.quaternion).y)); if (gl.drink > 0.5) r.tiltDrink = Math.max(r.tiltDrink, tilt); else if (gl.drink === 0) r.tiltIdle = Math.max(r.tiltIdle, tilt);
             r.minLvl = Math.min(r.minLvl, p2.userData.level ?? 1); } }
         res[em] = Object.fromEntries(Object.entries(r).map(([k, v]) => [k, +(+v).toFixed(3)])); pup.dispose(); }
       return res; });
     console.log('  emotes:', JSON.stringify(e));
-    C.ok(e.round && e.round.n > 20 && e.round.far < 0.13 && e.round.tiltIdle < 0.2, `Connor's round: pints not in his hands / not upright (${JSON.stringify(e.round)})`);
-    C.ok(e.guinness && e.guinness.n > 20 && e.guinness.far < 0.13 && e.guinness.tiltDrink > 0.8 && e.guinness.minLvl < 0.3, `Aidan's Guinness dream: not held, tipped or drunk (${JSON.stringify(e.guinness)})`);
+    C.ok(e.round && e.round.n > 20 && e.round.far < 0.11 && e.round.tiltIdle < 0.2, `Connor's round: pints not in his hands / not upright (${JSON.stringify(e.round)})`);
+    C.ok(e.guinness && e.guinness.n > 20 && e.guinness.far < 0.11 && e.guinness.tiltDrink > 0.8 && e.guinness.minLvl < 0.3, `Aidan's Guinness dream: not held, tipped or drunk (${JSON.stringify(e.guinness)})`);
     // ---- Aidan's attack: the pint in his hand comes in, tips, drains; the moustache; the dizzy
     const a = await p.evaluate(async () => { const D = RS.director, A = RS.cast.find(c => c.id === 'aidan'), P = RS.player; if (!A) return { none: true };
       D.stun(A, 'beer'); const cam = P.camera, find = (n) => { let o = null; cam.traverse(x => { if (x.name === n) o = x; }); return o; };
