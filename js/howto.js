@@ -349,12 +349,14 @@ function sdSite(g, x, y, r, L) {      // a bomb site painted on the floor, from 
   g.beginPath(); g.arc(0, 0, r * 0.86, 0, 7); g.fillStyle = 'rgba(200,20,20,0.75)'; g.fill(); g.restore();
   g.fillStyle = '#fff'; g.font = `900 ${Math.round(r * 0.5)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(L, x, y + 2);
 }
-function sdBomb(g, x, y, k = 1) {      // THE VINDALOO: a curry pot with sausages strapped round it and a clock
+function sdBomb(g, x, y, k = 1) {      // THE VINDALOO: a bundle of dynamite with a timer strapped on, wires, a keypad
   g.save(); g.translate(x, y); g.scale(k, k);
-  for (let i = 0; i < 5; i++) { g.fillStyle = '#8a3a22'; rr(g, -44 + i * 20, -40, 13, 56, 6); g.fill(); }
-  g.fillStyle = '#b0b4ba'; rr(g, -40, -30, 80, 48, 10); g.fill(); g.fillStyle = '#c1440e'; g.beginPath(); g.ellipse(0, -30, 40, 8, 0, 0, 7); g.fill();
-  g.fillStyle = '#6a6e74'; g.fillRect(-48, -14, 96, 6); g.fillStyle = '#141414'; rr(g, -22, -6, 44, 18, 4); g.fill(); g.fillStyle = '#ff2020'; g.font = `900 13px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('0:40', 0, 3);
-  g.strokeStyle = '#2a6df4'; g.lineWidth = 3; g.beginPath(); g.moveTo(-10, -30); g.quadraticCurveTo(-20, -55, 5, -60); g.stroke(); g.strokeStyle = '#ff3b3b'; g.beginPath(); g.moveTo(10, -30); g.quadraticCurveTo(25, -52, 8, -60); g.stroke();
+  for (let i = 0; i < 5; i++) { g.fillStyle = i % 2 ? '#8e1b1b' : '#c62828'; rr(g, -50 + i * 20, -6, 18, 40, 6); g.fill(); g.fillStyle = '#f0e0b0'; g.fillRect(-48 + i * 20, 8, 14, 5); }
+  g.fillStyle = '#262626'; g.fillRect(-54, 2, 108, 7); g.fillRect(-54, 24, 108, 7);
+  g.fillStyle = '#141414'; rr(g, -32, -34, 64, 30, 5); g.fill(); g.fillStyle = '#1a0000'; rr(g, -26, -30, 40, 16, 3); g.fill(); g.fillStyle = '#ff2020'; g.font = `900 12px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('0:40', -6, -22);
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) { g.fillStyle = '#d0d4da'; g.fillRect(18 + c * 6, -30 + r * 7, 4, 4); }
+  g.fillStyle = '#ff8f00'; g.fillRect(-26, -12, 40, 6); g.fillStyle = '#ff3030'; g.beginPath(); g.arc(26, -30, 3, 0, 7); g.fill();
+  for (const [c, dx] of [['#ff3b3b', -20], ['#2a6df4', 0], ['#ffd400', 20]]) { g.strokeStyle = c; g.lineWidth = 3; g.beginPath(); g.moveTo(dx, -4); g.quadraticCurveTo(dx + 12, 6, dx + 4, 18); g.stroke(); }
   g.restore();
 }
 function sdGun(g, id, x, y, w) {      // a gun, side on, in its own colours (a simple version of the pick screen's)

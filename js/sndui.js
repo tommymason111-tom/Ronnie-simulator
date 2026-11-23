@@ -35,7 +35,7 @@ body.sd-touch #sd-ui button i { display: none; }
 #sd-ui .reload { background: #2a6df4; } #sd-ui .reload.need { animation: sdpulse .6s infinite alternate; background: #ff9f1c; }
 #sd-ui .act { background: #7b2ff7; width: 88px; height: 88px; } #sd-ui .act.defuse { background: #00a86b; } #sd-ui .act.grab { background: #c77700; } #sd-ui .act.on { animation: sdpulse .35s infinite alternate; }
 #sd-ui .aim { background: #455a64; } #sd-ui .aim.on { background: #ffd400; color: #111; text-shadow: none; } #sd-ui .swap { background: #6d4c41; } #sd-ui .swap b { font-size: 22px; }
-#sd-ui .watch { background: #37474f; width: 92px; height: 92px; } #sd-ui .guns { background: #2e7d32; width: 92px; height: 92px; animation: sdpulse .8s infinite alternate; }
+#sd-ui .watch { background: #37474f; width: 92px; height: 92px; } #sd-ui .view { background: #6a1b9a; } #sd-ui .guns { background: #2e7d32; width: 92px; height: 92px; animation: sdpulse .8s infinite alternate; }
 @keyframes sdpulse { from { box-shadow: 0 0 0 0 rgba(255,255,255,0.6), 0 4px 0 rgba(0,0,0,0.4); } to { box-shadow: 0 0 0 9px rgba(255,255,255,0), 0 4px 0 rgba(0,0,0,0.4); } }
 #sd-ammo { pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 6px 12px 8px; border-radius: 14px; background: rgba(8,10,22,0.78); border: 3px solid #fff; color: #fff; font-family: "Arial Black", Arial, sans-serif; position: relative; overflow: hidden; min-width: 168px; box-sizing: border-box; touch-action: none; }
 #sd-ammo .ic { font-size: 26px; } #sd-ammo .num { display: flex; align-items: baseline; gap: 4px; } #sd-ammo .num b { font-size: 28px; line-height: 1; } #sd-ammo .num em { font-style: normal; font-size: 15px; color: #c3cad6; }
@@ -80,6 +80,12 @@ body.snd.flat #sd-top { display: flex; } #sd-top .bar { display: flex; align-ite
 #sd-splash .mvp div { text-align: left; min-width: 0; } #sd-splash .mvp b { display: block; color: #ffd400; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #sd-splash .mvp span { display: block; color: #fff; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #sd-splash .cash { color: #39ff14; font-size: 15px; } #sd-splash .rec { display: grid; grid-template-columns: auto auto; gap: 2px 12px; justify-content: center; font-size: 12px; color: #fff; margin: 6px 0 2px; } #sd-splash .rec span:nth-child(odd) { color: #c3cad6; text-align: right; } #sd-splash .rec span:nth-child(even) { text-align: left; }
 @keyframes sdsplash { from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } }
+#sd-marks { position: fixed; inset: 0; pointer-events: none; z-index: 38; } #sd-marks div { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; font: 900 11px "Arial Black", Arial, sans-serif; color: #fff; text-shadow: 0 1px 2px #000, 0 0 2px #000; white-space: nowrap; }
+#sd-marks b { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; background: rgba(8,10,22,0.8); border: 2px solid #ffd400; color: #ffd400; font-size: 15px; } #sd-marks .bomb b { border-color: #ff3b3b; color: #fff; background: rgba(160,10,10,0.85); } #sd-marks .bomb.drop b { border-color: #ff9f1c; } #sd-marks .car b { width: 22px; height: 22px; font-size: 12px; border-color: #ff9f1c; }
+#sd-marks i { font-style: normal; font-size: 13px; line-height: 1; margin-bottom: -2px; } #sd-marks .off b { opacity: 0.85; }
+#sd-top .me { font-size: 11px; padding: 2px 10px; border-radius: 10px; color: #fff; white-space: nowrap; border: 2px solid #fff; } #sd-top .me.R { background: #ff5a3d; } #sd-top .me.B { background: #3da5ff; }
+body.sd-team-R #sd-top .bar { border-color: #ff5a3d; } body.sd-team-B #sd-top .bar { border-color: #3da5ff; } body.sd-team-R #sd-ammo { border-color: #ff5a3d; } body.sd-team-B #sd-ammo { border-color: #3da5ff; }
+#sd-cross.mate .t { background: #4fc3ff; } #sd-cross.mate .dot { background: #4fc3ff; } #sd-cross.foe .dot { background: #ff2020; box-shadow: 0 0 4px #f00; } #sd-cross .nf { position: absolute; left: 10px; top: 8px; font: 900 11px Arial, sans-serif; color: #4fc3ff; text-shadow: 0 1px 2px #000; white-space: nowrap; display: none; } #sd-cross.mate .nf { display: block; }
 #sd-scope { position: fixed; inset: 0; z-index: 39; pointer-events: none; display: none; --r: min(44vw, 40vh); background: radial-gradient(circle at center, rgba(120,200,255,0.06) 0, rgba(0,0,0,0) calc(var(--r) - 18px), rgba(0,0,0,0.55) calc(var(--r) - 4px), #000 var(--r)); } #sd-scope.on { display: block; }
 #sd-scope i { position: absolute; left: 50%; top: 50%; display: block; } #sd-scope .rg { width: calc(var(--r) * 2); height: calc(var(--r) * 2); margin: calc(var(--r) * -1) 0 0 calc(var(--r) * -1); border-radius: 50%; box-shadow: inset 0 0 0 3px #111, inset 0 0 26px 10px rgba(0,0,0,0.7); }
 #sd-scope .h { width: calc(var(--r) * 2); height: 2px; margin: -1px 0 0 calc(var(--r) * -1); background: linear-gradient(90deg, #000 0 30%, rgba(0,0,0,0.85) 30% 47%, transparent 47% 53%, rgba(0,0,0,0.85) 53% 70%, #000 70%); }
@@ -138,13 +144,13 @@ export const UI = {
     const ui = document.createElement('div'); ui.id = 'sd-ui';
     ui.innerHTML = `<div id="sd-ammo" role="button" aria-label="Fire mode"><span class="ic">🍅</span><div><div class="num"><b>0</b><em>/ 0</em></div><small>GUN</small></div><span class="sl"><span class="p">🔫</span><span class="s">🍅</span></span><u></u></div>
 <div class="row"><button class="swap" hidden aria-label="Swap guns"><b>🔁</b>SWAP<i>Q</i></button><button class="aim" hidden aria-label="Aim"><b>🎯</b>AIM<i>RMB</i></button><button class="act" hidden aria-label="Plant, defuse or take"><b>💣</b><span class="al">PLANT</span><i>E</i></button></div>
-<div class="row"><button class="reload" aria-label="Reload"><b>🔄</b>RELOAD<i>R</i></button><button class="guns" hidden aria-label="Shop"><b>🛒</b>SHOP<i>B</i></button><button class="watch" hidden aria-label="Watch"><b>👀</b>WATCH<i>V</i></button><button class="fire" aria-label="Fire"><b>🔥</b>FIRE<i>F</i></button></div>`;
+<div class="row"><button class="reload" aria-label="Reload"><b>🔄</b>RELOAD<i>R</i></button><button class="guns" hidden aria-label="Shop"><b>🛒</b>SHOP<i>B</i></button><button class="view" hidden aria-label="Change view"><b>🎥</b>VIEW<i>X</i></button><button class="watch" hidden aria-label="Watch"><b>👀</b>WATCH<i>V</i></button><button class="fire" aria-label="Fire"><b>🔥</b>FIRE<i>F</i></button></div>`;
     document.body.appendChild(ui); this.ui = ui;
     const cr = document.createElement('button'); cr.id = 'btn-crouch'; cr.type = 'button'; cr.textContent = '🧎 CROUCH'; cr.setAttribute('aria-label', 'Crouch'); document.body.appendChild(cr); this.crouchEl = cr;
     cr.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); this.toggleCrouch(); }); document.body.classList.add('snd'); if ('ontouchstart' in window || navigator.maxTouchPoints > 0) document.body.classList.add('sd-touch');
-    const Q = (c) => ui.querySelector('.' + c); this.B = { aim: Q('aim'), swap: Q('swap'), act: Q('act'), reload: Q('reload'), fire: Q('fire'), watch: Q('watch'), guns: Q('guns') }; this.B.scope = this.B.aim; this.ammoEl = ui.querySelector('#sd-ammo');
+    const Q = (c) => ui.querySelector('.' + c); this.B = { aim: Q('aim'), swap: Q('swap'), act: Q('act'), reload: Q('reload'), fire: Q('fire'), watch: Q('watch'), guns: Q('guns'), view: Q('view') }; this.B.scope = this.B.aim; this.ammoEl = ui.querySelector('#sd-ammo');
     const tap = (el, f) => el.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); f(e); });
-    tap(this.B.reload, () => this.doReload()); tap(this.B.aim, () => this.toggleAds()); tap(this.B.swap, () => this.swapGun()); tap(this.B.watch, () => this.doWatch()); tap(this.B.guns, () => this.openPicker());
+    tap(this.B.reload, () => this.doReload()); tap(this.B.aim, () => this.toggleAds()); tap(this.B.swap, () => this.swapGun()); tap(this.B.watch, () => this.doWatch()); tap(this.B.view, () => this.toggleView()); tap(this.B.guns, () => this.openPicker());
     // the ammo box: a tap flicks the fire mode, held it's the inspect
     let am = 0; this.ammoEl.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); am = performance.now(); clearTimeout(this.amT); this.amT = setTimeout(() => { am = 0; this.inspect(); }, 450); });
     const amUp = (e) => { e.stopPropagation(); clearTimeout(this.amT); if (am && performance.now() - am < 450) this.cycleMode(); am = 0; }; this.ammoEl.addEventListener('pointerup', amUp); this.ammoEl.addEventListener('pointercancel', () => { clearTimeout(this.amT); am = 0; });
@@ -157,9 +163,9 @@ export const UI = {
     const ab = this.B.act; ab.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); try { ab.setPointerCapture(e.pointerId); } catch (er) {} this.actHeld = true; this.startAct(); });
     const aup = () => { this.actHeld = false; this.endAct(); }; ab.addEventListener('pointerup', aup); ab.addEventListener('pointercancel', aup);
     const el = (id) => { const d = document.createElement('div'); d.id = id; document.body.appendChild(d); return d; };
-    this.topEl = el('sd-top'); this.crossEl = el('sd-cross'); this.crossEl.innerHTML = '<i class="t u"></i><i class="t d"></i><i class="t l"></i><i class="t r"></i><i class="dot"></i><i id="sd-hm"></i>'; this.hmEl = this.crossEl.querySelector('#sd-hm');
+    this.topEl = el('sd-top'); this.crossEl = el('sd-cross'); this.crossEl.innerHTML = '<i class="t u"></i><i class="t d"></i><i class="t l"></i><i class="t r"></i><i class="dot"></i><i id="sd-hm"></i><i class="nf">🚫 TEAM-MATE</i>'; this.hmEl = this.crossEl.querySelector('#sd-hm');
     this.dirEl = el('sd-dir'); this.vigEl = el('sd-vig'); this.flashEl = el('sd-flash'); this.deadEl = el('sd-dead'); this.progEl = el('sd-prog'); this.progEl.innerHTML = '<div class="ring"><b>💣</b></div><span>PLANTING</span>';
-    this.popEl = el('sd-pop'); this.multiEl = el('sd-multi'); this.countEl = el('sd-count'); this.feedEl = el('sd-feed'); this.splashEl = el('sd-splash'); this.scopeEl = el('sd-scope'); this.scopeEl.innerHTML = '<i class="rg"></i><i class="h"></i><i class="v"></i>' + [-3, -2, -1, 1, 2, 3].map(k => `<i class="tk" style="transform:translate(${k * 7}vmin,0)"><b style="left:-1px;top:-6px;width:2px;height:12px"></b></i><i class="tk" style="transform:translate(0,${k * 7}vmin)"><b style="left:-6px;top:-1px;width:12px;height:2px"></b></i>`).join('') + '<i class="md"></i><i class="dt"></i><i class="rd">ZOOM ×3.6</i>'; this.adotEl = el('sd-adot'); this.pickEl = el('sd-pick'); this.boardEl = el('sd-board'); this.endEl = el('sd-end');
+    this.popEl = el('sd-pop'); this.multiEl = el('sd-multi'); this.countEl = el('sd-count'); this.feedEl = el('sd-feed'); this.splashEl = el('sd-splash'); this.scopeEl = el('sd-scope'); this.scopeEl.innerHTML = '<i class="rg"></i><i class="h"></i><i class="v"></i>' + [-3, -2, -1, 1, 2, 3].map(k => `<i class="tk" style="transform:translate(${k * 7}vmin,0)"><b style="left:-1px;top:-6px;width:2px;height:12px"></b></i><i class="tk" style="transform:translate(0,${k * 7}vmin)"><b style="left:-6px;top:-1px;width:12px;height:2px"></b></i>`).join('') + '<i class="md"></i><i class="dt"></i><i class="rd">ZOOM ×3.6</i>'; this.adotEl = el('sd-adot'); this.marksEl = el('sd-marks'); this.pickEl = el('sd-pick'); this.boardEl = el('sd-board'); this.endEl = el('sd-end');
     ['pointerdown', 'touchstart', 'mousedown', 'wheel'].forEach(k => this.pickEl.addEventListener(k, (e) => e.stopPropagation()));
     // the score bar: held, the scoreboard
     this.topEl.addEventListener('pointerdown', (e) => { if (!e.target.closest || !e.target.closest('.bar')) return; e.stopPropagation(); e.preventDefault(); try { this.topEl.setPointerCapture(e.pointerId); } catch (er) {} this.showBoard(true); });
@@ -177,7 +183,7 @@ export const UI = {
       else if (k === 'KeyE') { if (down && !e.repeat) { this.actHeld = true; this.startAct(); } else if (!down) { this.actHeld = false; this.endAct(); } }
       else if (k === 'KeyQ') { if (down && !e.repeat) this.swapGun(); }
       else if (k === 'KeyZ') { if (down && !e.repeat) this.toggleAds(); }
-      else if (k === 'KeyX') { if (down && !e.repeat) this.cycleMode(); }
+      else if (k === 'KeyX') { if (down && !e.repeat) { const me = this.mine(); if (me && !me.alive) this.toggleView(); else this.cycleMode(); } }
       else if (k === 'KeyT') { if (down && !e.repeat) this.inspect(); }
       else if (k === 'Tab') { if (!e.repeat) this.showBoard(down); }
       else if (k === 'KeyV') { if (down && !e.repeat) this.doWatch(); }
@@ -189,8 +195,8 @@ export const UI = {
     this.g.player.sprint = false;
   },
   disposeUI() {
-    for (const e of [this.ui, this.style, this.topEl, this.crossEl, this.dirEl, this.vigEl, this.flashEl, this.deadEl, this.progEl, this.popEl, this.multiEl, this.countEl, this.feedEl, this.splashEl, this.scopeEl, this.adotEl, this.pickEl, this.boardEl, this.endEl, this.crouchEl]) e && e.remove();
-    document.body.classList.remove('snd', 'sd-touch', 'sd-alive', 'sd-over', 'sd-again', 'sd-picking', 'sd-scoped'); clearInterval(this.againT); window.removeEventListener('keydown', this.onKey, true); window.removeEventListener('keyup', this.onKey, true);
+    for (const e of [this.ui, this.style, this.topEl, this.crossEl, this.dirEl, this.vigEl, this.flashEl, this.deadEl, this.progEl, this.popEl, this.multiEl, this.countEl, this.feedEl, this.splashEl, this.scopeEl, this.adotEl, this.marksEl, this.pickEl, this.boardEl, this.endEl, this.crouchEl]) e && e.remove();
+    document.body.classList.remove('snd', 'sd-touch', 'sd-alive', 'sd-over', 'sd-again', 'sd-picking', 'sd-scoped', 'sd-team-R', 'sd-team-B'); clearInterval(this.againT); window.removeEventListener('keydown', this.onKey, true); window.removeEventListener('keyup', this.onKey, true);
     const cv = this.g.renderer.domElement; cv.removeEventListener('pointerdown', this.onMouse); window.removeEventListener('pointerup', this.onMouseUp); cv.removeEventListener('contextmenu', this.onCtx); cv.removeEventListener('wheel', this.onWheel);
     clearInterval(this.pickTimer); clearTimeout(this.amT); clearTimeout(this.boardT); if (this.pv) this.g.camera.remove(this.pv.g);
   },
@@ -338,7 +344,7 @@ export const UI = {
   drawHud(me) {
     const B = this.B, t = this.clock, alive = !!(me && me.alive && this.inRound()), G = this.curG(), cap = this.cap(G), buy = this.phase === 'buy';
     document.body.classList.toggle('sd-alive', alive);      // (EMOTE only once you're out: its corner's needed for the gun's buttons)
-    B.fire.hidden = !alive; B.reload.hidden = !alive; B.watch.hidden = !(me && !me.alive && this.inRound()); B.guns.hidden = !(buy && alive && !this.pickOpen);
+    B.fire.hidden = !alive; B.reload.hidden = !alive; B.watch.hidden = !(me && !me.alive && this.inRound()); B.view.hidden = B.watch.hidden || !this.spect; B.guns.hidden = !(buy && alive && !this.pickOpen);
     const other = this.my.slots[this.my.cur === 'P' ? 'S' : 'P']; B.swap.hidden = !(alive && other); if (!B.swap.hidden) { const og = GUN[other.g], k = og.id + '|' + this.my.cur; if (k !== this.swapKey) { this.swapKey = k; B.swap.querySelector('b').textContent = og.icon; } }
     B.aim.hidden = !alive; B.aim.classList.toggle('on', !!this.my.ads); if (this.crouchEl) this.crouchEl.classList.toggle('on', !!this.my.crouch);
     B.fire.classList.toggle('off', this.phase !== 'live'); B.reload.classList.toggle('need', alive && this.my.mag === 0 && this.my.reserve > 0 && !this.my.reloadEnd);
@@ -358,6 +364,10 @@ export const UI = {
     // aimed in with no scope: the crosshair goes (the sights are the aim); a small dot for guns with iron sights
     this.adotEl.classList.toggle('on', alive && !this.my.scoped && this.my.adsK > 0.9 && !this.pickOpen && !['monstor', 'baguette'].includes(G.id));
     this.vigEl.classList.toggle('on', alive && me.hp < 50); this.vigEl.classList.toggle('crit', alive && me.hp < 25); this.deadEl.classList.toggle('on', !!(me && !me.alive && this.inRound()));
+    { const tm = me ? me.team : null; document.body.classList.toggle('sd-team-R', tm === 'R'); document.body.classList.toggle('sd-team-B', tm === 'B'); }
+    this.marks(me, alive);
+    // the crosshair over someone: red on an enemy, blue (and "team-mate") on your own side
+    if (alive && (this.xT = (this.xT || 0) - 1) <= 0) { this.xT = 4; const ray = this.aimRay(); let c = ''; if (ray) { const tr = this.trace(ray.origin, ray.direction, 60, G); if (tr.hit) c = tr.hit.mate ? 'mate' : 'foe'; } if (c !== this.xWas) { this.xWas = c; this.crossEl.classList.toggle('mate', c === 'mate'); this.crossEl.classList.toggle('foe', c === 'foe'); } }
     // plant / defuse progress
     if (this.my.act) { const k = Math.min(1, (t - this.my.act.t0) / this.my.act.T); this.progEl.classList.add('on'); this.progEl.querySelector('.ring').style.setProperty('--k', Math.round(k * 100) + '%'); this.progEl.querySelector('b').textContent = this.my.act.k === 'plant' ? '💣' : '🔧'; this.progEl.querySelector('span').textContent = this.my.act.k === 'plant' ? 'PLANTING THE VINDALOO...' : 'DEFUSING...'; }
     else this.progEl.classList.remove('on');
@@ -371,12 +381,29 @@ export const UI = {
       h = `<div class="bar"><span class="tm R">${TEAMS.R.ico} ${this.sc.R}</span>${mid}<span class="tm B">${this.sc.B} ${TEAMS.B.ico}</span></div>`;
       const pips = (tm) => [...this.F.values()].filter(f => f.team === tm).map(f => `<i class="${f.alive ? '' : 'x'}" title="${esc(f.name)}"></i>`).join('');
       h += `<div class="pips"><span class="R">${pips('R')}</span><span class="B">${pips('B')}</span></div>`;
+      if (me) h += `<span class="me ${me.team}">YOU: ${TEAMS[me.team].ico} ${TEAMS[me.team].short} · ${me.team === this.att ? 'ATTACKING' : 'DEFENDING'}</span>`;
       if (me) { const att = me.team === this.att, role = !me.alive && this.inRound() ? `<span class="role dead">💀 OUT · WATCHING ${esc(this.spect ? this.nameOf(this.spect).replace(/^🤖 /, '') : '')}</span>` : this.bomb.id === this.me && this.bomb.st === 'carried' ? '<span class="role att">💣 YOU\'VE GOT THE VINDALOO · PLANT AT A OR B</span>'
           : buy ? `<span class="role ${att ? 'att' : 'def'}">💷 ${money(this.cash[this.me] ?? 0)} · ${att ? '💣 ATTACK' : '🛡️ DEFEND'}</span>`
           : `<span class="role ${att ? 'att' : 'def'}">${att ? (planted ? '💣 DEFEND THE BOMB' : this.bomb.st === 'dropped' ? '💣 PICK UP THE BOMB' : '💣 ATTACK · PLANT AT A OR B') : planted ? `🔧 DEFUSE IT AT ${this.bomb.s || '?'}!` : '🛡️ DEFEND · GUARD A AND B'}</span>`;
         h += role; } }
     if (h !== this.topHtml) { this.topHtml = h; this.topEl.innerHTML = h; }
   },
+  // where things are, on the screen: A and B (with how far), the bomb when your side knows where it is, the carrier over
+  // your team-mate's head. Off the screen, they wait at its edge pointing the way
+  marks(me, alive) {
+    const el = this.marksEl; if (!el) return; const list = [], cam = this.g.camera, show = !!me && this.inRound() && this.phase !== 'post' && !this.pickOpen && !this.my.scoped, B = this.bomb, mt = me && me.team;
+    if (show) { for (const L of ['A', 'B']) { const S2 = this.sites[L]; list.push({ k: 'site', t: L, p: new THREE.Vector3(S2.x, this.floor(S2.x, S2.z) + 1.4, S2.z) }); }
+      if ((B.st === 'planted' || B.st === 'dropped') && B.p && (B.st === 'planted' || mt === this.att)) list.push({ k: 'bomb' + (B.st === 'dropped' ? ' drop' : ''), t: '💣', p: new THREE.Vector3(B.p[0], this.floor(B.p[0], B.p[1]) + 0.5, B.p[1]) });
+      if (B.st === 'carried' && B.id && B.id !== this.me && mt === this.att) { const hh = this.headOf(B.id, new THREE.Vector3()); if (hh) list.push({ k: 'car', t: '💣', p: hh.add({ x: 0, y: 0.75, z: 0 }), nodist: true }); } }
+    const key = list.map(m => m.k).join(); if (key !== this.marksKey) { this.marksKey = key; el.innerHTML = list.map(m => `<div class="${m.k}"><i></i><b>${m.t}</b><span></span></div>`).join(''); }
+    if (!list.length) return; const W = innerWidth, H = innerHeight, x0 = 34, x1 = W - 34, y0 = Math.min(H * 0.3, 170), y1 = H - (W < H ? 330 : 120), my = this.g.player.head, v = new THREE.Vector3(); cam.updateMatrixWorld();
+    list.forEach((m, i) => { const d = el.children[i]; if (!d) return; v.copy(m.p).project(cam); const behind = v.z > 1; let x = (v.x * 0.5 + 0.5) * W, y = (-v.y * 0.5 + 0.5) * H; if (behind) { x = W - x; y = y1; }
+      const off = behind || x < x0 || x > x1 || y < y0 || y > y1; if (off) { const cx = W / 2, cy = (y0 + y1) / 2, dx = x - cx, dy = y - cy, k = Math.min((x1 - cx) / Math.max(1e-3, Math.abs(dx)), (y1 - cy) / Math.max(1e-3, Math.abs(dy)), 1); x = cx + dx * k; y = cy + dy * k; }
+      d.style.left = Math.round(x) + 'px'; d.style.top = Math.round(y) + 'px'; d.classList.toggle('off', off); const ar = d.querySelector('i'); ar.textContent = off ? (Math.abs(x - W / 2) > Math.abs(y - (y0 + y1) / 2) ? (x < W / 2 ? '◀' : '▶') : (y < (y0 + y1) / 2 ? '▲' : '▼')) : '';
+      const sp = d.querySelector('span'), txt3 = m.nodist ? '' : Math.round(Math.hypot(m.p.x - my.x, m.p.z - my.z)) + 'm'; if (sp.textContent !== txt3) sp.textContent = txt3; });
+  },
+  // out and watching: over their shoulder, or through their eyes
+  toggleView() { this.specFP = !this.specFP; this.camWas = null; sfx('tap', null, 0.4); this.toast(this.specFP ? '🎥 THROUGH THEIR EYES' : '🎥 OVER THEIR SHOULDER'); },
   camYaw() { const c = this.g.camera, d = c.getWorldDirection(_v); return Math.atan2(-d.x, -d.z); },
   // GO in three, two, one (the last seconds of the shop)
   countdown() {
@@ -406,7 +433,7 @@ export const UI = {
   roundSplash(m) {
     const me = this.mine(); if (!me) return; const att = me.team === this.att, mates = [...this.F.values()].filter(f => f.team === me.team);
     const sw = m.sw ? '<p class="sm">🔁 HALF TIME: THE SIDES HAVE SWAPPED (AND EVERYONE\'S MONEY\'S BACK TO THE START)</p>' : '';
-    this.splash(att ? '#ff9f1c' : '#4fc3ff', `<p>ROUND ${this.round} · ${TEAMS.R.ico} ${this.sc.R} – ${this.sc.B} ${TEAMS.B.ico}</p><h1>${att ? '💣 ATTACK' : '🛡️ DEFEND'}</h1><p>${TEAMS[me.team].ico} ${TEAMS[me.team].short} · 💷 ${money(this.cash[this.me] ?? 0)}</p>${sw}<div class="imgs">${mates.slice(0, 6).map(f => `<img src="${pic(f.char)}" alt="">`).join('')}</div>${this.bomb.id === this.me ? '<p>💣 YOU\'RE CARRYING THE VINDALOO</p>' : ''}`, 2600);
+    this.splash(att ? '#ff9f1c' : '#4fc3ff', `<p>ROUND ${this.round} · ${TEAMS.R.ico} ${this.sc.R} – ${this.sc.B} ${TEAMS.B.ico}</p><h1>${att ? '💣 YOU ARE ATTACKING' : '🛡️ YOU ARE DEFENDING'}</h1><p>${att ? 'PLANT THE BOMB AT A OR B' : 'STOP THE BOMB: GUARD A AND B'}</p><p>${TEAMS[me.team].ico} ${TEAMS[me.team].short} · 💷 ${money(this.cash[this.me] ?? 0)}</p>${sw}<div class="imgs">${mates.slice(0, 6).map(f => `<img src="${pic(f.char)}" alt="">`).join('')}</div>${this.bomb.id === this.me ? '<p>💣 YOU\'RE CARRYING THE VINDALOO</p>' : ''}`, 2600);
     sfx('sd_round', null, 1); if (this.g.renderer.xr.isPresenting) this.g.showBanner(`ROUND ${this.round} · ${att ? 'ATTACK' : 'DEFEND'}`, 'Y: THE SHOP');
   },
   // a round over: who won and how, every round so far, the MVP, what you've earned

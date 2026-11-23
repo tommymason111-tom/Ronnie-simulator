@@ -28,7 +28,7 @@ import { track } from './awards.js';
 import { roomNum } from './roomopts.js';
 import { SQUAD } from './squad.js';
 import { vcLambert } from './geo.js';
-import { HP, GUNS, GUN, PRIMARIES, FREE_GUN, PICKS, PICK_KINDS, MAPS, pickModel, plinthGeo, bombGeo, bombLightGeo, bombFace, pliersGeo, siteTexture, signTexture, siteProps, boardTexture, newGun, falloff, maxHit, money } from './sndkit.js';
+import { HP, GUNS, GUN, PRIMARIES, FREE_GUN, PICKS, PICK_KINDS, MAPS, pickModel, plinthGeo, bombGeo, bombLightGeo, bombFace, BOMB_FACE, pliersGeo, siteTexture, signTexture, siteProps, boardTexture, newGun, falloff, maxHit, money } from './sndkit.js';
 import { UI } from './sndui.js';
 import { GUNSYS } from './sndguns.js';
 import { FX } from './sndfx.js';
@@ -134,7 +134,10 @@ export class SearchDestroy {
       const tex = siteTexture(L, this.M.names[L]), decal = new THREE.Mesh(new THREE.PlaneGeometry(r * 2, r * 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
       decal.rotation.x = -Math.PI / 2; decal.position.set(x, y, z); decal.renderOrder = 2; decal.name = 'sd site ' + L; this.grp.add(decal);
       const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: signTexture(L, '#ffd400'), transparent: true, depthWrite: false })); sign.scale.set(0.9, 0.45, 1); sign.position.set(x, y + 2.35, z); sign.renderOrder = 3; this.grp.add(sign);
-      this.sites[L] = { L, x, z, r, decal, sign };
+      sign.scale.set(1.6, 0.8, 1); sign.position.y = y + 3.3;
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 7, 20, 1, true).translate(0, 3.5, 0), new THREE.MeshBasicMaterial({ map: this.beamTex(), transparent: true, depthWrite: false, side: THREE.DoubleSide, color: 0xffd400 })); beam.position.set(x, y, z); beam.renderOrder = 3; beam.name = 'sd beacon ' + L; this.grp.add(beam);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.045, 6, 64).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd400 })); ring.position.set(x, y + 0.02, z); this.grp.add(ring);
+      this.sites[L] = { L, x, z, r, decal, sign, beam, ring };
       // round the edge: cones, posts with hazard tape between them, a sandwich board telling you where you are
       if (nav) { const at = [], tape = [], ring = r + 0.35, free = (px, pz) => { const k = nav.idx(px, pz); return k >= 0 && !!nav.free[k]; }; let post = null, boardDone = false;
         for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, px = x + Math.cos(a) * ring, pz = z + Math.sin(a) * ring; if (!free(px, pz)) { post = null; continue; } const py = this.floor(px, pz);
@@ -156,13 +159,16 @@ export class SearchDestroy {
     // THE VINDALOO: the pot and its sausages, the blinking lights, the clock's face, the pliers by it while it's defused
     this.bombMesh = new THREE.Group(); this.bombMesh.add(new THREE.Mesh(bombGeo(), vcLambert));
     this.bombLight = new THREE.Mesh(bombLightGeo(), new THREE.MeshBasicMaterial({ color: 0xff2020 })); this.bombMesh.add(this.bombLight);
-    this.face = bombFace(); const fm = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.058), new THREE.MeshBasicMaterial({ map: this.face.tex })); fm.position.set(0, 0.122, 0.2205); this.bombMesh.add(fm);
+    this.face = bombFace(); const fm = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.045), new THREE.MeshBasicMaterial({ map: this.face.tex })); fm.position.set(BOMB_FACE[0], BOMB_FACE[1], BOMB_FACE[2] + 0.002); fm.rotation.x = -Math.PI / 2 * 0; this.bombMesh.add(fm);
     this.pliersMesh = new THREE.Mesh(pliersGeo(), vcLambert); this.pliersMesh.visible = false; this.grp.add(this.pliersMesh);
     this.bombMesh.visible = false; this.bombMesh.name = 'sd bomb'; this.grp.add(this.bombMesh);
+    this.bombBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 5, 16, 1, true).translate(0, 2.5, 0), new THREE.MeshBasicMaterial({ map: this.beamTex(), transparent: true, depthWrite: false, side: THREE.DoubleSide, color: 0xff3b3b })); this.bombBeam.visible = false; this.bombBeam.renderOrder = 3; this.grp.add(this.bombBeam);
     this.bombRing = new THREE.Mesh(new THREE.TorusGeometry(SD.BOMB_R, 0.03, 6, 40).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff3b3b })); this.bombRing.visible = false; this.grp.add(this.bombRing);
     // VR: the aiming laser
     this.laser = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -8)]), new THREE.LineBasicMaterial({ color: 0xff5a3d, transparent: true, opacity: 0.55 })); this.laser.visible = false; this.laser.frustumCulled = false; this.grp.add(this.laser);
   }
+  // a soft column of light: bright at the bottom, fading up into nothing
+  beamTex() { if (this.bTex) return this.bTex; const c = document.createElement('canvas'); c.width = 4; c.height = 128; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.7, 'rgba(255,255,255,0.18)'); gr.addColorStop(1, 'rgba(255,255,255,0.55)'); g.fillStyle = gr; g.fillRect(0, 0, 4, 128); this.bTex = new THREE.CanvasTexture(c); this.bTex.colorSpace = THREE.SRGBColorSpace; return this.bTex; }
   // the pick-ups as the host laid them out: [kind, x, z] each; drawn where they are, bobbing and turning
   layPicks(list) {
     this.pk = []; if (Array.isArray(list)) for (const e of list.slice(0, 40)) { if (!Array.isArray(e)) continue; const [k, x, z] = e; if (typeof k !== 'string' || !PICKS[k] || !finite(x, z) || Math.abs(x) > 1e3 || Math.abs(z) > 1e3) continue; this.pk.push({ k, x, z, y: this.floor(x, z), on: true, back: 0 }); }
@@ -830,7 +836,7 @@ export class SearchDestroy {
       // name tags: team-mates always (their tag is theirs); enemies red, and only while you can see them
       const enemy = round && mt && f.team !== mt;
       if (look && enemy && f.alive && this.headOf(id, h)) f.seen = this.canSee(my, h);
-      av.impRed = !!enemy; if (av.tag) av.tag.visible = (!enemy || (f.alive && f.seen)) && !(round && !f.alive) && !this.pickOpen; }
+      av.impRed = !!enemy; if (av.tag) av.tag.visible = (!enemy || (f.alive && f.seen)) && !(round && !f.alive) && !this.pickOpen && !(this.spect === id && this.viewCamNow); }
     this.teamMarks();
   }
   // your side, marked: a team-coloured band round both arms of everyone, and over each team-mate's head a little
@@ -842,7 +848,7 @@ export class SearchDestroy {
     const mt = this.myTeam(), round = this.inRound(), q = new THREE.Quaternion(), qx = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2), m4 = new THREE.Matrix4(), col = new THREE.Color(), h = new THREE.Vector3(); let n = 0, a = 0;
     for (const [id, f] of this.F) { if (id === this.me || !round) continue; const av = this.avatar(id), r = av && av.c && av.c.rag; if (!r || !f.alive) continue;
       for (const part of ['uArmL', 'uArmR']) { const P = r.parts[part]; if (!P || n >= 48) continue; const bq = P.body.quaternion; q.set(bq.x, bq.y, bq.z, bq.w).multiply(qx); m4.compose(r.pos(part, h), q, _w.setScalar(1)); this.bandM.setMatrixAt(n, m4); this.bandM.setColorAt(n, col.setHex(TEAMS[f.team].hex)); n++; }
-      if (mt && f.team === mt && this.headOf(id, h)) { let sp = this.allies[a]; if (!sp) { sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.allyTex, transparent: true, depthTest: false, depthWrite: false, opacity: 0.7 })); sp.renderOrder = 11; this.grp.add(sp); this.allies[a] = sp; }
+      if (mt && f.team === mt && !(this.spect === id && this.viewCamNow) && this.headOf(id, h)) { let sp = this.allies[a]; if (!sp) { sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.allyTex, transparent: true, depthTest: false, depthWrite: false, opacity: 0.7 })); sp.renderOrder = 11; this.grp.add(sp); this.allies[a] = sp; }
         const d = Math.max(1, this.hd(h, this.g.player.head)), s2 = 0.12 + d * 0.012; sp.visible = !this.pickOpen && !this.my.scoped; sp.material.color.setHex(TEAMS[mt].hex); sp.scale.set(s2, s2, 1); sp.position.set(h.x, h.y + 0.62 + d * 0.01, h.z); a++; } }
     this.bandM.count = n; this.bandM.instanceMatrix.needsUpdate = true; if (this.bandM.instanceColor) this.bandM.instanceColor.needsUpdate = true;
     for (let i = a; i < this.allies.length; i++) this.allies[i].visible = false;
@@ -871,6 +877,8 @@ export class SearchDestroy {
         else { m.position.set(h.x + Math.sin(yaw) * 0.32, h.y - 0.75, h.z + Math.cos(yaw) * 0.32); m.rotation.set(0, yaw, 0); m.scale.setScalar(0.7); } show = true; } }
     else if ((B.st === 'dropped' || B.st === 'planted' || B.st === 'defused') && B.p) { m.position.set(B.p[0], this.floor(B.p[0], B.p[1]) + 0.02, B.p[1]); m.scale.setScalar(1); if (B.st === 'dropped') m.rotation.set(0.3, t * 0.8, 0.2); else m.rotation.set(0, 0, 0); show = true; }
     m.visible = show && B.st !== 'boom'; this.bombRing.visible = show && (B.st === 'dropped' || B.st === 'planted');
+    // (a beam of light up from it once it's down: dropped (orange) or planted (red, pulsing))
+    this.bombBeam.visible = this.bombRing.visible; if (this.bombBeam.visible) { this.bombBeam.position.set(m.position.x, m.position.y, m.position.z); this.bombBeam.material.color.setHex(B.st === 'dropped' ? 0xff9f1c : 0xff3b3b); this.bombBeam.material.opacity = B.st === 'planted' ? 0.6 + 0.4 * Math.sin(t * 8) : 1; }
     if (this.bombRing.visible) { this.bombRing.position.set(m.position.x, m.position.y + 0.03, m.position.z); this.bombRing.material.color.setHex(B.st === 'dropped' ? 0xff9f1c : 0xff3b3b); this.bombRing.scale.setScalar(1 + Math.sin(t * 6) * 0.04); }
     // its clock: the seconds left when it's planted (red), dashes otherwise
     const left = B.st === 'planted' ? Math.max(0, this.bombAt - t) : -1, face = B.st === 'planted' ? `00:${String(Math.ceil(left)).padStart(2, '0')}` : B.st === 'defused' ? 'OFF' : planting ? '*'.repeat(1 + Math.floor((t * 4) % 4)) : '--:--';
@@ -917,13 +925,18 @@ export class SearchDestroy {
         cam.aspect = g.camera.aspect; cam.fov = 60 - 22 * k; cam.updateProjectionMatrix(); cam.updateMatrixWorld(); this.viewCamNow = cam; return cam; } }
     else if (dc) { this.deathCam = null; if (!this.spect) this.doWatch(true); }
     if (!this.spect) { this.viewCamNow = null; return null; }
-    const h = this.headOf(this.spect, new THREE.Vector3()); if (!h) return null;
-    const dir = g.camera.getWorldDirection(new THREE.Vector3());
-    const look = h.clone().add({ x: 0, y: 0.1, z: 0 }), want = look.clone().addScaledVector(dir, -2.4).add({ x: 0, y: 0.5, z: 0 }), r = new THREE.Ray(look, want.clone().sub(look).normalize());
-    const d = Math.max(0.6, Math.min(look.distanceTo(want), this.wallT(r, look.distanceTo(want)) - 0.25)); want.copy(look).addScaledVector(r.direction, d);
-    if (!this.camWas || this.camWas.distanceTo(want) > 4) this.camWas = want.clone(); else this.camWas.lerp(want, 0.3);
-    cam.position.copy(this.camWas); cam.quaternion.copy(g.camera.getWorldQuaternion(_q)); cam.aspect = g.camera.aspect; cam.fov = g.camera.fov; cam.updateProjectionMatrix(); cam.updateMatrixWorld(); this.viewCamNow = cam; return cam;
+    // watching a team-mate: close behind their head over their right shoulder, looking where they look (or VIEW: through their eyes)
+    const h = this.headOf(this.spect, new THREE.Vector3()), q = this.lookOf(this.spect); if (!h || !q) return null;
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(q), right = new THREE.Vector3(1, 0, 0).applyQuaternion(q), fp = this.specFP;
+    const want = fp ? h.clone().addScaledVector(fwd, 0.22).add({ x: 0, y: 0.02, z: 0 }) : h.clone().addScaledVector(fwd, -0.95).addScaledVector(right, 0.32).add({ x: 0, y: 0.16, z: 0 });
+    if (!fp) { const r = new THREE.Ray(h.clone().add({ x: 0, y: 0.1, z: 0 }), want.clone().sub(h).normalize()), L0 = want.distanceTo(h), d = Math.max(0.3, Math.min(L0, this.wallT(r, L0) - 0.15)); want.copy(r.origin).addScaledVector(r.direction, d); }
+    if (!this.camWas || this.camWas.distanceTo(want) > 3 || this.specWas !== this.spect) this.camWas = want.clone(); else this.camWas.lerp(want, 0.45); this.specWas = this.spect;
+    const qs = this.camQ || (this.camQ = q.clone()); qs.slerp(q, 0.35);
+    cam.position.copy(this.camWas); cam.quaternion.copy(qs); cam.aspect = g.camera.aspect; cam.fov = 68; cam.updateProjectionMatrix(); cam.updateMatrixWorld(); this.viewCamNow = cam; return cam;
   }
+  // which way someone's looking (a bot's turn and tilt; a player's head)
+  lookOf(id) { const f = this.F.get(id); if (!f) return null; if (f.bot) { const b = this.host && this.bots && this.bots.get(id) ? this.bots.get(id) : this.botPose.get(id); if (!b) return null; _e.set(b.pitch || 0, b.yaw, 0, 'YXZ'); return new THREE.Quaternion().setFromEuler(_e); }
+    const p = this.net.players.get(id); return p && p.pose && Array.isArray(p.pose.q) && finite(...p.pose.q) ? new THREE.Quaternion(...p.pose.q) : null; }
   esc(t) { return String(t).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c])); }
   // the state of play (the tests, the wrist)
   hudState() { const me = this.mine(); return { phase: this.phase, round: this.round, win: this.win, sc: { ...this.sc }, att: this.att, team: me && me.team, alive: !!(me && me.alive), hp: me ? me.hp : 0, ar: me ? me.ar : 0, gun: this.my.gun, slot: this.my.cur, mag: this.my.mag, reserve: this.my.reserve, reloading: !!this.my.reloadEnd, ads: this.my.adsK, mode: this.fireMode(), cash: this.cash[this.me] || 0, bomb: this.bomb.st, left: Math.max(0, this.endsAt - this.clock), perks: Object.keys(this.my.perks) }; }

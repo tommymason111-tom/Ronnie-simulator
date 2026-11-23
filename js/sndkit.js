@@ -402,29 +402,31 @@ export function plinthGeo() {
   return merge(p);
 }
 
-// ---- THE VINDALOO: a curry pot, sausages for dynamite, a clock, wires, a keypad. The light that blinks and the clock's
-// face (the seconds left, drawn on a little picture) are their own pieces
+// ---- THE VINDALOO: a proper bomb. A bundle of red dynamite sticks taped together (black tape, the fuses), a timer box
+// strapped on top with its screen (the seconds left: a little picture of its own), a keypad, wires everywhere and two
+// lights that blink (their own bright bit). The curry's only in the name: an orange sticker, "VINDALOO", on the box
+export const BOMB_FACE = [0, 0.19, 0.072];
 export function bombGeo() {
-  const p = [], SV = 0xb0b4ba, S2 = 0x8a8e94, CU = 0xc1440e, SS = 0x8a3a22, BK = 0x141414, GY = 0x6a6e74;
-  C(p, 0.17, 0.15, 0.2, SV, 0, 0.1, 0, null, 24); T(p, 0.17, 0.012, S2, 0, 0.2, 0, X); C(p, 0.16, 0.16, 0.01, CU, 0, 0.19, 0, null, 24);      // the pot, its rim, the curry
-  for (let i = 0; i < 4; i++) { const a = i * 1.7; S(p, 0.03, i % 2 ? 0x2e7d32 : 0xd32f2f, Math.cos(a) * 0.08, 0.2, Math.sin(a) * 0.08, [1, 0.4, 2.2], [0, a, 0]); }      // chillies in the curry
-  for (let i = 0; i < 5; i++) S(p, 0.012, 0xf4f0e0, Math.cos(i * 2.3) * 0.1, 0.198, Math.sin(i * 2.3) * 0.1, [1, 0.3, 1]);      // (rice)
-  for (const s of [-1, 1]) T(p, 0.04, 0.01, S2, s * 0.19, 0.15, 0, [0, Math.PI / 2, 0], Math.PI);      // handles
-  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + 0.3; C(p, 0.026, 0.026, 0.24, SS, Math.cos(a) * 0.19, 0.12, Math.sin(a) * 0.19, null, 12); S(p, 0.026, SS, Math.cos(a) * 0.19, 0.24, Math.sin(a) * 0.19); S(p, 0.026, SS, Math.cos(a) * 0.19, 0.0, Math.sin(a) * 0.19); C(p, 0.003, 0.003, 0.05, 0xdddddd, Math.cos(a) * 0.19, 0.28, Math.sin(a) * 0.19, null, 5); }
-  for (const y of [0.06, 0.18]) T(p, 0.205, 0.008, GY, 0, y, 0, X);      // the tape round them
-  B(p, 0.16, 0.08, 0.04, BK, 0, 0.12, 0.2); B(p, 0.17, 0.09, 0.03, GY, 0, 0.12, 0.185);      // the clock (its face is the picture)
-  B(p, 0.1, 0.06, 0.02, 0x2a2c30, 0, 0.045, 0.215); for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) B(p, 0.022, 0.012, 0.006, 0xd0d4da, -0.028 + c * 0.028, 0.065 - r * 0.018, 0.226);      // the keypad
-  for (let i = 0; i < 3; i++) C(p, 0.004, 0.004, 0.14, [0xff3b3b, 0x2a6df4, 0xffd400][i], -0.05 + i * 0.05, 0.19, 0.17, [0.6, 0, 0], 5);
-  for (let i = 0; i < 3; i++) C(p, 0.004, 0.004, 0.12, [0x39ff14, 0xffffff, 0xff9f1c][i], 0.16, 0.08 + i * 0.03, 0.12 - i * 0.05, [0, 0, 1.2], 5);
+  const p = [], RD = 0xc62828, R2 = 0x8e1b1b, BK = 0x141414, TP = 0x262626, GY = 0x5a5e66, CR = 0xf0e0b0, OR = 0xff8f00;
+  for (let row = 0; row < 2; row++) for (let i = 0; i < 4 - row; i++) { const x = (i - (3 - row) / 2) * 0.062, y = 0.031 + row * 0.054; C(p, 0.03, 0.03, 0.3, RD, x, y, 0, X, 14); for (const z of [-0.15, 0.15]) C(p, 0.031, 0.031, 0.012, R2, x, y, z, X, 14); C(p, 0.003, 0.003, 0.04, CR, x, y, -0.172, X, 5); }      // the sticks, their ends, fuses
+  for (const z of [-0.09, 0.09]) T(p, 0.135, 0.012, TP, 0, 0.06, z, null);      // the tape round them
+  for (let i = 0; i < 4; i++) B(p, 0.01, 0.02, 0.05, CR, (i - 1.5) * 0.062, 0.031, 0.03);      // (the "DANGER" stripes on the sticks)
+  // the timer box strapped on top, its screen frame, a keypad, a sticker
+  B(p, 0.17, 0.07, 0.12, BK, 0, 0.155, 0.01); B(p, 0.13, 0.05, 0.004, GY, 0, 0.19, 0.071); B(p, 0.08, 0.03, 0.04, GY, 0.0, 0.192, -0.02);
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) B(p, 0.016, 0.006, 0.014, 0xd0d4da, -0.03 + c * 0.02, 0.193, -0.04 + r * 0.018);
+  B(p, 0.07, 0.03, 0.004, OR, 0, 0.145, 0.071); B(p, 0.004, 0.08, 0.12, GY, 0.087, 0.12, 0.01);
+  // the wires: red, blue and yellow from the box down to the sticks
+  for (const [i, c] of [[0, 0xff3b3b], [1, 0x2a6df4], [2, 0xffd400]]) { const x = -0.07 + i * 0.07; C(p, 0.004, 0.004, 0.09, c, x, 0.12, 0.08, [0.5, 0, 0], 5); T(p, 0.025, 0.004, c, x, 0.09, 0.095, [0, Math.PI / 2, 0], Math.PI); }
   return merge(p);
 }
-// the clock's frame of red light and the blinking light (drawn bright: their own little basic-material bits)
-export function bombLightGeo() { const p = []; S(p, 0.014, 0xff2020, 0.07, 0.17, 0.2); S(p, 0.01, 0xff2020, -0.07, 0.17, 0.2); return merge(p); }
-// the clock's face: the seconds left on a little screen (redrawn each second)
+// the box's two lights (drawn bright: their own little basic-material bits)
+export function bombLightGeo() { const p = []; S(p, 0.012, 0xff2020, 0.06, 0.195, 0.05); S(p, 0.012, 0xff2020, -0.06, 0.195, 0.05); return merge(p); }
+// the timer's screen: the seconds left (redrawn each second), with VINDALOO above it
 export function bombFace() {
   const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64; const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.userData.live = true;
-  const draw = (s) => { const g = cv.getContext('2d'); g.fillStyle = '#1a0000'; g.fillRect(0, 0, 128, 64); g.fillStyle = 'rgba(255,40,40,0.18)'; g.font = '900 44px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('88:88', 64, 34);
-    g.fillStyle = '#ff3030'; g.shadowColor = '#ff0000'; g.shadowBlur = 8; g.fillText(s, 64, 34); g.shadowBlur = 0; t.needsUpdate = true; };
+  const draw = (s) => { const g = cv.getContext('2d'); g.fillStyle = '#1a0000'; g.fillRect(0, 0, 128, 64); g.fillStyle = '#ff8f00'; g.font = '900 11px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('VINDALOO', 64, 8);
+    g.fillStyle = 'rgba(255,40,40,0.18)'; g.font = '900 40px monospace'; g.fillText('88:88', 64, 38);
+    g.fillStyle = '#ff3030'; g.shadowColor = '#ff0000'; g.shadowBlur = 8; g.fillText(s, 64, 38); g.shadowBlur = 0; t.needsUpdate = true; };
   draw('--:--'); return { tex: t, draw };
 }
 // pliers for defusing it (in your hand, or by the bomb on someone else's game)
