@@ -1,10 +1,11 @@
 // the game's version (bump this with each release)
-var GAME_VERSION = '2.31.37';
+var GAME_VERSION = '2.31.38';
 // when each update came out (UK time)
-var GAME_WHEN = {'2.31.37': '2026-11-26T11:00', '2.31.36': '2026-11-26T10:00', '2.31.35': '2026-11-26T07:00', '2.31.34': '2026-11-26T04:00', '2.31.33': '2026-11-26T01:00', '2.31.32': '2026-11-25T23:30', '2.31.31': '2026-11-25T22:00', '2.31.30': '2026-11-25T21:00', '2.31.29': '2026-11-25T19:00', '2.31.28': '2026-11-25T17:30', '2.31.27': '2026-11-25T16:30', '2.31.26': '2026-11-25T16:00', '2.31.25': '2026-11-25T10:00', '2.31.24': '2026-11-24T21:00', '2.31.23': '2026-11-24T18:00', '2.31.22': '2026-11-24T14:00', '2.31.21': '2026-11-24T10:00', '2.31.20': '2026-11-23T22:00', '2.31.19': '2026-11-23T19:00', '2.31.18': '2026-11-23T17:00', '2.31.17': '2026-11-23T15:00', '2.31.16': '2026-11-23T13:30', '2.31.15': '2026-11-23T12:00', '2.31.14': '2026-11-23T10:30', '2.31.13': '2026-11-23T09:00', '2.31.12': '2026-11-23T05:30', '2.31.11': '2026-11-23T04:30', '2.31.10': '2026-11-23T03:00', '2.31.9': '2026-11-23T01:30', '2.31.8': '2026-11-23T00:30', '2.31.7': '2026-11-22T22:30', '2.31.6': '2026-11-22T21:30', '2.31.5': '2026-11-22T20:30', '2.31.4': '2026-11-22T19:30', '2.31.3': '2026-11-22T18:30', '2.31.2': '2026-11-22T17:00', '2.31.1': '2026-11-22T15:00', '2.31.0': '2026-11-22T13:00', '2.30.1': '2026-11-22T10:00', '2.30.0': '2026-11-22T08:00', '2.29.2': '2026-11-22T05:00', '2.29.1': '2026-11-22T03:00', '2.29.0': '2026-11-22T01:00', '2.28.2': '2026-11-21T21:00', '2.28.1': '2026-11-21T20:00', '2.28.0': '2026-11-21T19:00', '2.27.11': '2026-11-21T17:00', '2.27.10': '2026-11-21T16:00', '2.27.9': '2026-11-21T14:30', '2.27.8': '2026-11-21T14:00', '2.27.7': '2026-11-21T12:00', '2.27.6': '2026-11-20T21:00', '2.27.5': '2026-11-20T17:30', '2.27.4': '2026-11-20T16:00', '2.27.3': '2026-11-20T12:00', '2.27.2': '2026-11-20T09:00', '2.27.1': '2026-11-20T03:00', '2.27.0': '2026-11-20T01:00', '2.26.2': '2026-11-19T23:00', '2.26.1': '2026-11-19T22:30', '2.26.0': '2026-11-19T22:00', '2.25.1': '2026-11-19T21:30', '2.25.0': '2026-11-19T21:00', '2.24.9': '2026-11-19T18:00', '2.24.8': '2026-11-19T17:00', '2.24.7': '2026-11-19T16:00', '2.24.6': '2026-11-19T14:00', '2.24.5': '2026-11-19T12:00', '2.24.4': '2026-11-19T04:00', '2.24.3': '2026-11-19T03:00', '2.24.2': '2026-11-19T02:00', '2.24.1': '2026-11-19T01:00', '2.24.0': '2026-11-19T00:00', '2.23.9': '2026-11-18T23:00', '2.23.8': '2026-11-18T22:00', '2.23.7': '2026-11-18T21:00', '2.23.6': '2026-11-18T20:00', '2.23.5': '2026-11-18T19:00', '2.23.4': '2026-11-18T17:00', '2.23.3': '2026-11-18T16:00', '2.23.2': '2026-11-18T15:00', '2.23.1': '2026-11-18T14:00', '2.23.0': '2026-11-18T10:00', '2.22.33': '2026-11-18T01:00', '2.22.32': '2026-11-18T00:00', '2.22.31': '2026-11-17T23:00', '2.22.30': '2026-11-17T22:00', '2.22.29': '2026-11-17T21:00', '2.22.28': '2026-11-17T20:00', '2.22.27': '2026-11-17T19:00', '2.22.26': '2026-11-17T18:00', '2.22.25': '2026-11-17T17:00', '2.22.24': '2026-11-17T16:00', '2.22.23': '2026-11-17T14:00', '2.22.17': '2026-11-17T02:30', '2.22.16': '2026-11-17T00:30', '2.22.15': '2026-11-16T22:00', '2.22.14': '2026-11-16T20:30', '2.22.13': '2026-11-16T19:30', '2.22.12': '2026-11-16T18:00', '2.22.11': '2026-11-16T16:20', '2.22.10': '2026-11-16T15:40', '2.22.9': '2026-11-16T15:00', '2.22.8': '2026-11-16T13:40', '2.22.7': '2026-11-16T12:30', '2.22.6': '2026-11-16T09:30', '2.22.5': '2026-11-16T07:15', '2.22.4': '2026-11-16T03:45', '2.22.3': '2026-11-16T03:00', '2.17.0': '2026-11-15T23:59', '2.16.1': '2026-11-15T23:55', '2.16.0': '2026-11-15T23:30', '2.15.0': '2026-11-15T21:30', '2.14.0': '2026-11-15T20:24', '2.13.0': '2026-11-15T19:42', '2.12.0': '2026-11-15T19:05', '2.11.0': '2026-11-15T17:55', '2.10.0': '2026-11-15T17:10', '1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.9.0': '2026-11-15T16:54', '2.8.0': '2026-11-15T16:45', '2.7.0': '2026-11-15T16:34', '2.6.3': '2026-11-15T16:15', '2.6.2': '2026-11-15T16:15', '2.6.1': '2026-11-15T16:00', '2.6.0': '2026-11-15T15:54', '2.5.3': '2026-11-15T15:48', '2.5.2': '2026-11-15T15:46', '2.5.1': '2026-11-15T15:43', '2.5.0': '2026-11-15T15:42', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
+var GAME_WHEN = {'2.31.38': '2026-11-26T21:00', '2.31.37': '2026-11-26T11:00', '2.31.36': '2026-11-26T10:00', '2.31.35': '2026-11-26T07:00', '2.31.34': '2026-11-26T04:00', '2.31.33': '2026-11-26T01:00', '2.31.32': '2026-11-25T23:30', '2.31.31': '2026-11-25T22:00', '2.31.30': '2026-11-25T21:00', '2.31.29': '2026-11-25T19:00', '2.31.28': '2026-11-25T17:30', '2.31.27': '2026-11-25T16:30', '2.31.26': '2026-11-25T16:00', '2.31.25': '2026-11-25T10:00', '2.31.24': '2026-11-24T21:00', '2.31.23': '2026-11-24T18:00', '2.31.22': '2026-11-24T14:00', '2.31.21': '2026-11-24T10:00', '2.31.20': '2026-11-23T22:00', '2.31.19': '2026-11-23T19:00', '2.31.18': '2026-11-23T17:00', '2.31.17': '2026-11-23T15:00', '2.31.16': '2026-11-23T13:30', '2.31.15': '2026-11-23T12:00', '2.31.14': '2026-11-23T10:30', '2.31.13': '2026-11-23T09:00', '2.31.12': '2026-11-23T05:30', '2.31.11': '2026-11-23T04:30', '2.31.10': '2026-11-23T03:00', '2.31.9': '2026-11-23T01:30', '2.31.8': '2026-11-23T00:30', '2.31.7': '2026-11-22T22:30', '2.31.6': '2026-11-22T21:30', '2.31.5': '2026-11-22T20:30', '2.31.4': '2026-11-22T19:30', '2.31.3': '2026-11-22T18:30', '2.31.2': '2026-11-22T17:00', '2.31.1': '2026-11-22T15:00', '2.31.0': '2026-11-22T13:00', '2.30.1': '2026-11-22T10:00', '2.30.0': '2026-11-22T08:00', '2.29.2': '2026-11-22T05:00', '2.29.1': '2026-11-22T03:00', '2.29.0': '2026-11-22T01:00', '2.28.2': '2026-11-21T21:00', '2.28.1': '2026-11-21T20:00', '2.28.0': '2026-11-21T19:00', '2.27.11': '2026-11-21T17:00', '2.27.10': '2026-11-21T16:00', '2.27.9': '2026-11-21T14:30', '2.27.8': '2026-11-21T14:00', '2.27.7': '2026-11-21T12:00', '2.27.6': '2026-11-20T21:00', '2.27.5': '2026-11-20T17:30', '2.27.4': '2026-11-20T16:00', '2.27.3': '2026-11-20T12:00', '2.27.2': '2026-11-20T09:00', '2.27.1': '2026-11-20T03:00', '2.27.0': '2026-11-20T01:00', '2.26.2': '2026-11-19T23:00', '2.26.1': '2026-11-19T22:30', '2.26.0': '2026-11-19T22:00', '2.25.1': '2026-11-19T21:30', '2.25.0': '2026-11-19T21:00', '2.24.9': '2026-11-19T18:00', '2.24.8': '2026-11-19T17:00', '2.24.7': '2026-11-19T16:00', '2.24.6': '2026-11-19T14:00', '2.24.5': '2026-11-19T12:00', '2.24.4': '2026-11-19T04:00', '2.24.3': '2026-11-19T03:00', '2.24.2': '2026-11-19T02:00', '2.24.1': '2026-11-19T01:00', '2.24.0': '2026-11-19T00:00', '2.23.9': '2026-11-18T23:00', '2.23.8': '2026-11-18T22:00', '2.23.7': '2026-11-18T21:00', '2.23.6': '2026-11-18T20:00', '2.23.5': '2026-11-18T19:00', '2.23.4': '2026-11-18T17:00', '2.23.3': '2026-11-18T16:00', '2.23.2': '2026-11-18T15:00', '2.23.1': '2026-11-18T14:00', '2.23.0': '2026-11-18T10:00', '2.22.33': '2026-11-18T01:00', '2.22.32': '2026-11-18T00:00', '2.22.31': '2026-11-17T23:00', '2.22.30': '2026-11-17T22:00', '2.22.29': '2026-11-17T21:00', '2.22.28': '2026-11-17T20:00', '2.22.27': '2026-11-17T19:00', '2.22.26': '2026-11-17T18:00', '2.22.25': '2026-11-17T17:00', '2.22.24': '2026-11-17T16:00', '2.22.23': '2026-11-17T14:00', '2.22.17': '2026-11-17T02:30', '2.22.16': '2026-11-17T00:30', '2.22.15': '2026-11-16T22:00', '2.22.14': '2026-11-16T20:30', '2.22.13': '2026-11-16T19:30', '2.22.12': '2026-11-16T18:00', '2.22.11': '2026-11-16T16:20', '2.22.10': '2026-11-16T15:40', '2.22.9': '2026-11-16T15:00', '2.22.8': '2026-11-16T13:40', '2.22.7': '2026-11-16T12:30', '2.22.6': '2026-11-16T09:30', '2.22.5': '2026-11-16T07:15', '2.22.4': '2026-11-16T03:45', '2.22.3': '2026-11-16T03:00', '2.17.0': '2026-11-15T23:59', '2.16.1': '2026-11-15T23:55', '2.16.0': '2026-11-15T23:30', '2.15.0': '2026-11-15T21:30', '2.14.0': '2026-11-15T20:24', '2.13.0': '2026-11-15T19:42', '2.12.0': '2026-11-15T19:05', '2.11.0': '2026-11-15T17:55', '2.10.0': '2026-11-15T17:10', '1.4.0': '2026-11-14T18:10', '1.5.0': '2026-11-14T19:04', '1.5.1': '2026-11-14T19:28', '1.5.2': '2026-11-14T19:32', '1.5.3': '2026-11-14T19:36', '1.5.4': '2026-11-14T19:46', '1.5.5': '2026-11-14T19:59', '1.5.6': '2026-11-14T21:33', '1.5.7': '2026-11-14T21:42', '1.5.8': '2026-11-14T22:20', '1.5.9': '2026-11-14T23:17', '1.6.0': '2026-11-15T08:50', '1.6.1': '2026-11-15T08:56', '1.6.2': '2026-11-15T08:57', '1.6.3': '2026-11-15T09:04', '1.6.4': '2026-11-15T09:06', '1.6.5': '2026-11-15T09:08', '1.6.6': '2026-11-15T09:10', '1.7.0': '2026-11-15T09:44', '1.7.1': '2026-11-15T09:50', '1.7.2': '2026-11-15T09:53', '1.7.3': '2026-11-15T10:00', '1.7.4': '2026-11-15T10:02', '1.8.0': '2026-11-15T11:15', '1.8.1': '2026-11-15T11:33', '1.8.2': '2026-11-15T11:39', '1.8.3': '2026-11-15T11:43', '1.8.4': '2026-11-15T11:47', '1.8.5': '2026-11-15T11:52', '1.8.6': '2026-11-15T11:53', '1.9.0': '2026-11-15T12:24', '1.9.1': '2026-11-15T12:25', '2.0.0': '2026-11-15T13:53', '2.0.1': '2026-11-15T14:11', '2.0.2': '2026-11-15T14:15', '2.1.0': '2026-11-15T14:21', '2.2.0': '2026-11-15T14:33', '2.9.0': '2026-11-15T16:54', '2.8.0': '2026-11-15T16:45', '2.7.0': '2026-11-15T16:34', '2.6.3': '2026-11-15T16:15', '2.6.2': '2026-11-15T16:15', '2.6.1': '2026-11-15T16:00', '2.6.0': '2026-11-15T15:54', '2.5.3': '2026-11-15T15:48', '2.5.2': '2026-11-15T15:46', '2.5.1': '2026-11-15T15:43', '2.5.0': '2026-11-15T15:42', '2.4.4': '2026-11-15T15:17', '2.4.3': '2026-11-15T15:15', '2.4.2': '2026-11-15T15:13', '2.4.1': '2026-11-15T15:10', '2.4.0': '2026-11-15T15:04', '2.3.0': '2026-11-15T14:44'};
 
 // what's new (newest first) — shown under the settings cog
 var GAME_UPDATES = [
+  ['2.31.38', ["👥 Multiplayer fixes: the new host gets CHOOSE THE GAME when the host leaves, no more two hosts after a reload, nobody spawns in walls with 5+ players, Sweep food right for guests, no ghost players holding up READY, locked rooms stay locked, hosts keep hosting through updates, ROOM FULL message", "⚙️ Settings, CHAT and the mic stay in the top-right corner in every mode"]],
   ['2.31.37', ["💣 Search & Destroy is now multiplayer only (host a room on your own and bots fill both teams)"]],
   ['2.31.36', ["🏆 Search & Destroy: a proper end-of-match scoreboard (winner, both teams, kills and deaths) with PLAY AGAIN and RETURN TO LOBBY, and the live HUD and bomb prompt cleared away", "🍺 No more stray pint standing in the middle of the pub floor"]],
   ['2.31.35', ["🎯 Search & Destroy: bots fill every empty slot so teams are always full, nine food guns with recoil, reloads, aiming and sidearms, a dinner money shop, a scoreboard, a death recap, and much more detail on the sites, the bomb and the effects"]],
@@ -271,7 +272,10 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   const q = new URLSearchParams(location.search);
   // (developer mode lasts while you're in the game it started, through any reload of it (an update): it ends back here)
   if (!q.get('go')) { try { sessionStorage.removeItem('rs_dev'); } catch (e) {} }
-  if (q.get('relay')) window.__relay = q.get('relay');      // (a test's own room server: the leaderboards use it too)
+  // (a test's own room server: the leaderboards use it too. Kept for this tab, so the game's own reloads (back to the lobby,
+  // an update, REJOIN) stay on it and never reach the real server)
+  try { if (q.get('relay')) sessionStorage.setItem('rs_relay', q.get('relay')); else if (sessionStorage.getItem('rs_relay')) window.__relay = sessionStorage.getItem('rs_relay'); } catch (e) {}
+  if (q.get('relay')) window.__relay = q.get('relay');
   let saved = {}; try { saved = JSON.parse(localStorage.getItem('rs_menu') || '{}'); } catch (e) {}
   // always start at the Oysterfleet; only ?go=1 quick-starts use the address's place/mode
   const quick = !!q.get('go');
@@ -559,10 +563,13 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   $('#mp-myname').value = myName;
   const nameOf = () => { const n = ($('#mp-myname').value || '').trim().slice(0, 12) || myName || mp.char().n; try { localStorage.setItem('rs_mp_name', n); } catch (e) {} return n; };
   const esc = (t) => String(t).replace(/[<>&"]/g, '');
+  // who's the host is the room's word (net.host), nothing else: it moves when the host leaves or hands it over, and the
+  // lobby's buttons, START and the game that loads follow it (a guest left holding it once couldn't start anything)
+  const amHost = () => !!(mp.net && mp.net.host);
   // MULTIPLAYER: the host can't start until everyone's pressed READY. Returns true while it's locked
   function goGate() {
     const g = $('#go'), w = $('#go-wait'); if (!g) return false;
-    const host = !!(mp.net && (mp.role === 'host' || (mp.net.host && mp.role !== 'join')));
+    const host = amHost();
     const waiting = host ? [...mp.net.players.values()].filter(p => !p.ready) : [];
     g.classList.toggle('wait', waiting.length > 0);
     g.textContent = !host ? "LET'S EAT ➜" : waiting.length ? `⏳ WAITING FOR ${waiting.length} TO READY UP` : '▶ START FOR EVERYONE';
@@ -572,7 +579,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   // the room: everyone in it, their name and who they're playing as; a free slot for each space left
   const lobby = () => {
     if (!mp.net) return;
-    const boss0 = mp.role === 'host' || (mp.net.host && mp.role !== 'join');
+    const boss0 = amHost();
     const me = { name: nameOf(), char: mpChar, host: mp.net.host, me: true, ready: mp.ready };
     const ps = [me, ...mp.net.players.values()];
     $('#room-code').textContent = mp.net.code; $('#room-url').textContent = inviteURL();
@@ -590,8 +597,8 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     $('#room-who-list').innerHTML = order.map(p => { const c = CHARS.find(x => x.id === p.char) || CHARS[0]; return `<div class="rw ${isR(p) ? 'ok' : 'no'}"><img src="./assets/portraits/${c.img || 'ronnie'}.webp" alt="">${esc(p.name || 'Someone')}${p.me ? ' (YOU)' : ''}${p.host ? ' 👑' : ''}<span class="st">${p.host ? '👑 STARTS IT' : p.ready ? '✓ READY' : '⏳ NOT READY'}</span></div>`; }).join('');
     goGate();
     drawRoomOpts(boss0);
-    const rb = $('#room-ready'); rb.style.display = (mp.role === 'host' || (mp.net.host && mp.role !== 'join')) ? 'none' : ''; rb.classList.toggle('on', !!mp.ready);      // (the host doesn't ready up: they press START) rb.textContent = mp.ready ? '✅ READY! (TAP TO UNDO)' : '✋ I\'M READY';
-    const boss = mp.role === 'host' || (mp.net.host && mp.role !== 'join');
+    const rb = $('#room-ready'); rb.style.display = boss0 ? 'none' : ''; rb.classList.toggle('on', !!mp.ready); rb.textContent = mp.ready ? '✅ READY! (TAP TO UNDO)' : '✋ I\'M READY';      // (the host doesn't ready up: they press START)
+    const boss = boss0;
     $('#room-go').style.display = boss ? '' : 'none';
     $('#room-msg').textContent = boss ? (ps.length > 1 ? (nReady >= ps.length ? 'Everyone\'s ready! Choose the game, then START.' : `Waiting for ${ps.length - nReady} to ready up. You can choose the game now: START unlocks when everyone's ready.`) : 'Invite your mates (or tell them the code). Start when everyone\'s in.') : 'Waiting for the host to choose the game…';
   };
@@ -599,26 +606,30 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     const { Net, RELAY } = await import('./net.js');
     if (mp.net) mp.net.leave();
     const net = mp.net = new Net(); net.char = mpChar;
-    const relay = q.get('relay') || RELAY;
+    const relay = window.__relay || RELAY;
     mp.RO = mp.RO || await import('./roomopts.js');      // (fetched BEFORE connecting: while it loaded, the host's "we're playing X" could arrive with nobody listening, and a guest sat on "waiting for the host" for ever)
     // a guest hears which game to load (the host starting one, or one already going when you join or come back): one
     // handler from the moment the line's open, so it can't be missed
-    net.on.setup = (m) => { if (mp.role === 'host' || window.__setupSeen || !m || typeof m.place !== 'string' || typeof m.mode !== 'string') return; window.__setupSeen = true; window.__setupWarm = m.warm === undefined ? null : !!m.warm; /* (from a game already going: whether it is still the warm-up) */ place = m.place; mode = m.mode; const rm = $('#room-msg'); if (rm) rm.textContent = 'Off we go!'; window.__menuIntro(() => window.__menuGo(true)); };
+    net.on.setup = (m, p) => { if (net.host || !p || !(p.host || String(p.id) === String(net.hostId)) || window.__setupSeen || !m || typeof m.place !== 'string' || typeof m.mode !== 'string') return; window.__setupSeen = true; window.__setupWarm = m.warm === undefined ? null : !!m.warm; /* (from a game already going: whether it is still the warm-up) */ place = m.place; mode = m.mode; const rm = $('#room-msg'); if (rm) rm.textContent = 'Off we go!'; window.__menuIntro(() => window.__menuGo(true)); };
     const w = await net.connect(code, nameOf(), relay);
     // everyone says who they're playing as; a new arrival gets told by everyone already in
     const hi = (to) => net.send({ t: 'hi', to, name: nameOf(), char: mpChar, v: window.GAME_BUILD });
     const vNum = (v) => String(v || '0').split('.').map(Number).reduce((a, n) => a * 1000 + (n || 0), 0);
     net.on.hi = (m, p) => { if (p) { p.char = m.char; p.name = m.name; } lobby();
       // a mate on a newer version: update now (straight back into this room), so you both see the same things
-      if (m.v && vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; mpStatus('Your mate has a newer version. Updating…'); setTimeout(() => { location.href = location.pathname + '?lobby=' + encodeURIComponent(code) + '&u=' + Date.now(); }, 1200); } };
+      if (m.v && vNum(m.v) > vNum(window.GAME_BUILD) && !window.__updating) { window.__updating = true; mpStatus('Your mate has a newer version. Updating…'); try { sessionStorage.setItem('rs_was_host', net.host ? '1' : ''); } catch (e) {} setTimeout(() => {      // (the host updating stays the host)
+      location.href = location.pathname + '?lobby=' + encodeURIComponent(code) + '&u=' + Date.now(); }, 1200); } };
     mp.RO.resetOpts(); mp.ready = false; mp.locked = false; mp.seenCards = new Set(); roomChat.length = 0; drawChat(); roomUnread = 0; drawBadge();
-    const isBoss = () => mp.role === 'host' || (net.host && mp.role !== 'join');
+    const isBoss = () => !!net.host;
     const sendOpts = (to) => net.send(to ? { t: 'ropts', to, o: { ...mp.RO.roomOpts }, lock: mp.locked ? 1 : 0 } : { t: 'ropts', o: { ...mp.RO.roomOpts }, lock: mp.locked ? 1 : 0 });      // (the room only reads "to" near the start)
     net.on.join = (m) => { hi(m.id); if (isBoss()) { const n = net.players.size + 1, max = Math.min(net.max || 12, mp.RO.optNum('max'));
         if (mp.locked || n > max) { net.send({ t: 'kick', to: m.id, why: mp.locked ? 'locked' : 'full' }); } else { sendOpts(m.id); if (mp.ready) net.send({ t: 'ready', r: 1, to: m.id }); } }
       else if (mp.ready) net.send({ t: 'ready', r: 1, to: m.id });
       sysChat(`${(m.name || 'Someone')} joined`); sndUI('join'); lobby(); };
-    net.on.leave = (m) => { sysChat('Someone left'); sndUI('leave'); lobby(); }; net.on.host = () => { lobby(); if (isBoss()) sendOpts(); };
+    net.on.leave = (m) => { sysChat('Someone left'); sndUI('leave'); lobby(); }; net.on.host = (m) => { if (mp.role) mp.role = net.host ? 'host' : 'join'; if (net.host && m && m.from && m.why === 'left') mp.gotHostFrom = { id: m.from, at: Date.now() }; lobby(); if (isBoss()) sendOpts(); };
+    // (the host back from a game: their page reloads into the lobby, and while it does the room hands hosting on. If whoever it
+    // went to is in the lobby too, they hand it straight back, so the host is still the host)
+    net.on.hostBack = (m, p) => { const g = mp.gotHostFrom; if (!net.host || !p || !g || String(g.id) !== String(p.id) || Date.now() - g.at > 120000) return; mp.gotHostFrom = null; net.send({ t: 'giveHost', to: p.id }); };
     // the lobby: ready ticks, the host's room options, chat, the host removing someone (only the host's word counts)
     net.on.ready = (m, p) => { if (p) { p.ready = !!m.r; if (m.r) sndUI('ready'); lobby(); } };
     net.on.ropts = (m, p) => { if (!p || !p.host) return; mp.RO.setOpts(m.o); mp.locked = !!m.lock; lobby(); };
@@ -685,7 +696,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     try { const w = await mpConnect(code); mp.role = 'join';
       if (w.host) { mpStatus(`Nobody's in room <b>${code}</b> yet. Check the code with your mate.`); mp.net.leave(); mp.net = null; mp.role = null; lobby(); return; }
       mpStatus(''); show('room'); lobby();
-    } catch (e) { mpStatus("Couldn't connect. Check your internet and try again."); }
+    } catch (e) { mpStatus(e && /full/.test(e.message) ? `Couldn't get into room <b>${code}</b>: it's full (12 players), or it couldn't be reached.` : "Couldn't connect. Check your internet and try again."); }      // (the 13th: told the room's full, not to check their internet)
   });
 
   // back to the lobby after a game (?lobby=CODE): straight back into the same room, as the same name and character
@@ -694,7 +705,10 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   const rejoin = async (code) => {
     // (whoever was the host is still the host: the room hands "host" on to someone else while their page reloads)
     let was = false; try { was = sessionStorage.getItem('rs_was_host') === '1'; } catch (e) {}
-    try { const w = await mpConnect(code); mp.role = w.host || was ? 'host' : 'join'; $('#mp-code-chip').textContent = `👥 ROOM ${code}`; show('room'); lobby();
+    try { const w = await mpConnect(code), net = mp.net; mp.role = w.host ? 'host' : 'join'; $('#mp-code-chip').textContent = `👥 ROOM ${code}`; show('room'); lobby();
+      // (hosting went to someone else while this page reloaded: ask for it back, for a little while, until whoever has it is
+      // in the lobby to hand it over. Never just acting as the host: two hosts in one room each started their own game)
+      if (was && !w.host) { let n = 0; const ask = () => { if (mp.net !== net || net.host || window.__setupSeen || ++n > 40) return; net.send({ t: 'hostBack' }); setTimeout(ask, 3000); }; ask(); }
       const ft = fakesSaved(); if (ft && ft.code === code && ft.n > 0) startFakes(code, ft.n);      // (a developer's test room: its fake players come back too)
     } catch (e) { show('mp'); mpStatus("Couldn't get back into the room. Check your internet and try again."); }
   };
@@ -705,7 +719,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
   async function startFakes(code, n) {
     const m = await import('./fakeplayers.js'), ft = fakesSaved();
     if (window.__fakes) window.__fakes.stop();
-    window.__fakes = m.startFakePlayers(code, n, q.get('relay') || undefined, ft && ft.code === code ? ft.pids || [] : []);
+    window.__fakes = m.startFakePlayers(code, n, window.__relay || undefined, ft && ft.code === code ? ft.pids || [] : []);
     saveFakes(); drawFakes();
   }
   const drawFakes = () => { const el = $('#room-fakes'); if (!el) return; const f = window.__fakes; el.hidden = !f;
@@ -775,7 +789,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
       if (going) return; going = true;
       if (window.ronnieHero && window.ronnieHero.inVR && window.ronnieHero.handOff) window.ronnieHero.handOff();   // (in the headset: the game carries on in the same VR session)
       try { if (place !== 'grid') localStorage.setItem('rs_menu', JSON.stringify({ place, mode })); } catch (e) {}
-      if (window.ronnieMP && window.ronnieMP.role === 'host' && window.ronnieMP.net) window.ronnieMP.net.send({ t: 'setup', place, mode });   // everyone waiting in the lobby comes too
+      if (window.ronnieMP && window.ronnieMP.role && window.ronnieMP.net && window.ronnieMP.net.host) window.ronnieMP.net.send({ t: 'setup', place, mode });   // everyone waiting in the lobby comes too
       let finished = false;
       const finish = () => { if (finished) return; finished = true;
         start.classList.add('gone');
