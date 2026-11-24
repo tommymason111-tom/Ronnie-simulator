@@ -442,6 +442,12 @@ async function solo(b, C) {
     await sleep(3500); await ev(q, () => { T.clearPops(); T.step(3); });
     const dead = await ev(q, () => ({ watch: !document.querySelector('#sd-ui .watch').hidden, fire: !document.querySelector('#sd-ui .fire').hidden, spect: T.s().spect, cam: !!T.s().viewCam(), deathCam: !!T.s().deathCam }));
     C.ok(dead.watch && !dead.fire && dead.spect && dead.cam && !dead.deathCam, `phone: out of the round, not watching a team-mate: ${JSON.stringify(dead)}`);
+    // over the shoulder: the watched player's tag hidden, and no tag right by the camera (another team-mate stood there)
+    const tags = await ev(q, () => { const s = T.s(), cam = s.viewCam(), other = T.mates().find(m => m.id !== s.spect && m.alive && s.bots.get(m.id)); if (other && cam) { const b = s.bots.get(other.id); b.x = cam.position.x + 0.3; b.z = cam.position.z; } T.step(0.3);
+      const c2 = s.viewCam(), v = new RS.THREE.Vector3(), near = [], sp = s.avatar(s.spect);
+      for (const [id] of s.F) { if (id === s.me) continue; const av = s.avatar(id); if (!av || !av.tag || !av.tag.visible) continue; av.tag.getWorldPosition(v); if (Math.hypot(v.x - c2.position.x, v.z - c2.position.z) < 1.6) near.push(id); }
+      return { moved: !!other, near, watchedTag: !!(sp && sp.tag && sp.tag.visible) }; });
+    C.ok(!tags.near.length && !tags.watchedTag, `phone (watching): name tags by the camera or on the watched player: ${JSON.stringify(tags)}`);
     const t2 = await textProblems(q), bt2 = await btnProblems(q, '#sd-ui');
     C.ok(!t2.length, `phone (watching): text on text: ${JSON.stringify(t2.slice(0, 3))}`); C.ok(!bt2.length, `phone (watching): buttons: ${JSON.stringify(bt2.slice(0, 3))}`);
     C.ok(!q.errors.length, 'phone: page errors: ' + [...new Set(q.errors)].slice(0, 3).join(' | '));
