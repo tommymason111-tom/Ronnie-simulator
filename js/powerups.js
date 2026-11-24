@@ -39,7 +39,8 @@ function orbMesh(k) {
 }
 
 export class PowerUps {
-  // o: { scene, room, items, player, sfx, words, net, mp, eatWhole(it, k), enabled() }
+  // o: { scene, room, items, player, sfx, words, net, mp, eatWhole(it, k), enabled(), noSpawn() }
+  // (noSpawn: a mode with none lying about (Date Night), though developer mode's give() still works)
   constructor(o) {
     Object.assign(this, o);
     this.orbs = []; this.active = {}; this.sucking = []; this.nextT = 18; this.seq = 0; this.hum = 0;
@@ -65,7 +66,7 @@ export class PowerUps {
     this.place(k, pos, id);
     if (this.mpOn) this.net.send({ t: 'pu', id, k, p: [pos.x, pos.y, pos.z] });
   }
-  netSpawn(m) { if (!this.enabled() || this.orbs.some(o => o.id === m.id)) return; this.place(m.k, new THREE.Vector3(...m.p), m.id); }
+  netSpawn(m) { if (!this.enabled() || (this.noSpawn && this.noSpawn()) || this.orbs.some(o => o.id === m.id)) return; this.place(m.k, new THREE.Vector3(...m.p), m.id); }
   netTaken(m) { const o = this.orbs.find(o => o.id === m.id); if (o) this.drop(o, true); }
   drop(o, poof) { this.scene.remove(o.obj); this.orbs.splice(this.orbs.indexOf(o), 1); }
 
@@ -132,7 +133,8 @@ export class PowerUps {
     const on = this.enabled();
     if (!on) { if (this.orbs.length || Object.keys(this.active).length) this.reset(); return; }
     // the host (or a solo game) puts new ones down now and then: never more than two about
-    if (!this.mpOn || this.mp.host) { this.nextT -= dt; if (this.nextT <= 0) { this.nextT = 25 + Math.random() * 15; if (this.orbs.length < 2) this.spawnOne(); } }
+    if (this.noSpawn && this.noSpawn()) { if (this.orbs.length) for (const o of this.orbs.slice()) this.drop(o); }
+    else if (!this.mpOn || this.mp.host) { this.nextT -= dt; if (this.nextT <= 0) { this.nextT = 25 + Math.random() * 15; if (this.orbs.length < 2) this.spawnOne(); } }
     const P = this.player, head = P.head, reach = 0.75 + 0.35 * P.scale;
     for (const o of this.orbs.slice()) {
       o.age += dt; const g = o.obj; g.position.y = o.y0 + Math.sin(time * 2.4 + o.age) * 0.08; g.userData.core.rotation.y += dt * 2; g.userData.core.rotation.x += dt * 1.3;

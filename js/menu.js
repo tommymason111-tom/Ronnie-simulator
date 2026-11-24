@@ -229,7 +229,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     { id: 'everyone', ico: '👥', name: 'THE WHOLE SQUAD', desc: 'The main game. Everyone is here, taking turns to attack you while you eat. A countdown shows the next one.', stars: 3, who: 'Everyone' },
     { id: 'sweep', ico: '🛒', name: 'SUPERMARKET SWEEP', desc: '90 seconds and a trolley in Lidl. Grab the most calories you can. Oliver and Aidan W are on security (Aidan W is slow: knee).', stars: 2, who: 'Oliver, Aidan W', place: 'shop' },
     { id: 'bbq', ico: '🍖', name: "IAN'S BARBECUE", desc: "Round Lewis's house. Ian WILL make you eat a healthy burger. Pinch his proper ones, get big, fight back.", stars: 2, who: 'Ian, Lewis + the lads', place: 'garden' },
-    { id: 'date', ico: '💜', name: 'DATE NIGHT', desc: "Eat when Chloe looks away. Three catches and it's salad.", stars: 2, who: 'Chloe + the lads', place: 'restaurant' },
+    { id: 'date', ico: '💜', name: 'DATE NIGHT', tag: '📖 STORY MODE', desc: "📖 STORY MODE. One night, one table, one girlfriend watching every bite. Ronnie's on a diet at La Grande Portion: get through the night film by film, eating only when Chloe looks away. Three catches and it's salad.", stars: 2, who: 'Chloe + the lads', place: 'restaurant' },
     { id: 'eatoff', ico: '⏱️', name: 'EAT-OFF', desc: '60 seconds. Eat everything. On your own, or pass-and-play: who eats more?', stars: 1, who: '1 or 2 players' },
     { id: 'runpub', ico: '🍺', name: 'RUN THE PUB', desc: 'Work behind the bar at the Oysterfleet with Aidan, Connor and Chloe (Lewis is on the restaurant, Ben\'s in the kitchen). Serve the punters the right drinks, break up fights, catch runaway kids. Six-minute shift.', stars: 3, who: 'The staff, the locals, whoever turns up', place: 'pub' },
     { id: 'imposter', ico: '🔪', name: 'IMPOSTER', desc: 'Multiplayer only. Among Us at the Oysterfleet: the faithful do jobs round the pub while the imposter picks them off one by one. Find a body? REPORT it. Ring the LAST ORDERS bell for a meeting, then vote them out of the pub.', stars: 3, who: '3+ players', mp: true },
@@ -473,7 +473,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
     grid.innerHTML = MODES.filter(m => ok(m, place)).map((m, i) => {
       const sel = m.id === cardOf(mode);
       return `<div class="flip${sel ? ' sel' : ''}" data-id="${m.id}" style="animation-delay:${i * 0.05}s">
-        <div class="face front"><span class="ico">${m.ico}</span><b>${m.name}</b>${pp(m) || '<small>tap for details</small>'}</div>
+        <div class="face front"><span class="ico">${m.ico}</span><b>${m.name}</b>${pp(m) || `<small${m.tag ? ' class="story"' : ''}>${m.tag || 'tap for details'}</small>`}</div>
         <div class="face back"><b>${m.name}</b><p>${m.desc}</p><div class="meta"><span>${'🌶️'.repeat(m.stars)}</span><span>👤 ${m.who}</span></div>${pp(m)}<div class="pickit">${sel ? '✓ PICKED' : 'TAP TO PICK'}</div></div>
       </div>`;
     }).join('');
@@ -891,7 +891,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D
           { pic: 'bbq:feed', title: 'FIGHT HIM OFF', lines: ['If he catches you, he shoves it in your face', vr ? '🎮 Pull the triggers as fast as you can to push him off' : pc ? '🖱️ Click (or hammer any key) as fast as you can to push him off' : '👆 Tap the screen as fast as you can to push him off', 'Lose and you\'re FORCE-FED: BLEURGH, and your EAT METER drops'] },
           { pic: 'bbq:big', title: 'GET BIG, FIGHT BACK', lines: ['The bigger you are, the easier he is to push off', (vr ? 'Slap' : (pc ? 'Click' : 'Tap')) + ' him, throw food at him: 10 to 15 hits and over he goes (pushing him off or barging him counts 3)', 'Knock him over 5 times and he gives up: you win. Force-fed 3 times: you lose', C.pause] } ],
         date: [
-          { pic: 'date', title: 'DATE NIGHT', lines: ['Dinner with Chloe at La Grande Portion. You\'re on a diet', 'You\'re sat at the table all night: no walking. Look round all you like', 'Eat what\'s on the table... but ONLY when Chloe isn\'t looking. Three catches and it\'s salad'] },
+          { pic: 'date', title: 'DATE NIGHT · STORY MODE', lines: ['Dinner with Chloe at La Grande Portion. You\'re on a diet', 'You\'re sat at the table all night: no walking. Look round all you like', 'Eat what\'s on the table... but ONLY when Chloe isn\'t looking. Three catches and it\'s salad'] },
           controls,
           { pic: 'date:films', title: 'THE FILMS', lines: ['All night, little films: her phone, the waiter, the loo, the lads coming over, a power cut...', 'Each one has its own game, with rounds that get harder: ' + (vr ? 'trigger, grip and A are its buttons' : pc ? 'click its buttons, or press 1, 2, 3' : 'tap the big buttons at the bottom'), 'Win for stars and food on your Eat Meter. Lose and you\'re BUSTED'] },
           { pic: 'date:busted', title: 'WATCH CHLOE', lines: ['When she starts to turn back: a "!", a beep and a red edge. Stop eating!', 'ACT NATURAL just as she turns for a bonus. Cheeks too full and she\'ll notice', 'BUSTED? Pick the right excuse and she goes easier: a salad, your plate, a call to your mum...', C.pause] } ],

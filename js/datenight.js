@@ -220,6 +220,10 @@ class DateUI {
     this.vmesh = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.3125), new THREE.MeshBasicMaterial({ map: this.vtex, transparent: true, depthTest: false, depthWrite: false }));
     this.vmesh.renderOrder = 60; this.vmesh.frustumCulled = false; this.vmesh.visible = false; this.vmesh.position.set(0, -0.21, -0.78);
     player.camera.add(this.vmesh);
+    // (a quick fade to black in the headset when the game moves you: the loo raid's spots. The same kind of material as the panel: no new shader)
+    const bk = document.createElement('canvas'); bk.width = bk.height = 4; bk.getContext('2d').fillRect(0, 0, 4, 4); this.vfTex = new THREE.CanvasTexture(bk);
+    this.vfade = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ map: this.vfTex, transparent: true, opacity: 0, depthTest: false, depthWrite: false }));
+    this.vfade.renderOrder = 59; this.vfade.frustumCulled = false; this.vfade.visible = false; this.vfade.position.set(0, 0, -0.3); player.camera.add(this.vfade);
     this.scv = document.createElement('canvas'); this.scv.width = 1000; this.scv.height = 230;      // (the stage, drawn for the headset)
     this.vT = 0; this.vBtnWas = [false, false, false];
   }
@@ -270,6 +274,7 @@ class DateUI {
     }
     (list || []).forEach((b, i) => { const el = this.btnEls[i]; if (!el) return; el.classList.toggle('off', !!b.off); el.classList.toggle('hot', !!b.hot); });
   }
+  vrFade(k) { this.vfade.visible = k > 0.01; this.vfade.material.opacity = Math.min(1, k); }
   flashBtn(i, on) { const el = this.btnEls[i]; if (el) el.classList.toggle('down', on); }
   // the game's stage (a canvas the game draws on), every frame
   stage(game) {
@@ -318,6 +323,7 @@ class DateUI {
   dispose() {
     this.el.remove(); removeEventListener('keydown', this.keyDown, true); removeEventListener('keyup', this.keyUp, true);
     if (this.vmesh.parent) this.vmesh.parent.remove(this.vmesh); this.vmesh.geometry.dispose(); this.vmesh.material.dispose(); this.vtex.dispose();
+    if (this.vfade.parent) this.vfade.parent.remove(this.vfade); this.vfade.geometry.dispose(); this.vfade.material.dispose(); this.vfTex.dispose();
     document.body.classList.remove('dn-cine');
   }
 }
@@ -408,7 +414,7 @@ export class DateNight {
   }
   // the game's over (time, or three strikes): any film stops where it is, the camera's back in your head
   stop() {
-    this.travelGo = null; if (this.away) { this.away = null; this.seatPlayer(); }
+    this.travelGo = null; this.vrFadeT = 0; if (this.ui) this.ui.vrFade(0); if (this.away) { this.away = null; this.seatPlayer(); }
     { const P = this.g.player; if (P.rig.position.y === SIT_DROP) { P.rig.position.y = 0; P.rig.updateMatrixWorld(true); } }
     if (this.visitor) this.sendHome(this.visitor, true);
     if (this.chloe && this.chloe.dnHidden) this.chloeBack(true);
@@ -446,6 +452,7 @@ export class DateNight {
       if (this.vr) for (const [k, i] of this.ui.pollVR()) { if (k === 'down') { if (this.game && !this.game.result) this.press(i); } else this.release(i); }
       if (this.liveT > 0) this.liveT -= dt;
       if (this.travelGo && (this.travelGo.t -= dt) <= 0) { const tg = this.travelGo; this.travelGo = null; tg.go(); }
+      if (this.vrFadeT > 0) { this.vrFadeT = Math.max(0, this.vrFadeT - dt); this.ui.vrFade(1 - Math.abs(this.vrFadeT - 0.25) / 0.25); }
       this.stepScene(dt);
       this.drawUI(dt);
       return;
@@ -564,7 +571,7 @@ export class DateNight {
     else this.cam = null;
     P.faceToward && P.faceToward(CHL.x, CHL.z, 0.01);
     if (P.flatMode) P.flatPitch = -0.22;
-    this.travelGo = null; if (this.away) this.travel(null, true);
+    this.travelGo = null; this.vrFadeT = 0; if (this.ui) this.ui.vrFade(0); if (this.away) this.travel(null, true);
     this.ui.buttons(null); this.ui.caption('', '', ''); this.ui.title(null); this.ui.stamp(null); this.ui.result(null); this.ui.dim(false); this.spotlight(false); this.ui.flash(0); this.ui.vr(false);
     if (!this.cam) this.cineOn(false); else this.ui.show(true, false);
     return s;
@@ -606,14 +613,57 @@ export class DateNight {
       C.position.copy(cam.from).lerp(eye, k); C.quaternion.copy(cam.fromQ).slerp(q, k);
       this.thirdPerson(k < 0.9); this.showRon(k < 0.9); return C;
     }
-    const f = SHOTS[cam.name] || SHOTS.wide, [pos, look, roll] = f(this, cam.t, cam.o || {});
+    const o = cam.o = cam.o || {}, f = SHOTS[cam.name] || SHOTS.wide, [pos, look, roll] = f(this, cam.t, o);
     if (main.aspect < 1 && FAR[cam.name]) pos.sub(look).multiplyScalar(FAR[cam.name]).add(look);      // (a phone held upright sees less side to side: wider shots step back)
     this.frameView(C);
+    const keep = this.shotKeep(cam.name, o), face = FACE[cam.name] ? this.shotFace(cam.name, o) : null;
+    this.clearShot(pos, keep.length ? keep[0] : look);      // (never inside a wall or the furniture)
+    this.fitShot(C, pos, look, keep, roll, true);      // (the heads in shot, whatever the screen's shape)
+    if (this.clearShot(pos, keep.length ? keep[0] : look)) this.fitShot(C, pos, look, keep, roll, false);      // (stepped back into something: in again, and just turn)
+    this.camInfo = { name: cam.name, keep, face };
     C.position.copy(pos); C.up.set(0, 1, 0); C.lookAt(look); if (roll) C.rotateZ(roll);
     if (this.g.player.shakeA > 0.05) { C.position.x += (Math.random() - 0.5) * 0.02; C.position.y += (Math.random() - 0.5) * 0.02; }
     this.thirdPerson(true); this.showRon(true);
-    this.hideNear(C.position);
+    this.hideNear(C.position, look, keep);
     return C;
+  }
+  // whose heads a shot must keep in frame, and whose face it's on (front on, at their eye level)
+  shotKeep(name, o) {
+    const ch = live(this.chloe) ? this.chloeHead() : null, rn = this.ron && this.ron.rag.mesh ? this.ronHead() : null, oc = live(o.c) ? o.c.headPos(new THREE.Vector3()) : null;
+    switch (name) {
+      case 'overR': case 'chloe': case 'dutch': case 'walk': return ch ? [ch] : [];
+      case 'ronnie': return rn ? [rn] : [];
+      case 'push': return oc ? [oc] : ch ? [ch] : [];
+      case 'char': case 'low': return oc ? [oc] : [];
+      case 'side': case 'orbit': case 'wide': return [ch, rn].filter(h => h && Math.hypot(h.x - T.x, h.z - T.z) < 1.6);      // (the table's two-shots: whoever's at the table, not her on her way back from the loo)
+      case 'trio': return [ch, rn, live(this.visitor) ? this.visitor.headPos(new THREE.Vector3()) : null].filter(Boolean);
+    }
+    return [];
+  }
+  shotFace(name, o) { const c = FACE[name] === 'chloe' ? this.chloe : FACE[name] === 'ron' ? this.ron : o.c || (name === 'push' ? this.chloe : null); return live(c) ? c : null; }
+  // the camera comes in along the line to the subject until it's clear of the walls and the furniture
+  clearShot(pos, to) {
+    const room = this.g.room, dir = _v.copy(pos).sub(to), d = dir.length(); if (d < 0.05) return; dir.normalize(); _ray.set(to, dir); let t = d;
+    const test = () => { if (_box.containsPoint(to)) return; if (_ray.intersectBox(_box, _v2)) { const h = _v2.distanceTo(to); if (h < t) t = h; } };
+    for (const c of room.colliders || []) { _box.min.copy(c.min).subScalar(0.12); _box.max.copy(c.max).addScalar(0.12); test(); }
+    for (const b of room.blockers || []) { _box.min.set(b.x0 - 0.12, -1, b.z0 - 0.12); _box.max.set(b.x1 + 0.12, (b.y1 ?? 2) + 0.12, b.z1 + 0.12); test(); }
+    if (t >= d) return false;
+    pos.copy(to).addScaledVector(dir, Math.max(0.4, t - 0.05)); return true;
+  }
+  // every head the shot's about stays on screen (between the film's bars and the game): turn towards them, then step back
+  fitShot(C, pos, look, keep, roll, back) {
+    if (!keep.length) return;
+    const v = this.viewK, W = v ? v.W : innerWidth, H = v ? v.H : innerHeight, top = (v ? v.top : 0) + H * 0.03, bot = (v ? v.bot : H) - H * 0.03, mid = new THREE.Vector3();
+    keep.forEach(h => mid.add(h)); mid.multiplyScalar(1 / keep.length);
+    for (let i = 0; i < 14; i++) {
+      C.position.copy(pos); C.up.set(0, 1, 0); C.lookAt(look); if (roll) C.rotateZ(roll); C.updateMatrixWorld(true);
+      let bad = false;
+      for (const h of keep) for (const dy of [0.16, -0.12]) { _v.copy(h); _v.y += dy; _v.project(C); const x = (_v.x + 1) / 2 * W, y = (1 - _v.y) / 2 * H;
+        if (_v.z > 1 || x < W * 0.06 || x > W * 0.94 || y < top || y > bot) bad = true; }
+      if (!bad) return;
+      if (i < 6 || !back) look.lerp(mid, 0.3);      // (turn towards them first)
+      else pos.sub(look).multiplyScalar(1.1).add(look);      // (then step back)
+    }
   }
   // the middle of the shot goes in the middle of what's left of the screen (between the bars and the game's buttons)
   frameView(C) {
@@ -621,13 +671,18 @@ export class DateNight {
     if (!this.viewK || now - this.viewK.at > 250) { const W = innerWidth, H = innerHeight, ui = this.ui && this.ui.q; let top = 0, bot = H;
       if (ui && this.ui.el.classList.contains('bars')) { top = ui.slate.parentElement.getBoundingClientRect().bottom; bot = ui.cap.parentElement.getBoundingClientRect().top; }
       if (ui && ui.game.classList.contains('on')) { const r = ui.game.getBoundingClientRect(); if (r.height < H * 0.6 && r.width > W * 0.6) bot = Math.min(bot, r.top); }
-      this.viewK = { at: now, W, H, dy: Math.max(0, H / 2 - (top + bot) / 2) }; }
+      this.viewK = { at: now, W, H, top, bot, dy: Math.max(0, H / 2 - (top + bot) / 2) }; }
     const v = this.viewK; if (v.dy > 1) C.setViewOffset(v.W, v.H, 0, v.dy, v.W, v.H); else C.clearViewOffset();
   }
   // anyone right on top of the camera (a diner behind it) is left out of the shot
-  hideNear(p) {
+  // (and so is a diner stood right across the line to whoever the shot's on: no backs of heads filling the screen)
+  hideNear(p, look, keep) {
     this.restoreNear();
-    for (const c of this.g.cast) { const gr = c.rag && c.rag.group; if (!gr || !gr.visible || c === this.chloe) continue; const q = c.headPos(_v2); if (Math.hypot(q.x - p.x, q.z - p.z) < 0.55 && Math.abs(q.y - p.y) < 1.2) { gr.visible = false; this.hidNear.push(gr); } }
+    const dx = look ? look.x - p.x : 0, dz = look ? look.z - p.z : 0, L = Math.hypot(dx, dz) || 1;
+    for (const c of this.g.cast) { const gr = c.rag && c.rag.group; if (!gr || !gr.visible || c === this.chloe) continue; const q = c.headPos(_v2);
+      let hide = Math.hypot(q.x - p.x, q.z - p.z) < 0.55 && Math.abs(q.y - p.y) < 1.2;
+      if (!hide && look && !(keep || []).some(h => h.distanceTo(q) < 0.05)) { const s = ((q.x - p.x) * dx + (q.z - p.z) * dz) / (L * L); if (s > 0 && s < 0.8 && Math.abs((q.x - p.x) * dz - (q.z - p.z) * dx) / L < 0.32) hide = true; }
+      if (hide) { gr.visible = false; this.hidNear.push(gr); } }
   }
   restoreNear() { for (const gr of this.hidNear) gr.visible = true; this.hidNear.length = 0; }
   shot(name, o) { this.cam = { name, t: 0, o }; }
@@ -804,7 +859,8 @@ export class DateNight {
   travel(spot, now) {
     const go = () => { if (spot) { this.away = spot; this.putAt(spot.at[0], spot.at[1], spot.food[0], spot.food[1]); this.shot('at', { pos: V(...spot.pos), look: V(...spot.look) }); } else { this.away = null; this.seatPlayer(); if (this.scene) this.shot('crane'); } };
     this.travelGo = null;
-    if (now || this.vr) { go(); return; }
+    if (now) { go(); return; }
+    if (this.vr) { this.vrFadeT = 0.5; this.away = spot || this.away; this.travelGo = { go, t: 0.25 }; return; }      // (the headset: a blink to black and back, never a snap or a glide)
     this.ui.fade(); sfx('whoosh', null, 0.6); this.away = spot || this.away;
     this.travelGo = { go, t: 0.33 };      // (on the game's clock: the cut happens when the screen's black)
   }
@@ -913,7 +969,7 @@ export class DateNight {
     this.titleCard('🚽', 'CHLOE NEEDS THE LOO', v === 'queue' ? 'And there\'s a queue. Raid the whole restaurant' : 'Raid the restaurant. Be back in your seat before she is'); yield 1.6;
     this.shot('overR'); yield this.chloeSay(R(['I\'m just popping to the loo, babe. Don\'t. Move.', 'Toilet. Back in two minutes. I\'ve counted the bread rolls.', 'I need the loo. If ANYTHING is missing when I get back...']));
     this.shot('ronnie'); yield this.line(this.ron, R(['Course, babe. I\'ll just sit here. Being good.', 'Take your time, babe. No rush. Honestly. Any time.']));
-    this.shot('wide'); this.chloeAway(); yield 2.0;
+    this.chloeAway(); this.shot('walk'); yield 2.4;
     this.shot('ronnie'); if (this.ron) { this.ron.dnPose = 'gape'; this.ron.lookOverride = -0.5; } yield this.narrate('The door swings shut. Ronnie is alone. With everything.');
     this.chloeHide(); if (this.ron) this.ron.lookOverride = 0;
     this.shot('crane');
@@ -1170,7 +1226,7 @@ export class DateNight {
     for (const gp of this.d.dinerGroups || []) for (const d of gp) { if (d.disposed) continue; this.wrapPose(d); d.seated = false; d.state = 'idle'; d.dnPose = R(['facepalm', 'cheer', 'phone']); out.push(d); }
     if (c) { c.seated = false; c.dnPose = 'point'; } this.shot('push', { c }); yield this.chloeSay('Ronnie! OUT! Now! Leave the bread!');
     if (r) r.dnPose = 'innocent'; this.shot('ronnie'); yield this.line(r, 'Right behind you, babe! Just getting... my coat. My coat is in the kitchen.');
-    this.chloeAway(); this.shot('wide'); yield 1.4;
+    this.chloeAway(); this.shot('walk'); yield 1.8;
     this.chloeHide(); for (const d of out) { d.dnHid = true; if (d.rag.group) d.rag.group.visible = false; if (d.bubble) d.bubble.visible = false; }
     this.shot('crane'); yield this.narrate('The restaurant is empty. Alarms ringing. Every plate abandoned. Ronnie has never been happier.');
     const res = yield* this.play(raidGame({ total: rr(13, 15), lvl: this.lvl, noGuards: true, msgs: { flush: '📢 "RONNIE?!" She\'s calling you from outside!', dryer: '🚒 The fire brigade are coming in!', f: '📢 SHE\'S CALLING!', d: '🚒 FIREMEN!', h: '🚨 AT THE DOOR!', away: '🚨 EVERYONE\'S OUTSIDE' } }));
@@ -1295,30 +1351,59 @@ export class DateNight {
 }
 
 // ---------------------------------------------------------------- the shots: [camera position, where it looks, roll]
+// Proper film framing at a respectful height: faces from the front at their own eye level (never a low shot from below
+// or behind anyone), an over-the-shoulder across the table, two-shots and wides for the room. cineCam() then keeps the
+// heads in frame for the screen's shape and pulls the camera in out of any wall or furniture.
+const live = (c) => !!(c && !c.disposed && c.rag && c.rag.mesh && !c.dnHidden);
+const fwdOf = (c) => V(Math.sin(c.rag.yaw || 0), 0, Math.cos(c.rag.yaw || 0));
+const _ray = new THREE.Ray(), _box = new THREE.Box3();
+// someone else (a diner, Ronnie) stood across the line from the camera to a face
+const inWay = (S, p, h, c) => [...S.g.cast, S.ron].some(o => { if (!o || o === c || !live(o) || (o !== S.ron && o.rag.group && !o.rag.group.visible && !S.hidNear.includes(o.rag.group))) return false;
+  const q = o.headPos(_v2), dx = h.x - p.x, dz = h.z - p.z, L2 = dx * dx + dz * dz || 1, s = ((q.x - p.x) * dx + (q.z - p.z) * dz) / L2;
+  return s > 0.03 && s < 0.92 && Math.abs((q.x - p.x) * dz - (q.z - p.z) * dx) / Math.sqrt(L2) < 0.3; });
+// a face from in front of them, d away and a little to one side, at their eye level (dy), looking just under the eyes
+// (dl: lower for a medium shot). The side's picked once a shot: whichever side nobody's standing in the way
+const front = (S, c, o, d, side, dy = 0.03, dl = -0.05) => {
+  const h = c.headPos(new THREE.Vector3()), f = fwdOf(c), s = V(f.z, 0, -f.x), at = (sd) => h.clone().addScaledVector(f, d).addScaledVector(s, sd).setY(h.y + dy);
+  if (o.sd == null) o.sd = [side, -side, side * 0.3, side + 0.3 * Math.sign(side || 1), -side - 0.3 * Math.sign(side || 1), side + 0.55 * Math.sign(side || 1), -side - 0.55 * Math.sign(side || 1)].find(sd => !inWay(S, at(sd), h, c)) ?? side;
+  return [at(o.sd), h.clone().setY(h.y + dl)];
+};
 const SHOTS = {
-  wide: (S, t) => [V(2.9 + Math.sin(t * 0.25) * 0.1, 1.3, 3.1), V(0, 1.0, T.z - 0.1)],
-  side: (S, t) => { const k = ease(t / 6); return [V(1.95 - 0.22 * k, 1.2, T.z + 0.05), V(0, 1.02, T.z)]; },
-  overR: (S, t) => { const k = ease(t / 4), h = S.chloeHead(); return [V(0.6 - 0.05 * k, 1.32, RON.z + 1.15 - 0.15 * k), h.add({ x: 0, y: -0.06, z: 0 })]; },
-  trio: (S, t) => [V(-2.0 + Math.min(0.2, t * 0.03), 1.28, T.z + 1.8), V(0.4, 1.08, T.z - 0.15)],
-  chloe: (S, t) => { const h = S.chloeHead(); return [V(h.x + 0.24 + Math.sin(t * 0.3) * 0.03, h.y + 0.03, h.z + 0.9 - Math.min(0.15, t * 0.03)), h]; },
-  ronnie: (S, t) => { const h = S.ronHead(); return [V(h.x - 0.22, h.y + 0.04, h.z - 0.9 + Math.min(0.15, t * 0.03)), h]; },
-  table: (S, t) => [V(0.05, 1.75 - Math.min(0.12, t * 0.03), T.z + 1.15), V(0, 0.82, T.z + 0.05)],
-  dutch: (S, t) => { const h = S.chloeHead(), k = ease(t / 0.5); return [V(h.x - 0.15, h.y + 0.05, h.z + 1.2 - 0.45 * k), h, 0.22]; },
-  char: (S, t, o) => {
-    const c = o.c; if (!c || c.disposed || !c.rag) return SHOTS.wide(S, t);
-    const h = c.headPos(new THREE.Vector3()), to = V(T.x - h.x, 0, T.z - h.z); if (to.lengthSq() < 0.01) to.set(0, 0, 1); to.normalize();
-    const side = V(to.z, 0, -to.x), d = o.d || 1.3;
-    return [h.clone().addScaledVector(to, d).addScaledVector(side, (o.side || 0.3)).add({ x: 0, y: 0.05, z: 0 }), h.clone().add({ x: 0, y: -0.05, z: 0 })];
-  },
+  // the room: a wide establishing shot of the table, a profile two-shot, the table with a visitor, a slow move round it
+  wide: (S, t) => [V(2.9 + Math.sin(t * 0.25) * 0.1, 1.45, 3.1), V(0, 1.05, T.z - 0.1)],
+  side: (S, t) => { const k = ease(t / 6); return [V(1.95 - 0.22 * k, 1.3, T.z + 0.05), V(0, 1.12, T.z)]; },
+  trio: (S, t) => [V(-2.0 + Math.min(0.2, t * 0.03), 1.42, T.z + 1.8), V(0.4, 1.12, T.z - 0.15)],
+  orbit: (S, t) => { const a = 0.9 + t * 0.22, r = 2.4; return [V(T.x + Math.sin(a) * r, 1.4, T.z + Math.cos(a) * r), V(T.x, 1.1, T.z)]; },
+  // over Ronnie's right shoulder onto Chloe: his shoulder and the back of his head on the edge, her face in the middle
+  overR: (S, t) => { const k = ease(t / 4), r = S.ronHead(), h = S.chloeHead(); return [V(r.x + 0.36 - 0.03 * k, r.y + 0.06, r.z + 0.68 - 0.08 * k), h.setY(h.y - 0.04)]; },
+  // close-ups: her face, his reaction, both at eye level from in front, easing in a touch
+  chloe: (S, t, o) => live(S.chloe) ? front(S, S.chloe, o, 0.92 - Math.min(0.14, t * 0.03), 0.22 + Math.sin(t * 0.3) * 0.03, 0.03, 0) : SHOTS.wide(S, t),
+  ronnie: (S, t, o) => live(S.ron) ? front(S, S.ron, o, 0.92 - Math.min(0.14, t * 0.03), -0.22, 0.04, 0) : SHOTS.wide(S, t),
+  // the table itself (an insert of the food), from beside it and above
+  table: (S, t) => [V(-0.7, 1.55 - Math.min(0.08, t * 0.02), T.z + 0.45), V(0.05, 0.8, T.z + 0.05)],
+  // BUSTED: a quick push in on her face, the frame barely tipped
+  dutch: (S, t, o) => { if (!live(S.chloe)) return SHOTS.wide(S, t); const k = ease(t / 0.5), [p, l] = front(S, S.chloe, o, 1.2 - 0.42 * k, -0.15, 0.03, 0); return [p, l, 0.07]; },
+  // whoever's come over: a medium close-up, front on, at their eye level
+  char: (S, t, o) => live(o.c) ? front(S, o.c, o, o.d || 1.3, o.side || 0.3, 0.03, -0.06) : SHOTS.wide(S, t),
   at: (S, t, o) => [o.pos.clone().add({ x: Math.sin(t * 0.4) * 0.06, y: 0, z: 0 }), o.look],
   crane: (S, t) => [V(-2.4 + Math.min(1.2, t * 0.1), 1.9, 5.6), V(0.5, 0.8, -1.5)],
-  // camera moves: round the table, a slow push in on someone, a track along the table, low on someone, the room
-  orbit: (S, t) => { const a = 0.9 + t * 0.22, r = 2.4; return [V(T.x + Math.sin(a) * r, 1.28, T.z + Math.cos(a) * r), V(T.x, 1.02, T.z)]; },
-  push: (S, t, o) => { const c = o.c || S.chloe, h = c && !c.disposed && c.rag ? c.headPos(new THREE.Vector3()) : S.chloeHead(), to = V(T.x - h.x, 0, T.z + 1.6 - h.z); if (to.lengthSq() < 0.01) to.set(0, 0, 1); to.normalize(); const d = lerp(1.7, 0.85, ease(t / 4.5)); return [h.clone().addScaledVector(to, d).add({ x: 0, y: 0.04, z: 0 }), h]; },
-  dolly: (S, t) => { const k = ease(t / 5); return [V(lerp(4.2, -2.2, k), 1.3, T.z + 2.5), V(lerp(5.5, 0, ease(t / 3)), 1.02, T.z)]; },
-  low: (S, t, o) => { const c = o.c; if (!c || c.disposed || !c.rag) return SHOTS.wide(S, t); const h = c.headPos(new THREE.Vector3()), to = V(T.x - h.x, 0, T.z + 1.2 - h.z); if (to.lengthSq() < 0.01) to.set(0, 0, 1); to.normalize(); const side = V(to.z, 0, -to.x); return [h.clone().addScaledVector(to, 1.25).addScaledVector(side, 0.35).setY(0.75), h.clone().add({ x: 0, y: -0.1, z: 0 })]; },
-  foyer: (S, t) => [V(7.1 + Math.min(0.25, t * 0.05), 1.45, 5.45), V(9.5, 1.25, 6.45)],      // (inside the foyer, side on: the couple at the podium, the maître d' behind it)
+  // a slow push in on someone's face (from in front of them)
+  push: (S, t, o) => { const c = live(o.c) ? o.c : S.chloe; return live(c) ? front(S, c, o, lerp(1.7, 0.95, ease(t / 4.5)), 0.14, 0.03, -0.02) : SHOTS.wide(S, t); },
+  // a track along the room past the table, over everyone's heads
+  dolly: (S, t) => { const k = ease(t / 5); return [V(lerp(4.2, -2.2, k), 1.55, T.z + 2.6), V(lerp(5.5, 0, ease(t / 3)), 1.1, T.z)]; },
+  // (this was a low angle looking up at someone: now an eye-level medium shot, front on, a step back to see their hands)
+  low: (S, t, o) => live(o.c) ? front(S, o.c, o, 1.45, 0.35, 0.0, -0.14) : SHOTS.wide(S, t),
+  // Chloe walking off to the loo (or out of the fire): tracked from in front of her and to one side, at her head height
+  walk: (S, t, o) => {
+    if (!live(S.chloe)) return SHOTS.wide(S, t);
+    const [p, l] = front(S, S.chloe, o, 1.8, 0.75, 0.0, -0.06), k = o.p ? Math.min(1, (t - o.lt) * 2.2) : 1;
+    o.p = o.p ? o.p.lerp(p, k) : p; o.l = o.l ? o.l.lerp(l, Math.min(1, k * 1.6)) : l; o.lt = t;
+    return [o.p.clone(), o.l.clone()];
+  },
+  foyer: (S, t) => [V(7.1 + Math.min(0.25, t * 0.05), 1.5, 5.45), V(9.5, 1.3, 6.45)],      // (inside the foyer, side on: the couple at the podium, the maître d' behind it)
   room: (S, t) => [V(-6.0 + t * 0.15, 1.95, 7.4), V(2, 0.8, -2)],
 };
 export const DN_SHOTS = Object.keys(SHOTS);
-const FAR = { side: 1.45, wide: 1.15, overR: 1.15, trio: 1.2, char: 1.15, orbit: 1.15, dolly: 1.1, low: 1.1 };
+// whose face each shot is on (cineCam keeps it front on and at eye level; the test checks it)
+const FACE = { overR: 'chloe', chloe: 'chloe', dutch: 'chloe', walk: 'chloe', ronnie: 'ron', char: 'c', push: 'c', low: 'c' };
+const FAR = { side: 1.45, wide: 1.15, trio: 1.2, orbit: 1.15, dolly: 1.1 };
