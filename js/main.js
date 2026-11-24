@@ -9,7 +9,7 @@ import { Character } from './character.js';
 import { Crumbs, Words, Tint } from './fx.js';
 import { Player } from './player.js';
 import { Tommy } from './tommy.js';
-import { STAGE_LINES } from './dialogue.js';
+import { stageLine } from './dialogue.js';
 import { AttackFX } from './attackfx.js';
 import { initAudio, sfx, setListener, setPitchScale, startLocoMusic, stopLocoMusic, setAmbience, setMuted, setHush } from './audio.js';
 import { voiceLine } from './voices.js';
@@ -493,7 +493,7 @@ function stageUp() {
   player.wristKick(0.45); G.meterFlash = 1;
   showBanner(`STAGE ${G.stage + 1}`, stageNameOf(G.stage).toUpperCase());
   player.hands.forEach(h => h.pulse(1, 300));
-  tommy.say(STAGE_LINES[G.stage + 1] || "You're getting bigger, Ron. Still younger though.", 5);
+  tommy.say(stageLine(G.stage + 1), 5);      // (dialogue.js: in Run the Pub it's about the stock he's drunk)
 }
 
 // ---------------- stage-up banner ----------------
