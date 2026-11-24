@@ -497,6 +497,7 @@ export class Ragdoll {
     this.measureHands(geo, skinIndex, skinWeight);
     this.splitHands(geo, skinIndex, skinWeight);
     try { this.splitFeet(geo, skinIndex, skinWeight); } catch (e) { console.warn('feet', e); this.footAxes = null; }
+    this.bellyRides(geo, skinIndex, skinWeight);
     this.weldWeights(geo, skinIndex, skinWeight);
     const sk = this.capCuts(geo, skinIndex, skinWeight);
     geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(sk.skinIndex, 4));
@@ -714,14 +715,19 @@ export class Ragdoll {
     const ch = this.parts.chest && this.parts.chest.def, pe = this.parts.pelvis && this.parts.pelvis.def; if (!ch || !pe) return;
     const pos = geo.attributes.position, d = new Float32Array(pos.count * 3), v = new THREE.Vector3(), kH = this.height / 1.68;
     const y0 = pe.a.y, y1 = ch.b.y, bellyY = y0 + (y1 - y0) * 0.36, zc = ch.center.z, W = (ch.half ? ch.half[0] : 0.17) * 1.25, D = ch.half ? ch.half[2] : 0.12;
+    // (only the torso's own skin swells forwards and down: the belly's push is shared out by how much each point is skinned
+    // to the pelvis and chest. The tops of the thighs used to get it too, and since it rides along with the thigh, a high
+    // knee (a sprint, sitting down) turned that forward push upwards, straight through the shirt: a big tear at the hips)
+    const si = geo.attributes.skinIndex, sw = geo.attributes.skinWeight, torso = new Set(['pelvis', 'chest'].map(n => this.defs.findIndex(d => d.name === n)));
+    const torsoShare = (i) => { if (!si || !sw) return 1; let t = 0; for (let j = 0; j < 4; j++) if (torso.has(si.getComponent(i, j))) t += sw.getComponent(i, j); return t; };
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i); if (v.y < y0 - 0.12 * kH || v.y > y1 - 0.05 * kH) continue;
       const fy = Math.exp(-(((v.y - bellyY) / (0.2 * kH)) ** 2)), fx = Math.exp(-((v.x / (W * 1.4)) ** 2)), front = THREE.MathUtils.smoothstep(v.z - zc, -D * 0.6, D * 0.9);
       if (Math.abs(v.x) > W * 2.2) continue;                                               // (not the arms hanging by the sides)
-      const belly = fy * fx * front, waist = Math.exp(-(((v.y - (y0 + (y1 - y0) * 0.22)) / (0.22 * kH)) ** 2));
-      d[i * 3] = v.x * 0.38 * waist;                                                        // wider at the waist and hips
+      const ts = torsoShare(i), belly = fy * fx * front * ts, waist = Math.exp(-(((v.y - (y0 + (y1 - y0) * 0.22)) / (0.22 * kH)) ** 2));
+      d[i * 3] = v.x * 0.38 * waist;                                                        // wider at the waist and hips (sideways: fine on a thigh whichever way it swings)
       d[i * 3 + 1] = -0.035 * kH * belly;                                                   // the belly hangs a bit
-      d[i * 3 + 2] = 0.2 * kH * belly + (v.z - zc) * 0.25 * waist;                          // out the front (and a bit deeper all round)
+      d[i * 3 + 2] = 0.2 * kH * belly + (v.z - zc) * 0.25 * waist * ts;                     // out the front (and a bit deeper all round)
     }
     geo.morphAttributes.position = [new THREE.BufferAttribute(d, 3)]; geo.morphTargetsRelative = true;
   }
@@ -746,6 +752,35 @@ export class Ragdoll {
     // the fingers of the model's own hand: two more bones per hand (the middle finger, and the rest), hinged across
     // the knuckles, so a hand can make a fist or flip someone off with its own fingers
     for (const name of Object.keys(handVerts)) try { this.splitFingers(geo, name, handVerts[name], pos, skinIndex, skinWeight, dir.subVectors(this.parts[name].def.b, this.parts[name].def.a).normalize().clone()); } catch (e) { console.warn('fingers', e); }
+  }
+  // The lower front of the torso (the belly just above each hip joint) takes a share of the thigh on its side, as a real
+  // belly is pushed up by a knee coming up. Stood still it changes nothing (every bone is where it was bound); with the
+  // knee driven up (a sprint, sitting down) the belly above it lifts and folds with it, where before the thigh swung
+  // forward through it and the shorts tore up through the shirt (worst with a big belly: see addBellyMorph)
+  bellyRides(geo, skinIndex, skinWeight) {
+    const D = this.defs, ix = (n) => D.findIndex(d => d.name === n), pel = ix('pelvis'), chest = ix('chest'), uL = ix('uLegL'), uR = ix('uLegR'); if (pel < 0 || uL < 0 || uR < 0) return;
+    const pos = geo.attributes.position, kH = this.height / 1.68, hipY = D[uL].a.y, hipZ = (D[uL].a.z + D[uR].a.z) / 2, v = new THREE.Vector3();
+    let n = 0;
+    for (let i = 0; i < pos.count; i++) {
+      let t = 0; for (let j = 0; j < 4; j++) { const b = skinIndex[i * 4 + j]; if (b === pel || b === chest) t += skinWeight[i * 4 + j]; }
+      if (t < 0.5) continue;
+      v.fromBufferAttribute(pos, i); const dy = v.y - hipY;
+      if (dy < -0.05 * kH || dy > 0.17 * kH) continue;
+      const band = THREE.MathUtils.smoothstep(dy, -0.05 * kH, 0.0) * (1 - THREE.MathUtils.smoothstep(dy, 0.06 * kH, 0.17 * kH));
+      const front = THREE.MathUtils.smoothstep(v.z - hipZ, 0.0, 0.08 * kH), w = 0.65 * band * front * Math.min(1, t);
+      if (w < 0.01) continue;
+      const sL = THREE.MathUtils.clamp(0.5 + v.x / (0.12 * kH), 0, 1), add = [[uL, w * sL], [uR, w * (1 - sL)]];
+      for (let j = 0; j < 4; j++) skinWeight[i * 4 + j] *= 1 - w;
+      for (const [b, aw] of add) { if (aw < 0.005) continue;
+        let slot = -1; for (let j = 0; j < 4; j++) if (skinIndex[i * 4 + j] === b && skinWeight[i * 4 + j] > 0) slot = j;
+        if (slot < 0) { let lo = 1e9; for (let j = 0; j < 4; j++) if (skinWeight[i * 4 + j] < lo) { lo = skinWeight[i * 4 + j]; slot = j; } skinIndex[i * 4 + slot] = b; skinWeight[i * 4 + slot] = aw; }
+        else skinWeight[i * 4 + slot] += aw; }
+      let tot = 0; for (let j = 0; j < 4; j++) tot += skinWeight[i * 4 + j]; for (let j = 0; j < 4; j++) skinWeight[i * 4 + j] /= tot || 1;
+      // (heaviest first, as everything else expects: the first slot is the bone the point "belongs" to)
+      for (let a = 1; a < 4; a++) for (let c = a; c > 0 && skinWeight[i * 4 + c] > skinWeight[i * 4 + c - 1]; c--) { const ti = skinIndex[i * 4 + c], tw = skinWeight[i * 4 + c]; skinIndex[i * 4 + c] = skinIndex[i * 4 + c - 1]; skinWeight[i * 4 + c] = skinWeight[i * 4 + c - 1]; skinIndex[i * 4 + c - 1] = ti; skinWeight[i * 4 + c - 1] = tw; }
+      n++;
+    }
+    this.bellyRiders = n;
   }
   // Give each scanned foot its own bone, hinged at the ankle, so it can stay flat on the floor while the shin rolls over it
   // and roll heel to toe (gait.js). Measured from the model: the sole (the lowest point of the leg's own skin), the ankle
