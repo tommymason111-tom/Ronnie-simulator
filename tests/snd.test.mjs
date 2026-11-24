@@ -270,7 +270,8 @@ async function solo(b, C) {
   const L = (s) => process.env.VERBOSE && console.log('   ', s);
   try {
     // ---- the shop, round 1
-    const pick = await ev(p, () => { const s = T.s(), el = document.getElementById('sd-pick'); return { open: el.classList.contains('on'), cards: el.querySelectorAll('.card').length, cash: el.querySelector('.hd .cash').textContent, money: s.cash[s.me], phase: s.phase, gun: s.my.gun }; });
+    const pick = await ev(p, () => { const s = T.s(), el = document.getElementById('sd-pick'); return { left: +(s.endsAt - s.clock).toFixed(1), warn: (el.querySelector('.warn') || {}).textContent, types: el.querySelectorAll('.card .ty').length, open: el.classList.contains('on'), cards: el.querySelectorAll('.card').length, cash: el.querySelector('.hd .cash').textContent, money: s.cash[s.me], phase: s.phase, gun: s.my.gun }; });
+    C.ok(pick.left >= 19 && pick.left <= 22 && /ENEMIES LIVE IN|PICKING/.test(pick.warn) && pick.types === 12, `solo: the buy time (20s+), the ENEMIES LIVE warning or the TYPE labels: ${JSON.stringify(pick)}`);
     C.ok(pick.open && pick.cards === 12 && /£2,000/.test(pick.cash) && pick.gun === 'ketchup', `solo: the shop isn't open at the start of round 1 with twelve guns and £2,000 (just the ketchup pistol to start): ${JSON.stringify(pick)}`);
     await sleep(600);
     { const t = await textProblems(p, '#sd-pick'), bt = await btnProblems(p, '#sd-pick');
@@ -300,6 +301,8 @@ async function solo(b, C) {
       // keep shooting till it's down
       let n = 0; while (e.alive && n++ < 40) { T.aim(head.x, head.y - 0.5, head.z); s.my.nextShot = 0; if (s.my.mag <= 0) { s.my.mag = 30; s.my.reloadEnd = 0; s.my.rl = null; } s.fire(); T.step(0.05); }
       return { phase: s.phase, mag0, ...one, hp0, bodyD: hp0 - one.hp, hsD, dead: !e.alive, k: me.k, feed: document.getElementById('sd-feed').textContent, name: e.name, cash: s.cash[s.me] }; });
+    const lock = await ev(p, () => { const s = T.s(); s.openPicker(); T.step(0.1); return { phase: s.phase, open: document.getElementById('sd-pick').classList.contains('on'), btn: !document.querySelector('#sd-ui .guns').hidden }; });
+    C.ok(lock.phase === 'live' && !lock.open && !lock.btn, `solo: the shop opened (or its button showed) once the round was live: ${JSON.stringify(lock)}`);
     C.ok(shoot.phase === 'live', `solo: the round didn't go live: ${shoot.phase}`);
     C.ok(shoot.mag === shoot.mag0 - 1, `solo: FIRE didn't use a round: ${shoot.mag0} -> ${shoot.mag}`);
     C.ok(shoot.bodyD > 15 && shoot.bodyD < 30, `solo: a body shot with the MONSTOR AR did ${shoot.bodyD} damage`);
