@@ -26,13 +26,13 @@ export default async function () {
       const tag = `${place}, ${N} ${N === 1 ? 'person' : 'people'}`, nReal = N === 2 ? 2 : 1, pages = [], light = [];
       for (let i = 0; i < nReal; i++) { const p = await newPage(b, { width: 390, height: 844, mobile: true }); p.pname = i ? 'GUEST' : 'HOST'; pages.push(p); await openMenu(p, host.url); }
       const [H, G] = pages, code = await hostRoom(H, 'HOSTY', 'lewis'); if (G) await joinRoom(G, code, 'GUESTY', 'chloe');
-      for (let i = 0; i < N - nReal; i++) light.push(startBot(host.url, code, { name: 'MATE' + (i + 1), char: ['harry', 'ethan', 'aidan', 'connor'][i] }));
+      for (let i = 0; i < N - nReal; i++) light.push(startBot(host.url, code, { name: 'MATE' + (i + 1), char: ['harry', 'ethan', 'aidan', 'connor', 'ben'][i] }));
       await sleep(1500); if (G) await readyUp(G); for (const x of light) x.send({ t: 'ready', r: 1 }); await sleep(800);
       await pickGame(H, place, 'prophunt'); for (const p of pages) await tapIn(p); for (const p of pages) await freeRun(p); await sleep(3000);
       await ev(H, () => RS.director.prophunt.doStart()); await sleep(2500);
       let s = await st(H); const bots = s.players.filter(q => q.bot), want = Math.max(0, 6 - N);
       C.ok(s.phase === 'hide' && s.players.length === Math.max(6, N) && bots.length === want, `${tag}: the deal should have ${Math.max(6, N)} with ${want} bots: ${JSON.stringify({ phase: s.phase, n: s.players.length, bots: bots.length })}`);
-      C.ok(bots.every(q => /🤖/.test(q.name)) && new Set(s.players.map(q => q.char)).size === s.players.length, `${tag}: bots not marked, or two of the same character: ${s.players.map(q => q.name + '/' + q.char).join(', ')}`);
+      C.ok(bots.every(q => /🤖/.test(q.name)) && new Set(bots.map(q => q.char)).size === bots.length && !bots.some(q => s.players.some(o => !o.bot && o.char === q.char)),      /* (people may pick the same one: bots never do, nor anyone's) */ `${tag}: bots not marked, or two of the same character: ${s.players.map(q => q.name + '/' + q.char).join(', ')}`);
       if (G) { const g = await st(G); C.ok(g.players.filter(q => q.bot).length === want, `${tag}: the guest's game doesn't have the bots: ${g.players.length}`); }
       if (!want) { for (const x of light) x.stop(); for (const p of pages) await p.context().close(); continue; }
       // the hide: bot hiders find somewhere by one of the same things and lock in; bot seekers stay put
