@@ -28,6 +28,8 @@ import { sfx } from './audio.js';
 import { track } from './awards.js';
 import { STAGES } from './config.js';
 import { FONT } from './textures.js';
+import { narrator } from './narrator.js';      // (the narrator: Date Night's narration and GET READY)
+import { lineParts } from './narration.js';
 import { cramGame, signalGame, conveyorGame, napkinGame, raidGame, reactGame, viewfinderGame, shellGame, whackGame, kickGame, wrestleGame, birthdayGame, excuseGame, choiceGame, emo, rr2, txt } from './dngames.js';      // (the games themselves)
 
 const T = DATE_TABLE, RON = { x: T.x, z: T.z + 0.78 }, CHL = { x: T.x, z: T.z - 0.75 }, SEAT = { x: T.x, z: T.z + 1.05 };
@@ -231,7 +233,8 @@ class DateUI {
     const k = name + '|' + text; if (this.capK === k) return; this.capK = k; const c = this.q.cap; c.innerHTML = '';
     if (!text) return;
     if (name) { const b = document.createElement('b'); b.textContent = name.toUpperCase(); b.style.color = color || '#ffd400'; c.appendChild(b); }
-    const s = document.createElement('div'); s.textContent = text; c.appendChild(s);
+    const lp = lineParts(text), s = document.createElement('div'); s.textContent = lp.has ? lp.say : text; c.appendChild(s);
+    if (lp.has) { const i = document.createElement('i'); i.className = 'dn-dir'; i.textContent = lp.dir; i.style.cssText = 'display:block;font-style:italic;font-weight:600;font-size:0.92em;color:#c8d0e0;margin-top:2px'; if (lp.narratorFirst) c.insertBefore(i, s); else c.appendChild(i); }      // (a *stage direction*: the narrator's words, in italics)
   }
   title(icon, big, small) {
     const t = this.q.title; if (!big) { t.classList.remove('on'); return; }
@@ -705,7 +708,7 @@ export class DateNight {
     this.cap = { name, col, text };
     return readTime(text);
   }
-  narrate(text) { this.cap = { name: '', col: '#fff', text }; return readTime(text); }
+  narrate(text) { this.cap = { name: '', col: '#fff', text }; narrator.say(text, { now: true }); return readTime(text); }      // (said by the narrator: narrator.js)
   // a line said while a game's being played (Chloe, the visitor, the room): on the caption, never more than one every
   // couple of seconds (unless it matters: gap 0)
   live(who, text, gap = 2.2) {
@@ -733,7 +736,7 @@ export class DateNight {
   // the game in the middle of a film: wait for it to finish, then its result
   *play(game) {
     this.game = game; this.inBeat = false; game.S = this; this.cap = null;
-    this.readyT = game.ready != null ? game.ready : 2.6; this.ui.ready(this.readyT > 0.05 ? game.howto : null);
+    this.readyT = game.ready != null ? game.ready : 2.6; this.ui.ready(this.readyT > 0.05 ? game.howto : null); if (this.readyT > 0.05) narrator.line('ready', { now: true });
     yield () => !!game.result || !this.d.running;
     this.inBeat = true; const r = game.result || { win: false, soft: true };
     this.game = null; return r;
@@ -748,7 +751,7 @@ export class DateNight {
     ui.caption(cap ? cap.name : '', cap ? cap.col : '', cap ? cap.text : '');
     ui.buttons(gm ? (this.readyT > 0 ? gm.buttons.map(b => ({ ...b, off: true, hot: false })) : gm.buttons) : null); if (gm) ui.stage(gm);
     ui.flash(gm && gm.danger != null ? Math.max(0, (gm.danger - 0.55) / 0.45) * (0.6 + 0.4 * Math.sin(performance.now() / 80)) : 0);
-    ui.vr(this.vr, { title: this.titleS, ready: this.readyT > 0 && gm ? gm.howto : null, game: gm, cap: cap ? (cap.name ? cap.name + ': ' : '') + cap.text : (gm ? gm.status : ''), who: cap && cap.name, whoCol: cap && cap.col, stamp: this.stampS, stampCol: this.stampCol }, dt);
+    ui.vr(this.vr, { title: this.titleS, ready: this.readyT > 0 && gm ? gm.howto : null, game: gm, cap: cap ? (cap.name ? cap.name + ': ' : '') + (lineParts(cap.text).has ? (lineParts(cap.text).say + ' (' + lineParts(cap.text).dir + ')').trim() : cap.text) : (gm ? gm.status : ''), who: cap && cap.name, whoCol: cap && cap.col, stamp: this.stampS, stampCol: this.stampCol }, dt);
   }
   press(i) { const gm = this.game; if (!gm || gm.result || this.readyT > 0) return; if (gm.buttons && gm.buttons[i] && !gm.buttons[i].off) gm.press(i); }
   release(i) { const gm = this.game; if (gm && !gm.result && gm.release && !(this.readyT > 0)) gm.release(i); }

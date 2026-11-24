@@ -79,8 +79,10 @@ export function createPhysics(room) {
       if (live.has(e)) { world.removeBody(e.b); live.delete(e); } lazy.splice(i, 1);
       for (const list of grid.values()) { const j = list.indexOf(e); if (j >= 0) list.splice(j, 1); } } }
   };
+  // ...and back again (the beer garden's patio furniture, put back after the Boss Fight)
+  const addBox = (x0, x1, z0, z1, h = 0.5) => addStatic(new CANNON.Box(new CANNON.Vec3((x1 - x0) / 2, h / 2, (z1 - z0) / 2)), (x0 + x1) / 2, h / 2, (z0 + z1) / 2, null, true);
   return {
-    world, removeBox,
+    world, removeBox, addBox,
     step(dt) {
       // fixed timestep so the ragdoll behaves the same at 72fps, 90fps or on a phone
       acc += Math.min(dt, 0.05);

@@ -49,7 +49,7 @@ export default async function () {
     await ev(() => RS.director.prophunt.doStart());
     await p.waitForFunction(() => RS.director.prophunt.phase === 'hide', null, { timeout: 30000 }).catch(() => {});
     await sleep(9000);
-    const ph = await ev(() => { const m = RS.director.prophunt; const bots = [...m.players.values()].filter(q => q.id !== m.me); return { hiders: bots.filter(q => q.role === 'hider').map(q => ({ k: q.kind, locked: !!q.locked })), seekers: bots.filter(q => q.role === 'seeker').length }; });
+    const ph = await ev(() => { const m = RS.director.prophunt; const bots = [...m.players.values()].filter(q => q.id !== m.me && !q.bot);      /* (the fake players: not the squad's bots that make a room up to six) */ return { hiders: bots.filter(q => q.role === 'hider').map(q => ({ k: q.kind, locked: !!q.locked })), seekers: bots.filter(q => q.role === 'seeker').length }; });
     const hidOk = ph.hiders.filter(h => h.k).length, lockOk = ph.hiders.filter(h => h.locked).length;
     C.ok(ph.hiders.length > 0 && hidOk === ph.hiders.length && lockOk >= Math.ceil(ph.hiders.length / 2), `Prop Hunt: the fake hiders didn't turn into things and lock in: ${JSON.stringify(ph)}`);
     console.log(`  prop hunt: ${ph.hiders.length} fake hiders (${hidOk} props, ${lockOk} locked), ${ph.seekers} fake seekers`);

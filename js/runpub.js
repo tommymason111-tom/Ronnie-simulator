@@ -54,10 +54,10 @@ const FAM_BANKS = {
   angry: ['We\'ve been waiting ages! Come on, kids, we\'re going.', 'One star. ONE.'],
   thanks: ['Thank you, that\'s lovely.', 'Cheers, love.'],
 };
-const KID_BANKS = { greet: ['Can I have chips?', 'I want a Fruit Shoot!'], chatter: ['I\'m bored.', 'Can we go to the park?', 'Mum, that man is FAT.', 'Are we there yet?'], hit: ['WAAAAH!', 'MUUUUM!'], slap: ['I\'m telling!'], grabbed: ['WHEEEE!'], launched: ['WHEEEEE!'], angry: ['I\'M BORED!'], thanks: ['Yay!'] };
+const KID_BANKS = { greet: ['Can I have chips?', 'I want a Fruit Shoot!'], chatter: ['I\'m bored.', 'Can we go to the park?', 'Mum, why is the man eating the crisps he\'s meant to sell?', 'Are we there yet?'], hit: ['WAAAAH!', 'MUUUUM!'], slap: ['I\'m telling!'], grabbed: ['WHEEEE!'], launched: ['WHEEEEE!'], angry: ['I\'M BORED!'], thanks: ['Yay!'] };
 const LAD_BANKS = {
   greet: ['Two pints, mate.', 'Alright Ron! Big lad!', 'Is the football on?'],
-  chatter: ['Ingerland!', 'Who\'s round is it?', 'Get the darts out.', 'Is that Ronnie? He\'s HUGE.', 'Another one, lads?'],
+  chatter: ['Ingerland!', 'Who\'s round is it?', 'Get the darts out.', 'Is that Ronnie behind the bar? I\'ll pour my own, then.', 'Another one, lads?'],
   hit: ['Oi! What was that for?', 'Do you want some?'], slap: ['You\'re barred, mate. Wait. You work here.'], grabbed: ['Put me down, big man!'], launched: ['LADS! LAAADS!'],
   angry: ['We\'re going to Wetherspoons.', 'Two hours for a pint! Joke.'], thanks: ['Cheers, big man.', 'Legend.'],
 };
@@ -72,7 +72,7 @@ const DULL = [0x5a4a3a, 0x6a2a2a, 0x3a4a3a, 0x4a4a5a, 0x7a6a4a, 0x2a3a5a, 0x8a7a
 const JEANS = [0x2a4a7a, 0x1a2a4a, 0x3a5a8a, 0x2a2a2a, 0x4a6a9a];
 const SHIRTS = [[0xc8102e, 0xffffff], [0x1d2b5a, 0xffffff], [0x7a1f3d, 0x7ec8e3], [0xf4f4f4, 0x1d2b5a], [0x1e6a32, 0xffffff], [0xffd400, 0x1d2b5a], [0x6cabdd, 0xffffff], [0x111111, 0xffd400]];
 const chance = (p) => Math.random() < p;
-function makePunter(kind, extra = {}) {
+export function makePunter(kind, extra = {}) {      // (also developer mode's MODELS page)
   const id = 'p' + (++pid), rnd = Math.random, skin = R(SKINS), hen = !!extra.hen;
   delete extra.hen;
   let def;

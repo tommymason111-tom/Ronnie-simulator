@@ -42,12 +42,12 @@ export default async function () {
     await p.waitForTimeout(400);
     const ui = await p.evaluate(() => { const box = document.getElementById('pause-mixbox'), r = box.getBoundingClientRect(), sliders = [...box.querySelectorAll('input[type=range]')];
       const cut = [...box.querySelectorAll('.mxn, .mxbuzz')].filter(e => e.scrollWidth > e.clientWidth + 1).length;
-      sliders[3].value = 40; sliders[3].dispatchEvent(new Event('input', { bubbles: true }));
+      const fxS = box.querySelector('input[data-k="fx"]'); fxS.value = 40; fxS.dispatchEvent(new Event('input', { bubbles: true }));
       const fx = JSON.parse(localStorage.getItem('rs_mix')).fx; const bz = box.querySelector('.mxbuzz'); bz.click(); const hOff = localStorage.getItem('rs_haptics'); bz.click();
       return { shown: r.width > 0 && r.height > 0, fits: r.left >= 0 && r.right <= innerWidth + 1, sliders: sliders.length, cut, fx, hOff, hOn: localStorage.getItem('rs_haptics') }; });
     await p.screenshot({ path: process.env.SHOT_DIR ? process.env.SHOT_DIR + '/mix-phone.png' : '/tmp/mix-phone.png' }).catch(() => {});
     C.ok(ui.shown && ui.fits, `the SOUND & FEEL panel doesn't show or fit a phone: ${JSON.stringify(ui)}`);
-    C.ok(ui.sliders === 6, `${ui.sliders} sliders (want 6)`);
+    C.ok(ui.sliders === 7, `${ui.sliders} sliders (want 7: the narrator has its own)`);
     C.ok(ui.cut === 0, `${ui.cut} labels cut off on a phone`);
     C.ok(Math.abs(ui.fx - 0.4) < 0.01 && ui.hOff === '0' && ui.hOn === '1', `the panel's controls don't work: ${JSON.stringify(ui)}`);
     console.log(`  buzz: bite ${JSON.stringify(r.mine)}, punch ${JSON.stringify(r.punch)}, far ${r.far.length}, off ${r.off.length}, ate ${r.ate}; mix ${JSON.stringify(r.gains)}`);

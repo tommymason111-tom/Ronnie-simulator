@@ -10,11 +10,12 @@ import { canvasTex, fitText, roundRect, blobTex } from './textures.js';
 import { Dialogue, BANKS } from './dialogue.js';
 import { sfx, babble } from './audio.js';
 import { voiceLine, cancelLine } from './voices.js';
+import { sayWithDirections, lineParts } from './narrator.js';      // (a *stage direction* in a line: the narrator says it)
 const MAX_TALKERS = 2;      // (how many people can be talking at once, around any one player)
 export const TALK_RANGE = 12;      // (metres: further than this from every player, nobody chats. Voices fade out by audio.js HEAR_RANGE)
 import { TUNING } from './config.js';
 import { Item } from './foods.js';
-import { MODE_LINES, modeGroup } from './modelines.js';
+import { MODE_LINES, modeGroup, modeBank, STRICT } from './modelines.js';
 const PHONE_UI = typeof navigator !== 'undefined' && (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)));
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
@@ -122,10 +123,16 @@ export class Character {
   get busy() { return this.down || this.state === 'act' || this.state === 'windup' || this.state === 'throw'; }
 
   // ---------------- speech ----------------
+  pickFrom(list) { const fresh = list.filter(l => !this.dialogue.recent.includes(l)), pool = fresh.length ? fresh : list, l = pool[Math.floor(Math.random() * pool.length)];
+    this.dialogue.recent.push(l); if (this.dialogue.recent.length > 8) this.dialogue.recent.shift(); return l; }
   line(bank) {
-    if (bank === 'chatter' && Math.random() < 0.5) {      // half the time: something about the game mode we're in
-      const g = modeGroup(globalThis.RS_MODE), m = g && ((MODE_LINES[this.cfg.id] || {})[g] || (Math.random() < 0.3 && MODE_LINES._[g]));
-      if (m && m.length) { const fresh = m.filter(l => !this.dialogue.recent.includes(l)); if (fresh.length) { const l = fresh[Math.floor(Math.random() * fresh.length)]; this.dialogue.recent.push(l); if (this.dialogue.recent.length > 8) this.dialogue.recent.shift(); return l; } }
+    const g = modeGroup(globalThis.RS_MODE), strict = !!(g && STRICT.has(g) && MODE_LINES[this.cfg.id]);
+    const mb = modeBank(this.cfg.id, globalThis.RS_MODE, bank);      // (a mode with its own bank for them: Tommy at the bar in Run the Pub)
+    if (mb && mb.length) return this.pickFrom(mb);
+    if (bank === 'chatter' && (strict || Math.random() < 0.5)) {      // half the time: something about the game mode we're in (in some modes, only that)
+      const own = g && (MODE_LINES[this.cfg.id] || {})[g], m = strict ? [...(own || []), ...(MODE_LINES._[g] || [])] : g && (own || (Math.random() < 0.3 && MODE_LINES._[g]));
+      if (m && m.length) { const fresh = m.filter(l => !this.dialogue.recent.includes(l)); if (fresh.length || strict) return this.pickFrom(m); }
+      if (strict) return null;
     }
     const own = this.banks[bank];
     if (own && own.length) {
@@ -140,7 +147,7 @@ export class Character {
   }
 
   say(bankOrText, priority = null) {
-    const isBank = !!(this.banks[bankOrText] || (this.cfg.globalBanks && BANKS[bankOrText]));
+    const isBank = !!(this.banks[bankOrText] || (this.cfg.globalBanks && BANKS[bankOrText]) || modeBank(this.cfg.id, globalThis.RS_MODE, bankOrText));
     const pri = priority ?? (isBank && BANKS[bankOrText] ? BANKS[bankOrText].pri : 3);
     if (Character.sayGate && !Character.sayGate(this)) return false;      /* a mode can quiet the background (Date Night: only Chloe and whoever's in the film talk) */
     if (!this.rag.mesh) return false;          // not here yet (still loading): no floating speech bubbles
@@ -156,6 +163,10 @@ export class Character {
     if (!text) return false;
     this.speakPri = pri; this.quietT = 0;
     // a real voice (voices.js): the bubble comes up the moment the sound starts. Otherwise, the bubble and the babble now
+    // (a line with a *stage direction*: they say their words, the narrator says what they did, one after the other)
+    if (lineParts(text).has) { this.voicePending = true;
+      sayWithDirections(text, (spoken, after) => { if (this.disposed) return; if (!voiceLine(this.id, spoken, this.headPos(_v), { key: 'npc_' + this.id, onStart: (dur) => { this.showLine(text, pri, dur); if (after) after(dur); } })) { this.showLine(text, pri, 0); babble(this.headPos(_v), Math.min(14, 4 + Math.floor(spoken.length / 8)), this.cfg.voicePitch || 1); if (after) after(0); } });
+      return true; }
     if (voiceLine(this.id, text, this.headPos(_v), { key: 'npc_' + this.id, onStart: (dur) => this.showLine(text, pri, dur) })) { this.voicePending = true; return true; }
     this.showLine(text, pri, 0);
     babble(this.headPos(_v), Math.min(14, 4 + Math.floor(text.length / 8)), this.cfg.voicePitch || 1);
@@ -192,7 +203,12 @@ export class Character {
     g.beginPath(); g.moveTo(w / 2 - 50, h - 112); g.lineTo(w / 2 - 30, h - 20); g.lineTo(w / 2 + 30, h - 112); g.stroke();
     g.fillStyle = '#ffffff'; g.fillRect(w / 2 - 44, h - 125, 70, 14);
     g.font = '900 34px Arial'; g.fillStyle = this.color; g.textAlign = 'left'; g.fillText(this.name.toUpperCase(), 60, 66);
-    fitText(g, text, 56, 84, w - 120, h - 230, 64, { color: '#111' });
+    const lp = lineParts(text);
+    if (!lp.has) fitText(g, text, 56, 84, w - 120, h - 230, 64, { color: '#111' });
+    else { fitText(g, lp.say || '…', 56, 84, w - 120, (h - 230) * 0.6, 60, { color: '#111' });      // (what they say, then what the narrator says they did, in italics)
+      let f = 40, lines; const wrapI = (t) => { const out = []; let cur = ''; for (const wd of t.split(' ')) { const n = cur ? cur + ' ' + wd : wd; if (g.measureText(n).width > w - 120 && cur) { out.push(cur); cur = wd; } else cur = n; } if (cur) out.push(cur); return out; };
+      do { g.font = `italic 700 ${f}px Arial`; lines = wrapI(lp.dir); f -= 2; } while (lines.length * (f + 6) > (h - 230) * 0.4 && f > 16);
+      g.fillStyle = '#555'; g.textAlign = 'center'; g.textBaseline = 'middle'; lines.forEach((l, i) => g.fillText(l, w / 2 - 4, 84 + (h - 230) * 0.6 + (i + 0.5) * (f + 6))); }
     this.bubbleTex.needsUpdate = true;
   }
 

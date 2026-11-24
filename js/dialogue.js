@@ -1,5 +1,6 @@
 // Tommy's line banks (from section 3 of the design doc, plus Phase 1 broccoli lines).
 // Priority: higher interrupts lower. Lines never repeat within the last 8 played.
+import { modeBank } from './modelines.js';
 
 export const BANKS = {
   greet: { pri: 3, lines: [
@@ -15,7 +16,7 @@ export const BANKS = {
     'Ron, I\'m not saying you\'re big, but when you walk past the telly, I miss two adverts.',
     'You\'re the only person I know who\'s been banned from a buffet for \'stamina\'.',
     'If eating was an Olympic sport, you\'d be the whole Team GB.',
-    'Chelsea, Ronnie? Of course you support a team that plays in BLUE. Like the cheese.',
+    'Me and you, Ron. Chelsea till we die. Blue is the colour. Shame it\'s also the colour of that cheese you ate.',
     'I love you, brother. From a safe distance. Because of the gravity.',
     'Ronnie, the Oysterfleet has a pie named after you. It\'s just called \'Gone\'.',
     'I saw a nature documentary yesterday. You were in it. As the migration.',
@@ -114,6 +115,9 @@ export const STAGE_LINES = {
   9: 'I can see you from SPACE, Ron. NASA rang. They\'re worried.',
   10: 'RONNIE XXXL. There\'s nothing left to eat. There\'s nothing left of ME. I\'m proud of you. Disgusted. But proud.',
 };
+
+// Tommy's line when Ronnie goes up a size (in Run the Pub, it's about drinking the stock, not his size)
+export function stageLine(n) { const b = modeBank('tommy', globalThis.RS_MODE, 'stage'); return b ? b[Math.floor(Math.random() * b.length)] : (STAGE_LINES[n] || 'You\'re getting bigger, Ron. Still younger though.'); }
 
 export class Dialogue {
   constructor() { this.recent = []; }

@@ -15,7 +15,7 @@
 // wheelback chairs, iron chandeliers, amber pendants, street-view windows with curtains.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { part, cyl as CYL } from '../geo.js';
+import { part, merge, vcLambert, cyl as CYL } from '../geo.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { streetViewTex } from './kit.js';
 import { Dormant } from './dormant.js';
@@ -70,7 +70,7 @@ export function pubFloorAt(x, z) {
 }
 
 export function buildPub(scene) {
-  const sceneStart = scene.children.length;
+  const sceneStart = scene.children.length; let patio = null;
   const k = new Kit(scene, { ...B, y1: REST_H });                      // (the restaurant's dining room is the tallest room)
   const WALL = 0xeee6d6, PLASTER = 0xf2ecdf, DARKWOOD = 0x3a2416, WOOD = 0x4a2c18, REDLEATHER = 0x7a1f2a, BRASS = 0xc9a24a, CREAM = 0xe8dcc0, LIGHTWOOD = 0xc89a5a;
   const STEEL = 0xb8bcc2, DSTEEL = 0x8a9098, WHITE = 0xf8f8f6, PORCELAIN = 0xfbfbfb;
@@ -1520,6 +1520,9 @@ export function buildPub(scene) {
       k.cyl(0.18, 0.18, 0.02, sx0 + 1.8, 0.74, 25.3, 0x9aa0a6, 14); k.cyl(0.02, 0.02, 0.72, sx0 + 1.8, 0.37, 25.3, 0x9aa0a6, 6); k.cyl(0.05, 0.05, 0.04, sx0 + 1.8, 0.77, 25.3, 0xdddddd, 10);
       k.box(0.3, 0.4, 0.15, sx0 + 0.2, 1.3, sz0 + 0.18, 0xd8d8d8); }
     // benches in rows like the photo (umbrellas furled, a few open), barrels for standing
+    // (the patio's furniture, from here to the planters, is kept as its own piece: the Boss Fight in the beer garden stacks
+    // it all away for a clear arena, and puts it back after. See patioMark / room.patio below)
+    const patioMark = { p: k.parts.length, c: k.colliders.length, b: k.blockers.length, s: k.spawns.length, inst: new Map([...(k.inst || new Map())].map(([key, v]) => [key, v.list.length])) };
     for (const x of [-6.2, -3.4, -0.6, 2.2]) bench(x, 24.8, 0, 0, x === -3.4 ? true : false);
     for (const x of [-6.6, -3.6]) bench(x, 27.4, 0, 0, false);
     for (const z of [29.6, 32.4, 35.2]) bench(-7.6, z, Math.PI / 2, 0, z === 32.4 ? false : null);
@@ -1527,6 +1530,7 @@ export function buildPub(scene) {
     for (const x of [-6.0, -3.0, 0.0, 3.0]) roundT(x, 38.6, 0, x === 0 ? true : false);
     barrel(-5.4, 30.9); barrel(2.6, 26.9); barrel(2.8, 37.0); barrel(-5.6, 35.6);
     for (const [x, z] of [[1.6, 26.9], [-4.6, 37.0]]) { R(x - 0.45, z - 0.3, x + 0.45, z + 0.3, 0.5, 0.25, 0x5a3a20, { block: true }); for (const dx of [-0.25, 0.0, 0.25]) leafyBall(k, x + dx, 0.68, z, 0.24, { n: 26, r: 0.07 }); for (let i = 0; i < 14; i++) k.parts.push(part(new THREE.SphereGeometry(0.035, 6, 4), [0xc8202a, 0xffd400, 0xf4f4f4, 0xe0508a][i % 4], [x - 0.38 + (i % 7) * 0.12, 0.82 + (i % 3) * 0.05, z - 0.18 + Math.floor(i / 7) * 0.3])); }   // planters, full of flowers
+    patioMark.end = { p: k.parts.length, c: k.colliders.length, b: k.blockers.length, s: k.spawns.length, inst: new Map([...(k.inst || new Map())].map(([key, v]) => [key, v.list.length])) };
     // ---- the outdoor bar: an octagon on a low platform, posts, a panelled counter with taps, a shingle roof
     { const gx = -1.2, gz = 31.4, RR = 3.2, top = 2.65, ang = (i) => i / 8 * Math.PI * 2 + Math.PI / 8;
       const plat = new THREE.CylinderGeometry(RR + 0.25, RR + 0.3, 0.15, 8); plat.rotateY(Math.PI / 8); k.parts.push(part(plat, 0x4a3a30, [gx, 0.075, gz]));
@@ -1583,6 +1587,7 @@ export function buildPub(scene) {
     for (const [x, z] of [[-2, 28], [6, 22], [9, 33], [-6, 36]]) k.pool(x, 0, z, 8, 0xfff8e0);
     shiftGarden(k, scene, mark, 19.3, DW); railZ(GX0, 19.28, 19.4 + DW);
     mirrorGarden(k, scene, mark, GX0 + GX1);
+    patio = takePatio(k, scene, patioMark);
     buildLake(k, scene);
   }
   // ---------------- the walls: dark wood skirting, embossed burgundy anaglypta to the dado, a dark dado rail,
@@ -1671,6 +1676,7 @@ export function buildPub(scene) {
   room.indoors = (x, z) => z < GZ - 0.02 && inside(x, z);      // (weather.js: indoors = under the pub's roofs; the beer garden's out in it)
   room.skyRefs = { dome: sky.mesh.material };                    // (weather.js: the sun moves round this sky)
   for (const o of scene.children.slice(sceneStart)) if (o.isMesh || o.isInstancedMesh) { o.updateMatrix(); o.updateMatrixWorld(true); o.matrixAutoUpdate = false; }   // (static: no per-frame matrix work)
+  if (patio) room.patio = patioControl(room, patio);
   room.chairsAt = chairsAt; room.diningTables = diningTables; room.dormant = dorm; room.tvs = tvs; k.room = room;
   room.barSpots = barSpots.concat([-6.4, -4.6, -2.8, -1.0, 0.8].map(z => ({ x: -18.1, z, yaw: Math.PI / 2 })));   // (the pub bar, and the restaurant's)
   // From the pub you can only see the restaurant down the corridor, through its doorway in the pub's left wall:
@@ -2011,6 +2017,40 @@ function buildLake(k, scene) {
   // trees and bushes round the far shore
   for (let i = 0; i < pts.length; i += 3) { const [x, z] = pts[i]; if (x > -14 && z < 45) continue; const ox = x + (x - cx) * 0.12, oz = z + (z - cz) * 0.12;
     if (i % 2) leafyBall(k, ox, 0.3, oz, 1.0 + r() * 0.6); else { k.cyl(0.2, 0.3, 3.4, ox, 1.5, oz, 0x5a4030, 8); leafyBall(k, ox, 4.0, oz, 2.0 + r() * 0.8); } }
+}
+// THE PATIO'S FURNITURE as its own piece (the picnic benches, round tables, their parasols, the barrels and planters
+// round the outdoor bar): one mesh, its own parasols, and a note of its blocks, table tops and food spots, so a mode
+// can clear the patio (the Boss Fight's beer-garden arena) and put it all back afterwards
+function takePatio(k, scene, m) {
+  const e = m.end, parts = k.parts.splice(m.p, e.p - m.p);
+  const mesh = new THREE.Mesh(merge(parts), vcLambert); mesh.name = 'patio furniture'; scene.add(mesh);
+  const inst = [];
+  for (const [key, v] of k.inst || []) { const a = m.inst.get(key) || 0, b = e.inst.get(key) ?? v.list.length; if (b <= a) continue;
+    const list = v.list.splice(a, b - a), im = new THREE.InstancedMesh(v.geo, v.mat, list.length); list.forEach((mm, i) => im.setMatrixAt(i, mm));
+    im.instanceMatrix.needsUpdate = true; im.renderOrder = 2; im.name = 'patio parasols'; scene.add(im); inst.push(im); }
+  return { mesh, inst, blockers: k.blockers.slice(m.b, e.b), colliders: k.colliders.slice(m.c, e.c), spawns: k.spawns.slice(m.s, e.s) };
+}
+function patioControl(room, P) {
+  const nav = room.nav, box = P.blockers.reduce((a, b) => ({ x0: Math.min(a.x0, b.x0), x1: Math.max(a.x1, b.x1), z0: Math.min(a.z0, b.z0), z1: Math.max(a.z1, b.z1) }), { x0: 1e9, x1: -1e9, z0: 1e9, z1: -1e9 });
+  // (the walkable grid round the patio worked out again from what's there now: only those cells, not the whole level)
+  const renav = () => { if (!nav) return; const pad = 0.28, c = nav.cell, near = room.blockers.filter(b => b.x1 > box.x0 - 1 && b.x0 < box.x1 + 1 && b.z1 > box.z0 - 1 && b.z0 < box.z1 + 1);
+    for (let j = Math.max(0, Math.floor((box.z0 - 1 - nav.z0) / c)); j < Math.min(nav.nz, Math.ceil((box.z1 + 1 - nav.z0) / c)); j++)
+      for (let i = Math.max(0, Math.floor((box.x0 - 1 - nav.x0) / c)); i < Math.min(nav.nx, Math.ceil((box.x1 + 1 - nav.x0) / c)); i++) {
+        const x = nav.x0 + (i + 0.5) * c, z = nav.z0 + (j + 0.5) * c; let ok = true;
+        for (const b of near) if (x > b.x0 - pad && x < b.x1 + pad && z > b.z0 - pad && z < b.z1 + pad) { ok = false; break; }
+        nav.free[j * nav.nx + i] = ok ? 1 : 0; } };
+  const drop = (arr, list) => { for (const o of list) { const i = arr.indexOf(o); if (i >= 0) arr.splice(i, 1); } };
+  let cleared = false;
+  return { box,
+    get cleared() { return cleared; },
+    // stack it all away (true), or put it back (false). phys: the physics world (its solid blocks go and come back too)
+    clear(on, phys = null) { on = !!on; if (on === cleared) return; cleared = on;
+      P.mesh.visible = !on; for (const im of P.inst) im.visible = !on;
+      if (on) { drop(room.blockers, P.blockers); drop(room.colliders, P.colliders); drop(room.spawns, P.spawns);
+        if (phys && phys.removeBox) for (const b of P.blockers) phys.removeBox(b.x0, b.x1, b.z0, b.z1); }
+      else { room.blockers.push(...P.blockers); room.colliders.push(...P.colliders); room.spawns.push(...P.spawns);
+        if (phys && phys.addBox) for (const b of P.blockers) phys.addBox(b.x0, b.x1, b.z0, b.z1, b.y1); }
+      renav(); } };
 }
 // move everything of the garden beyond z = zc back by dz (to widen the deck without re-laying the whole garden)
 function shiftGarden(k, scene, mark, zc, dz) {
