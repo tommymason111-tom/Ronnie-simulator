@@ -32,6 +32,15 @@ export default async function () {
           hz60: Q.estimateHz(Array(60).fill(16.67)), hz72: Q.estimateHz(Array(60).fill(13.9)), hz120: Q.estimateHz(Array(60).fill(8.33)), hzNoisy: Q.estimateHz([...Array(50).fill(16.6), 40, 90, 33, 16.9, 16.4]),
           drop60: Q.dropBelow(60), drop72: Q.dropBelow(72), drop120: Q.dropBelow(120),
           testTier: Q.quality.tier,
+          geo: await (async () => { const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js');
+            const g = new THREE.SphereGeometry(0.3, 48, 32), n = g.attributes.position.count;
+            g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Array(n * 4).fill(0).map((v, i) => i % 4 ? 0 : (g.attributes.position.getY(i >> 2) > 0 ? 1 : 0)), 4));
+            g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(new Array(n * 4).fill(0).map((v, i) => i % 4 ? 0 : 1), 4));
+            g.morphAttributes.position = [new THREE.Float32BufferAttribute(new Array(n * 3).fill(0.01), 3)];
+            const chk = (x) => { const ix = x.index.array; let mx = 0; for (const v of ix) mx = Math.max(mx, v); x.computeBoundingBox(); const s = x.boundingBox.getSize(new THREE.Vector3());
+              let w = 0; const W = x.attributes.skinWeight; for (let i = 0; i < W.count; i++) w = Math.max(w, Math.abs(W.getX(i) + W.getY(i) + W.getZ(i) + W.getW(i) - 1));
+              return { tris: ix.length / 3, inRange: mx < x.attributes.position.count, size: +s.x.toFixed(3), wErr: w, morph: x.morphAttributes.position[0].count === x.attributes.position.count }; };
+            return { base: chk(g), sub: chk(Q.subdividePN(g)), dec: chk(Q.decimate(g, 0.3)) }; })(),
         }; });
       c.ok(r.quest3 === 'medium' && r.quest2 === 'medium', `a Quest is MEDIUM (${r.quest3}, ${r.quest2})`);
       c.ok(r.iphone === 'high' && r.ipadMac === 'high', `an iPhone and an iPad (saying it's a Mac, with touch) are HIGH (${r.iphone}, ${r.ipadMac})`);
@@ -40,6 +49,8 @@ export default async function () {
       c.ok(r.hz60 === 60 && r.hz72 === 72 && r.hz120 === 120 && r.hzNoisy === 60, `refresh rate from frame timing: ${r.hz60}/${r.hz72}/${r.hz120}/${r.hzNoisy}`);
       c.ok(r.drop60 > 50 && r.drop60 < 58, `a 60Hz screen only steps down clearly under 60 (${r.drop60})`);
       c.ok(r.drop72 > 65 && r.drop72 < 72 && r.drop120 === r.drop72, `72Hz and faster screens step down under the owner's 72 (${r.drop72}, ${r.drop120})`);
+      { const G = r.geo; c.ok(G.sub.tris === G.base.tris * 4 && G.sub.inRange && Math.abs(G.sub.size - G.base.size) < 0.01 && G.sub.wErr < 1e-4 && G.sub.morph, `smoothing: 4x triangles, same size, weights add to 1 (${JSON.stringify(G.sub)} vs ${JSON.stringify(G.base)})`);
+        c.ok(G.dec.tris < G.base.tris * 0.45 && G.dec.inRange && Math.abs(G.dec.size - G.base.size) < 0.03 && G.dec.wErr < 1e-4 && G.dec.morph, `lighter model: fewer triangles, same size (${JSON.stringify(G.dec)})`); }
       c.ok(r.testTier === 'high', `an automated browser plays at HIGH unless ?q= says (${r.testTier})`);
       // the title screen's SETTINGS: QUALITY cycles, is saved, and fits an upright phone
       await p.evaluate(() => { document.getElementById('settings').hidden = false; });

@@ -135,7 +135,7 @@ export function subdividePN(geo, curve = 0.75) {
   for (let w = 0; w < wn.length; w += 3) { const l = Math.hypot(wn[w], wn[w + 1], wn[w + 2]) || 1; wn[w] /= l; wn[w + 1] /= l; wn[w + 2] /= l; }
   const edges = new Map(), mids = [];
   const T = idx.length / 3, out = new Uint32Array(T * 12);
-  const mid = (a, b) => { const k = a < b ? a * n + b : b * n + a; let m = edges.get(k); if (m === undefined) { m = n + mids.length; edges.set(k, m); mids.push(a < b ? a : b, a < b ? b : a); } return m; };
+  const mid = (a, b) => { const k = a < b ? a * n + b : b * n + a; let m = edges.get(k); if (m === undefined) { m = n + mids.length / 2; edges.set(k, m); mids.push(a < b ? a : b, a < b ? b : a); } return m; };
   for (let t = 0; t < T; t++) {
     const a = idx[t * 3], b = idx[t * 3 + 1], c = idx[t * 3 + 2], ab = mid(a, b), bc = mid(b, c), ca = mid(c, a), o = t * 12;
     out[o] = a; out[o + 1] = ab; out[o + 2] = ca; out[o + 3] = ab; out[o + 4] = b; out[o + 5] = bc;
@@ -251,8 +251,8 @@ const DETAIL_GLSL = `
     vec3 rsC = diffuseColor.rgb; float rsL = dot(rsC, vec3(0.299, 0.587, 0.114));
     float rsSkin = smoothstep(0.03, 0.1, rsC.r - rsC.b) * step(rsC.g, rsC.r) * smoothstep(0.12, 0.25, rsL);
     vec2 rsN = mix(rsD.ba, rsD.rg, rsSkin) * 2.0 - 1.0;
-    normal = normalize(normal + tbn * vec3(rsN * uDetStr * mix(0.9, 0.55, rsSkin), 0.0));
-    rsDetShade = 1.0 + dot(rsN, vec2(-0.5, 0.8)) * uDetStr * mix(0.3, 0.16, rsSkin);
+    normal = normalize(normal + tbn * vec3(rsN * uDetStr * mix(0.9, 0.35, rsSkin), 0.0));
+    rsDetShade = 1.0 + dot(rsN, vec2(-0.5, 0.8)) * uDetStr * mix(0.3, 0.1, rsSkin);
     diffuseColor.rgb *= rsDetShade;
   }
   #endif`;
