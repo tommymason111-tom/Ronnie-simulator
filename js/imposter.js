@@ -14,6 +14,8 @@
 // The HOST's game is the referee (roles, kills, meetings, votes, who's won); everyone's game shows it.
 import * as THREE from 'three';
 import { sfx } from './audio.js';
+import { pintGeo } from './pint.js';
+import { vcLambert } from './geo.js';
 import { Panel, makeGame, rr, txt } from './impgames.js';
 import { FONT } from './textures.js';
 import { REST } from './levels/oysterRestaurant.js';
@@ -419,7 +421,7 @@ export class Imposter {
       kadd(C(0.045, 0.05, 0.04, 18), dark, 0, y + 0.02, -0.05); kadd(C(0.032, 0.032, 0.36, 16), dark, 0, y + 0.2, -0.05); kadd(new THREE.SphereGeometry(0.034, 14, 8), dark, 0, y + 0.38, -0.05);
       kadd(new THREE.CircleGeometry(0.03, 18), lam(0xd4af37, { emissive: 0x332200 }), 0, y + 0.3, -0.017); kadd(B(0.012, 0.012, 0.09), steel, 0, y + 0.27, -0.005); kadd(C(0.007, 0.005, 0.05, 8), steel, 0, y + 0.245, 0.04);
       kadd(B(0.016, 0.08, 0.016), dark, 0, y + 0.43, -0.03, -0.3); kadd(B(0.16, 0.012, 0.11), lam(0x2a2a2a), 0, y + 0.006, 0.04);
-      kadd(C(0.034, 0.027, 0.15, 14), new THREE.MeshPhongMaterial({ color: 0x140a06, shininess: 60 }), 0, y + 0.087, 0.04); kadd(C(0.035, 0.034, 0.018, 14), lam(0xf1e3c4), 0, y + 0.17, 0.04); }
+      kadd(pintGeo(), vcLambert, 0, y + 0.087, 0.04); }      // (the game's one pint: pint.js)
     else if (id === 'barrel' || id === 'keg' || id === 'valve') { for (const dx of id === 'barrel' ? [-0.18, 0.18] : [0]) { kadd(C(0.2, 0.2, 0.6, 20), steel, dx, 0.3, 0); for (const yy of [0.08, 0.52]) kadd(new THREE.TorusGeometry(0.2, 0.015, 6, 20), steel, dx, yy, 0, Math.PI / 2); kadd(C(0.05, 0.05, 0.06, 10), lam(id === 'valve' ? 0xd81b2a : 0x2a6df4), dx, 0.63, 0); }
       if (id === 'keg') { kadd(C(0.02, 0.02, 0.6, 8), dark, 0.32, 0.3, 0); kadd(C(0.09, 0.09, 0.03, 20), lam(0xffffff), 0.32, 0.66, 0, Math.PI / 2); kadd(B(0.01, 0.07, 0.005), lam(0xd81b2a), 0.32, 0.68, 0.017, 0, 0, 0.6); } }
     else if (id === 'till' && onTop) {      // the card machine on the bar: in its cradle, the screen lit, a receipt curling out

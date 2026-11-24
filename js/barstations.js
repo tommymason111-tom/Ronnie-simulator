@@ -10,8 +10,9 @@
 // Everything restocks itself. Each station has a sign, and the game points at the one you need next.
 import * as THREE from 'three';
 import { sfx } from './audio.js';
+import { pintModel, setPintSurge } from './pint.js';
 
-const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const V = (x, y, z) => new THREE.Vector3(x, y, z), _inv = new THREE.Matrix4();
 function sign(text, sub, col = '#ffd400') {
   const c = document.createElement('canvas'); c.width = 320; c.height = sub ? 120 : 84; const g = c.getContext('2d');
   g.fillStyle = 'rgba(10,14,30,0.85)'; g.beginPath(); g.roundRect(4, 4, 312, c.height - 8, 20); g.fill(); g.lineWidth = 5; g.strokeStyle = col; g.stroke();
@@ -110,6 +111,7 @@ export class Bar {
   // ------------------------------------------------------------------ every frame
   update(dt) {
     if ((this.stockT -= dt) <= 0) { this.stockT = 1; this.restock(false); }
+    this.updateSurges(dt);
     const P = this.g.player, held = this.held();
     // filling at the tap / the coffee machine: hold the right glass there (VR), or it's being done for you (phone tap)
     for (const s of [this.st.tap, this.st.coffee]) {
@@ -122,7 +124,7 @@ export class Bar {
       if (it) { f += dt; if (this.autoFill && this.autoFill.st === s) { it.filling = s; it.pos.copy(s.at).add(V(0, -0.06, 0)); it.obj.position.copy(it.pos); it.obj.quaternion.identity(); }
         const k = Math.min(1, f / s.fill.time); fx.position.copy(it.pos); fx.children[1].scale.y = Math.max(0.02, k); fx.children[1].position.y = -0.05 + 0.05 * k; fx.children[0].visible = k < 0.98;
         if (Math.floor((f - dt) * 2) !== Math.floor(f * 2)) { this.g.words.show(f >= s.fill.time ? 'DONE!' : s.fill.word, s.at.clone().add(V(0, 0.22, 0)), '#ffd400', 0.08, 0.5); sfx('pour', s.at, 0.5); }
-        if (f >= s.fill.time) { it.filling = null; fx.visible = false; const n = this.swap(it, s.fill.to); if (af) { n.pos.copy(s.at).add(V(0, -0.06, 0)); n.prev.copy(n.pos); n.obj.position.copy(n.pos); n.vel && n.vel.set(0, 0, 0); n.resting = true; n.shelf = true; this.g.words.show('READY! PICK IT UP', s.at.clone().add(V(0, 0.3, 0)), '#39ff14', 0.07, 1.2); } f = 0; this.autoFill = null; sfx('ding', s.at, 0.7); } }
+        if (f >= s.fill.time) { it.filling = null; fx.visible = false; const n = this.swap(it, s.fill.to); if (s.key === 'tap') this.surge(n); if (af) { n.pos.copy(s.at).add(V(0, -0.06, 0)); n.prev.copy(n.pos); n.obj.position.copy(n.pos); n.vel && n.vel.set(0, 0, 0); n.resting = true; n.shelf = true; this.g.words.show('READY! PICK IT UP', s.at.clone().add(V(0, 0.3, 0)), '#39ff14', 0.07, 1.2); } f = 0; this.autoFill = null; sfx('ding', s.at, 0.7); } }
       else f = 0;
       this.fill.set(s.key, f);
     }
@@ -158,6 +160,14 @@ export class Bar {
         const cone = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.08, 12), new THREE.MeshBasicMaterial({ color: 0x39ff14, depthTest: false })); cone.rotation.x = Math.PI; cone.position.y = -0.15; cone.renderOrder = 22; m.add(cone);
         this.grp.add(m); this.markPool.set(k, m); }
       m.visible = true; m.position.copy(s.signAt || s.at).add(V(0, 0.32 + Math.sin(performance.now() / 220 + k.length) * 0.03, 0)); } }
+  // a fresh Guinness settling (pint.js): for its first couple of seconds the pint's drawn as a stand-in whose stout
+  // surges tan and settles black from the bottom up, wherever the pint goes (in your hand, on the bar)
+  surge(it) { const m = pintModel(); m.userData.t = 0; this.grp.add(m); (this.surges || (this.surges = [])).push({ m, it }); const sh = it.obj.children[0]; if (sh) sh.visible = false; setPintSurge(m, 0); }      // (its own shape hidden meanwhile: the item itself stays there to pick up)
+  updateSurges(dt) { if (!this.surges || !this.surges.length) return;
+    for (const s of this.surges.slice()) { const { m, it } = s; m.userData.t += dt; const k = m.userData.t / 2.4;
+      if (k >= 1 || it.dead || !it.obj.parent) { this.grp.remove(m); m.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); }); if (it.obj.children[0]) it.obj.children[0].visible = true; this.surges.splice(this.surges.indexOf(s), 1); continue; }
+      it.obj.updateWorldMatrix(true, true); const src = it.obj.children[0] || it.obj; src.matrixWorld.decompose(m.position, m.quaternion, m.scale); if (this.grp.parent) { this.grp.updateWorldMatrix(true, false); m.applyMatrix4(_inv.copy(this.grp.matrixWorld).invert()); }
+      setPintSurge(m, k); } }
   // the pour: a stream from the spout and the drink rising in the glass / mug
   fillFx(s) {
     const g = new THREE.Group(), dark = s.key === 'tap', col = dark ? 0x140a06 : 0x5a3418;

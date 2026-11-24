@@ -54,10 +54,10 @@ const FAM_BANKS = {
   angry: ['We\'ve been waiting ages! Come on, kids, we\'re going.', 'One star. ONE.'],
   thanks: ['Thank you, that\'s lovely.', 'Cheers, love.'],
 };
-const KID_BANKS = { greet: ['Can I have chips?', 'I want a Fruit Shoot!'], chatter: ['I\'m bored.', 'Can we go to the park?', 'Mum, that man is FAT.', 'Are we there yet?'], hit: ['WAAAAH!', 'MUUUUM!'], slap: ['I\'m telling!'], grabbed: ['WHEEEE!'], launched: ['WHEEEEE!'], angry: ['I\'M BORED!'], thanks: ['Yay!'] };
+const KID_BANKS = { greet: ['Can I have chips?', 'I want a Fruit Shoot!'], chatter: ['I\'m bored.', 'Can we go to the park?', 'Mum, why is the man eating the crisps he\'s meant to sell?', 'Are we there yet?'], hit: ['WAAAAH!', 'MUUUUM!'], slap: ['I\'m telling!'], grabbed: ['WHEEEE!'], launched: ['WHEEEEE!'], angry: ['I\'M BORED!'], thanks: ['Yay!'] };
 const LAD_BANKS = {
   greet: ['Two pints, mate.', 'Alright Ron! Big lad!', 'Is the football on?'],
-  chatter: ['Ingerland!', 'Who\'s round is it?', 'Get the darts out.', 'Is that Ronnie? He\'s HUGE.', 'Another one, lads?'],
+  chatter: ['Ingerland!', 'Who\'s round is it?', 'Get the darts out.', 'Is that Ronnie behind the bar? I\'ll pour my own, then.', 'Another one, lads?'],
   hit: ['Oi! What was that for?', 'Do you want some?'], slap: ['You\'re barred, mate. Wait. You work here.'], grabbed: ['Put me down, big man!'], launched: ['LADS! LAAADS!'],
   angry: ['We\'re going to Wetherspoons.', 'Two hours for a pint! Joke.'], thanks: ['Cheers, big man.', 'Legend.'],
 };

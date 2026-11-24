@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as skelClone } from 'three/addons/utils/SkeletonUtils.js';
 import { FINGERS, BENDS } from './hands.js';
+import { pintModel, setPintLevel, pintRadius, PINT } from './pint.js';
 
 export const EMOTES = [
   { id: 'finger', name: 'MIDDLE FINGER', icon: '🖕', dur: 3.4 },
@@ -69,6 +70,7 @@ const CURLS = {
   palm: { thumb: 0.15, index: 0.08, middle: 0.06, ring: 0.1, pinky: 0.14 },
   goggle: { thumb: 0.45, index: 0.62, middle: 0.2, ring: 0.18, pinky: 0.15 },
   grip: { thumb: 0.6, index: 0.7, middle: 0.72, ring: 0.75, pinky: 0.78 },
+  glass: { thumb: 0.42, index: 0.4, middle: 0.43, ring: 0.47, pinky: 0.52 },      // (round a pint glass: fingers wrapped round the side, the thumb across the other way)
   open: { thumb: 0.15, index: 0.1, middle: 0.12, ring: 0.14, pinky: 0.16 },
   point: { thumb: 0.8, index: 0, middle: 1, ring: 1, pinky: 1 },
   spidey: { thumb: 0.1, index: 0, middle: 1, ring: 1, pinky: 0 },
@@ -121,7 +123,7 @@ export class EmotePlayer {
   onStop(f) { (this.undo || (this.undo = [])).push(f); }
   hide() { this.hideHands(); const r = this.c.rag; if (r.handHide) r.handHide.lArmL = r.handHide.lArmR = false; if (r.handPose) for (const k in r.handPose) { r.handPose[k].curl = 0; r.handPose[k].mid = 0; r.handPose[k].q.identity(); } }
   dispose() { this.stop(); if (this.mh) { this.mh.L.dispose(); this.mh.R.dispose(); this.mh = null; } }
-  clearProps() { this.holding = null; for (const k in this.props) { const p = this.props[k]; this.scene.remove(p); p.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } this.props = {}; }
+  clearProps() { this.holding = null; for (const k in this.props) { const p = this.props[k]; this.scene.remove(p); p.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); }); } this.props = {}; }
   unstretch() { const r = this.c.rag; r.stretchS = null; r.applyScale && r.applyScale(); }
   // once per emote: fire a word / sound at a moment
   at(t, when, key, fn) { if (t >= when && !this.marks[key]) { this.marks[key] = true; fn(); } }
@@ -138,6 +140,33 @@ export class EmotePlayer {
     if (rot) p.quaternion.multiply(_q.setFromEuler(new THREE.Euler(...rot)));
   }
 
+  // A PINT held like a real glass (pint.js): the hand round the side of it, fingers wrapped round, the thumb on the other
+  // side, the glass upright (the hand at its side, never under it), and when drinking raised to the mouth and tipped
+  // back. o: { tilt: radians tipped towards the face, drink: 0..1 (how far it's come up to the mouth), lvl: how full }
+  holdGlass(p, S, o = {}) { p.visible = o.visible ?? true; if (!p.visible) return;
+    (this.glasses || (this.glasses = new Map())).set(S, { p, tilt: o.tilt || 0, drink: o.drink ?? (o.tilt ? 1 : 0) });
+    if (o.lvl !== undefined) setPintLevel(p, o.lvl, o.tilt || 0); }
+  // where the glass and the hand go, from the wrist (after the body has moved): the glass's axis is upright (tipped back
+  // to the mouth as it drinks), the palm faces in towards the glass, the fingers point round it
+  glassFrame(S, gl) {
+    const r = this.c.rag, kH = this.kH, wr = r.wrist('lArm' + S, new THREE.Vector3(), new THREE.Vector3());
+    const yaw = r.yaw, fwd = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)), left = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)), inw = S === 'R' ? 1 : -1;
+    const A = new THREE.Vector3(0, Math.cos(gl.tilt), 0).addScaledVector(fwd, -Math.sin(gl.tilt)).normalize();
+    // the glass sits in from the hand and forwards; coming up to drink, it goes towards the mouth
+    const to = left.clone().multiplyScalar(inw * 0.55).addScaledVector(fwd, 0.85);
+    if (gl.drink > 0) { const mouth = this.c.headPos(new THREE.Vector3()).addScaledVector(fwd, 0.07 * kH).add(_v.set(0, -0.06 * kH, 0)).sub(wr); if (mouth.lengthSq() > 1e-6) to.lerp(mouth.normalize(), gl.drink); }
+    const palm = to.addScaledVector(A, -to.dot(A)); if (palm.lengthSq() < 1e-6) palm.copy(fwd); palm.normalize();
+    const along = S === 'R' ? new THREE.Vector3().crossVectors(palm, A) : new THREE.Vector3().crossVectors(A, palm); along.normalize();
+    gl.wr = wr; gl.A = A; gl.palm = palm; gl.along = along;
+  }
+  placeGlasses() { if (!this.glasses) return; const kH = this.kH, m = new THREE.Matrix4(), x = new THREE.Vector3();
+    for (const [S, gl] of this.glasses) { const p = gl.p; if (!p.visible || !p.parent) continue; if (!gl.wr) this.glassFrame(S, gl);
+      // the middle of the glass: across the palm from the wrist, out from the palm by the glass's radius (the fingers
+      // close round it), the hand round its lower half
+      const rad = pintRadius(PINT.gY) + 0.016;
+      p.position.copy(gl.wr).addScaledVector(gl.along, 0.052 * kH).addScaledVector(gl.palm, rad * kH).addScaledVector(gl.A, 0.018 * kH);
+      x.crossVectors(gl.A, gl.palm).normalize(); m.makeBasis(x, gl.A, gl.palm); p.quaternion.setFromRotationMatrix(m); p.scale.setScalar(kH); } }
+
   // vr: their arms come from their real hands (leave the arms alone)
   update(dt, vr) {
     if (!this.id) return 0;
@@ -148,6 +177,7 @@ export class EmotePlayer {
     const r = this.c.rag, base = {};
     for (const k in r.pose) base[k] = r.pose[k].clone();
     const bob0 = r.bob || 0;
+    this.glasses = null;
     const out = this[this.id](t, vr) || {};      // sets r.pose.* (and returns the hand shapes, hip bob, whole-body turns)
     for (const k in r.pose) { if (vr && !out.full && /Arm/.test(k)) { r.pose[k].copy(base[k]); continue; } r.pose[k].copy(base[k].slerp(r.pose[k], w)); }
     if (out.spin) { _q.setFromAxisAngle(Y, out.spin * w); for (const k in r.pose) r.pose[k].premultiply(_q); }      // the whole body turns round
@@ -161,7 +191,7 @@ export class EmotePlayer {
   // after the body has moved this frame: the hands (the model's own fingers), and any props
   place() { if (this.id && this.c.prop && this.c.prop.visible) { const pr = this.c.prop; pr.visible = false; this.onStop(() => { pr.visible = true; }); }      // (their usual pint / phone / rod is put away for the emote)
     if (this.id && this.c.reelLine) this.c.reelLine.visible = false;
-    if (this.id && this.out) { this.gestures(this.out, this.w); if (this.holding) for (const [p, [S, off, rot]] of this.holding) if (p.visible && p.parent) this.placeInHand(p, S, off, rot); this.drawProps(); } }
+    if (this.id && this.out) { this.gestures(this.out, this.w); if (this.holding) for (const [p, [S, off, rot]] of this.holding) if (p.visible && p.parent) this.placeInHand(p, S, off, rot); this.placeGlasses(); this.drawProps(); } }
   // a body drawn bigger (a player's stage, a stretch): the props move out with it and grow to match (undone next frame)
   drawProps() { const r = this.c.rag, g = r.group; if (!g || (g.scale.x === 1 && g.scale.y === 1)) return; const k = (g.scale.x + g.scale.y) / 2;
     for (const key in this.props) { const p = this.props[key], u = p.userData; u.rawP = p.position.clone(); u.rawS = p.scale.clone(); r.drawn(p.position); p.scale.multiplyScalar(k); } }      // (held things follow the hand after it's moved: no lagging behind)
@@ -171,13 +201,15 @@ export class EmotePlayer {
     for (const S of ['L', 'R']) {
       const name = 'lArm' + S, hp = r.handPose[name], ax = r.handAxes && r.handAxes[name], mh = this.mh[S]; if (!hp || !ax) continue;
       hp.curl = 0; hp.mid = 0; hp.q.identity();             // (the scanned fingers are never bent: no stretched skin)
-      const kind = out.hand && out.hand[S], swap = !!kind && kind !== 'open' && w > 0.25 && mh.ready && !this.c.down;
+      const gl = this.glasses && this.glasses.get(S); if (gl) this.glassFrame(S, gl);
+      const kind = gl ? 'glass' : out.hand && out.hand[S], swap = !!kind && kind !== 'open' && w > 0.25 && mh.ready && !this.c.down;
       mh.root.visible = swap; if (r.handHide) r.handHide[name] = swap;
       if (!swap) continue;
       const wr = new THREE.Vector3(), dir = new THREE.Vector3(); r.wrist(name, wr, dir);
       const wantA = out.along && out.along[S]; if (wantA) dir.set(...wantA).normalize().applyAxisAngle(Y, r.yaw);      // (fingers aimed on their own, not just carrying on from the forearm)
+      if (gl) dir.copy(gl.along);
       const fq = r.partQuat(name, new THREE.Quaternion());
-      const want = out.back && out.back[S], back = want ? new THREE.Vector3(...want).applyAxisAngle(Y, r.yaw) : ax.palm.clone().negate().applyQuaternion(fq);
+      const want = out.back && out.back[S], back = gl ? gl.palm.clone().negate() : want ? new THREE.Vector3(...want).applyAxisAngle(Y, r.yaw) : ax.palm.clone().negate().applyQuaternion(fq);
       const g = r.group, gk = g ? (g.scale.x + g.scale.y) / 2 : 1; r.drawn(wr);
       mh.pose(CURLS[kind] || CURLS.open); mh.place(wr, dir, back, this.kH * 1.02 * gk);
     }
@@ -553,13 +585,14 @@ export class EmotePlayer {
     this.standArms('R', -1, mixv(mixv([0.25, -0.75, 0.55], DRINK_U, sip), [0.3, 0.2, 0.95], look), mixv(mixv([-0.2, -0.2, 0.95], DRINK_L, sip), [-0.15, 0.75, 0.65], look));
     this.standArms('L', 1, mixv([0.25, -1, 0.05], [0.5, 0.75, 0.3], big), mixv([0.2, -1, 0.1], [0.3, 0.95, 0.1], big)); this.legsStand(0.1);
     P.head.setFromAxisAngle(X, -0.5 * sip - 0.25 * big);
-    const setLvl = (pint, lvl) => { const stout = pint.getObjectByName('stout'), head = pint.getObjectByName('head'); stout.scale.y = lvl; stout.position.y = -0.075 + 0.075 * lvl; head.position.y = -0.075 + 0.15 * lvl + 0.005; };
-    const pint = this.prop('pintg', pintG); this.inHand(pint, 'R', [0, 0.01, 0], [Math.PI / 2 - 1.1 * sip, 0, 0]);
-    const lvl = 1 - 0.5 * ss(clamp01((t - 1.2) / 1.7)); setLvl(pint, lvl); pint.visible = big < 0.5;
-    const bp = this.prop('bigpint', () => { const g = pintG(); const ring = new THREE.Mesh(new THREE.TorusGeometry(0.047, 0.003, 6, 32), new THREE.MeshBasicMaterial({ color: 0xffd400 })); ring.rotation.x = Math.PI / 2; ring.name = 'ring'; g.add(ring);
+    // (the line between the stout and the head comes down to the middle of the G of GUINNESS on the glass)
+    const LVL_G = (PINT.gY - PINT.floor) / (PINT.head0 - PINT.floor);
+    const pint = this.prop('pintg', pintModel), lvl = 1 - (1 - LVL_G) * ss(clamp01((t - 1.2) / 1.7));
+    this.holdGlass(pint, 'R', { tilt: 1.2 * sip, drink: sip, lvl, visible: big < 0.5 });
+    const bp = this.prop('bigpint', () => { const g = pintModel(); const ring = new THREE.Mesh(new THREE.TorusGeometry(pintRadius(PINT.gY) + 0.002, 0.0016, 6, 32), new THREE.MeshBasicMaterial({ color: 0xffd400 })); ring.rotation.x = Math.PI / 2; ring.name = 'ring'; g.add(ring);
       const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: cvTex(128, 128, (c) => { const gr = c.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,220,90,0.8)'); gr.addColorStop(1, 'rgba(255,220,90,0)'); c.fillStyle = gr; c.fillRect(0, 0, 128, 128); }), transparent: true, depthWrite: false })); glow.scale.setScalar(0.3); glow.position.z = -0.03; g.add(glow);
       const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: cvTex(256, 72, (c, w, h) => { c.fillStyle = '#111'; c.fillRect(0, 0, w, h); c.strokeStyle = '#d4af37'; c.lineWidth = 6; c.strokeRect(3, 3, w - 6, h - 6); cvTxt(c, 'SPLIT ✓', w / 2, h / 2 + 2, 40, '#ffd400'); }), transparent: true })); tag.scale.set(0.14, 0.04, 1); tag.position.y = 0.14; g.add(tag); return g; });
-    bp.visible = big > 0; setLvl(bp, 0.5); bp.getObjectByName('ring').position.y = -0.075 + 0.075; bp.position.copy(this.L(0, 1.25 + big * 0.35 + Math.sin(t * 2) * 0.03, 0.75)); bp.rotation.set(0, r.yaw + Math.sin(t * 1.5) * 0.25, 0); bp.scale.setScalar(kH * (0.5 + 3.6 * big));
+    bp.visible = big > 0; setPintLevel(bp, LVL_G); bp.getObjectByName('ring').position.y = PINT.gY; bp.position.copy(this.L(0, 1.25 + big * 0.35 + Math.sin(t * 2) * 0.03, 0.75)); bp.rotation.set(0, r.yaw + Math.sin(t * 1.5) * 0.25, 0); bp.scale.setScalar(kH * (0.5 + 3.6 * big));
     for (let i = 0; i < 10; i++) { const s = this.prop('spark' + i, () => new THREE.Mesh(new THREE.OctahedronGeometry(0.02), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xffd400 : 0xffffff })));
       s.visible = big > 0.5; const a = t * 2.5 + i * 0.63; s.position.copy(bp.position).add({ x: Math.cos(a) * 0.38 * kH, y: Math.sin(a * 1.7) * 0.25 * kH, z: Math.sin(a) * 0.38 * kH }); s.rotation.y = t * 4; }
     this.at(t, 0.3, 'a', () => this.say('RIGHT. WATCH THIS.')); this.at(t, 1.2, 'b', () => this.say('', null, 'gulp')); this.at(t, 3.4, 'c', () => this.say('🎯 SPLIT THE G!', null, 'fanfare'));
@@ -810,7 +843,7 @@ export class EmotePlayer {
   drunk(t) { const r = this.c.rag, P = r.pose, kH = this.kH, sway = Math.sin(t * 1.7), hic = Math.max(0, Math.sin(t * 2.3 + 1)) ** 12;
     this.walkLegs(t, 0.7, 0.18); this.standArms('R', -1, [0.35, -0.3 + hic * 0.2, 0.8], [0.1 + sway * 0.2, 0.2, 0.95]); this.standArms('L', 1, [0.75, -0.2 + sway * 0.3, 0.2], [0.8, 0.1, 0.3]);
     P.chest.setFromAxisAngle(Z, sway * 0.25).multiply(_q.setFromAxisAngle(X, 0.1 + hic * 0.2)); P.head.setFromAxisAngle(Z, sway * 0.4).multiply(_q.setFromAxisAngle(X, Math.sin(t * 3.1) * 0.15));
-    const pint = this.prop('pint', pintG); this.inHand(pint, 'R', [0, 0.01, 0], [Math.PI / 2 + sway * 0.4, 0, 0]);
+    const pint = this.prop('pint', pintModel); this.holdGlass(pint, 'R', { tilt: -sway * 0.3 + hic * 0.5, drink: hic * 0.4, lvl: 0.55 });      // (sloshing about)
     const L = ['JUST THE ONE, LADS... *HIC*', 'I LOVE YOU LADS. I MEAN IT.', 'WHO MOVED THE FLOOR?', 'ANOTHER ROUND! *HIC*'];
     for (let i = 0; i < 4; i++) this.at(t, 0.3 + i * 1.2, 'd' + i, () => this.say(L[i], null, i % 2 ? 'boing' : 'gulp'));
     return { hand: { L: 'open', R: 'grip' }, spin: sway * 0.5, bob: -Math.abs(sway) * 0.04 * kH }; }
@@ -1144,8 +1177,8 @@ export class EmotePlayer {
     const fall = ramp(t, N * DUR + 0.3, N * DUR + 0.8), side = n % 2 ? 'L' : 'R', k = drinking ? Math.sin(ph * Math.PI) : 0;
     for (const [S, sx] of [['L', 1], ['R', -1]]) { const on = S === side ? k : 0; this.standArms(S, sx, mixv(mixv([0.35, -0.5, 0.6], DRINK_U, on), [1, 0.1, 0.1], fall), mixv(mixv([-0.2, -0.1, 0.95], DRINK_L, on), [1, 0.1, 0.1], fall)); }
     this.legsStand(0.12 + fall * 0.1); P.head.setFromAxisAngle(X, -0.6 * k + Math.sin(t * 6) * 0.05 * ramp(t, 2, 4)); P.chest.setFromAxisAngle(X, -0.15 * k);
-    for (const S of ['L', 'R']) { const pint = this.prop('pint' + S, pintG); pint.visible = fall < 0.3; const on = S === side ? k : 0; this.inHand(pint, S, [0, 0.01, 0], [Math.PI / 2 - 1.0 * on, 0, 0]);
-      const lvl = S === side && drinking ? 1 - clamp01((ph - 0.25) / 0.6) : 1; const st = pint.getObjectByName('stout'), hd = pint.getObjectByName('head'); st.scale.y = Math.max(0.04, lvl); st.position.y = -0.075 + 0.075 * lvl; hd.position.y = -0.075 + 0.15 * lvl + 0.005; hd.visible = lvl > 0.06; }
+    for (const S of ['L', 'R']) { const pint = this.prop('pint' + S, pintModel), on = S === side ? k : 0;
+      const lvl = S === side && drinking ? 1 - clamp01((ph - 0.25) / 0.6) : 1; this.holdGlass(pint, S, { tilt: 1.35 * on, drink: on, lvl, visible: fall < 0.3 }); }
     for (let i = 0; i < N; i++) this.at(t, i * DUR + 0.3, 'g' + i, () => this.say(['ONE!', 'TWO!', 'THREE!', 'FOUR!', 'FIVE!', 'SIX!!'][i], null, 'gulp'));
     for (let i = 0; i < 5; i++) { const s = this.prop('dz' + i, () => new THREE.Mesh(new THREE.OctahedronGeometry(0.03), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xffd400 : 0xffffff }))); const hp = this.c.headPos(new THREE.Vector3()), a = t * 4 + i * 1.256; s.visible = fall > 0.8; s.position.set(hp.x + Math.cos(a) * 0.22, hp.y + 0.18, hp.z + Math.sin(a) * 0.22); s.rotation.y += 0.2; }
     this.at(t, N * DUR + 0.5, 'f', () => this.say('*HIC*... THE ROOM\'S SPINNING, LADS', null, 'burp'));
@@ -1385,8 +1418,7 @@ export class EmotePlayer {
     const r = this.c.rag, P = r.pose, up = ramp(t, 0.3, 0.8), clink = pulse(t, 1.4, 0.12);
     for (const [S, sx] of [['L', 1], ['R', -1]]) this.standArms(S, sx, mixv([0.2, -1, 0.05], [0.3 - clink * 0.2, 0.2, 0.9], up), mixv([0.2, -1, 0.1], [0.15 - clink * 0.25, 0.6, 0.7], up));
     this.legsStand(0.1); P.head.setFromAxisAngle(X, -0.15 * up);
-    for (const S of ['L', 'R']) { const p = this.prop('pint' + S, () => { const g = new THREE.Group(); g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.032, 0.15, 14), lam(0x140a06))); const h = new THREE.Mesh(new THREE.CylinderGeometry(0.041, 0.04, 0.025, 14), lam(0xf4ead0)); h.position.y = 0.085; g.add(h); return g; });
-      this.inHand(p, S, [0, 0, 0], [Math.PI / 2, 0, 0]); }
+    for (const S of ['L', 'R']) { const p = this.prop('pint' + S, pintModel); this.holdGlass(p, S, { tilt: -0.12 * clink, lvl: 1 - 0.08 * ramp(t, 1.5, 2.2) }); }
     this.at(t, 1.4, 'c', () => this.say('SLÁINTE!', null, 'glass')); this.at(t, 2.6, 'b', () => this.say('MY ROUND, LADS!'));
     return { hand: { L: 'grip', R: 'grip' } };
   }
@@ -1652,13 +1684,6 @@ function drumstick() { const g = new THREE.Group(), crust = lam(0xb5651d), dark 
   const m = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), crust); m.scale.set(1, 1.45, 1); g.add(m);
   for (let i = 0; i < 6; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), i % 2 ? crust : dark); b.position.set(Math.cos(i) * 0.032, (i - 3) * 0.012, Math.sin(i) * 0.032); g.add(b); }
   const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.008, 0.05, 6), lam(0xf4ead8)); bone.position.y = 0.07; g.add(bone); const knob = new THREE.Mesh(new THREE.SphereGeometry(0.011, 8, 6), lam(0xf4ead8)); knob.position.y = 0.096; g.add(knob); return g; }
-// a Guinness: the glass (with the harp-gold G on it), the black stout, the cream head
-function pintG() { const g = new THREE.Group();
-  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.034, 0.16, 18, 1, true), new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, shininess: 100, side: THREE.DoubleSide, depthWrite: false })); g.add(glass);
-  const stout = new THREE.Mesh(new THREE.CylinderGeometry(0.041, 0.033, 0.15, 18), lam(0x0e0806)); stout.name = 'stout'; g.add(stout);
-  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.0415, 0.041, 0.018, 18), lam(0xf1e3c4)); head.name = 'head'; g.add(head);
-  const logo = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.05), new THREE.MeshBasicMaterial({ map: cvTex(128, 128, (c) => { cvTxt(c, 'G', 64, 70, 110, '#d4af37', 'Georgia, serif'); c.strokeStyle = '#d4af37'; c.lineWidth = 3; c.strokeRect(10, 6, 108, 116); }), transparent: true, depthTest: true }));
-  logo.position.set(0, 0.0, 0.0405); g.add(logo); return g; }
 // Chester, Chloe's cockapoo: apricot curls all over (a body of little curls, curly legs, a domed curly head), long
 // floppy curly ears, a black nose, glossy eyes with a glint, a pink tongue, a red collar with a gold tag, a curly tail
 function dogMesh() {

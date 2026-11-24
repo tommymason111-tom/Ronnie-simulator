@@ -13,6 +13,7 @@ export default async function () {
         const T = RS.THREE, stout = new T.Color(0x140c08), out = [];
         RS.scene.traverse(o => {
           if (!o.isMesh || o.isInstancedMesh || !o.geometry || !o.geometry.attributes.color) return;
+          if (o.geometry.userData.pint) { for (let q = o; q; q = q.parent) if (!q.visible) return; const v = new T.Vector3(); o.getWorldPosition(v); const fl = RS.floorAt ? RS.floorAt(v.x, v.z) || 0 : 0; if (v.y - fl < 0.3) out.push([v.x, v.y, v.z].map(x => +x.toFixed(2))); return; }      // (the pint: pint.js tags its shapes)
           const c = o.geometry.attributes.color; if (!c.array || c.count > 4000) return; if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); if (o.geometry.boundingSphere.radius > 0.25) return;   /* (pint-sized things only, not a merged sign that shares the colour) */
           let hit = 0; for (let i = 0; i < c.count; i += 3) if (Math.abs(c.getX(i) - stout.r) < 0.01 && Math.abs(c.getY(i) - stout.g) < 0.01 && Math.abs(c.getZ(i) - stout.b) < 0.01) hit++;
           if (hit < 10) return;

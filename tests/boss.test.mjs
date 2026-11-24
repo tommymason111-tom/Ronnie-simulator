@@ -1,10 +1,12 @@
 // BOSS FIGHT (boss.js), on a fake clock (RS.sim):
-//   - on your own, in each place it's played (Lewis's garden, the pub's car park): a little bot grabs food, throws it at
+//   - on your own, in each arena (Lewis's garden, the pub's car park, the pub's beer garden with its patio cleared): a little bot grabs food, throws it at
 //     the boss's head (and the weak spot when it's out of puff), eats when it's hurt, dodges what it can, and keeps going
 //     until the boss is beaten. Every phase must happen, the attacks must hit and knock you down, the boss's health
 //     only ever goes down when food hits it, the victory screen and the receipt come up, and no page errors
 //   - the defeat path: a bot that just stands there gets battered, and the receipt says so
 //   - every boss can be fought (each one's body builds and moves)
+//   - the pub's arena is the car park or the beer garden at random (both come up), the patio comes back after; the host's
+//     pick reaches the joiner
 //   - two real games in a room (the real room server): both see the same boss health, and the joiner's throws count
 import { launch, newPage, startGame, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
@@ -74,21 +76,24 @@ const summary = (p) => p.evaluate(() => { const B = RS.director.boss, s = window
   return { id: B && B.id, over: B && B.over, hp: B && B.hp, mx: B && B.mx, phases: [...s.phases], seen: s.seen, tele: s.tele, unhit: s.hpDropsUnhit, dmgCalls: s.dmgCalls, knocks: s.knocks, kd: B && B.stats.kd, throws: s.throws, hits: B && B.stats.hits, crits: B && B.stats.crits, minions: B && B.stats.minions, healed: B && B.stats.healed,
     running: RS.director.running, receipt: !!(RS.director.receipt && RS.director.receipt.visible), lines: lines.map(l => l.join(': ')), gameover: document.body.classList.contains('gameover'), progs: RS.renderer.info.programs.length, t: Math.round(B ? B.t : 0) }; });
 
-const ONLY = process.env.BOSS_ONLY ? process.env.BOSS_ONLY.split(',') : null, part = (k) => !ONLY || ONLY.includes(k);      // (BOSS_ONLY=solo,defeat,phone,mp: just those)
+const ONLY = process.env.BOSS_ONLY ? process.env.BOSS_ONLY.split(',') : null, part = (k) => !ONLY || ONLY.includes(k);      // (BOSS_ONLY=solo,defeat,arenas,phone,mp: just those)
 export default async function () {
   const C = checker('boss'), b = await launch();
   try {
     // ---- on your own, to the end, in each place
-    for (const [place, boss] of part('solo') ? [['garden', 'noah'], ['pub', 'chloe']] : []) {
+    for (const [place, boss, arena] of part('solo') ? [['garden', 'noah', 'garden'], ['pub', 'chloe', 'carpark'], ['pub', 'lewis', 'beergarden']] : []) {
       const p = await newPage(b, { width: 640, height: 400 });
       try {
-        await startGame(p, { place, mode: 'boss', extra: '&boss=' + boss });
+        await startGame(p, { place, mode: 'boss', extra: '&boss=' + boss + '&arena=' + arena });
+        { const a = await p.evaluate(() => ({ arena: RS.director.boss.arena, patio: RS.room.patio ? RS.room.patio.cleared : null }));
+          C.ok(a.arena === arena, `${place}: asked for the ${arena} arena, got ${a.arena}`);
+          if (arena === 'beergarden') C.ok(a.patio === true, `beer garden: the patio's benches weren't cleared for the fight (${a.patio})`); }
         await p.evaluate(BOT); await p.evaluate(() => RS.renderer.setAnimationLoop(null));
         const r0 = await p.evaluate(() => ({ mode: RS.director.mode, id: RS.director.boss && RS.director.boss.id }));
         C.ok(r0.mode === 'boss' && r0.id === boss, `${place}: didn't start the boss fight (${JSON.stringify(r0)})`);
         const end = await fight(p, {}, 600);
         const s = await summary(p);
-        console.log(`  ${place}/${boss}: ${s.over} in ${s.t}s, phases ${s.phases}, attacks ${JSON.stringify(s.tele)}, ${s.hits} hits (${s.crits} crits) from ${s.throws} throws, knocked down ${s.kd}x, healed ${s.healed}, lads KO'd ${s.minions}`);
+        console.log(`  ${place}/${arena}/${boss}: ${s.over} in ${s.t}s, phases ${s.phases}, attacks ${JSON.stringify(s.tele)}, ${s.hits} hits (${s.crits} crits) from ${s.throws} throws, knocked down ${s.kd}x, healed ${s.healed}, lads KO'd ${s.minions}`);
         C.ok(end && s.over === 'win', `${place}/${boss}: the bot didn't win (${JSON.stringify({ over: s.over, hp: s.hp, phases: s.phases, kd: s.kd, t: s.t })})`);
         C.ok([1, 2, 3].every(n => s.phases.includes(n)), `${place}/${boss}: not every phase happened: ${s.phases}`);
         for (const a of ['slam', 'throw', 'charge']) C.ok(s.tele[a] > 0, `${place}/${boss}: never did a ${a}`);
@@ -147,6 +152,29 @@ export default async function () {
         C.ok(!p.errors.length, `defeat/bosses: page errors: ` + [...new Set(p.errors)].slice(0, 4).join(' | '));
       } catch (e) { C.ok(false, `defeat/bosses: ${e.message.slice(0, 300)}`); }
       await p.context().close(); }
+    // ---- where it's fought: the pub picks its car park or its beer garden at random (both come up, nothing else does); the
+    // beer garden's patio furniture is stacked away for the fight and back after, with its blocks; Lewis's is always his lawn
+    if (part('arenas')) { const p = await newPage(b, { width: 390, height: 844, mobile: true });
+      try {
+        await startGame(p, { place: 'pub', mode: 'roam0' });
+        const r = await p.evaluate(async () => { RS.renderer.setAnimationLoop(null); const M = await import('/js/boss.js'); let seed = 1;
+          const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }, seen = {};
+          for (let i = 0; i < 200; i++) { const a = M.pickArena('pub', rnd); seen[a] = (seen[a] || 0) + 1; }
+          const lewis = new Set(); for (let i = 0; i < 20; i++) lewis.add(M.pickArena('garden', rnd));
+          const room = RS.room, nb0 = room.blockers.length, games = {}, patio = [];
+          for (let i = 0; i < 8; i++) { RS.newGame('boss'); RS.sim(0.5, 1 / 30); const B = RS.director.boss; games[B.arena] = (games[B.arena] || 0) + 1;
+            const st = B.A.start, k = room.nav.idx(st[0], st[1]); patio.push([B.arena, room.patio.cleared, !!(k >= 0 && room.nav.free[k])]); }
+          RS.newGame('roam0'); RS.sim(0.5, 1 / 30);
+          return { seen, lewis: [...lewis], games, patio, back: room.patio && !room.patio.cleared && room.blockers.length === nb0, mesh: RS.scene.getObjectByName('patio furniture').visible }; });
+        console.log(`  arenas: 200 picks ${JSON.stringify(r.seen)}, 8 real fights ${JSON.stringify(r.games)}`);
+        C.ok(r.seen.carpark > 60 && r.seen.beergarden > 60 && Object.keys(r.seen).length === 2, `the pub's arena isn't a random pick of the car park and the beer garden: ${JSON.stringify(r.seen)}`);
+        C.ok(r.lewis.length === 1 && r.lewis[0] === 'garden', `Lewis's garden picked somewhere else: ${r.lewis}`);
+        C.ok(Object.keys(r.games).every(a => a === 'carpark' || a === 'beergarden'), `a fight at the pub went somewhere else: ${JSON.stringify(r.games)}`);
+        for (const [a, cleared, free] of r.patio) { C.ok(cleared === (a === 'beergarden'), `${a}: the patio ${cleared ? 'was' : 'wasn\'t'} cleared`); C.ok(free, `${a}: you start somewhere you can't stand`); }
+        C.ok(r.back && r.mesh, `after the beer garden fight the patio's benches didn't come back (${JSON.stringify({ back: r.back, mesh: r.mesh })})`);
+        C.ok(!p.errors.length, `arenas: page errors: ` + [...new Set(p.errors)].slice(0, 4).join(' | '));
+      } catch (e) { C.ok(false, `arenas: ${e.message.slice(0, 300)}`); }
+      await p.context().close(); }
     // ---- a phone (portrait) in the headset's absence: the tap-to-throw path counts as a hit
     if (part('phone')) { const p = await newPage(b, { width: 390, height: 844, mobile: true });
       try {
@@ -193,10 +221,13 @@ async function multiplayer(C, b) {
     for (const p of pages) await ev(p, () => { RS.renderer.__render = RS.renderer.render; RS.renderer.render = () => {}; });
     await sleep(3000);
     // the host starts the boss fight: the joiner's game follows
-    await ev(H, () => { window.__bossPick = 'noah'; RS.newGame('boss'); });
+    await ev(H, () => { window.__bossPick = 'noah'; window.__bossArena = 'beergarden'; RS.newGame('boss'); });
     for (const p of pages) await p.waitForFunction(() => window.RS && RS.director.boss && RS.director.boss.id === 'noah', null, { timeout: 60000 }).catch(() => C.ok(false, `mp: ${p.pname} never got the boss fight`));
     await sleep(8000);      // (the entrance)
     const both = async () => Promise.all(pages.map(p => ev(p, () => { const B = RS.director.boss; return { hp: B.hp, mx: B.mx, st: B.st, x: B.x, z: B.z, host: B.host, players: B.players.size, mine: B.stats.dmg }; })));
+    { const ar = await Promise.all(pages.map(p => ev(p, () => [RS.director.boss.arena, RS.room.patio ? RS.room.patio.cleared : null, Math.round(RS.player.head.z)])));
+      C.ok(ar[0][0] === 'beergarden' && ar[1][0] === 'beergarden', `mp: the host's arena didn't reach the joiner: ${JSON.stringify(ar)}`);
+      C.ok(ar.every(a => a[1] === true && a[2] > 22), `mp: someone isn't in the beer garden or its patio isn't clear: ${JSON.stringify(ar)}`); }
     const [h0, j0] = await both();
     C.ok(h0.host && !j0.host, `mp: who's running the boss is wrong (host ${h0.host}, joiner ${j0.host})`);
     C.ok(h0.mx === j0.mx && Math.abs(h0.hp - j0.hp) < 1, `mp: the two games see different boss health: host ${h0.hp}/${h0.mx}, joiner ${j0.hp}/${j0.mx}`);

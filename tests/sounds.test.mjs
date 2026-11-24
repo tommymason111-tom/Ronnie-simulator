@@ -34,7 +34,7 @@ const RELATED = {
   clack: { why: 'something clicking into place', in: ['barstations.js', 'emotes.js'] },
   smash: { why: 'something smashed to bits (a telly, a controller)', in: ['main.js', 'emotes.js'] },
   land: { why: 'a thing dropped on the floor', in: ['main.js', 'emotes.js'] },
-  burp: { why: 'a burp / a hiccup', in: ['emotes.js'] },
+  burp: { why: 'a burp / a hiccup (Aidan: his emotes, and after his pint goes down you)', in: ['emotes.js', 'modes.js'] },
   jackpot: { why: 'a pay-out: the fruit machine, the tip jar passing another £10', in: ['main.js', 'impgames.js:reels', 'tipjar.js'] },
   plunger: { why: 'the plunger in the toilet', in: ['impgames.js:plunge', 'runpub.js'] },
   shatter: { why: 'a glass breaking', in: ['impgames.js:stacker', 'runpub.js', 'main.js'] },
@@ -201,6 +201,7 @@ export default async function () {
     // ---- the developer mode sound board, on a phone: every sound listed, the search finds them, a tap plays one
     const q = await newPage(b, { width: 390, height: 844, mobile: true });
     await startGame(q, { place: 'grid', mode: 'roam', dev: true });
+    await q.waitForFunction(() => document.getElementById('dev-panel'), null, { timeout: 60000 }).catch(() => {});      // (developer mode loads a moment after PLAY: on a busy machine, later than the test looked)
     const board = await q.evaluate(async () => {
       const panel = document.getElementById('dev-panel'); if (!panel) return { none: true };
       if (!panel.classList.contains('on')) document.getElementById('dev-btn').click();

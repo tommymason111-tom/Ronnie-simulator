@@ -28,7 +28,7 @@ const SPEC = {
   can:      { axis: nY, up: Z, at: [0, 0, 0], r: 0.033 },
   beer:     { axis: nY, up: Z, at: [0, -0.04, 0], r: 0.031 },
   bat:      { axis: nY, up: X, at: [0, -0.1, 0], r: 0.013 },              // table tennis bat: shakehand grip, face along the palm
-  pint:     { axis: nY, up: Z, at: [0, -0.01, 0], r: 0.039 },
+  pint:     { axis: nY, up: Z, at: [0, -0.012, 0], r: 0.036 },      // (pint.js: the nonic's radius a third of the way up)
   glass:    { axis: nY, up: Z, at: [0, -0.01, 0], r: 0.039 },
   cider:    { axis: nY, up: Z, at: [0, -0.04, 0], r: 0.031 },
   wine:     { axis: nY, up: Z, at: [0, -0.045, 0], r: 0.006 },        // by the stem
