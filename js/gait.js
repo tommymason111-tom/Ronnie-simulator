@@ -327,7 +327,8 @@ export class Gait {
     // the pelvis: twists with the legs, drops on the swinging side, tips forward with speed (and a belly makes it all bigger)
     const pYaw = -mix3(5, 7, 9, run, spr) * D * cyc * mw;
     const obl = mix3(4, 6, 5, run, spr) * D * (1 + h) * side * mw - this.shift * 0.045 * (1 - mw);
-    const tilt = (mix3(2, 7, 12, run, spr) + mix3(1.5, 2.5, 3, run, spr) * dbl) * D * mw;
+    const ck = clamp(c.crouchK || 0, 0, 1);      // (crouched: set by a mode, e.g. Search & Destroy; the hips go down, the feet stay planted, so the knees bend)
+    const tilt = (mix3(2, 7, 12, run, spr) + mix3(1.5, 2.5, 3, run, spr) * dbl) * D * mw + 22 * D * ck;
     const roll = -this.bank;
     P.pelvis.setFromAxisAngle(_Y, pYaw).multiply(_q.setFromAxisAngle(_Z, obl + roll * 0.8)).multiply(_q.setFromAxisAngle(_X, tilt));
     // side to side over the foot that's down (a waddle when heavy), into a turn, and the weight on one leg stood still
@@ -336,7 +337,7 @@ export class Gait {
     // bit lower overall running; heavier bounces more
     const amp = 1 + 0.7 * h;
     const bw = (0.018 * dbl * amp - 0.024) * kH, br = (-mix3(0.035, 0.035, 0.027, 1, spr) * amp * dbl - mix3(0.03, 0.03, 0.05, 1, spr)) * kH;
-    r.bob = (bw * (1 - run) + br * run) * mw - 0.008 * kH * Math.abs(this.shift) * (1 - mw) + this.thud;
+    r.bob = (bw * (1 - run) + br * run) * mw - 0.008 * kH * Math.abs(this.shift) * (1 - mw) + this.thud - 0.3 * kH * ck;
     r.jiggle = h > 0.02 ? clamp(-this.thud / kH * 6 * h, -0.25, 0.25) : 0;
     this.upper(walking);
   }

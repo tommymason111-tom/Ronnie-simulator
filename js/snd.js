@@ -634,6 +634,7 @@ export class SearchDestroy {
   }
   remoteAct(id, m) {
     const f = this.F.get(id); if (!f) return; const at = this.headOf(id, new THREE.Vector3()); if (!at) return;
+    if (m.k === 'crouch' || m.k === 'sprint') { f[m.k === 'crouch' ? 'cr' : 'sp'] = !!m.on; return; }
     if (m.k === 'reload' && m.on) { sfx('sd_reload', at, 0.6); f.rlT = this.clock; }
     if ((m.k === 'plant' || m.k === 'defuse') && m.on) { sfx(m.k === 'plant' ? 'sd_planting' : 'sd_defusing', at, 0.9); f.actT = this.clock; f.acting = m.k; }
     if (!m.on && m.k !== 'reload') f.acting = null;
