@@ -302,6 +302,12 @@ const mg = (ps) => ps.length ? merge(ps) : null;
 // one gun's model: geometries for its parts and where things are on it (built once each)
 export function gunModel(id) {
   if (gunCache[id]) return gunCache[id]; const f = GUN_BUILD[id] || GUN_BUILD.ketchup, d = f();
+  // (finishing touches on every gun: the pins through the receiver either side of the ejection port, a steel crown at
+  // the muzzle, a sling loop under the back; part of the same merged body, so no extra draws)
+  if (d.eject && d.muzzle && d.body) { const [ex, ey, ez] = d.eject, w = Math.max(0.012, Math.abs(ex)) * 2 + 0.004, [mx, my, mz] = d.muzzle, ZR = [0, 0, Math.PI / 2];
+    for (const dz of [0.035, -0.045]) { C(d.body, 0.0032, 0.0032, w, 0x9aa0a8, 0, ey - 0.016, ez + dz, ZR, 8); }
+    T(d.body, 0.009, 0.0022, 0x7a8088, mx, my, mz + 0.004);
+    if (d.len > 0.4) T(d.body, 0.008, 0.0018, 0x2a2c30, 0, ey - 0.06, ez + 0.12, [0, Math.PI / 2, 0]); }
   const geos = { body: mg(d.body), mag: mg(d.mag), act: mg(d.act), spin: mg(d.spin) }; geos.body.computeBoundingBox();
   const V = (a) => a ? new THREE.Vector3(...a) : null, bb = geos.body.boundingBox;
   return (gunCache[id] = { geos, muzzle: V(d.muzzle), eject: V(d.eject), sight: V(d.sight), fore: V(d.fore), magAt: V(d.magAt), magDir: V(d.magDir).normalize(), act: d.actK, actLen: d.actLen, actAt: V(d.actAt), cylAt: V(d.cylAt), spinAt: V(d.spinAt),
