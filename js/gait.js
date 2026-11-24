@@ -199,7 +199,10 @@ export class Gait {
     const r = this.r, c = this.c, root = r.root;
     this._s = this.scales(); const [sx, sy] = this._s;
     const jump = Math.hypot(root.x - this.lx, root.z - this.lz);
-    if (this.reset || r.mode !== 'anim' || !r._lastP || c.seated || jump > 1.2 * sx) this.doReset();
+    // (placed somewhere new, getting up or sat down: start again stood still; only a jump on its own (another player's body
+    // catching up after a stall) keeps how fast they were going)
+    if (r.mode !== 'anim' || !r._lastP || c.seated) this.hard = true;
+    if (this.reset || this.hard || jump > 1.2 * sx) this.doReset();
     // how fast and which way: what they're asked to walk at (the squad), or else how far they really went (other players)
     // (what they're asked to walk at is exact, unless they're not really getting there: walking into a wall or a table,
     // where the feet would otherwise stride along on the spot)
