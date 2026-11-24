@@ -657,7 +657,7 @@ async function mp(C) {
     C.ok(ids.teams[ids.me] !== ids.teams[ids.guest], `mp: the two players are on the same side (humans should be split): ${JSON.stringify(ids.teams)}`);
     C.ok(ids.n === 8 && ids.bots === 6, `mp: two people in Lewis's garden aren't filled up to 4 a side with bots: ${JSON.stringify(ids)}`);
     // ---- the guest's buy reaches the host (and comes back with their money)
-    const gp = await ev(G, () => { const o = document.getElementById('sd-pick').classList.contains('on'); document.querySelector('#sd-pick .card[data-g="cheese"]').click(); return o; });
+    const gp = await ev(G, () => { const o = document.getElementById('sd-pick').classList.contains('on'); document.querySelector('#sd-pick .card[data-g="cheese"]').click(); document.querySelector('#sd-pick .dv .buy').click(); return o; });      // (a card opens its detail view: BUY buys)
     C.ok(gp, 'mp: the guest has no shop');
     const hg = await H.waitForFunction((id) => T.s().F.get(id).load.P === 'cheese' && T.s().F.get(id).gun === 'cheese', ids.guest, { timeout: 30000 }).then(() => true, () => false); C.ok(hg, 'mp: the host never heard the guest bought the cheese SMG');
     const gc = await G.waitForFunction(() => T.s().my.gun === 'cheese' && T.s().cash[T.s().me] === 800, null, { timeout: 30000 }).then(() => true, () => false); C.ok(gc, 'mp: the guest never got the cheese SMG (and £800 back)');
@@ -670,11 +670,11 @@ async function mp(C) {
       if (!c) c = nav.center(nav.nearestFree(q.x + 3, q.z)); const b = s.bots.get(e.id); b.x = c.x; b.z = c.y; return { id: e.id, x: c.x, z: c.y }; }, ids.guest);
     await G.waitForFunction((t) => { const bp = T.s().botPose.get(t.id); return bp && Math.hypot(bp.x - t.x, bp.z - t.z) < 0.3; }, target, { timeout: 30000 }).catch(() => C.ok(false, 'mp: the bot\'s move never reached the guest'));
     await ev(H, () => { const s = T.s(); s._shots = 0; const rs = s.remoteShot.bind(s); s.remoteShot = (id, m) => { if (id !== s.me && !s.F.get(id).bot) s._shots++; rs(id, m); }; });
-    const hit = await until(G, (t) => { const s = T.s(); if (T.s().F.get(t.id).hp < 100) return true; for (let i = 0; i < 3; i++) { const h = s.headOf(t.id, new RS.THREE.Vector3()); T.aim(h.x, h.y - 0.5, h.z); s.my.nextShot = 0; s.my.drawEnd = 0; s.fire(); } return false; }, target, { timeout: 30000, every: 800 });
-    const hitH = await H.waitForFunction((id) => T.s().F.get(id).hp < 100, target.id, { timeout: 30000 }).then(() => true, () => false);
+    const hit = await until(G, (t) => { const s = T.s(); if (T.s().F.get(t.id).hp < 150) return true; for (let i = 0; i < 3; i++) { const h = s.headOf(t.id, new RS.THREE.Vector3()); T.aim(h.x, h.y - 0.5, h.z); s.my.nextShot = 0; s.my.drawEnd = 0; s.fire(); } return false; }, target, { timeout: 30000, every: 800 });
+    const hitH = await H.waitForFunction((id) => T.s().F.get(id).hp < 150, target.id, { timeout: 30000 }).then(() => true, () => false);
     const hpH = await ev(H, (id) => T.s().F.get(id).hp, target.id); await sleep(1500); const hpG = await ev(G, (id) => T.s().F.get(id).hp, target.id);
     C.ok(hit && hitH && hpH === hpG, `mp: the guest's shots on the bot: host sees ${hpH}, guest sees ${hpG}`);
-    C.ok((await ev(H, () => T.s()._shots)) >= 1, 'mp: the host never saw the guest\'s shots');
+    C.ok((await ev(H, () => T.s()._shots)) >= 1, 'mp: the host never saw the guest\'s shots: ' + await ev(G, () => { const s = T.s(); return JSON.stringify({ alive: s.mine().alive, ph: s.phase, mag: s.my.mag, sprint: RS.player.sprint, pick: s.pickOpen }); }));
     // ---- coming back mid-match: the host's state (everyone, their health, their kills) reaches the guest whole (sdState: its
     // fighters field mustn't be called "f", the relay's own sender field)
     const st0 = await ev(H, (id) => { const s = T.s(); return { n: s.F.size, hp: Math.ceil(s.F.get(id).hp) }; }, target.id);
@@ -684,7 +684,7 @@ async function mp(C) {
     C.ok(gs && hpBack === st0.hp, `mp: a guest coming back mid-match didn't get everyone from the host's state (${gs}, the bot's health ${hpBack} not ${st0.hp})`);
     // ---- the host's referee hurts the guest: the guest's own health and its red flash
     await ev(H, ([gid, bid]) => { T.s().hostDamage(gid, bid, 25, false, new RS.THREE.Vector3(0, 1.5, 0)); }, [ids.guest, target.id]);
-    const gh = await G.waitForFunction(() => T.s().mine().hp === 75, null, { timeout: 30000 }).then(() => true, () => false); C.ok(gh, 'mp: the guest\'s health didn\'t drop to 75');
+    const gh = await G.waitForFunction(() => T.s().mine().hp === 125, null, { timeout: 30000 }).then(() => true, () => false); C.ok(gh, 'mp: the guest\'s health didn\'t drop to 125 (150 - 25): ' + await ev(G, () => T.s().mine().hp));
     // ---- the guest walks onto a pick-up: the host gives it them (stood on it till the host's heard where they are)
     const pki = await ev(G, () => { const s = T.s(), i = s.pk.findIndex(q => q.on && q.k === 'armour'); const j = i >= 0 ? i : s.pk.findIndex(q => q.on); return { i: j, k: s.pk[j].k }; });
     const took = await until(G, (i) => { const s = T.s(), q = s.pk[i]; if (!q.on) return true; T.stand(q.x, q.z); return false; }, pki.i, { timeout: 40000, every: 700 });
@@ -710,7 +710,7 @@ async function mp(C) {
       C.ok(defused && sc[0] === sc[1], `mp: the defuse didn't end the round the same on both: ${defused} ${sc.join(' / ')}`); }
     // ---- round 2: the shop on both; the bots drawn on the guest
     await ev(H, () => { T.s().H.nextAt = T.s().clock; });
-    for (const p of pages) await p.waitForFunction(() => T.s().round === 2 && T.s().phase === 'buy', null, { timeout: 60000 }).catch(() => C.ok(false, `mp: ${p.pname} never got to round 2`));
+    for (const p of pages) await p.waitForFunction(() => T.s().round === 2 && T.s().phase === 'buy', null, { timeout: 60000 }).catch(async () => C.ok(false, `mp: ${p.pname} never got to round 2: ` + await ev(p, () => { const s = T.s(); return JSON.stringify({ r: s.round, ph: s.phase, host: !!s.host, next: s.H && +(s.H.nextAt - s.clock).toFixed(1), ends: +((s.endsAt || 0) - s.clock).toFixed(1) }); })));
     for (const p of pages) C.ok(await ev(p, () => document.getElementById('sd-pick').classList.contains('on') || !RS.player.flatMode), `mp: ${p.pname} has no shop in round 2`);
     const pup = await ev(G, () => { const s = T.s(); return { bots: [...s.F.values()].filter(f => f.bot).length, puppets: s.puppets.size }; });
     C.ok(pup.bots >= 6 && pup.puppets === pup.bots, `mp: the guest doesn't draw the bots: ${JSON.stringify(pup)}`);
