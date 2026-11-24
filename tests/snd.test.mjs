@@ -243,6 +243,13 @@ async function guns(b, C) {
     C.ok(dm.thin.join() === 'blocked,blocked,blocked' && dm.thick.join() === 'blocked,blocked' && dm.holes === 1 && dm.clear, `guns: walls (nothing goes through a board or a wall, one mark on it; with it gone the shot gets there): ${JSON.stringify(dm)}`);
     C.ok(dm.legHit === 20, `guns: the host didn't take a leg hit: ${JSON.stringify(dm)}`);
     // a window: the first shot breaks it (and is stopped), then shots go through the gap
+    // every gun's own reload and empty click
+    const snd = await ev(p, (ids) => { const s = T.s(), bad = []; s.mine().alive = true;
+      for (const g of ids) { s.loadGun(g); s.my.drawEnd = 0; s.my.spin = 99; s.my.mag = 0; s.my.reserve = 50; s.my.reloadEnd = 0; s.my.rl = null; window.__sfxLog = []; s.doReload(); const rl = window.__sfxLog.filter(n => /^sd_rl_/.test(n));
+        s.cancelReload(); s.my.mag = 0; s.my.reserve = 0; s.clickT = 0; s.my.nextShot = 0; s.my.spin = 99; window.__sfxLog = []; s.shootOnce(); const dry = window.__sfxLog.filter(n => /^sd_dry_/.test(n));
+        if (rl[0] !== 'sd_rl_' + g || dry[0] !== 'sd_dry_' + g) bad.push([g, rl[0], dry[0]]); }
+      window.__sfxLog = null; return bad; }, GUN_IDS);
+    C.ok(!snd.length, `guns: a gun's reload / empty click isn't its own: ${JSON.stringify(snd)}`);
     const win = await ev(p, () => { const s = T.s(), Th = RS.THREE, w = s.windows.find(w => { const sz = w.box.getSize(new Th.Vector3()); return sz.y > 0.8 && w.c.y > 0.8 && w.c.y < 2.2; }); if (!w) return { none: s.windows.length };
       const sz = w.box.getSize(new Th.Vector3()), nrm = sz.x < sz.z ? new Th.Vector3(1, 0, 0) : new Th.Vector3(0, 0, 1); let side = null;
       for (const sg of [1, -1]) { const x = w.c.x + nrm.x * sg * 2.5, z = w.c.z + nrm.z * sg * 2.5, nav = RS.room.nav, k = nav.idx(x, z); if (k >= 0 && nav.free[k]) { side = [x, z]; break; } } if (!side) return { noSide: true, n: s.windows.length };

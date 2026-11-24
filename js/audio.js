@@ -741,6 +741,7 @@ let _comboN = 0, _comboT = -9;      // (the combo run: how far up it's climbed, 
 
 export function sfx(name, pos = null, vol = 1) {
   if (!SOUNDS[name]) name = ALIAS[name] || name;
+  if (window.__sfxLog) window.__sfxLog.push(name);      // (tests: what was played, even with no sound on)
   try { hapticFor(name, pos); } catch (e) {}      // (a buzz too, if it's yours: haptics.js)
   if (!ctx || ctx.state !== 'running') return;
   if (hush && pos) return;      // (the world's gone quiet: a cut scene's on)
