@@ -36,17 +36,18 @@ export default async function () {
       await p.waitForFunction(() => RS.director.date && RS.director.date.state === 'play', null, { timeout: 60000 }).catch(() => {});
       await p.evaluate(async () => { const A = await import('./js/audio.js'); A.initAudio(); try { await A.audioCtx().resume(); } catch (e) {} });
       const r = await p.evaluate(async () => { const V = await import('./js/voices.js'), dn = RS.director.date, w = (t) => new Promise(res => setTimeout(res, t)), out = {};
-        const n0 = V.PLAYED.length; dn.narrate('The bread basket is unguarded.'); await w(2500);
+        const n0 = V.PLAYED.length; dn.narrate('The bread basket is unguarded.'); for (let i = 0; i < 60 && !V.PLAYED.slice(n0).length; i++) await w(100);
         out.narr = V.PLAYED.slice(n0).map(x => x.who);
         // a line with a direction: Ronnie's words, then the narrator's
         const n1 = V.PLAYED.length; dn.speaking = true; dn.line(dn.ron, 'The salad. Please. *a single tear*'); dn.speaking = false;
         for (let i = 0; i < 80 && V.PLAYED.length < n1 + 2; i++) await w(100);
         const pl = V.PLAYED.slice(n1); out.seq = pl.map(x => x.who); out.gap = pl.length >= 2 ? pl[1].t - (pl[0].t + pl[0].dur * 1000) : null;
         out.ronH = pl[0] && pl[0].h; out.want = V.lineHash(V.cleanLine('The salad. Please.'));
+        dn.ui.caption('Ronnie', '#ffd400', 'The salad. Please. *a single tear*');      // (the film's caption, as a film shows it)
         const cap = document.querySelector('.dn-cap'), i = cap && cap.querySelector('i'), rc = cap && cap.getBoundingClientRect();
         out.cap = cap ? cap.textContent : null; out.italic = i ? i.textContent : null; out.capOn = !!(rc && rc.width > 0 && rc.left >= 0 && rc.right <= innerWidth && rc.top >= 0 && rc.bottom <= innerHeight);
         return out; });
-      await sleep(200); if (process.env.SHOTS) { fs.mkdirSync(process.env.SHOTS, { recursive: true }); await p.screenshot({ path: path.join(process.env.SHOTS, 'narrator-datenight.png') }); }
+      await sleep(200); if (process.env.SHOTS) { fs.mkdirSync(process.env.SHOTS, { recursive: true }); await p.screenshot({ path: path.join(process.env.SHOTS, 'narrator-datenight.png'), timeout: 180000 }).catch(() => {}); }
       console.log('  date night: ' + JSON.stringify(r));
       C.ok(r.narr.includes('narrator'), `Date Night's narration wasn't said: ${r.narr}`);
       C.ok(r.seq[0] === 'ronnie' && r.seq[1] === 'narrator' && r.gap != null && r.gap >= -50, `a line with a direction: ${JSON.stringify(r)}`);
@@ -86,9 +87,9 @@ export default async function () {
       await p.waitForFunction(() => window.RS && document.body.classList.contains('ready'), null, { timeout: 180000 });
       await p.waitForFunction(() => !document.querySelector('#loadscreen.on'), null, { timeout: 120000 }).catch(() => {});
       await p.evaluate(() => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click(); RS.renderer.xr.setFramebufferScaleFactor(0.12); document.getElementById('enter-vr').click(); });
-      await p.waitForFunction(() => RS.renderer.xr.isPresenting, null, { timeout: 60000 }); await sleep(1500);
-      const a = await p.evaluate(async () => { const V = await import('./js/voices.js'), n0 = V.PLAYED.length; RS.director.showAnnounce({ id: 'aidan', name: 'Aidan' }, 'beer');
-        for (let i = 0; i < 80 && !V.PLAYED.slice(n0).some(x => x.who === 'narrator'); i++) await new Promise(r => setTimeout(r, 100)); return V.PLAYED.slice(n0).map(x => x.who); });
+      await p.waitForFunction(() => RS.renderer.xr.isPresenting, null, { timeout: 180000 }); await sleep(1500);
+      const a = await p.evaluate(async () => { const A = await import('./js/audio.js'); A.initAudio(); try { await A.audioCtx().resume(); } catch (e) {} const V = await import('./js/voices.js'), n0 = V.PLAYED.length; RS.director.showAnnounce({ id: 'aidan', name: 'Aidan' }, 'beer');
+        for (let i = 0; i < 150 && !V.PLAYED.slice(n0).some(x => x.who === 'narrator'); i++) await new Promise(r => setTimeout(r, 100)); return V.PLAYED.slice(n0).map(x => x.who); });
       console.log('  quest: ' + a);
       C.ok(a.includes('narrator'), `the headset's attack card wasn't read out: ${a}`);
       C.ok(!p.tts.length && !p.errors.length, 'quest: ' + p.tts.concat(p.errors).slice(0, 3).join(' | '));

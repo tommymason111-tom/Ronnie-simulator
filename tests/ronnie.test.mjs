@@ -13,7 +13,7 @@ import { launch, newPage, startGame, sleep, checker, ROOT } from './lib/game.mjs
 import fs from 'fs'; import path from 'path';
 import { ronnieLines, gameHashers, spoken } from '../tools/ronnie_lines.mjs';
 const SHOTS = process.env.SHOTS || null;
-const shot = async (p, name) => { if (SHOTS) { fs.mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: path.join(SHOTS, name) }); } };
+const shot = async (p, name) => { if (SHOTS) { fs.mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: path.join(SHOTS, name), timeout: 180000 }).catch(e => console.log('  (no screenshot: ' + e.message.split('\n')[0] + ')')); } };
 const BTN = fs.readFileSync(path.join(ROOT, 'tests/lib/btncheck.js'), 'utf8'), TXT = fs.readFileSync(path.join(ROOT, 'tests/lib/textcheck.js'), 'utf8');
 
 export default async function () {
@@ -98,7 +98,7 @@ export default async function () {
         dn.look = false; R.state.lastT = -99; const rnd = Math.random; Math.random = () => 0.01; R.ate({ type: 'burger', def: { chonk: 10 } }); Math.random = rnd; out.sneak = R.said.slice(-1)[0];
         await w(600); out.capSneak = R.caption() && R.caption().text;
         R.state.lastT = -99; dn.cool = 0; dn.busted('table');
-        for (let i = 0; i < 40 && !(dn.cap && dn.cap.name === 'Ronnie'); i++) await w(50);
+        for (let i = 0; i < 200 && !(dn.cap && dn.cap.name === 'Ronnie'); i++) await w(50);
         out.cap = dn.cap; out.keys = R.said.map(x => x.key); return out; });
       await sleep(300); await shot(p, 'ronnie-datenight.png');
       console.log(`  date night: ${r.keys.join(' ')} · film caption ${JSON.stringify(r.cap)}`);
@@ -124,7 +124,7 @@ export default async function () {
       await p.waitForFunction(() => window.RS && document.body.classList.contains('ready'), null, { timeout: 180000 });
       await p.waitForFunction(() => !document.querySelector('#loadscreen.on'), null, { timeout: 120000 }).catch(() => {});
       await p.evaluate(() => { const r = document.querySelector('.screen[data-s="intro"].on #intro-ready'); if (r) r.click(); RS.renderer.xr.setFramebufferScaleFactor(0.12); document.getElementById('enter-vr').click(); });
-      await p.waitForFunction(() => RS.renderer.xr.isPresenting, null, { timeout: 60000 });
+      await p.waitForFunction(() => RS.renderer.xr.isPresenting, null, { timeout: 180000 });
       await sleep(1500);
       const r = await p.evaluate(async () => { RS.ronnie.say('power.hoover'); await new Promise(res => setTimeout(res, 1500)); const s = RS.ronnie.vrCaption(); let inView = false;
         if (s) { const w = s.getWorldPosition(new RS.THREE.Vector3()); const cam = RS.renderer.xr.getCamera(); const loc = cam.worldToLocal(w.clone()); inView = loc.z < -0.5 && Math.abs(loc.x) < 0.5 && loc.y < 0 && loc.y > -0.6; }

@@ -186,7 +186,7 @@ function modeLines(d0, mode, dt) {
   // free roam (and the plain eating modes): a bit of chatter now and then
   if ((P0.idleT -= dt) <= 0) { P0.idleT = 28 + Math.random() * 22;
     const k = mode === 'roam' || mode === 'classic' || mode === 'everyone' || mode === 'intervention' || mode === 'veggie' ? 'idle' : mode === 'sweep' ? 'sweep.idle' : mode === 'runpub' ? 'runpub.idle' : mode === 'date' && d0.date && d0.date.state === 'play' && d0.date.look ? 'date.sweet' : null;
-    if (k) say(k); }
+    if (k && !say(k)) P0.idleT = 6 + Math.random() * 4; }      // (someone else talking: try again in a few seconds)
   if (mode === 'date' && d0.date) { const dn = d0.date;
     const look = dn.state === 'play' ? !!dn.look : null, pl = ch('look', look);
     if (pl === true && look === false) { S.ateAway = false; say('date.away', { p: 0.45 }); }

@@ -8,7 +8,7 @@
 import { launch, newPage, startGame, sleep, checker, ROOT } from './lib/game.mjs';
 import fs from 'fs'; import path from 'path';
 const SHOTS = process.env.SHOTS || null, ONLY = process.env.CHARS ? process.env.CHARS.split(',') : null;
-const shot = async (p, name) => { if (SHOTS) { await p.evaluate(() => RS.renderer.render(RS.scene, (window.__devCam && window.__devCam()) || RS.player.camera)); fs.mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: path.join(SHOTS, name) }); } };
+const shot = async (p, name) => { if (SHOTS) { await p.evaluate(() => RS.renderer.render(RS.scene, (window.__devCam && window.__devCam()) || RS.player.camera)); fs.mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: path.join(SHOTS, name), timeout: 180000 }).catch(e => console.log('  (no screenshot: ' + e.message.split('\n')[0] + ')')); } };
 const BTN = fs.readFileSync(path.join(ROOT, 'tests/lib/btncheck.js'), 'utf8');
 // (in the page) the bodies on show: their sizes
 const SIZES = () => window.__devModels.M.figs.map(f => { const g = f.av.c.rag.group, b = new RS.THREE.Box3(), t = new RS.THREE.Box3(); g.updateMatrixWorld(true); g.traverseVisible(o => { if ((o.isMesh || o.isSkinnedMesh) && !o.isSprite) { t.makeEmpty(); t.expandByObject(o, true); b.union(t); } }); const s = b.getSize(new RS.THREE.Vector3());      /* (what you see: the visible body, skinned as it stands) */ return { ch: f.ch, n: f.n, w: Math.max(s.x, s.z), h: s.y, x: (b.min.x + b.max.x) / 2, z: (b.min.z + b.max.z) / 2, ready: !!f.av.c.rag.mesh }; });

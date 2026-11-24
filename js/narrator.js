@@ -36,7 +36,7 @@ function say(text, o) {
 }
 function play(text, o) {
   const k = cleanLine(text); S.last.set(k, performance.now());
-  const ok = voiceLine('narrator', text, null, { key: 'narrator', vol: VOL, onStart: (dur) => { S.until = performance.now() + dur * 1000; S.said.push({ text, t: S.t, dur }); if (S.said.length > 60) S.said.shift(); if (o.onStart) o.onStart(dur); } });
+  const ok = voiceLine('narrator', text, null, { key: 'narrator', vol: VOL, maxWait: 3000, onStart: (dur) => { S.until = performance.now() + dur * 1000; S.said.push({ text, t: S.t, dur }); if (S.said.length > 60) S.said.shift(); if (o.onStart) o.onStart(dur); } });
   if (!ok && o.onStart) o.onStart(0);
   return ok;
 }
