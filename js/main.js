@@ -1209,13 +1209,13 @@ const PAUSE_MODES = {
   imposter2: ['🔪', 'IMPOSTER · 2 IMPOSTERS', 'Multiplayer: two imposters among you (5+ players)'],
   boss: ['👹', 'BOSS FIGHT', 'A giant mate: eat to power up, throw food to bring them down'],      // (BOSS FIGHT)
   prophunt: ['🎭', 'PROP HUNT', 'Multiplayer: hide as a keg, a bin, a gnome... seekers find them'],      // (PROP HUNT)
-  snd: ['💣', 'SEARCH & DESTROY', 'Two teams, one bomb: buy a gun, plant or defuse the Vindaloo'],      // (SEARCH AND DESTROY)
+  snd: ['💣', 'SEARCH & DESTROY', 'Multiplayer: two teams, one bomb: buy a gun, plant or defuse the Vindaloo'],      // (SEARCH AND DESTROY)
 };
 const PLACE_GAMES = { pub: ['everyone', 'runpub1', 'runpub', 'runpub3', 'imposter', 'imposter2', 'boss', 'prophunt', 'snd', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], bedroom: ['everyone', 'chonkoff', 'chonkoff2', 'chonkoffr', 'roam', 'roam0'], shop: ['sweep', 'prophunt', 'snd', 'roam', 'roam0'], garden: ['bbq', 'boss', 'prophunt', 'snd', 'roam', 'roam0'], restaurant: ['date', 'roam', 'roam0'] };
 const modeTitle = () => { const m = director.fullMode; return (PAUSE_MODES[m] && PAUSE_MODES[m][1]) || (m === 'classic' ? 'CLASSIC' : m === 'intervention' ? 'THE SQUAD' : (m || '').toUpperCase()); };
 function showPauseModes() {
   const list = document.getElementById('pause-mode-list'), cur = director.fullMode, guest = !!(net.connected && !net.host);
-  list.innerHTML = (PLACE_GAMES[room.placeId] || PLACE_GAMES.bedroom).filter(id => net.connected || !PAUSE_MODES[id] || !/^(imposter|prophunt)/.test(id)).map(id => { const [ico, name, desc] = PAUSE_MODES[id];
+  list.innerHTML = (PLACE_GAMES[room.placeId] || PLACE_GAMES.bedroom).filter(id => net.connected || !PAUSE_MODES[id] || !/^(imposter|prophunt|snd)/.test(id)).map(id => { const [ico, name, desc] = PAUSE_MODES[id];
     return `<button class="alt mode-opt${id === cur ? ' cur' : ''}" data-id="${id}">${ico} ${name}<small>${id === cur ? (guest ? 'Playing now' : 'Playing now · tap to restart') : guest ? 'Ask the host for this one' : desc}</small></button>`; }).join('');
   list.querySelectorAll('.mode-opt').forEach(b => b.addEventListener('click', () => {
     const id = b.dataset.id;

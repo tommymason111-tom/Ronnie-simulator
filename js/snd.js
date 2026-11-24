@@ -289,7 +289,7 @@ export class SearchDestroy {
     const f = {}; for (const [k, v] of this.F) { const s = this.stat(k); f[k] = [v.alive ? 1 : 0, Math.round(v.hp), Math.round(v.ar), v.gun || FREE_GUN, s.k, s.d, s.as, s.pl, s.df, s.mvp]; }
     const ld = {}, cash = {}; for (const [k] of this.F) { ld[k] = this.loadMsg(k); cash[k] = Math.round(this.H.cash[k] ?? SD.CASH0); }
     const drops = [...this.H.drops.values()].map(d => [d.d, d.g, d.x, d.z]);
-    this.net.send({ t: 'sdState', to: id, round: this.roundMsg || null, ph: this.phase, left: Math.max(0, (this.H.ends || 0) - this.clock), f, bomb: this.bombMsg || null, sc: this.H.sc, pkOn: this.pk.map(p => p.on ? 1 : 0), over: this.overMsg || null, ld, cash, drops, hist: this.H.hist.slice(-12) });
+    this.net.send({ t: 'sdState', to: id, round: this.roundMsg || null, ph: this.phase, left: Math.max(0, (this.H.ends || 0) - this.clock), fs: f, bomb: this.bombMsg || null, sc: this.H.sc, pkOn: this.pk.map(p => p.on ? 1 : 0), over: this.overMsg || null, ld, cash, drops, hist: this.H.hist.slice(-12) });
   }
   // a buy in the shop: only while the round's being set up, only what you can afford. A gun you bought this round and
   // swap for another is refunded; one you'd kept from last round is left on the floor for a team-mate
@@ -454,7 +454,7 @@ export class SearchDestroy {
     if (k === 'sdHp') { const f = this.F.get(String(m.id)); if (f) { if (finite(m.hp)) f.hp = clamp(m.hp, 0, SD.HP); if (finite(m.ar)) f.ar = clamp(m.ar, 0, SD.AR_MAX); } return; }
     if (k === 'sdBots') { if (!Array.isArray(m.b)) return; for (const e of m.b.slice(0, 12)) { if (!Array.isArray(e) || e.length < 6) continue; const [id, x, z, yaw, pitch, fl] = e; if (!finite(x, z, yaw, pitch) || Math.abs(x) > 1e3 || Math.abs(z) > 1e3) continue; const f = this.F.get(String(id)); if (!f || !f.bot) continue;
         const bp = this.botPose.get(f.id) || { x, z, yaw, pitch, dx: x, dz: z }; bp.tx = x; bp.tz = z; bp.tyaw = yaw; bp.pitch = pitch; bp.fl = fl | 0; if (Math.hypot(bp.x - x, bp.z - z) > 3) { bp.x = x; bp.z = z; } this.botPose.set(f.id, bp); } return; }
-    if (k === 'sdState') { if (m.round) this.startRound(m.round, true); const f = m.f && typeof m.f === 'object' ? m.f : {};
+    if (k === 'sdState') { if (m.round) this.startRound(m.round, true); const f = m.fs && typeof m.fs === 'object' ? m.fs : {};
       for (const id in f) { const F = this.F.get(id), e = f[id]; if (!F || !Array.isArray(e)) continue; F.alive = !!e[0]; if (finite(e[1])) F.hp = e[1]; if (finite(e[2])) F.ar = e[2]; if (gunOk(e[3])) F.gun = e[3];
         ['k', 'd', 'a', 'pl', 'df', 'mvp'].forEach((s, j) => { if (finite(e[4 + j])) F[s] = clamp(e[4 + j], 0, 999); }); }
       if (m.sc && typeof m.sc === 'object') this.sc = { R: Number(m.sc.R) || 0, B: Number(m.sc.B) || 0 };
