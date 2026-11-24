@@ -21,7 +21,7 @@ const st = (p) => ev(p, () => { const ph = RS.director.prophunt, v = new RS.THRE
 export default async function () {
   const C = checker('phbots'), host = await startRoomHost(), b = await launch();
   try {
-    for (const place of PLACES) for (const N of PEOPLE) {
+    for (const place of PLACES) for (const N of PEOPLE) { const ctxs0 = b.contexts().length; try {
       const tag = `${place}, ${N} ${N === 1 ? 'person' : 'people'}`, nReal = Math.min(2, N), pages = [], light = [];
       for (let i = 0; i < nReal; i++) { const p = await newPage(b, { width: 390, height: 844, mobile: true }); p.pname = i ? 'GUEST' : 'HOST'; pages.push(p); await openMenu(p, host.url); }
       const [H, G] = pages, code = await hostRoom(H, 'HOSTY', 'lewis'); if (G) await joinRoom(G, code, 'GUESTY', 'chloe');
@@ -79,7 +79,7 @@ export default async function () {
       }
       for (const p of pages) { if (p.isClosed()) continue; C.ok(!p.errors.length, `${tag} ${p.pname}: ` + [...new Set(p.errors)].slice(0, 3).join(' | ')); }
       for (const x of light) x.stop(); for (const p of pages) await p.context().close().catch(() => {});
-    }
+    } catch (e) { C.ok(false, `${place}, ${N} people: CRASHED ${String(e.message || e).split('\n')[0]}`); for (const c of b.contexts().slice(ctxs0)) await c.close().catch(() => {}); } }
   } finally { await b.close(); await host.close(); }
   return C.fails;
 }

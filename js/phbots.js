@@ -122,7 +122,8 @@ export class PhBots {
     const eye = new THREE.Vector3(b.x, ph.floor(b.x, b.z) + 1.5, b.z), opts = [];
     for (const [id, pr] of ph.props) { const T = ph.players.get(id); if (!T || T.found || T.role !== 'hider' || pr.gone || !pr.kind) continue; const d = ph.hd(eye, pr.pos); if (d > SEE) continue;
       let w = 0.28 + (d < 6 ? 0.2 : 0) + ((pr.speed || 0) > 0.25 ? 0.45 : 0) + (t - (T.tauntAt || -99) < 6 ? 0.35 : 0) + (id === b.chase ? 0.5 : 0); opts.push({ h: id, x: pr.pos.x, y: pr.pos.y + ph.K[pr.kind].h / 2, z: pr.pos.z, d, w }); }
-    ph.decoys.forEach((dd, i) => { const d = ph.hd(eye, dd); if (d > SEE * 0.7) return; opts.push({ i, x: dd.x, y: (dd.e ? dd.e.pos.y : dd.y) + ph.K[dd.k].h / 2, z: dd.z, d, w: 0.02 }); });
+    // (and now and then one of the real things, a wasted shot: one look at one of them a go, not a chance at every one in sight)
+    if (ph.decoys.length && Math.random() < 0.3) { const i = Math.floor(Math.random() * ph.decoys.length), dd = ph.decoys[i], d = ph.hd(eye, dd); if (d < SEE * 0.7) opts.push({ i, x: dd.x, y: (dd.e ? dd.e.pos.y : dd.y) + ph.K[dd.k].h / 2, z: dd.z, d, w: 0.35 }); }
     const seen = opts.filter(o => { const dir = new THREE.Vector3(o.x - eye.x, o.y - eye.y, o.z - eye.z), L = dir.length(); return L > 0.3 && !ph.walled(new THREE.Ray(eye, dir.normalize()), L - 0.3); });
     let pick = null; for (const o of shuffle(seen)) if (Math.random() < o.w) { pick = o; break; }
     if (!pick) return;
