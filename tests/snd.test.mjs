@@ -53,7 +53,7 @@ const HELP = () => {
     enemies: () => { const s = RS.director.snd, me = s.mine(); return [...s.F.values()].filter(f => f.team !== me.team && f.alive); },
     mates: () => { const s = RS.director.snd, me = s.mine(); return [...s.F.values()].filter(f => f.team === me.team && f.alive && f.id !== s.me); },
     // an enemy bot stood still n metres in front of me, my aim on it (at y below its head)
-    target: (n = 6, dy = 0.5) => { const s = RS.director.snd, e = T.enemies().find(f => f.bot); if (!e) return null; for (const m of T.mates()) { const mb = s.bots && s.bots.get(m.id); if (mb && Math.abs(mb.x) < 100) mb.x += 200; }      /* (team-mates out of the line of fire: a shot stops at them) */ const b = s.bots.get(e.id), at = T.clear(n); b.x = at[0]; b.z = at[1]; e.hp = 100; e.ar = 0; RS.sim(1 / 30); const h = s.headOf(e.id, new RS.THREE.Vector3()); T.aim(h.x, h.y - dy, h.z); return e; },
+    target: (n = 6, dy = 0.5) => { const s = RS.director.snd, e = T.enemies().find(f => f.bot); if (!e) return null; const e0 = T.enemies().find(f => f.bot); for (const m of [...T.mates(), ...T.enemies()]) { if (e0 && m.id === e0.id) continue; const mb = s.bots && s.bots.get(m.id); if (mb && Math.abs(mb.x) < 100) mb.x += 200; }      /* (everyone but the target out of the line of fire: a shot stops at the first one) */ const b = s.bots.get(e.id), at = T.clear(n); b.x = at[0]; b.z = at[1]; e.hp = 100; e.ar = 0; RS.sim(1 / 30); const h = s.headOf(e.id, new RS.THREE.Vector3()); T.aim(h.x, h.y - dy, h.z); return e; },
     clearPops: () => { for (const id of ['sd-splash', 'sd-pop', 'sd-multi', 'sd-count']) { const e = document.getElementById(id); if (e) e.className = ''; } for (const e of document.querySelectorAll('.banner, #banner')) e.style.display = 'none'; },
     rich: () => { const s = RS.director.snd; s.cash[s.me] = 9000; if (s.H) s.H.cash[s.me] = 9000; },
   };
@@ -189,8 +189,9 @@ async function guns(b, C) {
         // aimed (zoomed in, tighter), then fired at the bot
         const fov0 = RS.player.camera.fov, hip = s.spreadNow(); s.toggleAds(true); T.step(0.45); out.ads = +s.my.adsK.toFixed(2); out.zoom = +(RS.player.camera.fov / fov0).toFixed(2); out.tighter = s.spreadNow() < hip;
         const h = s.headOf(e.id, new RS.THREE.Vector3()); T.aim(h.x, h.y - 0.5, h.z);
-        const mag0 = s.my.mag, hp0 = e.hp; if (G.spin || G.flame) { s.my.firing = true; s.fire(); T.step(0.6); s.my.firing = false; } else { s.my.nextShot = 0; s.fire(); T.step(G.proj ? 1.2 : 0.45); }
-        out.fired = mag0 - s.my.mag; out.hit = hp0 - e.hp; out.marks = s.markM.count; s.toggleAds(false); T.step(0.3);
+        { const r = s.aimRay(), tr = r && s.trace(r.origin, r.direction, 60, G); out.pre = tr ? (tr.hit ? (tr.hit.mate ? 'mate' : tr.hit.id === e.id ? 'target' : 'other:' + tr.hit.id) : tr.glass && tr.glass.size ? 'glass' : 'nothing/wall') : 'noray'; out.dist = +Math.hypot(h.x - RS.player.head.x, h.z - RS.player.head.z).toFixed(1); }
+        const mag0 = s.my.mag, hp0 = e.hp; if (G.spin || G.flame) { s.my.firing = true; s.fire(); T.step(0.6); s.my.firing = false; } else { s.my.nextShot = 0; s.fire(); out.magNow = s.my.mag; T.step(G.proj ? 1.2 : 0.45); }
+        out.fired = mag0 - (out.magNow ?? s.my.mag); out.hit = hp0 - e.hp; out.marks = s.markM.count; s.toggleAds(false); T.step(0.3);
         // reloaded (its own way)
         s.my.mag = G.mag > 1 ? 1 : 0; s.my.cyc = null; s.doReload(); out.rlType = s.my.rl && s.my.rl.k; out.len = +s.my.reloadLen.toFixed(2);
         if (G.rtype === 'shell') { T.step(0.35 + G.reload * 0.8); out.shell1 = s.my.mag; T.step(G.reload); out.shell2 = s.my.mag; if (G.mag === 1) { out.shell1 = 2; out.shell2 = 3; } }
@@ -250,6 +251,14 @@ async function guns(b, C) {
         if (rl[0] !== 'sd_rl_' + g || dry[0] !== 'sd_dry_' + g) bad.push([g, rl[0], dry[0]]); }
       window.__sfxLog = null; return bad; }, GUN_IDS);
     C.ok(!snd.length, `guns: a gun's reload / empty click isn't its own: ${JSON.stringify(snd)}`);
+    // heavy guns slow you down; everyone else's gun held in their hands (no arm stretched off to it)
+    const wt = await ev(p, () => { const s = T.s(), P = RS.player, sp = (g) => { s.loadGun(g); s.my.drawEnd = 0; s.updateSpeed(); return P.speedMul; };
+      const out = { pistol: sp('ketchup'), rifle: sp('monstor'), heavy: sp('gravy') }; s.loadGun('ketchup'); s.updateSpeed();
+      for (const [id, f] of s.F) if (id !== s.me) { f.alive = true; const b = s.bots.get(id); if (b) b.alive = true; } s.botsFrozen = true; T.step(0.3);
+      const holds = []; for (const [id, f] of s.F) { if (id === s.me) continue; const av = s.avatar(id), h = s.headOf(id, new RS.THREE.Vector3()); if (!av || !h || av.down > 0) continue; const gh = av.gunHold; holds.push(gh && gh.R ? +gh.R.distanceTo(h).toFixed(2) : -1); }
+      out.holds = holds; return out; });
+    C.ok(wt.pistol > wt.rifle && wt.rifle > wt.heavy && wt.heavy < 0.9, `guns: heavier guns aren't slower: ${JSON.stringify(wt)}`);
+    C.ok(wt.holds.length >= 3 && wt.holds.every(d => d > 0.1 && d < 0.85), `guns: someone's gun isn't in their hands (no hold, or out of arm's reach of their head): ${JSON.stringify(wt.holds)}`);
     const win = await ev(p, () => { const s = T.s(), Th = RS.THREE, w = s.windows.find(w => { const sz = w.box.getSize(new Th.Vector3()); return sz.y > 0.8 && w.c.y > 0.8 && w.c.y < 2.2; }); if (!w) return { none: s.windows.length };
       const sz = w.box.getSize(new Th.Vector3()), nrm = sz.x < sz.z ? new Th.Vector3(1, 0, 0) : new Th.Vector3(0, 0, 1); let side = null;
       for (const sg of [1, -1]) { const x = w.c.x + nrm.x * sg * 2.5, z = w.c.z + nrm.z * sg * 2.5, nav = RS.room.nav, k = nav.idx(x, z); if (k >= 0 && nav.free[k]) { side = [x, z]; break; } } if (!side) return { noSide: true, n: s.windows.length };
