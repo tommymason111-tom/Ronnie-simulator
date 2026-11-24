@@ -251,6 +251,19 @@ async function guns(b, C) {
         if (rl[0] !== 'sd_rl_' + g || dry[0] !== 'sd_dry_' + g) bad.push([g, rl[0], dry[0]]); }
       window.__sfxLog = null; return bad; }, GUN_IDS);
     C.ok(!snd.length, `guns: a gun's reload / empty click isn't its own: ${JSON.stringify(snd)}`);
+    // hit reactions: a bot flinches when hit, falls the way the shot went when it's down; you hear it muffled near death
+    const hr = await ev(p, () => { const s = T.s(); s.mine().alive = true; s.mine().hp = 150; s.loadGun('monstor'); const e = T.target(6); if (!e) return { err: 'no bot' }; const av = s.avatar(e.id); if (!av || !av.c) return { err: 'no puppet' };
+      let fl = null; const of = av.c.flinch; av.c.flinch = function (d, a) { fl = a; return of.call(this, d, a); }; s.hostDamage(e.id, 'me', 20, false); T.step(0.05); av.c.flinch = of;
+      const P = RS.player.head, ch = () => { const r = av.c.rag && av.c.rag.parts && av.c.rag.parts.chest; return r ? Math.hypot(r.body.position.x - P.x, r.body.position.z - P.z) : -1; }, d0 = ch(); s.hostKill(e.id, 'me', false); T.step(0.8); const d1 = ch();
+      const me = s.mine(); me.hp = 10; T.step(0.1); const mk = s.muffK; me.hp = 150; T.step(0.1); return { fl, down: av.down > 1e5, d0: +d0.toFixed(2), d1: +d1.toFixed(2), mk, mk2: s.muffK }; });
+    C.ok(hr.fl > 0 && hr.down && hr.d1 > hr.d0 + 0.2 && hr.mk > 0.5 && !hr.mk2, `guns: hit reactions (a flinch, a fall away from the shot, muffled near death and back): ${JSON.stringify(hr)}`);
+    // the scotch egg's splash: hurts in the open, not through a wall
+    const egg = await ev(p, () => { const s = T.s(), Th = RS.THREE; s.mine().alive = true; s.loadGun('scotch'); const G = s.curG(), e = T.target(6); if (!e) return { err: 'no bot' };
+      const h = s.headOf(e.id, new Th.Vector3()), P = RS.player.head, dir = new Th.Vector3(P.x - h.x, 0, P.z - h.z).normalize(), at = new Th.Vector3(h.x + dir.x * 1.8, s.floor(h.x, h.z) + 0.3, h.z + dir.z * 1.8);
+      const hit = () => { e.hp = 150; e.alive = true; s.F.get(e.id).alive = true; s.projHit({ G, owner: s.me, kind: 'egg', v: new Th.Vector3() }, at.clone(), new Th.Vector3(0, 1, 0), null); T.step(0.1); return 150 - e.hp; };
+      const open = hit(); const mid = at.clone().lerp(new Th.Vector3(h.x, at.y, h.z), 0.5), w = new Th.Box3(new Th.Vector3(mid.x - 0.6, mid.y - 1.5, mid.z - 0.6), new Th.Vector3(mid.x + 0.6, mid.y + 3, mid.z + 0.6));
+      s.extraWalls = [w]; s.grid = null; const walled = hit(); s.extraWalls = []; s.grid = null; return { open, walled }; });
+    C.ok(egg.open > 20 && egg.walled === 0, `guns: the scotch egg's splash (hurts in the open, not through a wall): ${JSON.stringify(egg)}`);
     // heavy guns slow you down; everyone else's gun held in their hands (no arm stretched off to it)
     const wt = await ev(p, () => { const s = T.s(), P = RS.player, sp = (g) => { s.loadGun(g); s.my.drawEnd = 0; s.updateSpeed(); return P.speedMul; };
       const out = { pistol: sp('ketchup'), rifle: sp('monstor'), heavy: sp('gravy') }; s.loadGun('ketchup'); s.updateSpeed();
