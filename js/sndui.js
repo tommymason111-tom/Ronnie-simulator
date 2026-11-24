@@ -8,7 +8,8 @@ import * as THREE from 'three';
 import { sfx } from './audio.js';
 import { track } from './awards.js';
 import { rr, txt } from './impgames.js';
-import { GUNS, GUN, PRIMARIES, SIDEARMS, FREE_GUN, gunBars, drawGunArt, PERKS, money } from './sndkit.js';
+import { MapView } from './minimap.js';
+import { HP, GUNS, GUN, PRIMARIES, SIDEARMS, FREE_GUN, gunBars, drawGunArt, PERKS, money, newGun } from './sndkit.js';
 
 const TEAMS = { R: { short: 'GREASY SPOONS', col: '#ff5a3d', ico: '🍳' }, B: { short: 'SALAD DODGERS', col: '#3da5ff', ico: '🥗' } };
 const VERB = Object.assign(Object.create(null), { ketchup: 'SAUCED', brown: 'BROWN-SAUCED', mustard: 'MUSTARDED', beans: 'BEANED', sausage: 'SAUSAGED', cheese: 'CHEESED', monstor: 'CANNED', baguette: 'BAGUETTED', gravy: 'GRAVIED' });
@@ -21,7 +22,10 @@ const nm = (f) => esc(String(f.name || '').replace(/^🤖 /, ''));
 const SHOP_ORDER = [...PRIMARIES, ...SIDEARMS];
 const _v = new THREE.Vector3();
 
-const CSS = `body.snd #btn-eat, body.snd #btn-throw, body.snd #pu-hud, body.snd #btn-sprint, body.snd.sd-alive #btn-emote { display: none !important; }
+const CSS = `body.snd #btn-eat, body.snd #btn-throw, body.snd #pu-hud { display: none !important; }
+#btn-crouch { position: fixed; display: none; left: max(36px, calc(env(safe-area-inset-left) + 20px)); bottom: max(252px, calc(env(safe-area-inset-bottom) + 232px)); width: 92px; height: 44px; border-radius: 22px; border: 3px solid #fff; background: #455a64; color: #fff; font: 900 13px "Arial Black", Arial, sans-serif; text-shadow: 0 2px 2px #000; box-shadow: 0 5px 0 rgba(0,0,0,0.35); z-index: 45; touch-action: none; padding: 0; cursor: pointer; }
+body.snd.flat.sd-alive #btn-crouch { display: block; } #btn-crouch.on { background: #ffd400; color: #111; text-shadow: none; } body.gameover #btn-crouch { display: none !important; }
+@media (max-height: 520px) and (min-aspect-ratio: 1/1) { #btn-crouch { bottom: max(150px, calc(env(safe-area-inset-bottom) + 130px)); left: calc(max(36px, calc(env(safe-area-inset-left) + 20px)) + 204px); } }
 #sd-ui { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); display: none; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 45; pointer-events: none; }
 body.snd.flat #sd-ui { display: flex; } #sd-ui .row { display: flex; gap: 10px; align-items: flex-end; }
 #sd-ui button { pointer-events: auto; position: relative; width: 74px; height: 74px; border-radius: 50%; border: 4px solid #fff; color: #fff; font: 900 12px "Arial Black", Arial, sans-serif; text-shadow: 0 2px 3px #000; box-shadow: 0 4px 0 rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; padding: 0; cursor: pointer; transition: transform .1s; touch-action: none; }
@@ -32,7 +36,7 @@ body.sd-touch #sd-ui button i { display: none; }
 #sd-ui .reload { background: #2a6df4; } #sd-ui .reload.need { animation: sdpulse .6s infinite alternate; background: #ff9f1c; }
 #sd-ui .act { background: #7b2ff7; width: 88px; height: 88px; } #sd-ui .act.defuse { background: #00a86b; } #sd-ui .act.grab { background: #c77700; } #sd-ui .act.on { animation: sdpulse .35s infinite alternate; }
 #sd-ui .aim { background: #455a64; } #sd-ui .aim.on { background: #ffd400; color: #111; text-shadow: none; } #sd-ui .swap { background: #6d4c41; } #sd-ui .swap b { font-size: 22px; }
-#sd-ui .watch { background: #37474f; width: 92px; height: 92px; } #sd-ui .guns { background: #2e7d32; width: 92px; height: 92px; animation: sdpulse .8s infinite alternate; }
+#sd-ui .watch { background: #37474f; width: 92px; height: 92px; } #sd-ui .view { background: #6a1b9a; } #sd-ui .guns { background: #2e7d32; width: 92px; height: 92px; animation: sdpulse .8s infinite alternate; }
 @keyframes sdpulse { from { box-shadow: 0 0 0 0 rgba(255,255,255,0.6), 0 4px 0 rgba(0,0,0,0.4); } to { box-shadow: 0 0 0 9px rgba(255,255,255,0), 0 4px 0 rgba(0,0,0,0.4); } }
 #sd-ammo { pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 6px 12px 8px; border-radius: 14px; background: rgba(8,10,22,0.78); border: 3px solid #fff; color: #fff; font-family: "Arial Black", Arial, sans-serif; position: relative; overflow: hidden; min-width: 168px; box-sizing: border-box; touch-action: none; }
 #sd-ammo .ic { font-size: 26px; } #sd-ammo .num { display: flex; align-items: baseline; gap: 4px; } #sd-ammo .num b { font-size: 28px; line-height: 1; } #sd-ammo .num em { font-style: normal; font-size: 15px; color: #c3cad6; }
@@ -55,7 +59,7 @@ body.snd.flat #sd-top { display: flex; } #sd-top .bar { display: flex; align-ite
 @keyframes sdhm { 0% { opacity: 1; transform: scale(1.4); } 100% { opacity: 0; transform: scale(1); } }
 #sd-dir { position: fixed; left: 50%; top: 50%; width: 0; height: 0; z-index: 41; pointer-events: none; } #sd-dir .arc { position: absolute; left: -70px; top: -70px; width: 140px; height: 140px; transition: opacity 1.1s; }
 #sd-dir .arc::before { content: ''; position: absolute; left: 40px; top: -8px; width: 60px; height: 24px; border-radius: 50% 50% 0 0 / 100% 100% 0 0; border-top: 7px solid rgba(255,30,30,0.9); filter: drop-shadow(0 0 4px #f00); }
-#sd-vig { position: fixed; inset: 0; pointer-events: none; z-index: 40; opacity: 0; transition: opacity .3s; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(170,0,0,0.6) 100%); } #sd-vig.on { opacity: 1; animation: sdbeat 1.1s infinite; }
+#sd-vig { position: fixed; inset: 0; pointer-events: none; z-index: 40; opacity: 0; transition: opacity .3s; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(170,0,0,0.6) 100%); } #sd-vig.on { opacity: 1; animation: sdbeat 1.1s infinite; } #sd-vig.crit { background: radial-gradient(ellipse at center, rgba(0,0,0,0) 28%, rgba(120,0,0,0.55) 70%, rgba(60,0,0,0.92) 100%); animation-duration: .7s; }
 @keyframes sdbeat { 0%, 100% { opacity: 0.55; } 15% { opacity: 1; } 30% { opacity: 0.7; } 45% { opacity: 0.95; } }
 #sd-flash { position: fixed; inset: 0; pointer-events: none; z-index: 42; opacity: 0; background: radial-gradient(ellipse, rgba(255,0,0,0) 35%, rgba(255,0,0,0.5)); } #sd-flash.on { animation: sdflash .45s ease-out; } @keyframes sdflash { from { opacity: 1; } to { opacity: 0; } }
 #sd-dead { position: fixed; inset: 0; pointer-events: none; z-index: 39; opacity: 0; transition: opacity .6s; background: linear-gradient(rgba(40,40,60,0.15), rgba(10,10,20,0.35)); filter: grayscale(1); } #sd-dead.on { opacity: 1; }
@@ -77,23 +81,43 @@ body.snd.flat #sd-top { display: flex; } #sd-top .bar { display: flex; align-ite
 #sd-splash .mvp div { text-align: left; min-width: 0; } #sd-splash .mvp b { display: block; color: #ffd400; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #sd-splash .mvp span { display: block; color: #fff; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #sd-splash .cash { color: #39ff14; font-size: 15px; } #sd-splash .rec { display: grid; grid-template-columns: auto auto; gap: 2px 12px; justify-content: center; font-size: 12px; color: #fff; margin: 6px 0 2px; } #sd-splash .rec span:nth-child(odd) { color: #c3cad6; text-align: right; } #sd-splash .rec span:nth-child(even) { text-align: left; }
 @keyframes sdsplash { from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } }
-#sd-scope { position: fixed; inset: 0; z-index: 39; pointer-events: none; display: none; background: radial-gradient(circle at center, rgba(0,0,0,0) 0 min(38vw, 38vh), #000 calc(min(38vw, 38vh) + 2px)); } #sd-scope.on { display: block; }
-#sd-scope::before, #sd-scope::after { content: ''; position: absolute; background: rgba(0,0,0,0.85); } #sd-scope::before { left: 50%; top: 10%; bottom: 10%; width: 2px; margin-left: -1px; } #sd-scope::after { top: 50%; left: 10%; right: 10%; height: 2px; margin-top: -1px; }
-#sd-pick { position: fixed; inset: 0; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); box-sizing: border-box; background: radial-gradient(circle at 50% 30%, rgba(40,20,70,0.92), rgba(6,6,16,0.95)); font-family: "Arial Black", Arial, sans-serif; color: #fff; touch-action: none; }
+#sd-marks { position: fixed; inset: 0; pointer-events: none; z-index: 38; } #sd-marks div { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; font: 900 11px "Arial Black", Arial, sans-serif; color: #fff; text-shadow: 0 1px 2px #000, 0 0 2px #000; white-space: nowrap; }
+#sd-marks b { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; background: rgba(8,10,22,0.8); border: 2px solid #ffd400; color: #ffd400; font-size: 15px; } #sd-marks .bomb b { border-color: #ff3b3b; color: #fff; background: rgba(160,10,10,0.85); } #sd-marks .bomb.drop b { border-color: #ff9f1c; } #sd-marks .car b { width: 22px; height: 22px; font-size: 12px; border-color: #ff9f1c; }
+#sd-marks i { font-style: normal; font-size: 13px; line-height: 1; margin-bottom: -2px; } #sd-marks .off b { opacity: 0.85; }
+#sd-top .me { font-size: 11px; padding: 2px 10px; border-radius: 10px; color: #fff; white-space: nowrap; border: 2px solid #fff; } #sd-top .me.R { background: #ff5a3d; } #sd-top .me.B { background: #3da5ff; }
+body.sd-team-R #sd-top .bar { border-color: #ff5a3d; } body.sd-team-B #sd-top .bar { border-color: #3da5ff; } body.sd-team-R #sd-ammo { border-color: #ff5a3d; } body.sd-team-B #sd-ammo { border-color: #3da5ff; }
+#sd-cross.mate .t { background: #4fc3ff; } #sd-cross.mate .dot { background: #4fc3ff; } #sd-cross.foe .dot { background: #ff2020; box-shadow: 0 0 4px #f00; } #sd-cross .nf { position: absolute; left: 10px; top: 8px; font: 900 11px Arial, sans-serif; color: #4fc3ff; text-shadow: 0 1px 2px #000; white-space: nowrap; display: none; } #sd-cross.mate .nf { display: block; }
+#sd-scope { position: fixed; inset: 0; z-index: 39; pointer-events: none; display: none; --r: min(44vw, 40vh); background: radial-gradient(circle at center, rgba(120,200,255,0.06) 0, rgba(0,0,0,0) calc(var(--r) - 18px), rgba(0,0,0,0.55) calc(var(--r) - 4px), #000 var(--r)); } #sd-scope.on { display: block; }
+#sd-scope i { position: absolute; left: 50%; top: 50%; display: block; } #sd-scope .rg { width: calc(var(--r) * 2); height: calc(var(--r) * 2); margin: calc(var(--r) * -1) 0 0 calc(var(--r) * -1); border-radius: 50%; box-shadow: inset 0 0 0 3px #111, inset 0 0 26px 10px rgba(0,0,0,0.7); }
+#sd-scope .h { width: calc(var(--r) * 2); height: 2px; margin: -1px 0 0 calc(var(--r) * -1); background: linear-gradient(90deg, #000 0 30%, rgba(0,0,0,0.85) 30% 47%, transparent 47% 53%, rgba(0,0,0,0.85) 53% 70%, #000 70%); }
+#sd-scope .v { height: calc(var(--r) * 2); width: 2px; margin: calc(var(--r) * -1) 0 0 -1px; background: linear-gradient(#000 0 30%, rgba(0,0,0,0.85) 30% 47%, transparent 47% 53%, rgba(0,0,0,0.85) 53% 70%, #000 70%); }
+#sd-scope .md { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #000; } #sd-scope .dt { width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #ff2020; box-shadow: 0 0 4px #f00; }
+#sd-scope .tk { width: 1px; height: 1px; } #sd-scope .tk b { position: absolute; background: #000; } #sd-scope .rd { left: auto; right: 8px; top: auto; bottom: 46%; font: 900 11px monospace; color: rgba(255,255,255,0.75); }
+#sd-adot { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #39ff14; box-shadow: 0 0 0 1px #000, 0 0 4px #39ff14; z-index: 41; pointer-events: none; display: none; } #sd-adot.on { display: block; }
+body.sd-scoped #sd-top, body.sd-scoped #sd-feed, body.sd-scoped #sd-ammo, body.sd-scoped #sd-ui .swap, body.sd-scoped #sd-ui .reload, body.sd-scoped #sd-ui .act, body.sd-scoped #sd-ui .guns, body.sd-scoped #sd-pop, body.sd-scoped #sd-multi, body.sd-scoped #sd-dir, body.sd-scoped .hud-top, body.sd-scoped #chat-log, body.sd-scoped #mp-chip, body.sd-scoped #btn-sprint, body.sd-scoped #btn-emote, body.sd-scoped #btn-crouch, body.sd-scoped #sd-mapb, body.sd-scoped #sd-mini, body.sd-scoped #sd-marks, body.sd-scoped #banner, body.sd-scoped .banner, body.sd-scoped #hint, body.sd-scoped #nextAttack, body.sd-scoped #net-stats { visibility: hidden !important; }
+body.sd-scoped #sd-ui .fire, body.sd-scoped #sd-ui .aim, body.sd-scoped #touch, body.sd-scoped #stick, body.sd-scoped #menu-btn, body.sd-scoped #chat-btn, body.sd-scoped #vc-bar { opacity: 0.28 !important; }
+#sd-pick { position: fixed; left: 0; right: 0; bottom: 0; top: max(58px, calc(env(safe-area-inset-top) + 54px)); z-index: 60; display: none; flex-direction: column; align-items: center; gap: 5px; padding: 6px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); box-sizing: border-box; background: linear-gradient(rgba(40,20,70,0.94), rgba(6,6,16,0.96)); border-top: 3px solid #ffd400; border-radius: 18px 18px 0 0; font-family: "Arial Black", Arial, sans-serif; color: #fff; touch-action: none; overflow: hidden; }
 #sd-pick.on { display: flex; animation: sdin .25s ease-out; } @keyframes sdin { from { opacity: 0; transform: scale(1.04); } }
-#sd-pick .hd { text-align: center; width: min(900px, 100%); } #sd-pick .hd h2 { margin: 0; font-size: clamp(17px, 4.6vw, 26px); color: #ffd400; } #sd-pick .hd p { margin: 2px 0 0; font-size: 12px; color: #c3cad6; } #sd-pick .hd .cash { color: #39ff14; font-size: clamp(16px, 4.4vw, 22px); }
-#sd-pick .tbar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.15); overflow: hidden; margin-top: 5px; } #sd-pick .tbar u { display: block; height: 100%; background: linear-gradient(90deg, #39ff14, #ffd400, #ff3b3b); width: 100%; }
+#sd-pick .hd { text-align: center; width: min(900px, 100%); } #sd-pick .hd h2 { margin: 0; font-size: clamp(16px, 4.4vw, 24px); color: #ffd400; } #sd-pick .hd .cash { color: #39ff14; font-size: clamp(15px, 4.2vw, 21px); }
+#sd-pick .warn { margin-top: 4px; padding: 3px 8px; border-radius: 8px; background: rgba(255,59,59,0.22); border: 2px solid #ff3b3b; color: #ffd400; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #sd-pick .warn.hot { background: #c62828; color: #fff; animation: sdblink .5s infinite alternate; }
+#sd-pick .tbar { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.15); overflow: hidden; margin-top: 4px; } #sd-pick .tbar u { display: block; height: 100%; background: linear-gradient(90deg, #39ff14, #ffd400, #ff3b3b); width: 100%; }
 #sd-pick .lb { width: min(900px, 100%); font-size: 11px; color: #ffd400; letter-spacing: 1px; text-align: left; }
-#sd-pick .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; width: min(900px, 100%); } #sd-pick .grid.s { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-#sd-pick .card { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 5px 7px 6px; border-radius: 14px; border: 3px solid rgba(255,255,255,0.25); background: linear-gradient(160deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); color: #fff; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
-#sd-pick .card:active { transform: scale(0.97); } #sd-pick .card.cur { border-color: #39ff14; background: linear-gradient(160deg, rgba(57,255,20,0.25), rgba(57,255,20,0.06)); box-shadow: 0 0 14px rgba(57,255,20,0.45); } #sd-pick .card.no { filter: grayscale(0.85) brightness(0.7); }
-#sd-pick .card canvas { width: 100%; height: 46px; display: block; } #sd-pick .card .nm { font-size: 11px; line-height: 1.1; overflow-wrap: anywhere; } #sd-pick .card .kd { font-size: 9px; color: #c3cad6; letter-spacing: 1px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 4px; white-space: nowrap; } #sd-pick .card .kd b { color: #39ff14; font-size: 11px; } #sd-pick .card.no .kd b { color: #ff6b6b; }
-#sd-pick .card .bars { display: grid; grid-template-columns: 52px 1fr; gap: 2px 6px; align-items: center; font-size: 8px; color: #c3cad6; } #sd-pick .card .bars s { display: block; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.15); text-decoration: none; overflow: hidden; } #sd-pick .card .bars s u { display: block; height: 100%; }
-#sd-pick .card .ln { font-size: 9px; color: #ddd; line-height: 1.15; } #sd-pick .card .tick { position: absolute; right: 6px; top: 4px; font-size: 15px; display: none; } #sd-pick .card.cur .tick { display: block; }
-#sd-pick .grid.s .card .bars, #sd-pick .grid.s .card .ln { display: none; } #sd-pick .grid.s .card canvas { height: 34px; }
+#sd-pick .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: min(900px, 100%); } #sd-pick .grid.s { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#sd-pick .card { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 4px 5px 5px; border-radius: 12px; border: 3px solid rgba(255,255,255,0.25); background: linear-gradient(160deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); color: #fff; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+#sd-pick .card:active { transform: scale(0.97); } #sd-pick .card.cur { border-color: #39ff14; background: linear-gradient(160deg, rgba(57,255,20,0.25), rgba(57,255,20,0.06)); box-shadow: 0 0 12px rgba(57,255,20,0.45); } #sd-pick .card.no { filter: grayscale(0.85) brightness(0.7); }
+#sd-pick .card canvas { width: 100%; height: 40px; display: block; } #sd-pick .card .nm { font-size: 9px; line-height: 1.1; overflow-wrap: anywhere; color: #e8e8f0; }
+#sd-pick .card .ty { align-self: flex-start; font-size: 10px; letter-spacing: 1px; padding: 1px 6px; border-radius: 6px; color: #111; background: #ffd400; } #sd-pick .card .pr { font-size: 12px; color: #39ff14; } #sd-pick .card.no .pr { color: #ff6b6b; }
+#sd-pick .card .tick { position: absolute; right: 4px; top: 2px; font-size: 13px; display: none; } #sd-pick .card.cur .tick { display: block; }
 #sd-pick .go { pointer-events: auto; padding: 9px 26px; border-radius: 24px; border: 3px solid #fff; background: #2e7d32; color: #fff; font: 900 16px "Arial Black", Arial, sans-serif; }
-@media (min-aspect-ratio: 1/1) { #sd-pick .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } #sd-pick .card .nm { font-size: 10px; } #sd-pick .grid.s { grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(560px, 100%); } #sd-pick .lb { width: min(900px, 100%); } }
-@media (max-height: 520px) { #sd-pick { gap: 3px; } #sd-pick .card { padding: 3px 6px 4px; gap: 1px; } #sd-pick .card canvas { height: 30px; } #sd-pick .grid.s .card canvas { height: 22px; } #sd-pick .card .ln, #sd-pick .card .bars .x { display: none; } #sd-pick .hd p { display: none; } #sd-pick .go { padding: 4px 18px; font-size: 13px; } #sd-pick .lb { font-size: 9px; } }
+#sd-pick.det { background: transparent; border-top-color: transparent; } #sd-pick.det > :not(.dv) { visibility: hidden; }
+#sd-pick .dv { display: none; position: absolute; inset: 0; flex-direction: column; align-items: center; gap: 6px; padding: 8px 12px 12px; box-sizing: border-box; } #sd-pick.det .dv { display: flex; }
+#sd-pick .dv .view { width: min(560px, 100%); flex: 1 1 auto; min-height: 120px; max-height: 300px; border-radius: 16px; border: 3px solid #ffd400; box-shadow: 0 0 0 200vmax rgba(10,8,24,0.96); position: relative; }
+#sd-pick .dv .view b { position: absolute; left: 8px; top: 6px; font-size: 11px; color: #111; background: #ffd400; border-radius: 6px; padding: 1px 7px; } #sd-pick .dv .view i { position: absolute; right: 8px; bottom: 6px; font-size: 10px; font-style: normal; color: #c3cad6; }
+#sd-pick .dv .side { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 6px; align-items: center; width: min(560px, 100%); } #sd-pick .dv h3 { margin: 0; font-size: clamp(17px, 5vw, 24px); color: #fff; text-align: center; } #sd-pick .dv p { margin: 0; font-size: 12px; color: #c3cad6; text-align: center; }
+#sd-pick .dv .st { width: min(560px, 100%); display: grid; grid-template-columns: 92px 1fr 54px; gap: 4px 8px; align-items: center; font-size: 11px; } #sd-pick .dv .st s { display: block; height: 9px; border-radius: 5px; background: rgba(255,255,255,0.15); overflow: hidden; text-decoration: none; } #sd-pick .dv .st s u { display: block; height: 100%; } #sd-pick .dv .st em { font-style: normal; color: #c3cad6; text-align: right; }
+#sd-pick .dv .bt2 { display: flex; gap: 10px; } #sd-pick .dv .bt2 button { padding: 10px 18px; border-radius: 18px; border: 3px solid #fff; font: 900 15px "Arial Black", Arial, sans-serif; color: #fff; cursor: pointer; } #sd-pick .dv .buy { background: #2e7d32; } #sd-pick .dv .buy.no { background: #555; } #sd-pick .dv .back { background: #455a64; }
+@media (min-aspect-ratio: 1/1) { #sd-pick .grid { grid-template-columns: repeat(9, minmax(0, 1fr)); } #sd-pick .grid.s { grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(420px, 100%); } #sd-pick .dv { flex-direction: row; flex-wrap: wrap; justify-content: center; align-content: center; } #sd-pick .dv .view { width: min(420px, 48%); height: min(240px, 60vh); flex: none; } #sd-pick .dv .side { display: flex; flex-direction: column; gap: 6px; width: min(380px, 48%); align-items: center; } }
+@media (max-height: 520px) { #sd-pick { gap: 3px; } #sd-pick .card { padding: 2px 4px 3px; gap: 1px; } #sd-pick .card canvas { height: 26px; } #sd-pick .go { padding: 4px 18px; font-size: 13px; } #sd-pick .lb { font-size: 9px; } #sd-pick .dv .st { gap: 2px 8px; } }
 @media (max-height: 520px) and (min-aspect-ratio: 1/1) { #sd-ui button { width: 62px; height: 62px; font-size: 10px; } #sd-ui button b { font-size: 21px; } #sd-ui .fire { width: 84px; height: 84px; } #sd-ui .act, #sd-ui .watch, #sd-ui .guns { width: 72px; height: 72px; } #sd-ammo { min-width: 140px; padding: 3px 8px 5px; } #sd-ammo .num b { font-size: 22px; } #sd-ammo .ic { font-size: 20px; } #sd-top .tm { font-size: 18px; } #sd-ui .row { gap: 8px; } }
 #sd-board { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 58; display: none; width: min(640px, calc(100vw - 16px)); max-height: calc(100vh - 16px); overflow: hidden; box-sizing: border-box; padding: 8px 10px 10px; border-radius: 18px; background: rgba(8,10,22,0.93); border: 3px solid #fff; color: #fff; font-family: "Arial Black", Arial, sans-serif; pointer-events: none; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
 #sd-board.on { display: block; animation: sdbin .15s ease-out; } @keyframes sdbin { from { opacity: 0; transform: translate(-50%, -50%) scale(1.04); } } #sd-board .hd { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 22px; } #sd-board .hd .R { color: #ff8a70; } #sd-board .hd .B { color: #7cc4ff; } #sd-board .hd small { font-size: 10px; color: #c3cad6; display: block; text-align: center; }
@@ -101,7 +125,7 @@ body.snd.flat #sd-top { display: flex; } #sd-top .bar { display: flex; align-ite
 #sd-board table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; margin-top: 4px; } #sd-board th { font-size: 9px; color: #c3cad6; font-weight: 900; padding: 2px 0; text-align: center; } #sd-board th:first-child { text-align: left; padding-left: 4px; }
 #sd-board td { padding: 2px 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid rgba(255,255,255,0.08); } #sd-board td.n { text-align: left; padding-left: 4px; } #sd-board td.n img { width: 18px; height: 18px; border-radius: 50%; vertical-align: middle; margin-right: 4px; object-fit: cover; background: #222; }
 #sd-board tr.R td.n { color: #ffb0a0; } #sd-board tr.B td.n { color: #a8d8ff; } #sd-board tr.me td { background: rgba(255,212,0,0.16); } #sd-board tr.dead td { opacity: 0.5; } #sd-board .bt { font-size: 8px; background: #555; border-radius: 4px; padding: 0 3px; margin-left: 3px; vertical-align: middle; color: #fff; }
-body.sd-over #sd-top, body.sd-over #sd-ui, body.sd-over #sd-feed, body.sd-over #sd-cross, body.sd-over #sd-prog, body.sd-over #sd-pop, body.sd-over #sd-multi, body.sd-over #sd-count, body.sd-over #sd-splash, body.sd-over #sd-dir, body.sd-over #sd-vig, body.sd-over #sd-dead, body.sd-over #sd-scope, body.sd-over #sd-pick, body.sd-over #sd-board, body.snd.gameover #over { display: none !important; }
+body.sd-picking #sd-top, body.sd-picking #sd-ui, body.sd-picking #sd-feed, body.sd-picking .hud-top, body.sd-picking #sd-cross, body.sd-over #sd-top, body.sd-over #sd-ui, body.sd-over #sd-feed, body.sd-over #sd-cross, body.sd-over #sd-prog, body.sd-over #sd-pop, body.sd-over #sd-multi, body.sd-over #sd-count, body.sd-over #sd-splash, body.sd-over #sd-dir, body.sd-over #sd-vig, body.sd-over #sd-dead, body.sd-over #sd-scope, body.sd-over #sd-pick, body.sd-over #sd-board, body.snd.gameover #over { display: none !important; }
 #sd-end { position: fixed; left: 50%; top: max(64px, calc(env(safe-area-inset-top) + 58px)); transform: translateX(-50%); z-index: 46; display: none; flex-direction: column; gap: 6px; width: min(640px, calc(100vw - 16px)); max-height: calc(100% - max(64px, calc(env(safe-area-inset-top) + 58px)) - max(10px, env(safe-area-inset-bottom))); box-sizing: border-box; padding: 8px 10px 10px; border-radius: 18px; background: rgba(8,10,22,0.95); border: 3px solid #ffd400; color: #fff; font-family: "Arial Black", Arial, sans-serif; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
 body.sd-over.flat #sd-end { display: flex; animation: sdein .3s ease-out; } @keyframes sdein { from { opacity: 0; transform: translateX(-50%) scale(1.04); } } body.sd-over.sd-again #sd-end { display: none; }
 #sd-end .hd { text-align: center; } #sd-end .hd small { display: block; font-size: 10px; color: #c3cad6; letter-spacing: 1px; } #sd-end .hd h2 { margin: 0; font-size: clamp(20px, 6.4vw, 30px); line-height: 1.1; } #sd-end .hd .sc { font-size: 22px; }
@@ -121,11 +145,13 @@ export const UI = {
     const ui = document.createElement('div'); ui.id = 'sd-ui';
     ui.innerHTML = `<div id="sd-ammo" role="button" aria-label="Fire mode"><span class="ic">🍅</span><div><div class="num"><b>0</b><em>/ 0</em></div><small>GUN</small></div><span class="sl"><span class="p">🔫</span><span class="s">🍅</span></span><u></u></div>
 <div class="row"><button class="swap" hidden aria-label="Swap guns"><b>🔁</b>SWAP<i>Q</i></button><button class="aim" hidden aria-label="Aim"><b>🎯</b>AIM<i>RMB</i></button><button class="act" hidden aria-label="Plant, defuse or take"><b>💣</b><span class="al">PLANT</span><i>E</i></button></div>
-<div class="row"><button class="reload" aria-label="Reload"><b>🔄</b>RELOAD<i>R</i></button><button class="guns" hidden aria-label="Shop"><b>🛒</b>SHOP<i>B</i></button><button class="watch" hidden aria-label="Watch"><b>👀</b>WATCH<i>V</i></button><button class="fire" aria-label="Fire"><b>🔥</b>FIRE<i>F</i></button></div>`;
-    document.body.appendChild(ui); this.ui = ui; document.body.classList.add('snd'); if ('ontouchstart' in window || navigator.maxTouchPoints > 0) document.body.classList.add('sd-touch');
-    const Q = (c) => ui.querySelector('.' + c); this.B = { aim: Q('aim'), swap: Q('swap'), act: Q('act'), reload: Q('reload'), fire: Q('fire'), watch: Q('watch'), guns: Q('guns') }; this.B.scope = this.B.aim; this.ammoEl = ui.querySelector('#sd-ammo');
+<div class="row"><button class="reload" aria-label="Reload"><b>🔄</b>RELOAD<i>R</i></button><button class="guns" hidden aria-label="Shop"><b>🛒</b>SHOP<i>B</i></button><button class="view" hidden aria-label="Change view"><b>🎥</b>VIEW<i>X</i></button><button class="watch" hidden aria-label="Watch"><b>👀</b>WATCH<i>V</i></button><button class="fire" aria-label="Fire"><b>🔥</b>FIRE<i>F</i></button></div>`;
+    document.body.appendChild(ui); this.ui = ui;
+    const cr = document.createElement('button'); cr.id = 'btn-crouch'; cr.type = 'button'; cr.textContent = '🧎 CROUCH'; cr.setAttribute('aria-label', 'Crouch'); document.body.appendChild(cr); this.crouchEl = cr;
+    cr.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); this.toggleCrouch(); }); document.body.classList.add('snd'); if ('ontouchstart' in window || navigator.maxTouchPoints > 0) document.body.classList.add('sd-touch');
+    const Q = (c) => ui.querySelector('.' + c); this.B = { aim: Q('aim'), swap: Q('swap'), act: Q('act'), reload: Q('reload'), fire: Q('fire'), watch: Q('watch'), guns: Q('guns'), view: Q('view') }; this.B.scope = this.B.aim; this.ammoEl = ui.querySelector('#sd-ammo');
     const tap = (el, f) => el.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); f(e); });
-    tap(this.B.reload, () => this.doReload()); tap(this.B.aim, () => this.toggleAds()); tap(this.B.swap, () => this.swapGun()); tap(this.B.watch, () => this.doWatch()); tap(this.B.guns, () => this.openPicker());
+    tap(this.B.reload, () => this.doReload()); tap(this.B.aim, () => this.toggleAds()); tap(this.B.swap, () => this.swapGun()); tap(this.B.watch, () => this.doWatch()); tap(this.B.view, () => this.toggleView()); tap(this.B.guns, () => this.openPicker());
     // the ammo box: a tap flicks the fire mode, held it's the inspect
     let am = 0; this.ammoEl.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); am = performance.now(); clearTimeout(this.amT); this.amT = setTimeout(() => { am = 0; this.inspect(); }, 450); });
     const amUp = (e) => { e.stopPropagation(); clearTimeout(this.amT); if (am && performance.now() - am < 450) this.cycleMode(); am = 0; }; this.ammoEl.addEventListener('pointerup', amUp); this.ammoEl.addEventListener('pointercancel', () => { clearTimeout(this.amT); am = 0; });
@@ -138,9 +164,9 @@ export const UI = {
     const ab = this.B.act; ab.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); try { ab.setPointerCapture(e.pointerId); } catch (er) {} this.actHeld = true; this.startAct(); });
     const aup = () => { this.actHeld = false; this.endAct(); }; ab.addEventListener('pointerup', aup); ab.addEventListener('pointercancel', aup);
     const el = (id) => { const d = document.createElement('div'); d.id = id; document.body.appendChild(d); return d; };
-    this.topEl = el('sd-top'); this.crossEl = el('sd-cross'); this.crossEl.innerHTML = '<i class="t u"></i><i class="t d"></i><i class="t l"></i><i class="t r"></i><i class="dot"></i><i id="sd-hm"></i>'; this.hmEl = this.crossEl.querySelector('#sd-hm');
+    this.topEl = el('sd-top'); this.crossEl = el('sd-cross'); this.crossEl.innerHTML = '<i class="t u"></i><i class="t d"></i><i class="t l"></i><i class="t r"></i><i class="dot"></i><i id="sd-hm"></i><i class="nf">🚫 TEAM-MATE</i>'; this.hmEl = this.crossEl.querySelector('#sd-hm');
     this.dirEl = el('sd-dir'); this.vigEl = el('sd-vig'); this.flashEl = el('sd-flash'); this.deadEl = el('sd-dead'); this.progEl = el('sd-prog'); this.progEl.innerHTML = '<div class="ring"><b>💣</b></div><span>PLANTING</span>';
-    this.popEl = el('sd-pop'); this.multiEl = el('sd-multi'); this.countEl = el('sd-count'); this.feedEl = el('sd-feed'); this.splashEl = el('sd-splash'); this.scopeEl = el('sd-scope'); this.pickEl = el('sd-pick'); this.boardEl = el('sd-board'); this.endEl = el('sd-end');
+    this.popEl = el('sd-pop'); this.multiEl = el('sd-multi'); this.countEl = el('sd-count'); this.feedEl = el('sd-feed'); this.splashEl = el('sd-splash'); this.scopeEl = el('sd-scope'); this.scopeEl.innerHTML = '<i class="rg"></i><i class="h"></i><i class="v"></i>' + [-3, -2, -1, 1, 2, 3].map(k => `<i class="tk" style="transform:translate(${k * 7}vmin,0)"><b style="left:-1px;top:-6px;width:2px;height:12px"></b></i><i class="tk" style="transform:translate(0,${k * 7}vmin)"><b style="left:-6px;top:-1px;width:12px;height:2px"></b></i>`).join('') + '<i class="md"></i><i class="dt"></i><i class="rd">ZOOM ×3.6</i>'; this.adotEl = el('sd-adot'); this.marksEl = el('sd-marks'); this.pickEl = el('sd-pick'); this.boardEl = el('sd-board'); this.endEl = el('sd-end');
     ['pointerdown', 'touchstart', 'mousedown', 'wheel'].forEach(k => this.pickEl.addEventListener(k, (e) => e.stopPropagation()));
     // the score bar: held, the scoreboard
     this.topEl.addEventListener('pointerdown', (e) => { if (!e.target.closest || !e.target.closest('.bar')) return; e.stopPropagation(); e.preventDefault(); try { this.topEl.setPointerCapture(e.pointerId); } catch (er) {} this.showBoard(true); });
@@ -158,22 +184,23 @@ export const UI = {
       else if (k === 'KeyE') { if (down && !e.repeat) { this.actHeld = true; this.startAct(); } else if (!down) { this.actHeld = false; this.endAct(); } }
       else if (k === 'KeyQ') { if (down && !e.repeat) this.swapGun(); }
       else if (k === 'KeyZ') { if (down && !e.repeat) this.toggleAds(); }
-      else if (k === 'KeyX') { if (down && !e.repeat) this.cycleMode(); }
+      else if (k === 'KeyX') { if (down && !e.repeat) { const me = this.mine(); if (me && !me.alive) this.toggleView(); else this.cycleMode(); } }
       else if (k === 'KeyT') { if (down && !e.repeat) this.inspect(); }
       else if (k === 'Tab') { if (!e.repeat) this.showBoard(down); }
       else if (k === 'KeyV') { if (down && !e.repeat) this.doWatch(); }
-      else if (k === 'KeyG' || k === 'KeyB') { if (down && !e.repeat) { if (this.pickOpen) this.closePicker(); else this.openPicker(); } }
+      else if (k === 'KeyB') { if (down && !e.repeat) { if (this.pickOpen) this.closePicker(); else this.openPicker(); } }
+      else if (k === 'KeyC' || k === 'ControlLeft' || k === 'ControlRight') { if (down && !e.repeat) this.toggleCrouch(); }
       else if (/^Digit[1-9]$/.test(k)) { if (!down || e.repeat) return; const n = +k.slice(5); if (this.pickOpen) { const G = SHOP_ORDER[n - 1]; if (G) this.pickGun(G.id); } else if (n <= 2) this.switchTo(n === 1 ? 'P' : 'S'); }
-      else if ((k === 'ShiftLeft' || k === 'ShiftRight')) { /* (no sprinting: it's a shooter) */ }
       else return; e.stopPropagation(); e.preventDefault(); };
     window.addEventListener('keydown', this.onKey, true); window.addEventListener('keyup', this.onKey, true);
     this.g.player.sprint = false;
   },
   disposeUI() {
-    for (const e of [this.ui, this.style, this.topEl, this.crossEl, this.dirEl, this.vigEl, this.flashEl, this.deadEl, this.progEl, this.popEl, this.multiEl, this.countEl, this.feedEl, this.splashEl, this.scopeEl, this.pickEl, this.boardEl, this.endEl]) e && e.remove();
-    document.body.classList.remove('snd', 'sd-touch', 'sd-alive', 'sd-over', 'sd-again'); clearInterval(this.againT); window.removeEventListener('keydown', this.onKey, true); window.removeEventListener('keyup', this.onKey, true);
+    if (this.map) { this.map.dispose(); this.map = null; }
+    for (const e of [this.ui, this.style, this.topEl, this.crossEl, this.dirEl, this.vigEl, this.flashEl, this.deadEl, this.progEl, this.popEl, this.multiEl, this.countEl, this.feedEl, this.splashEl, this.scopeEl, this.adotEl, this.marksEl, this.pickEl, this.boardEl, this.endEl, this.crouchEl]) e && e.remove();
+    document.body.classList.remove('snd', 'sd-touch', 'sd-alive', 'sd-over', 'sd-again', 'sd-picking', 'sd-scoped', 'sd-team-R', 'sd-team-B'); clearInterval(this.againT); window.removeEventListener('keydown', this.onKey, true); window.removeEventListener('keyup', this.onKey, true);
     const cv = this.g.renderer.domElement; cv.removeEventListener('pointerdown', this.onMouse); window.removeEventListener('pointerup', this.onMouseUp); cv.removeEventListener('contextmenu', this.onCtx); cv.removeEventListener('wheel', this.onWheel);
-    clearInterval(this.pickTimer); clearTimeout(this.amT); clearTimeout(this.boardT);
+    clearInterval(this.pickTimer); clearTimeout(this.amT); clearTimeout(this.boardT); if (this.pv) this.g.camera.remove(this.pv.g);
   },
   // a tap on the picture (main.js, from touch.js): on a phone, a shot at what you tapped (a mouse has already fired)
   tap(x, y) { if (performance.now() - (this.mouseAt || -1e9) < 800) return; if (!('ontouchstart' in window) && !(navigator.maxTouchPoints > 0)) return; this.fire(x, y); },
@@ -182,36 +209,70 @@ export const UI = {
   openPicker() {
     const me = this.mine(); if (!me || (this.phase !== 'buy' && this.phase !== 'wait')) return;
     if (this.g.renderer.xr.isPresenting || !this.g.player.flatMode) { if (!this.panel.open) this.panel.show(this.pickerScreen(), { canClose: true }); return; }
-    const el = this.pickEl; this.pickOpen = true; this.g.player.menuLock = true; this.my.ads = false;
-    const card = (G, i) => `<button class="card" data-g="${G.id}" style="border-color:${G.col}66"><span class="tick">✅</span><canvas width="300" height="110"></canvas><span class="nm">${G.icon} ${esc(G.name)}</span><span class="kd"><span>${G.kind} · ${i + 1}</span><b>${G.cost ? money(G.cost) : 'FREE'}</b></span><span class="bars">${gunBars(G).slice(0, 4).map(([n, v], j) => `<em class="${j > 2 ? 'x' : ''}" style="font-style:normal">${n}</em><s class="${j > 2 ? 'x' : ''}"><u style="width:${Math.round(v * 100)}%;background:${G.col}"></u></s>`).join('')}</span><span class="ln">${esc(G.line)}</span></button>`;
-    el.innerHTML = `<div class="hd"><h2>🛒 ROUND ${this.round} · THE SHOP</h2><div class="cash"></div><p>${me.team === this.att ? '💣 ATTACKING: plant the Vindaloo at A or B' : '🛡️ DEFENDING: guard A and B'} · ${TEAMS[me.team].ico} ${TEAMS[me.team].short}</p><div class="tbar"><u></u></div></div>
-<div class="lb">PRIMARY</div><div class="grid p">${PRIMARIES.map((G, i) => card(G, i)).join('')}</div><div class="lb">SIDEARM</div><div class="grid s">${SIDEARMS.map((G, i) => card(G, PRIMARIES.length + i)).join('')}</div><button class="go">✓ DONE</button>`;
-    el.querySelectorAll('canvas').forEach((c) => { const g = c.getContext('2d'); drawGunArt(g, c.closest('.card').dataset.g, 6, 4, 288, 102); });
-    el.querySelectorAll('.card').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); this.pickGun(b.dataset.g); }));
+    const el = this.pickEl; this.pickOpen = true; this.g.player.menuLock = true; this.my.ads = false; document.body.classList.add('sd-picking');
+    // a card each: the picture, its TYPE, the name small, the price
+    const card = (G) => `<button class="card" data-g="${G.id}" style="border-color:${G.col}66"><span class="tick">✅</span><canvas width="300" height="110"></canvas><span class="ty">${G.type}</span><span class="nm">${G.icon} ${esc(G.name)}</span><span class="pr">${G.cost ? money(G.cost) : 'FREE'}</span></button>`;
+    el.innerHTML = `<div class="hd"><h2>🛒 ROUND ${this.round} · CHOOSE YOUR GUNS</h2><div class="cash"></div><div class="warn"></div><div class="tbar"><u></u></div></div>
+<div class="lb">PRIMARY · TAP ONE TO LOOK</div><div class="grid p">${PRIMARIES.map(card).join('')}</div><div class="lb">SIDEARM</div><div class="grid s">${SIDEARMS.map(card).join('')}</div><button class="go">✓ DONE</button>
+<div class="dv"><div class="view"><b></b><i>↻ TURNING</i></div><div class="side"><h3></h3><p class="kd"></p><div class="st"></div><p class="ln"></p><div class="bt2"><button class="back" type="button">◀ BACK</button><button class="buy" type="button">BUY</button></div></div></div>`;
+    el.querySelectorAll('.card canvas').forEach((c) => { const g = c.getContext('2d'); drawGunArt(g, c.closest('.card').dataset.g, 6, 4, 288, 102); });
+    el.querySelectorAll('.card').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); this.showDetail(b.dataset.g); }));
     el.querySelector('.go').addEventListener('click', (e) => { e.stopPropagation(); this.my.picked = true; sfx('tap', null, 0.5); this.closePicker(); });
+    el.querySelector('.dv .back').addEventListener('click', (e) => { e.stopPropagation(); this.showDetail(null); });
+    el.querySelector('.dv .buy').addEventListener('click', (e) => { e.stopPropagation(); const id = this.detailG; if (!id) return; this.pickGun(id); setTimeout(() => this.detailG === id && this.shopRefresh(), 60); });
     el.classList.add('on'); clearInterval(this.pickTimer); this.shopRefresh();
-    const bar = el.querySelector('.tbar u'), T = Math.max(1, this.endsAt - this.clock);
-    this.pickTimer = setInterval(() => { if (!this.pickOpen) { clearInterval(this.pickTimer); return; } const left = this.endsAt - this.clock; bar.style.width = Math.max(0, Math.min(100, left / T * 100)) + '%'; if (this.phase !== 'buy' && this.phase !== 'wait') this.closePicker(); }, 120);
+    const bar = el.querySelector('.tbar u'), warn = el.querySelector('.warn'), T = Math.max(1, this.endsAt - this.clock);
+    // (the warning: when the round goes live: everyone can move, and shoot you, menu or no menu)
+    const tick = () => { if (!this.pickOpen) { clearInterval(this.pickTimer); return; } const left = this.endsAt - this.clock; bar.style.width = Math.max(0, Math.min(100, left / T * 100)) + '%';
+      const sec = Math.max(0, Math.ceil(left)), txt2 = this.phase === 'wait' ? '⚠ PICKING TEAMS…' : `⚠ ENEMIES LIVE IN 0:${String(sec).padStart(2, '0')} · THEN YOU CAN BE SHOT`; if (warn.textContent !== txt2) warn.textContent = txt2; warn.classList.toggle('hot', this.phase === 'buy' && left < 6);
+      if (this.phase !== 'buy' && this.phase !== 'wait') this.closePicker(); };
+    tick(); this.pickTimer = setInterval(tick, 120);
   },
-  // the cards: what you've got ticked, what you can't afford greyed, your money
+  // one gun up close: a big picture of it turning round, its numbers as bars, the price, BUY (or EQUIP if it's yours)
+  showDetail(id) {
+    const el = this.pickEl; if (!el) return; this.detailG = id && GUN[id] ? id : null; el.classList.toggle('det', !!this.detailG); if (!this.detailG) { this.preview(null); return; }
+    const G = GUN[id], dv = el.querySelector('.dv'); sfx('tap', null, 0.4);
+    dv.querySelector('.view b').textContent = G.type; dv.querySelector('h3').textContent = `${G.icon} ${G.name}`; dv.querySelector('.kd').textContent = `${G.kind} · ${G.slot === 'P' ? 'PRIMARY' : 'SIDEARM'} · ${G.modes.map(m => m.toUpperCase()).join(' / ')}`; dv.querySelector('.ln').textContent = G.line;
+    const fr = Math.round(60 / G.rate), bars = [['DAMAGE', Math.min(1, (G.proj && G.proj.sdmg ? G.proj.sdmg : G.dmg * G.pellets) / 130), String(G.pellets > 1 ? `${G.dmg}×${G.pellets}` : G.proj && G.proj.sdmg ? `${G.proj.sdmg}💥` : G.dmg)], ['FIRE RATE', Math.min(1, 0.065 / G.rate), `${fr}/MIN`], ['RANGE', Math.min(1, (G.fall ? G.fall[1] : G.range) / 120), `${G.range}M`], ['MOBILITY', Math.max(0.05, Math.min(1, (G.move - 0.65) / 0.45)), `×${G.move.toFixed(2)}`], ['MAGAZINE', Math.min(1, G.mag / 100), String(G.mag)]];
+    dv.querySelector('.st').innerHTML = bars.map(([n, v, t]) => `<span>${n}</span><s><u style="width:${Math.round(v * 100)}%;background:${G.col}"></u></s><em>${t}</em>`).join('');
+    this.shopRefresh(); this.preview(id);
+  },
+  // the turning gun in the detail view: the real model, drawn by the game itself just in front of the camera, lined up
+  // with the window in the screen (nothing new to build: the same materials as the guns in your hands)
+  preview(id) {
+    const cam = this.g.camera; if (!id) { if (this.pv) { this.pv.g.visible = false; } return; }
+    if (!this.pv) { const g = new THREE.Group(), bg = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x14102a, depthTest: false })); bg.renderOrder = 13; g.add(bg); g.traverse(o => { o.frustumCulled = false; }); cam.add(g); this.pv = { g, bg, gun: null, id: null, spin: 0 }; }
+    const pv = this.pv; if (pv.id !== id) { if (pv.gun) pv.g.remove(pv.gun); pv.gun = newGun(id); pv.gun.traverse(o => { o.frustumCulled = false; o.renderOrder = 14; }); pv.g.add(pv.gun); pv.id = id; pv.spin = 0; }
+    pv.g.visible = true; this.previewTick(0);
+  },
+  previewTick(dt) {
+    const pv = this.pv; if (!pv || !pv.g.visible) return; const view = this.pickOpen && this.detailG && this.pickEl.querySelector('.dv .view'); if (!view) { pv.g.visible = false; return; }
+    const r = view.getBoundingClientRect(), cv = this.g.renderer.domElement.getBoundingClientRect(), cam = this.g.camera, d = 0.5, th = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2), H = 2 * d * th, W = H * cam.aspect;
+    const cx = ((r.left + r.width / 2 - cv.left) / cv.width - 0.5) * W, cy = -((r.top + r.height / 2 - cv.top) / cv.height - 0.5) * H, w = r.width / cv.width * W, h = r.height / cv.height * H;
+    pv.g.position.set(cx, cy, -d); pv.g.rotation.set(0, 0, 0); pv.bg.scale.set(w * 1.52, h * 1.52, 1); pv.bg.position.set(0, 0, -0.26);
+    const M = pv.gun.userData.model, L = Math.max(0.2, M.rear - M.front), sc = Math.min(w * 0.8, h * 1.9) / L; pv.spin += dt * 0.7;
+    pv.gun.scale.setScalar(sc); pv.gun.rotation.set(0.25, pv.spin + Math.PI / 2, 0); const mid = (M.rear + M.front) / 2 * sc; pv.gun.position.set(-Math.cos(pv.spin + Math.PI / 2) * 0 - Math.sin(pv.spin + Math.PI / 2) * mid, -0.02 * sc, -0.12 - Math.cos(pv.spin + Math.PI / 2) * mid);
+  },
+  // the cards: what you've got ticked, what you can't afford greyed, your money; the detail view's button
   shopRefresh() {
     if (!this.pickOpen) return; const el = this.pickEl, me = this.mine(), L = (me && me.load) || {}, c = this.cash[this.me] ?? 0;
     const h = el.querySelector('.hd .cash'); if (h) h.textContent = `💷 DINNER MONEY ${money(c)}`;
-    el.querySelectorAll('.card').forEach(b => { const G = GUN[b.dataset.g], cur = L[G.slot] === G.id, b2 = b.querySelector('.kd b'); b.classList.toggle('cur', cur); b.classList.toggle('no', !cur && G.cost > c); b.style.borderColor = cur ? '' : G.col + '66'; b2.textContent = cur ? 'YOURS' : G.cost ? money(G.cost) : 'FREE'; });
+    el.querySelectorAll('.card').forEach(b => { const G = GUN[b.dataset.g], cur = L[G.slot] === G.id, b2 = b.querySelector('.pr'); b.classList.toggle('cur', cur); b.classList.toggle('no', !cur && G.cost > c + this.refundFor(G.slot)); b.style.borderColor = cur ? '' : G.col + '66'; b2.textContent = cur ? 'YOURS' : G.cost ? money(G.cost) : 'FREE'; });
+    const bb = el.querySelector('.dv .buy'); if (bb && this.detailG) { const G = GUN[this.detailG], cur = L[G.slot] === G.id, ok = G.cost <= c + this.refundFor(G.slot); bb.textContent = cur ? (this.my.cur === G.slot ? '✓ EQUIPPED' : 'EQUIP') : `BUY · ${G.cost ? money(G.cost) : 'FREE'}`; bb.classList.toggle('no', !cur && !ok); }
   },
   closePicker() {
-    if (this.pickOpen) { this.pickOpen = false; this.pickEl.classList.remove('on'); this.pickEl.innerHTML = ''; this.g.player.menuLock = false; clearInterval(this.pickTimer); }
+    document.body.classList.remove('sd-picking'); if (this.pickOpen) { this.pickOpen = false; this.pickEl.classList.remove('on', 'det'); this.pickEl.innerHTML = ''; this.g.player.menuLock = false; clearInterval(this.pickTimer); this.detailG = null; this.preview(null); }
     if (this.panel.open && this.panel.cur && this.panel.cur.sdPick) this.panel.close(true);
   },
   // the same shop on the headset's panel (the right controller points, the trigger buys)
   pickerScreen() {
-    const s = { sdPick: true, hover: -1 }, cell = (i) => ({ x: 12 + (i % 3) * 164, y: 96 + Math.floor(i / 3) * 132, w: 156, h: 124 });
+    const s = { sdPick: true, hover: -1 }, cell = (i) => ({ x: 10 + (i % 4) * 124, y: 96 + Math.floor(i / 4) * 136, w: 118, h: 128 });
     s.draw = (g) => { const bg = g.createLinearGradient(0, 0, 0, 512); bg.addColorStop(0, '#2a1458'); bg.addColorStop(1, '#0c0818'); g.fillStyle = bg; rr(g, 4, 4, 504, 504, 30); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ffd400'; rr(g, 4, 4, 504, 504, 30); g.stroke();
       const me = this.mine(), L = (me && me.load) || {}, c = this.cash[this.me] ?? 0;
       txt(g, `🛒 ROUND ${this.round} · THE SHOP`, 256, 30, 24, '#ffd400'); txt(g, `💷 ${money(c)}`, 256, 58, 20, '#39ff14'); const left = Math.max(0, this.endsAt - this.clock); txt(g, `${Math.ceil(left)}s · TRIGGER TO BUY · B TO CLOSE`, 256, 82, 13, '#c3cad6');
       SHOP_ORDER.forEach((G, i) => { const b = cell(i), cur = L[G.slot] === G.id, hov = s.hover === i, no = !cur && G.cost > c; g.globalAlpha = no ? 0.5 : 1;
         g.fillStyle = cur ? 'rgba(57,255,20,0.22)' : hov ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.07)'; rr(g, b.x, b.y, b.w, b.h, 14); g.fill(); g.lineWidth = cur || hov ? 4 : 2; g.strokeStyle = cur ? '#39ff14' : hov ? '#ffd400' : G.col; rr(g, b.x, b.y, b.w, b.h, 14); g.stroke();
-        drawGunArt(g, G.id, b.x + 8, b.y + 4, b.w - 16, 48); txt(g, `${G.icon} ${G.name}`, b.x + b.w / 2, b.y + 64, 12, '#fff', 'center', b.w - 10); txt(g, G.kind, b.x + b.w / 2, b.y + 82, 10, '#c3cad6', 'center', b.w - 10);
+        drawGunArt(g, G.id, b.x + 6, b.y + 4, b.w - 12, 44); txt(g, G.type, b.x + b.w / 2, b.y + 60, 11, '#ffd400', 'center', b.w - 8); txt(g, `${G.icon} ${G.name}`, b.x + b.w / 2, b.y + 80, 10, '#fff', 'center', b.w - 8);
         txt(g, cur ? 'YOURS' : G.cost ? money(G.cost) : 'FREE', b.x + b.w / 2, b.y + 104, 16, no ? '#ff6b6b' : '#39ff14', 'center', b.w - 10); g.globalAlpha = 1; }); };
     const at = (x, y) => SHOP_ORDER.findIndex((G, i) => { const b = cell(i); return x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h; });
     s.down = (x, y) => { const i = at(x, y); if (i >= 0) { this.pickGun(SHOP_ORDER[i].id); s.quit = true; } }; s.move = (x, y) => { s.hover = at(x, y); }; s.up = () => {};
@@ -285,9 +346,9 @@ export const UI = {
   drawHud(me) {
     const B = this.B, t = this.clock, alive = !!(me && me.alive && this.inRound()), G = this.curG(), cap = this.cap(G), buy = this.phase === 'buy';
     document.body.classList.toggle('sd-alive', alive);      // (EMOTE only once you're out: its corner's needed for the gun's buttons)
-    B.fire.hidden = !alive; B.reload.hidden = !alive; B.watch.hidden = !(me && !me.alive && this.inRound()); B.guns.hidden = !(buy && alive && !this.pickOpen);
+    B.fire.hidden = !alive; B.reload.hidden = !alive; B.watch.hidden = !(me && !me.alive && this.inRound()); B.view.hidden = B.watch.hidden || !this.spect; B.guns.hidden = !(buy && alive && !this.pickOpen);
     const other = this.my.slots[this.my.cur === 'P' ? 'S' : 'P']; B.swap.hidden = !(alive && other); if (!B.swap.hidden) { const og = GUN[other.g], k = og.id + '|' + this.my.cur; if (k !== this.swapKey) { this.swapKey = k; B.swap.querySelector('b').textContent = og.icon; } }
-    B.aim.hidden = !alive; B.aim.classList.toggle('on', !!this.my.ads);
+    B.aim.hidden = !alive; B.aim.classList.toggle('on', !!this.my.ads); if (this.crouchEl) this.crouchEl.classList.toggle('on', !!this.my.crouch);
     B.fire.classList.toggle('off', this.phase !== 'live'); B.reload.classList.toggle('need', alive && this.my.mag === 0 && this.my.reserve > 0 && !this.my.reloadEnd);
     const w = alive ? this.actWhat() : null; B.act.hidden = !w && !this.my.act; if (!B.act.hidden) { const k = (this.my.act && this.my.act.k) || (w && w.k); B.act.classList.toggle('defuse', k === 'defuse'); B.act.classList.toggle('grab', k === 'grab'); B.act.classList.toggle('on', !!this.my.act);
       B.act.querySelector('b').textContent = k === 'defuse' ? '🔧' : k === 'grab' ? (GUN[w.g] || G).icon : '💣'; B.act.querySelector('.al').textContent = k === 'defuse' ? 'DEFUSE' : k === 'grab' ? 'TAKE' : 'PLANT'; }
@@ -298,9 +359,18 @@ export const UI = {
       const u = this.ammoEl.querySelector('u'); if (this.my.reloadEnd) { u.style.width = Math.min(100, (1 - (this.my.reloadEnd - t) / (this.my.reloadLen || 1)) * 100) + '%'; u.style.background = '#39ff14'; } else { u.style.width = (this.my.mag / cap * 100) + '%'; u.style.background = G.col; } }
     // the crosshair: as wide as the shots really go right now (aimed in, bloomed, moving), gone when you're scoped or out
     const gap = Math.round(4 + this.spreadNow(G) * 260 / (this.zoomNow || 1) + (this.kick[this.me] || 0) * 6);
-    this.crossEl.classList.toggle('on', alive && !this.my.scoped && !this.pickOpen && !(this.my.adsK > 0.9 && G.scope)); if (gap !== this.gapWas) { this.gapWas = gap; const T = this.crossEl.querySelectorAll('.t'); T[0].style.top = (-gap - 9) + 'px'; T[1].style.top = gap + 'px'; T[2].style.left = (-gap - 9) + 'px'; T[3].style.left = gap + 'px'; }
+    this.crossEl.classList.toggle('on', alive && !this.my.scoped && !this.pickOpen && !(this.my.adsK > 0.9)); if (gap !== this.gapWas) { this.gapWas = gap; const T = this.crossEl.querySelectorAll('.t'); T[0].style.top = (-gap - 9) + 'px'; T[1].style.top = gap + 'px'; T[2].style.left = (-gap - 9) + 'px'; T[3].style.left = gap + 'px'; }
     this.scopeEl.classList.toggle('on', alive && !!this.my.scoped);
-    this.vigEl.classList.toggle('on', alive && me.hp < 35); this.deadEl.classList.toggle('on', !!(me && !me.alive && this.inRound()));
+    // scoped in: nothing but the scope and the world (on a phone, FIRE, AIM to come out and the stick stay, faded right down)
+    document.body.classList.toggle('sd-scoped', alive && !!this.my.scoped);
+    // aimed in with no scope: the crosshair goes (the sights are the aim); a small dot for guns with iron sights
+    this.adotEl.classList.toggle('on', alive && !this.my.scoped && this.my.adsK > 0.9 && !this.pickOpen && !['monstor', 'baguette'].includes(G.id));
+    this.vigEl.classList.toggle('on', alive && me.hp < 50); this.vigEl.classList.toggle('crit', alive && me.hp < 25); this.deadEl.classList.toggle('on', !!(me && !me.alive && this.inRound()));
+    { const tm = me ? me.team : null; document.body.classList.toggle('sd-team-R', tm === 'R'); document.body.classList.toggle('sd-team-B', tm === 'B'); }
+    this.marks(me, alive);
+    this.mapTick(me);
+    // the crosshair over someone: red on an enemy, blue (and "team-mate") on your own side
+    if (alive && (this.xT = (this.xT || 0) - 1) <= 0) { this.xT = 4; const ray = this.aimRay(); let c = ''; if (ray) { const tr = this.trace(ray.origin, ray.direction, 60, G); if (tr.hit) c = tr.hit.mate ? 'mate' : 'foe'; } if (c !== this.xWas) { this.xWas = c; this.crossEl.classList.toggle('mate', c === 'mate'); this.crossEl.classList.toggle('foe', c === 'foe'); } }
     // plant / defuse progress
     if (this.my.act) { const k = Math.min(1, (t - this.my.act.t0) / this.my.act.T); this.progEl.classList.add('on'); this.progEl.querySelector('.ring').style.setProperty('--k', Math.round(k * 100) + '%'); this.progEl.querySelector('b').textContent = this.my.act.k === 'plant' ? '💣' : '🔧'; this.progEl.querySelector('span').textContent = this.my.act.k === 'plant' ? 'PLANTING THE VINDALOO...' : 'DEFUSING...'; }
     else this.progEl.classList.remove('on');
@@ -314,12 +384,48 @@ export const UI = {
       h = `<div class="bar"><span class="tm R">${TEAMS.R.ico} ${this.sc.R}</span>${mid}<span class="tm B">${this.sc.B} ${TEAMS.B.ico}</span></div>`;
       const pips = (tm) => [...this.F.values()].filter(f => f.team === tm).map(f => `<i class="${f.alive ? '' : 'x'}" title="${esc(f.name)}"></i>`).join('');
       h += `<div class="pips"><span class="R">${pips('R')}</span><span class="B">${pips('B')}</span></div>`;
+      if (me) h += `<span class="me ${me.team}">YOU: ${TEAMS[me.team].ico} ${TEAMS[me.team].short} · ${me.team === this.att ? 'ATTACKING' : 'DEFENDING'}</span>`;
       if (me) { const att = me.team === this.att, role = !me.alive && this.inRound() ? `<span class="role dead">💀 OUT · WATCHING ${esc(this.spect ? this.nameOf(this.spect).replace(/^🤖 /, '') : '')}</span>` : this.bomb.id === this.me && this.bomb.st === 'carried' ? '<span class="role att">💣 YOU\'VE GOT THE VINDALOO · PLANT AT A OR B</span>'
           : buy ? `<span class="role ${att ? 'att' : 'def'}">💷 ${money(this.cash[this.me] ?? 0)} · ${att ? '💣 ATTACK' : '🛡️ DEFEND'}</span>`
           : `<span class="role ${att ? 'att' : 'def'}">${att ? (planted ? '💣 DEFEND THE BOMB' : this.bomb.st === 'dropped' ? '💣 PICK UP THE BOMB' : '💣 ATTACK · PLANT AT A OR B') : planted ? `🔧 DEFUSE IT AT ${this.bomb.s || '?'}!` : '🛡️ DEFEND · GUARD A AND B'}</span>`;
         h += role; } }
     if (h !== this.topHtml) { this.topHtml = h; this.topEl.innerHTML = h; }
   },
+  // where things are, on the screen: A and B (with how far), the bomb when your side knows where it is, the carrier over
+  // your team-mate's head. Off the screen, they wait at its edge pointing the way
+  marks(me, alive) {
+    const el = this.marksEl; if (!el) return; const list = [], cam = this.g.camera, show = !!me && this.inRound() && this.phase !== 'post' && !this.pickOpen && !this.my.scoped, B = this.bomb, mt = me && me.team;
+    if (show) { for (const L of ['A', 'B']) { const S2 = this.sites[L]; list.push({ k: 'site', t: L, p: new THREE.Vector3(S2.x, this.floor(S2.x, S2.z) + 1.4, S2.z) }); }
+      if ((B.st === 'planted' || B.st === 'dropped') && B.p && (B.st === 'planted' || mt === this.att)) list.push({ k: 'bomb' + (B.st === 'dropped' ? ' drop' : ''), t: '💣', p: new THREE.Vector3(B.p[0], this.floor(B.p[0], B.p[1]) + 0.5, B.p[1]) });
+      if (B.st === 'carried' && B.id && B.id !== this.me && mt === this.att) { const hh = this.headOf(B.id, new THREE.Vector3()); if (hh) list.push({ k: 'car', t: '💣', p: hh.add({ x: 0, y: 0.75, z: 0 }), nodist: true }); } }
+    const key = list.map(m => m.k).join(); if (key !== this.marksKey) { this.marksKey = key; el.innerHTML = list.map(m => `<div class="${m.k}"><i></i><b>${m.t}</b><span></span></div>`).join(''); }
+    if (!list.length) return; if (!(this.marksN > 0)) { this.marksN = 20; let bt = 0; for (const q of ['#sd-top', '.hud-top', '#mp-chip']) { const e = document.querySelector(q), r = e && e.offsetParent !== null && e.getBoundingClientRect(); if (r && r.width && r.top < innerHeight * 0.4) bt = Math.max(bt, r.bottom); } this.marksTop = bt; } this.marksN--;      // (below the score bar and the top buttons, measured now and then)
+    const W = innerWidth, H = innerHeight, x0 = 34, x1 = W - 34, y0 = Math.max(Math.min(H * 0.3, 170), (this.marksTop || 0) + 24), y1 = H - (W < H ? 330 : 120), my = this.g.player.head, v = new THREE.Vector3(); cam.updateMatrixWorld();
+    const took = []; list.forEach((m, i) => { const d = el.children[i]; if (!d) return; v.copy(m.p).project(cam); const behind = v.z > 1; let x = (v.x * 0.5 + 0.5) * W, y = (-v.y * 0.5 + 0.5) * H; if (behind) { x = W - x; y = y1; }
+      const off = behind || x < x0 || x > x1 || y < y0 || y > y1; if (off) { const cx = W / 2, cy = (y0 + y1) / 2, dx = x - cx, dy = y - cy, k = Math.min((x1 - cx) / Math.max(1e-3, Math.abs(dx)), (y1 - cy) / Math.max(1e-3, Math.abs(dy)), 1); x = cx + dx * k; y = cy + dy * k; }
+      if (off) { for (let k = 0; k < 4 && took.some(([a, b]) => Math.abs(a - x) < 32 && Math.abs(b - y) < 40); k++) y += y + 44 > y1 ? -44 : 44; took.push([x, y]); }      // (two at the same edge: one under the other, not on top)
+      d.style.left = Math.round(x) + 'px'; d.style.top = Math.round(y) + 'px'; d.classList.toggle('off', off); const ar = d.querySelector('i'); ar.textContent = off ? (Math.abs(x - W / 2) > Math.abs(y - (y0 + y1) / 2) ? (x < W / 2 ? '◀' : '▶') : (y < (y0 + y1) / 2 ? '▲' : '▼')) : '';
+      const sp = d.querySelector('span'), txt3 = m.nodist ? '' : Math.round(Math.hypot(m.p.x - my.x, m.p.z - my.z)) + 'm'; if (sp.textContent !== txt3) sp.textContent = txt3; });
+  },
+  // THE MAP (minimap.js): the small one under the top-left box (it turns with you; tap it, or M, for the big one)
+  mapTick(me) {
+    if (this.map === undefined) { const pl = this.g.room.plan, M = this.M, sn = M.spawnNames || {};
+      this.map = pl ? new MapView(pl, { marks: () => this.mapMarks(), title: '🗺️ SEARCH & DESTROY', key: `${M.names ? 'A: ' + M.names.A + ' · B: ' + M.names.B + ' · ' : ''}▲ YOU · ● YOUR TEAM · A B BOMB SITES · ◌ SPAWNS (${sn.att || 'ATTACK'} / ${sn.def || 'DEFEND'}) · 💣 THE BOMB (when you know where)` }) : null; }
+    if (!this.map) return; const P = this.g.player, xr = this.g.renderer.xr.isPresenting;
+    const show = !!me && P.flatMode && !xr && this.inRound() && this.phase !== 'over' && !this.pickOpen && !this.my.scoped && !document.body.classList.contains('gameover');
+    this.map.update(show, P.head, this.camYaw());
+  },
+  mapMarks() {
+    const me = this.mine(), mt = me && me.team, out = [], v = new THREE.Vector3(), P = this.g.player, B = this.bomb, M = this.M;
+    for (const [k, t] of [['att', this.att], ['def', this.att === 'R' ? 'B' : 'R']]) if (M[k]) out.push({ k: 'spawn', x: M[k][0], z: M[k][1], col: (TEAMS[t] || {}).col || '#fff', t: (M.spawnNames && M.spawnNames[k]) || '' });
+    for (const L of ['A', 'B']) { const S2 = this.sites[L]; if (S2) out.push({ k: 'site', t: L, x: S2.x, z: S2.z, r: S2.r, col: '#ffd400' }); }
+    if (B && B.p && (B.st === 'planted' || (B.st === 'dropped' && mt === this.att))) out.push({ k: 'bomb', x: B.p[0], z: B.p[1] });
+    for (const [id, f] of this.F) { if (id === this.me || !f.alive || !mt || f.team !== mt) continue; const q = this.posOf(id, v); if (!q) continue; out.push({ k: 'mate', id, x: q.x, z: q.z, col: TEAMS[f.team].col, t: String(f.name).replace(/^🤖 /, '🤖') + (B && B.st === 'carried' && B.id === id ? ' 💣' : ''), yaw: (() => { const qq = this.lookOf(id); if (!qq) return undefined; const d = new THREE.Vector3(0, 0, -1).applyQuaternion(qq); return Math.atan2(-d.x, -d.z); })() }); }
+    out.push({ k: 'me', x: P.head.x, z: P.head.z, col: mt ? TEAMS[mt].col : '#39ff14', yaw: this.camYaw(), t: 'YOU' + (B && B.st === 'carried' && B.id === this.me ? ' 💣' : '') });
+    return out;
+  },
+  // out and watching: over their shoulder, or through their eyes
+  toggleView() { this.specFP = !this.specFP; this.camWas = null; sfx('tap', null, 0.4); this.toast(this.specFP ? '🎥 THROUGH THEIR EYES' : '🎥 OVER THEIR SHOULDER'); },
   camYaw() { const c = this.g.camera, d = c.getWorldDirection(_v); return Math.atan2(-d.x, -d.z); },
   // GO in three, two, one (the last seconds of the shop)
   countdown() {
@@ -335,7 +441,7 @@ export const UI = {
     chips.push({ t: `💷 ${money(this.cash[this.me] ?? 0)}`, c: '#39ff14' });
     for (const k in this.my.perks) { const e = this.my.perks[k]; if (!(e > t)) continue; const [ico, nm2] = PERKS[k] || ['✨', k]; chips.push({ t: e > 1e8 ? `${ico} ${nm2}` : `${ico} ${Math.ceil(e - t)}s`, c: '#ff4fd8', pulse: e < 1e8 && e - t < 4 }); }
     if (this.bomb.id === this.me && this.bomb.st === 'carried') chips.push({ t: '💣 BOMB', c: '#ff9f1c', pulse: true });
-    return { box: { col: hp < 35 ? '#ff3b3b' : col, label: `${TEAMS[me.team].ico} ${me.team === this.att ? 'ATTACK' : 'DEFENCE'} · R${this.round}`, big: String(hp), unit: '❤', sub: me.ar > 0 ? `🦺 ${Math.round(me.ar)}` : 'NO ARMOUR', bar: { k: hp / 100, col: hp < 35 ? '#ff3b3b' : hp < 65 ? '#ffd400' : '#39ff14' }, chips } };
+    return { box: { col: hp < 50 ? '#ff3b3b' : col, label: `${TEAMS[me.team].ico} ${me.team === this.att ? 'ATTACK' : 'DEFENCE'} · R${this.round}`, big: String(hp), unit: '❤', sub: me.ar > 0 ? `🦺 ${Math.round(me.ar)}` : 'NO ARMOUR', bar: { k: hp / HP, col: hp < 50 ? '#ff3b3b' : hp < 95 ? '#ffd400' : '#39ff14' }, chips } };
   },
   hudLine() { if (!this.inRound()) return 'SEARCH & DESTROY'; const planted = this.bomb.st === 'planted'; return `R${this.round} ${this.sc.R}-${this.sc.B} · ${planted ? '💣 ' : ''}${fmt(planted ? this.bombAt - this.clock : this.endsAt - this.clock)}`; },
   // ---- little messages
@@ -343,13 +449,13 @@ export const UI = {
   pop(s, col) { const e = this.popEl; if (!e) return; e.textContent = s; e.style.color = col || '#fff'; e.className = ''; void e.offsetWidth; e.className = 'on'; },
   multiKill(n) { if (n < 2) return; const s = MULTI[Math.min(5, n)]; sfx('sd_multi', null, 0.9); track('sdMulti'); if (this.g.renderer.xr.isPresenting) { this.g.showBanner(s, ''); return; } const e = this.multiEl; if (!e) return; e.textContent = s; e.className = ''; void e.offsetWidth; e.className = 'on'; },
   feed(html, mine) { const d = document.createElement('div'); d.innerHTML = html; if (mine) d.className = 'me'; this.feedEl.prepend(d); const most = innerWidth < 760 || innerHeight < 500 ? 3 : 5; while (this.feedEl.children.length > most) this.feedEl.lastChild.remove(); setTimeout(() => d.classList.add('old'), 6500); setTimeout(() => d.remove(), 7400); },
-  feedKill(K, V, ico, hs, wb, as) { const n = (f) => `<span class="${f.team}">${esc(f.name.replace(/^🤖 /, '🤖'))}</span>`; const ass = as && as.length ? ` <small>+ ${as.map(a => esc(a.name.replace(/^🤖 /, ''))).join(', ')}</small>` : '';
-    this.feed(K ? `${n(K)}${ass} ${ico}${wb ? '🧱' : ''}${hs ? '🎯' : ''} ${n(V)}` : `${ico} ${n(V)}`, (K && K.id === this.me) || V.id === this.me || (as || []).some(a => a.id === this.me)); },
+  feedKill(K, V, ico, hs, as) { const n = (f) => `<span class="${f.team}">${esc(f.name.replace(/^🤖 /, '🤖'))}</span>`; const ass = as && as.length ? ` <small>+ ${as.map(a => esc(a.name.replace(/^🤖 /, ''))).join(', ')}</small>` : '';
+    this.feed(K ? `${n(K)}${ass} ${ico}${hs ? '🎯' : ''} ${n(V)}` : `${ico} ${n(V)}`, (K && K.id === this.me) || V.id === this.me || (as || []).some(a => a.id === this.me)); },
   splash(col, html, ms) { const sp = this.splashEl; if (!sp) return; sp.style.color = col; sp.innerHTML = `<div>${html}</div>`; sp.classList.remove('on'); void sp.offsetWidth; sp.classList.add('on'); clearTimeout(this.splashT); this.splashT = setTimeout(() => sp.classList.remove('on'), ms || 2500); },
   roundSplash(m) {
     const me = this.mine(); if (!me) return; const att = me.team === this.att, mates = [...this.F.values()].filter(f => f.team === me.team);
     const sw = m.sw ? '<p class="sm">🔁 HALF TIME: THE SIDES HAVE SWAPPED (AND EVERYONE\'S MONEY\'S BACK TO THE START)</p>' : '';
-    this.splash(att ? '#ff9f1c' : '#4fc3ff', `<p>ROUND ${this.round} · ${TEAMS.R.ico} ${this.sc.R} – ${this.sc.B} ${TEAMS.B.ico}</p><h1>${att ? '💣 ATTACK' : '🛡️ DEFEND'}</h1><p>${TEAMS[me.team].ico} ${TEAMS[me.team].short} · 💷 ${money(this.cash[this.me] ?? 0)}</p>${sw}<div class="imgs">${mates.slice(0, 6).map(f => `<img src="${pic(f.char)}" alt="">`).join('')}</div>${this.bomb.id === this.me ? '<p>💣 YOU\'RE CARRYING THE VINDALOO</p>' : ''}`, 2600);
+    this.splash(att ? '#ff9f1c' : '#4fc3ff', `<p>ROUND ${this.round} · ${TEAMS.R.ico} ${this.sc.R} – ${this.sc.B} ${TEAMS.B.ico}</p><h1>${att ? '💣 YOU ARE ATTACKING' : '🛡️ YOU ARE DEFENDING'}</h1><p>${att ? 'PLANT THE BOMB AT A OR B' : 'STOP THE BOMB: GUARD A AND B'}</p><p>${TEAMS[me.team].ico} ${TEAMS[me.team].short} · 💷 ${money(this.cash[this.me] ?? 0)}</p>${sw}<div class="imgs">${mates.slice(0, 6).map(f => `<img src="${pic(f.char)}" alt="">`).join('')}</div>${this.bomb.id === this.me ? '<p>💣 YOU\'RE CARRYING THE VINDALOO</p>' : ''}`, 2600);
     sfx('sd_round', null, 1); if (this.g.renderer.xr.isPresenting) this.g.showBanner(`ROUND ${this.round} · ${att ? 'ATTACK' : 'DEFEND'}`, 'Y: THE SHOP');
   },
   // a round over: who won and how, every round so far, the MVP, what you've earned
@@ -364,7 +470,8 @@ export const UI = {
   // shot: a red flash, an arc pointing at whoever did it, a jolt
   hurt(d, p, hs, by) {
     this.flashEl.className = ''; void this.flashEl.offsetWidth; this.flashEl.className = 'on'; sfx('sd_hurt', null, 0.9);
-    const P = this.g.player; for (const h of P.hands || []) h.pulse && h.pulse(0.7, 90); if (P.flatMode) P.flatPitch = Math.max(-1.35, Math.min(1.35, P.flatPitch + (Math.random() - 0.3) * 0.03));
+    const P = this.g.player; for (const h of P.hands || []) h.pulse && h.pulse(0.7, 90); const pk = Math.min(1, 0.25 + d / 60) * (hs ? 1.6 : 1);      // (the flinch: your view's punched, harder for a bigger hit, hardest in the head)
+    if (P.flatMode) { P.flatPitch = Math.max(-1.35, Math.min(1.35, P.flatPitch + (0.02 + Math.random() * 0.035) * pk)); P.flatYaw += (Math.random() - 0.5) * 0.05 * pk; } this.vmKickV = (this.vmKickV || 0) + pk * 0.8;
     let from = Array.isArray(p) && p.length === 3 ? new THREE.Vector3(p[0], p[1], p[2]) : this.headOf(by, new THREE.Vector3());
     if (from) { const h = P.head, a = Math.atan2(-(from.x - h.x), -(from.z - h.z)), el = document.createElement('div'); el.className = 'arc'; this.dirEl.appendChild(el); this.dmgDirs.push({ el, a, t: this.clock }); while (this.dmgDirs.length > 4) this.dmgDirs.shift().el.remove(); }
     if (this.g.renderer.xr.isPresenting && this.mine()) this.g.showBanner(`❤ ${Math.ceil(this.mine().hp)}`, hs ? 'HEADSHOT!' : 'YOU\'RE HIT!');

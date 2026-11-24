@@ -349,16 +349,18 @@ function sdSite(g, x, y, r, L) {      // a bomb site painted on the floor, from 
   g.beginPath(); g.arc(0, 0, r * 0.86, 0, 7); g.fillStyle = 'rgba(200,20,20,0.75)'; g.fill(); g.restore();
   g.fillStyle = '#fff'; g.font = `900 ${Math.round(r * 0.5)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(L, x, y + 2);
 }
-function sdBomb(g, x, y, k = 1) {      // THE VINDALOO: a curry pot with sausages strapped round it and a clock
+function sdBomb(g, x, y, k = 1) {      // THE VINDALOO: a bundle of dynamite with a timer strapped on, wires, a keypad
   g.save(); g.translate(x, y); g.scale(k, k);
-  for (let i = 0; i < 5; i++) { g.fillStyle = '#8a3a22'; rr(g, -44 + i * 20, -40, 13, 56, 6); g.fill(); }
-  g.fillStyle = '#b0b4ba'; rr(g, -40, -30, 80, 48, 10); g.fill(); g.fillStyle = '#c1440e'; g.beginPath(); g.ellipse(0, -30, 40, 8, 0, 0, 7); g.fill();
-  g.fillStyle = '#6a6e74'; g.fillRect(-48, -14, 96, 6); g.fillStyle = '#141414'; rr(g, -22, -6, 44, 18, 4); g.fill(); g.fillStyle = '#ff2020'; g.font = `900 13px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('0:40', 0, 3);
-  g.strokeStyle = '#2a6df4'; g.lineWidth = 3; g.beginPath(); g.moveTo(-10, -30); g.quadraticCurveTo(-20, -55, 5, -60); g.stroke(); g.strokeStyle = '#ff3b3b'; g.beginPath(); g.moveTo(10, -30); g.quadraticCurveTo(25, -52, 8, -60); g.stroke();
+  for (let i = 0; i < 5; i++) { g.fillStyle = i % 2 ? '#8e1b1b' : '#c62828'; rr(g, -50 + i * 20, -6, 18, 40, 6); g.fill(); g.fillStyle = '#f0e0b0'; g.fillRect(-48 + i * 20, 8, 14, 5); }
+  g.fillStyle = '#262626'; g.fillRect(-54, 2, 108, 7); g.fillRect(-54, 24, 108, 7);
+  g.fillStyle = '#141414'; rr(g, -32, -34, 64, 30, 5); g.fill(); g.fillStyle = '#1a0000'; rr(g, -26, -30, 40, 16, 3); g.fill(); g.fillStyle = '#ff2020'; g.font = `900 12px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('0:40', -6, -22);
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) { g.fillStyle = '#d0d4da'; g.fillRect(18 + c * 6, -30 + r * 7, 4, 4); }
+  g.fillStyle = '#ff8f00'; g.fillRect(-26, -12, 40, 6); g.fillStyle = '#ff3030'; g.beginPath(); g.arc(26, -30, 3, 0, 7); g.fill();
+  for (const [c, dx] of [['#ff3b3b', -20], ['#2a6df4', 0], ['#ffd400', 20]]) { g.strokeStyle = c; g.lineWidth = 3; g.beginPath(); g.moveTo(dx, -4); g.quadraticCurveTo(dx + 12, 6, dx + 4, 18); g.stroke(); }
   g.restore();
 }
 function sdGun(g, id, x, y, w) {      // a gun, side on, in its own colours (a simple version of the pick screen's)
-  const cols = { ketchup: ['#d32f2f', '#2b2c30', '#f4f4f0'], beans: ['#ff7a1a', '#18191b', '#8a5a2e'], sausage: ['#9a5a3a', '#2e4a2e', '#ffd21a'], cheese: ['#ffc107', '#1a1a1c', '#ff9800'], monstor: ['#141416', '#7cff3a', '#26282c'], gravy: ['#5a5e66', '#f4f2ea', '#6d3b1f'], brown: ['#5a2a14', '#24252a', '#e8d9a8'], mustard: ['#ffc400', '#8a5a2e', '#d32f2f'], baguette: ['#d9a35b', '#141416', '#c9ced4'] }[id] || ['#888', '#333', '#ccc'];
+  const cols = { ketchup: ['#d32f2f', '#2b2c30', '#f4f4f0'], beans: ['#ff7a1a', '#18191b', '#8a5a2e'], sausage: ['#9a5a3a', '#2e4a2e', '#ffd21a'], cheese: ['#ffc107', '#1a1a1c', '#ff9800'], monstor: ['#141416', '#7cff3a', '#26282c'], gravy: ['#5a5e66', '#f4f2ea', '#6d3b1f'], brown: ['#5a2a14', '#24252a', '#e8d9a8'], mustard: ['#ffc400', '#8a5a2e', '#d32f2f'], baguette: ['#d9a35b', '#141416', '#c9ced4'], flamer: ['#d32f2f', '#2b2c30', '#ff9f1c'], scotch: ['#c98a3c', '#3a3d42', '#ffd400'], xbow: ['#7a5230', '#1e1f22', '#ffd54a'] }[id] || ['#888', '#333', '#ccc'];
   const k = w / 200; g.save(); g.translate(x - w / 2, y - 30 * k); g.scale(k, k);
   g.fillStyle = cols[1]; rr(g, 10, 22, 120, 12, 5); g.fill(); g.fillStyle = cols[0]; rr(g, 60, 16, 90, 30, 8); g.fill(); g.fillStyle = cols[2]; rr(g, 70, 44, 22, 34, 6); g.fill();
   g.fillStyle = cols[1]; g.save(); g.translate(150, 40); g.rotate(0.3); rr(g, -8, 0, 18, 34, 5); g.fill(); g.restore(); g.fillStyle = cols[0]; rr(g, 150, 18, 44, 24, 6); g.fill(); g.restore();
@@ -380,11 +382,11 @@ function searchDestroy(g, W, H, page, device) {
     ['🍅', '🟫', '🌭'].forEach((e, i) => { const x = W * (0.3 + i * 0.2); g.fillStyle = 'rgba(255,255,255,0.08)'; rr(g, x - 52, 262, 104, 52, 12); g.fill(); emoji(g, e, x - 22, 288, 26); g.fillStyle = '#39ff14'; g.font = `900 14px ${FONT}`; g.textAlign = 'left'; g.fillText(['FREE', '£400', '£700'][i], x - 4, 289); });
     label(g, '🛒 THE SHOP · 💷 £2,000', W / 2, 26, { size: 17, border: '#39ff14' }); return;
   }
-  if (page === 'arsenal') {      // the nine guns
-    bg(g, W, H, '#14202e', '#0a0f18'); const A = [['ketchup', '🍅', 'PISTOL'], ['brown', '🟫', 'BURST'], ['mustard', '🌭', 'REVOLVER'], ['cheese', '🧀', 'SMG'], ['beans', '🫘', 'SHOTGUN'], ['monstor', '🥫', 'RIFLE'], ['baguette', '🥖', 'MARKSMAN'], ['sausage', '🌭', 'SNIPER'], ['gravy', '🍗', 'GATLING']];
-    A.forEach(([id, ic, kd], i) => { const cx = W * (0.18 + (i % 3) * 0.32), cy = 84 + Math.floor(i / 3) * 90; g.fillStyle = 'rgba(255,255,255,0.07)'; rr(g, cx - 96, cy - 38, 192, 80, 12); g.fill();
-      sdGun(g, id, cx + 10, cy - 6, 120); emoji(g, ic, cx - 74, cy - 18, 22); g.fillStyle = '#ffd400'; g.font = `900 13px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(kd, cx, cy + 30); });
-    label(g, '🔫 NINE GUNS · 🎯 HEADS HURT MOST · 🧱 BIG ONES GO THROUGH WALLS', W / 2, 22, { size: 13 }); return;
+  if (page === 'arsenal') {      // the twelve guns
+    bg(g, W, H, '#14202e', '#0a0f18'); const A = [['ketchup', '🍅', 'PISTOL'], ['brown', '🟫', 'BURST'], ['mustard', '🌭', 'REVOLVER'], ['cheese', '🧀', 'SMG'], ['beans', '🫘', 'SHOTGUN'], ['monstor', '🥫', 'RIFLE'], ['baguette', '🥖', 'MARKSMAN'], ['sausage', '🌭', 'SNIPER'], ['gravy', '🍗', 'GATLING'], ['flamer', '🌶️', 'FLAMER'], ['scotch', '🥚', 'LAUNCHER'], ['xbow', '🍟', 'CROSSBOW']];
+    A.forEach(([id, ic, kd], i) => { const cx = W * (0.135 + (i % 4) * 0.243), cy = 84 + Math.floor(i / 4) * 90, bw = W * 0.23; g.fillStyle = 'rgba(255,255,255,0.07)'; rr(g, cx - bw / 2, cy - 38, bw, 80, 12); g.fill();
+      sdGun(g, id, cx + 8, cy - 6, bw * 0.72); emoji(g, ic, cx - bw / 2 + 18, cy - 18, 20); g.fillStyle = '#ffd400'; g.font = `900 13px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(kd, cx, cy + 30); });
+    label(g, '🔫 TWELVE GUNS · 🎯 HEADS HURT MOST · 🪟 WINDOWS SMASH', W / 2, 22, { size: 13 }); return;
   }
   if (page === 'shoot') {
     floorScene(g, W, H, '#24318f', '#121a52'); emoji(g, '🧍', W * 0.7, fy - 26, 64); g.strokeStyle = '#fff'; g.lineWidth = 3; for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { g.beginPath(); g.moveTo(W * 0.7 + dx * 8, fy - 40 + dy * 8); g.lineTo(W * 0.7 + dx * 18, fy - 40 + dy * 18); g.stroke(); }

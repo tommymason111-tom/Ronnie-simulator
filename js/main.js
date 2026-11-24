@@ -26,6 +26,7 @@ import { buildRestaurant } from './levels/restaurant.js';
 import { preloadModels, FLOOR } from './ragdoll.js';
 import { SQUAD } from './squad.js';
 import { buildGarden } from './levels/garden.js';
+import { buildPlan, MapView } from './minimap.js';
 import { Net, newCode } from './net.js';
 import { MPSync } from './mpsync.js';
 import { foodGlow, warmFood } from './foods.js';
@@ -106,6 +107,7 @@ const levelMeshes = []; scene.traverse(o => { if (o.isMesh) levelMeshes.push(o);
 releaseLevelGeometry(levelMeshes, Infinity); noteLevelTextures(levelMeshes);      // (each piece's spare copy goes the moment it's first sent to the graphics chip: the peak while loading is what phones close a page for)
 const weather = setupWeather({ renderer, scene, room, camera, place: BUILD[SEL.place] ? SEL.place : 'bedroom' });      // WEATHER + DAY/NIGHT (weather.js): its map of the level, sky, rain; weather.update(dt) each frame
 FLOOR.at = room.floorAt || null;
+room.plan = ['pub', 'shop', 'garden'].includes(SEL.place) ? (() => { try { return buildPlan(renderer, scene, room); } catch (e) { console.warn('map', e); return null; } })() : null;      // (THE MAP: the level from above, made now while it's empty: minimap.js)
 if (room.familyPhotos) setTimeout(() => import('./portraits.js').then(m => m.paintPhotos(renderer, room.familyPhotos)).catch(e => console.warn('photos', e)), 400);   // family photos from the models            // (raised floors: the ragdolls stand on them)
 if (room.shadows) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }     // sunny places get real sun shadows
 room.placeId = BUILD[SEL.place] ? SEL.place : 'bedroom';
@@ -941,7 +943,7 @@ const director = new Director({
   // PROP HUNT (multiplayer): the whole game lives in prophunt.js
   makePropHunt: () => new PropHunt({ scene, room, player, net, mp, words, renderer, camera, items, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), leave: () => leaveGame(), makePuppet: (p) => net.makeAvatar ? net.makeAvatar(p) : null }),
   // SEARCH AND DESTROY (solo with bots, or a room): the whole game lives in snd.js; its bots are drawn like other players
-  makeSnd: () => new SearchDestroy({ scene, room, player, net, mp, words, renderer, camera, items, crumbs, director, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), makePuppet: (p) => net.makeAvatar ? net.makeAvatar(p) : null }),
+  makeSnd: () => new SearchDestroy({ scene, room, player, net, mp, words, renderer, camera, items, crumbs, director, banner, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), makePuppet: (p) => net.makeAvatar ? net.makeAvatar(p) : null }),
   hint: (t) => touch.hint(t),
   stageName: () => stageNameOf(G.stage), stageNo: () => G.stage,
   // points that pop bubbles / press board buttons: palms, fingertips and held food
@@ -1082,6 +1084,10 @@ body.flat.mpon #chat-log { display: flex; }
       y = Math.max(y, top + cap + gap); }
     else for (const el of [rpO, rpE]) if (el && el.dataset.tight) { el.dataset.tight = ''; el.style.width = ''; el.style.maxHeight = ''; el.style.overflow = ''; if (el === rpO) { el.style.width = 'min(230px,52vw)'; unput(el); el.style.right = 'max(10px,env(safe-area-inset-right))'; el.style.top = '62px'; } }
     for (const id of ['imp-tasks', 'ph-feed', 'rp-events']) { const el = $(id); if (!el) continue; if (id === 'rp-events' && (tight || R($('rp-orders')))) continue;      /* (Run the Pub's TO DO: placed by layout on an upright phone (beside ORDERS), otherwise by pubjobs.js (under ORDERS). Both moving it, it jumped between the two: the flicker) */ if (!narrow || side) { unput(el); continue; } /* (on its side, a phone's left edge is the joystick's: these keep their own place) */ if (!R(el)) continue; put(el, x, y); const r = drop(el); if (r) { y = r.bottom + gap; placed.push(r); } }
+    // (a mode's small map, minimap.js: under the box; on a phone on its side there's no room above SPRINT there, so it goes beside the box, the box's height)
+    { const el = $('mm-mini'); if (el && R(el)) { el.style.width = el.style.height = ''; put(el, x, y); let r2 = R(el); const ctl = ['btn-sprint', 'btn-emote', 'btn-crouch', 'knob'].map(i => R($(i))).filter(Boolean);
+      if (r2 && m && ctl.some(c => over(r2, c))) { const sz = Math.round(Math.max(64, Math.min(r2.width, m.bottom - m.top))); el.style.width = el.style.height = sz + 'px'; put(el, Math.round(m.right + gap), Math.round(m.top)); r2 = R(el); if (r2) placed.push(r2); }
+      else if (r2) { y = r2.bottom + gap; placed.push(r2); } } }
     if (net.connected) { log.style.left = x + 'px'; log.style.top = y + 'px'; let lr = log.children.length ? drop(log) : null;
       // (never down into the touch controls: on a landscape phone there's little room, so the oldest lines go first)
       // (the touch buttons it would run into: a phone on its side has SPRINT up beside it, so the lines go below any it'd
@@ -1110,6 +1116,15 @@ function elasticOut(t) { return t >= 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t 
 
 // ---------------- pause menu (the ⏸ button on phones / computers) ----------------
 let paused = false;
+// FREE ROAM's map (minimap.js): you and everyone else in the room, under the top-left box (tap it, or M, for the big one)
+let roamMap = null;
+function roamMapTick() {
+  if (!(room.plan && director.mode === 'roam')) { if (roamMap) { roamMap.dispose(); roamMap = null; } return; }
+  if (!roamMap) roamMap = new MapView(room.plan, { title: '🗺️ FREE ROAM', key: '▲ YOU · ● EVERYONE ELSE', marks: () => { const out = [];
+    for (const p of net.players.values()) { const h = p.pose && p.pose.h; if (Array.isArray(h) && isFinite(h[0]) && isFinite(h[2])) out.push({ k: 'mate', x: h[0], z: h[2], col: '#3da5ff', t: String(p.name || '').slice(0, 14) }); }
+    const d = camera.getWorldDirection(new THREE.Vector3()); out.push({ k: 'me', x: player.head.x, z: player.head.z, col: '#39ff14', yaw: Math.atan2(-d.x, -d.z), t: 'YOU' }); return out; } });
+  const d = camera.getWorldDirection(new THREE.Vector3()); roamMap.update(player.flatMode && !renderer.xr.isPresenting && !paused && !document.body.classList.contains('gameover'), player.head, Math.atan2(-d.x, -d.z));
+}
 const pauseEl = document.getElementById('pause');
 // ---------------- the end of a game: you're held looking at the receipt (your final score), everything else goes,
 // and the only way on is MAIN MENU (or, in multiplayer, back to the room's lobby with the same people)
@@ -1540,6 +1555,7 @@ function frame(simDt) {
   room.update(dt);
   weather.update(dt, camera);      // weather and the time of day (weather.js)
   for (const gm of room.games || []) { gm.allowed = director.mode === 'roam'; gm.update(dt, player); }     // darts / table tennis: Free Roam only
+  roamMapTick();      // (free roam's map: minimap.js)
 
   if (bannerT > 0) {
     bannerT -= dt;
@@ -1966,6 +1982,7 @@ class SquadPuppet {
     const head = this.pos, chest = r.pos('chest', new THREE.Vector3());
     if (this.swingT > 0) this.swingT -= dt;
     for (const [side, h] of [['R', this.rh], ['L', this.lh]]) {
+      if (this.gunHold && this.gunHold[side]) { this.ikDt = dt; this.reachArm(side, this.gunHold[side], 1); continue; }      // (SEARCH AND DESTROY: both hands on the gun, wherever its grip and front are)
       if (pose.flat && side === 'L') continue;                 // (phone players only have the one hand)
       // a VR hand: smoothed, with a little dead zone (a still hand is a still arm: tracking jitter and the uneven updates
       // made the arms flap about), and nothing taken from a hand that isn't really there (an untracked controller sends

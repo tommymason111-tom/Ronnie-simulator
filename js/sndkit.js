@@ -10,6 +10,9 @@ import { part, merge, vcLambert, vcPhong, box, cyl, sph } from './geo.js';
 import { itemParts } from './foods.js';
 
 // ------------------------------------------------------------------ the guns
+// everyone's health: 150 (a fight's several hits: a rifle takes six to the body, or three to the head; a sniper two
+// to the body, one to the head)
+export const HP = 150;
 // slot: P (primary) or S (sidearm). cost: £ in the shop, kill: £ for a kill with it.
 // dmg: a hit's damage (a shotgun's per pellet) at close range; fall: [from m, to m, what's left]: it tails off between.
 // rate: seconds between shots; modes: fire modes (the first is the one it starts on); burst: shots in a burst.
@@ -23,33 +26,46 @@ const PAT_AR = [[0, 1], [0.1, 1], [-0.1, 1.1], [0.2, 1], [0.35, 0.9], [0.2, 0.8]
 const PAT_SMG = [[0, 1], [0.15, 0.9], [-0.15, 0.9], [0.3, 0.7], [-0.3, 0.6], [0.4, 0.5], [-0.4, 0.5], [0.2, 0.4]];
 const PAT_LMG = [[0, 1.2], [0.1, 1], [0.2, 0.8], [0.3, 0.6], [0.15, 0.4], [-0.15, 0.4], [-0.3, 0.4], [-0.15, 0.3], [0.15, 0.3]];
 export const GUNS = [
-  { id: 'ketchup', name: 'KETCHUP BLASTER', icon: '🍅', kind: 'PISTOL', slot: 'S', cost: 0, kill: 300, col: '#e53935', tr: 0xff3030, splat: 0xc62828,
+  { id: 'ketchup', type: 'PISTOL', name: 'KETCHUP BLASTER', icon: '🍅', kind: 'PISTOL', slot: 'S', cost: 0, kill: 300, col: '#e53935', tr: 0xff3030, splat: 0xc62828,
     dmg: 26, pellets: 1, fall: [12, 36, 0.6], rate: 0.16, modes: ['semi'], mag: 12, reserve: 48, reload: 1.4, rtype: 'mag',
-    spread: 0.014, ads: 0.0045, bloom: 0.012, bloomMax: 0.04, kick: 0.014, kickY: 0.006, range: 45, hs: 2.4, limb: 0.75, pen: 1, move: 1.08, adsMove: 0.8, zoom: 0.85, draw: 0.35, sfx: 'sd_pistol', line: 'Squirty. Reliable. Free. Gets everywhere.' },
-  { id: 'brown', name: 'BROWN SAUCE BURST', icon: '🟫', kind: 'MACHINE PISTOL', slot: 'S', cost: 400, kill: 300, col: '#8d4b26', tr: 0xb5652e, splat: 0x5a2a14,
+    spread: 0.014, ads: 0.0045, bloom: 0.012, bloomMax: 0.04, kick: 0.014, kickY: 0.006, range: 45, hs: 2.8, limb: 0.75, pen: 1, move: 1.08, adsMove: 0.8, zoom: 0.85, draw: 0.35, sfx: 'sd_pistol', line: 'Squirty. Reliable. Free. Gets everywhere.' },
+  { id: 'brown', type: 'PISTOL', name: 'BROWN SAUCE BURST', icon: '🟫', kind: 'MACHINE PISTOL', slot: 'S', cost: 400, kill: 300, col: '#8d4b26', tr: 0xb5652e, splat: 0x5a2a14,
     dmg: 19, pellets: 1, fall: [10, 30, 0.55], rate: 0.065, burst: 3, burstGap: 0.3, modes: ['burst', 'semi'], mag: 18, reserve: 54, reload: 1.6, rtype: 'mag',
-    spread: 0.02, ads: 0.008, bloom: 0.008, bloomMax: 0.05, kick: 0.011, kickY: 0.008, range: 38, hs: 2.1, limb: 0.75, pen: 0, move: 1.07, adsMove: 0.8, zoom: 0.85, draw: 0.35, sfx: 'sd_mpistol', line: 'Three squirts a pull. Goes on everything.' },
-  { id: 'mustard', name: 'MUSTARD MAGNUM', icon: '🌭', kind: 'REVOLVER', slot: 'S', cost: 700, kill: 300, col: '#ffc400', tr: 0xffd21a, splat: 0xe0a800,
+    spread: 0.02, ads: 0.008, bloom: 0.008, bloomMax: 0.05, kick: 0.011, kickY: 0.008, range: 38, hs: 2.4, limb: 0.75, pen: 0, move: 1.08, adsMove: 0.8, zoom: 0.85, draw: 0.35, sfx: 'sd_mpistol', line: 'Three squirts a pull. Goes on everything.' },
+  { id: 'mustard', type: 'PISTOL', name: 'MUSTARD MAGNUM', icon: '🌭', kind: 'REVOLVER', slot: 'S', cost: 700, kill: 300, col: '#ffc400', tr: 0xffd21a, splat: 0xe0a800,
     dmg: 52, pellets: 1, fall: [16, 48, 0.65], rate: 0.48, modes: ['semi'], mag: 6, reserve: 24, reload: 2.4, rtype: 'cyl',
-    spread: 0.02, ads: 0.003, bloom: 0.05, bloomMax: 0.07, kick: 0.07, kickY: 0.012, range: 55, hs: 2.4, limb: 0.8, pen: 2, move: 1.04, adsMove: 0.75, zoom: 0.8, draw: 0.45, sfx: 'sd_magnum', line: 'English mustard. Clears your sinuses and the room.' },
-  { id: 'cheese', name: 'SQUIRTY CHEESE SMG', icon: '🧀', kind: 'SMG', slot: 'P', cost: 1200, kill: 600, col: '#ffc107', tr: 0xffd84a, splat: 0xffb300,
+    spread: 0.02, ads: 0.003, bloom: 0.05, bloomMax: 0.07, kick: 0.07, kickY: 0.012, range: 55, hs: 2.8, limb: 0.8, pen: 2, move: 1.07, adsMove: 0.75, zoom: 0.8, draw: 0.45, sfx: 'sd_magnum', line: 'English mustard. Clears your sinuses and the room.' },
+  { id: 'cheese', type: 'SMG', name: 'SQUIRTY CHEESE SMG', icon: '🧀', kind: 'SMG', slot: 'P', cost: 1200, kill: 600, col: '#ffc107', tr: 0xffd84a, splat: 0xffb300,
     dmg: 17, pellets: 1, fall: [8, 26, 0.55], rate: 0.068, modes: ['auto', 'semi'], mag: 30, reserve: 120, reload: 1.9, rtype: 'mag', pat: PAT_SMG,
-    spread: 0.03, ads: 0.014, bloom: 0.005, bloomMax: 0.045, kick: 0.008, kickY: 0.006, range: 30, hs: 1.8, limb: 0.8, pen: 0, move: 1.12, adsMove: 0.85, zoom: 0.8, draw: 0.4, sfx: 'sd_smg', line: 'Processed cheese at 900 rounds a minute.' },
-  { id: 'beans', name: 'BAKED BEAN SHOTGUN', icon: '🫘', kind: 'SHOTGUN', slot: 'P', cost: 1100, kill: 600, col: '#ff7a1a', tr: 0xff8a2a, splat: 0xd9541e,
+    spread: 0.03, ads: 0.014, bloom: 0.005, bloomMax: 0.045, kick: 0.008, kickY: 0.006, range: 30, hs: 2.1, limb: 0.8, pen: 0, move: 1.04, adsMove: 0.85, zoom: 0.8, draw: 0.4, sfx: 'sd_smg', line: 'Processed cheese at 900 rounds a minute.' },
+  { id: 'beans', type: 'SHOTGUN', name: 'BAKED BEAN SHOTGUN', icon: '🫘', kind: 'SHOTGUN', slot: 'P', cost: 1100, kill: 600, col: '#ff7a1a', tr: 0xff8a2a, splat: 0xd9541e,
     dmg: 14, pellets: 9, fall: [4, 15, 0.25], rate: 0.85, cycle: 0.55, modes: ['pump'], mag: 6, reserve: 24, reload: 0.45, rtype: 'shell',
-    spread: 0.085, ads: 0.065, bloom: 0, bloomMax: 0, kick: 0.06, kickY: 0.015, range: 18, hs: 1.4, limb: 0.8, pen: 0, move: 0.98, adsMove: 0.8, zoom: 0.85, draw: 0.5, sfx: 'sd_shotgun', line: 'Nine beans a pop, loaded one tin at a time.' },
-  { id: 'monstor', name: 'MONSTOR AR', icon: '🥫', kind: 'RIFLE', slot: 'P', cost: 2500, kill: 300, col: '#7cff3a', tr: 0x9cff6a, splat: 0x5fd12a,
+    spread: 0.085, ads: 0.065, bloom: 0, bloomMax: 0, kick: 0.06, kickY: 0.015, range: 18, hs: 1.6, limb: 0.8, pen: 0, move: 0.92, adsMove: 0.8, zoom: 0.85, draw: 0.5, sfx: 'sd_shotgun', line: 'Nine beans a pop, loaded one tin at a time.' },
+  { id: 'monstor', type: 'RIFLE', name: 'MONSTOR AR', icon: '🥫', kind: 'RIFLE', slot: 'P', cost: 2500, kill: 300, col: '#7cff3a', tr: 0x9cff6a, splat: 0x5fd12a,
     dmg: 26, pellets: 1, fall: [22, 60, 0.7], rate: 0.1, burst: 3, burstGap: 0.28, modes: ['auto', 'burst', 'semi'], mag: 30, reserve: 90, reload: 2.3, rtype: 'mag', pat: PAT_AR,
-    spread: 0.024, ads: 0.0035, bloom: 0.006, bloomMax: 0.05, kick: 0.011, kickY: 0.008, range: 70, hs: 2.5, limb: 0.8, pen: 1, move: 1.0, adsMove: 0.7, zoom: 0.72, draw: 0.55, sfx: 'sd_rifle', line: 'Loaded with Mango Loco. Does everything well.' },
-  { id: 'baguette', name: 'BAGUETTE BATTLE RIFLE', icon: '🥖', kind: 'MARKSMAN', slot: 'P', cost: 2300, kill: 300, col: '#d9a35b', tr: 0xffe0a0, splat: 0xc8913a,
+    spread: 0.024, ads: 0.0035, bloom: 0.006, bloomMax: 0.05, kick: 0.011, kickY: 0.008, range: 70, hs: 2.9, limb: 0.8, pen: 1, move: 0.96, adsMove: 0.7, zoom: 0.72, draw: 0.55, sfx: 'sd_rifle', line: 'Loaded with Mango Loco. Does everything well.' },
+  { id: 'baguette', type: 'RIFLE', name: 'BAGUETTE BATTLE RIFLE', icon: '🥖', kind: 'MARKSMAN', slot: 'P', cost: 2300, kill: 300, col: '#d9a35b', tr: 0xffe0a0, splat: 0xc8913a,
     dmg: 47, pellets: 1, fall: [30, 75, 0.75], rate: 0.27, modes: ['semi'], mag: 15, reserve: 45, reload: 2.6, rtype: 'mag',
-    spread: 0.035, ads: 0.0015, bloom: 0.03, bloomMax: 0.06, kick: 0.035, kickY: 0.01, range: 85, hs: 2.3, limb: 0.85, pen: 2, move: 0.95, adsMove: 0.65, zoom: 0.55, draw: 0.6, sfx: 'sd_dmr', line: 'Stale, so it\'s rock hard. Gets through walls.' },
-  { id: 'sausage', name: 'SAUSAGE SNIPER', icon: '🌭', kind: 'SNIPER', slot: 'P', cost: 4000, kill: 150, col: '#b5651d', tr: 0xffe070, splat: 0x9a5a3a,
+    spread: 0.035, ads: 0.0015, bloom: 0.03, bloomMax: 0.06, kick: 0.035, kickY: 0.01, range: 85, hs: 2.7, limb: 0.85, pen: 2, move: 0.93, adsMove: 0.65, zoom: 0.55, draw: 0.6, sfx: 'sd_dmr', line: 'Stale, so it\'s rock hard. Gets through walls.' },
+  { id: 'sausage', type: 'SNIPER', name: 'SAUSAGE SNIPER', icon: '🌭', kind: 'SNIPER', slot: 'P', cost: 4000, kill: 150, col: '#b5651d', tr: 0xffe070, splat: 0x9a5a3a,
     dmg: 105, pellets: 1, fall: [60, 130, 0.85], rate: 1.3, cycle: 1.0, modes: ['bolt'], mag: 5, reserve: 20, reload: 3.0, rtype: 'bolt',
-    spread: 0.085, ads: 0.0006, bloom: 0, bloomMax: 0, kick: 0.09, kickY: 0.01, range: 130, hs: 2, limb: 0.8, pen: 2, move: 0.88, adsMove: 0.5, zoom: 0.28, scope: true, draw: 0.75, sfx: 'sd_sniper', line: 'One banger, one kill. Aim it and scope it in.' },
-  { id: 'gravy', name: 'GRAVY GATLING', icon: '🍗', kind: 'LMG', slot: 'P', cost: 4500, kill: 300, col: '#8d5a32', tr: 0xc88040, splat: 0x6d3b1f,
+    spread: 0.085, ads: 0.0006, bloom: 0, bloomMax: 0, kick: 0.09, kickY: 0.01, range: 130, hs: 2, limb: 0.8, pen: 2, move: 0.85, adsMove: 0.5, zoom: 0.28, scope: true, draw: 0.75, sfx: 'sd_sniper', line: 'One banger, one kill. Aim it and scope it in.' },
+  { id: 'gravy', type: 'HEAVY', name: 'GRAVY GATLING', icon: '🍗', kind: 'LMG', slot: 'P', cost: 4500, kill: 300, col: '#8d5a32', tr: 0xc88040, splat: 0x6d3b1f,
     dmg: 19, pellets: 1, fall: [15, 40, 0.6], rate: 0.065, spin: 0.45, modes: ['auto'], mag: 100, reserve: 100, reload: 4.2, rtype: 'box', pat: PAT_LMG,
-    spread: 0.045, ads: 0.022, bloom: 0.003, bloomMax: 0.04, kick: 0.006, kickY: 0.006, range: 45, hs: 1.6, limb: 0.8, pen: 2, move: 0.8, adsMove: 0.5, zoom: 0.8, draw: 0.9, sfx: 'sd_lmg', line: 'Sunday dinner at 900 rounds a minute. Heavy.' },
+    spread: 0.045, ads: 0.022, bloom: 0.003, bloomMax: 0.04, kick: 0.006, kickY: 0.006, range: 45, hs: 1.9, limb: 0.8, pen: 2, move: 0.74, adsMove: 0.5, zoom: 0.8, draw: 0.9, sfx: 'sd_lmg', line: 'Sunday dinner at 900 rounds a minute. Heavy.' },
+  // the three odd ones: a scotch egg launcher (it lobs them; they go off where they land, round corners no), a hot sauce
+  // flamer (a short spray that keeps hurting), a chip fork crossbow (a slow chip on an arc that sticks in things)
+  { id: 'scotch', type: 'LAUNCHER', name: 'SCOTCH EGG LAUNCHER', icon: '🥚', kind: 'LAUNCHER', slot: 'P', cost: 3800, kill: 300, col: '#c87a2a', tr: 0xffb060, splat: 0x8a5a2e,
+    dmg: 60, pellets: 1, fall: [60, 61, 1], rate: 0.85, modes: ['semi'], mag: 4, reserve: 8, reload: 3.0, rtype: 'cyl',
+    proj: { speed: 20, grav: 9.8, splash: 3.8, sdmg: 95, size: 0.055 },
+    spread: 0.03, ads: 0.01, bloom: 0, bloomMax: 0, kick: 0.07, kickY: 0.01, range: 60, hs: 1, limb: 1, pen: 0, move: 0.82, adsMove: 0.6, zoom: 0.8, draw: 0.8, sfx: 'sd_egg', line: 'Lobs a scotch egg. It goes off where it lands.' },
+  { id: 'flamer', type: 'HEAVY', name: 'HOT SAUCE FLAMER', icon: '🌶️', kind: 'FLAMER', slot: 'P', cost: 2800, kill: 300, col: '#e53935', tr: 0xff6a1a, splat: 0xb71c1c,
+    dmg: 8, pellets: 1, fall: [3, 9, 0.4], rate: 0.08, modes: ['auto'], mag: 60, reserve: 120, reload: 2.8, rtype: 'mag', flame: true,
+    spread: 0.11, ads: 0.08, bloom: 0, bloomMax: 0, kick: 0.002, kickY: 0.002, range: 9, hs: 1.3, limb: 1, pen: 0, move: 0.85, adsMove: 0.7, zoom: 0.9, draw: 0.7, sfx: 'sd_flame', line: 'Extra extra hot. Very close range only.' },
+  { id: 'xbow', type: 'CROSSBOW', name: 'CHIP FORK CROSSBOW', icon: '🍟', kind: 'CROSSBOW', slot: 'P', cost: 3000, kill: 300, col: '#ffd54f', tr: 0xffe082, splat: 0xd4a017,
+    dmg: 80, pellets: 1, fall: [80, 81, 1], rate: 1.0, modes: ['semi'], mag: 1, reserve: 14, reload: 1.3, rtype: 'shell',
+    proj: { speed: 60, grav: 4, size: 0.02, bolt: true },
+    spread: 0.04, ads: 0.0015, bloom: 0, bloomMax: 0, kick: 0.03, kickY: 0.005, range: 90, hs: 2.2, limb: 0.8, pen: 0, move: 0.9, adsMove: 0.6, zoom: 0.5, draw: 0.6, sfx: 'sd_xbow', line: 'Fires a chip on a fork. Silent, slow, deadly.' },
 ];
 // (no prototype: a name off the network like 'constructor' is never mistaken for a gun)
 export const GUN = Object.assign(Object.create(null), Object.fromEntries(GUNS.map((g, i) => [g.id, Object.assign(g, { i })])));
@@ -58,7 +74,7 @@ export const FREE_GUN = 'ketchup';
 // damage left at a distance (1 close up, tailing off to fall[2])
 export const falloff = (G, d) => { const [a, b, k] = G.fall || [G.range * 0.5, G.range, 0.5]; return d <= a ? 1 : d >= b ? k : 1 - (1 - k) * (d - a) / (b - a); };
 // the most a hit can do (the host's sanity check): every pellet in the head with the hot sauce perk
-export const maxHit = (G) => G.dmg * G.pellets * Math.max(G.hs, 1) * 1.5 + 1;
+export const maxHit = (G) => Math.max(G.dmg * G.pellets * Math.max(G.hs, 1), G.proj && G.proj.sdmg ? G.dmg + G.proj.sdmg : 0) * 1.5 + 1;
 export const money = (n) => '£' + Math.round(n).toLocaleString('en-GB');
 // how a gun rates in the shop (0..1 bars)
 export function gunBars(g) {
@@ -70,8 +86,8 @@ export function gunBars(g) {
 // heal: health back (food: eating heals), ar: armour, perk: a timed (t seconds) or whole-round (t: 0) boost
 export const PICKS = Object.assign(Object.create(null), {
   ammo:    { name: 'AMMO BOX', icon: '📦', col: 0xffd400, hex: '#ffd400', line: 'Full reserve for both guns', respawn: 30 },
-  burger:  { name: 'BURGER', icon: '🍔', col: 0x39ff14, hex: '#39ff14', heal: 35, line: '+35 ❤ (eating heals)', respawn: 30 },
-  kebab:   { name: 'DONER KEBAB', icon: '🥙', col: 0x39ff14, hex: '#39ff14', heal: 70, line: '+70 ❤ (the big heal)', respawn: 45 },
+  burger:  { name: 'BURGER', icon: '🍔', col: 0x39ff14, hex: '#39ff14', heal: 50, line: '+50 ❤ (eating heals)', respawn: 30 },
+  kebab:   { name: 'DONER KEBAB', icon: '🥙', col: 0x39ff14, hex: '#39ff14', heal: 100, line: '+100 ❤ (the big heal)', respawn: 45 },
   armour:  { name: 'XXL STAB VEST', icon: '🦺', col: 0x4fc3ff, hex: '#4fc3ff', ar: 50, line: '+50 🛡 armour', respawn: 40 },
   p_reload:{ name: 'FAST HANDS', icon: '⏱️', col: 0xff4fd8, hex: '#ff4fd8', perk: 'reload', t: 30, line: 'Reload twice as fast · 30s' },
   p_speed: { name: 'MONSTOR RUSH', icon: '⚡', col: 0xff4fd8, hex: '#ff4fd8', perk: 'speed', t: 25, line: 'Run 30% faster · 25s' },
@@ -87,9 +103,13 @@ export const PERKS = Object.assign(Object.create(null), { reload: ['⏱️', 'FA
 // many a side it's made for (bots fill the teams up to that), all checked to be on the walkable floor and joined up
 // (tests/snd.test.mjs walks every route)
 export const MAPS = {
-  pub:    { att: [4.55, -12.95], def: [-0.85, 11.95], A: [-13.15, -3.95, 2.3], B: [-18.25, 5.65, 2.6], team: 5, names: { A: 'THE PUB FLOOR', B: 'THE CONSERVATORY' } },
-  shop:   { att: [12.78, 10.35], def: [-4.92, -12.45], A: [-12.12, 5.55, 2.6], B: [5.88, -4.35, 2.6], team: 5, names: { A: 'THE FRONT AISLE', B: 'THE BACK CORNER' } },
-  garden: { att: [-0.35, 9.15], def: [-3.65, -16.35], A: [3.55, -6.15, 2.2], B: [-3.05, -11.55, 2.6], team: 4, names: { A: 'THE PATIO', B: 'THE LAWN' } },
+  // the pub: the attackers come from the car park out the front, the defenders from the far end of the beer garden;
+  // the sites are where the pub meets the garden (everything funnels through the passage)
+  pub:    { att: [4.55, -12.95], def: [0.05, 38.05], A: [3.95, 14.05, 2.0], B: [-5.95, 19.15, 2.4], team: 5, names: { A: 'THE PASSAGE', B: 'THE BEER GARDEN' }, spawnNames: { att: 'THE CAR PARK', def: 'THE BOTTOM OF THE GARDEN' } },
+  // Lidl: the attackers come in the entrance, the defenders from the back of the stock room
+  shop:   { att: [12.78, 10.35], def: [4.68, -12.75], A: [-4.02, 0.15, 2.4], B: [-6.12, -10.05, 2.4], team: 5, names: { A: 'THE MIDDLE AISLES', B: 'THE BACK AISLE' }, spawnNames: { att: 'THE ENTRANCE', def: 'THE STOCK ROOM' } },
+  // Lewis's: the attackers come out of the living room, the defenders from the summer house at the bottom of the garden
+  garden: { att: [-0.35, 9.15], def: [-3.65, -16.35], A: [3.55, -6.15, 2.2], B: [-3.05, -11.55, 2.6], team: 4, names: { A: 'THE PATIO', B: 'THE LAWN' }, spawnNames: { att: 'THE LIVING ROOM', def: 'THE SUMMER HOUSE' } },
 };
 
 // ------------------------------------------------------------------ building bits
@@ -236,12 +256,58 @@ const GUN_BUILD = {
     // the barrels: six round a ring, spun as it fires
     for (let i = 0; i < 6; i++) { const ang = i / 6 * Math.PI * 2; C(g.spin, 0.009, 0.009, 0.5, 0x232428, Math.cos(ang) * 0.026, Math.sin(ang) * 0.026, -0.36, X, 8); } C(g.spin, 0.008, 0.008, 0.5, MT, 0, 0, -0.36, X, 8);
     return { ...g, muzzle: [0, 0.03, -0.62], eject: [0.06, 0.0, 0.0], sight: [0, 0.11, 0.03], fore: [0, -0.04, 0.13], magAt: [-0.1, 0.03, 0], magDir: [-1, -0.5, 0], actK: 'none', actLen: 0, spinAt: [0, 0.03, 0], len: 0.72 }; },
+  scotch() { const g = kit(), b = g.body, a = g.act, m = g.mag, OL = 0x5d5a2a, O2 = 0x46441e, BK = 0x18191b, ST = 0x8a9098, BR = 0x8a5a2e, YL = 0xffcf3a;
+    // a fat short barrel (a cardboard egg box tube), a sight with a range ladder, a grip, a folding stock
+    C(b, 0.048, 0.048, 0.36, OL, 0, 0.07, -0.25, X, 18); C(b, 0.052, 0.052, 0.03, O2, 0, 0.07, -0.43, X, 18); C(b, 0.04, 0.04, 0.012, BK, 0, 0.07, -0.445, X, 18);
+    for (let i = 0; i < 4; i++) C(b, 0.0495, 0.0495, 0.012, O2, 0, 0.07, -0.13 - i * 0.07, X, 18);
+    B(b, 0.05, 0.05, 0.16, O2, 0, 0.03, 0.03); B(b, 0.008, 0.06, 0.03, BK, 0, 0.13, -0.1); for (let i = 0; i < 4; i++) B(b, 0.03, 0.004, 0.004, YL, 0, 0.11 + i * 0.012, -0.1);
+    B(b, 0.034, 0.09, 0.044, BK, 0, -0.045, 0.05, [0.3, 0, 0]); T(b, 0.018, 0.004, BK, 0, -0.01, -0.01, YZ, Math.PI); B(b, 0.026, 0.06, 0.03, BK, 0, -0.01, -0.22);
+    for (const sd of [-1, 1]) C(b, 0.005, 0.005, 0.18, ST, sd * 0.018, 0.03, 0.18, X, 6); B(b, 0.05, 0.07, 0.014, BK, 0, 0.02, 0.27);
+    S(b, 0.03, BR, 0, 0.07, -0.42, [1, 1, 0.5]);      // (an egg peeking out the end)
+    // the drum (it swings out to reload): six scotch eggs in a revolving tin
+    C(a, 0.065, 0.065, 0.1, O2, 0, 0, 0, X, 20); for (let i = 0; i < 6; i++) { const ang = i / 6 * Math.PI * 2; S(a, 0.022, BR, Math.cos(ang) * 0.04, Math.sin(ang) * 0.04, -0.045, [1, 1, 0.7]); S(a, 0.012, YL, Math.cos(ang) * 0.04, Math.sin(ang) * 0.04, -0.06, [1, 1, 0.3]); }
+    for (let i = 0; i < 6; i++) { const ang = i / 6 * Math.PI * 2 + 0.52; B(a, 0.006, 0.006, 0.1, BK, Math.cos(ang) * 0.064, Math.sin(ang) * 0.064, 0); }
+    // a single egg to load (seen in a reload)
+    S(m, 0.024, BR, 0, 0, 0, [1, 1, 1.3]); S(m, 0.013, YL, 0, 0.0, -0.022, [1, 1, 0.4]);
+    return { ...g, muzzle: [0, 0.07, -0.45], eject: [0.05, 0.05, -0.05], sight: [0, 0.16, -0.1], fore: [0, -0.03, -0.22], magAt: [0, 0.07, -0.06], magDir: [-0.4, -1, 0.3], actK: 'cyl', actLen: 0.05, cylAt: [0, 0.07, -0.06], hideMag: true, len: 0.75 }; },
+  flamer() { const g = kit(), b = g.body, a = g.act, m = g.mag, RD = 0xd32f2f, R2 = 0x9a1f1f, BK = 0x18191b, ST = 0xa0a4aa, CU = 0xb87333, WH = 0xf4f4f0, GN = 0x2e7d32, BL = 0x4fc3ff;
+    // a copper pipe and a flared nozzle, a heat shield, the pilot light, a front handle and a grip
+    C(b, 0.016, 0.016, 0.42, CU, 0, 0.05, -0.27, X, 12); C(b, 0.034, 0.02, 0.07, ST, 0, 0.05, -0.5, X, 14); C(b, 0.036, 0.036, 0.008, BK, 0, 0.05, -0.535, X, 14);
+    for (let i = 0; i < 9; i++) C(b, 0.028, 0.028, 0.008, BK, 0, 0.05, -0.18 - i * 0.03, X, 12);      // (the heat shield's fins)
+    S(b, 0.008, BL, 0, 0.022, -0.52); S(b, 0.005, 0xff9f1c, 0, 0.026, -0.535);
+    B(b, 0.05, 0.06, 0.18, BK, 0, 0.03, -0.02); B(b, 0.034, 0.09, 0.044, BK, 0, -0.045, 0.05, [0.3, 0, 0]); T(b, 0.018, 0.004, BK, 0, -0.01, -0.01, YZ, Math.PI);
+    B(b, 0.026, 0.07, 0.03, BK, 0, 0.11, -0.18); B(b, 0.026, 0.01, 0.1, BK, 0, 0.145, -0.13);      // (the carry handle on top)
+    C(b, 0.006, 0.006, 0.2, 0x333333, 0.03, 0.0, -0.06, [Math.PI / 2, 0, 0.2], 6);      // (the fuel line)
+    B(b, 0.04, 0.06, 0.16, BK, 0, 0.0, 0.17);
+    // the tank: a huge bottle of hot sauce slung under it (it comes off to reload): its label, its green cap
+    C(m, 0.045, 0.05, 0.22, RD, 0, -0.09, -0.1, X, 18); C(m, 0.0455, 0.0455, 0.1, WH, 0, -0.09, -0.1, X, 18); S(m, 0.02, RD, 0.0, -0.09, -0.1, [1.2, 1.2, 0.2]);
+    C(m, 0.02, 0.03, 0.05, R2, 0, -0.09, -0.235, X, 12); C(m, 0.02, 0.02, 0.03, GN, 0, -0.09, -0.27, X, 12); for (let i = 0; i < 3; i++) S(m, 0.008, 0xff9f1c, 0.045, -0.09 + (i - 1) * 0.014, -0.1, [0.3, 1, 1]);
+    B(a, 0.03, 0.012, 0.02, BK, 0.03, 0.06, 0.03);
+    return { ...g, muzzle: [0, 0.05, -0.54], eject: [0.03, 0.05, 0], sight: [0, 0.16, -0.13], fore: [0, 0.07, -0.18], magAt: [0, -0.09, -0.1], magDir: [0, -1, 0], actK: 'charge', actLen: 0.03, len: 0.75 }; },
+  xbow() { const g = kit(), b = g.body, a = g.act, m = g.mag, WD = 0x8a5a2e, W2 = 0x6a4020, BK = 0x18191b, ST = 0xa0a4aa, YL = 0xffd54f, Y2 = 0xd4a017, WH = 0xf4f4f0;
+    // the stock and rail in wood, a little scope, the trigger
+    B(b, 0.04, 0.05, 0.5, WD, 0, 0.03, -0.12); B(b, 0.042, 0.08, 0.2, WD, 0, 0.0, 0.2, [0.08, 0, 0]); B(b, 0.044, 0.09, 0.02, BK, 0, -0.005, 0.3); B(b, 0.012, 0.006, 0.44, W2, 0, 0.058, -0.14);
+    B(b, 0.034, 0.08, 0.04, WD, 0, -0.04, 0.03, [0.35, 0, 0]); T(b, 0.018, 0.004, BK, 0, -0.005, -0.01, YZ, Math.PI);
+    C(b, 0.014, 0.014, 0.16, BK, 0, 0.1, -0.02, X, 12); for (const z of [-0.07, 0.03]) B(b, 0.01, 0.04, 0.01, BK, 0, 0.075, z); C(b, 0.015, 0.015, 0.003, 0x3a7aa8, 0, 0.1, -0.1, X, 12);
+    // the bow: two arms (a giant wooden fork, both prongs), a steel string
+    for (const sd of [-1, 1]) { B(b, 0.26, 0.022, 0.03, Y2, sd * 0.13, 0.04, -0.36, [0, sd * 0.35, 0]); S(b, 0.012, ST, sd * 0.25, 0.04, -0.27); }
+    B(b, 0.06, 0.04, 0.05, ST, 0, 0.04, -0.37);
+    for (const sd of [-1, 1]) C(a, 0.002, 0.002, 0.29, 0xdddddd, sd * 0.125, 0.045, -0.2, [0, 0, Math.PI / 2 + sd * 0.95], 4);      // (the string: drawn back)
+    // the chip on the rail: a fat chip on a little fork
+    C(m, 0.008, 0.008, 0.18, YL, 0, 0.068, -0.2, X, 6); for (const sd of [-1, 0, 1]) C(m, 0.0015, 0.0015, 0.04, ST, sd * 0.004, 0.068, -0.31, X, 4); B(m, 0.008, 0.008, 0.02, WH, 0, 0.068, -0.12);
+    return { ...g, muzzle: [0, 0.068, -0.3], eject: [0.02, 0.05, -0.1], sight: [0, 0.1, 0.03], fore: [0, -0.01, -0.25], magAt: [0, 0.068, -0.2], magDir: [0.3, 1, 0], actK: 'none', actLen: 0, shell: true, len: 0.8 }; },
 };
 const gunCache = {};
 const mg = (ps) => ps.length ? merge(ps) : null;
 // one gun's model: geometries for its parts and where things are on it (built once each)
 export function gunModel(id) {
   if (gunCache[id]) return gunCache[id]; const f = GUN_BUILD[id] || GUN_BUILD.ketchup, d = f();
+  // (finishing touches on every gun: the pins through the receiver either side of the ejection port, a steel crown at
+  // the muzzle, a sling loop under the back; part of the same merged body, so no extra draws)
+  if (d.eject && d.muzzle && d.body) { const [ex, ey, ez] = d.eject, w = Math.max(0.012, Math.abs(ex)) * 2 + 0.004, [mx, my, mz] = d.muzzle, ZR = [0, 0, Math.PI / 2];
+    for (const dz of [0.035, -0.045]) { C(d.body, 0.0032, 0.0032, w, 0x9aa0a8, 0, ey - 0.016, ez + dz, ZR, 8); }
+    T(d.body, 0.009, 0.0022, 0x7a8088, mx, my, mz + 0.004);
+    if (d.len > 0.4) T(d.body, 0.008, 0.0018, 0x2a2c30, 0, ey - 0.06, ez + 0.12, [0, Math.PI / 2, 0]); }
   const geos = { body: mg(d.body), mag: mg(d.mag), act: mg(d.act), spin: mg(d.spin) }; geos.body.computeBoundingBox();
   const V = (a) => a ? new THREE.Vector3(...a) : null, bb = geos.body.boundingBox;
   return (gunCache[id] = { geos, muzzle: V(d.muzzle), eject: V(d.eject), sight: V(d.sight), fore: V(d.fore), magAt: V(d.magAt), magDir: V(d.magDir).normalize(), act: d.actK, actLen: d.actLen, actAt: V(d.actAt), cylAt: V(d.cylAt), spinAt: V(d.spinAt),
@@ -264,6 +330,12 @@ export function newGun(id) {
 // a shotgun shell for the one-at-a-time reload (a little tin of beans)
 let shellGeo = null;
 export function beanShellGeo() { if (shellGeo) return shellGeo; const p = []; C(p, 0.011, 0.011, 0.03, 0xff7a1a, 0, 0, 0, X, 10); C(p, 0.0112, 0.0112, 0.008, 0x1e4ea8, 0, 0, 0, X, 10); for (const z of [-0.015, 0.015]) C(p, 0.012, 0.012, 0.003, 0xc0c4c8, 0, 0, z, X, 10); return (shellGeo = merge(p)); }
+// the things the launcher and the crossbow fire: a scotch egg (breadcrumbs outside), a chip on a fork
+let projG = {};
+export function projGeo(kind) { if (projG[kind]) return projG[kind]; const p = [];
+  if (kind === 'bolt') { C(p, 0.009, 0.009, 0.2, 0xffd54f, 0, 0, 0, X, 6); for (const sd of [-1, 0, 1]) C(p, 0.0015, 0.0015, 0.04, 0xa0a4aa, sd * 0.004, 0, -0.11, X, 4); }
+  else { S(p, 0.055, 0x9a5a2a, 0, 0, 0, [1, 1, 1.25]); for (let i = 0; i < 10; i++) S(p, 0.01, 0xc8823a, Math.cos(i * 2.4) * 0.048, Math.sin(i * 1.7) * 0.04, Math.sin(i * 2.9) * 0.05); }
+  return (projG[kind] = merge(p)); }
 // an empty: a little brass tube (tinted per gun: instanced)
 export function casingGeo() { return cyl(0.006, 0.006, 0.022, 7).rotateX(Math.PI / 2); }
 
@@ -336,29 +408,31 @@ export function plinthGeo() {
   return merge(p);
 }
 
-// ---- THE VINDALOO: a curry pot, sausages for dynamite, a clock, wires, a keypad. The light that blinks and the clock's
-// face (the seconds left, drawn on a little picture) are their own pieces
+// ---- THE VINDALOO: a proper bomb. A bundle of red dynamite sticks taped together (black tape, the fuses), a timer box
+// strapped on top with its screen (the seconds left: a little picture of its own), a keypad, wires everywhere and two
+// lights that blink (their own bright bit). The curry's only in the name: an orange sticker, "VINDALOO", on the box
+export const BOMB_FACE = [0, 0.19, 0.072];
 export function bombGeo() {
-  const p = [], SV = 0xb0b4ba, S2 = 0x8a8e94, CU = 0xc1440e, SS = 0x8a3a22, BK = 0x141414, GY = 0x6a6e74;
-  C(p, 0.17, 0.15, 0.2, SV, 0, 0.1, 0, null, 24); T(p, 0.17, 0.012, S2, 0, 0.2, 0, X); C(p, 0.16, 0.16, 0.01, CU, 0, 0.19, 0, null, 24);      // the pot, its rim, the curry
-  for (let i = 0; i < 4; i++) { const a = i * 1.7; S(p, 0.03, i % 2 ? 0x2e7d32 : 0xd32f2f, Math.cos(a) * 0.08, 0.2, Math.sin(a) * 0.08, [1, 0.4, 2.2], [0, a, 0]); }      // chillies in the curry
-  for (let i = 0; i < 5; i++) S(p, 0.012, 0xf4f0e0, Math.cos(i * 2.3) * 0.1, 0.198, Math.sin(i * 2.3) * 0.1, [1, 0.3, 1]);      // (rice)
-  for (const s of [-1, 1]) T(p, 0.04, 0.01, S2, s * 0.19, 0.15, 0, [0, Math.PI / 2, 0], Math.PI);      // handles
-  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + 0.3; C(p, 0.026, 0.026, 0.24, SS, Math.cos(a) * 0.19, 0.12, Math.sin(a) * 0.19, null, 12); S(p, 0.026, SS, Math.cos(a) * 0.19, 0.24, Math.sin(a) * 0.19); S(p, 0.026, SS, Math.cos(a) * 0.19, 0.0, Math.sin(a) * 0.19); C(p, 0.003, 0.003, 0.05, 0xdddddd, Math.cos(a) * 0.19, 0.28, Math.sin(a) * 0.19, null, 5); }
-  for (const y of [0.06, 0.18]) T(p, 0.205, 0.008, GY, 0, y, 0, X);      // the tape round them
-  B(p, 0.16, 0.08, 0.04, BK, 0, 0.12, 0.2); B(p, 0.17, 0.09, 0.03, GY, 0, 0.12, 0.185);      // the clock (its face is the picture)
-  B(p, 0.1, 0.06, 0.02, 0x2a2c30, 0, 0.045, 0.215); for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) B(p, 0.022, 0.012, 0.006, 0xd0d4da, -0.028 + c * 0.028, 0.065 - r * 0.018, 0.226);      // the keypad
-  for (let i = 0; i < 3; i++) C(p, 0.004, 0.004, 0.14, [0xff3b3b, 0x2a6df4, 0xffd400][i], -0.05 + i * 0.05, 0.19, 0.17, [0.6, 0, 0], 5);
-  for (let i = 0; i < 3; i++) C(p, 0.004, 0.004, 0.12, [0x39ff14, 0xffffff, 0xff9f1c][i], 0.16, 0.08 + i * 0.03, 0.12 - i * 0.05, [0, 0, 1.2], 5);
+  const p = [], RD = 0xc62828, R2 = 0x8e1b1b, BK = 0x141414, TP = 0x262626, GY = 0x5a5e66, CR = 0xf0e0b0, OR = 0xff8f00;
+  for (let row = 0; row < 2; row++) for (let i = 0; i < 4 - row; i++) { const x = (i - (3 - row) / 2) * 0.062, y = 0.031 + row * 0.054; C(p, 0.03, 0.03, 0.3, RD, x, y, 0, X, 14); for (const z of [-0.15, 0.15]) C(p, 0.031, 0.031, 0.012, R2, x, y, z, X, 14); C(p, 0.003, 0.003, 0.04, CR, x, y, -0.172, X, 5); }      // the sticks, their ends, fuses
+  for (const z of [-0.09, 0.09]) T(p, 0.135, 0.012, TP, 0, 0.06, z, null);      // the tape round them
+  for (let i = 0; i < 4; i++) B(p, 0.01, 0.02, 0.05, CR, (i - 1.5) * 0.062, 0.031, 0.03);      // (the "DANGER" stripes on the sticks)
+  // the timer box strapped on top, its screen frame, a keypad, a sticker
+  B(p, 0.17, 0.07, 0.12, BK, 0, 0.155, 0.01); B(p, 0.13, 0.05, 0.004, GY, 0, 0.19, 0.071); B(p, 0.08, 0.03, 0.04, GY, 0.0, 0.192, -0.02);
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) B(p, 0.016, 0.006, 0.014, 0xd0d4da, -0.03 + c * 0.02, 0.193, -0.04 + r * 0.018);
+  B(p, 0.07, 0.03, 0.004, OR, 0, 0.145, 0.071); B(p, 0.004, 0.08, 0.12, GY, 0.087, 0.12, 0.01);
+  // the wires: red, blue and yellow from the box down to the sticks
+  for (const [i, c] of [[0, 0xff3b3b], [1, 0x2a6df4], [2, 0xffd400]]) { const x = -0.07 + i * 0.07; C(p, 0.004, 0.004, 0.09, c, x, 0.12, 0.08, [0.5, 0, 0], 5); T(p, 0.025, 0.004, c, x, 0.09, 0.095, [0, Math.PI / 2, 0], Math.PI); }
   return merge(p);
 }
-// the clock's frame of red light and the blinking light (drawn bright: their own little basic-material bits)
-export function bombLightGeo() { const p = []; S(p, 0.014, 0xff2020, 0.07, 0.17, 0.2); S(p, 0.01, 0xff2020, -0.07, 0.17, 0.2); return merge(p); }
-// the clock's face: the seconds left on a little screen (redrawn each second)
+// the box's two lights (drawn bright: their own little basic-material bits)
+export function bombLightGeo() { const p = []; S(p, 0.012, 0xff2020, 0.06, 0.195, 0.05); S(p, 0.012, 0xff2020, -0.06, 0.195, 0.05); return merge(p); }
+// the timer's screen: the seconds left (redrawn each second), with VINDALOO above it
 export function bombFace() {
   const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64; const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.userData.live = true;
-  const draw = (s) => { const g = cv.getContext('2d'); g.fillStyle = '#1a0000'; g.fillRect(0, 0, 128, 64); g.fillStyle = 'rgba(255,40,40,0.18)'; g.font = '900 44px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('88:88', 64, 34);
-    g.fillStyle = '#ff3030'; g.shadowColor = '#ff0000'; g.shadowBlur = 8; g.fillText(s, 64, 34); g.shadowBlur = 0; t.needsUpdate = true; };
+  const draw = (s) => { const g = cv.getContext('2d'); g.fillStyle = '#1a0000'; g.fillRect(0, 0, 128, 64); g.fillStyle = '#ff8f00'; g.font = '900 11px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('VINDALOO', 64, 8);
+    g.fillStyle = 'rgba(255,40,40,0.18)'; g.font = '900 40px monospace'; g.fillText('88:88', 64, 38);
+    g.fillStyle = '#ff3030'; g.shadowColor = '#ff0000'; g.shadowBlur = 8; g.fillText(s, 64, 38); g.shadowBlur = 0; t.needsUpdate = true; };
   draw('--:--'); return { tex: t, draw };
 }
 // pliers for defusing it (in your hand, or by the bomb on someone else's game)
@@ -473,6 +547,12 @@ export function drawGunArt(g, id, x, y, w, h) {
   else if (id === 'baguette') { O('#d9a35b', 76, 46, 72, 13); for (let i = 0; i < 6; i++) Rt('#f3dfb2', 30 + i * 22, 38, 0.5, 0, 0, 14, 4, 2); R('#26282c', 2, 40, 14, 12, 3); R('#141416', 148, 30, 70, 30, 6);
     R('#141416', 160, 10, 40, 22, 4); R('#4a7a9a', 166, 14, 28, 14, 2); g.strokeStyle = '#ff3030'; g.lineWidth = 2; g.beginPath(); g.arc(180, 21, 4, 0, 7); g.stroke();
     Rt('#c9ced4', 168, 58, -0.1, -10, 0, 22, 44, 3); Rt('#ffe27a', 168, 58, -0.1, -10, 32, 22, 12, 2); Rt('#141416', 222, 58, 0.3, -8, 0, 18, 36, 6); O('#d9a35b', 256, 44, 40, 14); O('#b07a3a', 292, 44, 7, 13); }
+  else if (id === 'scotch') { R('#5d5a2a', 10, 30, 140, 32, 14); for (let i = 0; i < 4; i++) R('#46441e', 30 + i * 26, 28, 6, 36, 2); O('#9a5a2a', 14, 46, 10, 12); R('#46441e', 140, 24, 70, 44, 20); for (let i = 0; i < 3; i++) O('#9a5a2a', 160 + i * 20, 46, 8, 8);
+    R('#18191b', 210, 36, 40, 22, 5); Rt('#18191b', 218, 58, 0.3, -8, 0, 18, 40, 6); R('#8a9098', 248, 40, 40, 4, 2); R('#8a9098', 248, 50, 40, 4, 2); R('#18191b', 286, 34, 10, 30, 3); R('#18191b', 110, 10, 6, 20, 2); }
+  else if (id === 'flamer') { R('#b87333', 10, 40, 140, 8, 3); R('#a0a4aa', 4, 34, 22, 20, 6); for (let i = 0; i < 8; i++) R('#18191b', 40 + i * 12, 34, 4, 20, 1); O('#4fc3ff', 10, 58, 4, 4);
+    R('#18191b', 150, 30, 80, 30, 6); R('#18191b', 110, 10, 30, 24, 4); O('#d32f2f', 160, 80, 60, 16); R('#f4f4f0', 140, 70, 40, 20, 3); R('#2e7d32', 96, 74, 14, 12, 3); Rt('#18191b', 230, 58, 0.3, -8, 0, 18, 40, 6); R('#18191b', 240, 34, 50, 24, 6); }
+  else if (id === 'xbow') { R('#8a5a2e', 40, 44, 200, 18, 5); R('#6a4020', 230, 40, 60, 30, 8); Rt('#8a5a2e', 200, 62, 0.35, -8, 0, 16, 34, 6); R('#d4a017', 30, 20, 16, 66, 4); R('#a0a4aa', 34, 50, 10, 6, 2);
+    g.strokeStyle = '#dddddd'; g.lineWidth = 2; g.beginPath(); g.moveTo(38, 22); g.lineTo(150, 52); g.lineTo(38, 84); g.stroke(); R('#ffd54f', 60, 48, 110, 7, 3); R('#18191b', 150, 26, 60, 10, 4); }
   else if (id === 'gravy') { for (let i = 0; i < 3; i++) R('#232428', 10, 34 + i * 9, 120, 6, 3); R('#2a2c30', 50, 30, 8, 30, 3); R('#2a2c30', 96, 30, 8, 30, 3); R('#5a5e66', 126, 26, 90, 40, 14); R('#2a2c30', 212, 24, 12, 44, 4);
     O('#f4f2ea', 170, 78, 54, 20); O('#6d3b1f', 170, 70, 46, 7); R('#f4f2ea', 108, 66, 20, 8, 3); O('#6d3b1f', 126, 92, 4, 7);
     g.strokeStyle = '#b08d57'; g.lineWidth = 7; g.beginPath(); g.arc(170, 26, 26, Math.PI, 0); g.stroke(); R('#2a2c30', 228, 50, 14, 40, 5); R('#2a2c30', 254, 50, 14, 40, 5); }
