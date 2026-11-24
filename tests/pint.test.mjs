@@ -4,7 +4,8 @@
 //     drinking one's level really drops, the stout never pokes out of the glass, every shape tagged
 //   - every pint in the game is the shared one: a food pint (near and far), the squad's prop, Prop Hunt's pint, the emotes,
 //     Aidan's attack
-//   - held: the squad's pints (Aidan, Connor) are in the hand (within a few centimetres) and upright, fingers curled round;
+//   - held: the squad's pints (Aidan, Connor) are in the hand (within a few centimetres) and upright, fingers closed on it
+//     only as far as the scanned skin can take (no triangle stretched past 1.5x its area);
 //     an emote's pints (Connor's round, Aidan's Guinness dream) are in the hand and upright until he drinks, tipped while
 //     he drinks, and the level drops
 //   - Aidan's attack: his hand brings the pint in, it tips and drains, the moustache, the dizzy
@@ -59,7 +60,20 @@ export default async function () {
     console.log('  held:', JSON.stringify(h));
     C.ok(h.length >= 2, 'Aidan and Connor aren\'t carrying their pints');
     for (const r of h) { C.ok(r.worst < 0.085, `${r.id}'s pint isn't in his hand (${r.worst}m from the middle of it)`); C.ok(r.worst > 0.02, `${r.id}'s pint is through his palm (${r.worst}m from the middle of it)`);
-      C.ok(r.tilt < 0.05, `${r.id}'s pint isn't upright (${r.tilt} rad)`); C.ok(r.curl === null || r.curl > 0.2, `${r.id}'s fingers aren't round his pint (curl ${r.curl})`); }
+      C.ok(r.tilt < 0.05, `${r.id}'s pint isn't upright (${r.tilt} rad)`); C.ok(r.curl === null || r.curl > 0.02, `${r.id}'s fingers aren't closed on his pint (curl ${r.curl})`); }
+    // ---- the fingers round the glass don't tear the scanned skin: no triangle of the hand stretched past 1.5x its area
+    const st = await p.evaluate(async () => { const T = RS.THREE, { GLASS_CURL } = await import('/js/squad.js'), out = [];
+      for (const c of RS.cast.filter(c => c.prop && c.rag.handPose && c.rag.handPose.lArmR && !['phone', 'rod', 'jug'].includes(c.def && c.def.look.prop))) {
+        const rag = c.rag, mesh = rag.mesh, g = mesh.geometry, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, idx = g.index.array, fb = new Set();
+        rag.extraBones.forEach((eb, j) => { if (eb.name === 'lArmR' && eb.kind !== 'hand') fb.add(rag.defs.length + j); });
+        const tris = []; for (let f = 0; f < idx.length; f += 3) { let k = 0; for (let v = 0; v < 3; v++) for (let s2 = 0; s2 < 4; s2++) if (fb.has(si.getComponent(idx[f + v], s2)) && sw.getComponent(idx[f + v], s2) > 0.01) k = 1; if (k) tris.push(f); }
+        const a = new T.Vector3(), b2 = new T.Vector3(), c2 = new T.Vector3(), area = () => { RS.scene.updateMatrixWorld(true); mesh.skeleton.update(); return tris.map(f => { mesh.getVertexPosition(idx[f], a); mesh.getVertexPosition(idx[f + 1], b2); mesh.getVertexPosition(idx[f + 2], c2); return b2.sub(a).cross(c2.sub(a)).length() / 2; }); };
+        const hp = rag.handPose.lArmR, was = hp.curl; hp.curl = 0; rag.sync(); const a0 = area(); hp.curl = GLASS_CURL; rag.sync(); const a1 = area(); hp.curl = was; rag.sync();
+        let mx = 0; a1.forEach((v, i) => { if (a0[i] > 1e-9) mx = Math.max(mx, v / a0[i]); }); out.push({ id: c.id, tris: tris.length, worst: +mx.toFixed(2), curl: GLASS_CURL }); }
+      return out; });
+    console.log('  finger skin:', JSON.stringify(st));
+    C.ok(st.length >= 2 && st.every(r => r.tris > 50), `couldn't measure the fingers' skin: ${JSON.stringify(st)}`);
+    for (const r of st) C.ok(r.worst <= 1.5, `${r.id}'s fingers round the glass stretch the skin ${r.worst}x (keep it under 1.5x: GLASS_CURL in squad.js)`);
     // ---- the emotes: Connor's round (upright, in both hands), Aidan's Guinness dream (tipped when he drinks, the level drops)
     const e = await p.evaluate(async () => { const T = RS.THREE, P = RS.player, res = {};
       for (const [ch, em, secs] of [['connor', 'round', 2.4], ['aidan', 'guinness', 3.4]]) {

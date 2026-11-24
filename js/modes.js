@@ -16,7 +16,7 @@ import { sfx, playTune, shout } from './audio.js';
 import { Item } from './foods.js';
 import { pintInHand, setPintLevel } from './pint.js';
 // Aidan's pint at your lips: its rim just under the middle of your view, the glass tipped up away to the right
-const BEER_RIM = new THREE.Vector3(-0.8, -0.32, 0.5).normalize(), BEER_Q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), BEER_RIM);
+const BEER_RIM = new THREE.Vector3(-0.88, -0.4, 0.26).normalize(), BEER_Q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), BEER_RIM);
 const BEER_AT = new THREE.Vector3(-0.01, -0.085, -0.2).addScaledVector(BEER_RIM, -0.075), _bp = new THREE.Vector3(), _bq = new THREE.Quaternion(), _be = new THREE.Euler();
 import { TURKEY_LEN } from './cutscenes.js';
 import { BbqMode } from './bbqmode.js';
@@ -563,10 +563,13 @@ export class Director {
           setPintLevel(pint, 1 - drink * 0.96, 2.2 * k);
           while (gulps < 3 && t > 1.05 + gulps * 0.38) { gulps++; sfx('gulp', null, 0.7 + gulps * 0.1); }
         });
-        // drawn in order (no depth test in front of the camera): his fingers behind the glass, the stout, its head, the
-        // glass, then the fingers wrapped round the front
-        { const ord = { farHand: 35, stout: 36, head: 37, deco: 38, glass: 39, nearHand: 40 };
-          rig.traverse(o => { let n = o, k = null; while (n && k === null) { k = ord[n.name] ?? null; n = n.parent; } if (o.isMesh && k !== null) o.renderOrder = k; }); }
+        // on top of the world, but properly in front of / behind each other: after everything else is drawn (the very
+        // end of the see-through pass) the depth is cleared, then his hand and the pint are drawn with the depth test on,
+        // so his fingers really wrap round the glass. The glass itself only faintly tinted, so the stout reads black
+        { const clear = new THREE.Mesh(new THREE.PlaneGeometry(0.001, 0.001), new THREE.MeshBasicMaterial({ transparent: true, colorWrite: false, depthWrite: false }));
+          clear.renderOrder = 1e6; clear.frustumCulled = false; clear.onBeforeRender = (r) => r.clearDepth(); clear.position.set(0, 0, -0.3); rig.add(clear);
+          rig.traverse(o => { if (!o.isMesh || o === clear || !o.material) return; const m = o.material; m.depthTest = true; m.transparent = true;
+            if (o.name === 'glass') { m.opacity = 0.09; m.depthWrite = false; o.renderOrder = 1e6 + 2; } else { m.depthWrite = true; o.renderOrder = 1e6 + 1; } }); }
         // the head on your top lip after: a creamy Guinness moustache along the bottom of your view
         setTimeout(() => { const tache = new THREE.Group(), cream = new THREE.MeshLambertMaterial({ color: 0xf1e4c2 });
           for (let i = 0; i < 9; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.012 + (i % 3) * 0.003, 10, 8), cream); b.position.set((i - 4) * 0.014, -Math.abs(i - 4) * 0.0018 + (i % 2) * 0.002, 0); b.scale.set(1.25, 0.7, 0.6); tache.add(b); }

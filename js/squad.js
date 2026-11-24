@@ -592,6 +592,10 @@ export function makeProp(type, k) {
   return mesh;
 }
 
+// how far the scanned fingers close round a glass: only a little. The scanned skin can't take more (its fingers are joined
+// up): at 0.42 the skin between them stretched to 2.5-3.5 times its area (long spikes); 0.06 keeps every triangle under
+// 1.5 times (tests/pint.test.mjs measures it)
+export const GLASS_CURL = 0.06;
 // the things someone can do with their hands while they're sat down
 const SAT_ACTS = new Set(['phone', 'drink', 'chat', 'watch', 'waiter']);
 // ---------------------------------------------------------------------------
@@ -748,7 +752,10 @@ export class SquadMember extends Character {
     palm.normalize();
     // the glass's side against the palm (half the hand's thickness out from its middle, then the glass's radius), the hand
     // round its lower half
-    pos.addScaledVector(palm, r + 0.013 * s); pos.y += 0.022 * s;
+    pos.addScaledVector(palm, r + (ax ? 0.013 : 0.035) * s); pos.y += (ax ? 0.022 : -0.01) * s;      // (a built body's chunky hand and sleeve: a bit further out, the hand round its middle)
+    // ...and a touch forward, so from in front the glass is a little in front of the hand (the straight fingers lie along
+    // its side) rather than the hand pasted across the front of it
+    pos.x += Math.sin(this.rag.yaw) * 0.014 * s; pos.z += Math.cos(this.rag.yaw) * 0.014 * s;
   }
 
   afterUpdate(dt, ctx) {
@@ -763,6 +770,13 @@ export class SquadMember extends Character {
     if (this.state !== 'act' && this.attackProps && this.attackProps.length) this.endAttackProps();
     this.placeProp(dt, ctx);
     this.actAfter && this.actAfter(dt, ctx);
+  }
+  // walking with a pint: the gait swings the arms (the base layer); the arm with the glass is held steady over it, forearm
+  // forward, so the pint isn't flung about
+  walkPose(dt, speed = 0.9, blend = 1) {
+    super.walkPose(dt, speed, blend);
+    if (this.prop && this.prop.visible && !['phone', 'rod', 'jug'].includes(this.def.look.prop) && this.state !== 'act') {
+      const r = this.rag, sw = Math.sin((this.t || 0) * 5.5) * 0.04; r.aim('uArmR', -0.15, -1, 0.25 + sw); r.aim('lArmR', -0.05, 0.1, 1); }
   }
   // the prop they carry (Lewis's jug, a pint, a phone, Ian's rod): in their hand. Also on a joining player's game, where
   // the host moves the body: left out there, it stayed where it was made, in the middle of the pub floor
@@ -797,7 +811,7 @@ export class SquadMember extends Character {
         { const ax = this.rag.handAxes && this.rag.handAxes[arm]; if (ax) { const p = _v.copy(ax.palm).applyQuaternion(this.rag.partQuat(arm, _q)); if (Math.hypot(p.x, p.z) > 0.3) this.prop.rotation.set(0, Math.atan2(p.x, p.z), 0); } }
       }
       // fingers wrapped round a glass (the pint's): curled in, and straight again when it's put away
-      const hp = this.rag.handPose && this.rag.handPose[arm]; if (hp && !(this.emote && this.emote.active)) hp.curl = !['phone', 'rod', 'jug'].includes(this.def.look.prop) && this.prop.visible ? 0.42 : 0;
+      const hp = this.rag.handPose && this.rag.handPose[arm]; if (hp && !(this.emote && this.emote.active)) hp.curl = !['phone', 'rod', 'jug'].includes(this.def.look.prop) && this.prop.visible ? GLASS_CURL : 0;
     }
   }
 
