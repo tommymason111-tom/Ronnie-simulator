@@ -47,9 +47,9 @@ const LOOK = `window.__camCheck = function () {
   return { name: info.name, pos: [p.x, p.y, p.z].map(x => +x.toFixed(2)), probs: out };
 };`;
 
-async function playAll(C, p, tag) {
-  const seen = new Set(), bad = new Map();
-  for (const film of FILMS) {
+async function playAll(C, p, tag, films, seen) {
+  const bad = new Map();
+  for (const film of films) {
     await p.evaluate((film) => { const D = RS.director, N = D.date, [k, v] = film.split(':'); D.timeLeft = 999; N.catches = 0; N.cool = 0; N.probation = 0; window.__t = 0; window.__last = null;
       if (k === 'bill') { N.nextT = 99; D.timeLeft = 15.5; RS.sim(0.2, 1 / 20); } else N.trigger(k, v || undefined); }, film);
     let i = 0;
@@ -61,7 +61,7 @@ async function playAll(C, p, tag) {
         return { done: true }; });
       if (r.done) break;
       seen.add(r.shot);
-      if (r.chk) for (const pr of r.chk.probs) { const k = `${film} ${r.shot}: ${pr.replace(/\(.*\)/, '')}`; if (!bad.has(k)) bad.set(k, `${tag} ${film} ${r.shot} @${r.t.toFixed(1)}s cam ${r.chk.pos}: ${pr}`); }
+      if (r.chk) for (const pr of r.chk.probs) { const k = `${film} ${r.shot}: ${pr.replace(/\(.*\)/, '')}`; if (!bad.has(k)) { bad.set(k, `${tag} ${film} ${r.shot} @${r.t.toFixed(1)}s cam ${r.chk.pos}: ${pr}`); console.log('  ' + bad.get(k)); } }
       if (SHOTS) { await p.evaluate(() => { const N = RS.director.date, cam = N.cineCam(); RS.renderer.render(RS.scene, cam || RS.player.camera); }); await p.screenshot({ path: `${SHOTS}/${tag}-${film.replace(':', '-')}-${String(i++).padStart(2, '0')}-${r.shot}.png` }); }
     }
     await p.evaluate(() => { RS.sim(1.5, 1 / 20); RS.director.date.cineCam(); });
@@ -75,14 +75,19 @@ export default async function () {
   if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
   try {
     for (const tag of ['portrait', 'desk'].filter(t => SIZES.includes(t))) {
-      const [w, h, mobile] = SIZE[tag];
-      const p = await newPage(b, { width: w, height: h, mobile });
-      await startGame(p, { place: 'restaurant', mode: 'date' });
-      await p.waitForFunction(() => RS.cast.every(c => !c.rag || c.rag.ready) && RS.director.date && (!RS.director.date.ron || RS.director.date.ron.rag.ready), null, { timeout: 120000 }).catch(() => {});
-      await p.evaluate(BOT); await p.evaluate(LOOK);
-      // (the night opens with arriving at the table: let that play out first, checking it as it goes)
-      await p.evaluate(() => { RS.renderer.setAnimationLoop(null); RS.sim(0.3, 1 / 30); });
-      const seen = await playAll(C, p, tag);
+      const [w, h, mobile] = SIZE[tag], seen = new Set();
+      // (a fresh page every few films: one page for the whole night ran out of memory on a busy machine)
+      const open = async () => { const p = await newPage(b, { width: w, height: h, mobile });
+        await startGame(p, { place: 'restaurant', mode: 'date' });
+        await p.waitForFunction(() => RS.cast.every(c => !c.rag || c.rag.ready) && RS.director.date && (!RS.director.date.ron || RS.director.date.ron.rag.ready), null, { timeout: 120000 }).catch(() => {});
+        await p.evaluate(BOT); await p.evaluate(LOOK);
+        await p.evaluate(() => { RS.renderer.setAnimationLoop(null); RS.sim(0.3, 1 / 30); });
+        return p; };
+      let p;
+      for (let i = 0; i < FILMS.length; i += 6) {
+        if (p) { C.ok(!p.errors.length, `${tag}: page errors: ` + [...new Set(p.errors)].slice(0, 4).join(' | ')); await p.context().close(); }
+        p = await open(); await playAll(C, p, tag, FILMS.slice(i, i + 6), seen); console.log(`  ${tag}: ${Math.min(FILMS.length, i + 6)}/${FILMS.length} films`);
+      }
       // every kind of shot the films use got looked at
       for (const s of ['wide', 'side', 'overR', 'trio', 'chloe', 'ronnie', 'table', 'char', 'crane', 'orbit', 'push', 'dolly', 'low', 'foyer', 'walk', 'dutch'])
         if (FILMS === ALL) C.ok(seen.has(s), `${tag}: the "${s}" shot never came up`);
@@ -140,14 +145,17 @@ export default async function () {
       if (inVR) {
         await p.evaluate(BOT);
         const r = await p.evaluate(async () => { const D = RS.director, N = D.date, wait = (ms) => new Promise(r => setTimeout(r, ms));
-          let t = 0; while (N.state === 'scene' && t < 90000) { await wait(200); t += 200; }      // (the opening film, in the headset)
-          D.timeLeft = 999; N.trigger('toilet', 'loo'); let cam = 0, maxFade = 0, moved = false, frames = 0; const h0 = RS.player.head.clone();
-          t = 0; while (N.state === 'scene' && t < 120000) { window.__dnBot(N, 'win'); if (N.cineCam()) cam++; const m = N.ui && N.ui.vfade; if (m && m.visible) maxFade = Math.max(maxFade, m.material.opacity);
-            if (RS.player.head.distanceTo(h0) > 1) moved = true; frames++; await wait(50); t += 50; }
-          await wait(600); const m = N.ui && N.ui.vfade;
-          return { cam, maxFade, moved, frames, left: m ? m.visible : null, state: N.state }; });
+          // (straight in during the opening film: the raid's move to a table and back, as the loo films do it)
+          let t = 0; while (N.state !== 'scene' && t < 20000) { await wait(200); t += 200; }
+          const spot = { at: [-0.55, -0.1, -2.4], food: [-1.5, -1.0], pos: [-0.4, 1.55, 0.2], look: [-1.5, 0.8, -1.0] };
+          let cam = 0, maxFade = 0, moved = false, frames = 0; const h0 = RS.player.head.clone();
+          const settled = () => !N.travelGo && !(N.vrFadeT > 0);
+          const watch = async () => { await wait(30); for (let k = 0; k < 40000 && !settled(); k += 30) { if (N.cineCam()) cam++; const m = N.ui && N.ui.vfade; if (m && m.visible) maxFade = Math.max(maxFade, m.material.opacity); if (RS.player.head.distanceTo(h0) > 1) moved = true; frames++; await wait(30); } await wait(300); };
+          N.travel(spot); await watch(); const there = moved; N.travel(null); await watch();
+          const m = N.ui && N.ui.vfade, back = RS.player.head.distanceTo(h0);
+          return { cam, maxFade, moved: there, back, frames, left: m ? m.visible : null, state: N.state }; });
         C.ok(r.cam === 0, `Quest: the film camera took over the headset's view (${r.cam} frames)`);
-        C.ok(r.moved && r.maxFade > 0.8 && r.left === false, `Quest: the loo raid's move wasn't a blink to black and back: ${JSON.stringify(r)}`);
+        C.ok(r.moved && r.back < 0.5 && r.maxFade > 0.8 && r.left === false, `Quest: the loo raid's move wasn't a blink to black and back: ${JSON.stringify(r)}`);
       }
       C.ok(!p.errors.length, 'Quest: page errors: ' + [...new Set(p.errors)].slice(0, 4).join(' | '));
       await p.context().close();

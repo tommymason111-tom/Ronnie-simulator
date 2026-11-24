@@ -1362,10 +1362,10 @@ const inWay = (S, p, h, c) => [...S.g.cast, S.ron].some(o => { if (!o || o === c
   const q = o.headPos(_v2), dx = h.x - p.x, dz = h.z - p.z, L2 = dx * dx + dz * dz || 1, s = ((q.x - p.x) * dx + (q.z - p.z) * dz) / L2;
   return s > 0.03 && s < 0.92 && Math.abs((q.x - p.x) * dz - (q.z - p.z) * dx) / Math.sqrt(L2) < 0.3; });
 // a face from in front of them, d away and a little to one side, at their eye level (dy), looking just under the eyes
-// (dl: lower for a medium shot). The side's picked once a shot: whichever side nobody's standing in the way
+// (dl: lower for a medium shot). The side is whichever nobody's standing in the way of, kept until someone walks into it
 const front = (S, c, o, d, side, dy = 0.03, dl = -0.05) => {
   const h = c.headPos(new THREE.Vector3()), f = fwdOf(c), s = V(f.z, 0, -f.x), at = (sd) => h.clone().addScaledVector(f, d).addScaledVector(s, sd).setY(h.y + dy);
-  if (o.sd == null) o.sd = [side, -side, side * 0.3, side + 0.3 * Math.sign(side || 1), -side - 0.3 * Math.sign(side || 1), side + 0.55 * Math.sign(side || 1), -side - 0.55 * Math.sign(side || 1)].find(sd => !inWay(S, at(sd), h, c)) ?? side;
+  if (o.sd == null || inWay(S, at(o.sd), h, c)) { const k = Math.sign(side || 1); o.sd = [o.sd ?? side, side, -side, side * 0.3, side + 0.3 * k, -side - 0.3 * k, side + 0.55 * k, -side - 0.55 * k, side + 0.8 * k, -side - 0.8 * k].find(sd => !inWay(S, at(sd), h, c)) ?? o.sd ?? side; }      // (someone walks into the way: round to a clear side)
   return [at(o.sd), h.clone().setY(h.y + dl)];
 };
 const SHOTS = {
