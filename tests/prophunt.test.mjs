@@ -163,6 +163,7 @@ async function onePlace(place, WHO) {
       C.ok(st.hp === 75 && !st.locked && st.run > 1, `a hit didn't take 25 health, unlock and speed up the hider: ${JSON.stringify(st)}`);
       for (const p of pages) { const hp = await ev(p, (id) => RS.director.prophunt.players.get(id).hp, hid); C.ok(hp === 75, `${p.pname} sees the shot hider on ${hp} health`); }
       await ev(H, (id) => { RS.director.prophunt.H.hitAt[id] = 0; }, hid);
+      await ev(H, () => RS.sim(2, 1 / 30));      // (the host's game heals them, a frame at a time: a test page in the background gets few frames, or none, on a busy machine)
       await HP0.waitForFunction(() => RS.director.prophunt.mine().hp > 75, null, { timeout: 20000 }).catch(() => {});
       const hp2 = await ev(HP0, () => RS.director.prophunt.mine().hp); C.ok(hp2 > 75, `the hider didn't heal after getting away: ${hp2}`); }
     // the seeker finds every hider (four hits each, more if they've healed)
