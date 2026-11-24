@@ -825,9 +825,9 @@ export class SearchDestroy {
   dropsTick(t) { for (const [, D] of this.drops) { D.mesh.rotation.y = (D.t0 || 0) + t * 0.6; D.mesh.position.y = D.y + 0.08 + Math.sin(t * 3 + D.d) * 0.02; } }
   // a name tag that would be drawn over the HUD: anyone right beside you, or close enough for a big tag up in the top
   // corners (the top-left box and the map, the corner's buttons). Far off, a tag's small: it's left be
-  tagInTheWay(av, my) {
+  tagInTheWay(av, my, cam = this.g.camera) {
     const t = av.tag; if (!t) return false; t.getWorldPosition(_tg); const d = Math.hypot(_tg.x - my.x, _tg.z - my.z); if (d < 1.6) return true; if (d > 6 || this.g.renderer.xr.isPresenting) return false;
-    _tg.project(this.g.camera); if (_tg.z > 1) return false; const x = (_tg.x + 1) / 2, y = (1 - _tg.y) / 2, k = 1.6 / d;      // (the tag's half-size on screen, roughly, as a share of the screen)
+    _tg.project(cam); if (_tg.z > 1) return false; const x = (_tg.x + 1) / 2, y = (1 - _tg.y) / 2, k = 1.6 / d;      // (the tag's half-size on screen, roughly, as a share of the screen)
     return y - k * 0.12 < 0.36 && (x - k * 0.25 < 0.42 || x + k * 0.25 > 0.7);
   }
   // everyone's body drawn right: the dead laid out, nobody hidden; enemies' name tags hidden (no seeing them through walls)
@@ -844,7 +844,7 @@ export class SearchDestroy {
       // name tags: team-mates always (their tag is theirs); enemies red, and only while you can see them
       const enemy = round && mt && f.team !== mt;
       if (look && enemy && f.alive && this.headOf(id, h)) f.seen = this.canSee(my, h);
-      const close = this.tagInTheWay(av, my);      // (right beside you, or near and up in the top corners: a tag would sit on the HUD)
+      const close = this.tagInTheWay(av, this.viewCamNow ? this.viewCamNow.position : my, this.viewCamNow || this.g.camera);      // (right beside you, or near and up in the top corners: a tag would sit on the HUD)
       av.impRed = !!enemy; if (av.tag) av.tag.visible = (!enemy || (f.alive && f.seen)) && !(round && !f.alive) && !this.pickOpen && !(this.spect === id && this.viewCamNow) && !close; }
     this.teamMarks();
   }

@@ -243,6 +243,13 @@ async function guns(b, C) {
     C.ok(dm.thin.join() === 'blocked,blocked,blocked' && dm.thick.join() === 'blocked,blocked' && dm.holes === 1 && dm.clear, `guns: walls (nothing goes through a board or a wall, one mark on it; with it gone the shot gets there): ${JSON.stringify(dm)}`);
     C.ok(dm.legHit === 20, `guns: the host didn't take a leg hit: ${JSON.stringify(dm)}`);
     // a window: the first shot breaks it (and is stopped), then shots go through the gap
+    // every gun's own reload and empty click
+    const snd = await ev(p, (ids) => { const s = T.s(), bad = []; s.mine().alive = true;
+      for (const g of ids) { s.loadGun(g); s.my.drawEnd = 0; s.my.spin = 99; s.my.mag = 0; s.my.reserve = 50; s.my.reloadEnd = 0; s.my.rl = null; window.__sfxLog = []; s.doReload(); const rl = window.__sfxLog.filter(n => /^sd_rl_/.test(n));
+        s.cancelReload(); s.my.mag = 0; s.my.reserve = 0; s.clickT = 0; s.my.nextShot = 0; s.my.spin = 99; window.__sfxLog = []; s.shootOnce(); const dry = window.__sfxLog.filter(n => /^sd_dry_/.test(n));
+        if (rl[0] !== 'sd_rl_' + g || dry[0] !== 'sd_dry_' + g) bad.push([g, rl[0], dry[0]]); }
+      window.__sfxLog = null; return bad; }, GUN_IDS);
+    C.ok(!snd.length, `guns: a gun's reload / empty click isn't its own: ${JSON.stringify(snd)}`);
     const win = await ev(p, () => { const s = T.s(), Th = RS.THREE, w = s.windows.find(w => { const sz = w.box.getSize(new Th.Vector3()); return sz.y > 0.8 && w.c.y > 0.8 && w.c.y < 2.2; }); if (!w) return { none: s.windows.length };
       const sz = w.box.getSize(new Th.Vector3()), nrm = sz.x < sz.z ? new Th.Vector3(1, 0, 0) : new Th.Vector3(0, 0, 1); let side = null;
       for (const sg of [1, -1]) { const x = w.c.x + nrm.x * sg * 2.5, z = w.c.z + nrm.z * sg * 2.5, nav = RS.room.nav, k = nav.idx(x, z); if (k >= 0 && nav.free[k]) { side = [x, z]; break; } } if (!side) return { noSide: true, n: s.windows.length };
@@ -263,7 +270,8 @@ async function solo(b, C) {
   const L = (s) => process.env.VERBOSE && console.log('   ', s);
   try {
     // ---- the shop, round 1
-    const pick = await ev(p, () => { const s = T.s(), el = document.getElementById('sd-pick'); return { open: el.classList.contains('on'), cards: el.querySelectorAll('.card').length, cash: el.querySelector('.hd .cash').textContent, money: s.cash[s.me], phase: s.phase, gun: s.my.gun }; });
+    const pick = await ev(p, () => { const s = T.s(), el = document.getElementById('sd-pick'); return { left: +(s.endsAt - s.clock).toFixed(1), warn: (el.querySelector('.warn') || {}).textContent, types: el.querySelectorAll('.card .ty').length, open: el.classList.contains('on'), cards: el.querySelectorAll('.card').length, cash: el.querySelector('.hd .cash').textContent, money: s.cash[s.me], phase: s.phase, gun: s.my.gun }; });
+    C.ok(pick.left >= 19 && pick.left <= 22 && /ENEMIES LIVE IN|PICKING/.test(pick.warn) && pick.types === 12, `solo: the buy time (20s+), the ENEMIES LIVE warning or the TYPE labels: ${JSON.stringify(pick)}`);
     C.ok(pick.open && pick.cards === 12 && /£2,000/.test(pick.cash) && pick.gun === 'ketchup', `solo: the shop isn't open at the start of round 1 with twelve guns and £2,000 (just the ketchup pistol to start): ${JSON.stringify(pick)}`);
     await sleep(600);
     { const t = await textProblems(p, '#sd-pick'), bt = await btnProblems(p, '#sd-pick');
@@ -293,6 +301,8 @@ async function solo(b, C) {
       // keep shooting till it's down
       let n = 0; while (e.alive && n++ < 40) { T.aim(head.x, head.y - 0.5, head.z); s.my.nextShot = 0; if (s.my.mag <= 0) { s.my.mag = 30; s.my.reloadEnd = 0; s.my.rl = null; } s.fire(); T.step(0.05); }
       return { phase: s.phase, mag0, ...one, hp0, bodyD: hp0 - one.hp, hsD, dead: !e.alive, k: me.k, feed: document.getElementById('sd-feed').textContent, name: e.name, cash: s.cash[s.me] }; });
+    const lock = await ev(p, () => { const s = T.s(); s.openPicker(); T.step(0.1); return { phase: s.phase, open: document.getElementById('sd-pick').classList.contains('on'), btn: !document.querySelector('#sd-ui .guns').hidden }; });
+    C.ok(lock.phase === 'live' && !lock.open && !lock.btn, `solo: the shop opened (or its button showed) once the round was live: ${JSON.stringify(lock)}`);
     C.ok(shoot.phase === 'live', `solo: the round didn't go live: ${shoot.phase}`);
     C.ok(shoot.mag === shoot.mag0 - 1, `solo: FIRE didn't use a round: ${shoot.mag0} -> ${shoot.mag}`);
     C.ok(shoot.bodyD > 15 && shoot.bodyD < 30, `solo: a body shot with the MONSTOR AR did ${shoot.bodyD} damage`);
@@ -442,6 +452,12 @@ async function solo(b, C) {
     await sleep(3500); await ev(q, () => { T.clearPops(); T.step(3); });
     const dead = await ev(q, () => ({ watch: !document.querySelector('#sd-ui .watch').hidden, fire: !document.querySelector('#sd-ui .fire').hidden, spect: T.s().spect, cam: !!T.s().viewCam(), deathCam: !!T.s().deathCam }));
     C.ok(dead.watch && !dead.fire && dead.spect && dead.cam && !dead.deathCam, `phone: out of the round, not watching a team-mate: ${JSON.stringify(dead)}`);
+    // over the shoulder: the watched player's tag hidden, and no tag right by the camera (another team-mate stood there)
+    const tags = await ev(q, () => { const s = T.s(), cam = s.viewCam(), other = T.mates().find(m => m.id !== s.spect && m.alive && s.bots.get(m.id)); if (other && cam) { const b = s.bots.get(other.id); b.x = cam.position.x + 0.3; b.z = cam.position.z; } T.step(0.3);
+      const c2 = s.viewCam(), v = new RS.THREE.Vector3(), near = [], sp = s.avatar(s.spect);
+      for (const [id] of s.F) { if (id === s.me) continue; const av = s.avatar(id); if (!av || !av.tag || !av.tag.visible) continue; av.tag.getWorldPosition(v); if (Math.hypot(v.x - c2.position.x, v.z - c2.position.z) < 1.6) near.push(id); }
+      return { moved: !!other, near, watchedTag: !!(sp && sp.tag && sp.tag.visible) }; });
+    C.ok(!tags.near.length && !tags.watchedTag, `phone (watching): name tags by the camera or on the watched player: ${JSON.stringify(tags)}`);
     const t2 = await textProblems(q), bt2 = await btnProblems(q, '#sd-ui');
     C.ok(!t2.length, `phone (watching): text on text: ${JSON.stringify(t2.slice(0, 3))}`); C.ok(!bt2.length, `phone (watching): buttons: ${JSON.stringify(bt2.slice(0, 3))}`);
     C.ok(!q.errors.length, 'phone: page errors: ' + [...new Set(q.errors)].slice(0, 3).join(' | '));
