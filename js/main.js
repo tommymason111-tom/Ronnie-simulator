@@ -1217,7 +1217,7 @@ const PAUSE_MODES = {
   chonkoffr: ['🏅', 'RANKED EAT-OFF', 'Everyone at once, 60 seconds: your online rating is on the line'],
   sweep: ['🛒', 'SUPERMARKET SWEEP', 'Grab the most calories. Dodge security'],
   bbq: ['🍖', "IAN'S BARBECUE", 'Get big enough to fight off Ian\'s healthy burgers'],
-  date: ['💜', 'DATE NIGHT', 'Eat when Chloe looks away'],
+  date: ['💜', 'DATE NIGHT', '📖 Story mode: one night out, film by film'],
   roam: ['🚶', 'FREE ROAM · WITH THE SQUAD', 'Have a look round. Everyone\'s about, nobody attacks'],
   roam0: ['🧍', 'FREE ROAM · JUST YOU', 'The place to yourself: no NPCs at all'],
   runpub1: ['🌙', 'RUN THE PUB · QUIET NIGHT', 'Easy: a few regulars, plenty of patience'],
@@ -1802,7 +1802,8 @@ Character.hearers = () => { const a = [player.head]; if (net.connected && mp.hos
 director.startRemote = (id) => { if (!net.host && director.mode && (PAUSE_MODES[id] || id === 'imposter')) newGame(id, 'NEW GAME'); };
 // power-ups turn up in the eating games (not Run the Pub, the Sweep or Imposter)
 powerups = new PowerUps({ scene, room, items, player, sfx, words, net, mp, eatWhole: (it) => hooverEat(it),
-  enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter', 'prophunt', 'snd'].includes(director.mode) && roomNum('powerups') > 0 });
+  enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter', 'prophunt', 'snd'].includes(director.mode) && roomNum('powerups') > 0,
+  noSpawn: () => director.mode === 'date' });      // (DATE NIGHT: sat at the table all night, no power-ups turn up)
 mp.selfBody = () => selfBody;      // (your emotes play on your own body too)
 mp.onChat = (text, p) => { chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text, !p); };      // (typed chat is read, never spoken: the owner's call)
 mp.onChatBlocked = (why) => words.show(why || 'NOT NOW', player.head.clone().addScaledVector(player.fwd, 0.8), '#ff5252', 0.07, 1.4);
