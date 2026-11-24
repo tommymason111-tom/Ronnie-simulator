@@ -939,7 +939,7 @@ const director = new Director({
   // BOSS FIGHT: the whole fight lives in boss.js
   makeBoss: () => new BossFight({ scene, room, physics, player, items, words, crumbs, G, cast, director, net, mp, camera, renderer, fx: attackFx, hint: (t) => touch.hint(t), showBanner: (a, b) => showBanner(a, b) }),
   // PROP HUNT (multiplayer): the whole game lives in prophunt.js
-  makePropHunt: () => new PropHunt({ scene, room, player, net, mp, words, renderer, camera, items, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), leave: () => leaveGame() }),
+  makePropHunt: () => new PropHunt({ scene, room, player, net, mp, words, renderer, camera, items, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), leave: () => leaveGame(), makePuppet: (p) => net.makeAvatar ? net.makeAvatar(p) : null }),
   // SEARCH AND DESTROY (solo with bots, or a room): the whole game lives in snd.js; its bots are drawn like other players
   makeSnd: () => new SearchDestroy({ scene, room, player, net, mp, words, renderer, camera, items, crumbs, director, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), makePuppet: (p) => net.makeAvatar ? net.makeAvatar(p) : null }),
   hint: (t) => touch.hint(t),
@@ -980,6 +980,10 @@ const ctx = {
 function wrapText(g, text, maxW) { const words = text.split(' '), out = []; let ln = ''; for (const w of words) { const t = ln ? ln + ' ' + w : w; if (g.measureText(t).width > maxW && ln) { out.push(ln); ln = w; } else ln = t; } if (ln) out.push(ln); return out; }
 const chatUI = (() => {
   const st = document.createElement('style'); st.textContent = `
+/* (PAUSE, CHAT and VOICE stay on top in the corner, over Search & Destroy's full-screen shop and scoreboard too, whose tops
+   start under them on a phone) */
+body:has(#sd-pick.on) :is(#menu-btn, #chat-btn, #vc-bar), body:has(#sd-board.on) :is(#menu-btn, #chat-btn, #vc-bar) { z-index: 62 !important; }
+body.compact-ui #sd-pick.on { padding-top: calc(max(10px, env(safe-area-inset-top)) + 50px) !important; }
 #chat-btn { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 40px); right: max(10px, env(safe-area-inset-right)); z-index: 20; display: none; font: 900 12px Arial, sans-serif; padding: 8px 12px; border-radius: 12px; border: 0; background: rgba(0,0,0,0.6); color: #fff; }
 body.flat.mpon #chat-btn { display: block; }
 body.compact-ui #chat-box { top: calc(max(10px, env(safe-area-inset-top)) + 56px); }

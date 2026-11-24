@@ -32,5 +32,5 @@ export function startBot(url, code, { name, char = 'ethan', net = '' } = {}) {
     }, 50);
   });
   ws.on('error', () => {});
-  return { st, stop: () => { clearInterval(timer); try { ws.close(); } catch (e) {} } };
+  return { st, send: (m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); }, stop: () => { clearInterval(timer); try { ws.close(); } catch (e) {} } };
 }
