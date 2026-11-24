@@ -53,7 +53,7 @@ const HELP = () => {
     enemies: () => { const s = RS.director.snd, me = s.mine(); return [...s.F.values()].filter(f => f.team !== me.team && f.alive); },
     mates: () => { const s = RS.director.snd, me = s.mine(); return [...s.F.values()].filter(f => f.team === me.team && f.alive && f.id !== s.me); },
     // an enemy bot stood still n metres in front of me, my aim on it (at y below its head)
-    target: (n = 6, dy = 0.5) => { const s = RS.director.snd, e = T.enemies().find(f => f.bot); if (!e) return null; for (const m of T.mates()) { const mb = s.bots && s.bots.get(m.id); if (mb && Math.abs(mb.x) < 100) mb.x += 200; }      /* (team-mates out of the line of fire: a shot stops at them) */ const b = s.bots.get(e.id), at = T.clear(n); b.x = at[0]; b.z = at[1]; e.hp = 100; e.ar = 0; RS.sim(1 / 30); const h = s.headOf(e.id, new RS.THREE.Vector3()); T.aim(h.x, h.y - dy, h.z); return e; },
+    target: (n = 6, dy = 0.5) => { const s = RS.director.snd, e = T.enemies().find(f => f.bot); if (!e) return null; const e0 = T.enemies().find(f => f.bot); for (const m of [...T.mates(), ...T.enemies()]) { if (e0 && m.id === e0.id) continue; const mb = s.bots && s.bots.get(m.id); if (mb && Math.abs(mb.x) < 100) mb.x += 200; }      /* (everyone but the target out of the line of fire: a shot stops at the first one) */ const b = s.bots.get(e.id), at = T.clear(n); b.x = at[0]; b.z = at[1]; e.hp = 100; e.ar = 0; RS.sim(1 / 30); const h = s.headOf(e.id, new RS.THREE.Vector3()); T.aim(h.x, h.y - dy, h.z); return e; },
     clearPops: () => { for (const id of ['sd-splash', 'sd-pop', 'sd-multi', 'sd-count']) { const e = document.getElementById(id); if (e) e.className = ''; } for (const e of document.querySelectorAll('.banner, #banner')) e.style.display = 'none'; },
     rich: () => { const s = RS.director.snd; s.cash[s.me] = 9000; if (s.H) s.H.cash[s.me] = 9000; },
   };
@@ -189,8 +189,9 @@ async function guns(b, C) {
         // aimed (zoomed in, tighter), then fired at the bot
         const fov0 = RS.player.camera.fov, hip = s.spreadNow(); s.toggleAds(true); T.step(0.45); out.ads = +s.my.adsK.toFixed(2); out.zoom = +(RS.player.camera.fov / fov0).toFixed(2); out.tighter = s.spreadNow() < hip;
         const h = s.headOf(e.id, new RS.THREE.Vector3()); T.aim(h.x, h.y - 0.5, h.z);
-        const mag0 = s.my.mag, hp0 = e.hp; if (G.spin || G.flame) { s.my.firing = true; s.fire(); T.step(0.6); s.my.firing = false; } else { s.my.nextShot = 0; s.fire(); T.step(G.proj ? 1.2 : 0.45); }
-        out.fired = mag0 - s.my.mag; out.hit = hp0 - e.hp; out.marks = s.markM.count; s.toggleAds(false); T.step(0.3);
+        { const r = s.aimRay(), tr = r && s.trace(r.origin, r.direction, 60, G); out.pre = tr ? (tr.hit ? (tr.hit.mate ? 'mate' : tr.hit.id === e.id ? 'target' : 'other:' + tr.hit.id) : tr.glass && tr.glass.size ? 'glass' : 'nothing/wall') : 'noray'; out.dist = +Math.hypot(h.x - RS.player.head.x, h.z - RS.player.head.z).toFixed(1); }
+        const mag0 = s.my.mag, hp0 = e.hp; if (G.spin || G.flame) { s.my.firing = true; s.fire(); T.step(0.6); s.my.firing = false; } else { s.my.nextShot = 0; s.fire(); out.magNow = s.my.mag; T.step(G.proj ? 1.2 : 0.45); }
+        out.fired = mag0 - (out.magNow ?? s.my.mag); out.hit = hp0 - e.hp; out.marks = s.markM.count; s.toggleAds(false); T.step(0.3);
         // reloaded (its own way)
         s.my.mag = G.mag > 1 ? 1 : 0; s.my.cyc = null; s.doReload(); out.rlType = s.my.rl && s.my.rl.k; out.len = +s.my.reloadLen.toFixed(2);
         if (G.rtype === 'shell') { T.step(0.35 + G.reload * 0.8); out.shell1 = s.my.mag; T.step(G.reload); out.shell2 = s.my.mag; if (G.mag === 1) { out.shell1 = 2; out.shell2 = 3; } }
@@ -243,6 +244,34 @@ async function guns(b, C) {
     C.ok(dm.thin.join() === 'blocked,blocked,blocked' && dm.thick.join() === 'blocked,blocked' && dm.holes === 1 && dm.clear, `guns: walls (nothing goes through a board or a wall, one mark on it; with it gone the shot gets there): ${JSON.stringify(dm)}`);
     C.ok(dm.legHit === 20, `guns: the host didn't take a leg hit: ${JSON.stringify(dm)}`);
     // a window: the first shot breaks it (and is stopped), then shots go through the gap
+    // every gun's own reload and empty click
+    const snd = await ev(p, (ids) => { const s = T.s(), bad = []; s.mine().alive = true;
+      for (const g of ids) { s.loadGun(g); s.my.drawEnd = 0; s.my.spin = 99; s.my.mag = 0; s.my.reserve = 50; s.my.reloadEnd = 0; s.my.rl = null; window.__sfxLog = []; s.doReload(); const rl = window.__sfxLog.filter(n => /^sd_rl_/.test(n));
+        s.cancelReload(); s.my.mag = 0; s.my.reserve = 0; s.clickT = 0; s.my.nextShot = 0; s.my.spin = 99; window.__sfxLog = []; s.shootOnce(); const dry = window.__sfxLog.filter(n => /^sd_dry_/.test(n));
+        if (rl[0] !== 'sd_rl_' + g || dry[0] !== 'sd_dry_' + g) bad.push([g, rl[0], dry[0]]); }
+      window.__sfxLog = null; return bad; }, GUN_IDS);
+    C.ok(!snd.length, `guns: a gun's reload / empty click isn't its own: ${JSON.stringify(snd)}`);
+    // hit reactions: a bot flinches when hit, falls the way the shot went when it's down; you hear it muffled near death
+    const hr = await ev(p, () => { const s = T.s(); s.mine().alive = true; s.mine().hp = 150; s.loadGun('monstor'); const e = T.target(6); if (!e) return { err: 'no bot' }; const av = s.avatar(e.id); if (!av || !av.c) return { err: 'no puppet' };
+      let fl = null; const of = av.c.flinch; av.c.flinch = function (d, a) { fl = a; return of.call(this, d, a); }; s.hostDamage(e.id, 'me', 20, false); T.step(0.05); av.c.flinch = of;
+      const P = RS.player.head, ch = () => { const r = av.c.rag && av.c.rag.parts && av.c.rag.parts.chest; return r ? Math.hypot(r.body.position.x - P.x, r.body.position.z - P.z) : -1; }, d0 = ch(); s.hostKill(e.id, 'me', false); T.step(0.8); const d1 = ch();
+      const me = s.mine(); me.hp = 10; T.step(0.1); const mk = s.muffK; me.hp = 150; T.step(0.1); return { fl, down: av.down > 1e5, d0: +d0.toFixed(2), d1: +d1.toFixed(2), mk, mk2: s.muffK }; });
+    C.ok(hr.fl > 0 && hr.down && hr.d1 > hr.d0 + 0.2 && hr.mk > 0.5 && !hr.mk2, `guns: hit reactions (a flinch, a fall away from the shot, muffled near death and back): ${JSON.stringify(hr)}`);
+    // the scotch egg's splash: hurts in the open, not through a wall
+    const egg = await ev(p, () => { const s = T.s(), Th = RS.THREE; s.mine().alive = true; s.loadGun('scotch'); const G = s.curG(), e = T.target(6); if (!e) return { err: 'no bot' };
+      const h = s.headOf(e.id, new Th.Vector3()), P = RS.player.head, dir = new Th.Vector3(P.x - h.x, 0, P.z - h.z).normalize(), at = new Th.Vector3(h.x + dir.x * 1.8, s.floor(h.x, h.z) + 0.3, h.z + dir.z * 1.8);
+      const hit = () => { e.hp = 150; e.alive = true; s.F.get(e.id).alive = true; s.projHit({ G, owner: s.me, kind: 'egg', v: new Th.Vector3() }, at.clone(), new Th.Vector3(0, 1, 0), null); T.step(0.1); return 150 - e.hp; };
+      const open = hit(); const mid = at.clone().lerp(new Th.Vector3(h.x, at.y, h.z), 0.5), w = new Th.Box3(new Th.Vector3(mid.x - 0.6, mid.y - 1.5, mid.z - 0.6), new Th.Vector3(mid.x + 0.6, mid.y + 3, mid.z + 0.6));
+      s.extraWalls = [w]; s.grid = null; const walled = hit(); s.extraWalls = []; s.grid = null; return { open, walled }; });
+    C.ok(egg.open > 20 && egg.walled === 0, `guns: the scotch egg's splash (hurts in the open, not through a wall): ${JSON.stringify(egg)}`);
+    // heavy guns slow you down; everyone else's gun held in their hands (no arm stretched off to it)
+    const wt = await ev(p, () => { const s = T.s(), P = RS.player, sp = (g) => { s.loadGun(g); s.my.drawEnd = 0; s.updateSpeed(); return P.speedMul; };
+      const out = { pistol: sp('ketchup'), rifle: sp('monstor'), heavy: sp('gravy') }; s.loadGun('ketchup'); s.updateSpeed();
+      for (const [id, f] of s.F) if (id !== s.me) { f.alive = true; const b = s.bots.get(id); if (b) b.alive = true; } s.botsFrozen = true; T.step(0.3);
+      const holds = []; for (const [id, f] of s.F) { if (id === s.me) continue; const av = s.avatar(id), h = s.headOf(id, new RS.THREE.Vector3()); if (!av || !h || av.down > 0) continue; const gh = av.gunHold; holds.push(gh && gh.R ? +gh.R.distanceTo(h).toFixed(2) : -1); }
+      out.holds = holds; return out; });
+    C.ok(wt.pistol > wt.rifle && wt.rifle > wt.heavy && wt.heavy < 0.9, `guns: heavier guns aren't slower: ${JSON.stringify(wt)}`);
+    C.ok(wt.holds.length >= 3 && wt.holds.every(d => d > 0.1 && d < 0.85), `guns: someone's gun isn't in their hands (no hold, or out of arm's reach of their head): ${JSON.stringify(wt.holds)}`);
     const win = await ev(p, () => { const s = T.s(), Th = RS.THREE, w = s.windows.find(w => { const sz = w.box.getSize(new Th.Vector3()); return sz.y > 0.8 && w.c.y > 0.8 && w.c.y < 2.2; }); if (!w) return { none: s.windows.length };
       const sz = w.box.getSize(new Th.Vector3()), nrm = sz.x < sz.z ? new Th.Vector3(1, 0, 0) : new Th.Vector3(0, 0, 1); let side = null;
       for (const sg of [1, -1]) { const x = w.c.x + nrm.x * sg * 2.5, z = w.c.z + nrm.z * sg * 2.5, nav = RS.room.nav, k = nav.idx(x, z); if (k >= 0 && nav.free[k]) { side = [x, z]; break; } } if (!side) return { noSide: true, n: s.windows.length };
@@ -263,7 +292,8 @@ async function solo(b, C) {
   const L = (s) => process.env.VERBOSE && console.log('   ', s);
   try {
     // ---- the shop, round 1
-    const pick = await ev(p, () => { const s = T.s(), el = document.getElementById('sd-pick'); return { open: el.classList.contains('on'), cards: el.querySelectorAll('.card').length, cash: el.querySelector('.hd .cash').textContent, money: s.cash[s.me], phase: s.phase, gun: s.my.gun }; });
+    const pick = await ev(p, () => { const s = T.s(), el = document.getElementById('sd-pick'); return { left: +(s.endsAt - s.clock).toFixed(1), warn: (el.querySelector('.warn') || {}).textContent, types: el.querySelectorAll('.card .ty').length, open: el.classList.contains('on'), cards: el.querySelectorAll('.card').length, cash: el.querySelector('.hd .cash').textContent, money: s.cash[s.me], phase: s.phase, gun: s.my.gun }; });
+    C.ok(pick.left >= 19 && pick.left <= 22 && /ENEMIES LIVE IN|PICKING/.test(pick.warn) && pick.types === 12, `solo: the buy time (20s+), the ENEMIES LIVE warning or the TYPE labels: ${JSON.stringify(pick)}`);
     C.ok(pick.open && pick.cards === 12 && /£2,000/.test(pick.cash) && pick.gun === 'ketchup', `solo: the shop isn't open at the start of round 1 with twelve guns and £2,000 (just the ketchup pistol to start): ${JSON.stringify(pick)}`);
     await sleep(600);
     { const t = await textProblems(p, '#sd-pick'), bt = await btnProblems(p, '#sd-pick');
@@ -293,6 +323,8 @@ async function solo(b, C) {
       // keep shooting till it's down
       let n = 0; while (e.alive && n++ < 40) { T.aim(head.x, head.y - 0.5, head.z); s.my.nextShot = 0; if (s.my.mag <= 0) { s.my.mag = 30; s.my.reloadEnd = 0; s.my.rl = null; } s.fire(); T.step(0.05); }
       return { phase: s.phase, mag0, ...one, hp0, bodyD: hp0 - one.hp, hsD, dead: !e.alive, k: me.k, feed: document.getElementById('sd-feed').textContent, name: e.name, cash: s.cash[s.me] }; });
+    const lock = await ev(p, () => { const s = T.s(); s.openPicker(); T.step(0.1); return { phase: s.phase, open: document.getElementById('sd-pick').classList.contains('on'), btn: !document.querySelector('#sd-ui .guns').hidden }; });
+    C.ok(lock.phase === 'live' && !lock.open && !lock.btn, `solo: the shop opened (or its button showed) once the round was live: ${JSON.stringify(lock)}`);
     C.ok(shoot.phase === 'live', `solo: the round didn't go live: ${shoot.phase}`);
     C.ok(shoot.mag === shoot.mag0 - 1, `solo: FIRE didn't use a round: ${shoot.mag0} -> ${shoot.mag}`);
     C.ok(shoot.bodyD > 15 && shoot.bodyD < 30, `solo: a body shot with the MONSTOR AR did ${shoot.bodyD} damage`);
@@ -442,6 +474,12 @@ async function solo(b, C) {
     await sleep(3500); await ev(q, () => { T.clearPops(); T.step(3); });
     const dead = await ev(q, () => ({ watch: !document.querySelector('#sd-ui .watch').hidden, fire: !document.querySelector('#sd-ui .fire').hidden, spect: T.s().spect, cam: !!T.s().viewCam(), deathCam: !!T.s().deathCam }));
     C.ok(dead.watch && !dead.fire && dead.spect && dead.cam && !dead.deathCam, `phone: out of the round, not watching a team-mate: ${JSON.stringify(dead)}`);
+    // over the shoulder: the watched player's tag hidden, and no tag right by the camera (another team-mate stood there)
+    const tags = await ev(q, () => { const s = T.s(), cam = s.viewCam(), other = T.mates().find(m => m.id !== s.spect && m.alive && s.bots.get(m.id)); if (other && cam) { const b = s.bots.get(other.id); b.x = cam.position.x + 0.3; b.z = cam.position.z; } T.step(0.3);
+      const c2 = s.viewCam(), v = new RS.THREE.Vector3(), near = [], sp = s.avatar(s.spect);
+      for (const [id] of s.F) { if (id === s.me) continue; const av = s.avatar(id); if (!av || !av.tag || !av.tag.visible) continue; av.tag.getWorldPosition(v); if (Math.hypot(v.x - c2.position.x, v.z - c2.position.z) < 1.6) near.push(id); }
+      return { moved: !!other, near, watchedTag: !!(sp && sp.tag && sp.tag.visible) }; });
+    C.ok(!tags.near.length && !tags.watchedTag, `phone (watching): name tags by the camera or on the watched player: ${JSON.stringify(tags)}`);
     const t2 = await textProblems(q), bt2 = await btnProblems(q, '#sd-ui');
     C.ok(!t2.length, `phone (watching): text on text: ${JSON.stringify(t2.slice(0, 3))}`); C.ok(!bt2.length, `phone (watching): buttons: ${JSON.stringify(bt2.slice(0, 3))}`);
     C.ok(!q.errors.length, 'phone: page errors: ' + [...new Set(q.errors)].slice(0, 3).join(' | '));

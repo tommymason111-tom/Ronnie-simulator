@@ -894,8 +894,12 @@ window.addEventListener('resize', fitCamera);
 // a size stopped the game dead for a third of a second on a phone)
 { const jobs = [() => player.bellyModel ? player.bellyModel.warm() : true, warmFood];      // (no belly yet: keep the job for later)
   const idle = window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 3000 }) : (f) => setTimeout(() => f({ timeRemaining: () => 8 }), 400);
+  let lastDone = performance.now();
   const tick = (dl) => { if (!jobs.length) return; const ready = document.body.classList.contains('ready');      // (while the loading screen's still up, any gap counts: nothing's being played yet)
-    if (!ready || dl.timeRemaining() > 6 || !player.flatMode && !renderer.xr.isPresenting) {
+    // (a device that never has a quiet moment (every frame runs long): one piece anyway every 1.5s, so the looks still get
+    // made before they're wanted instead of waiting forever and the game stopping dead at the next size)
+    if (ready && dl.timeRemaining() <= 6 && performance.now() - lastDone > 1500) { try { if (!jobs[0]()) jobs.shift(); } catch (e) { jobs.shift(); } lastDone = performance.now(); }
+    else if (!ready || dl.timeRemaining() > 6 || !player.flatMode && !renderer.xr.isPresenting) { lastDone = performance.now();
       // (as many pieces as fit in the spare time the browser gives us, not one per quarter second: on a slow device that
       // took so long the belly could still be unmade when you grew)
       let n = 0; do { try { if (!jobs[0]()) jobs.shift(); } catch (e) { jobs.shift(); } n++; } while (jobs.length && n < 20 && (dl.timeRemaining() > 6 || !ready && n < 4)); }
@@ -1219,7 +1223,7 @@ const PAUSE_MODES = {
   chonkoffr: ['🏅', 'RANKED EAT-OFF', 'Everyone at once, 60 seconds: your online rating is on the line'],
   sweep: ['🛒', 'SUPERMARKET SWEEP', 'Grab the most calories. Dodge security'],
   bbq: ['🍖', "IAN'S BARBECUE", 'Get big enough to fight off Ian\'s healthy burgers'],
-  date: ['💜', 'DATE NIGHT', 'Eat when Chloe looks away'],
+  date: ['💜', 'DATE NIGHT', '📖 Story mode: one night out, film by film'],
   roam: ['🚶', 'FREE ROAM · WITH THE SQUAD', 'Have a look round. Everyone\'s about, nobody attacks'],
   roam0: ['🧍', 'FREE ROAM · JUST YOU', 'The place to yourself: no NPCs at all'],
   runpub1: ['🌙', 'RUN THE PUB · QUIET NIGHT', 'Easy: a few regulars, plenty of patience'],
@@ -1805,7 +1809,8 @@ Character.hearers = () => { const a = [player.head]; if (net.connected && mp.hos
 director.startRemote = (id) => { if (!net.host && director.mode && (PAUSE_MODES[id] || id === 'imposter')) newGame(id, 'NEW GAME'); };
 // power-ups turn up in the eating games (not Run the Pub, the Sweep or Imposter)
 powerups = new PowerUps({ scene, room, items, player, sfx, words, net, mp, eatWhole: (it) => hooverEat(it),
-  enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter', 'prophunt', 'snd'].includes(director.mode) && roomNum('powerups') > 0 });
+  enabled: () => director.running && !G.over && !paused && !['runpub', 'sweep', 'imposter', 'prophunt', 'snd'].includes(director.mode) && roomNum('powerups') > 0,
+  noSpawn: () => director.mode === 'date' });      // (DATE NIGHT: sat at the table all night, no power-ups turn up)
 mp.selfBody = () => selfBody;      // (your emotes play on your own body too)
 mp.onChat = (text, p) => { chatUI.add(p ? (p.name || 'PLAYER') : 'YOU', text, !p); };      // (typed chat is read, never spoken: the owner's call)
 mp.onChatBlocked = (why) => words.show(why || 'NOT NOW', player.head.clone().addScaledVector(player.fwd, 0.8), '#ff5252', 0.07, 1.4);
@@ -2023,7 +2028,7 @@ class SquadPuppet {
     if (!em) r.pose.head.setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.clamp(-Math.asin(f.y), -0.6, 0.6));
     // hand tracking: their real fingers (sent only by players using it): how bent the fingers are, and the middle one
     if (!em && pose.fc && r.handPose) for (const [side, o] of [['R', 0], ['L', 5]]) { const hp = r.handPose['lArm' + side], s5 = pose.fc.slice(o, o + 5); if (!hp || s5[1] === '-') continue;
-      const d = (i) => pose.fcv && pose.fcv[o + i] != null ? pose.fcv[o + i] : (s5.charCodeAt(i) - 48) / 9, curl = (d(1) + d(3) + d(4)) / 3, mid = d(2); hp.curl += (curl - hp.curl) * Math.min(1, dt * 15); hp.mid += (mid - hp.mid) * Math.min(1, dt * 15); }
+      const d = (i) => pose.fcv && pose.fcv[o + i] != null ? pose.fcv[o + i] : (s5.charCodeAt(i) - 48) / 9, curl = (d(1) + d(3) + d(4)) / 3, mid = d(2); hp.curl += (curl - hp.curl) * Math.min(1, dt * 15); hp.mid += (mid - hp.mid) * Math.min(1, dt * 15); hp.netF = r.frameNo; }      // (netF: gait.js leaves these fingers alone)
     r.animate(dt); r.sync(); if (em) this.emote.place(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag();
   }
   headPos() { return this.c.headPos(new THREE.Vector3()); }
