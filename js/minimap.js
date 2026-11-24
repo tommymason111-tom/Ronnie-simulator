@@ -119,7 +119,8 @@ export class MapView {
     const c = this.miniCv, g = c.getContext('2d'), N = c.width, pl = this.plan, R = this.range, k = N / (2 * R);
     g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#222c28'; g.fillRect(0, 0, N, N);
     // you in the middle facing up: the plan turned round you
-    g.save(); g.translate(N / 2, N / 2 + N * 0.12); g.rotate(yaw); g.scale(k / pl.ppm, k / pl.ppm); g.drawImage(pl.cv, -(P.x - pl.x0) * pl.ppm, -(P.z - pl.z0) * pl.ppm); g.restore();
+    g.save(); g.translate(N / 2, N / 2 + N * 0.12); g.rotate(yaw); g.scale(k / pl.ppm, k / pl.ppm); const h = R * 1.5 * pl.ppm, cx = (P.x - pl.x0) * pl.ppm, cz = (P.z - pl.z0) * pl.ppm, sx = Math.max(0, cx - h), sz = Math.max(0, cz - h), sw = Math.min(pl.cv.width, cx + h) - sx, sh = Math.min(pl.cv.height, cz + h) - sz;      // (only the bit round you: a whole level's picture every tenth of a second is wasted work on a phone)
+    if (sw > 0 && sh > 0) g.drawImage(pl.cv, sx, sz, sw, sh, sx - cx, sz - cz, sw, sh); g.restore();
     const to = (x, z) => { const dx = (x - P.x) * k, dz = (z - P.z) * k, c2 = Math.cos(yaw), s2 = Math.sin(yaw); return [N / 2 + dx * c2 - dz * s2, N / 2 + N * 0.12 + dx * s2 + dz * c2]; };
     const took = [];
     for (const m of marks) { if (m.k === 'me') continue; let [u, v] = to(m.x, m.z); const edge = m.k === 'site' || m.k === 'bomb'; const inR = u > 8 && u < N - 8 && v > 8 && v < N - 8;
