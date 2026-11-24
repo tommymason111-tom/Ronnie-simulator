@@ -22,29 +22,31 @@
 // Everyone sends their own shots (seen and heard by all) and their hits, buys and grabs (checked by the host). The
 // screens, the HUD and the scoreboard are in sndui.js, the effects in sndfx.js, the models in sndkit.js.
 import * as THREE from 'three';
-import { sfx } from './audio.js';
+import { sfx, setMuffle } from './audio.js';
 import { Panel } from './impgames.js';
 import { track } from './awards.js';
 import { roomNum } from './roomopts.js';
 import { SQUAD } from './squad.js';
 import { vcLambert } from './geo.js';
-import { GUNS, GUN, PRIMARIES, FREE_GUN, PICKS, PICK_KINDS, MAPS, pickModel, plinthGeo, bombGeo, bombLightGeo, bombFace, pliersGeo, siteTexture, signTexture, siteProps, boardTexture, newGun, falloff, maxHit, money } from './sndkit.js';
+import { HP, GUNS, GUN, PRIMARIES, FREE_GUN, PICKS, PICK_KINDS, MAPS, pickModel, plinthGeo, bombGeo, bombLightGeo, bombFace, BOMB_FACE, pliersGeo, siteTexture, signTexture, siteProps, boardTexture, newGun, falloff, maxHit, money } from './sndkit.js';
 import { UI } from './sndui.js';
 import { GUNSYS } from './sndguns.js';
 import { FX } from './sndfx.js';
+import { WORLD } from './sndworld.js';
 
 export const SD = {
-  HP: 100, AR_MAX: 100, AR_ABS: 0.6, BUY_T: 14, ROUND_T: 115, BOMB_T: 40, PLANT_T: 3.2, DEFUSE_T: 6.5, END_T: 7, OVER_T: 3,
+  HP, AR_MAX: 100, AR_ABS: 0.6, BUY_T: 22, ROUND_T: 115, BOMB_T: 40, PLANT_T: 3.2, DEFUSE_T: 6.5, END_T: 7, OVER_T: 3,
   PICK_R: 1.25, BOMB_R: 1.5, BOOM_R: 8, GRAB_R: 1.4, TEAM_MAX: 6, MAX: 12, SPOT_R: 32, BOT_SPEED: 2.35, ASSIST_D: 30,
   CASH0: 2000, CASH_MAX: 9000, WIN_CASH: 2500, LOSE_CASH: 1400, LOSE_STEP: 500, OBJ_CASH: 300, DROPS: 14,
 };
+const _tg = new THREE.Vector3();
 export const TEAMS = { R: { name: 'THE GREASY SPOONS', short: 'GREASY SPOONS', col: '#ff5a3d', hex: 0xff5a3d, ico: '🍳' }, B: { name: 'THE SALAD DODGERS', short: 'SALAD DODGERS', col: '#3da5ff', hex: 0x3da5ff, ico: '🥗' } };
 // the squad's lines when they get someone (bots), in the style of the rest of the game
 const KILL_LINES = Object.assign(Object.create(null), {
   lewis: 'SIUUU!', noah: 'TACKLED!', aidan: 'JUST THE ONE!', chloe: 'EAT YOUR GREENS!', harry: 'SWIPED LEFT!', oliver: 'THAT\'S GOING ON MY STORY!', dylan: 'DON\'T LOOK BACK IN ANGER!',
   connor: 'ONE FOR YOU, ONE FOR ME!', ethan: 'GALÁCTICO!', ian: 'GET SOME VEG IN YOU!', alfie: 'NUTMEGGED!', ben: 'BACK TO TURKEY!', aidanw: 'MIND THE KNEE!', tommy: 'I\'M JUST TRYING TO HELP!', ronnie: 'NOM NOM!',
 });
-const HOST_MSGS = ['sdRound', 'sdGo', 'sdClock', 'sdDmg', 'sdKill', 'sdGot', 'sdPk', 'sdBomb', 'sdEnd', 'sdOver', 'sdState', 'sdBots', 'sdHp', 'sdWait', 'sdLoad', 'sdCash', 'sdDrop'];
+const HOST_MSGS = ['sdRound', 'sdGo', 'sdClock', 'sdDmg', 'sdKill', 'sdGot', 'sdPk', 'sdBomb', 'sdEnd', 'sdOver', 'sdState', 'sdBots', 'sdHp', 'sdWait', 'sdLoad', 'sdCash', 'sdDrop', 'sdGlass'];
 const r2 = (v) => Math.round(v * 100) / 100;
 const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -67,7 +69,7 @@ export class SearchDestroy {
     this.feedLog = []; this.btnWas = {}; this.handlers = {}; this.prevOn = {}; this.dmgDirs = [];
     this.grp = new THREE.Group(); this.grp.name = 'search and destroy'; g.scene.add(this.grp);
     this.panel = new Panel({ scene: g.scene, player: g.player, renderer: g.renderer });
-    this.buildWorld(); this.initFx(); this.buildUI(); this.walled(new THREE.Ray(), 0);
+    this.buildWalls(); this.buildWorld(); this.initFx(); this.buildUI();
     this.updateSpeed();
     // nobody punches, grabs or eats anything: it's guns only. No food lying about either
     const mp = g.mp; if (mp) mp.noPunch = true; g.player.noGrab = true; g.player.flatDrop && g.player.flatDrop(); for (const h of g.player.hands || []) if (h.held) { h.held.heldBy = null; h.held = null; }
@@ -79,16 +81,18 @@ export class SearchDestroy {
     on('sdHello', (m, p) => { if (this.host && p) this.hostHello(p.id); });
     on('sdGun', (m, p) => { if (p) this.setGun(String(p.id), m.g); });
     on('sdShot', (m, p) => { if (!p) return; this.remoteShot(this.botOr(m, p), m); });
+    on('sdProj', (m, p) => { if (!p || !v3ok(m.a) || !v3ok(m.v)) return; this.remoteProj(this.botOr(m, p), m); });
     on('sdHit', (m, p) => { if (this.host && p) this.hostHit(String(p.id), m); });
     on('sdTake', (m, p) => { if (this.host && p) this.hostTake(String(p.id), m.i); });
     on('sdPlant', (m, p) => { if (this.host && p) this.hostPlant(String(p.id), m); });
     on('sdDefuse', (m, p) => { if (this.host && p) this.hostDefuse(String(p.id)); });
     on('sdBuy', (m, p) => { if (this.host && p) this.hostBuy(String(p.id), m.g); });
     on('sdGrab', (m, p) => { if (this.host && p) this.hostGrab(String(p.id), m.d); });
+    on('sdSmash', (m, p) => { if (this.host && p) this.hostSmash(String(p.id), m.i); });
     on('sdAct', (m, p) => { if (p) this.remoteAct(this.botOr(m, p), m); });
     on('end', (m, p) => { if (this.host || !m || !Array.isArray(m.lines) || (p && p.id !== this.net.hostId)) return; m.lines = this.summary(); const f = this.prevOn.end; f && f(m, p); });      // (a guest's receipt: their own game's lines)
     this.leaveWas = this.net.on.leave; this.net.on.leave = (m) => { this.leaveWas && this.leaveWas(m); if (this.host && m) this.hostLeft(String(m.id)); };
-    if (this.host) this.startT = this.online ? 2.5 : 1.0; else { this.net.send({ t: 'sdHello' }); this.helloT = 3; }
+    if (this.host) this.startT = this.online ? 2.0 : 0.3; else { this.net.send({ t: 'sdHello' }); this.helloT = 3; }
     this.respawnAt(this.M.att[0], this.M.att[1]);
   }
   // (a message the host sends for one of its bots names the bot; anyone else's is their own)
@@ -131,7 +135,10 @@ export class SearchDestroy {
       const tex = siteTexture(L, this.M.names[L]), decal = new THREE.Mesh(new THREE.PlaneGeometry(r * 2, r * 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
       decal.rotation.x = -Math.PI / 2; decal.position.set(x, y, z); decal.renderOrder = 2; decal.name = 'sd site ' + L; this.grp.add(decal);
       const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: signTexture(L, '#ffd400'), transparent: true, depthWrite: false })); sign.scale.set(0.9, 0.45, 1); sign.position.set(x, y + 2.35, z); sign.renderOrder = 3; this.grp.add(sign);
-      this.sites[L] = { L, x, z, r, decal, sign };
+      sign.scale.set(1.6, 0.8, 1); sign.position.y = y + 3.3;
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 7, 20, 1, true).translate(0, 3.5, 0), new THREE.MeshBasicMaterial({ map: this.beamTex(), transparent: true, depthWrite: false, side: THREE.DoubleSide, color: 0xffd400 })); beam.position.set(x, y, z); beam.renderOrder = 3; beam.name = 'sd beacon ' + L; this.grp.add(beam);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.045, 6, 64).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd400 })); ring.position.set(x, y + 0.02, z); this.grp.add(ring);
+      this.sites[L] = { L, x, z, r, decal, sign, beam, ring };
       // round the edge: cones, posts with hazard tape between them, a sandwich board telling you where you are
       if (nav) { const at = [], tape = [], ring = r + 0.35, free = (px, pz) => { const k = nav.idx(px, pz); return k >= 0 && !!nav.free[k]; }; let post = null, boardDone = false;
         for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, px = x + Math.cos(a) * ring, pz = z + Math.sin(a) * ring; if (!free(px, pz)) { post = null; continue; } const py = this.floor(px, pz);
@@ -153,13 +160,16 @@ export class SearchDestroy {
     // THE VINDALOO: the pot and its sausages, the blinking lights, the clock's face, the pliers by it while it's defused
     this.bombMesh = new THREE.Group(); this.bombMesh.add(new THREE.Mesh(bombGeo(), vcLambert));
     this.bombLight = new THREE.Mesh(bombLightGeo(), new THREE.MeshBasicMaterial({ color: 0xff2020 })); this.bombMesh.add(this.bombLight);
-    this.face = bombFace(); const fm = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.058), new THREE.MeshBasicMaterial({ map: this.face.tex })); fm.position.set(0, 0.122, 0.2205); this.bombMesh.add(fm);
+    this.face = bombFace(); const fm = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.045), new THREE.MeshBasicMaterial({ map: this.face.tex })); fm.position.set(BOMB_FACE[0], BOMB_FACE[1], BOMB_FACE[2] + 0.002); fm.rotation.x = -Math.PI / 2 * 0; this.bombMesh.add(fm);
     this.pliersMesh = new THREE.Mesh(pliersGeo(), vcLambert); this.pliersMesh.visible = false; this.grp.add(this.pliersMesh);
     this.bombMesh.visible = false; this.bombMesh.name = 'sd bomb'; this.grp.add(this.bombMesh);
+    this.bombBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 5, 16, 1, true).translate(0, 2.5, 0), new THREE.MeshBasicMaterial({ map: this.beamTex(), transparent: true, depthWrite: false, side: THREE.DoubleSide, color: 0xff3b3b })); this.bombBeam.visible = false; this.bombBeam.renderOrder = 3; this.grp.add(this.bombBeam);
     this.bombRing = new THREE.Mesh(new THREE.TorusGeometry(SD.BOMB_R, 0.03, 6, 40).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff3b3b })); this.bombRing.visible = false; this.grp.add(this.bombRing);
     // VR: the aiming laser
     this.laser = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -8)]), new THREE.LineBasicMaterial({ color: 0xff5a3d, transparent: true, opacity: 0.55 })); this.laser.visible = false; this.laser.frustumCulled = false; this.grp.add(this.laser);
   }
+  // a soft column of light: bright at the bottom, fading up into nothing
+  beamTex() { if (this.bTex) return this.bTex; const c = document.createElement('canvas'); c.width = 4; c.height = 128; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.7, 'rgba(255,255,255,0.18)'); gr.addColorStop(1, 'rgba(255,255,255,0.55)'); g.fillStyle = gr; g.fillRect(0, 0, 4, 128); this.bTex = new THREE.CanvasTexture(c); this.bTex.colorSpace = THREE.SRGBColorSpace; return this.bTex; }
   // the pick-ups as the host laid them out: [kind, x, z] each; drawn where they are, bobbing and turning
   layPicks(list) {
     this.pk = []; if (Array.isArray(list)) for (const e of list.slice(0, 40)) { if (!Array.isArray(e)) continue; const [k, x, z] = e; if (typeof k !== 'string' || !PICKS[k] || !finite(x, z) || Math.abs(x) > 1e3 || Math.abs(z) > 1e3) continue; this.pk.push({ k, x, z, y: this.floor(x, z), on: true, back: 0 }); }
@@ -179,20 +189,6 @@ export class SearchDestroy {
     for (const im of [this.ringMesh, this.plinthMesh, this.glowMesh]) { im.count = ri; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }
   }
   clearFood() { const it = this.g.items; if (!it) return; it.minFood = 0; if (it.respawnQueue) it.respawnQueue.length = 0; for (const f of (it.items || []).slice()) if (!f.def.prop) it.remove(f); }
-  // the walls (and anything tall) a shot can't go through
-  walled(ray, t) {
-    if (!this.walls) this.walls = (this.g.room.colliders || []).filter(b => b.max.y - b.min.y > 1.4 && b.min.y < 0.7).map(b => new THREE.Box3(b.min.clone(), b.max.clone()));
-    for (const b of this.walls) { if (b.containsPoint(ray.origin)) continue; const p = ray.intersectBox(b, _hit); if (p && p.distanceTo(ray.origin) < t) return true; }
-    return false;
-  }
-  wallT(ray, max) {
-    let t = max; if (!this.walls) this.walled(ray, 0);
-    for (const b of this.walls) { if (b.containsPoint(ray.origin)) continue; const p = ray.intersectBox(b, _hit); if (p) t = Math.min(t, p.distanceTo(ray.origin)); }
-    if (ray.direction.y < -0.02) t = Math.min(t, (ray.origin.y - this.floor(ray.origin.x, ray.origin.z)) / -ray.direction.y);
-    return Math.max(0.2, t);
-  }
-  canSee(a, b) { const d = _w.copy(b).sub(a), L = d.length(); if (L < 0.01) return true; const ray = new THREE.Ray(a.clone(), d.divideScalar(L)); return !this.walled(ray, L - 0.2); }
-
   // ------------------------------------------------------------------ spawns
   // where someone starts: round their team's spot, spread out (the same answer on every game, from the round's list)
   spawnFor(id, list, att) {
@@ -211,7 +207,9 @@ export class SearchDestroy {
 
   // ------------------------------------------------------------------ the host: teams, rounds, money, the referee
   send(k, m) { m.t = k; this.net.send(m); this.apply(k, m); }
-  ask(k, m) { if (this.host) { const f = { sdHit: () => this.hostHit(this.me, m), sdTake: () => this.hostTake(this.me, m.i), sdPlant: () => this.hostPlant(this.me, m), sdDefuse: () => this.hostDefuse(this.me), sdBuy: () => this.hostBuy(this.me, m.g), sdGrab: () => this.hostGrab(this.me, m.d) }[k]; f && f(); } else { m.t = k; this.net.send(m); } }
+  ask(k, m) { if (this.host) { const f = { sdHit: () => this.hostHit(this.me, m), sdTake: () => this.hostTake(this.me, m.i), sdPlant: () => this.hostPlant(this.me, m), sdDefuse: () => this.hostDefuse(this.me), sdBuy: () => this.hostBuy(this.me, m.g), sdGrab: () => this.hostGrab(this.me, m.d), sdGlass: () => this.hostSmash(this.me, m.i) }[k]; f && f(); } else { m.t = k === 'sdGlass' ? 'sdSmash' : k; this.net.send(m); } }
+  // a window shot (someone's word): it breaks for everyone
+  hostSmash(from, i) { const w = this.windows && this.windows[i], P = this.F.get(from); if (!w || w.broken || !P || !P.alive || !this.inRound()) return; const q = this.posOf(from, new THREE.Vector3()); if (!q || this.hd(q, w.c) > 140) return; this.send('sdGlass', { i }); }
   hostStart() {
     const humans = this.roster(), H = this.H = { r: 0, sc: { R: 0, B: 0 }, att: Math.random() < 0.5 ? 'R' : 'B', team: {}, bots: [], botN: 0, stats: {}, hits: {}, picks: [], cash: {}, load: {}, bought: {}, dmgBy: {}, rs: {}, streak: { R: 0, B: 0 }, hist: [], dropN: 0, drops: new Map() };
     // the people split evenly; bots (the squad, as whoever nobody's playing) fill both sides up to the map's size
@@ -289,7 +287,7 @@ export class SearchDestroy {
     const f = {}; for (const [k, v] of this.F) { const s = this.stat(k); f[k] = [v.alive ? 1 : 0, Math.round(v.hp), Math.round(v.ar), v.gun || FREE_GUN, s.k, s.d, s.as, s.pl, s.df, s.mvp]; }
     const ld = {}, cash = {}; for (const [k] of this.F) { ld[k] = this.loadMsg(k); cash[k] = Math.round(this.H.cash[k] ?? SD.CASH0); }
     const drops = [...this.H.drops.values()].map(d => [d.d, d.g, d.x, d.z]);
-    this.net.send({ t: 'sdState', to: id, round: this.roundMsg || null, ph: this.phase, left: Math.max(0, (this.H.ends || 0) - this.clock), fs: f, bomb: this.bombMsg || null, sc: this.H.sc, pkOn: this.pk.map(p => p.on ? 1 : 0), over: this.overMsg || null, ld, cash, drops, hist: this.H.hist.slice(-12) });
+    this.net.send({ t: 'sdState', to: id, round: this.roundMsg || null, ph: this.phase, left: Math.max(0, (this.H.ends || 0) - this.clock), fs: f, bomb: this.bombMsg || null, sc: this.H.sc, pkOn: this.pk.map(p => p.on ? 1 : 0), over: this.overMsg || null, ld, cash, drops, hist: this.H.hist.slice(-12), gl: (this.windows || []).filter(w => w.broken).map(w => w.i) });
   }
   // a buy in the shop: only while the round's being set up, only what you can afford. A gun you bought this round and
   // swap for another is refunded; one you'd kept from last round is left on the floor for a team-mate
@@ -324,25 +322,25 @@ export class SearchDestroy {
     const a = this.headOf(from, new THREE.Vector3()), b = this.posOf(v, new THREE.Vector3()); if (!a || !b) return; if (this.hd(a, b) > G.range + 5) return;
     if (v3ok(m.p) && Math.hypot(m.p[0] - b.x, m.p[2] - b.z) > 4) return;      // (they weren't anywhere near there)
     const q = H.hits[from] || (H.hits[from] = []), t = this.clock; while (q.length && t - q[0] > 1) q.shift(); if (q.length > Math.ceil(1 / G.rate) + 3) return; q.push(t);
-    this.hostDamage(v, from, d, z, a, G, !!m.wb);
+    this.hostDamage(v, from, d, z, a, G);
   }
-  hostDamage(v, by, d, z, from, G, wb) {
+  hostDamage(v, by, d, z, from, G) {
     const V = this.F.get(v); if (!V || !V.alive) return; const raw = d; let take = d; if (typeof z === 'boolean') z = z ? 1 : 0;
     if (V.ar > 0) { const soak = Math.min(V.ar, d * SD.AR_ABS); V.ar -= soak; take -= soak; }
     const lost = Math.min(V.hp, take); V.hp = Math.max(0, V.hp - take); const st = this.stat(by); st.dmg += lost;
     const db = this.H.dmgBy[v] || (this.H.dmgBy[v] = {}); db[by] = (db[by] || 0) + lost; const rs = this.H.rs[by] || (this.H.rs[by] = { k: 0, dmg: 0, ob: 0 }); rs.dmg += lost;
     if (!G) { const S = this.F.get(by); G = GUN[S && S.gun] || GUN[FREE_GUN]; }
-    this.send('sdDmg', { v, by, hp: Math.ceil(V.hp), ar: Math.round(V.ar), d: Math.round(raw), hs: z === 1 ? 1 : 0, z, wb: wb ? 1 : 0, g: G.i, p: from ? [r2(from.x), r2(from.y), r2(from.z)] : undefined });
-    if (V.hp <= 0) this.hostKill(v, by, z === 1, '', G, wb);
+    this.send('sdDmg', { v, by, hp: Math.ceil(V.hp), ar: Math.round(V.ar), d: Math.round(raw), hs: z === 1 ? 1 : 0, z, g: G.i, p: from ? [r2(from.x), r2(from.y), r2(from.z)] : undefined });
+    if (V.hp <= 0) this.hostKill(v, by, z === 1, '', G, z);
   }
-  hostKill(v, by, hs, why, G, wb) {
+  hostKill(v, by, hs, why, G, z) {
     const H = this.H, V = this.F.get(v); if (!V || !V.alive) return; V.alive = false; V.hp = 0;
     this.stat(v).d++; const K = by ? this.F.get(by) : null, enemy = K && by !== v && K.team !== V.team;
     if (!G) G = K ? GUN[K.gun] || GUN[FREE_GUN] : null;
     const as = []; if (enemy) { this.stat(by).k++; if (hs) this.stat(by).hs++; (H.rs[by] || (H.rs[by] = { k: 0, dmg: 0, ob: 0 })).k++; H.cash[by] = Math.min(SD.CASH_MAX, (H.cash[by] ?? SD.CASH0) + (G ? G.kill : 300));
       for (const [a, dd] of Object.entries(H.dmgBy[v] || {})) if (a !== by && dd >= SD.ASSIST_D && this.F.get(a) && this.F.get(a).team === K.team) { as.push(a); this.stat(a).as++; } }
     const pa = this.posOf(v, new THREE.Vector3()), pb = by ? this.posOf(by, new THREE.Vector3()) : null, ds = pa && pb ? Math.round(this.hd(pa, pb)) : 0;
-    this.send('sdKill', { v, by: by || '', g: G ? G.i : -1, hs: hs ? 1 : 0, w: why || '', as: as.slice(0, 4), wb: wb ? 1 : 0, ds });
+    this.send('sdKill', { v, by: by || '', g: G ? G.i : -1, hs: hs ? 1 : 0, w: why || '', as: as.slice(0, 4), z: z === 1 || z === 2 ? z : 0, ds });
     if (enemy) this.send('sdCash', { c: this.cashMsg() });
     // (what they were carrying is left where they fell: their best gun, for anyone)
     const L = this.load(v), drop = L.P || (L.S !== FREE_GUN ? L.S : null); if (drop && pa && why !== 'left') this.hostDrop(drop, pa.x, pa.z); H.load[v] = { P: null, S: FREE_GUN };
@@ -451,6 +449,7 @@ export class SearchDestroy {
     if (k === 'sdLoad') return this.loadNews(m);
     if (k === 'sdCash') { this.cashIn(m.c); return; }
     if (k === 'sdDrop') return this.dropNews(m);
+    if (k === 'sdGlass') { const i = Number(m.i); if (Number.isInteger(i)) this.breakGlass(i); return; }
     if (k === 'sdHp') { const f = this.F.get(String(m.id)); if (f) { if (finite(m.hp)) f.hp = clamp(m.hp, 0, SD.HP); if (finite(m.ar)) f.ar = clamp(m.ar, 0, SD.AR_MAX); } return; }
     if (k === 'sdBots') { if (!Array.isArray(m.b)) return; for (const e of m.b.slice(0, 12)) { if (!Array.isArray(e) || e.length < 6) continue; const [id, x, z, yaw, pitch, fl] = e; if (!finite(x, z, yaw, pitch) || Math.abs(x) > 1e3 || Math.abs(z) > 1e3) continue; const f = this.F.get(String(id)); if (!f || !f.bot) continue;
         const bp = this.botPose.get(f.id) || { x, z, yaw, pitch, dx: x, dz: z }; bp.tx = x; bp.tz = z; bp.tyaw = yaw; bp.pitch = pitch; bp.fl = fl | 0; if (Math.hypot(bp.x - x, bp.z - z) > 3) { bp.x = x; bp.z = z; } this.botPose.set(f.id, bp); } return; }
@@ -460,6 +459,7 @@ export class SearchDestroy {
       if (m.sc && typeof m.sc === 'object') this.sc = { R: Number(m.sc.R) || 0, B: Number(m.sc.B) || 0 };
       if (Array.isArray(m.pkOn)) m.pkOn.forEach((v, i) => { if (this.pk[i]) this.pk[i].on = !!v; });
       if (m.ld && typeof m.ld === 'object') this.loadsIn(m.ld); this.cashIn(m.cash);
+      if (Array.isArray(m.gl)) for (const i of m.gl.slice(0, 200)) if (Number.isInteger(i)) this.breakGlass(i, true);
       if (Array.isArray(m.drops)) for (const e of m.drops.slice(0, SD.DROPS)) if (Array.isArray(e)) this.dropNews({ d: e[0], g: e[1], p: [e[2], e[3]], on: 1 });
       if (Array.isArray(m.hist)) this.hist = m.hist.filter(h => Array.isArray(h) && (h[0] === 'R' || h[0] === 'B')).slice(-12).map(h => [h[0], String(h[1] || '').slice(0, 10)]);
       const l = Number(m.left) || 0; if (m.ph === 'live') { this.phase = 'live'; this.endsAt = this.clock + l; this.closePicker(); } else if (m.ph === 'buy') this.endsAt = this.clock + l;
@@ -504,13 +504,15 @@ export class SearchDestroy {
     if (m.ld && typeof m.ld === 'object') this.loadsIn(m.ld); this.cashIn(m.cash);
     if (Array.isArray(m.hist)) this.hist = m.hist.filter(h => Array.isArray(h) && (h[0] === 'R' || h[0] === 'B')).slice(-12).map(h => [h[0], String(h[1] || '').slice(0, 10)]);
     this.layPicks(m.pk); this.bomb = { st: m.car ? 'carried' : 'none', id: m.car != null ? String(m.car) : null }; this.bombMsg = { ...this.bomb }; this.bombAt = 0; this.boomFx = 0;
-    for (const [, D] of this.drops) this.grp.remove(D.mesh); this.drops.clear(); this.clearMarks(); this.dmgLog = []; this.deathCam = null; this.boughtNow = {};
+    for (const [, D] of this.drops) this.grp.remove(D.mesh); this.drops.clear(); this.clearMarks(); for (const pr of this.projs || []) this.grp.remove(pr.m); this.projs = []; for (const s2 of this.stuck || []) this.grp.remove(s2.m); this.stuck = []; this.dmgLog = []; this.deathCam = null; this.boughtNow = {}; this.mendGlass();
     this.phase = 'buy'; this.endsAt = this.clock + (Number(m.bt) || SD.BUY_T); this.countN = null;
     // bots on everyone's game: a puppet each (made once, kept round to round)
     for (const [id, f] of this.F) if (f.bot && !this.puppets.has(id)) this.makePuppet(f);
     for (const [id, pu] of this.puppets) if (!this.F.has(id)) { pu.dispose && pu.dispose(); this.puppets.delete(id); }
+    // (last round's dead get up)
+    for (const [id] of this.F) { const av = this.avatar(id); if (av && av.down > 1e5) av.down = 0.001; }
     // me: back to my spawn with what I'm carrying (full), my perks gone
-    const me = this.mine(); this.my.perks = {}; this.my.ads = false; this.my.adsK = 0; this.cancelReload(); this.my.firing = false; this.my.picked = false; this.my.act = null; this.my.burst = 0; this.my.cyc = null; this.g.player.ghost = false; this.spect = null;
+    const me = this.mine(); this.my.perks = {}; this.my.ads = false; this.my.adsK = 0; this.cancelReload(); this.my.firing = false; this.my.picked = false; this.my.act = null; this.my.burst = 0; this.my.cyc = null; this.my.crouch = false; this.g.player.ghost = false; this.spect = null;
     if (me) { const sp = m.sp && Array.isArray(m.sp[this.me]) ? m.sp[this.me] : null; if (sp && finite(...sp)) this.respawnAt(sp[0], sp[1], sp[2]); this.setLoadout(me.load.P, me.load.S, true); me.gun = this.my.gun; if (!late) this.openPicker(); this.net.send({ t: 'sdGun', g: this.my.gun });
       if (me.moved && !late) this.toast(`🔁 TEAMS EVENED UP: YOU'RE ON ${TEAMS[me.team].short} NOW`); }
     if (m.sp && typeof m.sp === 'object') for (const [id, f] of this.F) if (f.bot && Array.isArray(m.sp[id]) && finite(...m.sp[id])) { const s = m.sp[id], bp = this.botPose.get(id) || {}; Object.assign(bp, { x: s[0], z: s[1], tx: s[0], tz: s[1], yaw: s[2], tyaw: s[2], pitch: 0, fl: 0 }); this.botPose.set(id, bp); }
@@ -530,7 +532,8 @@ export class SearchDestroy {
     const B = this.F.get(by); if (B) B.dmg = (B.dmg || 0) + d;
     if (by === this.me || v === this.me) { this.dmgLog.push({ by, v, d, z, g: G.id, t: this.clock }); if (this.dmgLog.length > 60) this.dmgLog.shift(); }
     if (at) { const p = at.clone().add({ x: 0, y: hs ? 0 : z === 2 ? -1.1 : -0.5, z: 0 }); this.burst(p, hs ? [0xff2020, 0xffd400, 0xffffff] : [G.splat || 0xc62828, G.tr || 0xff5252], hs ? 14 : 8, 1.4); this.splatFloor(at, G, false);
-      if (v !== this.me) this.g.words && this.g.words.show((hs ? '🎯 ' : m.wb ? '🧱 ' : '') + Math.round(d), at.clone().add({ x: 0, y: 0.35, z: 0 }), hs ? '#ffd400' : z === 2 ? '#c3cad6' : '#fff', 0.14, 0.8); }
+      if (v !== this.me) this.g.words && this.g.words.show((hs ? '🎯 ' : '') + Math.round(d), at.clone().add({ x: 0, y: 0.35, z: 0 }), hs ? '#ffd400' : z === 2 ? '#c3cad6' : '#fff', 0.14, 0.8); }
+    this.hitReact(v, Array.isArray(m.p) && m.p.length === 3 && finite(...m.p) ? new THREE.Vector3(...m.p) : this.headOf(by, new THREE.Vector3()), z);
     if (v === this.me) this.hurt(d, m.p, hs, by);
     if (by === this.me && v !== this.me) { this.hitMarker(false, hs); sfx(hs ? 'sd_headshot' : 'sd_hitmark', null, 0.8); track('sdDmg', d); }
   }
@@ -539,11 +542,12 @@ export class SearchDestroy {
     const enemy = K && by !== v && K.team !== V.team; if (enemy) { K.k = (K.k || 0) + 1; K.rk = (K.rk || 0) + 1; if (hs) K.hs = (K.hs || 0) + 1; }
     const as = Array.isArray(m.as) ? m.as.slice(0, 4).map(String).filter(a => this.F.has(a)) : []; for (const a of as) this.F.get(a).a = (this.F.get(a).a || 0) + 1;
     const g = GUNS[Number(m.g)], why = m.w === 'boom' ? '💥🍛' : m.w === 'left' ? '🚪' : g ? g.icon : '💀';
-    this.feedKill(K && by !== v ? K : null, V, why, hs, !!m.wb, as.map(a => this.F.get(a)));
+    this.feedKill(K && by !== v ? K : null, V, why, hs, as.map(a => this.F.get(a)));
     const at = this.headOf(v, new THREE.Vector3()); if (at) { this.burst(at.clone().add({ x: 0, y: -0.6, z: 0 }), [0xff3b3b, 0xffd400, 0x8d5a32, 0xffffff], 22, 2.2); this.splatFloor(at, g, true); sfx('sd_down', at, 1); }
+    this.fall(v, this.headOf(by, new THREE.Vector3()), Number(m.z) || (hs ? 1 : 0));
     if (K && K.bot && KILL_LINES[K.char] && Math.random() < 0.55) { const h = this.headOf(by, new THREE.Vector3()); if (h) this.g.words && this.g.words.show(KILL_LINES[K.char], h.add({ x: 0, y: 0.6, z: 0 }), TEAMS[K.team].col, 0.16, 1.6); }
     if (v === this.me) this.died(K, g, hs, m.w, Number(m.ds) || 0);
-    if (by === this.me && v !== this.me) { this.hitMarker(true, hs); sfx('sd_kill', null, 0.9); track('sdKills'); if (hs) track('sdHs'); this.pop(`💀 ${hs ? 'HEADSHOT! ' : ''}${m.wb ? 'THROUGH THE WALL! ' : ''}${V.name.replace(/^🤖 /, '')}`, '#ff5252'); this.multiKill(K.rk); }
+    if (by === this.me && v !== this.me) { this.hitMarker(true, hs); sfx('sd_kill', null, 0.9); track('sdKills'); if (hs) track('sdHs'); this.pop(`💀 ${hs ? 'HEADSHOT! ' : ''}${V.name.replace(/^🤖 /, '')}`, '#ff5252'); this.multiKill(K.rk); }
     if (as.includes(this.me)) this.pop(`🤝 ASSIST · ${V.name.replace(/^🤖 /, '')}`, '#9fe8ff');
     if (this.spect === v) this.doWatch();
   }
@@ -617,7 +621,7 @@ export class SearchDestroy {
   refundFor(slot) { const b = this.boughtNow && this.boughtNow[slot], L = (this.mine() || {}).load || {}; return b && L[slot] === b.g ? b.cost : 0; }
   dmgAt(id, d) { return falloff(GUN[id] || GUN[FREE_GUN], d); }
   setGun(id, g) { const f = this.F.get(id); if (!f || !gunOk(g)) return; if (f.load && f.load.P !== g && f.load.S !== g && g !== FREE_GUN) return; f.gun = g; f.picked = true; }
-  updateSpeed() { const P = this.g.player, G = this.curG(); P.speedMul = G.move * (this.perk('speed') ? 1.3 : 1) * (this.my.adsK > 0.5 ? G.adsMove : 1) * (this.my.act ? 0 : 1); }
+  updateSpeed() { const P = this.g.player, G = this.curG(); P.speedMul = G.move * (this.perk('speed') ? 1.3 : 1) * (this.my.adsK > 0.5 ? G.adsMove : 1) * (this.my.crouch ? 0.5 : 1) * (this.my.act ? 0 : 1); }
   perk(k) { return (this.my.perks[k] || 0) > this.clock; }
   // someone else's shot: the tracer and the bang from where they were, and where it landed
   remoteShot(id, m) {
@@ -715,9 +719,12 @@ export class SearchDestroy {
     for (let n = 0; n < G.pellets; n++) if (Math.random() < pHit) { const r = Math.random(), zz = r < 0.12 ? 1 : r < 0.32 ? 2 : 0; dmg += G.dmg * Math.max(0.25, falloff(G, dist)) * (zz === 1 ? G.hs : zz === 2 ? G.limb : 1); if (z < 0 || zz === 1) z = zz; }
     const from = new THREE.Vector3(b.x - Math.sin(b.yaw) * 0.45 + Math.cos(b.yaw) * 0.18, this.floor(b.x, b.z) + 1.35, b.z - Math.cos(b.yaw) * 0.45 - Math.sin(b.yaw) * 0.18);
     const aim = q.clone().add({ x: 0, y: z === 1 ? 0 : z === 2 ? -1.1 : -0.35, z: 0 }); if (!dmg) aim.add({ x: (Math.random() - 0.5) * 1.6, y: (Math.random() - 0.3) * 1.2, z: (Math.random() - 0.5) * 1.6 });
+    { const dd = aim.clone().sub(from), L = dd.length(), gi = this.glassOn(from, dd.divideScalar(L), L); if (gi >= 0) { dmg = 0; this.send('sdGlass', { i: gi }); } }      // (a window in the way: the glass takes it, and breaks)
     const end = dmg ? aim : from.clone().add(aim.sub(from).normalize().multiplyScalar(this.wallT(new THREE.Ray(from, aim.clone().normalize()), G.range)));
-    this.net.send({ t: 'sdShot', id: b.id, a: [r2(from.x), r2(from.y), r2(from.z)], b: [r2(end.x), r2(end.y), r2(end.z)], g: G.i, n: Math.min(5, G.pellets) });
-    this.remoteShot(b.id, { a: [from.x, from.y, from.z], b: [end.x, end.y, end.z], g: G.i, n: Math.min(5, G.pellets) });
+    if (G.proj) { const v = end.clone().sub(from), L = Math.max(0.1, v.length()), tt = L / G.proj.speed; v.divideScalar(tt); v.y += 0.5 * G.proj.grav * tt;      // (aimed so it arrives where it was going)
+      this.net.send({ t: 'sdProj', id: b.id, a: [r2(from.x), r2(from.y), r2(from.z)], v: [r2(v.x), r2(v.y), r2(v.z)], g: G.i }); this.remoteProj(b.id, { a: [from.x, from.y, from.z], v: [v.x, v.y, v.z], g: G.i }); }
+    else { this.net.send({ t: 'sdShot', id: b.id, a: [r2(from.x), r2(from.y), r2(from.z)], b: [r2(end.x), r2(end.y), r2(end.z)], g: G.i, n: Math.min(5, G.pellets) });
+      this.remoteShot(b.id, { a: [from.x, from.y, from.z], b: [end.x, end.y, end.z], g: G.i, n: Math.min(5, G.pellets) }); }
     if (dmg > 0) { const T2 = this.bots.get(b.target); if (T2) T2.lastHurt = b.id; this.hostDamage(b.target, b.id, Math.round(dmg), z, from, G, false); }
   }
   // where a bot's going when it isn't fighting
@@ -797,8 +804,11 @@ export class SearchDestroy {
     // bots, other people's guns, the guns on the floor, the effects
     this.puppetsUpdate(dt); this.bodies(); this.gunsDraw(dt, me, xr); this.dropsTick(t);
     for (const p of this.pk) if (p.pop) { p.pop += dt * 3; if (p.pop >= 1) p.pop = 0; }
-    this.drawPicks(t); this.animFx(dt); if ((this.stepT = (this.stepT || 0) - dt) <= 0) { this.stepT = 0.1; this.stepsTick(); }
+    this.drawPicks(t); this.animFx(dt); this.projTick(dt); this.previewTick(dt); if ((this.stepT = (this.stepT || 0) - dt) <= 0) { this.stepT = 0.1; this.stepsTick(); }
     if (xr) this.vrInput(P, me); else { this.drawHud(me); }
+    // (the box at the top left goes while the shop's open, while you're scoped in and at the end; back after)
+    if (g.banner && (this.my.scoped || this.pickOpen)) g.banner.visible = false;      // (and the big banner in front of you)
+    if (P.wrist && P.flatMode && !xr) { const hide = this.pickOpen || this.my.scoped || this.phase === 'over'; if (hide && P.wrist.visible) { P.wrist.visible = false; this.wristHid = true; } else if (!hide && this.wristHid) { P.wrist.visible = true; this.wristHid = false; } }
     this.countdown();
     this.laser.visible = xr && alive && this.phase === 'live';
     if (this.laser.visible) { const src = this.vrGun && this.vrGun.parent ? this.vrGun : ((P.hands || []).find(h => h.source && h.handedness === 'right' && h.ctrl) || {}).ctrl; if (src) { src.updateMatrixWorld(true); src.getWorldPosition(this.laser.position); src.getWorldQuaternion(this.laser.quaternion); } else this.laser.visible = false; }
@@ -806,20 +816,64 @@ export class SearchDestroy {
     if (me && !me.alive && this.inRound() && xr && this.spect) { const q = this.posOf(this.spect, new THREE.Vector3()); if (q && this.hd(q, P.head) > 3) this.respawnAt(q.x - 1.5, q.z); }
     if (this.deathCam && this.clock - this.deathCam.t0 >= 2.8) { this.deathCam = null; if (!this.spect) this.doWatch(true); }      // (the look at who got you's over: watching your team)
     if (me && !me.alive && this.inRound() && !this.spect && !this.deathCam && (this.watchT = (this.watchT || 0) - dt) <= 0) { this.watchT = 1; this.doWatch(true); }
+    // near death the world goes muffled, your ears ringing
+    { const mk = alive && me.hp < 30 ? 0.25 + 0.6 * (30 - me.hp) / 30 : 0; if (Math.abs(mk - (this.muffK || 0)) > 0.04) { this.muffK = mk; setMuffle(mk); } }
     // the low health warning: a heartbeat
-    if (alive && me.hp < 35 && (this.lowSnd = (this.lowSnd || 0) - dt) <= 0) { this.lowSnd = 1.1; sfx('sd_heartbeat', null, 0.6); }
+    if (alive && me.hp < 50 && (this.lowSnd = (this.lowSnd || 0) - dt) <= 0) { this.lowSnd = 1.1; sfx('sd_heartbeat', null, 0.6); }
   }
   // the guns on the floor: lying there turning slowly, a glint so you spot them
   dropsTick(t) { for (const [, D] of this.drops) { D.mesh.rotation.y = (D.t0 || 0) + t * 0.6; D.mesh.position.y = D.y + 0.08 + Math.sin(t * 3 + D.d) * 0.02; } }
+  // a name tag that would be drawn over the HUD: anyone right beside you, or close enough for a big tag up in the top
+  // corners (the top-left box and the map, the corner's buttons). Far off, a tag's small: it's left be
+  tagInTheWay(av, my) {
+    const t = av.tag; if (!t) return false; t.getWorldPosition(_tg); const d = Math.hypot(_tg.x - my.x, _tg.z - my.z); if (d < 1.6) return true; if (d > 6 || this.g.renderer.xr.isPresenting) return false;
+    _tg.project(this.g.camera); if (_tg.z > 1) return false; const x = (_tg.x + 1) / 2, y = (1 - _tg.y) / 2, k = 1.6 / d;      // (the tag's half-size on screen, roughly, as a share of the screen)
+    return y - k * 0.12 < 0.36 && (x - k * 0.25 < 0.42 || x + k * 0.25 > 0.7);
+  }
   // everyone's body drawn right: the dead laid out, nobody hidden; enemies' name tags hidden (no seeing them through walls)
   bodies() {
-    const round = this.inRound(), mt = this.myTeam();
+    const round = this.inRound(), mt = this.myTeam(), me = this.mine(), my = this.g.player.head, h = new THREE.Vector3();
     // (someone who came in mid-round sits it out, out of sight, till the next one: that's them too, on their own game)
     if (this.online) for (const [id, p] of this.net.players) if (!this.F.has(String(id)) && p.avatar) p.avatar.impHidden = round;
     if (round && !this.mine()) { this.g.player.ghost = true; const sb = this.g.selfBody && this.g.selfBody(); if (sb) sb.impHidden = true; }
+    const look = (this.lookT = (this.lookT || 0) - 1) <= 0; if (look) this.lookT = 8;
     for (const [id, f] of this.F) { const av = this.avatar(id); if (!av) continue;
       if (id === this.me) { av.impHidden = !!(round && !f.alive); continue; }
-      av.impHidden = false; av.impBody = !!(round && !f.alive); av.impRed = false; if (av.tag) av.tag.visible = !(round && f.alive && mt && f.team !== mt) && !av.impBody; }
+      // the dead: on the floor where they fell (a ragdoll, flung the way the shot went), or laid out if they can't ragdoll
+      av.impHidden = false; av.impBody = !!(round && !f.alive && !(av.down > 0));
+      // name tags: team-mates always (their tag is theirs); enemies red, and only while you can see them
+      const enemy = round && mt && f.team !== mt;
+      if (look && enemy && f.alive && this.headOf(id, h)) f.seen = this.canSee(my, h);
+      const close = this.tagInTheWay(av, my);      // (right beside you, or near and up in the top corners: a tag would sit on the HUD)
+      av.impRed = !!enemy; if (av.tag) av.tag.visible = (!enemy || (f.alive && f.seen)) && !(round && !f.alive) && !this.pickOpen && !(this.spect === id && this.viewCamNow) && !close; }
+    this.teamMarks();
+  }
+  // your side, marked: a team-coloured band round both arms of everyone, and over each team-mate's head a little
+  // chevron in your colour (seen through walls, faint, so you know where they are; enemies get nothing through walls)
+  teamMarks() {
+    if (!this.bandM) { this.bandM = new THREE.InstancedMesh(new THREE.TorusGeometry(0.075, 0.022, 6, 14), new THREE.MeshBasicMaterial({ color: 0xffffff }), 48); this.bandM.count = 0; this.bandM.frustumCulled = false; this.bandM.name = 'sd armbands'; this.bandM.setColorAt(0, new THREE.Color(1, 1, 1)); this.grp.add(this.bandM);
+      const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 6; g.beginPath(); g.moveTo(8, 18); g.lineTo(32, 44); g.lineTo(56, 18); g.lineTo(46, 12); g.lineTo(32, 28); g.lineTo(18, 12); g.closePath(); g.stroke(); g.fill();
+      const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; this.allyTex = tx; this.allies = []; }
+    const mt = this.myTeam(), round = this.inRound(), q = new THREE.Quaternion(), qx = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2), m4 = new THREE.Matrix4(), col = new THREE.Color(), h = new THREE.Vector3(); let n = 0, a = 0;
+    for (const [id, f] of this.F) { if (id === this.me || !round) continue; const av = this.avatar(id), r = av && av.c && av.c.rag; if (!r || !f.alive) continue;
+      for (const part of ['uArmL', 'uArmR']) { const P = r.parts[part]; if (!P || n >= 48) continue; const bq = P.body.quaternion; q.set(bq.x, bq.y, bq.z, bq.w).multiply(qx); m4.compose(r.pos(part, h), q, _w.setScalar(1)); this.bandM.setMatrixAt(n, m4); this.bandM.setColorAt(n, col.setHex(TEAMS[f.team].hex)); n++; }
+      if (mt && f.team === mt && !(this.spect === id && this.viewCamNow) && this.headOf(id, h)) { let sp = this.allies[a]; if (!sp) { sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.allyTex, transparent: true, depthTest: false, depthWrite: false, opacity: 0.7 })); sp.renderOrder = 11; this.grp.add(sp); this.allies[a] = sp; }
+        const d = Math.max(1, this.hd(h, this.g.player.head)), s2 = 0.12 + d * 0.012; sp.visible = !this.pickOpen && !this.my.scoped; sp.material.color.setHex(TEAMS[mt].hex); sp.scale.set(s2, s2, 1); sp.position.set(h.x, h.y + 0.62 + d * 0.01, h.z); a++; } }
+    this.bandM.count = n; this.bandM.instanceMatrix.needsUpdate = true; if (this.bandM.instanceColor) this.bandM.instanceColor.needsUpdate = true;
+    for (let i = a; i < this.allies.length; i++) this.allies[i].visible = false;
+  }
+  // someone hit (everyone's game): their body reacts to where (a head snaps back, a body shot staggers, a leg buckles)
+  hitReact(v, from, z) {
+    const av = this.avatar(v), at = this.headOf(v, new THREE.Vector3()); if (!av || !av.c || !av.c.flinch || !at || v === this.me) return;
+    const dir = from ? at.clone().sub(from) : new THREE.Vector3(0, 0, 1); dir.y = 0; if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1); dir.normalize();
+    try { av.c.flinch(dir, z === 1 ? 1.8 : z === 2 ? 0.55 : 1.1); } catch (e) {}
+  }
+  // down for good this round: a ragdoll falling the way the shot pushed them (it stays down till the next round)
+  fall(v, from, z) {
+    const av = this.avatar(v); if (!av || !av.c || !av.c.knockOut || !av.c.rag || !av.c.rag.parts || v === this.me) return false;
+    try { const r = av.c.rag, at = this.headOf(v, new THREE.Vector3()) || new THREE.Vector3(), dir = from ? at.clone().sub(from) : new THREE.Vector3(0, 0, 1); dir.y = 0; if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1); dir.normalize();
+      av.emote && av.emote.stop && av.emote.stop(); av.c.knockOut('hit'); av.down = 1e6; av.gunHold = null;
+      const part = r.parts[z === 1 ? 'head' : z === 2 ? 'uLegR' : 'chest'] || r.parts.chest, imp = dir.multiplyScalar(z === 1 ? 6 : 5); imp.y = 1.2; const p = part.body.position; r.hit(part, new THREE.Vector3(p.x, p.y, p.z), imp); return true; } catch (e) { return false; }
   }
   // the bomb: on the carrier's back, going down in front of them as they plant, on the floor where it was dropped,
   // planted and blinking with the seconds on its clock, the pliers at it while it's defused, gone
@@ -832,6 +886,8 @@ export class SearchDestroy {
         else { m.position.set(h.x + Math.sin(yaw) * 0.32, h.y - 0.75, h.z + Math.cos(yaw) * 0.32); m.rotation.set(0, yaw, 0); m.scale.setScalar(0.7); } show = true; } }
     else if ((B.st === 'dropped' || B.st === 'planted' || B.st === 'defused') && B.p) { m.position.set(B.p[0], this.floor(B.p[0], B.p[1]) + 0.02, B.p[1]); m.scale.setScalar(1); if (B.st === 'dropped') m.rotation.set(0.3, t * 0.8, 0.2); else m.rotation.set(0, 0, 0); show = true; }
     m.visible = show && B.st !== 'boom'; this.bombRing.visible = show && (B.st === 'dropped' || B.st === 'planted');
+    // (a beam of light up from it once it's down: dropped (orange) or planted (red, pulsing))
+    this.bombBeam.visible = this.bombRing.visible; if (this.bombBeam.visible) { this.bombBeam.position.set(m.position.x, m.position.y, m.position.z); this.bombBeam.material.color.setHex(B.st === 'dropped' ? 0xff9f1c : 0xff3b3b); this.bombBeam.material.opacity = B.st === 'planted' ? 0.6 + 0.4 * Math.sin(t * 8) : 1; }
     if (this.bombRing.visible) { this.bombRing.position.set(m.position.x, m.position.y + 0.03, m.position.z); this.bombRing.material.color.setHex(B.st === 'dropped' ? 0xff9f1c : 0xff3b3b); this.bombRing.scale.setScalar(1 + Math.sin(t * 6) * 0.04); }
     // its clock: the seconds left when it's planted (red), dashes otherwise
     const left = B.st === 'planted' ? Math.max(0, this.bombAt - t) : -1, face = B.st === 'planted' ? `00:${String(Math.ceil(left)).padStart(2, '0')}` : B.st === 'defused' ? 'OFF' : planting ? '*'.repeat(1 + Math.floor((t * 4) % 4)) : '--:--';
@@ -849,10 +905,12 @@ export class SearchDestroy {
   vrInput(P, me) {
     const pad = (hand) => { const h = (P.hands || []).find(h => h.source && h.handedness === hand); return h; }, R = pad('right'), L = pad('left'), gp = (h) => h && h.source && h.source.gamepad;
     const press = (key, h, i) => { const g2 = gp(h), on = !!(g2 && g2.buttons[i] && g2.buttons[i].pressed), was = this.btnWas[key]; this.btnWas[key] = on; return [on && !was, on]; };
-    const [trigDown, trig] = press('trig', R, 0), [aDown] = press('a', R, 4), [bDown, bHeld] = press('b', R, 5), [yDown] = press('y', L, 5), [xDown] = press('x', L, 4), [, stick] = press('ls', L, 3);
-    this.boardHeld(stick);      // (hold the left stick in: the scoreboard)
+    const [trigDown, trig] = press('trig', R, 0), [aDown] = press('a', R, 4), [bDown, bHeld] = press('b', R, 5), [yDown] = press('y', L, 5), [xDown] = press('x', L, 4), [, stick] = press('rs', R, 3);
+    this.boardHeld(stick);      // (hold the right stick in: the scoreboard; the left one's sprint)
     if (this.panel.open) return;
     if (!me) return;
+    // crouching in a headset is crouching for real: duck (your head well down from standing) and you're crouched
+    if (me.alive && P.head) { const hy = P.head.y - this.floor(P.head.x, P.head.z), c = this.my.crouch ? hy < 1.3 : hy < 1.15; if (c !== !!this.my.crouch) { this.my.crouch = c; this.updateSpeed(); } }
     if (!me.alive && this.inRound()) { if (aDown || trigDown) this.doWatch(); return; }
     if (this.phase === 'buy' && (yDown || aDown)) { this.openPicker(); return; }
     if (yDown) this.cycleMode();
@@ -878,25 +936,30 @@ export class SearchDestroy {
         cam.aspect = g.camera.aspect; cam.fov = 60 - 22 * k; cam.updateProjectionMatrix(); cam.updateMatrixWorld(); this.viewCamNow = cam; return cam; } }
     else if (dc) { this.deathCam = null; if (!this.spect) this.doWatch(true); }
     if (!this.spect) { this.viewCamNow = null; return null; }
-    const h = this.headOf(this.spect, new THREE.Vector3()); if (!h) return null;
-    const dir = g.camera.getWorldDirection(new THREE.Vector3());
-    const look = h.clone().add({ x: 0, y: 0.1, z: 0 }), want = look.clone().addScaledVector(dir, -2.4).add({ x: 0, y: 0.5, z: 0 }), r = new THREE.Ray(look, want.clone().sub(look).normalize());
-    const d = Math.max(0.6, Math.min(look.distanceTo(want), this.wallT(r, look.distanceTo(want)) - 0.25)); want.copy(look).addScaledVector(r.direction, d);
-    if (!this.camWas || this.camWas.distanceTo(want) > 4) this.camWas = want.clone(); else this.camWas.lerp(want, 0.3);
-    cam.position.copy(this.camWas); cam.quaternion.copy(g.camera.getWorldQuaternion(_q)); cam.aspect = g.camera.aspect; cam.fov = g.camera.fov; cam.updateProjectionMatrix(); cam.updateMatrixWorld(); this.viewCamNow = cam; return cam;
+    // watching a team-mate: close behind their head over their right shoulder, looking where they look (or VIEW: through their eyes)
+    const h = this.headOf(this.spect, new THREE.Vector3()), q = this.lookOf(this.spect); if (!h || !q) return null;
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(q), right = new THREE.Vector3(1, 0, 0).applyQuaternion(q), fp = this.specFP;
+    const want = fp ? h.clone().addScaledVector(fwd, 0.22).add({ x: 0, y: 0.02, z: 0 }) : h.clone().addScaledVector(fwd, -0.95).addScaledVector(right, 0.32).add({ x: 0, y: 0.16, z: 0 });
+    if (!fp) { const r = new THREE.Ray(h.clone().add({ x: 0, y: 0.1, z: 0 }), want.clone().sub(h).normalize()), L0 = want.distanceTo(h), d = Math.max(0.3, Math.min(L0, this.wallT(r, L0) - 0.15)); want.copy(r.origin).addScaledVector(r.direction, d); }
+    if (!this.camWas || this.camWas.distanceTo(want) > 3 || this.specWas !== this.spect) this.camWas = want.clone(); else this.camWas.lerp(want, 0.45); this.specWas = this.spect;
+    const qs = this.camQ || (this.camQ = q.clone()); qs.slerp(q, 0.35);
+    cam.position.copy(this.camWas); cam.quaternion.copy(qs); cam.aspect = g.camera.aspect; cam.fov = 68; cam.updateProjectionMatrix(); cam.updateMatrixWorld(); this.viewCamNow = cam; return cam;
   }
+  // which way someone's looking (a bot's turn and tilt; a player's head)
+  lookOf(id) { const f = this.F.get(id); if (!f) return null; if (f.bot) { const b = this.host && this.bots && this.bots.get(id) ? this.bots.get(id) : this.botPose.get(id); if (!b) return null; _e.set(b.pitch || 0, b.yaw, 0, 'YXZ'); return new THREE.Quaternion().setFromEuler(_e); }
+    const p = this.net.players.get(id); return p && p.pose && Array.isArray(p.pose.q) && finite(...p.pose.q) ? new THREE.Quaternion(...p.pose.q) : null; }
   esc(t) { return String(t).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c])); }
   // the state of play (the tests, the wrist)
   hudState() { const me = this.mine(); return { phase: this.phase, round: this.round, win: this.win, sc: { ...this.sc }, att: this.att, team: me && me.team, alive: !!(me && me.alive), hp: me ? me.hp : 0, ar: me ? me.ar : 0, gun: this.my.gun, slot: this.my.cur, mag: this.my.mag, reserve: this.my.reserve, reloading: !!this.my.reloadEnd, ads: this.my.adsK, mode: this.fireMode(), cash: this.cash[this.me] || 0, bomb: this.bomb.st, left: Math.max(0, this.endsAt - this.clock), perks: Object.keys(this.my.perks) }; }
   dispose() {
     const g = this.g; this.disposed = true; try { this.closePicker(); } catch (e) {} this.panel.close(true); if (this.panel.wrap) this.panel.wrap.remove(); if (this.panel.mesh) g.scene.remove(this.panel.mesh); if (this.panel.dot) g.scene.remove(this.panel.dot);
     g.scene.remove(this.grp); for (const [, pu] of this.puppets) { try { pu.dispose && pu.dispose(); } catch (e) {} } this.puppets.clear();
-    this.disposeGuns(); this.disposeFx();
+    this.disposeGuns(); this.disposeFx(); setMuffle(0); if (this.wristHid && g.player.wrist && !document.body.classList.contains('gameover')) g.player.wrist.visible = true;
     for (const [id] of this.F) { const av = id === this.me ? (g.selfBody && g.selfBody()) : (this.net.players.get(id) || {}).avatar; if (av) { av.impHidden = false; av.impBody = false; if (av.tag && id !== this.me) av.tag.visible = true; } }
     this.disposeUI();
     for (const k in this.handlers) this.net.on[k] = this.prevOn[k]; this.net.on.leave = this.leaveWas;
-    const mp = g.mp; if (mp) mp.noPunch = false; g.player.noGrab = false; g.player.ghost = false; g.player.speedMul = 1;
+    const mp = g.mp; if (mp) mp.noPunch = false; g.player.noGrab = false; g.player.ghost = false; g.player.speedMul = 1; g.player.camLift = 0;
     if (g.player.flatGrip && this.gripHid) g.player.flatGrip.visible = true; if (this.fov0 != null && g.camera) { g.camera.fov = this.fov0; g.camera.updateProjectionMatrix(); }
   }
 }
-Object.assign(SearchDestroy.prototype, GUNSYS, FX, UI);
+Object.assign(SearchDestroy.prototype, GUNSYS, FX, UI, WORLD);

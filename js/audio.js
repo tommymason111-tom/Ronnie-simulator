@@ -31,6 +31,9 @@ function hookWake() { if (wakeHooked) return; wakeHooked = true;
   const wake = () => { try { if (ctx && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume(); } catch (e) {} };
   document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
   for (const ev of ['pointerdown', 'touchend', 'keydown']) window.addEventListener(ev, wake, { capture: true, passive: true }); }
+// everything muffled (0 none .. 1 as if underwater): near death in Search & Destroy, your ears ringing
+let muffleF = null;
+export function setMuffle(k) { if (!muffleF || !ctx) return; k = Math.max(0, Math.min(1, +k || 0)); muffleF.frequency.setTargetAtTime(20000 * Math.pow(500 / 20000, k), ctx.currentTime, 0.08); }
 export function initAudio() {
   hookWake();
   if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
@@ -40,7 +43,8 @@ export function initAudio() {
   const comp = ctx.createDynamicsCompressor();
   comp.threshold.value = -12; comp.ratio.value = 6;
   master = ctx.createGain(); master.gain.value = 0.8;
-  master.connect(comp); comp.connect(ctx.destination);
+  muffleF = ctx.createBiquadFilter(); muffleF.type = 'lowpass'; muffleF.frequency.value = 20000; muffleF.Q.value = 0.5;
+  master.connect(muffleF); muffleF.connect(comp); comp.connect(ctx.destination);
   // the sound mix (Settings): every kind of sound has its own volume on the way to the master
   for (const k of ['music', 'voices', 'fx', 'ambience', 'chat']) { const b = BUS[k] = ctx.createGain(); b.connect(master); }
   applyMix();
@@ -666,6 +670,36 @@ const SOUNDS = {
   sd_win(d, t) { [523, 659, 784, 1047].forEach((f, i) => tone(d, t + i * 0.09, 'triangle', f, f, i === 3 ? 0.5 : 0.1, 0.3, 0.003)); bell(d, t + 0.27, 2093, 0.6, 0.25); },      // a round won: a quick fanfare
   sd_lose(d, t) { const o = tone(d, t, 'triangle', 220, 196, 0.3, 0.35, 0.01); wobble(o, t, 0.3, 5, 6); const o2 = tone(d, t + 0.32, 'triangle', 185, 147, 0.6, 0.35, 0.01); wobble(o2, t + 0.32, 0.6, 5, 9); const f = filt(d, 'lowpass', 900, 3); tone(f, t, 'square', 110, 74, 0.9, 0.12, 0.02); },      // a round lost: wah-waaah
   sd_heartbeat(d, t) { tone(d, t, 'sine', 62, 45, 0.09, 0.9, 0.004); tone(d, t + 0.19, 'sine', 55, 40, 0.08, 0.7, 0.004); noise(d, t, 0.05, 'lowpass', 200, 1, 0.3, 0.004); },      // low health: lub-dub
+  sd_glass(d, t) { noise(d, t, 0.06, 'highpass', 3000, 0.7, 1.0, 0.0005); for (let i = 0; i < 9; i++) bell(d, t + 0.03 + Math.random() * 0.35, 2500 + Math.random() * 4500, 0.12 + Math.random() * 0.15, 0.12); noise(d, t + 0.05, 0.4, 'bandpass', 6000, 1.5, 0.25, 0.01); },      // a window shot out: a crack and the glass coming down
+  sd_egg(d, t) { tone(d, t, 'sine', 180, 60, 0.18, 0.9, 0.002); noise(d, t, 0.12, 'lowpass', 700, 1, 0.6, 0.002); tone(d, t + 0.02, 'triangle', 520, 300, 0.12, 0.25, 0.005); },      // the scotch egg launcher: a hollow FWUMP
+  sd_eggboom(d, t) { noise(d, t, 0.7, 'lowpass', 1400, 0.8, 1.0, 0.002); tone(d, t, 'sine', 90, 30, 0.6, 1.0, 0.002); noise(d, t + 0.05, 0.9, 'bandpass', 350, 0.8, 0.35, 0.08); for (let i = 0; i < 5; i++) click(d, t + 0.15 + Math.random() * 0.4, 600 + Math.random() * 900, 0.5); },      // a scotch egg going off
+  sd_flame(d, t) { const n = noise(d, t, 0.22, 'bandpass', 900, 0.6, 0.6, 0.03); n.frequency.exponentialRampToValueAtTime(400, t + 0.22); noise(d, t, 0.2, 'highpass', 5000, 0.8, 0.12, 0.02); tone(d, t, 'sawtooth', 70, 60, 0.2, 0.15, 0.03); },      // the hot sauce flamer: a roar
+  sd_xbow(d, t) { tone(d, t, 'triangle', 240, 140, 0.25, 0.55, 0.001); const o = tone(d, t, 'sine', 480, 420, 0.3, 0.3, 0.001); wobble(o, t, 0.3, 28, 18); noise(d, t, 0.05, 'highpass', 2500, 1, 0.4, 0.0005); },      // the crossbow: TWANG
+  sd_thunk(d, t) { tone(d, t, 'sine', 300, 120, 0.08, 0.7, 0.0008); noise(d, t, 0.05, 'bandpass', 1800, 2, 0.45, 0.0005); click(d, t + 0.02, 900, 0.6); },      // a crossbow chip sticking into something
+  sd_rl_ketchup(d, t) { noise(d, t, 0.05, 'bandpass', 2400, 4, 0.55, 0.002); click(d, t + 0.06, 4080, 0.75); tone(d, t + 0.06, 'square', 840, 600, 0.06, 0.28, 0.001); click(d, t + 0.126, 1920, 0.6); },
+  sd_dry_ketchup(d, t) { tone(d, t, 'square', 3120, 3000, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 5280, 1, 0.45, 0.0005); tone(d, t + 0.024, 'triangle', 1200, 1152, 0.04, 0.3, 0.0005); },
+  sd_rl_brown(d, t) { noise(d, t, 0.05, 'bandpass', 1850, 4, 0.55, 0.002); click(d, t + 0.09, 3145, 0.75); tone(d, t + 0.09, 'square', 647, 462, 0.06, 0.28, 0.001); click(d, t + 0.189, 1480, 0.6); },
+  sd_dry_brown(d, t) { tone(d, t, 'square', 2405, 2312, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 4070, 1, 0.45, 0.0005); tone(d, t + 0.036, 'triangle', 925, 888, 0.04, 0.3, 0.0005); click(d, t + 0.06, 1295, 0.5); },
+  sd_rl_mustard(d, t) { noise(d, t, 0.05, 'bandpass', 1100, 4, 0.55, 0.002); click(d, t + 0.16, 1870, 0.75); tone(d, t + 0.16, 'square', 385, 275, 0.06, 0.28, 0.001); click(d, t + 0.336, 880, 0.6); },
+  sd_dry_mustard(d, t) { tone(d, t, 'square', 1430, 1375, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 2420, 1, 0.45, 0.0005); tone(d, t + 0.064, 'triangle', 550, 528, 0.04, 0.3, 0.0005); click(d, t + 0.06, 770, 0.5); click(d, t + 0.12, 1100, 0.5); },
+  sd_rl_cheese(d, t) { noise(d, t, 0.05, 'bandpass', 3600, 4, 0.55, 0.002); click(d, t + 0.05, 6120, 0.75); tone(d, t + 0.05, 'sawtooth', 1260, 900, 0.06, 0.28, 0.001); click(d, t + 0.105, 2880, 0.6); },
+  sd_dry_cheese(d, t) { tone(d, t, 'sawtooth', 4680, 4500, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 7920, 1, 0.45, 0.0005); tone(d, t + 0.02, 'triangle', 1800, 1728, 0.04, 0.3, 0.0005); },
+  sd_rl_beans(d, t) { noise(d, t, 0.05, 'bandpass', 800, 4, 0.55, 0.002); click(d, t + 0.12, 1360, 0.75); tone(d, t + 0.12, 'sawtooth', 280, 200, 0.06, 0.28, 0.001); click(d, t + 0.252, 640, 0.6); },
+  sd_dry_beans(d, t) { tone(d, t, 'sawtooth', 1040, 1000, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 1760, 1, 0.45, 0.0005); tone(d, t + 0.048, 'triangle', 400, 384, 0.04, 0.3, 0.0005); click(d, t + 0.06, 560, 0.5); },
+  sd_rl_monstor(d, t) { noise(d, t, 0.05, 'bandpass', 1350, 4, 0.55, 0.002); click(d, t + 0.1, 2295, 0.75); tone(d, t + 0.1, 'sawtooth', 472, 337, 0.06, 0.28, 0.001); click(d, t + 0.21, 1080, 0.6); },
+  sd_dry_monstor(d, t) { tone(d, t, 'sawtooth', 1755, 1687, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 2970, 1, 0.45, 0.0005); tone(d, t + 0.04, 'triangle', 675, 648, 0.04, 0.3, 0.0005); click(d, t + 0.06, 944, 0.5); click(d, t + 0.12, 1350, 0.5); },
+  sd_rl_baguette(d, t) { noise(d, t, 0.05, 'bandpass', 950, 4, 0.55, 0.002); click(d, t + 0.2, 1615, 0.75); tone(d, t + 0.2, 'triangle', 332, 237, 0.06, 0.28, 0.001); click(d, t + 0.42, 760, 0.6); },
+  sd_dry_baguette(d, t) { tone(d, t, 'triangle', 1235, 1187, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 2090, 1, 0.45, 0.0005); tone(d, t + 0.08, 'triangle', 475, 456, 0.04, 0.3, 0.0005); },
+  sd_rl_sausage(d, t) { noise(d, t, 0.05, 'bandpass', 650, 4, 0.55, 0.002); click(d, t + 0.24, 1105, 0.75); tone(d, t + 0.24, 'square', 227, 162, 0.06, 0.28, 0.001); click(d, t + 0.504, 520, 0.6); },
+  sd_dry_sausage(d, t) { tone(d, t, 'square', 845, 812, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 1430, 1, 0.45, 0.0005); tone(d, t + 0.096, 'triangle', 325, 312, 0.04, 0.3, 0.0005); click(d, t + 0.06, 454, 0.5); },
+  sd_rl_gravy(d, t) { noise(d, t, 0.05, 'bandpass', 420, 4, 0.55, 0.002); click(d, t + 0.3, 714, 0.75); tone(d, t + 0.3, 'sawtooth', 147, 105, 0.06, 0.28, 0.001); click(d, t + 0.63, 336, 0.6); },
+  sd_dry_gravy(d, t) { tone(d, t, 'sawtooth', 546, 525, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 924, 1, 0.45, 0.0005); tone(d, t + 0.12, 'triangle', 210, 201, 0.04, 0.3, 0.0005); click(d, t + 0.06, 294, 0.5); click(d, t + 0.12, 420, 0.5); },
+  sd_rl_scotch(d, t) { noise(d, t, 0.05, 'bandpass', 560, 4, 0.55, 0.002); click(d, t + 0.18, 952, 0.75); tone(d, t + 0.18, 'triangle', 196, 140, 0.06, 0.28, 0.001); click(d, t + 0.378, 448, 0.6); },
+  sd_dry_scotch(d, t) { tone(d, t, 'triangle', 728, 700, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 1232, 1, 0.45, 0.0005); tone(d, t + 0.072, 'triangle', 280, 268, 0.04, 0.3, 0.0005); },
+  sd_rl_flamer(d, t) { noise(d, t, 0.05, 'bandpass', 2000, 4, 0.55, 0.002); click(d, t + 0.14, 3400, 0.75); tone(d, t + 0.14, 'sawtooth', 700, 500, 0.06, 0.28, 0.001); click(d, t + 0.294, 1600, 0.6); },
+  sd_dry_flamer(d, t) { tone(d, t, 'sawtooth', 2600, 2500, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 4400, 1, 0.45, 0.0005); tone(d, t + 0.056, 'triangle', 1000, 960, 0.04, 0.3, 0.0005); click(d, t + 0.06, 1400, 0.5); },
+  sd_rl_xbow(d, t) { noise(d, t, 0.05, 'bandpass', 1300, 4, 0.55, 0.002); click(d, t + 0.26, 2210, 0.75); tone(d, t + 0.26, 'triangle', 454, 325, 0.06, 0.28, 0.001); click(d, t + 0.546, 1040, 0.6); },
+  sd_dry_xbow(d, t) { tone(d, t, 'triangle', 1690, 1625, 0.014, 0.3, 0.0005); noise(d, t, 0.015, 'highpass', 2860, 1, 0.45, 0.0005); tone(d, t + 0.104, 'triangle', 650, 624, 0.04, 0.3, 0.0005); click(d, t + 0.06, 909, 0.5); click(d, t + 0.12, 1300, 0.5); },
   sd_mpistol(d, t) { noise(d, t, 0.05, 'bandpass', 3000, 1.2, 0.7, 0.0005); tone(d, t, 'square', 1400, 500, 0.04, 0.3, 0.0005); tone(d, t, 'sine', 220, 110, 0.06, 0.4, 0.001); },      // the brown sauce machine pistol: a snappy little pop
   sd_magnum(d, t) { noise(d, t, 0.18, 'lowpass', 2500, 0.8, 1.0, 0.0008); tone(d, t, 'sine', 120, 40, 0.35, 0.9, 0.001); tone(d, t, 'triangle', 600, 200, 0.12, 0.4, 0.001); noise(d, t + 0.05, 0.6, 'bandpass', 900, 0.9, 0.25, 0.04); },      // the mustard magnum: BOOM and a ring off the walls
   sd_dmr(d, t) { noise(d, t, 0.08, 'highpass', 1800, 0.8, 0.9, 0.0005); tone(d, t, 'sawtooth', 300, 80, 0.2, 0.45, 0.001); noise(d, t + 0.1, 0.5, 'bandpass', 500, 1, 0.22, 0.05); },      // the baguette rifle: a hard crack and its echo
@@ -724,7 +758,7 @@ export const hasSound = (name) => !!(SOUNDS[name] || SOUNDS[ALIAS[name]]);
 export const SOUND_GROUPS = [
   ['GAME & STINGS', ['combo', 'stageup', 'meterpop', 'countdown', 'go', 'gamestart', 'timeup', 'award', 'drumroll', 'victory', 'loadwhoosh', 'airhorn', 'whistle_ref', 'fanfare', 'sadviolin', 'trumpet', 'bwoomp', 'powerup', 'powerdown']],
   ['BOSS FIGHT', ['slam', 'roar', 'rumble', 'boss_win', 'defeat', 'boss_step', 'boss_stagger', 'boss_hitme', 'boss_charge', 'boss_summon', 'fight_bell', 'boss_warn', 'boss_throw', 'boss_food_land', 'crit', 'blocked', 'heart_up']],
-  ['SEARCH & DESTROY', ['sd_pistol', 'sd_shotgun', 'sd_sniper', 'sd_smg', 'sd_rifle', 'sd_lmg', 'sd_spinup', 'sd_empty', 'sd_reload', 'sd_rack', 'sd_scope', 'sd_hitmark', 'sd_headshot', 'sd_kill', 'sd_hurt', 'sd_dead', 'sd_down', 'sd_heal', 'sd_armour', 'sd_ammo', 'sd_perk', 'sd_pickup', 'sd_planting', 'sd_defusing', 'sd_planted', 'sd_defused', 'sd_beep', 'sd_boom', 'sd_go', 'sd_round', 'sd_win', 'sd_lose', 'sd_heartbeat', 'sd_mpistol', 'sd_magnum', 'sd_dmr', 'sd_magout', 'sd_magin', 'sd_shell', 'sd_pump', 'sd_bolt', 'sd_swap', 'sd_mode', 'sd_buy', 'sd_nocash', 'sd_grab', 'sd_tick', 'sd_multi', 'sd_mvp', 'sd_impact', 'sd_casing', 'sd_step']],
+  ['SEARCH & DESTROY', ['sd_pistol', 'sd_shotgun', 'sd_sniper', 'sd_smg', 'sd_rifle', 'sd_lmg', 'sd_spinup', 'sd_empty', 'sd_reload', 'sd_rack', 'sd_scope', 'sd_hitmark', 'sd_headshot', 'sd_kill', 'sd_hurt', 'sd_dead', 'sd_down', 'sd_heal', 'sd_armour', 'sd_ammo', 'sd_perk', 'sd_pickup', 'sd_planting', 'sd_defusing', 'sd_planted', 'sd_defused', 'sd_beep', 'sd_boom', 'sd_go', 'sd_round', 'sd_win', 'sd_lose', 'sd_heartbeat', 'sd_mpistol', 'sd_magnum', 'sd_dmr', 'sd_magout', 'sd_magin', 'sd_shell', 'sd_pump', 'sd_bolt', 'sd_swap', 'sd_mode', 'sd_buy', 'sd_nocash', 'sd_grab', 'sd_tick', 'sd_multi', 'sd_mvp', 'sd_impact', 'sd_casing', 'sd_step', 'sd_glass', 'sd_egg', 'sd_eggboom', 'sd_flame', 'sd_xbow', 'sd_thunk', 'sd_rl_ketchup', 'sd_rl_brown', 'sd_rl_mustard', 'sd_rl_cheese', 'sd_rl_beans', 'sd_rl_monstor', 'sd_rl_baguette', 'sd_rl_sausage', 'sd_rl_gravy', 'sd_rl_scotch', 'sd_rl_flamer', 'sd_rl_xbow', 'sd_dry_ketchup', 'sd_dry_brown', 'sd_dry_mustard', 'sd_dry_cheese', 'sd_dry_beans', 'sd_dry_monstor', 'sd_dry_baguette', 'sd_dry_sausage', 'sd_dry_gravy', 'sd_dry_scotch', 'sd_dry_flamer', 'sd_dry_xbow']],
   ['LOBBY & CHAT', ['ready', 'join', 'leave', 'kick', 'mic_on', 'mic_off', 'tap', 'toggle', 'notify', 'error', 'tick', 'beep']],
   ['IMPACTS', ['hit_wood', 'hit_metal', 'hit_glass', 'hit_soft', 'hit_plastic', 'hit_ceramic', 'hit_cardboard', 'shatter', 'smash', 'slosh', 'tipjar', 'land', 'thud', 'body_fall', 'bonk', 'ko', 'tackle', 'punch', 'slap', 'thwack', 'splat']],
   ['CROWDS', ['crowd_ooh', 'crowd_laugh', 'cheer', 'aww', 'brawl', 'oneeighty', 'anthem', 'siu']],

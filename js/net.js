@@ -60,7 +60,7 @@ const SCHEMA = {
   wx: { w: 'str', a: 'num', tm: 'num', c: 'str', ds: 'num' },
   rcheck: { 'k!': 'str', 'mode!': 'str' }, rready: { 'k!': 'str', r: 'num' }, rstat: { 'k!': 'str', ready: 'arr' }, rdone: { 'k!': 'str' }, warm: { 'mode!': 'str' },      // (the READY CHECK before a room's new game: readycheck.js)      // (the host's weather and time of day: weather.js)
   // PROP HUNT (prophunt.js)
-  phChk: { v: 'str', p: 'v3' }, phProp: { 'k!': 'str', id: 'id' }, phLock: { p: 'v2', y: 'num' }, phTaunt: { i: 'num' }, phLobby: { n: 'num' },
+  phChk: { v: 'str', p: 'v3' }, phProp: { 'k!': 'str', id: 'id' }, phLock: { p: 'v2', y: 'num' }, phBots: { 'b!': 'arr' }, phTaunt: { i: 'num' }, phLobby: { n: 'num' },
   phRound: { 'list!': 'arr', 'seek!': 'arr', hide: 'arr', lay: 'arr', r: 'num', of: 'num', ht: 'num', st: 'num', tot: 'obj' }, phGo: { st: 'num' }, phClock: { ph: 'str', left: 'num' },
   phFound: { 'v!': 'id', 'by!': 'id', p: 'v3', k: 'str', hp: 'num' }, phMiss: { 'by!': 'id', hp: 'num', d: 'num' }, phHit: { 'v!': 'id', 'by!': 'id', hp: 'num', p: 'v3' }, phHp: { 'id!': 'id', hp: 'num' }, phShot: { 'a!': 'v3', 'b!': 'v3', h: 'num' }, phOut: { 'id!': 'id', secs: 'num' }, phBack: { 'id!': 'id', hp: 'num' },
   phPts: { 'id!': 'id', d: 'num', why: 'str' }, phAuto: { 'id!': 'id', i: 'num' }, phEnd: { tot: 'obj', rp: 'obj', alive: 'arr', stats: 'obj', why: 'str', win: 'str' }, phOver: { tot: 'obj', aw: 'arr', stats: 'obj' },
@@ -73,8 +73,8 @@ const SCHEMA = {
   sdRound: { 'list!': 'arr', r: 'num', win: 'num', half: 'num', sc: 'obj', att: 'str', car: 'id', pk: 'arr', sp: 'obj', gn: 'obj', ld: 'obj', cash: 'obj', hist: 'arr', mv: 'arr', bt: 'num', rt: 'num', sw: 'num' }, sdGo: { rt: 'num' }, sdClock: { ph: 'str', left: 'num', bl: 'num' },
   sdDmg: { 'v!': 'id', by: 'id', hp: 'num', ar: 'num', d: 'num', hs: 'num', z: 'num', wb: 'num', g: 'num', p: 'v3' }, sdKill: { 'v!': 'id', by: 'id', g: 'num', hs: 'num', w: 'str', as: 'arr', wb: 'num', ds: 'num' }, sdGot: { 'i!': 'num', by: 'id', k: 'str', hp: 'num', ar: 'num' }, sdPk: { 'i!': 'num', on: 'num' },
   sdBomb: { 'st!': 'str', id: 'id', p: 'v2', s: 'str', left: 'num', by: 'id' }, sdEnd: { win: 'str', why: 'str', sc: 'obj', r: 'num', mvp: 'id', mw: 'str', last: 'num', cash: 'obj' }, sdOver: { win: 'str', sc: 'obj', st: 'obj', aw: 'arr' },
-  sdState: { round: 'obj', ph: 'str', left: 'num', fs: 'obj', bomb: 'obj', sc: 'obj', pkOn: 'arr', over: 'obj', ld: 'obj', cash: 'obj', drops: 'arr', hist: 'arr' }, sdBots: { 'b!': 'arr' }, sdHp: { 'id!': 'id', hp: 'num', ar: 'num' },
-  sdLoad: { 'id!': 'id', p: 'str', s: 'str', c: 'num', k: 'str', no: 'num' }, sdCash: { 'c!': 'obj' }, sdDrop: { 'd!': 'num', g: 'str', p: 'v2', on: 'num' },
+  sdState: { round: 'obj', ph: 'str', left: 'num', fs: 'obj', bomb: 'obj', sc: 'obj', pkOn: 'arr', over: 'obj', ld: 'obj', cash: 'obj', drops: 'arr', hist: 'arr', gl: 'arr' }, sdBots: { 'b!': 'arr' }, sdHp: { 'id!': 'id', hp: 'num', ar: 'num' },
+  sdLoad: { 'id!': 'id', p: 'str', s: 'str', c: 'num', k: 'str', no: 'num' }, sdCash: { 'c!': 'obj' }, sdDrop: { 'd!': 'num', g: 'str', p: 'v2', on: 'num' }, sdSmash: { 'i!': 'num' }, sdProj: { 'a!': 'v3', 'v!': 'v3', g: 'num', id: 'id' }, sdGlass: { 'i!': 'num' },
 };
 function okMessage(m) {
   if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.t !== 'string' || !m.t || m.t.length > 24) return false;
