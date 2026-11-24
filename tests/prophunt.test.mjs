@@ -9,7 +9,8 @@
 //   - the seeker finds a hider: FOUND on every game, the hider's a ghost; find them all and the seekers win the round
 //   - the next round the teams swap (someone else seeks); a round that runs out of time is won by the hiders left
 //   - after the last round everyone has the results; no new shader is built by any of it; no errors anywhere
-// PLACES=pub,shop,garden (default all three), PLAYERS=3 (2 to 5)
+// PLACES=pub,shop,garden (default all three), PLAYERS=3 (2 to 5). (People only: the bots making a room up to six are in
+// phbots.test.mjs)
 import { launch, newPage, sleep, checker } from './lib/game.mjs';
 import { startRoomHost } from './lib/roomhost.mjs';
 const readyUp = async (ps) => { for (const q of ps) await q.evaluate(() => { const m = window.ronnieMP; if (m && m.net && m.role === 'join' && !m.ready) document.querySelector('#room-ready').click(); }).catch(() => {}); await new Promise(r => setTimeout(r, 1500)); };      // (guests ready up: the host's START waits for everyone)
@@ -27,6 +28,7 @@ async function onePlace(place, WHO) {
   try {
     const pages = [];
     for (const [name, ch] of WHO) { const p = await newPage(b, { width: 480, height: 360 }); p.pname = name; p.ch = ch; pages.push(p);
+      await p.addInitScript(() => { window.__phNoBots = true; });      // (people only: phbots.test.mjs has the bots that fill a room to six)
       await p.goto('http://game.local/index.html?relay=' + encodeURIComponent(host.url), { timeout: 240000 }); await p.waitForTimeout(1200); }
     const ev = (p, f, a) => p.evaluate(f, a), cl = (p, s) => ev(p, (s) => document.querySelector(s).click(), s);
     const join = async (p, code) => { await cl(p, '.playbtn'); await sleep(400); await cl(p, '#pick-multi'); await sleep(400);

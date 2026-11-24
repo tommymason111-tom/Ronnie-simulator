@@ -15,6 +15,8 @@ import { FONT, roundRect } from './textures.js';
 import { ControllerHand, skinTrackedHand } from './hands.js';
 import { GROUP } from './physics.js';
 import { holdTransform } from './hold.js';
+import { CADENCE, DUTY, ev as gaitEv } from './gait.js';
+import { haptics } from './haptics.js';
 
 const HIST = 6;
 const _m = new THREE.Matrix4(), _s = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _qi = new THREE.Quaternion();
@@ -560,8 +562,9 @@ export class Player {
       this.camera.position.x += a * 0.035 * Math.sin(t); this.camera.position.y += a * 0.025 * Math.sin(t * 1.37 + 1); this.camera.rotation.z += a * 0.02 * Math.sin(t * 0.9 + 2);
       this.shakeA *= Math.exp(-dt * 9); } else this.shakeA = 0;
     if (this.zoomLean > 0.001) { const f = new THREE.Vector3(0, 0, -1).applyEuler(this.camera.rotation); this.camera.position.addScaledVector(f, this.zoomLean); }
-    const mx = this.flatMove.x, mz = this.flatMove.z;
-    if (Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05) {
+    const mx = this.flatMove.x, mz = this.flatMove.z, moving = Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05;
+    this.viewBob(dt, moving ? TUNING.moveSpeed * 0.9 * Math.min(1, Math.hypot(mx, mz)) * (this.speedMul || 1) * (this.puSpeed || 1) * (this.sprint ? 2.1 : 1) / (this.scale || 1) : 0);
+    if (moving) {
       const sp = TUNING.moveSpeed * dt * 0.9 * (this.speedMul || 1) * (this.puSpeed || 1) * (this.sprint ? 2.1 : 1) * (this.ghost ? 1.25 : 1);
       const yw = this.flatYaw + this.rig.rotation.y, sy = Math.sin(yw), cy = Math.cos(yw);
       this.rig.position.x += (-sy * -mz + cy * mx) * sp;
@@ -580,9 +583,29 @@ export class Player {
       if (this.flatEatT >= dur || !f.held) { this.flatEatT = -1; k = 0; }
       g.position.set(0.18 - 0.18 * k, -0.21 + 0.13 * k, -0.4 + 0.26 * k);
       g.rotation.set(FLAT_REST + (drink ? 1.7 : 0.2) * k, 0.3 * (1 - k), 0);
-    } else { g.position.set(0.18, -0.21 + Math.sin(t * 2) * 0.004, -0.4); g.rotation.set(FLAT_REST, 0.3, 0); }
+    } else { const P = this.pump || 0;      // (running: the hand pumps with the arm, forward and up, back and down, in time with the steps)
+      g.position.set(0.18 - 0.012 * P * this.pumpRun, -0.21 + Math.sin(t * 2) * 0.004 + 0.035 * P * this.pumpRun, -0.4 - 0.06 * P * this.pumpRun); g.rotation.set(FLAT_REST + 0.25 * P * this.pumpRun, 0.3, 0); }
     if (this.flatHandModel.ready) { const c = f.held ? holdTransform(f.held.type, 'right').curl : 0.35; for (const n in this.flatHandModel.curl) this.flatHandModel.curl[n] += (c - this.flatHandModel.curl[n]) * 0.3; this.flatHandModel.update(); }
     if (f.held && f.held.dead) f.held = null;
+  }
+
+  // Walking and running on a phone or a computer: the view bobs in time with your steps, on the same stride and cadence
+  // as everyone's legs (gait.js): highest mid-step walking, lowest mid-step running, a little side to side over each foot,
+  // stronger and rhythmic at a sprint, and your hand pumps with your arm. Never in a headset (this is the flat view only:
+  // a moving view you didn't make makes people sick in VR), and off with the screen shake setting (SOUND & FEEL).
+  viewBob(dt, v) {
+    const on = haptics.shake && !this.ghost && !(this.renderer && this.renderer.xr.isPresenting);
+    const vn = on ? v : 0, k = 1 - Math.exp(-dt / 0.12);
+    this.bobV = (this.bobV || 0) + (vn - (this.bobV || 0)) * k;
+    const sp = this.bobV, w = THREE.MathUtils.smoothstep(sp, 0.05, 0.6); if (w < 0.001) { this.pump = 0; this.pumpRun = 0; return; }
+    const run = THREE.MathUtils.smoothstep(sp, 1.95, 2.35), spr = THREE.MathUtils.smoothstep(sp, 3.4, 4.8);
+    this.bobPh = ((this.bobPh || 0) + gaitEv(CADENCE, sp) / 120 * dt) % 1;
+    const ph = this.bobPh, m = gaitEv(DUTY, sp) * 0.5, dbl = Math.cos(4 * Math.PI * (ph - m)), side = Math.cos(2 * Math.PI * (ph - m));
+    // (centimetres: a softened copy of the body's own bob, ~1 cm walking, ~2 cm jogging, ~2.5 cm sprinting)
+    const up = (0.009 * dbl * (1 - run) - (0.02 + 0.006 * spr) * dbl * run) * w;
+    const c = this.camera; c.position.y += up; c.position.x += 0.006 * side * w * (1 - 0.5 * run);
+    c.rotation.z += (0.004 + 0.006 * spr) * side * w; c.rotation.x += 0.004 * dbl * run * w;
+    this.pump = Math.cos(2 * Math.PI * (ph - 0.05)) * w; this.pumpRun = 0.25 + 0.75 * run;
   }
 
   // After the rig jumps (snap turn, growth, teleport) hands would look like they

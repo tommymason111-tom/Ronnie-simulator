@@ -938,7 +938,7 @@ const director = new Director({
   // BOSS FIGHT: the whole fight lives in boss.js
   makeBoss: () => new BossFight({ scene, room, physics, player, items, words, crumbs, G, cast, director, net, mp, camera, renderer, fx: attackFx, hint: (t) => touch.hint(t), showBanner: (a, b) => showBanner(a, b) }),
   // PROP HUNT (multiplayer): the whole game lives in prophunt.js
-  makePropHunt: () => new PropHunt({ scene, room, player, net, mp, words, renderer, camera, items, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), leave: () => leaveGame() }),
+  makePropHunt: () => new PropHunt({ scene, room, player, net, mp, words, renderer, camera, items, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), leave: () => leaveGame(), makePuppet: (p) => net.makeAvatar ? net.makeAvatar(p) : null }),
   // SEARCH AND DESTROY (solo with bots, or a room): the whole game lives in snd.js; its bots are drawn like other players
   makeSnd: () => new SearchDestroy({ scene, room, player, net, mp, words, renderer, camera, items, crumbs, director, banner, selfBody: () => selfBody, showBanner: (a, b) => showBanner(a, b), makePuppet: (p) => net.makeAvatar ? net.makeAvatar(p) : null }),
   hint: (t) => touch.hint(t),
@@ -979,6 +979,10 @@ const ctx = {
 function wrapText(g, text, maxW) { const words = text.split(' '), out = []; let ln = ''; for (const w of words) { const t = ln ? ln + ' ' + w : w; if (g.measureText(t).width > maxW && ln) { out.push(ln); ln = w; } else ln = t; } if (ln) out.push(ln); return out; }
 const chatUI = (() => {
   const st = document.createElement('style'); st.textContent = `
+/* (PAUSE, CHAT and VOICE stay on top in the corner, over Search & Destroy's full-screen shop and scoreboard too, whose tops
+   start under them on a phone) */
+body:has(#sd-pick.on) :is(#menu-btn, #chat-btn, #vc-bar), body:has(#sd-board.on) :is(#menu-btn, #chat-btn, #vc-bar) { z-index: 62 !important; }
+body.compact-ui #sd-pick.on { padding-top: calc(max(10px, env(safe-area-inset-top)) + 50px) !important; }
 #chat-btn { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 40px); right: max(10px, env(safe-area-inset-right)); z-index: 20; display: none; font: 900 12px Arial, sans-serif; padding: 8px 12px; border-radius: 12px; border: 0; background: rgba(0,0,0,0.6); color: #fff; }
 body.flat.mpon #chat-btn { display: block; }
 body.compact-ui #chat-box { top: calc(max(10px, env(safe-area-inset-top)) + 56px); }
@@ -1963,10 +1967,9 @@ class SquadPuppet {
     { const sp = this.spd = this.spd == null ? speed : this.spd + (speed - this.spd) * (1 - Math.exp(-dt * 6));
       if (this.walking ? sp < 0.15 : sp > 0.3) this.walking = !this.walking;
       const ww = this.walkW = (this.walkW || 0) + ((this.walking ? 1 : 0) - (this.walkW || 0)) * (1 - Math.exp(-dt * 7));
-      c.setIdlePose(c.t += dt);
-      if (ww > 0.005) { const idle = {}; for (const n in r.pose) idle[n] = r.pose[n].clone(); const bob0 = r.bob || 0, he0 = c.headExtra;
-        c.walkPose(dt, THREE.MathUtils.clamp(sp, 0.35, 3));
-        if (ww < 0.995) { for (const n in r.pose) r.pose[n].copy(idle[n].slerp(r.pose[n], ww)); r.bob = bob0 + ((r.bob || 0) - bob0) * ww; if (he0 && c.headExtra) c.headExtra = { yaw: he0.yaw + (c.headExtra.yaw - he0.yaw) * ww, pitch: he0.pitch + (c.headExtra.pitch - he0.pitch) * ww }; } } }
+      // (stood, walking, running or sprinting at whatever speed they really go, blended by speed inside gait.js: their feet
+      // planted on the floor and stepping, so a sprint is a sprint and nothing pops from one to the other)
+      c.setIdlePose(c.t += dt); if (ww > 0.005) c.walkPose(dt, sp, ww); }
     // an emote off the wheel: the whole body does it (a VR player's arms stay their own real arms)
     // (a VR player's emote is the whole body too: their real arms would only fight it and flail about)
     const em = this.emote.active ? this.emote.update(dt, false) : 0;
