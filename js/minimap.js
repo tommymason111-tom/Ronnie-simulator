@@ -121,8 +121,9 @@ export class MapView {
     // you in the middle facing up: the plan turned round you
     g.save(); g.translate(N / 2, N / 2 + N * 0.12); g.rotate(yaw); g.scale(k / pl.ppm, k / pl.ppm); g.drawImage(pl.cv, -(P.x - pl.x0) * pl.ppm, -(P.z - pl.z0) * pl.ppm); g.restore();
     const to = (x, z) => { const dx = (x - P.x) * k, dz = (z - P.z) * k, c2 = Math.cos(yaw), s2 = Math.sin(yaw); return [N / 2 + dx * c2 - dz * s2, N / 2 + N * 0.12 + dx * s2 + dz * c2]; };
+    const took = [];
     for (const m of marks) { if (m.k === 'me') continue; let [u, v] = to(m.x, m.z); const edge = m.k === 'site' || m.k === 'bomb'; const inR = u > 8 && u < N - 8 && v > 8 && v < N - 8;
-      if (!inR) { if (!edge) continue; u = Math.max(12, Math.min(N - 12, u)); v = Math.max(12, Math.min(N - 12, v)); }
+      if (!inR) { if (!edge) continue; u = Math.max(20, Math.min(N - 20, u)); v = Math.max(20, Math.min(N - 20, v)); for (let k = 0; k < 4 && took.some(([a, b]) => Math.abs(a - u) < 36 && Math.abs(b - v) < 36); k++) { if (u <= 20 || u >= N - 20) v += v + 40 > N - 20 ? -40 : 40; else u += u + 40 > N - 20 ? -40 : 40; } took.push([u, v]); }
       this.mark(g, m, u, v, 2.2, 0); }
     const me = marks.find(m => m.k === 'me'); this.mark(g, me || { k: 'me', col: '#39ff14' }, N / 2, N / 2 + N * 0.12, 2.2, 0, 0);
   }

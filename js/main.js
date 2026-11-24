@@ -1077,7 +1077,10 @@ body.flat.mpon #chat-log { display: flex; }
       y = Math.max(y, top + cap + gap); }
     else for (const el of [rpO, rpE]) if (el && el.dataset.tight) { el.dataset.tight = ''; el.style.width = ''; el.style.maxHeight = ''; el.style.overflow = ''; if (el === rpO) { el.style.width = 'min(230px,52vw)'; unput(el); el.style.right = 'max(10px,env(safe-area-inset-right))'; el.style.top = '62px'; } }
     for (const id of ['imp-tasks', 'ph-feed', 'rp-events']) { const el = $(id); if (!el) continue; if (id === 'rp-events' && (tight || R($('rp-orders')))) continue;      /* (Run the Pub's TO DO: placed by layout on an upright phone (beside ORDERS), otherwise by pubjobs.js (under ORDERS). Both moving it, it jumped between the two: the flicker) */ if (!narrow || side) { unput(el); continue; } /* (on its side, a phone's left edge is the joystick's: these keep their own place) */ if (!R(el)) continue; put(el, x, y); const r = drop(el); if (r) { y = r.bottom + gap; placed.push(r); } }
-    { const el = $('mm-mini'), r = R(el); if (r) { put(el, x, y); const r2 = R(el); if (r2) { y = r2.bottom + gap; placed.push(r2); } } }      // (a mode's small map: minimap.js)
+    // (a mode's small map, minimap.js: under the box; on a phone on its side there's no room above SPRINT there, so it goes beside the box, the box's height)
+    { const el = $('mm-mini'); if (el && R(el)) { el.style.width = el.style.height = ''; put(el, x, y); let r2 = R(el); const ctl = ['btn-sprint', 'btn-emote', 'btn-crouch', 'knob'].map(i => R($(i))).filter(Boolean);
+      if (r2 && m && ctl.some(c => over(r2, c))) { const sz = Math.round(Math.max(64, Math.min(r2.width, m.bottom - m.top))); el.style.width = el.style.height = sz + 'px'; put(el, Math.round(m.right + gap), Math.round(m.top)); r2 = R(el); if (r2) placed.push(r2); }
+      else if (r2) { y = r2.bottom + gap; placed.push(r2); } } }
     if (net.connected) { log.style.left = x + 'px'; log.style.top = y + 'px'; let lr = log.children.length ? drop(log) : null;
       // (never down into the touch controls: on a landscape phone there's little room, so the oldest lines go first)
       // (the touch buttons it would run into: a phone on its side has SPRINT up beside it, so the lines go below any it'd

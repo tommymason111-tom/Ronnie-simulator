@@ -29,7 +29,7 @@ export default async function () {
         // a chat line or two, so the log shows
         await ev(() => { const c = window.__fakes && window.__fakes.bots[0]; if (c) c.send({ t: 'chat', s: 'come on lads' }); });
         await sleep(1500); await ev(() => window.__layoutHud && window.__layoutHud()); await sleep(400);
-        if (SHOTS) await p.screenshot({ path: `${SHOTS}/hud_${mode}_${W}.png` });
+        if (SHOTS) await p.screenshot({ path: `${SHOTS}/hud_${mode}_${W}.png` }).catch(() => {});
         await ev(CHECK); const probs = (await ev(() => window.__textCheck())).filter(o => o.kind === 'text on text' || o.kind === 'off the side of the screen');
         const info = await ev(() => ({ meter: !!(RS.player.wrist && RS.player.wrist.visible), warm: RS.warm && RS.warm() }));
         console.log(`  ${W}x${H} ${mode}: top-left box ${info.meter} ${probs.length ? '\n    ' + probs.map(o => `${o.kind}: ${o.text} × ${o.by || ''} | ${o.where}`).join('\n    ') : 'no overlaps'}`);
@@ -43,6 +43,12 @@ export default async function () {
         // THE MAP (minimap.js): the small one in the left column, clear of the corner's buttons and the touch buttons;
         // the big one opened from it: its title, key and CLOSE on the screen with nothing on top of each other
         if (mode === 'snd') {
+          // (into the round: the shop shut and the clock run on to LIVE)
+          await p.waitForFunction(() => { const s = RS.director.snd; return s && s.phase !== 'wait'; }, null, { timeout: 60000 }).catch(() => {});
+          await ev(() => { const s = RS.director.snd; s.closePicker(); if (s.H && s.phase === 'buy') s.H.ends = s.clock; });
+          await p.waitForFunction(() => RS.director.snd.phase === 'live', null, { timeout: 60000 }).catch(() => {}); await ev(() => RS.director.snd.closePicker()); await sleep(1500); await ev(() => window.__layoutHud && window.__layoutHud()); await sleep(400);
+          if (SHOTS) await p.screenshot({ path: `${SHOTS}/hud_live_${W}.png` }).catch(() => {});
+          { await ev(CHECK); const pr = (await ev(() => window.__textCheck())).filter(o => o.kind === 'text on text' || o.kind === 'off the side of the screen'); for (const o of pr) C.ok(false, `${W}x${H} snd live: ${o.kind}: ${o.text} × ${o.by || ''} (${o.where})`); }
           const mm = await ev(() => { const box = (q) => { const e = document.querySelector(q); if (!e || getComputedStyle(e).display === 'none' || getComputedStyle(e).visibility === 'hidden') return null; const r = e.getBoundingClientRect(); return r.width ? r : null; };
             const hit = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top, m = box('#mm-mini');
             return { on: !!m, hits: ['#menu-btn', '#chat-btn', '#vc-bar', '#mp-chip', '#btn-sprint', '#btn-emote', '#btn-crouch', '#knob', '#sd-top', '#sd-ui .fire', '#sd-ui .aim', '#chat-log'].filter(q => hit(m, box(q))) }; });
@@ -51,7 +57,7 @@ export default async function () {
           await ev(CHECK); const mp2 = (await ev(() => window.__textCheck(document.getElementById('mm-full')))).filter(o => o.kind === 'text on text' || o.kind === 'off the side of the screen' || o.kind === 'cut off');
           await ev(fs.readFileSync(new URL('./lib/btncheck.js', import.meta.url), 'utf8')); const bt = await ev(() => window.__btnCheck('#mm-full'));
           const full = await ev(() => { const r = (q) => document.querySelector(q).getBoundingClientRect(), x = r('#mm-full .x'), t = r('#mm-full .ttl'), k = r('#mm-full .key'), c = r('#mm-full canvas'); return { on: document.getElementById('mm-full').classList.contains('on'), xOnTitle: x.left < t.right && x.right > t.left && x.top < t.bottom && x.bottom > t.top, keyIn: k.bottom <= innerHeight && k.top >= c.bottom - 1, canvasIn: c.top >= 0 && c.bottom <= innerHeight && c.right <= innerWidth }; });
-          if (SHOTS) await p.screenshot({ path: `${SHOTS}/hud_map_${W}.png` });
+          if (SHOTS) await p.screenshot({ path: `${SHOTS}/hud_map_${W}.png` }).catch(() => {});
           C.ok(full.on && !full.xOnTitle && full.keyIn && full.canvasIn && !mp2.length && !bt.length, `${W}x${H} snd: the big map: ${JSON.stringify({ full, text: mp2.slice(0, 3), btn: bt.slice(0, 3) })}`);
           await ev(() => document.querySelector('#mm-full .x').click()); }
         if (mode === 'runpub' && H > W) { const rp = await ev(() => ['rp-orders', 'rp-events'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return { t: r.top, b: r.bottom, l: r.left, r: r.right }; }));
