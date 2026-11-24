@@ -106,6 +106,24 @@ export class NavGrid {
     }
     return true;
   }
+  // where a room's players start: n spots round (x, z), a body's width apart, all walkable and reached from there on foot
+  // (never through a wall), nearest first, the ones behind you (out of the door) last. The same on every game, so each
+  // player takes theirs by their place in the room. (A straight line either side of the door put the fifth player onwards
+  // inside the walls or out in the car park)
+  spread(x, z, yaw, n, gap = 0.75, ok = null) {      // (ok(x, z): somewhere else it has to be, e.g. indoors like the start)
+    const key = [x, z, yaw, n, gap].join(','); if (this._spread && this._spread.key === key) return this._spread.out;
+    const s = this.nearestFree(x, z), out = [new THREE.Vector2(x, z)]; if (s < 0) return out;
+    const fx = -Math.sin(yaw), fz = -Math.cos(yaw), dist = new Map([[s, 0]]), q = [s], cand = [];
+    for (let h = 0; h < q.length && dist.get(q[h]) < 40; h++) { const k = q[h], ki = k % this.nx, kj = Math.floor(k / this.nx), d = dist.get(k);
+      const c = this.center(k), behind = (c.x - x) * fx + (c.y - z) * fz < -0.4; if (!ok || ok(c.x, c.y)) cand.push({ c, sc: d * this.cell + (behind ? 1.2 : 0) });
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { if (!di && !dj) continue; const i = ki + di, j = kj + dj;
+        if (i < 0 || j < 0 || i >= this.nx || j >= this.nz) continue; const m = j * this.nx + i;
+        if (!this.free[m] || dist.has(m) || (di && dj && (!this.free[kj * this.nx + i] || !this.free[j * this.nx + ki]))) continue;
+        dist.set(m, d + 1); q.push(m); } }
+    cand.sort((a, b) => a.sc - b.sc);
+    for (const { c } of cand) { if (out.length >= n) break; if (out.every(o => o.distanceTo(c) >= gap)) out.push(c); }
+    this._spread = { key, out }; return out;
+  }
   // spread-out hang-out spots with some elbow room
   sampleSpots(n, minGap = 2.2) {
     const out = [], cand = [];

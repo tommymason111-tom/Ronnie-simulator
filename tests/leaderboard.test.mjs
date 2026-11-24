@@ -46,6 +46,7 @@ export default async function () {
     const ui = await p.evaluate(() => ({ rows: document.querySelectorAll('#lb-modal .row').length, me: (document.querySelector('#lb-modal .row.me .nm') || {}).textContent, you: document.querySelector('#lb-modal .you').textContent, fits: [...document.querySelectorAll('#lb-modal *')].every(e => e.getBoundingClientRect().right <= innerWidth + 1) }));
     await p.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/leaderboard.png' }).catch(() => {});
     C.ok(ui.rows === 4 && /SOLO RON/.test(ui.me || '') && /#3/.test(ui.you) && ui.fits, `the boards screen: ${JSON.stringify(ui)}`);
+    await p.evaluate(() => sessionStorage.removeItem('rs_relay'));      // (the test's own server is kept for the tab: this is the real one, unreachable)
     await p.goto('http://game.local/index.html', { timeout: 120000, waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2000);
     await p.evaluate(() => document.getElementById('lb-open').click()); await p.waitForFunction(() => { const l = document.querySelector('#lb-modal .list'); return l && !/Loading/.test(l.textContent); }, null, { timeout: 20000 });
     const off = await p.evaluate(() => document.querySelector('#lb-modal .list').textContent); C.ok(/switched on/.test(off), `with no server the boards should say so: ${off}`);
