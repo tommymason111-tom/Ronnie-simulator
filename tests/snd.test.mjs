@@ -251,6 +251,13 @@ async function guns(b, C) {
         if (rl[0] !== 'sd_rl_' + g || dry[0] !== 'sd_dry_' + g) bad.push([g, rl[0], dry[0]]); }
       window.__sfxLog = null; return bad; }, GUN_IDS);
     C.ok(!snd.length, `guns: a gun's reload / empty click isn't its own: ${JSON.stringify(snd)}`);
+    // the scotch egg's splash: hurts in the open, not through a wall
+    const egg = await ev(p, () => { const s = T.s(), Th = RS.THREE; s.mine().alive = true; s.loadGun('scotch'); const G = s.curG(), e = T.target(6); if (!e) return { err: 'no bot' };
+      const h = s.headOf(e.id, new Th.Vector3()), P = RS.player.head, dir = new Th.Vector3(P.x - h.x, 0, P.z - h.z).normalize(), at = new Th.Vector3(h.x + dir.x * 1.8, s.floor(h.x, h.z) + 0.3, h.z + dir.z * 1.8);
+      const hit = () => { e.hp = 150; e.alive = true; s.F.get(e.id).alive = true; s.projHit({ G, owner: s.me, kind: 'egg', v: new Th.Vector3() }, at.clone(), new Th.Vector3(0, 1, 0), null); T.step(0.1); return 150 - e.hp; };
+      const open = hit(); const mid = at.clone().lerp(new Th.Vector3(h.x, at.y, h.z), 0.5), w = new Th.Box3(new Th.Vector3(mid.x - 0.6, mid.y - 1.5, mid.z - 0.6), new Th.Vector3(mid.x + 0.6, mid.y + 3, mid.z + 0.6));
+      s.extraWalls = [w]; s.grid = null; const walled = hit(); s.extraWalls = []; s.grid = null; return { open, walled }; });
+    C.ok(egg.open > 20 && egg.walled === 0, `guns: the scotch egg's splash (hurts in the open, not through a wall): ${JSON.stringify(egg)}`);
     // heavy guns slow you down; everyone else's gun held in their hands (no arm stretched off to it)
     const wt = await ev(p, () => { const s = T.s(), P = RS.player, sp = (g) => { s.loadGun(g); s.my.drawEnd = 0; s.updateSpeed(); return P.speedMul; };
       const out = { pistol: sp('ketchup'), rifle: sp('monstor'), heavy: sp('gravy') }; s.loadGun('ketchup'); s.updateSpeed();
