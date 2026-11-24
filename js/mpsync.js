@@ -42,7 +42,10 @@ export class MPSync {
     const { items, director, room } = this;
     // every item the host makes gets a number everyone can refer to it by
     const spawn0 = items.spawn.bind(items);
-    items.spawn = (...a) => { const it = spawn0(...a); if (!it.netMirror) { it.nid = ++this.seq; this.byNid.set(it.nid, it); } return it; };
+    // (not a copy of the host's food being made here (on_snap): numbered from our own count too, it was listed under that number
+    // as well, and when the host's food with that number came along it took this one over: half the food missing on a guest's
+    // game (the Supermarket Sweep's shelves), the rest jumping between two places)
+    items.spawn = (...a) => { const it = spawn0(...a); if (!it.netMirror && !this.mirroring) { it.nid = ++this.seq; this.byNid.set(it.nid, it); } return it; };
     const remove0 = items.remove.bind(items);
     items.remove = (it) => { if (it.nid) { this.byNid.delete(it.nid); if (!this.host && this.on && !it.dropNoTell) { this.net.send({ t: 'gone', nid: it.nid }); this.dead.set(it.nid, performance.now()); } } remove0(it); };
     // the shop displays / chairs / bottles: reaching for one on a joining player's game asks the host for it
@@ -148,8 +151,9 @@ export class MPSync {
   // a joining player's game: the host's people and food replace ours
   becomeClient() {
     const { items, director } = this;
-    director.remote = true; if (this.minFood0 === undefined) this.minFood0 = items.minFood;
-    items.minFood = 0; items.respawnQueue.length = 0; items.clientMode = true;
+    // (how much food the mode keeps about is left as the mode set it: a guest's game never tops up anyway (clientMode). Swapped for
+    // 0 here and put back from the first game's when hosting came over, the new host filled Run the Pub with 150 pints)
+    director.remote = true; items.respawnQueue.length = 0; items.clientMode = true;
     // (from now on the host says what food there is. What we had becomes theirs to tell us about: the next full update
     // keeps what they've got, adds what we haven't and clears the rest. Kept as our own, a game that had been host and
     // handed it back (a phone away for a moment) ignored the host's food and was left with none to eat)
@@ -164,7 +168,7 @@ export class MPSync {
   // the food we were shown is real food, the squad we were shown come to life, the game carries on
   becomeHost() {
     const { items, director } = this; if (!director.remote) return;
-    director.remote = false; items.clientMode = false; if (this.minFood0 !== undefined) items.minFood = this.minFood0;
+    director.remote = false; items.clientMode = false;
     for (const it of items.items) if (it.netMirror) {
       it.netMirror = false; if (it.netT) { it.pos.copy(it.netT.p); it.obj.quaternion.copy(it.netT.q); } it.netT = null; it.prev.copy(it.pos);
       if (!it.heldBy && !it.ownedHere) { it.vel.set(0, 0, 0); it.resting = true; } it.netSent = false; this.seq = Math.max(this.seq, it.nid || 0); }
@@ -309,7 +313,7 @@ export class MPSync {
       const [nid, ti, v, x, y, z, qx, qy, qz, qw, s, empty, held] = r; listed.add(nid);
       if (this.dead.has(nid)) continue;
       let it = this.byNid.get(nid);
-      if (!it || it.dead) { it = this.items.spawn(TYPES[ti], new THREE.Vector3(x, y, z), null, v); it.netMirror = true; it.nid = nid; this.byNid.set(nid, it); it.obj.quaternion.set(qx, qy, qz, qw); it.resting = true; it.spawnScale = 1; }
+      if (!it || it.dead) { this.mirroring = true; try { it = this.items.spawn(TYPES[ti], new THREE.Vector3(x, y, z), null, v); } finally { this.mirroring = false; } it.netMirror = true; it.nid = nid; this.byNid.set(nid, it); it.obj.quaternion.set(qx, qy, qz, qw); it.resting = true; it.spawnScale = 1; }
       if (this.heldLocally(it) || it.ownedHere || (it.ownerId && performance.now() - (it.ownSeen || 0) < 600)) continue;      // (mine, or someone else's who's telling us where it is)
       it.netT = { p: new THREE.Vector3(x, y, z), q: new THREE.Quaternion(qx, qy, qz, qw), s };
       it.empty = !!empty; it.netHeldBy = held;
