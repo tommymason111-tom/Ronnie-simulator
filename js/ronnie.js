@@ -15,6 +15,7 @@
 import { RONNIE_LINES as L, ALL_RONNIE_LINES } from './ronnielines.js';
 import { voiceLine, lineHash, cleanLine } from './voices.js';
 import { Character } from './character.js';
+import { narrator } from './narrator.js';
 
 const FOOD_KEY = { pint: 'eat.pint', beer: 'eat.beer', cider: 'eat.beer', can: 'eat.can', croissant: 'eat.pastry', painchoc: 'eat.pastry', swirl: 'eat.pastry', muffin: 'eat.pastry', icedbun: 'eat.pastry', pretzel: 'eat.pastry', baguette: 'eat.pastry', wine: 'eat.wine', spirit: 'eat.wine', coffee: 'eat.coffee' };
 // how long before the same kind of line again (seconds), and the chit-chat that waits for a longer quiet
@@ -130,7 +131,7 @@ function vrCaption(text) {
 // ---------------------------------------------------------------- a bite (modes.js onAte)
 function ate(item) {
   if (!RS || !item || !item.def) return; const d0 = D(), t = item.type;
-  if (d0 && d0.mode === 'date' && d0.date && d0.date.state === 'play' && !d0.date.look) { S.ateAway = true; say('date.sneak', { p: 0.6 }); return; }
+  if (d0 && d0.mode === 'date' && d0.date && d0.date.state === 'play' && !d0.date.look) { S.ateAway = true; say('date.sneak', { p: 0.6 }); if (Math.random() < 0.3 && !S.sneakNarr) { S.sneakNarr = 1; narrator.line('date.sneak'); } return; }      // (the narrator, once a night: after him)
   if (item.def.veg || item.def.prop) return;
   const k = FOOD_KEY[t] || (L['eat.' + t] ? 'eat.' + t : null);
   if (k && Math.random() < 0.45 && say(k)) return;
@@ -165,7 +166,7 @@ function update(dt) {
 }
 function startLine(mode) {
   const k = { date: 'date.start', sweep: 'sweep.start', bbq: 'bbq.start', runpub: 'runpub.start', boss: 'boss.start', chonkoff: 'eatoff.start', chonkoff2: 'eatoff.start', chonkoffr: 'eatoff.start' }[mode] || (QUIET_MODES.has(mode) || mode === 'snd' ? null : 'start');
-  P0.idleT = 20 + Math.random() * 15; P0.m = {};
+  P0.idleT = 20 + Math.random() * 15; P0.m = {}; S.sneakNarr = 0;
   if (k && (mode !== 'roam' || Math.random() < 0.5)) S.queue.push({ at: S.t + 2.2, key: k, o: { force: true } });
 }
 function endLine(mode) {

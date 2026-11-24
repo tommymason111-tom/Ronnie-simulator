@@ -234,7 +234,7 @@ class DateUI {
     if (!text) return;
     if (name) { const b = document.createElement('b'); b.textContent = name.toUpperCase(); b.style.color = color || '#ffd400'; c.appendChild(b); }
     const lp = lineParts(text), s = document.createElement('div'); s.textContent = lp.has ? lp.say : text; c.appendChild(s);
-    if (lp.has) { const i = document.createElement('i'); i.className = 'dn-dir'; i.textContent = lp.dir; i.style.cssText = 'display:block;opacity:0.85;font-weight:600'; if (lp.narratorFirst) c.insertBefore(i, s); else c.appendChild(i); }      // (a *stage direction*: the narrator's words, in italics)
+    if (lp.has) { const i = document.createElement('i'); i.className = 'dn-dir'; i.textContent = lp.dir; i.style.cssText = 'display:block;font-style:italic;font-weight:600;font-size:0.92em;color:#c8d0e0;margin-top:2px'; if (lp.narratorFirst) c.insertBefore(i, s); else c.appendChild(i); }      // (a *stage direction*: the narrator's words, in italics)
   }
   title(icon, big, small) {
     const t = this.q.title; if (!big) { t.classList.remove('on'); return; }
