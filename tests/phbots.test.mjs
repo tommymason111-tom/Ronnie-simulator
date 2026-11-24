@@ -1,5 +1,6 @@
 // PROP HUNT'S BOTS (js/phbots.js): a room of fewer than six gets the squad to make it six; six or more, none. With 1, 2,
-// 4 and 6 people (real games on upright phones, the rest light players from lib/bots.mjs, who count as people):
+// 4 and 6 people (real games on upright phones (two with 2 people, the host alone otherwise: memory), the rest light
+// players from lib/bots.mjs, who count as people):
 //   - the deal: six (or everyone) in the round, the bots marked 🤖, each a different one of the squad, nobody's character
 //   - bot hiders get a prop, go and hide by one of the same things in the map, and lock in
 //   - bot seekers wait at the start for the hide, then go round on real paths and shoot (hits, finds or wrong guesses)
@@ -22,7 +23,7 @@ export default async function () {
   const C = checker('phbots'), host = await startRoomHost(), b = await launch();
   try {
     for (const place of PLACES) for (const N of PEOPLE) { const ctxs0 = b.contexts().length; try {
-      const tag = `${place}, ${N} ${N === 1 ? 'person' : 'people'}`, nReal = Math.min(2, N), pages = [], light = [];
+      const tag = `${place}, ${N} ${N === 1 ? 'person' : 'people'}`, nReal = N === 2 ? 2 : 1, pages = [], light = [];
       for (let i = 0; i < nReal; i++) { const p = await newPage(b, { width: 390, height: 844, mobile: true }); p.pname = i ? 'GUEST' : 'HOST'; pages.push(p); await openMenu(p, host.url); }
       const [H, G] = pages, code = await hostRoom(H, 'HOSTY', 'lewis'); if (G) await joinRoom(G, code, 'GUESTY', 'chloe');
       for (let i = 0; i < N - nReal; i++) light.push(startBot(host.url, code, { name: 'MATE' + (i + 1), char: ['harry', 'ethan', 'aidan', 'connor'][i] }));
