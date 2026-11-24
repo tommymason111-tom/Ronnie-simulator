@@ -172,7 +172,7 @@ class Numbers {
 const CSS = `
 #boss-hud { position: fixed; left: 50%; top: calc(max(8px, env(safe-area-inset-top)) + 4px); transform: translateX(-50%); width: min(560px, calc(100vw - 260px)); min-width: 300px; z-index: 21; pointer-events: none; display: none; font-family: "Arial Black", Arial, sans-serif; color: #fff; text-shadow: 0 2px 0 #000; }
 body.flat #boss-hud.on { display: block; } body.gameover #boss-hud, body.boss-cine #boss-hud { display: none !important; }
-body.boss-cine #touch, body.boss-cine #menu-btn, body.boss-cine #mp-chip, body.boss-cine #chat-btn, body.boss-cine #chat-log, body.boss-cine #vc-bar, body.boss-cine #vc-list, body.boss-cine #warm-bar { visibility: hidden !important; }
+body.boss-cine #touch, body.boss-cine #mp-chip, body.boss-cine #chat-log, body.boss-cine #vc-list, body.boss-cine #warm-bar { visibility: hidden !important; }
 #boss-hud .bh-say { margin: 6px auto 0; width: fit-content; max-width: 100%; text-align: center; font: italic 700 14px Arial, sans-serif; padding: 4px 12px; border-radius: 10px; background: rgba(0,0,0,0.62); display: none; }
 #boss-hud .bh-say.on { display: block; } #boss-hud .bh-say b { font: 900 13px "Arial Black", Arial, sans-serif; color: var(--bc, #ffd400); font-style: normal; margin-right: 6px; }
 #boss-hud .bh-top { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 3px; }
@@ -475,7 +475,7 @@ export class BossFight {
     const T = spread ? this.pickTarget() : (this.target || this.pickTarget()), r = this.c.rag;
     const hand = this.drawn(r.tip('lArmR', _v)), ph = this.ph - 1;
     const tx = T.x + (spread ? (Math.random() - 0.5) * 3.2 : 0), tz = T.z + (spread ? (Math.random() - 0.5) * 3.2 : 0);
-    this.emit({ k: 'drop', x0: hand.x, y0: Math.max(1.5, hand.y), z0: hand.z, x: tx, z: tz, f: [1.35, 1.2, 1.05][ph], r: [1.5, 1.6, 1.7][ph], it: this.def.proj });
+    this.emit({ k: 'drop', x0: hand.x, y0: Math.max(1.5, hand.y), z0: hand.z, x: tx, z: tz, fl: [1.35, 1.2, 1.05][ph], r: [1.5, 1.6, 1.7][ph], it: this.def.proj });
   }
   summon() {
     const g = this.g, taken = g.mp && g.mp.takenChars ? g.mp.takenChars() : new Set();
@@ -594,7 +594,7 @@ export class BossFight {
   }
   projectile(ev) {
     const g = this.g, num = (v, d = 0) => (typeof v === 'number' && isFinite(v) ? v : d);
-    const from = new THREE.Vector3(num(ev.x0), clamp(num(ev.y0, 3), 0, 20), num(ev.z0)), to = new THREE.Vector3(num(ev.x), 0, num(ev.z)), f = clamp(num(ev.f, 1.3), 0.4, 3), r = clamp(num(ev.r, 1.5), 0.3, 3);
+    const from = new THREE.Vector3(num(ev.x0), clamp(num(ev.y0, 3), 0, 20), num(ev.z0)), to = new THREE.Vector3(num(ev.x), 0, num(ev.z)), f = clamp(num(ev.fl, 1.3), 0.4, 3), r = clamp(num(ev.r, 1.5), 0.3, 3);
     if (from.distanceTo(to) > 60) return;
     to.y = this.floorY(to.x, to.z);
     const type = FOODS[ev.it] ? ev.it : 'orange', obj = new Item(type).obj; obj.scale.setScalar(5.5); obj.traverse(o => { o.frustumCulled = false; }); g.scene.add(obj); obj.position.copy(from);
