@@ -257,6 +257,12 @@ async function guns(b, C) {
       const P = RS.player.head, ch = () => { const r = av.c.rag && av.c.rag.parts && av.c.rag.parts.chest; return r ? Math.hypot(r.body.position.x - P.x, r.body.position.z - P.z) : -1; }, d0 = ch(); s.hostKill(e.id, 'me', false); T.step(0.8); const d1 = ch();
       const me = s.mine(); me.hp = 10; T.step(0.1); const mk = s.muffK; me.hp = 150; T.step(0.1); return { fl, down: av.down > 1e5, d0: +d0.toFixed(2), d1: +d1.toFixed(2), mk, mk2: s.muffK }; });
     C.ok(hr.fl > 0 && hr.down && hr.d1 > hr.d0 + 0.2 && hr.mk > 0.5 && !hr.mk2, `guns: hit reactions (a flinch, a fall away from the shot, muffled near death and back): ${JSON.stringify(hr)}`);
+    // crouched (a bot planting): lower, knees bent; sprinting (a bot running, not shooting): its gun down
+    const cs = await ev(p, () => { const s = T.s(); s.botsFrozen = true; const e = T.target(6); if (!e) return { err: 'no bot' }; const f = s.F.get(e.id), av = s.avatar(e.id), b = s.bots.get(e.id), hy = () => av.headPos ? av.headPos().y : -1;
+      f.shotT = -99; T.step(0.5); const y0 = hy(); f.acting = 'plant'; T.step(0.8); const out = { ck: +(av.c.crouchK || 0).toFixed(2), drop: +(y0 - hy()).toFixed(2) }; f.acting = null; T.step(0.8);
+      const gm = s.rGuns.get(e.id), pitch = () => { const v = new RS.THREE.Vector3(0, 0, -1).applyQuaternion(gm.quaternion); return +v.y.toFixed(2); }; out.aim = pitch();
+      for (let i = 0; i < 20; i++) { b.x += 0.15; T.step(1 / 30); } out.run = pitch(); return out; });
+    C.ok(cs.ck > 0.8 && cs.drop > 0.15 && cs.run < cs.aim - 0.4, `guns: other players' crouch (lower) and sprint (gun down) poses: ${JSON.stringify(cs)}`);
     // the scotch egg's splash: hurts in the open, not through a wall
     const egg = await ev(p, () => { const s = T.s(), Th = RS.THREE; s.mine().alive = true; s.loadGun('scotch'); const G = s.curG(), e = T.target(6); if (!e) return { err: 'no bot' };
       const h = s.headOf(e.id, new Th.Vector3()), P = RS.player.head, dir = new Th.Vector3(P.x - h.x, 0, P.z - h.z).normalize(), at = new Th.Vector3(h.x + dir.x * 1.8, s.floor(h.x, h.z) + 0.3, h.z + dir.z * 1.8);

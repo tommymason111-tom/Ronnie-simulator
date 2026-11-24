@@ -272,6 +272,8 @@ export const GUNSYS = {
   gunTick(dt, alive) {
     const G = this.curG(), t = this.clock, my = this.my, P = this.g.player;
     if (!alive && my.crouch) { my.crouch = false; this.updateSpeed(); }
+    // (everyone else sees you crouch and sprint: told when it changes)
+    { const st = (my.crouch ? 1 : 0) | (alive && P.sprint ? 2 : 0), was = this.stSent || 0; if (st !== was && this.inRound()) { this.stSent = st; if ((st ^ was) & 1) this.net.send({ t: 'sdAct', k: 'crouch', on: st & 1 }); if ((st ^ was) & 2) this.net.send({ t: 'sdAct', k: 'sprint', on: st & 2 ? 1 : 0 }); } }
     my.crouchK = (my.crouchK || 0) + ((my.crouch ? 1 : 0) - (my.crouchK || 0)) * Math.min(1, dt * 10); if (P.flatMode && !this.g.renderer.xr.isPresenting && (my.crouchK > 0.001 || this.camLifted)) { P.camLift = -0.5 * my.crouchK; this.camLifted = my.crouchK > 0.001; }
     if (my.reloadEnd) this.reloadTick(); else my.rl = null;
     if (my.autoRl && t >= my.autoRl) { my.autoRl = 0; this.doReload(true); }
@@ -417,11 +419,16 @@ export const GUNSYS = {
       else { const np = this.net.players.get(id); if (np && np.pose && Array.isArray(np.pose.q)) q = _q.set(...np.pose.q); }
       if (!q || !this.headOf(id, h)) continue;
       let gm = this.rGuns.get(id); if (gm && gm.userData.gun !== f.gun) { this.grp.remove(gm); gm = null; } if (!gm) { gm = newGun(GUN[f.gun] ? f.gun : FREE_GUN); this.grp.add(gm); this.rGuns.set(id, gm); }
-      live.add(id); av.gunArm = true; const G = GUN[gm.userData.gun], hold = G.id === 'gravy' ? 'hip' : G.id === 'mustard' ? 'one' : G.slot === 'S' ? 'pistol' : 'rifle';
+      // crouched (a player who's crouching, a bot planting or defusing): the hips down and the knees bent (gait.js);
+      // sprinting (a player on SPRINT, a bot on the move that hasn't fired for a bit): the gun down across the body
+      const pv = this.prevH || (this.prevH = new Map()), p0 = pv.get(id), spd = p0 && dt > 0 ? Math.hypot(h.x - p0[0], h.z - p0[1]) / dt : 0; pv.set(id, [h.x, h.z]);
+      f.spdK = (f.spdK || 0) + (spd - (f.spdK || 0)) * Math.min(1, dt * 6); const running = f.bot ? f.spdK > 1.4 && this.clock - (f.shotT ?? -9) > 2.5 : !!f.sp && f.spdK > 0.8;
+      if (av.c) av.c.crouchK = (av.c.crouchK || 0) + (((f.bot ? !!f.acting : !!f.cr) ? 1 : 0) - (av.c.crouchK || 0)) * Math.min(1, dt * 8);
+      live.add(id); av.gunArm = true; const G = GUN[gm.userData.gun], hold = running ? 'run' : G.id === 'gravy' ? 'hip' : G.id === 'mustard' ? 'one' : G.slot === 'S' ? 'pistol' : 'rifle';
       gm.visible = !(av.emote && av.emote.active) && !f.acting;
       // where it's held, in the way they're looking (right, up, forward)
-      _e.setFromQuaternion(q, 'YXZ'); const yaw = _e.y, pitch = hold === 'hip' ? _e.x * 0.35 : _e.x; _e.set(pitch, yaw, 0, 'YXZ'); gm.quaternion.setFromEuler(_e);
-      const off = hold === 'hip' ? [0.2, -0.66, -0.3] : hold === 'pistol' ? [0.04, -0.3, -0.4] : hold === 'one' ? [0.2, -0.26, -0.48] : [0.14, -0.27, -0.26];
+      _e.setFromQuaternion(q, 'YXZ'); const yaw = _e.y + (hold === 'run' ? 0.55 : 0), pitch = hold === 'hip' ? _e.x * 0.35 : hold === 'run' ? -0.85 : _e.x; _e.set(pitch, yaw, 0, 'YXZ'); gm.quaternion.setFromEuler(_e);
+      const off = hold === 'run' ? [0.05, -0.5, -0.2] : hold === 'hip' ? [0.2, -0.66, -0.3] : hold === 'pistol' ? [0.04, -0.3, -0.4] : hold === 'one' ? [0.2, -0.26, -0.48] : [0.14, -0.27, -0.26];
       gm.position.copy(h).add(_v.set(off[0], off[1], off[2]).applyQuaternion(gm.quaternion)); const k = this.kick[id] || 0; gm.rotateX(k * 0.25); gm.translateZ(k * 0.04);
       const rl = f.rlT != null && this.clock - f.rlT < G.reload ? { k: G.rtype === 'shell' ? 'mag' : G.rtype, t0: f.rlT, T: G.rtype === 'shell' ? 1.6 : G.reload } : null;
       const pp = this.poseParts(gm, G, { rl, cyc: null, lastShot: f.shotT, mag: 1, spinK: k > 0 ? dt * 30 : 0 }), M = gm.userData.model; gm.updateMatrixWorld(true);
