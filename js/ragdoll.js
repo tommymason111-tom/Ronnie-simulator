@@ -165,6 +165,8 @@ export class Ragdoll {
     this.root = new THREE.Vector3();      // feet position (anim mode)
     this.bob = 0;               // extra hip height (walk bob)
     this.shiftZ = 0;            // the hips moved forward (+) / back (-) along the way they face (sitting back in a chair)
+    this.swayX = 0;             // the hips moved to their left (+) / right (-): the weight over one foot (gait.js)
+    this.frameNo = 0;           // (counts the frames this body's been placed: gait.js moves on once a frame)
     this.constrain = null;      // (root) => keeps the root out of walls / furniture
     this._fk = this.defs.map(() => ({ p: new THREE.Vector3(), q: new THREE.Quaternion() }));
     this._from = this.defs.map(() => ({ p: new THREE.Vector3(), q: new THREE.Quaternion() }));
@@ -496,6 +498,7 @@ export class Ragdoll {
     this.solidifyPieces(geo, skinIndex, skinWeight);
     this.measureHands(geo, skinIndex, skinWeight);
     this.splitHands(geo, skinIndex, skinWeight);
+    try { this.splitFeet(geo, skinIndex, skinWeight); } catch (e) { console.warn('feet', e); this.footAxes = null; }
     this.weldWeights(geo, skinIndex, skinWeight);
     const sk = this.capCuts(geo, skinIndex, skinWeight);
     geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(sk.skinIndex, 4));
@@ -532,7 +535,7 @@ export class Ragdoll {
     const src = shellGeo(this), pos = src.attributes.position, nrm = src.attributes.normal, n = pos.count;
     if (!nrm) return;
     const si = src.attributes.skinIndex, D = this.defs, kH = this.height / 1.68, v = new THREE.Vector3();
-    const legs = D.map((d, i) => d.name.startsWith('lLeg') ? i : -1).filter(i => i >= 0);
+    const legs = D.map((d, i) => d.name.startsWith('lLeg') ? i : -1).filter(i => i >= 0).concat(Object.values(this.footBone || {}));      // (the feet have their own bones)
     let minY = Infinity; for (let i = 0; i < n; i++) if (legs.includes(si.getX(i))) minY = Math.min(minY, pos.getY(i));
     const top = minY + 0.11 * kH, sole = minY + 0.028 * kH;
     const kind = new Uint8Array(n);
@@ -746,6 +749,40 @@ export class Ragdoll {
     // the knuckles, so a hand can make a fist or flip someone off with its own fingers
     for (const name of Object.keys(handVerts)) try { this.splitFingers(geo, name, handVerts[name], pos, skinIndex, skinWeight, dir.subVectors(this.parts[name].def.b, this.parts[name].def.a).normalize().clone()); } catch (e) { console.warn('fingers', e); }
   }
+  // Give each scanned foot its own bone, hinged at the ankle, so it can stay flat on the floor while the shin rolls over it
+  // and roll heel to toe (gait.js). Measured from the model: the sole (the lowest point of the leg's own skin), the ankle
+  // (the middle of the leg just above the foot, ~7.5 cm up for someone 1.68 m tall), the back of the heel and the toes.
+  // The skin across the ankle blends from the shin to the foot, as at the knee.
+  splitFeet(geo, skinIndex, skinWeight) {
+    const pos = geo.attributes.position, kH = this.height / 1.68, n = pos.count;
+    this.footAxes = {}; this.footPose = {}; this.footBone = {};
+    for (const name of ['lLegL', 'lLegR']) {
+      const k = this.defs.findIndex(d => d.name === name); if (k < 0) continue;
+      let minY = Infinity; for (let i = 0; i < n; i++) if (skinIndex[i * 4] === k && skinWeight[i * 4] > 0.5) { const y = pos.getY(i); if (y < minY) minY = y; }
+      if (!isFinite(minY)) continue;
+      const ankY = minY + 0.075 * kH;
+      // the leg's middle just above the foot
+      let cx = 0, cz = 0, cn = 0; for (let i = 0; i < n; i++) { if (skinIndex[i * 4] !== k) continue; const y = pos.getY(i); if (y > minY + 0.11 * kH && y < minY + 0.16 * kH) { cx += pos.getX(i); cz += pos.getZ(i); cn++; } }
+      if (cn < 8) continue; cx /= cn; cz /= cn;
+      // the foot: the leg's skin below the top of the ankle; the heel and toes from the part of it near the floor
+      let heel = Infinity, toe = -Infinity, fn = 0;
+      for (let i = 0; i < n; i++) { if (skinIndex[i * 4] !== k) continue; const y = pos.getY(i); if (y > minY + 0.045 * kH) continue; const z = pos.getZ(i); if (Math.abs(pos.getX(i) - cx) > 0.09 * kH) continue; if (z < heel) heel = z; if (z > toe) toe = z; fn++; }
+      if (fn < 8 || !(toe - heel > 0.12 * kH)) continue;
+      const nb = this.defs.length + this.extraBones.length, lo = ankY - 0.015 * kH, hi = ankY + 0.03 * kH;
+      for (let i = 0; i < n; i++) {
+        if (skinIndex[i * 4] !== k) continue; const y = pos.getY(i); if (y > hi) continue;
+        const w = 1 - THREE.MathUtils.smoothstep(y, lo, hi);       // (1 = all foot, below the ankle)
+        if (w > 0.5) { skinIndex[i * 4] = nb; skinWeight[i * 4] = w; skinIndex[i * 4 + 1] = k; skinWeight[i * 4 + 1] = 1 - w; }
+        else { skinIndex[i * 4] = k; skinWeight[i * 4] = 1 - w; skinIndex[i * 4 + 1] = nb; skinWeight[i * 4 + 1] = w; }
+        skinIndex[i * 4 + 2] = skinIndex[i * 4 + 3] = 0; skinWeight[i * 4 + 2] = skinWeight[i * 4 + 3] = 0;
+      }
+      this.footBone[name] = nb; this.extraBones.push({ kind: 'foot', name });
+      // the ball of the foot is ~72% of the way from the heel to the toes
+      this.footAxes[name] = { ankle: new THREE.Vector3(cx, ankY, cz), sole: minY, heel, toe, ball: heel + (toe - heel) * 0.72 };
+      this.footPose[name] = { q: new THREE.Quaternion() };
+    }
+    if (!Object.keys(this.footAxes).length) { this.footAxes = null; this.footPose = null; }
+  }
   splitFingers(geo, name, list, pos, skinIndex, skinWeight, armDir) {
     const kH = this.height / 1.68, v = new THREE.Vector3(), hc = new THREE.Vector3();
     for (const i of list) hc.add(v.fromBufferAttribute(pos, i)); hc.multiplyScalar(1 / list.length);
@@ -855,6 +892,7 @@ export class Ragdoll {
     this.yawQ.setFromAxisAngle(Y_AXIS, this.yaw);
     const base = _v2.set(this.root.x, 0.02 + this.bob + (FLOOR.at ? FLOOR.at(this.root.x, this.root.z) : 0), this.root.z);
     if (this.shiftZ) { base.x += Math.sin(this.yaw) * this.shiftZ; base.z += Math.cos(this.yaw) * this.shiftZ; }
+    if (this.swayX) { base.x += Math.cos(this.yaw) * this.swayX; base.z -= Math.sin(this.yaw) * this.swayX; }      // (the hips over the foot that's down: gait.js)
     this.defs.forEach((d, i) => {     // parents always come first in defs
       const o = out[i];
       o.q.copy(this.yawQ).multiply(this.pose[d.name]);
@@ -909,8 +947,11 @@ export class Ragdoll {
 
   // Drive the bodies from the animation (anim / blend modes). Call once per frame.
   animate(dt) {
-    if (this.mode === 'ragdoll') return;
+    if (this.mode === 'ragdoll') { this.frameNo = (this.frameNo || 0) + 1; return; }
     if (this.constrain) this.constrain(this.root);
+    // the legs again from where the body really is now it's moved this frame (gait.js: planted feet stay planted)
+    if (this.legIK) this.legIK.late();
+    this.frameNo = (this.frameNo || 0) + 1;
     const fk = this.computeFK(this._fk);
     let k = 1;
     if (this.mode === 'blend') {
@@ -976,8 +1017,10 @@ export class Ragdoll {
     });
     // getting fatter (players in multiplayer, as they go up the stages): the belly and waist swell, mostly forwards,
     // the hips and thighs thicken; 0 = as they are, 1 = the biggest
-    if (this.mesh && this.mesh.morphTargetInfluences) this.mesh.morphTargetInfluences[0] = Math.max(0, this.fat || 0);
-    if (this.uniform && this.uniform.morphTargetInfluences) this.uniform.morphTargetInfluences[0] = Math.max(0, this.fat || 0);     // (the belly: see addBellyMorph)
+    // (plus a wobble when a heavy body lands on each step: gait.js)
+    const fatNow = Math.max(0, (this.fat || 0) * (1 + (this.jiggle || 0)));
+    if (this.mesh && this.mesh.morphTargetInfluences) this.mesh.morphTargetInfluences[0] = fatNow;
+    if (this.uniform && this.uniform.morphTargetInfluences) this.uniform.morphTargetInfluences[0] = fatNow;     // (the belly: see addBellyMorph)
     if (this.fat > 0.001) for (const name of ['uLegL', 'uLegR']) { const part = this.parts[name]; if (!part) continue; const k = 1 + 0.22 * this.fat; this.bones[this.list.indexOf(part)].scale.set(k, 1, k); }   // thicker thighs
     if (this.hideHead) { const hb = this.bones[this.list.indexOf(this.parts.head)]; hb && hb.scale.setScalar(0.001); }   // (your own body, seen from inside your head)
     // a limb that's come off (an emote): it shrinks away into the joint it hung from, leaving a stump
@@ -990,6 +1033,11 @@ export class Ragdoll {
     if (this.extraBones) this.extraBones.forEach((eb, j) => {
       const bone = this.bones[this.defs.length + j]; if (!bone) return; const b = this.parts[eb.name].body, c = this.parts[eb.name].def.center, ax = this.handAxes && this.handAxes[eb.name], hp = this.handPose && this.handPose[eb.name];
       _hm.compose(_hp.set(b.position.x, b.position.y, b.position.z), _hq.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w), _hs.set(1, 1, 1)).multiply(_hm2.makeTranslation(-c.x, -c.y, -c.z));
+      // a foot: turned at the ankle (gait.js keeps it flat on the floor, rolls it heel to toe); gone with its leg if that's gone
+      if (eb.kind === 'foot') { const fa = this.footAxes[eb.name], fp = this.footPose[eb.name];
+        if (fp && fp.q.w < 0.99999) _hm.multiply(pivotM(fa.ankle, fp.q));
+        if (this.partHide && this.partHide[eb.name]) { const w = this.parts[eb.name].def.a; _hm.multiply(_hm3.makeTranslation(w.x, w.y, w.z).multiply(_pmR.makeScale(0.001, 0.001, 0.001)).multiply(_pmT.makeTranslation(-w.x, -w.y, -w.z))); }
+        _hm.multiply(_hm2.makeTranslation(c.x, c.y, c.z)); _hm.decompose(bone.position, bone.quaternion, bone.scale); return; }
       if (ax && hp) {
         if (hp.q.w < 0.99999) _hm.multiply(pivotM(ax.wrist, hp.q));
         const curl = eb.kind === 'fingers' ? hp.curl : eb.kind === 'middle' ? hp.mid : 0;
