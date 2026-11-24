@@ -62,7 +62,7 @@ function getBuffer(who, clean) {
 const pending = new Map();
 const ENDS = new Map();
 // is anyone but the narrator saying (or about to say) a line?
-export function othersTalking() { const now = performance.now(); for (const k of pending.keys()) if (k !== 'narrator') return true; for (const [k, e] of ENDS) if (k !== 'narrator' && e > now) return true; return false; }
+export function othersTalking(but = ['narrator']) { const now = performance.now(); for (const k of pending.keys()) if (!but.includes(k)) return true; for (const [k, e] of ENDS) if (!but.includes(k) && e > now) return true; return false; }
 export const PLAYED = [];      // (the last few lines played: who, id, when. For the tests)
 export function hasClip(who, text) { const c = cleanLine(text); return !!(c && has(who, lineHash(c))); }
 export function voiceLine(who, text, pos, { key = who, vol = 1, onStart = () => {}, maxWait = 1200 } = {}) {

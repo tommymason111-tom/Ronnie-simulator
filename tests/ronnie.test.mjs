@@ -49,7 +49,7 @@ export default async function () {
           // a power-up, idle chatter
           RS.powerups.give('hoover'); sim(2);
         } finally { Math.random = rnd; }
-        sim(90);
+        for (let i = 0; i < 18; i++) { sim(5); await new Promise(r => setTimeout(r, 400)); }      // (in steps, letting the page's timers run: voices finish)
         out.keys = R.said.map(x => x.key); out.texts = R.said.map(x => x.text);
         // no line twice in a row, even asked for over and over
         const seq = []; for (let i = 0; i < 30; i++) { R.say('bite'); seq.push(R.state.lastLine); RS.sim(0.1, 0.1); }

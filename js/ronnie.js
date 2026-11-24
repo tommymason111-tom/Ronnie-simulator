@@ -13,8 +13,7 @@
 //     Prop Hunt (a voice from a hiding place would give you away).
 //   - The voice goes through the voices volume, so voice chat's NPC mute and the settings' VOICES slider apply.
 import { RONNIE_LINES as L, ALL_RONNIE_LINES } from './ronnielines.js';
-import { voiceLine, lineHash, cleanLine } from './voices.js';
-import { Character } from './character.js';
+import { voiceLine, lineHash, cleanLine, othersTalking } from './voices.js';
 import { narrator } from './narrator.js';
 
 const FOOD_KEY = { pint: 'eat.pint', beer: 'eat.beer', cider: 'eat.beer', can: 'eat.can', croissant: 'eat.pastry', painchoc: 'eat.pastry', swirl: 'eat.pastry', muffin: 'eat.pastry', icedbun: 'eat.pastry', pretzel: 'eat.pastry', baguette: 'eat.pastry', wine: 'eat.wine', spirit: 'eat.wine', coffee: 'eat.coffee' };
@@ -47,8 +46,8 @@ function pick(key) {
   rec.push(l); while (rec.length > Math.max(0, list.length - 1)) rec.shift();
   return l;
 }
-// someone important talking near you (an attack, a film line): the chit-chat waits
-function busyNearby() { const P = RS.player; for (const c of Character.ALL || []) { if (c.disposed || c.mpPuppet || !(c.speakT > 0.6 || c.voicePending) || (c.speakPri || 0) < 4) continue; try { if (c.pos && Math.hypot(c.pos.x - P.head.x, c.pos.z - P.head.z) < 6) return true; } catch (e) {} } return false; }
+// someone else's voice playing (or about to): the chit-chat waits
+function busyNearby() { return othersTalking(['ronnie_me']); }      // (someone's voice playing, or about to: voices.js)
 
 // say a line of this kind (if it's time). o.force: skip the waits (tests, the developer); o.p: the chance it's said
 function say(key, o = {}) {
@@ -236,7 +235,7 @@ export function startRonnie(rs) {
   (rs.onFrame || (rs.onFrame = [])).push(update);
   if (rs.net) rs.net.on.rsay = heard;
   ronnie.say = (key, o) => say(key, { force: true, ...o });
-  ronnie.pick = pick; ronnie.state = S; ronnie.lines = L;
+  ronnie.pick = pick; ronnie.state = S; ronnie.lines = L; ronnie.debug = () => ({ idleT: P0.idleT, t: S.t, lastT: S.lastT, run: P0.run, busy: busyNearby() });
   ronnie.caption = () => cap && cap.until ? { text: cap.text, el: cap.el } : null;
   ronnie.vrCaption = () => vr && vr.s.visible ? vr.s : null;
   return ronnie;
