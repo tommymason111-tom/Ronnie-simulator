@@ -30,7 +30,9 @@ const LOAD_ALL = async () => {
   for (const c of cs) {
     const m = c.rag.mesh; if (!m || !c.rag.modelLoaded) { out[c.id] = null; continue; }
     const g = m.geometry, mat = m.material, w = (t) => t ? (t.image && t.image.width) || 0 : 0;
-    const info = { tris: (g.index ? g.index.count : g.attributes.position.count) / 3, verts: g.attributes.position.count, map: w(mat.map), normal: w(mat.normalMap) };
+    const info = { tris: (g.index ? g.index.count : g.attributes.position.count) / 3, verts: g.attributes.position.count, map: w(mat.map), normal: w(mat.normalMap),
+      feet: c.rag.footAxes ? Object.keys(c.rag.footAxes).length : 0, footVerts: 0 };
+    if (c.rag.footBone) { const si = g.attributes.skinIndex, fb = new Set(Object.values(c.rag.footBone)); for (let i = 0; i < si.count; i++) if (fb.has(si.getComponent(i, 0))) info.footVerts++; }
     if (c.id === 'ronnie') {
       const si = g.attributes.skinIndex, sw = g.attributes.skinWeight, nb = m.skeleton.bones.length; let nan = 0, sum = 0, badBone = 0, worst = 0;
       for (let i = 0; i < sw.count; i++) { let s = 0; for (let k = 0; k < 4; k++) { const v = sw.getComponent(i, k); if (!Number.isFinite(v) || v < 0) nan++; s += v; if (v > 0 && si.getComponent(i, k) >= nb) badBone++; }
@@ -76,6 +78,8 @@ export default async function () {
           C.ok(r.tris >= v.tris, `phone: Ronnie has ${r.tris} triangles once skinned, ${k} has more (${v.tris})`);
           C.ok(r.map >= v.map && r.normal >= v.normal, `phone: Ronnie's pictures (${r.map}/${r.normal}) are smaller than ${k}'s (${v.map}/${v.normal})`);
         }
+        // the gait's foot bones (splitFeet in ragdoll.js): both feet found on his model, as on everyone else's that has them
+        C.ok(r.feet === 2 && r.footVerts > 50, `Ronnie's model has ${r.feet} foot bones (${r.footVerts} vertices on them): gait.js can't plant his feet`);
         C.ok(r.nan === 0 && r.badPos === 0, `Ronnie's skin has ${r.nan} weights and ${r.badPos} positions that aren't numbers`);
         C.ok(r.sum === 0, `${r.sum} of Ronnie's vertices have weights that don't add up to 1 (worst off by ${r.worst})`);
         C.ok(r.badBone === 0, `${r.badBone} of Ronnie's vertex weights point at bones that don't exist`);
