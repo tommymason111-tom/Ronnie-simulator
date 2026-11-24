@@ -312,7 +312,10 @@ export class Gait {
   }
   // the swing's shape, from the hip and knee curves: ankle along / up from the hip, in the leg's own plane
   swingFK(w, leg, amp, out) {
-    const a = ev3(SW_HIP, w, this.run, this.spr) * amp, kn = ev3(SW_KNEE, w, this.run, this.spr) * amp;
+    // (a heavy body lifts its knees less: up to ~45% less hip flexion at the biggest. A big belly stops a high knee in real
+    // life, and on the model a thigh driven up into the belly folded the shorts up through the shirt)
+    let a = ev3(SW_HIP, w, this.run, this.spr) * amp; if (a > 0) a *= 1 - 0.45 * this.heavy;
+    const kn = ev3(SW_KNEE, w, this.run, this.spr) * amp * (1 - 0.15 * this.heavy);
     out.al = leg.L1 * Math.sin(a) + leg.L2 * Math.sin(a - kn); out.up = -leg.L1 * Math.cos(a) - leg.L2 * Math.cos(a - kn);
     return out;
   }
