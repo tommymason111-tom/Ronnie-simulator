@@ -887,8 +887,12 @@ window.addEventListener('resize', fitCamera);
 // a size stopped the game dead for a third of a second on a phone)
 { const jobs = [() => player.bellyModel ? player.bellyModel.warm() : true, warmFood];      // (no belly yet: keep the job for later)
   const idle = window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 3000 }) : (f) => setTimeout(() => f({ timeRemaining: () => 8 }), 400);
+  let lastDone = performance.now();
   const tick = (dl) => { if (!jobs.length) return; const ready = document.body.classList.contains('ready');      // (while the loading screen's still up, any gap counts: nothing's being played yet)
-    if (!ready || dl.timeRemaining() > 6 || !player.flatMode && !renderer.xr.isPresenting) {
+    // (a device that never has a quiet moment (every frame runs long): one piece anyway every 1.5s, so the looks still get
+    // made before they're wanted instead of waiting forever and the game stopping dead at the next size)
+    if (ready && dl.timeRemaining() <= 6 && performance.now() - lastDone > 1500) { try { if (!jobs[0]()) jobs.shift(); } catch (e) { jobs.shift(); } lastDone = performance.now(); }
+    else if (!ready || dl.timeRemaining() > 6 || !player.flatMode && !renderer.xr.isPresenting) { lastDone = performance.now();
       // (as many pieces as fit in the spare time the browser gives us, not one per quarter second: on a slow device that
       // took so long the belly could still be unmade when you grew)
       let n = 0; do { try { if (!jobs[0]()) jobs.shift(); } catch (e) { jobs.shift(); } n++; } while (jobs.length && n < 20 && (dl.timeRemaining() > 6 || !ready && n < 4)); }
@@ -1997,7 +2001,7 @@ class SquadPuppet {
     if (!em) r.pose.head.setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.clamp(-Math.asin(f.y), -0.6, 0.6));
     // hand tracking: their real fingers (sent only by players using it): how bent the fingers are, and the middle one
     if (!em && pose.fc && r.handPose) for (const [side, o] of [['R', 0], ['L', 5]]) { const hp = r.handPose['lArm' + side], s5 = pose.fc.slice(o, o + 5); if (!hp || s5[1] === '-') continue;
-      const d = (i) => pose.fcv && pose.fcv[o + i] != null ? pose.fcv[o + i] : (s5.charCodeAt(i) - 48) / 9, curl = (d(1) + d(3) + d(4)) / 3, mid = d(2); hp.curl += (curl - hp.curl) * Math.min(1, dt * 15); hp.mid += (mid - hp.mid) * Math.min(1, dt * 15); }
+      const d = (i) => pose.fcv && pose.fcv[o + i] != null ? pose.fcv[o + i] : (s5.charCodeAt(i) - 48) / 9, curl = (d(1) + d(3) + d(4)) / 3, mid = d(2); hp.curl += (curl - hp.curl) * Math.min(1, dt * 15); hp.mid += (mid - hp.mid) * Math.min(1, dt * 15); hp.netF = r.frameNo; }      // (netF: gait.js leaves these fingers alone)
     r.animate(dt); r.sync(); if (em) this.emote.place(); c.fx.position.set(this.pos.x, 0, this.pos.z); this.placeTag();
   }
   headPos() { return this.c.headPos(new THREE.Vector3()); }

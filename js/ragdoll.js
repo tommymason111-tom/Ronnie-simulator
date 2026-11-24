@@ -767,7 +767,7 @@ export class Ragdoll {
       v.fromBufferAttribute(pos, i); const dy = v.y - hipY;
       if (dy < -0.05 * kH || dy > 0.17 * kH) continue;
       const band = THREE.MathUtils.smoothstep(dy, -0.05 * kH, 0.0) * (1 - THREE.MathUtils.smoothstep(dy, 0.06 * kH, 0.17 * kH));
-      const front = THREE.MathUtils.smoothstep(v.z - hipZ, 0.0, 0.08 * kH), w = 0.45 * band * front * Math.min(1, t);
+      const front = THREE.MathUtils.smoothstep(v.z - hipZ, 0.0, 0.08 * kH), w = 0.65 * band * front * Math.min(1, t);
       if (w < 0.01) continue;
       const sL = THREE.MathUtils.clamp(0.5 + v.x / (0.12 * kH), 0, 1), add = [[uL, w * sL], [uR, w * (1 - sL)]];
       for (let j = 0; j < 4; j++) skinWeight[i * 4 + j] *= 1 - w;

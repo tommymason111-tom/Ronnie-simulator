@@ -111,11 +111,43 @@ export default async function () {
         if (lands < 2) out.bad.push(`turning round on the spot took ${lands} steps (should step round)`);
         if (Math.max(...yawErr) > 0.6) out.bad.push(`after turning round the feet still point ${Math.max(...yawErr).toFixed(2)} rad away from the body`); }
       try { av.dispose(); } catch (e) {}
+      // the biggest belly sprinting and sat down: the upper thigh never comes up through the shirt (thigh skin more than
+      // 1.5cm in front of the belly's own surface, well above the hem: the shorts tore up through the shirt before the
+      // belly was made to ride up with the knee, ragdoll.js bellyRides / addBellyMorph)
+      out.poke = {};
+      for (const who of ['ronnie', 'lewis']) {
+        const c = who === 'ronnie' ? fat : new SquadMember(RS.scene, RS.room, RS.physics, who, [0, 0, 0], RS.director); if (c !== fat) RS.cast.push(c);
+        for (let i = 0; i < 300 && !c.rag.modelLoaded; i++) await new Promise(res => setTimeout(res, 100));
+        const r = c.rag, M = r.mesh, G = M.geometry, si = G.attributes.skinIndex, sw = G.attributes.skinWeight, ps = G.attributes.position, nr = G.attributes.normal, D = r.defs, kH = r.height / 1.68;
+        r.fat = 1; c.heavy = 1; c.active = false;
+        const bi = (n) => D.findIndex(d => d.name === n), hipY = r.parts.uLegL.def.a.y, hz = r.parts.uLegL.def.a.z;
+        const share = (i, set) => { let t = 0; for (let j = 0; j < 4; j++) if (set.includes(si.getComponent(i, j))) t += sw.getComponent(i, j); return t; };
+        const TH = [bi('uLegL'), bi('uLegR')], TO = [bi('pelvis'), bi('chest')], thighV = [], bellyV = [];
+        for (let i = 0; i < ps.count; i++) { const y = ps.getY(i), z = ps.getZ(i); if (z < hz) continue;
+          if (share(i, TH) > 0.9 && y > hipY - 0.15 * kH && y < hipY + 0.05 * kH) thighV.push(i);
+          else if (share(i, TO) > 0.9 && y > hipY + 0.12 * kH && y < hipY + 0.35 * kH && nr.getZ(i) > 0.3) bellyV.push(i); }
+        const P1 = new T.Vector3(), P2 = new T.Vector3(), N2 = new T.Vector3(), cq = new T.Quaternion();
+        const poke = () => { r.group.updateMatrixWorld(true); M.skeleton.update(); const bp = bellyV.map(i => M.getVertexPosition(i, new T.Vector3())); let n = 0;
+          const q = r.parts.chest.body.quaternion; cq.set(q.x, q.y, q.z, q.w);
+          for (const i of thighV) { M.getVertexPosition(i, P1); let best = 1e9, bk = -1; for (let k = 0; k < bp.length; k++) { const d = P1.distanceToSquared(bp[k]); if (d < best) { best = d; bk = k; } }
+            if (bk < 0 || best > 0.0144) continue; N2.fromBufferAttribute(nr, bellyV[bk]).applyQuaternion(cq); if (P2.subVectors(P1, bp[bk]).dot(N2) > 0.015) n++; }
+          return n; };
+        let sprint = 0, sat = 0, t0 = 0; r.placeAt(0, -14, 0);
+        c.state = 'act'; c.actUpdate = (dt) => { t0 += dt; const k = Math.min(1, t0 / 0.6); r.moveVel.set(0, 0, 4.9 * k); c.walkPose(dt, 4.9 * k); };
+        for (let f = 0; f < 150; f++) { RS.player.rig.position.set(0, 0, r.root.z + 7); RS.sim(1 / 60, 1 / 60); if (f > 90 && f % 3 === 0) sprint = Math.max(sprint, poke()); }
+        // sat down: the deepest bend the hips get (the seats test's way of sitting someone)
+        c.state = 'idle'; c.actUpdate = null; r.moveVel.set(0, 0, 0); c.seated = true; c.faceYaw = 0; c.lookOverride = 0; r.placeAt(0, 0, 0);
+        for (let f = 0; f < 60; f++) { RS.sim(1 / 60, 1 / 60); }
+        sat = poke(); c.seated = false;
+        out.poke[who] = { sprint, sat, thigh: thighV.length };
+      }
       return out;
     }, SHOTS);
     for (const x of r.runs) console.log('   ', JSON.stringify(x));
     console.log('    turn', JSON.stringify(r.turn));
     r.bad.forEach(x => C.ok(false, x));
+    console.log('    poke-through', JSON.stringify(r.poke));
+    for (const [who, x] of Object.entries(r.poke || {})) { C.ok(x.thigh > 50, `${who}: found only ${x.thigh} upper-thigh points to check`); C.ok(x.sprint < 120 && x.sat < 120, `${who} at the biggest: ${Math.max(x.sprint, x.sat)} points of the upper thigh came up through the shirt (${x.sprint} sprinting, ${x.sat} sat)`); }
     const by = (l) => r.runs.find(x => x.label === l);
     for (const who of ['thin', 'fat', 'remote']) {
       const w = by(`${who} walk`), j = by(`${who} jog`), s = by(`${who} sprint`);

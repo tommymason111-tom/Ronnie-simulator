@@ -130,7 +130,7 @@ export class Gait {
     this.thud = 0; this.thudV = 0; this.meas = 0; this.mvT = 0; this.lean = 0; this.bank = 0; this.dropS = 0;
     this.feet = [makeFoot(1), makeFoot(-1)];
     this.wq = [new THREE.Quaternion(), new THREE.Quaternion(), new THREE.Quaternion(), new THREE.Quaternion()];
-    this.written = false; this.curl = 0; this.curlF = -1;
+    this.written = false; this.curlF = -1;
     this.gk = undefined; this.geom();
   }
   // the leg's measurements, from the body's bind pose (and its feet, once the model's loaded)
@@ -379,17 +379,22 @@ export class Gait {
     return _v.set(x * ct + z1 * st, y1, -x * st + z1 * ct);
   }
   // (anything posed after this, an emote's hands or a VR player's own fingers, sets its own curl over the top)
+  // The fingers, eased from wherever they are. Not while another player's own fingers are coming in over the network
+  // (main.js marks the frame it set them: netF): written over every frame, a tracked hand's fingers snapped. Anything
+  // posed after this (an emote's hands) sets its own curl over the top
   curlTo(want) {
-    const hp = this.r.handPose; if (!hp) return;
-    if (this.curlF !== this.frame) { this.curlF = this.frame; this.curl += (want - this.curl) * 0.15; }
-    for (const n of FOREARMS) { const p = hp[n]; if (p) p.curl = this.curl; }
+    const hp = this.r.handPose; if (!hp || this.curlF === this.frame) return; this.curlF = this.frame;
+    for (const n of FOREARMS) { const p = hp[n]; if (!p || (p.netF != null && this.r.frameNo - p.netF < 3)) continue;
+      p.curl += (want - p.curl) * 0.15; }
   }
+
 
   // ---- the legs: each ankle where it should be this frame, then two-bone IK, then the foot ----
   solve() {
     const r = this.r, P = r.pose;
     this.place();
     this.bob0 = r.bob; this.solveLegs(true); this.bob1 = r.bob; this.dropFinal = this.dropNow;
+    this.sx0 = r.root.x; this.sz0 = r.root.z; this.sy0 = r.yaw; this.sw0 = r.swayX || 0; this.sh0 = r.shiftZ || 0; (this.pq0 || (this.pq0 = new THREE.Quaternion())).copy(P.pelvis);
     // (what we wrote, to know next time if anyone's posed the legs over us)
     for (let i = 0; i < 4; i++) this.wq[i].copy(P[LEG[i]]);
     this.written = true;
@@ -500,6 +505,8 @@ export class Gait {
     if (this.frame !== r.frameNo || !this.written) { this.relax(); return; }
     const eye = Gait.eye; if (eye && (r.root.x - eye.x) ** 2 + (r.root.z - eye.z) ** 2 > 256) return;
     const P = r.pose; for (let i = 0; i < 4; i++) { const a = P[LEG[i]], b = this.wq[i]; if (a.x !== b.x || a.y !== b.y || a.z !== b.z || a.w !== b.w) { this.relax(); return; } }
+    // (nothing's moved since the legs were solved this frame (stood about, most of a crowd): they're right as they are)
+    if (r.root.x === this.sx0 && r.root.z === this.sz0 && r.yaw === this.sy0 && r.bob === this.bob1 && (r.swayX || 0) === this.sw0 && (r.shiftZ || 0) === this.sh0 && r.pose.pelvis.equals(this.pq0)) return;
     if (r.bob === this.bob1) r.bob = this.bob0;        // (the hips' own height again, before this frame's lowering, if nobody's changed it)
     if (!this.feet[0].stance || !this.feet[1].stance) this.place();       // (a swinging foot goes with the hips, which have moved on)
     this.solveLegs(true); this.bob1 = r.bob; this.dropFinal = this.dropNow;
