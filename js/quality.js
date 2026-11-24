@@ -60,7 +60,7 @@ export const quality = {
 // skin: biggest character picture side; normal: biggest surface-detail picture side; geo: the levels of detail, near to
 // far ('sub' = smoothed, 'base' = the model as it is, a number = that share of its triangles), with where each ends (m)
 const SPEC = {
-  ultra: { skin: 4096, normal: 1e9, aniso: 16, pr: [1.25, 2], shadow: 4096, casters: Infinity, geo: [['sub', 7], ['base', Infinity]], blob: true, aa: true, xrScale: 1 },
+  ultra: { skin: 4096, normal: 1e9, aniso: 16, pr: [1.25, 2], shadow: 4096, casters: Infinity, geo: [['sub', 4.5], ['base', Infinity]], blob: true, aa: true, xrScale: 1 },
   high: { skin: PHONE ? 1024 : 4096, normal: PHONE ? 512 : 1e9, aniso: 4, pr: [0, 1.75], shadow: 2048, casters: Infinity, geo: [['base', Infinity]], aa: true, xrScale: 1 },
   medium: { skin: 1024, normal: 512, aniso: 4, pr: [0, 1.25], shadow: 1024, casters: 9, geo: [[0.6, 5], [0.28, Infinity]], aa: true, xrScale: 1 },
   low: { skin: 512, normal: 256, aniso: 2, pr: [0, 1], shadow: 512, casters: 4, geo: [[0.3, 3.5], [0.14, Infinity]], aa: false, xrScale: 0.85 },
