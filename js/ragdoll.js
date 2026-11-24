@@ -21,6 +21,7 @@ const pivotM = (p, q) => _hm3.makeTranslation(p.x, p.y, p.z).multiply(_pmR.makeR
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { characterGroup, GROUP } from './physics.js';
+import { skinCaps, charGeo, charMat, shellGeo } from './quality.js';      // (QUALITY TIERS: quality.js)
 
 // Every model is downloaded once (shared by every character that uses it), started as early as possible
 // (while you're still on the menu), and retried if the connection drops, so nobody turns up invisible.
@@ -47,13 +48,12 @@ export function fetchModel(url) {
 // originals let go of. Done once per model, shared by everything that shows that person.
 // phones (an iPhone above all) get the characters' skins at 1024 x 1024: still sharper than a phone screen ever shows a
 // character, and less than half the memory each (with the whole squad about, 1536 x 1536 was ~95MB more than this)
-const PHONE = typeof navigator !== 'undefined' && (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)));
-const SKIN_MAX = PHONE ? 1024 : 4096;
+const SKIN_MAX = () => skinCaps().skin;      // (HIGH: as above. The other tiers: quality.js)
 // ...and their surface detail (the normal map) at 512 on a phone: you can't tell at phone size, and it's a quarter of the memory
 function phoneNormal(gltf, n) {
-  if (!n || !PHONE) return n || null; if (gltf.__normal) return gltf.__normal;
-  try { const im = n.image; if (!im || !im.width || im.width <= 512) return (gltf.__normal = n);
-    const c = document.createElement('canvas'); c.width = c.height = 512; c.getContext('2d').drawImage(im, 0, 0, 512, 512);
+  const NM = skinCaps().normal; if (!n || NM >= 1e8) return n || null; if (gltf.__normal) return gltf.__normal;
+  try { const im = n.image; if (!im || !im.width || im.width <= NM) return (gltf.__normal = n);
+    const c = document.createElement('canvas'); c.width = c.height = NM; c.getContext('2d').drawImage(im, 0, 0, NM, NM);
     const t = new THREE.CanvasTexture(c); t.flipY = n.flipY; t.wrapS = n.wrapS; t.wrapT = n.wrapT; t.channel = n.channel; t.colorSpace = n.colorSpace;
     t.offset.copy(n.offset); t.repeat.copy(n.repeat); t.rotation = n.rotation; t.center.copy(n.center); t.anisotropy = 4; t.userData.keep = true;
     try { im.close && im.close(); } catch (e) {} n.dispose();
@@ -66,7 +66,7 @@ export function skinOf(gltf, old) {
     if (mi && mi.width) { const th = document.createElement('canvas'); th.width = th.height = 128; th.getContext('2d').drawImage(mi, 0, 0, 128, 128); out.thumb = th; }      // (a little copy: emotes read skin colour from it)
     const same = a && a.image && a.image.width && a.channel === m.channel && a.offset.equals(m.offset) && a.repeat.equals(m.repeat) && a.rotation === m.rotation;
     if (mi && mi.width && same) {
-      const k = Math.min(1, SKIN_MAX / Math.max(mi.width, mi.height)), w = Math.round(mi.width * k), h = Math.round(mi.height * k), c = document.createElement('canvas'); c.width = w; c.height = h;
+      const k = Math.min(1, SKIN_MAX() / Math.max(mi.width, mi.height)), w = Math.round(mi.width * k), h = Math.round(mi.height * k), c = document.createElement('canvas'); c.width = w; c.height = h;
       const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(mi, 0, 0, w, h); const px = g.getImageData(0, 0, w, h).data;
       g.clearRect(0, 0, w, h); g.drawImage(a.image, 0, 0, w, h); const al = g.getImageData(0, 0, w, h).data;
       for (let i = 3; i < px.length; i += 4) px[i] = al[i - 2];                  // (the mask's green, as three.js reads it)
@@ -349,6 +349,8 @@ export class Ragdoll {
         .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n        totalEmissiveRadiance = mix(totalEmissiveRadiance, diffuseColor.rgb * 0.3, clamp(uOrange + uHair + uCoat, 0.0, 1.0));');
     };
 
+    charMat(mat);      // (ULTRA's skin and cloth detail: quality.js)
+
     // ---- automatic skinning: weight each vertex by closeness to each bone segment ----
     const pos = geo.attributes.position, n = pos.count;
     const skinIndex = new Uint16Array(n * 4), skinWeight = new Float32Array(n * 4);
@@ -507,7 +509,7 @@ export class Ragdoll {
     this.bones = this.defs.map(d => { const b = new THREE.Bone(); b.position.copy(d.center); this.group.add(b); return b; });
     for (const eb of this.extraBones || []) { const b = new THREE.Bone(); b.position.copy(this.parts[eb.name].def.center); this.group.add(b); this.bones.push(b); }
     this.addBellyMorph(geo);
-    this.mesh = new THREE.SkinnedMesh(geo, mat);
+    this.mesh = new THREE.SkinnedMesh(charGeo(this, geo), mat);      // (the tier's levels of detail: quality.js)
     this.mesh.frustumCulled = false;
     this.group.add(this.mesh);
     this.group.updateMatrixWorld(true);
@@ -531,7 +533,7 @@ export class Ragdoll {
   wearShoes(color = 0x111111) {
     this.wantShoes = color;
     if (!this.modelLoaded || this.shoes) return;
-    const src = this.mesh.geometry, pos = src.attributes.position, nrm = src.attributes.normal, n = pos.count;
+    const src = shellGeo(this), pos = src.attributes.position, nrm = src.attributes.normal, n = pos.count;
     if (!nrm) return;
     const si = src.attributes.skinIndex, D = this.defs, kH = this.height / 1.68, v = new THREE.Vector3();
     const legs = D.map((d, i) => d.name.startsWith('lLeg') ? i : -1).filter(i => i >= 0).concat(Object.values(this.footBone || {}));      // (the feet have their own bones)
@@ -560,7 +562,7 @@ export class Ragdoll {
   wearUniform(name = '') {
     this.wantUniform = true; this.uniformName = name || this.uniformName || '';
     if (!this.modelLoaded || this.uniform) return;
-    const src = this.mesh.geometry, pos = src.attributes.position, nrm = src.attributes.normal, n = pos.count;
+    const src = shellGeo(this), pos = src.attributes.position, nrm = src.attributes.normal, n = pos.count;
     if (!nrm) return;
     const si = src.attributes.skinIndex, D = this.defs, kH = this.height / 1.68;
     const ix = (nm) => D.findIndex(d => d.name === nm), head = ix('head'), chest = ix('chest'), pelvis = ix('pelvis');
