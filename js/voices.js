@@ -65,7 +65,7 @@ const ENDS = new Map();
 export function othersTalking(but = ['narrator']) { const now = performance.now(); for (const k of pending.keys()) if (!but.includes(k)) return true; for (const [k, e] of ENDS) if (!but.includes(k) && e > now) return true; return false; }
 export const PLAYED = [];      // (the last few lines played: who, id, when. For the tests)
 export function hasClip(who, text) { const c = cleanLine(text); return !!(c && has(who, lineHash(c))); }
-export function voiceLine(who, text, pos, { key = who, vol = 1, onStart = () => {}, maxWait = 1200 } = {}) {
+export function voiceLine(who, text, pos, { key = who, vol = 1, onStart = () => {}, maxWait = 3000 } = {}) {      // (3s: a line's first clip has to download and decode; at 1.2s Ronnie's opening Date Night line was dropped)
   if (!who || !VOICED.has(who) || !text) return false;
   const clean = cleanLine(text); if (!clean) return false;
   const ctx = audioCtx(); if (!ctx || ctx.state !== 'running') return false;      // (no sound yet: just show it)
